@@ -1,0 +1,32 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install semua dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy kode sumber dan build
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json dan package-lock.json
+COPY package*.json ./
+
+# Install production dependencies saja
+RUN npm ci --production
+
+# Copy hasil build dari builder stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./
+
+EXPOSE 3000
+
+# Menjalankan Next.js
+CMD ["npm", "run", "start:frontend"]

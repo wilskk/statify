@@ -8,6 +8,7 @@
     "build": "next build && tsc --project tsconfig.server.json --noEmit false",
     "build:server": "tsc --project tsconfig.server.json --noEmit false",
     "start": "concurrently \"next start\" \"node dist/server/index.js\"",
+    "start:frontend": "next start",
     "start:server": "node dist/server/index.js",
     "lint": "next lint"
   },
