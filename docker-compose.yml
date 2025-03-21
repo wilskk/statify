@@ -9,7 +9,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - BACKEND_URL=https://api.statify-dev.student.stis.ac.id
+      - BACKEND_URL=http://api.statify-dev.student.stis.ac.id
     restart: unless-stopped
     depends_on:
       - backend

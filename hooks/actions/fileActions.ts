@@ -91,7 +91,7 @@ export const useFileActions = () => {
 
                 console.log(transformedVariables);
                 try {
-                    const response = await fetch("https://api.statify-dev.student.stis.ac.id/api/sav/upload/create", {
+                    const response = await fetch("http://api.statify-dev.student.stis.ac.id/api/sav/upload/create", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",

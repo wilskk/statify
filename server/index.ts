@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-    origin: 'https://statify-dev.student.stis.ac.id',
+    origin: ['https://statify-dev.student.stis.ac.id', 'http://statify-dev.student.stis.ac.id'],
     methods: ['GET', 'POST'],
 }));
 app.use(express.json());
