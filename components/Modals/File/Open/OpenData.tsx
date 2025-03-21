@@ -76,7 +76,7 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 await resetData();
                 await resetVariables();
 
-                const response = await fetch("http://api.statify-dev.student.stis.ac.id/api/sav/upload", {
+                const response = await fetch("/api/sav/upload", {
                     method: "POST",
                     body: formData,
                 });
