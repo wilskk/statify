@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import '@/app/globals.css'
-import Header from "@/components/Header/Dashboard/Header";
-import Footer from "@/components/Footer/Dashboard/Footer";
 import React from "react";
-import ModalContainer from "@/components/Modals/ModalContainer";
 
 export const metadata: Metadata = {
     title: "My App",
@@ -22,7 +19,6 @@ export default function RootLayout({
             <div className="min-h-screen flex flex-col">
                 <main className="flex-grow">
                     {children}
-                    <ModalContainer />
                 </main>
             </div>
         </body>
