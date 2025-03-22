@@ -9,6 +9,7 @@ export enum ModalType {
   SaveFile = "saveFile",
   ExportData = "exportData",
   ComputeVariable = "computeVariable",
+
   // Punya Nopal
   ModalAutomaticLinearModeling = "modalAutomaticLinearModeling",
   ModalLinear = "modalLinear",
@@ -89,6 +90,9 @@ export enum ModalType {
   QQPlots = "qqPlots",
   ReadCSVFile = "readCSVFile",
   ReadExcelFile = "ReadExcelFile",
+
+  // Nonparametric Test
+  KRelatedSamplesTest = 'kRelatedSamplesTest',
 
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",
