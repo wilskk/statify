@@ -15,12 +15,12 @@ export default function RootLayout({
     return (
         <html lang="en">
         <head />
-        <body className={"h-full w-full m-0 p-0 grid grid-rows-[auto_1fr_auto] overflow-hidden"}>
-            <div className="min-h-screen flex flex-col">
-                <main className="flex-grow">
-                    {children}
-                </main>
-            </div>
+        <body className={"h-full w-full m-0 p-0 grid grid-rows-[auto_1fr_auto] overflow-y-auto"}>
+        <div className="min-h-screen flex flex-col">
+            <main className="flex-grow">
+                {children}
+            </main>
+        </div>
         </body>
         </html>
     );
