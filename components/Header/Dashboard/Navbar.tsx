@@ -448,7 +448,9 @@ const Navbar: React.FC = () => {
                       <MenubarItem>2 Independent Samples...</MenubarItem>
                       <MenubarItem>K Independent Samples...</MenubarItem>
                       <MenubarItem>2 Related Samples...</MenubarItem>
-                      <MenubarItem>K Related Samples...</MenubarItem>
+                      <MenubarItem onClick={() => openModal(ModalType.KRelatedSamplesTest)}>
+                        K Related Samples...
+                      </MenubarItem>
                     </MenubarSubContent>
                   </MenubarSub>
                 </MenubarSubContent>

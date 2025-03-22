@@ -54,6 +54,8 @@ import VariablePropertiesEditor from "@/components/Modals/Data/DefineVarProps/Va
 import WeightCasesModal from "@/components/Modals/Data/WeightCases";
 import DefineDatesModal from "@/components/Modals/Data/DefineDateTime";
 
+import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
+
 const ModalContainer: React.FC = () => {
     const {modals, closeModal} = useModal();
 
@@ -198,6 +200,11 @@ const ModalContainer: React.FC = () => {
             //     return (<UnitRootTestModal onClose={closeModal} {...currentModal.props} />);
             // case ModalType.BoxJenkinsModel:
             //     return (<BoxJenkinsModelModal onClose={closeModal} {...currentModal.props} />);
+
+
+            // Nonparametric Tests
+            case ModalType.KRelatedSamplesTest:
+                return <KRelatedSamplesTestModal onClose={closeModal} {...currentModal.props} />;
 
             case ModalType.Frequencies:
             case ModalType.FrequenciesStatistic:
