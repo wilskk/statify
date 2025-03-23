@@ -1,8 +1,8 @@
-/* Improved worker that handles different actions */
-self.importScripts('./ranks.js', './testStatisticsFriedman.js');
+// Gunakan normal import untuk file lokal juga
+import { resultRanks } from './ranks.js';
+import { resultFriedman } from './testStatisticsFriedman.js';
 
 // Import stdlib/stats-base-dists-chisquare-cdf
-self.importScripts('https://cdn.jsdelivr.net/npm/@stdlib/stats-base-dists-chisquare-cdf@0.2.2/+esm');
 
 self.onmessage = (e) => {
     const { variableData, friedmanOption, kendallsWOption, cochransQOption } = e.data;
