@@ -46,7 +46,7 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
                 setTestVariables((prev) => [...prev, highlightedVariable]);
                 setListVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             } else if (testVariables.includes(highlightedVariable)) {
-                setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => initialListVariables.indexOf(a) - initialListVariables.indexOf(b)));
+                setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => variables.indexOf(a) - variables.indexOf(b)));
                 setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             }
             setHighlightedVariable(null);
@@ -65,11 +65,7 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
     
     const handleDeselectVariable = (variable: string) => {
         if (highlightedVariable === variable) {
-            setListVariables((prev) =>
-                [...prev, highlightedVariable].sort(
-                    (a, b) => variables.indexOf(a) - variables.indexOf(b)
-                )
-            );
+            setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => variables.indexOf(a) - variables.indexOf(b)));
             setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             setHighlightedVariable(null);
         } else {
