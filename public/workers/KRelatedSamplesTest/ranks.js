@@ -1,5 +1,5 @@
 /* Fungsi-fungsi untuk Ranks */
-function resultRanks(data, variables) {
+export function resultRanks(data, variables) {
     if (!data.length || !variables.length) {
         return { tables: [{ title: 'Ranks', columnHeaders: [], rows: [] }] };
     }
@@ -91,7 +91,7 @@ function computeRanks(arrays, variables, n, k) {
 }
 
 // Menyimpan ranks untuk digunakan dalam perhitungan Friedman, Kendall's W, dan Cochran's Q
-function getRanksData(data, variables) {
+export function getRanksData(data, variables) {
     // Siapkan array data untuk masing-masing variabel
     const arrays = variables.map(variable => 
         data.map(row => parseFloat(row[variable.name]))

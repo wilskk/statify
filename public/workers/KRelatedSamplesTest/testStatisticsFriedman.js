@@ -1,4 +1,7 @@
-function resultFriedman(data, variables) {
+import stdlibstatsBaseDistsChisquareCdf from 'https://cdn.jsdelivr.net/npm/@stdlib/stats-base-dists-chisquare-cdf@0.2.2/+esm'
+import { getRanksData } from './ranks.js';
+
+export function resultFriedman(data, variables) {
     if (!data.length || !variables.length) {
         return { tables: [{ title: 'Friedman Test', columnHeaders: [], rows: [] }] };
     }
@@ -27,7 +30,7 @@ function resultFriedman(data, variables) {
     return {
         tables: [
             {
-                title: 'Friedman Test Statistics',
+                title: 'Test Statistics',
                 columnHeaders: [
                     { header: "" }, 
                     { header: "Value" }

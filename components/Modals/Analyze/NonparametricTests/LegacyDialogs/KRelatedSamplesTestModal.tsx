@@ -29,7 +29,7 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
     const [cochransQOption, setCochransQOption] = useState<boolean>(false);
 
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
-    const [errorMsg, setErrorMsg] = useState<string>('');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const variables = useVariableStore.getState().variables as Variable[];
     const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
@@ -46,7 +46,14 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
                 setTestVariables((prev) => [...prev, highlightedVariable]);
                 setListVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             } else if (testVariables.includes(highlightedVariable)) {
-                setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => initialListVariables.indexOf(a) - initialListVariables.indexOf(b)));
+                setListVariables((prev) => {
+                    const newList = [...prev, highlightedVariable];
+                    return newList.sort((a, b) => {
+                        const indexA = variables.findIndex(v => v.name === a);
+                        const indexB = variables.findIndex(v => v.name === b);
+                        return indexA - indexB;
+                    });
+                });
                 setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             }
             setHighlightedVariable(null);
@@ -65,11 +72,14 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
     
     const handleDeselectVariable = (variable: string) => {
         if (highlightedVariable === variable) {
-            setListVariables((prev) =>
-                [...prev, highlightedVariable].sort(
-                    (a, b) => variables.indexOf(a) - variables.indexOf(b)
-                )
-            );
+            setListVariables((prev) => {
+                const newList = [...prev, highlightedVariable];
+                return newList.sort((a, b) => {
+                    const indexA = variables.findIndex(v => v.name === a);
+                    const indexB = variables.findIndex(v => v.name === b);
+                    return indexA - indexB;
+                });
+            });
             setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             setHighlightedVariable(null);
         } else {
@@ -120,23 +130,45 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
 
                 if (wData.success) {
                     try {
-                        // Save results to database
-                        const logMsg = `NPAR TEST=${testVariables.join(", ")}`;
+                        // Create log message conditionally based on test options
+                        let logParts = ['NPAR TESTS'];
+
+                        // Only add tests that are enabled
+                        if (friedmanOption) {
+                        logParts.push(`{FRIEDMAN=${testVariables.join(" ")}}`);
+                        }
+
+                        if (cochransQOption) {
+                        logParts.push(`{COCHRAN=${testVariables.join(" ")}}`);
+                        }
+
+                        if (kendallsWOption) {
+                        logParts.push(`{KENDALL=${testVariables.join(" ")}}`);
+                        }
+
+                        // Join all parts with spaces
+                        let logMsg = logParts.join(' ');
+
+                        // If no tests are selected, provide a default message
+                        if (logParts.length === 1) {
+                            logMsg = 'NPAR TESTS {No specific tests selected}';
+                        }
+
                         const logId = await addLog({ log: logMsg });
                         const analyticId = await addAnalytic(logId, { title: "NPar Tests", note: "" });
 
                         if (friedmanOption) {
-                            await addStatistic({
-                                analytic_id: analyticId,
+                            await addStatistic(analyticId, {
                                 title: "Ranks",
-                                output_data: JSON.stringify(wData.ranks),
+                                output_data: wData.ranks,
+                                components: "Friedman Test",
                                 description: ""
                             });
 
-                            await addStatistic({
-                                analytic_id: analyticId,
-                                title: "Friedman Test",
-                                output_data: JSON.stringify(wData.friedmanTest),
+                            await addStatistic(analyticId, {
+                                title: "Test Statistics",
+                                output_data: wData.friedmanTest,
+                                components: "Friedman Test",
                                 description: ""
                             });
                         }
