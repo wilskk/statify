@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import useResultStore from '@/stores/useResultStore';
+import models from "@/components/Modals/Regression/PartialLeastSquares/Models";
 
 Chart.register(...registerables);
 
@@ -261,8 +262,10 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           workerRef.current = null;
         }
       };
-      
+
       // Send data to worker
+      console.log(selectedModels);
+      console.log(upperBound);
       console.log("[CurveEstimation] Sending data to worker");
       workerRef.current.postMessage({
         action: 'runRegression',
@@ -271,7 +274,8 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           X: Xtrim,
           Y: Ytrim,
           dependentName: dependentVarName,
-          independentNames: independentVarNames
+          independentNames: independentVarNames,
+          upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
         }
       });
       
