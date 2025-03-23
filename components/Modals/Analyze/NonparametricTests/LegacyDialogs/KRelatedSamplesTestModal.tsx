@@ -46,7 +46,14 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
                 setTestVariables((prev) => [...prev, highlightedVariable]);
                 setListVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             } else if (testVariables.includes(highlightedVariable)) {
-                setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => variables.indexOf(a) - variables.indexOf(b)));
+                setListVariables((prev) => {
+                    const newList = [...prev, highlightedVariable];
+                    return newList.sort((a, b) => {
+                        const indexA = variables.findIndex(v => v.name === a);
+                        const indexB = variables.findIndex(v => v.name === b);
+                        return indexA - indexB;
+                    });
+                });
                 setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             }
             setHighlightedVariable(null);
@@ -65,7 +72,14 @@ const KRelatedSamplesTestModal: React.FC<KRelatedSamplesTestModalProps> = ({ onC
     
     const handleDeselectVariable = (variable: string) => {
         if (highlightedVariable === variable) {
-            setListVariables((prev) => [...prev, highlightedVariable].sort((a, b) => variables.indexOf(a) - variables.indexOf(b)));
+            setListVariables((prev) => {
+                const newList = [...prev, highlightedVariable];
+                return newList.sort((a, b) => {
+                    const indexA = variables.findIndex(v => v.name === a);
+                    const indexB = variables.findIndex(v => v.name === b);
+                    return indexA - indexB;
+                });
+            });
             setTestVariables((prev) => prev.filter((item) => item !== highlightedVariable));
             setHighlightedVariable(null);
         } else {
