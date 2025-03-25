@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import DataTableRenderer from "@/components/Output/Table/data-table";
+import DataTableRenderer from "@/components/Output/table/data-table";
 import { Card } from "@/components/ui/card";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "./Chart/GeneralChartContainer";

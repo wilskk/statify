@@ -1,3 +1,5 @@
+"use client"
+
 import React, { FC, useState, useEffect, useRef, useCallback } from "react";
 import {
     DialogContent,

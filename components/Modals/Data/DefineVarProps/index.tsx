@@ -33,28 +33,20 @@ interface DefineVariablePropertiesProps {
 const DefineVariableProperties: FC<DefineVariablePropertiesProps> = ({ onClose }) => {
     const { closeModal, openModal } = useModalStore();
 
-    // Get variables from store
-    const { variables, loadVariables } = useVariableStore();
-    const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
+    // Get variables directly from store
+    const { variables } = useVariableStore();
 
-    useEffect(() => {
-        const loadVariablesData = async () => {
-            await loadVariables();
-            setStoreVariables(variables.filter(v => v.name !== ""));
-        };
-        loadVariablesData();
-    }, [loadVariables, variables]);
-
-    // Variables in the left list (available)
+    // Variables in the left list (available) and right list (to scan)
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
-
-    // Variables in the right list (to scan)
     const [variablesToScan, setVariablesToScan] = useState<Variable[]>([]);
 
     // Update available variables when store variables are loaded
     useEffect(() => {
-        setAvailableVariables(storeVariables);
-    }, [storeVariables]);
+        if (variables && variables.length > 0) {
+            // Filter out empty variables if needed
+            setAvailableVariables(variables.filter(v => v.name !== ""));
+        }
+    }, [variables]);
 
     // Currently selected variable for highlighting
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'toScan'} | null>(null);
@@ -358,7 +350,7 @@ const DefineVariableProperties: FC<DefineVariablePropertiesProps> = ({ onClose }
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-[450px] p-3">
                     <DialogHeader className="p-0 mb-2">
-                        <DialogTitle>IBM SPSS Statistics 25</DialogTitle>
+                        <DialogTitle>Statify</DialogTitle>
                     </DialogHeader>
                     <div className="flex gap-4">
                         <AlertCircle className="h-10 w-10 text-blue-500" />

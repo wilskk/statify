@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import zukeper from "zukeeper";
 
 export enum ModalType {
   OpenFile = "openFile",
@@ -97,6 +96,8 @@ export enum ModalType {
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",
   SimpleBarModal = "simpleBarModal",
+  SetMeasurementLevel = "setMeasurementLevel",
+  DefineValidationRules = "defineValidationRules",
 }
 
 interface ModalInstance {

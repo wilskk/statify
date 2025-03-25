@@ -1,8 +1,8 @@
 // app/(dashboard)/layout.tsx
 import type { Metadata } from "next";
 import "@/app/globals.css";
-import Header from "@/components/Header/Dashboard/Header";
-import Footer from "@/components/Footer/Dashboard/Footer";
+import Header from "@/components/layout/dashboard/Header";
+import Footer from "@/components/layout/dashboard/Footer";
 import React from "react";
 import ModalContainer from "@/components/Modals/ModalContainer";
 import DataLoader from "@/components/DataLoader";

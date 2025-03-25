@@ -19,7 +19,10 @@ export interface DataStoreState {
     isLoading: boolean;
     error: DataStoreError | null;
     lastUpdated: Date | null;
-    selectedCell: { row: number; col: number } | null;
+    selectedRange: {
+        from: { row: number; col: number };
+        to: { row: number; col: number };
+    } | null;
 
     setData: (data: DataRow[]) => void;
     updateCell: (row: number, col: number, value: string | number) => Promise<void>;
@@ -37,11 +40,13 @@ export interface DataStoreState {
         isValid: boolean;
         issues: Array<{ row: number; message: string }>
     }>;
-    selectCell: (row: number | null, col: number | null) => void;
+    selectRange: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
+    clearSelection: () => void;
     sortData: (columnIndex: number, direction: 'asc' | 'desc') => Promise<void>;
     swapRows: (row1: number, row2: number) => Promise<void>;
     swapColumns: (col1: number, col2: number) => Promise<void>;
     ensureMatrixDimensions: (maxRow: number, maxCol: number, minColCount?: number) => void;
+    getSelectedData: () => DataRow[];
 }
 
 export const useDataStore = create<DataStoreState>()(
@@ -51,7 +56,7 @@ export const useDataStore = create<DataStoreState>()(
             isLoading: false,
             error: null,
             lastUpdated: null,
-            selectedCell: null,
+            selectedRange: null,
 
             setData: (data: DataRow[]) =>
                 set((state) => {
@@ -335,13 +340,18 @@ export const useDataStore = create<DataStoreState>()(
                 return result;
             },
 
-            selectCell: (row: number | null, col: number | null) => {
+            selectRange: (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
                 set((state) => {
-                    if (row === null || col === null) {
-                        state.selectedCell = null;
-                    } else {
-                        state.selectedCell = { row, col };
-                    }
+                    state.selectedRange = {
+                        from: { row: fromRow, col: fromCol },
+                        to: { row: toRow, col: toCol }
+                    };
+                });
+            },
+
+            clearSelection: () => {
+                set((state) => {
+                    state.selectedRange = null;
                 });
             },
 
@@ -569,6 +579,28 @@ export const useDataStore = create<DataStoreState>()(
 
                 const currentData = get().data;
                 await get().setDataAndSync(currentData);
+            },
+
+            getSelectedData: () => {
+                const range = get().selectedRange;
+                const data = get().data;
+
+                if (!range || data.length === 0) return [];
+
+                const { from, to } = range;
+                const result = [];
+
+                for (let r = from.row; r <= to.row; r++) {
+                    if (r >= data.length) continue;
+
+                    const row = [];
+                    for (let c = from.col; c <= to.col; c++) {
+                        row.push(r < data.length && c < data[r].length ? data[r][c] : '');
+                    }
+                    result.push(row);
+                }
+
+                return result;
             }
         }))
     )

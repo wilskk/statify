@@ -1,3 +1,5 @@
+// Modified useVariableStore.ts with selectedRange
+
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
@@ -97,7 +99,10 @@ interface VariableStoreState {
     variables: Variable[];
     isLoading: boolean;
     error: VariableStoreError | null;
-    selectedVariable: number | null;
+    selectedRange: {
+        from: { row: number; col: number };
+        to: { row: number; col: number };
+    } | null;
     lastUpdated: Date | null;
 
     setVariables: (variables: Variable[]) => void;
@@ -112,11 +117,13 @@ interface VariableStoreState {
     loadVariables: () => Promise<void>;
     resetVariables: () => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
-    selectVariable: (columnIndex: number | null) => void;
+    selectRange: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
+    clearSelection: () => void;
     overwriteVariables: (variables: Variable[]) => Promise<void>;
     addMultipleVariables: (variablesData: Partial<Variable>[]) => Promise<void>;
     sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     ensureCompleteVariables: () => Promise<void>;
+    getSelectedVariables: () => Variable[];
 }
 
 export const useVariableStore = create<VariableStoreState>()(
@@ -125,7 +132,7 @@ export const useVariableStore = create<VariableStoreState>()(
             variables: [],
             isLoading: false,
             error: null,
-            selectedVariable: null,
+            selectedRange: null,
             lastUpdated: null,
 
             setVariables: (variables) => {
@@ -497,12 +504,6 @@ export const useVariableStore = create<VariableStoreState>()(
                                 }
 
                                 draft.lastUpdated = new Date();
-
-                                if (draft.selectedVariable === columnIndex) {
-                                    draft.selectedVariable = null;
-                                } else if (draft.selectedVariable !== null && draft.selectedVariable > columnIndex) {
-                                    draft.selectedVariable -= 1;
-                                }
                             }
                         });
                     });
@@ -519,10 +520,35 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
-            selectVariable: (columnIndex: number | null) => {
+            selectRange: (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
                 set((draft) => {
-                    draft.selectedVariable = columnIndex;
+                    draft.selectedRange = {
+                        from: { row: fromRow, col: fromCol },
+                        to: { row: toRow, col: toCol }
+                    };
                 });
+            },
+
+            clearSelection: () => {
+                set((draft) => {
+                    draft.selectedRange = null;
+                });
+            },
+
+            getSelectedVariables: () => {
+                const range = get().selectedRange;
+                const variables = get().variables;
+
+                if (!range || variables.length === 0) return [];
+
+                const { from, to } = range;
+                const minRow = Math.min(from.row, to.row);
+                const maxRow = Math.max(from.row, to.row);
+
+                return variables.filter(variable =>
+                    variable.columnIndex >= minRow &&
+                    variable.columnIndex <= maxRow
+                );
             },
 
             overwriteVariables: async (newVariables) => {

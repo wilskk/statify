@@ -1,7 +1,7 @@
 "use client";
 
 import React, {Suspense} from 'react';
-import Sidebar from '@/components/Sidebar/Sidebar';
+import Sidebar from '@/components/Output/Sidebar';
 import ResultOutput from "@/components/Output/ResultOutput";
 import {ResultsSkeleton, SidebarSkeleton} from "@/components/Skeletons";
 

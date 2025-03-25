@@ -1,20 +1,29 @@
-// hooks/fileActions.ts
+// components/Modals/File/fileActions.ts
 import { useModal } from "@/hooks/useModal";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
+import {useResultStore} from "@/stores/useResultStore";
 
 export type FileActionType =
-    | "Save";
+    | "New"
+    | "Save"
+    | "Exit";
 
 interface FileActionPayload {
     actionType: FileActionType;
+    data?: any;
 }
 
 export const useFileActions = () => {
     const { openModal } = useModal();
 
-    const handleAction = async ({ actionType }: FileActionPayload) => {
+    const handleAction = async ({ actionType, data }: FileActionPayload) => {
         switch (actionType) {
+            case "New":
+                useDataStore.getState().resetData();
+                useVariableStore.getState().resetVariables();
+                useResultStore.getState().clearAll();
+                break;
             case "Save":
                 const dataMatrix = useDataStore.getState().data;
                 const variablesStore = useVariableStore.getState().variables;
@@ -89,7 +98,6 @@ export const useFileActions = () => {
                     return record;
                 });
 
-                console.log(transformedVariables);
                 try {
                     const response = await fetch("/api/sav/create", {
                         method: "POST",
@@ -104,7 +112,6 @@ export const useFileActions = () => {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error("Server error response:", errorText);
                         throw new Error(errorText || "Gagal membuat file .sav");
                     }
 
@@ -122,6 +129,10 @@ export const useFileActions = () => {
                     openModal("Terjadi kesalahan saat menyimpan file .sav.");
                 }
                 break;
+
+            case "Exit":
+                window.location.href = "/";
+            break;
             default:
                 console.warn("Unknown file action:", actionType);
         }
