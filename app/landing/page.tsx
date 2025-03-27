@@ -1,7 +1,7 @@
-import HeroSection from '@/components/Landing/HeroSection';
-import FeaturesSection from '@/components/Landing/FeaturesSection';
-import ComparisonSection from '@/components/Landing/ComparisonSection';
-import TestimonialsSection from '@/components/Landing/TestimonialsSection';
+import HeroSection from '@/components/landing/HeroSection';
+import FeaturesSection from '@/components/landing/FeaturesSection';
+import ComparisonSection from '@/components/landing/ComparisonSection';
+import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import LandingHeader from '@/components/layout/landing/LandingHeader';
 import LandingFooter from '@/components/layout/landing/LandingFooter';
 

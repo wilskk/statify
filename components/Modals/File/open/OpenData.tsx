@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { ModalType, useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Upload, FileText, X, AlertCircle } from "lucide-react";
 
 interface OpenDataProps {
     onClose: () => void;
@@ -62,6 +65,27 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0] || null;
         setFile(selected);
+        setError(null); // Clear error when a new file is selected
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const droppedFile = e.dataTransfer.files[0];
+            if (droppedFile.name.endsWith('.sav')) {
+                setFile(droppedFile);
+                setError(null);
+            } else {
+                setError("Only .sav files are supported");
+            }
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
     };
 
     const handleSubmit = async () => {
@@ -147,32 +171,81 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
             } finally {
                 setLoading(false);
             }
+        } else {
+            setError("Please select a file");
         }
     };
 
     return (
-        <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-                <DialogTitle>Open Data</DialogTitle>
-                <DialogDescription>
-                    Upload a new .sav file and read its content.
+        <DialogContent className="max-w-md bg-white border border-[#E6E6E6] rounded">
+            <DialogHeader className="mb-6">
+                <DialogTitle className="text-[22px] font-semibold">Open Data</DialogTitle>
+                <DialogDescription className="text-[#444444] mt-2">
+                    Select a SPSS .sav file to import for statistical analysis.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-                <input
-                    type="file"
-                    accept=".sav"
-                    onChange={handleFileChange}
-                    disabled={loading}
-                    className="mt-2 w-full border border-gray-300 p-2 rounded"
-                />
+
+            <div className="mb-6">
+                <div
+                    className={`border-2 border-dashed rounded p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                        error ? "border-black bg-[#E6E6E6]" : "border-[#CCCCCC] hover:border-black"
+                    }`}
+                    onClick={() => document.getElementById("file-upload")?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                >
+                    <Upload size={24} className="mb-4" />
+                    <p className="text-center font-medium mb-1">
+                        {file ? file.name : "Click to select a .sav file"}
+                    </p>
+                    <p className="text-[14px] text-[#888888]">
+                        {file
+                            ? `${(file.size / 1024).toFixed(2)} KB`
+                            : "or drag and drop here"}
+                    </p>
+                    <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        accept=".sav"
+                        className="hidden"
+                        onChange={handleFileChange}
+                        disabled={loading}
+                    />
+                </div>
+
+                {error && (
+                    <div className="flex items-center gap-2 mt-2 text-[14px] text-black">
+                        <AlertCircle size={16} />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                {file && !error && (
+                    <div className="flex items-center gap-2 mt-2 text-[14px] text-[#888888] italic">
+                        <FileText size={16} />
+                        <span>Ready to upload {file.name}</span>
+                    </div>
+                )}
             </div>
 
-            <DialogFooter>
-                <Button variant="outline" onClick={onClose}>
-                    Batal
+            <DialogFooter className="gap-3">
+                <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="text-black bg-[#F7F7F7] hover:bg-[#E6E6E6] border-[#CCCCCC] min-w-[80px]"
+                    disabled={loading}
+                >
+                    Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={loading}>
+                <Button
+                    onClick={handleSubmit}
+                    disabled={loading || !file}
+                    className="bg-black text-white hover:bg-[#444444] min-w-[80px] flex items-center gap-2"
+                >
+                    {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : null}
                     {loading ? "Processing..." : "Upload"}
                 </Button>
             </DialogFooter>

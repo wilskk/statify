@@ -18,6 +18,22 @@ import { Variable } from "@/types/Variable";
 import { Log } from "@/types/Log";
 import { Analytic } from "@/types/Analytic";
 import { Statistic } from "@/types/Statistic";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// ================== TYPES ==================
+
+type HAlignType = 'left' | 'center' | 'right' | 'justify';
+type VAlignType = 'top' | 'middle' | 'bottom';
+type PaperSize = "a4" | "a3" | "letter" | "legal";
+
+interface TableStyles {
+    halign: HAlignType;
+    valign: VAlignType;
+    fillColor?: [number, number, number];
+}
 
 interface ColumnHeader {
     header: string;
@@ -37,45 +53,11 @@ interface TableData {
     rows: TableRowData[];
 }
 
-const getLeafColumnCount = (col: ColumnHeader): number => {
-    if (!col.children || col.children.length === 0) return 1;
-    return col.children.reduce((sum, child) => sum + getLeafColumnCount(child), 0);
-};
-
-const getMaxDepth = (columns: ColumnHeader[]): number => {
-    let max = 1;
-    columns.forEach(col => {
-        if (col.children && col.children.length > 0) {
-            const depth = 1 + getMaxDepth(col.children);
-            if (depth > max) max = depth;
-        }
-    });
-    return max;
-};
-
-const buildColumnLevels = (columns: ColumnHeader[]): ColumnHeader[][] => {
-    const maxLevel = getMaxDepth(columns);
-    const levels: ColumnHeader[][] = Array.from({ length: maxLevel }, () => []);
-    const traverse = (cols: ColumnHeader[], level: number): void => {
-        cols.forEach(col => {
-            levels[level].push(col);
-            if (col.children && col.children.length > 0) {
-                traverse(col.children, level + 1);
-            }
-        });
-    };
-    traverse(columns, 0);
-    return levels;
-};
-
-// Define halign and valign types to match jspdf-autotable's requirements
-type HAlignType = 'left' | 'center' | 'right' | 'justify';
-type VAlignType = 'top' | 'middle' | 'bottom';
-
-interface TableStyles {
-    halign: HAlignType;
-    valign: VAlignType;
-    fillColor?: [number, number, number];
+interface CellDef {
+    content: string;
+    styles?: TableStyles;
+    rowSpan?: number;
+    colSpan?: number;
 }
 
 interface HeaderCell {
@@ -85,203 +67,11 @@ interface HeaderCell {
     styles: TableStyles;
 }
 
-const mergeHeaderRowCells = (headerRow: HeaderCell[]): HeaderCell[] => {
-    const merged: HeaderCell[] = [];
-    let i = 0;
-    while (i < headerRow.length) {
-        const cell = headerRow[i];
-        let totalColSpan = cell.colSpan;
-        let j = i + 1;
-        while (j < headerRow.length && headerRow[j].content === cell.content) {
-            totalColSpan += headerRow[j].colSpan;
-            j++;
-        }
-        merged.push({
-            content: cell.content,
-            colSpan: totalColSpan,
-            rowSpan: cell.rowSpan,
-            styles: { ...cell.styles }
-        });
-        i = j;
-    }
-    return merged;
-};
-
-// 2. In the generateAutoTableData function, we need to properly type the halign and valign values:
-const generateAutoTableData = (data: string): AutoTableResult => {
-    let parsedData: { tables: TableData[] };
-    try {
-        parsedData = JSON.parse(data);
-    } catch {
-        return { tables: [] };
-    }
-    if (!parsedData.tables || !Array.isArray(parsedData.tables)) return { tables: [] };
-    const resultTables: AutoTableResult['tables'] = [];
-    parsedData.tables.forEach((table) => {
-        const { title, columnHeaders, rows } = table;
-        const levels = buildColumnLevels(columnHeaders);
-        const maxLevel = levels.length;
-        let headerRows = levels.map((cols, level) =>
-            cols.map((col) => {
-                const colSpan = getLeafColumnCount(col);
-                const hasChildren = col.children && col.children.length > 0;
-                const rowSpan = hasChildren ? 1 : maxLevel - level;
-                return {
-                    content: col.header || "",
-                    colSpan,
-                    rowSpan,
-                    styles: {
-                        halign: "center" as HAlignType,
-                        valign: "middle" as VAlignType
-                    }
-                };
-            })
-        );
-        headerRows = headerRows.map(row => mergeHeaderRowCells(row));
-        const flatRows = flattenRows(rows);
-        if (flatRows.length === 0) return;
-        const rowHeaderCount = computeMaxRowHeaderDepth(flatRows);
-        const allLeafCols = getLeafColumnKeys(columnHeaders);
-        const leafCols = allLeafCols.slice(rowHeaderCount);
-        const mergedRowHeaders = generateMergedRowHeaders(flatRows, rowHeaderCount);
-        const body: CellDef[][] = [];
-        for (let i = 0; i < flatRows.length; i++) {
-            const row = flatRows[i];
-            const allDataNull = leafCols.every(k => row[k] == null);
-            if (allDataNull && row.rowHeader.every(h => h !== "")) continue;
-            const rowCells: CellDef[] = [];
-            mergedRowHeaders[i].forEach(cell => {
-                if (cell) rowCells.push(cell);
-            });
-            leafCols.forEach(key => {
-                rowCells.push({
-                    content: row[key] ?? "",
-                    styles: {
-                        halign: "center" as HAlignType,
-                        valign: "middle" as VAlignType
-                    }
-                });
-            });
-            body.push(rowCells);
-        }
-        resultTables.push({ title, head: headerRows as CellDef[][], body });
-    });
-    return { tables: resultTables };
-};
-
-const getLeafColumnKeys = (cols: ColumnHeader[]): string[] => {
-    const keys: string[] = [];
-    const traverse = (col: ColumnHeader): void => {
-        if (!col.children || col.children.length === 0) {
-            keys.push(col.key ? col.key : col.header);
-        } else {
-            col.children.forEach(child => traverse(child));
-        }
-    };
-    cols.forEach(c => traverse(c));
-    return keys;
-};
-
-const computeMaxRowHeaderDepth = (rows: TableRowData[]): number => {
-    let max = 0;
-    rows.forEach(r => {
-        if (r.rowHeader.length > max) max = r.rowHeader.length;
-    });
-    return max;
-};
-
-const propagateHeaders = (row: TableRowData, accumulated: (string | null)[]): TableRowData[] => {
-    const combined: (string | null)[] = [];
-    const length = Math.max(accumulated.length, row.rowHeader.length);
-    for (let i = 0; i < length; i++) {
-        combined[i] = row.rowHeader[i] ?? accumulated[i] ?? null;
-    }
-    if (row.children && row.children.length > 0) {
-        let results: TableRowData[] = [];
-        for (const child of row.children) {
-            results.push(...propagateHeaders(child, combined));
-        }
-        return results;
-    } else {
-        row.rowHeader = combined;
-        return [row];
-    }
-};
-
-const flattenRows = (rows: TableRowData[]): TableRowData[] => {
-    let result: TableRowData[] = [];
-    for (const row of rows) {
-        result.push(...propagateHeaders(row, []));
-    }
-    return result;
-};
-
 interface MergedCell {
     content: string;
     rowSpan: number;
     colSpan: number;
     styles: TableStyles;
-}
-
-type MergedRowHeaders = (MergedCell | null)[][];
-
-const generateMergedRowHeaders = (flatRows: TableRowData[], rowHeaderCount: number): (MergedCell | null)[][] => {
-    const merged: (MergedCell | null)[][] = [];
-    for (let rowIndex = 0; rowIndex < flatRows.length; rowIndex++) {
-        const row = flatRows[rowIndex];
-        const mergedRow: (MergedCell | null)[] = [];
-        if (rowHeaderCount === 2 && row.rowHeader.filter(h => h !== "").length === 1) {
-            const colIdx = 0;
-            const current = row.rowHeader[colIdx] || "";
-            const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
-            if (rowIndex === 0 || current !== prev) {
-                let rowSpan = 1;
-                for (let next = rowIndex + 1; next < flatRows.length; next++) {
-                    const nextVal = flatRows[next].rowHeader[colIdx] || "";
-                    if (nextVal === current) rowSpan++;
-                    else break;
-                }
-                mergedRow.push({
-                    content: current,
-                    rowSpan,
-                    colSpan: 2,
-                    styles: { halign: "left" as HAlignType, valign: "middle" as VAlignType }
-                });
-            } else {
-                mergedRow.push(null);
-            }
-        } else {
-            for (let colIdx = 0; colIdx < rowHeaderCount; colIdx++) {
-                const current = row.rowHeader[colIdx] || "";
-                const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
-                if (rowIndex === 0 || current !== prev) {
-                    let rowSpan = 1;
-                    for (let next = rowIndex + 1; next < flatRows.length; next++) {
-                        const nextVal = flatRows[next].rowHeader[colIdx] || "";
-                        if (nextVal === current) rowSpan++;
-                        else break;
-                    }
-                    mergedRow.push({
-                        content: current,
-                        rowSpan,
-                        colSpan: 1,
-                        styles: { halign: "center" as HAlignType, valign: "middle" as VAlignType }
-                    });
-                } else {
-                    mergedRow.push(null);
-                }
-            }
-        }
-        merged.push(mergedRow);
-    }
-    return merged;
-};
-
-interface CellDef {
-    content: string;
-    styles?: TableStyles;
-    rowSpan?: number;
-    colSpan?: number;
 }
 
 interface AutoTableResult {
@@ -291,7 +81,6 @@ interface AutoTableResult {
         body: CellDef[][];
     }[];
 }
-
 
 interface PrintModalProps {
     onClose: () => void;
@@ -303,9 +92,273 @@ interface SelectedOptions {
     result: boolean;
 }
 
-type PaperSize = "a4" | "a3" | "letter" | "legal";
+type MergedRowHeaders = (MergedCell | null)[][];
+
+// ================== UTILITY FUNCTIONS ==================
+
+const getLeafColumnCount = (col: ColumnHeader): number => {
+    if (!col.children?.length) return 1;
+    return col.children.reduce((sum, child) => sum + getLeafColumnCount(child), 0);
+};
+
+const getMaxDepth = (columns: ColumnHeader[]): number => {
+    return columns.reduce((max, col) => {
+        if (col.children?.length) {
+            const depth = 1 + getMaxDepth(col.children);
+            return Math.max(max, depth);
+        }
+        return max;
+    }, 1);
+};
+
+const getLeafColumnKeys = (cols: ColumnHeader[]): string[] => {
+    const keys: string[] = [];
+
+    const traverse = (col: ColumnHeader): void => {
+        if (!col.children?.length) {
+            keys.push(col.key || col.header);
+        } else {
+            col.children.forEach(traverse);
+        }
+    };
+
+    cols.forEach(traverse);
+    return keys;
+};
+
+const buildColumnLevels = (columns: ColumnHeader[]): ColumnHeader[][] => {
+    const maxLevel = getMaxDepth(columns);
+    const levels: ColumnHeader[][] = Array.from({ length: maxLevel }, () => []);
+
+    const traverse = (cols: ColumnHeader[], level: number): void => {
+        cols.forEach(col => {
+            levels[level].push(col);
+            if (col.children?.length) {
+                traverse(col.children, level + 1);
+            }
+        });
+    };
+
+    traverse(columns, 0);
+    return levels;
+};
+
+const mergeHeaderRowCells = (headerRow: HeaderCell[]): HeaderCell[] => {
+    const merged: HeaderCell[] = [];
+    let i = 0;
+
+    while (i < headerRow.length) {
+        const cell = headerRow[i];
+        let totalColSpan = cell.colSpan;
+        let j = i + 1;
+
+        while (j < headerRow.length && headerRow[j].content === cell.content) {
+            totalColSpan += headerRow[j].colSpan;
+            j++;
+        }
+
+        merged.push({
+            content: cell.content,
+            colSpan: totalColSpan,
+            rowSpan: cell.rowSpan,
+            styles: { ...cell.styles }
+        });
+
+        i = j;
+    }
+
+    return merged;
+};
+
+const propagateHeaders = (
+    row: TableRowData,
+    accumulated: (string | null)[]
+): TableRowData[] => {
+    const combined: (string | null)[] = [];
+    const length = Math.max(accumulated.length, row.rowHeader.length);
+
+    for (let i = 0; i < length; i++) {
+        combined[i] = row.rowHeader[i] ?? accumulated[i] ?? null;
+    }
+
+    if (row.children?.length) {
+        return row.children.flatMap(child =>
+            propagateHeaders(child, combined)
+        );
+    } else {
+        const updatedRow = { ...row, rowHeader: combined };
+        return [updatedRow];
+    }
+};
+
+const flattenRows = (rows: TableRowData[]): TableRowData[] => {
+    return rows.flatMap(row => propagateHeaders(row, []));
+};
+
+const computeMaxRowHeaderDepth = (rows: TableRowData[]): number => {
+    return rows.reduce((max, row) =>
+        Math.max(max, row.rowHeader.length), 0);
+};
+
+const generateMergedRowHeaders = (
+    flatRows: TableRowData[],
+    rowHeaderCount: number
+): MergedRowHeaders => {
+    const merged: MergedRowHeaders = [];
+
+    for (let rowIndex = 0; rowIndex < flatRows.length; rowIndex++) {
+        const row = flatRows[rowIndex];
+        const mergedRow: (MergedCell | null)[] = [];
+
+        if (rowHeaderCount === 2 && row.rowHeader.filter(h => h !== "").length === 1) {
+            const colIdx = 0;
+            const current = row.rowHeader[colIdx] || "";
+            const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
+
+            if (rowIndex === 0 || current !== prev) {
+                let rowSpan = 1;
+                for (let next = rowIndex + 1; next < flatRows.length; next++) {
+                    const nextVal = flatRows[next].rowHeader[colIdx] || "";
+                    if (nextVal === current) rowSpan++;
+                    else break;
+                }
+
+                mergedRow.push({
+                    content: current,
+                    rowSpan,
+                    colSpan: 2,
+                    styles: {
+                        halign: "left" as HAlignType,
+                        valign: "middle" as VAlignType
+                    }
+                });
+            } else {
+                mergedRow.push(null);
+            }
+        } else {
+            for (let colIdx = 0; colIdx < rowHeaderCount; colIdx++) {
+                const current = row.rowHeader[colIdx] || "";
+                const prev = rowIndex > 0 ? flatRows[rowIndex - 1].rowHeader[colIdx] || "" : null;
+
+                if (rowIndex === 0 || current !== prev) {
+                    let rowSpan = 1;
+                    for (let next = rowIndex + 1; next < flatRows.length; next++) {
+                        const nextVal = flatRows[next].rowHeader[colIdx] || "";
+                        if (nextVal === current) rowSpan++;
+                        else break;
+                    }
+
+                    mergedRow.push({
+                        content: current,
+                        rowSpan,
+                        colSpan: 1,
+                        styles: {
+                            halign: "center" as HAlignType,
+                            valign: "middle" as VAlignType
+                        }
+                    });
+                } else {
+                    mergedRow.push(null);
+                }
+            }
+        }
+
+        merged.push(mergedRow);
+    }
+
+    return merged;
+};
+
+const generateAutoTableData = (data: string): AutoTableResult => {
+    let parsedData: { tables: TableData[] };
+
+    try {
+        parsedData = JSON.parse(data);
+    } catch {
+        return { tables: [] };
+    }
+
+    if (!parsedData.tables || !Array.isArray(parsedData.tables)) {
+        return { tables: [] };
+    }
+
+    const resultTables: AutoTableResult['tables'] = [];
+
+    parsedData.tables.forEach((table) => {
+        const { title, columnHeaders, rows } = table;
+        const levels = buildColumnLevels(columnHeaders);
+        const maxLevel = levels.length;
+
+        let headerRows = levels.map((cols, level) =>
+            cols.map((col) => {
+                const colSpan = getLeafColumnCount(col);
+                const hasChildren = col.children?.length;
+                const rowSpan = hasChildren ? 1 : maxLevel - level;
+
+                return {
+                    content: col.header || "",
+                    colSpan,
+                    rowSpan,
+                    styles: {
+                        halign: "center" as HAlignType,
+                        valign: "middle" as VAlignType
+                    }
+                };
+            })
+        );
+
+        // Fix type issue by explicit typing
+        headerRows = headerRows.map((row) => mergeHeaderRowCells(row as HeaderCell[]));
+        const flatRows = flattenRows(rows);
+
+        if (flatRows.length === 0) return;
+
+        const rowHeaderCount = computeMaxRowHeaderDepth(flatRows);
+        const allLeafCols = getLeafColumnKeys(columnHeaders);
+        const leafCols = allLeafCols.slice(rowHeaderCount);
+        const mergedRowHeaders = generateMergedRowHeaders(flatRows, rowHeaderCount);
+
+        const body: CellDef[][] = [];
+
+        for (let i = 0; i < flatRows.length; i++) {
+            const row = flatRows[i];
+            const allDataNull = leafCols.every(k => row[k] == null);
+
+            if (allDataNull && row.rowHeader.every(h => h !== "")) continue;
+
+            const rowCells: CellDef[] = [];
+
+            mergedRowHeaders[i].forEach(cell => {
+                if (cell) rowCells.push(cell);
+            });
+
+            leafCols.forEach(key => {
+                rowCells.push({
+                    content: row[key] ?? "",
+                    styles: {
+                        halign: "center" as HAlignType,
+                        valign: "middle" as VAlignType
+                    }
+                });
+            });
+
+            body.push(rowCells);
+        }
+
+        resultTables.push({
+            title,
+            head: headerRows as CellDef[][],
+            body
+        });
+    });
+
+    return { tables: resultTables };
+};
+
+// ================== COMPONENT ==================
 
 const PrintModal: FC<PrintModalProps> = ({ onClose }) => {
+    // State
     const [fileName, setFileName] = useState<string>("");
     const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>({
         data: false,
@@ -315,22 +368,20 @@ const PrintModal: FC<PrintModalProps> = ({ onClose }) => {
     const [paperSize, setPaperSize] = useState<PaperSize>("a4");
     const [availableData, setAvailableData] = useState<DataRow[]>([]);
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
 
+    // Store hooks
     const dataStore = useDataStore();
     const variableStore = useVariableStore();
     const resultStore = useResultStore();
-
     const logs: Log[] = resultStore.logs || [];
 
+    // Effects
     useEffect(() => {
         const loadData = async (): Promise<void> => {
             try {
-                // Get data and variables directly from the stores
-                const data = dataStore.data || [];
-                const variables = variableStore.variables || [];
-
-                setAvailableData(data);
-                setAvailableVariables(variables);
+                setAvailableData(dataStore.data || []);
+                setAvailableVariables(variableStore.variables || []);
             } catch (error) {
                 console.error("Error loading data for print:", error);
             }
@@ -339,151 +390,184 @@ const PrintModal: FC<PrintModalProps> = ({ onClose }) => {
         loadData();
     }, [dataStore, variableStore]);
 
+    // Event handlers
     const handleOptionChange = (option: keyof SelectedOptions): void => {
-        setSelectedOptions((prev) => ({ ...prev, [option]: !prev[option] }));
+        setSelectedOptions((prev) => ({
+            ...prev,
+            [option]: !prev[option]
+        }));
     };
 
+    const isPrintDisabled = !Object.values(selectedOptions).some(Boolean) || isGenerating;
+
+    // PDF generation
     const handlePrint = async (): Promise<void> => {
-        // Cast to make TypeScript happy with the missing properties
-        const doc = new jsPDF({ format: paperSize }) as any;
-        let currentY = 10;
+        try {
+            setIsGenerating(true);
 
-        const namedVariables = (availableVariables || []).filter(
-            (v) => String(v.name || "").trim() !== ""
-        );
+            const doc = new jsPDF({ format: paperSize }) as any;
+            let currentY = 10;
 
-        const activeColumns = namedVariables
-            .filter((v) =>
-                (availableData || []).some((row) => String(row[v.columnIndex] ?? "").trim() !== "")
-            )
-            .map((v) => v.columnIndex)
-            .sort((a, b) => a - b);
-
-        const filteredData = availableData.filter((row) =>
-            activeColumns.some((col) => String(row[col] ?? "").trim() !== "")
-        );
-
-        if (selectedOptions.data && activeColumns.length > 0) {
-            doc.setFontSize(14);
-            doc.text("Data", 14, currentY, { align: "left" });
-            currentY += 6;
-            doc.setFontSize(8);
-
-            const dataTableColumns = activeColumns.map((col) => {
-                const variable = availableVariables.find((v) => v.columnIndex === col);
-                return variable?.name || `Kolom ${col + 1}`;
-            });
-
-            const dataTableBody = filteredData.map((row) =>
-                activeColumns.map((col) => row[col] || "")
+            const namedVariables = availableVariables.filter(
+                (v) => String(v.name || "").trim() !== ""
             );
 
-            autoTable(doc, {
-                head: [dataTableColumns],
-                body: dataTableBody,
-                startY: currentY,
-                theme: "grid",
-                styles: { fontSize: 8, cellWidth: "wrap" },
-                headStyles: { fillColor: [211, 211, 211], halign: "center" as HAlignType, valign: "middle" as VAlignType },
-                margin: { left: 14, right: 14 },
-                tableWidth: doc.internal.pageSize.getWidth() - 28
-            });
+            const activeColumns = namedVariables
+                .filter((v) =>
+                    availableData.some((row) =>
+                        String(row[v.columnIndex] ?? "").trim() !== ""
+                    )
+                )
+                .map((v) => v.columnIndex)
+                .sort((a, b) => a - b);
 
-            if (doc.lastAutoTable) {
-                currentY = doc.lastAutoTable.finalY + 10;
-            }
-        }
+            const filteredData = availableData.filter((row) =>
+                activeColumns.some((col) =>
+                    String(row[col] ?? "").trim() !== ""
+                )
+            );
 
-        if (selectedOptions.variable) {
-            doc.setFontSize(14);
-            doc.text("Variables", 14, currentY, { align: "left" });
-            currentY += 6;
-            doc.setFontSize(8);
-
-            const variableData = availableVariables
-                .filter((v) => activeColumns.includes(v.columnIndex))
-                .map((variable, idx) => [
-                    idx + 1,
-                    variable.name,
-                    variable.type,
-                    variable.columnIndex + 1
-                ]);
-
-            autoTable(doc, {
-                head: [["No", "Nama", "Tipe", "Kolom"]],
-                body: variableData,
-                startY: currentY,
-                styles: { fontSize: 8, cellWidth: "wrap" },
-                headStyles: { fillColor: [211, 211, 211], halign: "center" as HAlignType, valign: "middle" as VAlignType },
-                margin: { left: 14, right: 14 },
-                tableWidth: doc.internal.pageSize.getWidth() - 28
-            });
-
-            if (doc.lastAutoTable) {
-                currentY = doc.lastAutoTable.finalY + 10;
-            }
-        }
-
-        if (selectedOptions.result && logs && logs.length > 0) {
-            doc.setFontSize(14);
-            doc.text("Results", 14, currentY, { align: "left" });
-            currentY += 6;
-            doc.setFontSize(8);
-
-            logs.forEach((log) => {
-                doc.setFontSize(8);
-                doc.text(`Log ${log.id}: ${log.log}`, 14, currentY, { align: "left" });
+            // Generate data table
+            if (selectedOptions.data && activeColumns.length > 0) {
+                doc.setFontSize(14);
+                doc.text("Data", 14, currentY, { align: "left" });
                 currentY += 6;
+                doc.setFontSize(8);
 
-                // Analytics are inside the log object
-                if (log.analytics && log.analytics.length > 0) {
-                    log.analytics.forEach((analytic) => {
-                        doc.setFontSize(12);
-                        doc.text(analytic.title, doc.internal.pageSize.getWidth() / 2, currentY, { align: "center" });
-                        currentY += 6;
+                const dataTableColumns = activeColumns.map((col) => {
+                    const variable = availableVariables.find((v) => v.columnIndex === col);
+                    return variable?.name || `Kolom ${col + 1}`;
+                });
 
-                        // Statistics are inside the analytic object
-                        if (analytic.statistics && analytic.statistics.length > 0) {
-                            analytic.statistics.forEach((stat) => {
-                                const { tables } = generateAutoTableData(stat.output_data);
+                const dataTableBody = filteredData.map((row) =>
+                    activeColumns.map((col) => row[col] || "")
+                );
 
-                                tables.forEach((tbl) => {
-                                    doc.setFontSize(8);
-                                    doc.text(tbl.title, 14, currentY, { align: "left" });
-                                    currentY += 6;
+                autoTable(doc, {
+                    head: [dataTableColumns],
+                    body: dataTableBody,
+                    startY: currentY,
+                    theme: "grid",
+                    styles: { fontSize: 8, cellWidth: "wrap" },
+                    headStyles: {
+                        fillColor: [211, 211, 211],
+                        halign: "center",
+                        valign: "middle"
+                    },
+                    margin: { left: 14, right: 14 },
+                    tableWidth: doc.internal.pageSize.getWidth() - 28
+                });
 
-                                    autoTable(doc, {
-                                        head: tbl.head,
-                                        body: tbl.body,
-                                        startY: currentY,
-                                        theme: "grid",
-                                        styles: { fontSize: 8, cellWidth: "wrap" },
-                                        headStyles: { fillColor: [211, 211, 211], halign: "center" as HAlignType, valign: "middle" as VAlignType },
-                                        margin: { left: 14, right: 14 },
-                                        tableWidth: doc.internal.pageSize.getWidth() - 28
-                                    });
-
-                                    if (doc.lastAutoTable) {
-                                        currentY = doc.lastAutoTable.finalY + 10;
-                                    }
-                                });
-                            })
-                        }
-                    })
+                if (doc.lastAutoTable) {
+                    currentY = doc.lastAutoTable.finalY + 10;
                 }
-            });
-        }
+            }
 
-        try {
+            // Generate variables table
+            if (selectedOptions.variable) {
+                doc.setFontSize(14);
+                doc.text("Variables", 14, currentY, { align: "left" });
+                currentY += 6;
+                doc.setFontSize(8);
+
+                const variableData = availableVariables
+                    .filter((v) => activeColumns.includes(v.columnIndex))
+                    .map((variable, idx) => [
+                        idx + 1,
+                        variable.name,
+                        variable.type,
+                        variable.columnIndex + 1
+                    ]);
+
+                autoTable(doc, {
+                    head: [["No", "Nama", "Tipe", "Kolom"]],
+                    body: variableData,
+                    startY: currentY,
+                    styles: { fontSize: 8, cellWidth: "wrap" },
+                    headStyles: {
+                        fillColor: [211, 211, 211],
+                        halign: "center",
+                        valign: "middle"
+                    },
+                    margin: { left: 14, right: 14 },
+                    tableWidth: doc.internal.pageSize.getWidth() - 28
+                });
+
+                if (doc.lastAutoTable) {
+                    currentY = doc.lastAutoTable.finalY + 10;
+                }
+            }
+
+            // Generate results tables
+            if (selectedOptions.result && logs.length > 0) {
+                doc.setFontSize(14);
+                doc.text("Results", 14, currentY, { align: "left" });
+                currentY += 6;
+                doc.setFontSize(8);
+
+                for (const log of logs) {
+                    doc.setFontSize(8);
+                    doc.text(`Log ${log.id}: ${log.log}`, 14, currentY, { align: "left" });
+                    currentY += 6;
+
+                    // Analytics are inside the log object
+                    if (log.analytics?.length) {
+                        for (const analytic of log.analytics) {
+                            doc.setFontSize(12);
+                            doc.text(
+                                analytic.title,
+                                doc.internal.pageSize.getWidth() / 2,
+                                currentY,
+                                { align: "center" }
+                            );
+                            currentY += 6;
+
+                            // Statistics are inside the analytic object
+                            if (analytic.statistics?.length) {
+                                for (const stat of analytic.statistics) {
+                                    const { tables } = generateAutoTableData(stat.output_data);
+
+                                    for (const tbl of tables) {
+                                        doc.setFontSize(8);
+                                        doc.text(tbl.title, 14, currentY, { align: "left" });
+                                        currentY += 6;
+
+                                        autoTable(doc, {
+                                            head: tbl.head,
+                                            body: tbl.body,
+                                            startY: currentY,
+                                            theme: "grid",
+                                            styles: { fontSize: 8, cellWidth: "wrap" },
+                                            headStyles: {
+                                                fillColor: [211, 211, 211],
+                                                halign: "center",
+                                                valign: "middle"
+                                            },
+                                            margin: { left: 14, right: 14 },
+                                            tableWidth: doc.internal.pageSize.getWidth() - 28
+                                        });
+
+                                        if (doc.lastAutoTable) {
+                                            currentY = doc.lastAutoTable.finalY + 10;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             doc.save(`${fileName || "print_output"}.pdf`);
             onClose();
         } catch (error) {
             console.error("Error generating PDF:", error);
+        } finally {
+            setIsGenerating(false);
         }
     };
 
-    const isPrintDisabled = !Object.values(selectedOptions).some(Boolean);
-
+    // Render form
     return (
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -492,61 +576,78 @@ const PrintModal: FC<PrintModalProps> = ({ onClose }) => {
                     Konfigurasi pengaturan untuk mencetak dokumen
                 </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+
+            <div className="space-y-4 py-4">
+                {/* Filename */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="filename" className="text-right">
+                    <Label htmlFor="filename" className="text-right">
                         Nama File
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                         id="filename"
                         value={fileName}
                         onChange={(e) => setFileName(e.target.value)}
-                        className="col-span-3 border p-2 rounded"
+                        className="col-span-3"
                         placeholder="Masukkan nama file"
                     />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <span className="text-right">Pilih Konten</span>
-                    <div className="col-span-3 flex flex-col gap-2">
+
+                {/* Content options */}
+                <div className="grid grid-cols-4 items-start gap-4">
+                    <Label className="text-right pt-1">Pilih Konten</Label>
+                    <div className="col-span-3 space-y-2">
                         {Object.entries(selectedOptions).map(([option, checked]) => (
-                            <label key={option} className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
+                            <div key={option} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`option-${option}`}
                                     checked={checked}
-                                    onChange={() =>
+                                    onCheckedChange={() =>
                                         handleOptionChange(option as keyof SelectedOptions)
                                     }
-                                    className="w-4 h-4"
                                 />
-                                {option.charAt(0).toUpperCase() + option.slice(1)}
-                            </label>
+                                <Label htmlFor={`option-${option}`} className="cursor-pointer">
+                                    {option === 'data' ? 'Data' :
+                                        option === 'variable' ? 'Variables' : 'Results'}
+                                </Label>
+                            </div>
                         ))}
                     </div>
                 </div>
+
+                {/* Paper size */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="paperSize" className="text-right">
+                    <Label htmlFor="paperSize" className="text-right">
                         Ukuran Kertas
-                    </label>
-                    <select
-                        id="paperSize"
+                    </Label>
+                    <Select
                         value={paperSize}
-                        onChange={(e) => setPaperSize(e.target.value as PaperSize)}
-                        className="col-span-3 border p-2 rounded"
+                        onValueChange={(value) => setPaperSize(value as PaperSize)}
                     >
-                        {["a4", "a3", "letter", "legal"].map((size) => (
-                            <option key={size} value={size}>
-                                {size.toUpperCase()}
-                            </option>
-                        ))}
-                    </select>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Pilih ukuran kertas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {["a4", "a3", "letter", "legal"].map((size) => (
+                                <SelectItem key={size} value={size}>
+                                    {size.toUpperCase()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
+
+            {/* Actions */}
             <DialogFooter>
                 <Button variant="outline" onClick={onClose}>
                     Batal
                 </Button>
-                <Button onClick={handlePrint} disabled={isPrintDisabled}>
-                    Print
+                <Button
+                    onClick={handlePrint}
+                    disabled={isPrintDisabled}
+                    className="ml-2"
+                >
+                    {isGenerating ? 'Generating...' : 'Print'}
                 </Button>
             </DialogFooter>
         </DialogContent>

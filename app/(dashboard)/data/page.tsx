@@ -3,7 +3,7 @@
 "use client";
 
 import React, { Suspense } from 'react';
-import DataTable from '../../../components/DataTable/DataTable';
+import DataTable from '@/components/dataTable/DataTable';
 import {DataTableSkeleton} from "@/components/Skeletons";
 
 export default function DataPage() {

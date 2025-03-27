@@ -1,5 +1,9 @@
 "use client";
 
+// Types
+type Alignment = 'left' | 'center' | 'right';
+type CellStyle = 'headerCell' | 'rowHeaderCell' | 'bodyCell';
+
 interface ColumnHeader {
     header: string;
     key?: string;
@@ -18,11 +22,10 @@ interface TableData {
     rows: TableRowData[];
 }
 
-// PDF-specific interfaces
 interface PDFCell {
     text: string;
-    style: string;
-    alignment: string;
+    style: CellStyle;
+    alignment: Alignment;
     rowSpan?: number;
     colSpan?: number;
 }
@@ -31,102 +34,22 @@ interface DataTablePDFRendererProps {
     data: string;
 }
 
-export function DataTablePDFRenderer({ data }: DataTablePDFRendererProps) {
-    let parsedData: { tables: TableData[] };
-    try {
-        parsedData = JSON.parse(data);
-    } catch {
-        return [{ text: "Invalid JSON format", color: "red", fontSize: 10 }];
-    }
-
-    if (!parsedData.tables || !Array.isArray(parsedData.tables)) {
-        return [{ text: "Invalid tables format", color: "red", fontSize: 10 }];
-    }
-
-    const content = [];
-
-    for (let t = 0; t < parsedData.tables.length; t++) {
-        const table = parsedData.tables[t];
-        const { title, columnHeaders, rows } = table;
-
-        const leafPaths = getLeafPaths(columnHeaders);
-        const maxDepth = Math.max(...leafPaths.map((p) => p.length));
-        const headerRows = buildHeaderRows(leafPaths, maxDepth);
-        const allLeafCols = getLeafColumnKeys(columnHeaders);
-
-        const flatRows = flattenRows(rows);
-        if (flatRows.length === 0) continue;
-
-        const rowHeaderCount = computeMaxRowHeaderDepth(flatRows);
-        const dataCols = allLeafCols.slice(rowHeaderCount);
-        const totalColumns = allLeafCols.length;
-        const numRows = flatRows.length;
-
-        const headerCells: (PDFCell | "skip" | null)[][] = Array(numRows)
-            .fill(0)
-            .map(() => Array(rowHeaderCount).fill(null));
-
-        for (let j = 0; j < rowHeaderCount; j++) {
-            let i = 0;
-            while (i < numRows) {
-                const value = flatRows[i].rowHeader[j] || "";
-                let count = 1;
-
-                for (let k = i + 1; k < numRows; k++) {
-                    if (flatRows[k].rowHeader[j] === value) count++;
-                    else break;
-                }
-
-                headerCells[i][j] = { text: value, style: "rowHeaderCell", alignment: "left" } as PDFCell;
-                if (count > 1) (headerCells[i][j] as PDFCell).rowSpan = count;
-
-                for (let k = i + 1; k < i + count; k++) {
-                    headerCells[k][j] = "skip";
-                }
-
-                i += count;
-            }
-        }
-
-        const bodyRows = [];
-
-        for (let i = 0; i < numRows; i++) {
-            const rowCells = [];
-
-            for (let j = 0; j < rowHeaderCount; j++) {
-                rowCells.push(headerCells[i][j] !== "skip" ? headerCells[i][j] : {});
-            }
-
-            for (const col of dataCols) {
-                rowCells.push({ text: flatRows[i][col] || "", style: "bodyCell", alignment: "center" } as PDFCell);
-            }
-
-            bodyRows.push(rowCells);
-        }
-
-        const tableBody = headerRows.concat(bodyRows);
-
-        content.push({ text: title, style: "tableTitle" });
-        content.push({
-            table: {
-                headerRows: headerRows.length,
-                widths: Array(totalColumns).fill("*"),
-                body: tableBody
-            },
-            layout: "lightHorizontalLines",
-        });
-    }
-
-    return content;
+interface TablesData {
+    tables: TableData[];
 }
 
-function getLeafPaths(columns: ColumnHeader[], currentPath: string[] = []): string[][] {
+type PDFTableCell = PDFCell | 'skip' | null | {};
+type PDFTableRow = PDFTableCell[];
+type PDFTableContent = PDFTableRow[];
+
+// Utility functions
+const getLeafPaths = (columns: ColumnHeader[], currentPath: string[] = []): string[][] => {
     let paths: string[][] = [];
 
     for (const col of columns) {
-        const newPath = currentPath.concat(col.header);
+        const newPath = [...currentPath, col.header];
 
-        if (col.children && col.children.length > 0) {
+        if (col.children?.length) {
             paths = paths.concat(getLeafPaths(col.children, newPath));
         } else {
             paths.push(newPath);
@@ -134,40 +57,27 @@ function getLeafPaths(columns: ColumnHeader[], currentPath: string[] = []): stri
     }
 
     return paths;
-}
+};
 
-function getLeafColumnKeys(columns: ColumnHeader[]): string[] {
+const getLeafColumnKeys = (columns: ColumnHeader[]): string[] => {
     const keys: string[] = [];
 
-    function traverse(col: ColumnHeader): void {
-        if (!col.children || col.children.length === 0) {
-            keys.push(col.key ? col.key : col.header);
+    const traverse = (col: ColumnHeader): void => {
+        if (!col.children?.length) {
+            keys.push(col.key || col.header);
         } else {
             col.children.forEach(traverse);
         }
-    }
+    };
 
     columns.forEach(traverse);
     return keys;
-}
+};
 
-function getMaxDepth(columns: ColumnHeader[]): number {
-    let max = 1;
-
-    for (const col of columns) {
-        if (col.children && col.children.length > 0) {
-            const depth = 1 + getMaxDepth(col.children);
-            if (depth > max) max = depth;
-        }
-    }
-
-    return max;
-}
-
-function propagateHeaders(
+const propagateHeaders = (
     row: TableRowData,
     accumulated: (string | null)[]
-): TableRowData[] {
+): TableRowData[] => {
     const combined: (string | null)[] = [];
     const length = Math.max(accumulated.length, row.rowHeader.length);
 
@@ -179,45 +89,27 @@ function propagateHeaders(
                 : null;
     }
 
-    if (row.children && row.children.length > 0) {
-        let results: TableRowData[] = [];
-
-        for (const child of row.children) {
-            results = results.concat(propagateHeaders(child, combined));
-        }
-
-        return results;
+    if (row.children?.length) {
+        return row.children.flatMap(child => propagateHeaders(child, combined));
     } else {
-        row.rowHeader = combined;
-        return [row];
+        const newRow = { ...row, rowHeader: combined };
+        return [newRow];
     }
-}
+};
 
-function flattenRows(rows: TableRowData[]): TableRowData[] {
-    let result: TableRowData[] = [];
+const flattenRows = (rows: TableRowData[]): TableRowData[] => {
+    return rows.flatMap(row => propagateHeaders(row, []));
+};
 
-    for (const row of rows) {
-        result = result.concat(propagateHeaders(row, []));
-    }
+const computeMaxRowHeaderDepth = (rows: TableRowData[]): number => {
+    return rows.reduce((max, row) => Math.max(max, row.rowHeader.length), 0);
+};
 
-    return result;
-}
-
-function computeMaxRowHeaderDepth(rows: TableRowData[]): number {
-    let max = 0;
-
-    for (const r of rows) {
-        if (r.rowHeader.length > max) max = r.rowHeader.length;
-    }
-
-    return max;
-}
-
-function buildHeaderRows(leafPaths: string[][], maxDepth: number): (PDFCell | {})[][] {
-    const headerRows: (PDFCell | {})[][] = [];
+const buildHeaderRows = (leafPaths: string[][], maxDepth: number): PDFTableContent => {
+    const headerRows: PDFTableContent = [];
 
     for (let r = 0; r < maxDepth; r++) {
-        const row: (PDFCell | {})[] = [];
+        const row: PDFTableRow = [];
         let i = 0;
 
         while (i < leafPaths.length) {
@@ -238,17 +130,19 @@ function buildHeaderRows(leafPaths: string[][], maxDepth: number): (PDFCell | {}
             }
 
             const rowSpan = leafPaths[i].length === r + 1 ? maxDepth - r : 1;
-            const cell: PDFCell = { text: text, style: "headerCell", alignment: "center" };
+            const cell: PDFCell = {
+                text,
+                style: 'headerCell',
+                alignment: 'center'
+            };
 
             if (count > 1) cell.colSpan = count;
             if (rowSpan > 1) cell.rowSpan = rowSpan;
 
             row.push(cell);
 
-            for (let j = 1; j < count; j++) {
-                row.push({});
-            }
-
+            // Add empty cells for colSpan
+            row.push(...Array(count - 1).fill({}));
             i += count;
         }
 
@@ -256,6 +150,111 @@ function buildHeaderRows(leafPaths: string[][], maxDepth: number): (PDFCell | {}
     }
 
     return headerRows;
+};
+
+// Main component
+export function DataTablePDFRenderer({ data }: DataTablePDFRendererProps) {
+    let parsedData: TablesData;
+
+    try {
+        parsedData = JSON.parse(data) as TablesData;
+    } catch {
+        return [{ text: "Invalid JSON format", color: "red", fontSize: 10 }];
+    }
+
+    if (!parsedData.tables || !Array.isArray(parsedData.tables)) {
+        return [{ text: "Invalid tables format", color: "red", fontSize: 10 }];
+    }
+
+    const content = [];
+
+    for (const table of parsedData.tables) {
+        const { title, columnHeaders, rows } = table;
+
+        const leafPaths = getLeafPaths(columnHeaders);
+        const maxDepth = Math.max(...leafPaths.map(p => p.length));
+        const headerRows = buildHeaderRows(leafPaths, maxDepth);
+        const allLeafCols = getLeafColumnKeys(columnHeaders);
+
+        const flatRows = flattenRows(rows);
+        if (flatRows.length === 0) continue;
+
+        const rowHeaderCount = computeMaxRowHeaderDepth(flatRows);
+        const dataCols = allLeafCols.slice(rowHeaderCount);
+        const totalColumns = allLeafCols.length;
+        const numRows = flatRows.length;
+
+        // Process row headers with rowSpan
+        const headerCells: (PDFCell | 'skip' | null)[][] = Array(numRows)
+            .fill(null)
+            .map(() => Array(rowHeaderCount).fill(null));
+
+        for (let j = 0; j < rowHeaderCount; j++) {
+            let i = 0;
+            while (i < numRows) {
+                const value = flatRows[i].rowHeader[j] || "";
+                let count = 1;
+
+                // Count consecutive identical values for rowSpan
+                for (let k = i + 1; k < numRows; k++) {
+                    if (flatRows[k].rowHeader[j] === value) count++;
+                    else break;
+                }
+
+                headerCells[i][j] = {
+                    text: value,
+                    style: 'rowHeaderCell',
+                    alignment: 'left'
+                };
+
+                if (count > 1) {
+                    (headerCells[i][j] as PDFCell).rowSpan = count;
+
+                    // Mark cells to be skipped due to rowSpan
+                    for (let k = i + 1; k < i + count; k++) {
+                        headerCells[k][j] = 'skip';
+                    }
+                }
+
+                i += count;
+            }
+        }
+
+        // Build the final table body
+        const bodyRows: PDFTableContent = flatRows.map((row, i) => {
+            const rowCells: PDFTableRow = [];
+
+            // Add row header cells
+            for (let j = 0; j < rowHeaderCount; j++) {
+                rowCells.push(headerCells[i][j] !== 'skip' ? headerCells[i][j] : {});
+            }
+
+            // Add data cells
+            for (const col of dataCols) {
+                rowCells.push({
+                    text: row[col] || "",
+                    style: 'bodyCell',
+                    alignment: 'center'
+                });
+            }
+
+            return rowCells;
+        });
+
+        const tableBody = [...headerRows, ...bodyRows];
+
+        content.push({ text: title, style: 'tableTitle' });
+        content.push({
+            table: {
+                headerRows: headerRows.length,
+                widths: Array(totalColumns).fill('*'),
+                body: tableBody
+            },
+            layout: 'lightHorizontalLines',
+        });
+    }
+
+    return content;
 }
 
 export default DataTablePDFRenderer;

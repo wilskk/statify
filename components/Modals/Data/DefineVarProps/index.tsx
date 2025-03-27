@@ -2,11 +2,11 @@
 
 import React, { FC, useState, useEffect } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
-    Dialog,
+    DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,8 @@ import {
     BarChartHorizontal,
     CornerDownLeft,
     CornerDownRight,
-    AlertCircle
+    AlertCircle,
+    InfoIcon
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVariableStore } from "@/stores/useVariableStore";
@@ -153,8 +154,8 @@ const DefineVariableProperties: FC<DefineVariablePropertiesProps> = ({ onClose }
         // Open the Variable Properties Editor with selected variables and limits
         openModal(ModalType.VarPropsEditor, {
             variables: variablesToScan,
-            caseLimit: caseLimit,
-            valueLimit: valueLimit
+            caseLimit: limitCases ? caseLimit : null,
+            valueLimit: limitValues ? valueLimit : null
         });
     };
 
@@ -162,207 +163,195 @@ const DefineVariableProperties: FC<DefineVariablePropertiesProps> = ({ onClose }
         onClose();
     };
 
-    const handleHelp = () => {
-        console.log("Help requested");
-    };
+    // Render variable list
+    const renderVariableList = (variables: Variable[], source: 'available' | 'toScan', height: string) => (
+        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
+            <div className="space-y-1">
+                {variables.length === 0 ? (
+                    <div className="px-2 py-1 text-xs text-[#888888] italic">No variables</div>
+                ) : (
+                    variables.map((variable) => (
+                        <TooltipProvider key={variable.columnIndex}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div
+                                        className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
+                                            highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
+                                                ? "bg-[#E6E6E6] border-[#888888]"
+                                                : "border-[#CCCCCC]"
+                                        }`}
+                                        onClick={() => handleVariableSelect(variable.columnIndex, source)}
+                                        onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
+                                    >
+                                        <div className="flex items-center w-full">
+                                            {getVariableIcon(variable)}
+                                            <span className="text-xs truncate">{getDisplayName(variable)}</span>
+                                        </div>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">
+                                    <p className="text-xs">{getDisplayName(variable)}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    ))
+                )}
+            </div>
+        </div>
+    );
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-3">
-                <DialogHeader className="p-0 mb-2">
-                    <DialogTitle>Define Variable Properties</DialogTitle>
+            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Define Variable Properties</DialogTitle>
                 </DialogHeader>
-                <Separator className="my-0" />
 
-                {/* Information text */}
-                <div className="flex items-start space-x-3 mb-3">
-                    <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <AlertCircle className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <div className="space-y-1">
-                        <p className="text-xs">
-                            Use this facility to label variable values and set other properties
-                            after scanning the data.
-                        </p>
-                        <p className="text-xs">
-                            Select the variables to scan. They should be categorical
-                            (nominal or ordinal) for best results. You can change the
-                            measurement level setting in the next panel.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-9 gap-2 py-1">
-                    {/* Left Column - Available Variables */}
-                    <div className="col-span-4 flex flex-col">
-                        <Label className="text-xs font-semibold mb-1">Variables:</Label>
-                        <div className="border p-2 rounded-md h-[250px] overflow-y-auto overflow-x-hidden">
-                            <div className="space-y-1">
-                                {availableVariables.map((variable) => (
-                                    <TooltipProvider key={variable.columnIndex}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div
-                                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-gray-100 ${
-                                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'available'
-                                                            ? "bg-gray-200 border-gray-500"
-                                                            : "border-gray-300"
-                                                    }`}
-                                                    onClick={() => handleVariableSelect(variable.columnIndex, 'available')}
-                                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, 'available')}
-                                                >
-                                                    <div className="flex items-center w-full">
-                                                        {getVariableIcon(variable)}
-                                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                                    </div>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right">
-                                                <p className="text-xs">{getDisplayName(variable)}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                ))}
-                            </div>
+                <div className="p-6 overflow-y-auto flex-grow">
+                    {/* Information text */}
+                    <div className="mb-6 p-4 border-l-2 border-black bg-[#F7F7F7] rounded-sm">
+                        <div className="space-y-2">
+                            <p className="text-sm">
+                                Use this facility to label variable values and set other properties
+                                after scanning the data.
+                            </p>
+                            <p className="text-sm">
+                                Select the variables to scan. They should be categorical
+                                (nominal or ordinal) for best results. You can change the
+                                measurement level setting in the next panel.
+                            </p>
                         </div>
                     </div>
 
-                    {/* Middle Column - Arrow Controls */}
-                    <div className="col-span-1 flex flex-col items-center justify-center space-y-5">
-                        <Button
-                            variant="link"
-                            onClick={handleMoveToScan}
-                            disabled={!highlightedVariable || highlightedVariable.source !== 'available'}
-                        >
-                            <CornerDownRight size={20} />
-                        </Button>
+                    <div className="grid grid-cols-8 gap-6">
+                        {/* Left Column - Available Variables */}
+                        <div className="col-span-3">
+                            <div className="text-sm mb-2 font-medium">Variables:</div>
+                            {renderVariableList(availableVariables, 'available', '250px')}
+                            <div className="text-xs mt-2 text-[#888888] flex items-center">
+                                <InfoIcon size={14} className="mr-1 flex-shrink-0" />
+                                <span>Double-click variables to move them between lists</span>
+                            </div>
+                        </div>
 
-                        <Button
-                            variant="link"
-                            onClick={handleMoveFromScan}
-                            disabled={!highlightedVariable || highlightedVariable.source !== 'toScan'}
-                        >
-                            <CornerDownLeft size={20} />
-                        </Button>
+                        {/* Middle Column - Arrow Controls */}
+                        <div className="col-span-1 flex flex-col items-center justify-center">
+                            <div className="flex flex-col space-y-32">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                    onClick={highlightedVariable?.source === 'toScan' ? handleMoveFromScan : handleMoveToScan}
+                                    disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'toScan')}
+                                >
+                                    {highlightedVariable?.source === 'toScan' ?
+                                        <CornerDownLeft size={16} /> :
+                                        <CornerDownRight size={16} />
+                                    }
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Right Column - Variables to Scan */}
+                        <div className="col-span-4">
+                            <div className="text-sm mb-2 font-medium">Variables to Scan:</div>
+                            {renderVariableList(variablesToScan, 'toScan', '250px')}
+                        </div>
                     </div>
 
-                    {/* Right Column - Variables to Scan */}
-                    <div className="col-span-4 flex flex-col">
-                        <Label className="text-xs font-semibold mb-1">Variables to Scan:</Label>
-                        <div className="border p-2 rounded-md h-[250px] overflow-y-auto overflow-x-hidden">
-                            <div className="space-y-1">
-                                {variablesToScan.map((variable) => (
-                                    <TooltipProvider key={variable.columnIndex}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div
-                                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-gray-100 ${
-                                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'toScan'
-                                                            ? "bg-gray-200 border-gray-500"
-                                                            : "border-gray-300"
-                                                    }`}
-                                                    onClick={() => handleVariableSelect(variable.columnIndex, 'toScan')}
-                                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, 'toScan')}
-                                                >
-                                                    <div className="flex items-center w-full">
-                                                        {getVariableIcon(variable)}
-                                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                                    </div>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right">
-                                                <p className="text-xs">{getDisplayName(variable)}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                ))}
+                    {/* Limit options */}
+                    <div className="border border-[#E6E6E6] rounded-md p-6 mt-6">
+                        <div className="text-sm font-medium mb-4">Scanning Limits</div>
+                        <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="limit-cases"
+                                    checked={limitCases}
+                                    onCheckedChange={(checked) => setLimitCases(!!checked)}
+                                    className="mr-2 border-[#CCCCCC]"
+                                />
+                                <Label htmlFor="limit-cases" className="text-sm cursor-pointer">
+                                    Limit number of cases scanned to:
+                                </Label>
+                                <Input
+                                    value={caseLimit}
+                                    onChange={(e) => setCaseLimit(e.target.value)}
+                                    className="w-24 h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    disabled={!limitCases}
+                                />
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="limit-values"
+                                    checked={limitValues}
+                                    onCheckedChange={(checked) => setLimitValues(!!checked)}
+                                    className="mr-2 border-[#CCCCCC]"
+                                />
+                                <Label htmlFor="limit-values" className="text-sm cursor-pointer">
+                                    Limit number of values displayed to:
+                                </Label>
+                                <Input
+                                    value={valueLimit}
+                                    onChange={(e) => setValueLimit(e.target.value)}
+                                    className="w-24 h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    disabled={!limitValues}
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Limit options */}
-                <div className="border p-2 rounded-md mt-2">
-                    <div className="text-xs font-semibold mb-1">Limits</div>
-                    <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="limit-cases"
-                                className="w-3 h-3"
-                                checked={limitCases}
-                                onCheckedChange={(checked) => setLimitCases(!!checked)}
-                            />
-                            <Label htmlFor="limit-cases" className="text-xs">Limit number of cases scanned to:</Label>
-                            <Input
-                                value={caseLimit}
-                                onChange={(e) => setCaseLimit(e.target.value)}
-                                className="w-20 h-6 text-xs"
-                                disabled={!limitCases}
-                            />
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="limit-values"
-                                className="w-3 h-3"
-                                checked={limitValues}
-                                onCheckedChange={(checked) => setLimitValues(!!checked)}
-                            />
-                            <Label htmlFor="limit-values" className="text-xs">Limit number of values displayed to:</Label>
-                            <Input
-                                value={valueLimit}
-                                onChange={(e) => setValueLimit(e.target.value)}
-                                className="w-20 h-6 text-xs"
-                                disabled={!limitValues}
-                            />
-                        </div>
+                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                    <div className="flex justify-end space-x-3">
+                        <Button
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            onClick={handleContinue}
+                        >
+                            Continue
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        >
+                            Paste
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        >
+                            Reset
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            onClick={handleCancel}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        >
+                            Help
+                        </Button>
                     </div>
-                </div>
-
-                <DialogFooter className="flex justify-center space-x-2 mt-2 p-0">
-                    <Button
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleContinue}
-                    >
-                        Continue
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleCancel}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleHelp}
-                    >
-                        Help
-                    </Button>
                 </DialogFooter>
             </DialogContent>
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[450px] p-3">
-                    <DialogHeader className="p-0 mb-2">
-                        <DialogTitle>Statify</DialogTitle>
+                <DialogContent className="max-w-[400px] p-6 bg-white border border-[#E6E6E6] shadow-md rounded-md">
+                    <DialogHeader className="mb-4">
+                        <DialogTitle className="text-[18px] font-semibold">Statify</DialogTitle>
                     </DialogHeader>
-                    <div className="flex gap-4">
-                        <AlertCircle className="h-10 w-10 text-blue-500" />
-                        <div>
-                            <p className="text-sm mt-2">{errorMessage}</p>
-                        </div>
+                    <div className="flex gap-4 items-start">
+                        <AlertCircle className="h-6 w-6 text-black flex-shrink-0 mt-0.5" />
+                        <p className="text-sm">{errorMessage}</p>
                     </div>
-
-                    <DialogFooter className="flex justify-center mt-4">
+                    <DialogFooter className="mt-6">
                         <Button
-                            size="sm"
-                            className="text-xs h-7"
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                             onClick={() => setErrorDialogOpen(false)}
                         >
                             OK

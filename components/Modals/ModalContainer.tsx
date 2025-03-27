@@ -4,6 +4,7 @@ import React from "react";
 import {ModalType, useModal} from "@/hooks/useModal";
 import { FileModals, isFileModal } from "@/components/Modals/File/FileModals";
 import { DataModals, isDataModal } from "@/components/Modals/Data/DataModals";
+import { EditModals, isEditModal } from "@/components/Modals/Edit/EditModals";
 import ComputeVariableModal from "@/components/Modals/Transform/ComputeVariableModal";
 import {Dialog} from "@/components/ui/dialog";
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
@@ -22,8 +23,6 @@ import ModalWeightEstimation from "./Regression/WeightEstimation/ModalWeightEsti
 import ModalQuantiles from "./Regression/Quantiles/ModalQuantiles";
 import ModalOptimalScaling from "./Regression/OptimalScaling/ModalOptimalScaling";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
-import {FindAndReplaceModal, FindReplaceMode} from "@/components/Modals/Edit/FindReplace/FindReplace";
-import GoToModal, {GoToMode} from "@/components/Modals/Edit/GoTo/GoTo";
 import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
 
 const ModalContainer: React.FC = () => {
@@ -57,38 +56,22 @@ const ModalContainer: React.FC = () => {
         );
     }
 
+    if (isEditModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <EditModals
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
     const renderModal = () => {
         switch (currentModal.type) {
             case ModalType.ComputeVariable:
                 return <ComputeVariableModal onClose={closeModal} {...currentModal.props} />;
-
-            case ModalType.Find:
-                return (<FindAndReplaceModal
-                    onClose={closeModal}
-                    defaultTab={FindReplaceMode.FIND}
-                    {...currentModal.props}
-                />);
-
-            case ModalType.Replace:
-                return (<FindAndReplaceModal
-                    onClose={closeModal}
-                    defaultTab={FindReplaceMode.REPLACE}
-                    {...currentModal.props}
-                />);
-
-            case ModalType.GoToCase:
-                return (<GoToModal
-                    onClose={closeModal}
-                    defaultMode={GoToMode.CASE}
-                    {...currentModal.props}
-                />);
-
-            case ModalType.GoToVariable:
-                return (<GoToModal
-                    onClose={closeModal}
-                    defaultMode={GoToMode.VARIABLE}
-                    {...currentModal.props}
-                />);
 
             case ModalType.ModalAutomaticLinearModeling:
                 return (<ModalAutomaticLinearModeling

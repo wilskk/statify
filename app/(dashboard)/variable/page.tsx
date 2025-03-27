@@ -3,7 +3,7 @@
 "use client";
 
 import React, {Suspense} from 'react';
-import VariableTable from '../../../components/VariableTable/VariableTable';
+import VariableTable from '@/components/variableTable/VariableTable';
 import {VariableTableSkeleton} from "@/components/Skeletons";
 
 export default function VariablesPage() {

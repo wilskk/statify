@@ -6,8 +6,13 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
+
+
+
 
 export enum FindReplaceMode {
     FIND = "find",
@@ -45,24 +50,57 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
         console.log(
             `Find Next: column=${selectedColumn}, find=${findText}, matchCase=${matchCase}, matchTo=${matchTo}, direction=${direction}`
         );
+
+
+
+
+
+
+
     };
 
     const handleReplace = () => {
         console.log(
             `Replace: column=${selectedColumn}, find=${findText}, replace=${replaceText}, matchCase=${matchCase}, matchTo=${matchTo}, direction=${direction}`
         );
+
+
+
+
     };
 
     const handleReplaceAll = () => {
         console.log(
             `Replace All: column=${selectedColumn}, find=${findText}, replace=${replaceText}, matchCase=${matchCase}, matchTo=${matchTo}, direction=${direction}`
         );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     };
 
     return (
         <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto px-4">
             <DialogHeader>
                 <DialogTitle>Find and Replace - Data View</DialogTitle>
+
+
+
+
+
+
             </DialogHeader>
 
             {/* Tabs */}
@@ -131,6 +169,29 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
                             value={replaceText}
                             onChange={(e) => setReplaceText(e.target.value)}
                         />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     </div>
                 )}
 

@@ -1,57 +1,72 @@
-// components/modals/SetMeasurementLevel/index.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { StatifyModal } from "@/components/ui/statifyModal";
+import React, { useState, useEffect, FC } from "react";
+import {
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { InfoIcon } from "lucide-react";
-import { TransferControl } from "@/components/ui/transferControl";
-import { VariableList } from "@/components/ui/variableList";
+import { InfoIcon, Shapes, Ruler, BarChartHorizontal, CornerDownRight, CornerDownLeft } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SetMeasurementLevelProps {
-    isOpen: boolean;
     onClose: () => void;
 }
 
-const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
-                                                                     isOpen,
-                                                                     onClose,
-                                                                 }) => {
+const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
     const { variables, updateVariable } = useVariableStore();
 
-    // Variables lists for each measurement level
     const [unknownVariables, setUnknownVariables] = useState<Variable[]>([]);
     const [nominalVariables, setNominalVariables] = useState<Variable[]>([]);
     const [ordinalVariables, setOrdinalVariables] = useState<Variable[]>([]);
     const [scaleVariables, setScaleVariables] = useState<Variable[]>([]);
 
-    // Track which variable is currently selected
     const [highlightedVariable, setHighlightedVariable] = useState<{
         id: string;
-        source: string;
+        source: "unknown" | "nominal" | "ordinal" | "scale";
     } | null>(null);
 
-    // Define our sources in order (for TransferControl)
-    const sources = ["unknown", "nominal", "ordinal", "scale"];
-
-    // Initialize variables on component mount
     useEffect(() => {
-        if (isOpen) {
-            const filtered = variables.filter(v => v.measure === "unknown");
-            setUnknownVariables(filtered);
+        const filtered = variables
+            .filter(v => v.measure === "unknown")
+            .sort((a, b) => a.columnIndex - b.columnIndex);
 
-            // Reset destination categories
-            setNominalVariables([]);
-            setOrdinalVariables([]);
-            setScaleVariables([]);
-            setHighlightedVariable(null);
+        setUnknownVariables(filtered);
+        setNominalVariables([]);
+        setOrdinalVariables([]);
+        setScaleVariables([]);
+        setHighlightedVariable(null);
+    }, [variables]);
+
+    const getDisplayName = (variable: Variable): string => {
+        if (variable.label) {
+            return `${variable.label} [${variable.name}]`;
         }
-    }, [isOpen, variables]);
+        return variable.name;
+    };
 
-    // Handle selection of a variable
-    const handleVariableSelect = (columnIndex: number, source: string) => {
+    // Get variable icon based on measure
+    const getVariableIcon = (variable: Variable) => {
+        switch (variable.measure) {
+            case "scale":
+                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+            case "nominal":
+                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+            case "ordinal":
+                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+            default:
+                return variable.type === "STRING"
+                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+        }
+    };
+
+    const handleVariableSelect = (columnIndex: number, source: "unknown" | "nominal" | "ordinal" | "scale") => {
         const variableId = columnIndex.toString();
 
         if (
@@ -67,27 +82,26 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
         }
     };
 
-    // Handle double-click to move variables
-    const handleVariableDoubleClick = (columnIndex: number, source: string) => {
+    const handleVariableDoubleClick = (columnIndex: number, source: "unknown" | "nominal" | "ordinal" | "scale") => {
         const variableId = columnIndex.toString();
         setHighlightedVariable({ id: variableId, source });
 
-        // Find target source based on current source
-        const sourceIndex = sources.indexOf(source);
-
         if (source === "unknown") {
-            // Find appropriate default target for unknown variables
             const variable = unknownVariables.find(v => v.columnIndex === columnIndex);
-            const targetSource = variable?.type === "STRING" ? "nominal" : "scale";
-            moveVariable(source, targetSource, variableId);
+            if (variable) {
+                const targetSource = variable.type === "STRING" ? "nominal" : "scale";
+                moveVariable(source, targetSource, variableId);
+            }
         } else {
-            // Move back to unknown
             moveVariable(source, "unknown", variableId);
         }
     };
 
-    // Move variable between lists
-    const moveVariable = (fromSource: string, toSource: string, variableId: string) => {
+    const moveVariable = (
+        fromSource: "unknown" | "nominal" | "ordinal" | "scale",
+        toSource: "unknown" | "nominal" | "ordinal" | "scale",
+        variableId: string
+    ) => {
         const sourceList = getSourceList(fromSource);
         if (!sourceList) return;
 
@@ -99,30 +113,32 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
 
         const variable = { ...sourceList[variableIndex] };
 
-        // Remove from source list
         removeFromSource(fromSource, variableId);
 
-        // Add to destination list
+        const updateList = (currentList: Variable[], variable: Variable) => {
+            const newList = [...currentList, variable];
+            return newList.sort((a, b) => a.columnIndex - b.columnIndex);
+        };
+
         switch (toSource) {
             case "unknown":
-                setUnknownVariables([...unknownVariables, variable]);
+                setUnknownVariables(prev => updateList(prev, variable));
                 break;
             case "nominal":
-                setNominalVariables([...nominalVariables, variable]);
+                setNominalVariables(prev => updateList(prev, variable));
                 break;
             case "ordinal":
-                setOrdinalVariables([...ordinalVariables, variable]);
+                setOrdinalVariables(prev => updateList(prev, variable));
                 break;
             case "scale":
-                setScaleVariables([...scaleVariables, variable]);
+                setScaleVariables(prev => updateList(prev, variable));
                 break;
         }
 
         setHighlightedVariable(null);
     };
 
-    // Get the source list based on source name
-    const getSourceList = (source: string): Variable[] | null => {
+    const getSourceList = (source: "unknown" | "nominal" | "ordinal" | "scale"): Variable[] | null => {
         switch (source) {
             case "unknown":
                 return unknownVariables;
@@ -137,8 +153,7 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
         }
     };
 
-    // Remove a variable from its source list
-    const removeFromSource = (source: string, id: string) => {
+    const removeFromSource = (source: "unknown" | "nominal" | "ordinal" | "scale", id: string) => {
         switch (source) {
             case "unknown":
                 setUnknownVariables(prev => prev.filter(v => v.columnIndex.toString() !== id));
@@ -155,33 +170,21 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
         }
     };
 
-    // Handle bidirectional transfer between lists
-    const handleTransfer = (direction: "left" | "right") => {
+    const handleMove = (targetLevel: "nominal" | "ordinal" | "scale") => {
         if (!highlightedVariable) return;
 
         const { id, source } = highlightedVariable;
-        const sourceIndex = sources.indexOf(source);
 
-        if (sourceIndex === -1) return;
-
-        let targetSource: string;
-
-        if (direction === "left") {
-            if (sourceIndex > 0) {
-                targetSource = sources[sourceIndex - 1];
-                moveVariable(source, targetSource, id);
-            }
-        } else { // right
-            if (sourceIndex < sources.length - 1) {
-                targetSource = sources[sourceIndex + 1];
-                moveVariable(source, targetSource, id);
-            }
+        if (source === "unknown") {
+            moveVariable("unknown", targetLevel, id);
+        } else if (source === targetLevel) {
+            moveVariable(targetLevel, "unknown", id);
+        } else {
+            moveVariable(source, targetLevel, id);
         }
     };
 
-    // Handle save action
     const handleSave = () => {
-        // Update all variables with their new measurement levels
         nominalVariables.forEach(variable => {
             updateVariable(variable.columnIndex, "measure", "nominal");
         });
@@ -197,14 +200,12 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
         onClose();
     };
 
-    // Reset form
     const handleReset = () => {
-        // Move all variables back to unknown list
         const allVariables = [
             ...nominalVariables,
             ...ordinalVariables,
             ...scaleVariables,
-        ];
+        ].sort((a, b) => a.columnIndex - b.columnIndex);
 
         setUnknownVariables([...unknownVariables, ...allVariables]);
         setNominalVariables([]);
@@ -213,130 +214,167 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({
         setHighlightedVariable(null);
     };
 
-    // Custom footer buttons
-    const footerButtons = (
-        <>
-            <Button
-                className="bg-black text-white hover:opacity-90 h-8"
-                onClick={handleSave}
-            >
-                OK
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] text-black h-8"
-            >
-                Paste
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] text-black h-8"
-                onClick={handleReset}
-            >
-                Reset
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] text-black h-8"
-                onClick={onClose}
-            >
-                Cancel
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] text-black h-8"
-            >
-                Help
-            </Button>
-        </>
+    // Render variable list with consistent styling
+    const renderVariableList = (variables: Variable[], source: 'unknown' | 'nominal' | 'ordinal' | 'scale', height: string) => (
+        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
+            <div className="space-y-1">
+                {variables.map((variable) => (
+                    <TooltipProvider key={variable.columnIndex}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div
+                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
+                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
+                                            ? "bg-[#E6E6E6] border-[#888888]"
+                                            : "border-[#CCCCCC]"
+                                    }`}
+                                    onClick={() => handleVariableSelect(variable.columnIndex, source)}
+                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
+                                >
+                                    <div className="flex items-center w-full">
+                                        {getVariableIcon(variable)}
+                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
+                                    </div>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                                <p className="text-xs">{getDisplayName(variable)}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ))}
+            </div>
+        </div>
     );
 
     return (
-        <StatifyModal
-            open={isOpen}
-            onClose={onClose}
-            title="Set Measurement Level for Unknown Variables"
-            size="xl"
-            footerButtons={footerButtons}
-        >
-            <div className="flex items-center gap-3 mb-4 bg-[#F7F7F7] p-3 rounded">
-                <InfoIcon className="text-[#444444] h-5 w-5" />
-                <p className="text-[#444444] text-sm">
-                    This dialog only displays fields for which the measurement level is unknown.
-                    Use Variable View in the Data Editor to change the measurement level for other fields.
-                </p>
+        <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Set Measurement Level</DialogTitle>
+            </DialogHeader>
+
+            <div className="p-6 overflow-y-auto flex-grow">
+                <div className="flex items-center gap-2 py-2 mb-4 bg-[#F7F7F7] p-3 rounded border border-[#E6E6E6]">
+                    <InfoIcon className="text-[#444444] h-4 w-4 flex-shrink-0" />
+                    <p className="text-[#444444] text-xs">
+                        This dialog only displays variables for which the measurement level is unknown.
+                        Use Variable View in the Data Editor to change the measurement level for other variables.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-12 gap-6">
+                    <div className="col-span-5">
+                        <div className="text-sm mb-2 font-medium">Variables with Unknown Measurement Level:</div>
+                        {renderVariableList(unknownVariables, 'unknown', '275px')}
+                    </div>
+
+                    <div className="col-span-1 flex flex-col items-center justify-center">
+                        <div className="flex flex-col space-y-24">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                onClick={() => handleMove("nominal")}
+                                disabled={!highlightedVariable}
+                            >
+                                {highlightedVariable?.source === 'nominal' ?
+                                    <CornerDownLeft size={16} /> :
+                                    <CornerDownRight size={16} />
+                                }
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                onClick={() => handleMove("ordinal")}
+                                disabled={!highlightedVariable}
+                            >
+                                {highlightedVariable?.source === 'ordinal' ?
+                                    <CornerDownLeft size={16} /> :
+                                    <CornerDownRight size={16} />
+                                }
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                onClick={() => handleMove("scale")}
+                                disabled={!highlightedVariable}
+                            >
+                                {highlightedVariable?.source === 'scale' ?
+                                    <CornerDownLeft size={16} /> :
+                                    <CornerDownRight size={16} />
+                                }
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="col-span-6 space-y-5">
+                        <div>
+                            <div className="text-sm mb-2 font-medium">Nominal Variables:</div>
+                            <div className="text-xs mb-1 text-[#888888]">Used for unranked categories (region, product type)</div>
+                            {renderVariableList(nominalVariables, 'nominal', '73px')}
+                        </div>
+
+                        <div>
+                            <div className="text-sm mb-2 font-medium">Ordinal Variables:</div>
+                            <div className="text-xs mb-1 text-[#888888]">Used for ranked categories (low, medium, high)</div>
+                            {renderVariableList(ordinalVariables, 'ordinal', '73px')}
+                        </div>
+
+                        <div>
+                            <div className="text-sm mb-2 font-medium">Scale/Continuous Variables:</div>
+                            <div className="text-xs mb-1 text-[#888888]">Used for numeric measurements (age, income)</div>
+                            {renderVariableList(scaleVariables, 'scale', '73px')}
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-4">
-                {/* Left column - Unknown Variables */}
-                <div className="col-span-5">
-                    <VariableList
-                        title="Fields with Unknown Measurement Level"
-                        variables={unknownVariables}
-                        highlightedVariable={highlightedVariable}
-                        source="unknown"
-                        height="300px"
-                        onVariableSelect={handleVariableSelect}
-                        onVariableDoubleClick={handleVariableDoubleClick}
-                    />
-                </div>
-
-                {/* Transfer controls */}
-                <div className="col-span-2 flex items-center justify-center">
-                    <TransferControl
-                        highlightedVariable={highlightedVariable}
-                        onTransfer={handleTransfer}
-                        orientation="horizontal"
-                        sources={sources}
-                    />
-                </div>
-
-                {/* Right column - Measurement levels */}
-                <div className="col-span-5 space-y-4">
-                    {/* Nominal */}
-                    <div className="space-y-2">
-                        <VariableList
-                            title="Nominal"
-                            variables={nominalVariables}
-                            highlightedVariable={highlightedVariable}
-                            source="nominal"
-                            height="80px"
-                            subtitle="Used for unranked categories (region, product type)"
-                            onVariableSelect={handleVariableSelect}
-                            onVariableDoubleClick={handleVariableDoubleClick}
-                        />
-                    </div>
-
-                    {/* Ordinal */}
-                    <div className="space-y-2">
-                        <VariableList
-                            title="Ordinal"
-                            variables={ordinalVariables}
-                            highlightedVariable={highlightedVariable}
-                            source="ordinal"
-                            height="80px"
-                            subtitle="Used for ranked categories (low, medium, high)"
-                            onVariableSelect={handleVariableSelect}
-                            onVariableDoubleClick={handleVariableDoubleClick}
-                        />
-                    </div>
-
-                    {/* Scale */}
-                    <div className="space-y-2">
-                        <VariableList
-                            title="Scale/Continuous"
-                            variables={scaleVariables}
-                            highlightedVariable={highlightedVariable}
-                            source="scale"
-                            height="80px"
-                            subtitle="Used for numeric measurements (age, income)"
-                            onVariableSelect={handleVariableSelect}
-                            onVariableDoubleClick={handleVariableDoubleClick}
-                        />
-                    </div>
-                </div>
+            <div className="flex items-center px-6 py-3 border-t border-[#E6E6E6] bg-[#F7F7F7] text-xs text-[#888888] flex-shrink-0">
+                <InfoIcon size={14} className="mr-2 flex-shrink-0" />
+                <span>Variables will retain their assigned measurement level for statistical analysis</span>
             </div>
-        </StatifyModal>
+
+            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        onClick={handleSave}
+                    >
+                        OK
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                    >
+                        Paste
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                    >
+                        Help
+                    </Button>
+                </div>
+            </DialogFooter>
+        </DialogContent>
     );
 };
 
