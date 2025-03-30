@@ -1,3 +1,4 @@
+// app/landing/layout.tsx
 export default function LandingLayout({
                                           children,
                                       }: {

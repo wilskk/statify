@@ -1,4 +1,4 @@
-// app/data/loading.tsx
+// app/dashboard/data/loading.tsx
 import { DataTableSkeleton } from "@/components/Skeletons";
 
 export default function DataLoading() {

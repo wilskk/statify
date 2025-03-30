@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 import Link from 'next/link';
 import { FolderOpen, FilePlus, Upload, Database, History, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,4 +1,4 @@
-// app/variables/page.tsx
+// app/dashboard/variables/page.tsx
 
 "use client";
 

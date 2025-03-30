@@ -20,17 +20,33 @@ const nextConfig = {
 
         return config;
     },
-    async headers() {
+    async redirects() {
         return [
             {
-                source: '/:path*',
-                headers: [
-                    {
-                        key: 'X-Middleware-Preflight',
-                        value: '1',
-                    },
-                ],
+                source: '/data',
+                destination: '/dashboard/data',
+                permanent: true,
             },
+            {
+                source: '/data/:path*',
+                destination: '/dashboard/data/:path*',
+                permanent: true,
+            },
+            {
+                source: '/result',
+                destination: '/dashboard/result',
+                permanent: true,
+            },
+            {
+                source: '/results',
+                destination: '/dashboard/results',
+                permanent: true,
+            },
+            {
+                source: '/variables',
+                destination: '/dashboard/variables',
+                permanent: true,
+            }
         ];
     },
 }
