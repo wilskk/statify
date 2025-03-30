@@ -61,7 +61,7 @@ export default function LandingHeader() {
 
                 {/* Auth Button - Menggunakan warna primer sesuai dokumentasi */}
                 <div className="hidden md:flex items-center">
-                    <Link href="/data">
+                    <Link href="/dashboard/data">
                         <Button
                             variant="default"
                             size="sm"
@@ -121,7 +121,7 @@ export default function LandingHeader() {
                                 {/* Auth Button - Mobile */}
                                 <div className="p-4 border-t border-[#E6E6E6] bg-white">
                                     <SheetClose asChild>
-                                        <Link href="/data">
+                                        <Link href="/dashboard/data">
                                             <Button
                                                 className="w-full bg-black text-white hover:opacity-90 h-12 transition-colors duration-200 font-semibold flex items-center justify-center gap-2"
                                             >

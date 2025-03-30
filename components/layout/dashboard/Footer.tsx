@@ -1,3 +1,4 @@
+// components/layout/dashboard/Footer.tsx
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -10,9 +11,17 @@ export default function Footer() {
     const router = useRouter();
     const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
 
-    const isDataActive = pathname.startsWith('/data');
-    const isVariableActive = pathname.startsWith('/variable');
-    const isResultActive = pathname.startsWith('/result');
+    const isDataActive = pathname.startsWith('/dashboard/data');
+    const isVariableActive = pathname.startsWith('/dashboard/variable');
+    const isResultActive = pathname.startsWith('/dashboard/result');
+
+    // Prefetch routes when component mounts
+    useEffect(() => {
+        // Prefetch all main routes
+        router.prefetch('/dashboard/data');
+        router.prefetch('/dashboard/variable');
+        router.prefetch('/dashboard/result');
+    }, [router]);
 
     useEffect(() => {
         const handleConnectionChange = () => {
@@ -32,9 +41,9 @@ export default function Footer() {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.altKey) {
                 switch (e.key) {
-                    case 'd': router.push('/data'); break;
-                    case 'v': router.push('/variable'); break;
-                    case 'r': router.push('/result'); break;
+                    case 'd': router.push('/dashboard/data'); break;
+                    case 'v': router.push('/dashboard/variable'); break;
+                    case 'r': router.push('/dashboard/result'); break;
                     default: break;
                 }
             }
@@ -56,7 +65,8 @@ export default function Footer() {
                         <TooltipTrigger asChild>
                             <button
                                 className={`${tabStyle} ${isDataActive ? activeTabStyle : inactiveTabStyle}`}
-                                onClick={() => router.push('/data')}
+                                onClick={() => router.push('/dashboard/data')}
+                                onMouseEnter={() => router.prefetch('/dashboard/data')}
                             >
                                 <DatabaseIcon size={14} />
                                 <span>Data</span>
@@ -71,7 +81,8 @@ export default function Footer() {
                         <TooltipTrigger asChild>
                             <button
                                 className={`${tabStyle} ${isVariableActive ? activeTabStyle : inactiveTabStyle}`}
-                                onClick={() => router.push('/variable')}
+                                onClick={() => router.push('/dashboard/variable')}
+                                onMouseEnter={() => router.prefetch('/dashboard/variable')}
                             >
                                 <VariableIcon size={14} />
                                 <span>Variable</span>
@@ -86,7 +97,8 @@ export default function Footer() {
                         <TooltipTrigger asChild>
                             <button
                                 className={`${tabStyle} ${isResultActive ? activeTabStyle : inactiveTabStyle}`}
-                                onClick={() => router.push('/result')}
+                                onClick={() => router.push('/dashboard/result')}
+                                onMouseEnter={() => router.prefetch('/dashboard/result')}
                             >
                                 <BarChartIcon size={14} />
                                 <span>Result</span>

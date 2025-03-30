@@ -2,37 +2,33 @@
 import React from 'react';
 
 export function DataTableSkeleton() {
+    const columnCount = 20;
+    const rowCount = 25;
+
     return (
-        <div className="h-full w-full p-4 animate-pulse">
-            {/* Header skeleton */}
-            <div className="flex mb-4">
-                <div className="h-8 w-24 bg-gray-200 rounded mr-2"></div>
-                <div className="h-8 w-24 bg-gray-200 rounded mr-2"></div>
-                <div className="h-8 w-24 bg-gray-200 rounded"></div>
+        <div className="h-full w-full relative border border-gray-200 rounded animate-pulse">
+            {/* Column Headers */}
+            <div className="flex border-b border-gray-200 sticky top-0 z-10 bg-gray-50">
+                <div className="w-12 h-8 p-1 flex justify-center items-center border-r border-gray-200">
+                    {/* Corner cell */}
+                </div>
+                {Array.from({ length: columnCount }).map((_, i) => (
+                    <div key={i} className="w-16 min-w-16 h-8 p-1 border-r border-gray-200 flex flex-row items-center justify-between">
+                        <div className="h-5 bg-gray-200 rounded w-8 mr-1"></div>
+                        <div className="h-5 w-4 bg-gray-100 rounded"></div>
+                    </div>
+                ))}
             </div>
 
-            {/* Table skeleton */}
-            <div className="border border-gray-200 rounded">
-                {/* Table header */}
-                <div className="flex border-b border-gray-200 bg-gray-100">
-                    <div className="w-12 h-10 p-2 border-r border-gray-200"></div>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex-1 h-10 p-2 border-r border-gray-200">
-                            <div className="h-6 bg-gray-200 rounded w-full"></div>
+            {/* Row Headers and Cells */}
+            <div className="overflow-auto">
+                {Array.from({ length: rowCount }).map((_, rowIndex) => (
+                    <div key={rowIndex} className="flex border-b border-gray-200 hover:bg-gray-50">
+                        <div className="w-12 h-6 p-1 border-r border-gray-200 bg-gray-50 flex justify-center items-center">
+                            <div className="h-4 bg-gray-200 rounded w-6"></div>
                         </div>
-                    ))}
-                </div>
-
-                {/* Table rows */}
-                {Array.from({ length: 10 }).map((_, rowIndex) => (
-                    <div key={rowIndex} className="flex border-b border-gray-200">
-                        <div className="w-12 h-10 p-2 border-r border-gray-200 bg-gray-50">
-                            <div className="h-6 bg-gray-200 rounded w-8"></div>
-                        </div>
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="flex-1 h-10 p-2 border-r border-gray-200">
-                                <div className="h-6 bg-gray-200 rounded w-full"></div>
-                            </div>
+                        {Array.from({ length: columnCount }).map((_, i) => (
+                            <div key={i} className="w-16 min-w-16 h-6 p-1 border-r border-gray-200"></div>
                         ))}
                     </div>
                 ))}
@@ -42,29 +38,35 @@ export function DataTableSkeleton() {
 }
 
 export function VariableTableSkeleton() {
-    return (
-        <div className="h-full w-full p-4 animate-pulse">
-            {/* Table skeleton */}
-            <div className="border border-gray-200 rounded">
-                {/* Table header */}
-                <div className="flex border-b border-gray-200 bg-gray-100">
-                    <div className="w-12 h-10 p-2 border-r border-gray-200"></div>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="flex-1 h-10 p-2 border-r border-gray-200">
-                            <div className="h-6 bg-gray-200 rounded w-full"></div>
-                        </div>
-                    ))}
-                </div>
+    const columnCount = 7;
+    const rowCount = 25;
+    const columnWidths = ["flex-1", "flex-1", "w-24", "w-24", "flex-1", "flex-1", "flex-1"];
+    const columnNames = ["Name", "Type", "Width", "Decimals", "Label", "Values", "Missing"];
 
-                {/* Table rows */}
-                {Array.from({ length: 8 }).map((_, rowIndex) => (
-                    <div key={rowIndex} className="flex border-b border-gray-200">
-                        <div className="w-12 h-10 p-2 border-r border-gray-200 bg-gray-50">
-                            <div className="h-6 bg-gray-200 rounded w-8"></div>
+    return (
+        <div className="h-full w-full relative border border-gray-200 rounded animate-pulse">
+            {/* Column Headers */}
+            <div className="flex border-b border-gray-200 sticky top-0 z-10 bg-gray-50">
+                <div className="w-12 h-8 p-1 flex justify-center items-center border-r border-gray-200">
+                    {/* Corner cell */}
+                </div>
+                {Array.from({ length: columnCount }).map((_, i) => (
+                    <div key={i} className={`${columnWidths[i]} h-8 p-2 border-r border-gray-200 flex items-center justify-center`}>
+                        <div className="h-5 bg-gray-200 rounded w-4/5"></div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Row Headers and Cells */}
+            <div className="overflow-auto">
+                {Array.from({ length: rowCount }).map((_, rowIndex) => (
+                    <div key={rowIndex} className="flex border-b border-gray-200 hover:bg-gray-50">
+                        <div className="w-12 h-8 p-1 border-r border-gray-200 bg-gray-50 flex justify-center items-center">
+                            <div className="h-4 bg-gray-200 rounded w-6"></div>
                         </div>
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex-1 h-10 p-2 border-r border-gray-200">
-                                <div className="h-6 bg-gray-200 rounded w-full"></div>
+                        {Array.from({ length: columnCount }).map((_, i) => (
+                            <div key={i} className={`${columnWidths[i]} h-8 p-2 border-r border-gray-200`}>
+                                {/* Empty cell content */}
                             </div>
                         ))}
                     </div>
