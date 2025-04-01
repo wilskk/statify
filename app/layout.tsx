@@ -4,8 +4,8 @@ import '@/app/globals.css'
 import React from "react";
 
 export const metadata: Metadata = {
-    title: "My App",
-    description: "Default layout for the app",
+    title: "Statify",
+    description: "Statistical analysis application",
 };
 
 export default function RootLayout({

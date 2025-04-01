@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { InfoIcon, Shapes, Ruler, BarChartHorizontal, CornerDownRight, CornerDownLeft } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
-import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SetMeasurementLevelProps {
@@ -50,7 +49,6 @@ const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
         return variable.name;
     };
 
-    // Get variable icon based on measure
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
@@ -214,9 +212,8 @@ const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
         setHighlightedVariable(null);
     };
 
-    // Render variable list with consistent styling
-    const renderVariableList = (variables: Variable[], source: 'unknown' | 'nominal' | 'ordinal' | 'scale', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
+    const renderVariableList = (variables: Variable[], source: 'unknown' | 'nominal' | 'ordinal' | 'scale', containerClassName: string) => (
+        <div className={`border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden ${containerClassName}`}>
             <div className="space-y-1">
                 {variables.map((variable) => (
                     <TooltipProvider key={variable.columnIndex}>
@@ -243,6 +240,11 @@ const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
                         </Tooltip>
                     </TooltipProvider>
                 ))}
+                {variables.length === 0 && (
+                    <div className="flex items-center justify-center p-2 text-xs text-[#888888]">
+                        No variables
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -263,9 +265,9 @@ const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
                 </div>
 
                 <div className="grid grid-cols-12 gap-6">
-                    <div className="col-span-5">
+                    <div className="col-span-5 flex flex-col">
                         <div className="text-sm mb-2 font-medium">Variables with Unknown Measurement Level:</div>
-                        {renderVariableList(unknownVariables, 'unknown', '275px')}
+                        {renderVariableList(unknownVariables, 'unknown', 'flex-grow min-h-[275px]')}
                     </div>
 
                     <div className="col-span-1 flex flex-col items-center justify-center">
@@ -311,23 +313,23 @@ const SetMeasurementLevel: FC<SetMeasurementLevelProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    <div className="col-span-6 space-y-5">
-                        <div>
+                    <div className="col-span-6 space-y-5 flex flex-col">
+                        <div className="flex-1">
                             <div className="text-sm mb-2 font-medium">Nominal Variables:</div>
                             <div className="text-xs mb-1 text-[#888888]">Used for unranked categories (region, product type)</div>
-                            {renderVariableList(nominalVariables, 'nominal', '73px')}
+                            {renderVariableList(nominalVariables, 'nominal', 'h-[73px]')}
                         </div>
 
-                        <div>
+                        <div className="flex-1">
                             <div className="text-sm mb-2 font-medium">Ordinal Variables:</div>
                             <div className="text-xs mb-1 text-[#888888]">Used for ranked categories (low, medium, high)</div>
-                            {renderVariableList(ordinalVariables, 'ordinal', '73px')}
+                            {renderVariableList(ordinalVariables, 'ordinal', 'h-[73px]')}
                         </div>
 
-                        <div>
+                        <div className="flex-1">
                             <div className="text-sm mb-2 font-medium">Scale/Continuous Variables:</div>
                             <div className="text-xs mb-1 text-[#888888]">Used for numeric measurements (age, income)</div>
-                            {renderVariableList(scaleVariables, 'scale', '73px')}
+                            {renderVariableList(scaleVariables, 'scale', 'h-[73px]')}
                         </div>
                     </div>
                 </div>

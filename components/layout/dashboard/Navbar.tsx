@@ -66,10 +66,10 @@ const Navbar: React.FC = () => {
                   <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
                   <MenubarSubContent>
                     <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>
-                      Frequencies
+                      Frequencies...
                     </MenubarItem>
                     <MenubarItem onClick={() => openModal(ModalType.Descriptive)}>
-                      Descriptives
+                      Descriptives...
                     </MenubarItem>
                     <MenubarItem onClick={() => openModal(ModalType.Explore)}>
                       Explore...
@@ -77,8 +77,13 @@ const Navbar: React.FC = () => {
                     <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
                       Crosstabs...
                     </MenubarItem>
+                    <MenubarSeparator />
                     <MenubarItem onClick={() => openModal(ModalType.Ratio)}>
                       Ratio...
+                    </MenubarItem>
+                    <MenubarSeparator />
+                    <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>
+                      P-P Plots...
                     </MenubarItem>
                     <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>
                       Q-Q Plots...
@@ -196,14 +201,6 @@ const Navbar: React.FC = () => {
                     <MenubarItem onClick={()=>openModal(ModalType.Autocorrelation)}>Autocorrelation</MenubarItem>
                     <MenubarItem onClick={()=>openModal(ModalType.UnitRootTest)}>Unit Root Test</MenubarItem>
                     <MenubarItem onClick={()=>openModal(ModalType.BoxJenkinsModel)}>Box-Jenkins Model</MenubarItem>
-                  </MenubarSubContent>
-                </MenubarSub>
-
-                <MenubarSub>
-                  <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
-                  <MenubarSubContent>
-                    <MenubarItem onClick={() => openModal(ModalType.FrequenciesStatistic)}>Frequencies</MenubarItem>
-                    <MenubarItem onClick={() => openModal(ModalType.DescriptiveStatistic)}>Descriptives</MenubarItem>
                   </MenubarSubContent>
                 </MenubarSub>
               </MenubarContent>

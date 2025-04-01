@@ -1,14 +1,14 @@
 "use client"
 
 import React from "react";
-import {ModalType, useModal} from "@/hooks/useModal";
+import { ModalType, useModal } from "@/hooks/useModal";
 import { FileModals, isFileModal } from "@/components/Modals/File/FileModals";
 import { DataModals, isDataModal } from "@/components/Modals/Data/DataModals";
 import { EditModals, isEditModal } from "@/components/Modals/Edit/EditModals";
+import { DescriptiveModal, isDescriptiveModal } from "@/components/Modals/Analyze/Descriptive/DescriptiveModal";
 import ComputeVariableModal from "@/components/Modals/Transform/ComputeVariableModal";
-import {Dialog} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
-import FrequenciesModal from "@/components/Modals/Analyze/DescriptiveStatistic/Frequencies/FrequenciesModal";
 import ModalAutomaticLinearModeling from "@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling";
 import ModalLinear from "./Regression/Linear/ModalLinear";
 import ModalCurveEstimation from "./Regression/CurveEstimation/ModalCurveEstimation";
@@ -26,7 +26,7 @@ import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
 import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
 
 const ModalContainer: React.FC = () => {
-    const {modals, closeModal} = useModal();
+    const { modals, closeModal } = useModal();
 
     if (modals.length === 0) return null;
 
@@ -68,32 +68,54 @@ const ModalContainer: React.FC = () => {
         );
     }
 
+    if (isDescriptiveModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <DescriptiveModal
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
     const renderModal = () => {
         switch (currentModal.type) {
             case ModalType.ComputeVariable:
                 return <ComputeVariableModal onClose={closeModal} {...currentModal.props} />;
 
             case ModalType.ModalAutomaticLinearModeling:
-                return (<ModalAutomaticLinearModeling
-                    onClose={closeModal}
-                    {...currentModal.props}
-                />);
+                return (
+                    <ModalAutomaticLinearModeling
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalLinear:
                 return <ModalLinear onClose={closeModal} {...currentModal.props} />;
             case ModalType.ModalCurveEstimation:
-                return (<ModalCurveEstimation onClose={closeModal} {...currentModal.props} />);
+                return (
+                    <ModalCurveEstimation onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.ModalPartialLeastSquares:
-                return (<ModalPartialLeastSquares
-                    onClose={closeModal}
-                    {...currentModal.props}
-                />);
+                return (
+                    <ModalPartialLeastSquares
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalBinaryLogistic:
-                return (<ModalBinaryLogistic onClose={closeModal} {...currentModal.props} />);
+                return (
+                    <ModalBinaryLogistic onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.ModalMultinomialLogistic:
-                return (<ModalMultinomialLogistic
-                    onClose={closeModal}
-                    {...currentModal.props}
-                />);
+                return (
+                    <ModalMultinomialLogistic
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalOrdinal:
                 return <ModalOrdinal onClose={closeModal} {...currentModal.props} />;
             case ModalType.ModalProbit:
@@ -101,26 +123,30 @@ const ModalContainer: React.FC = () => {
             case ModalType.ModalNonlinear:
                 return <ModalNonlinear onClose={closeModal} {...currentModal.props} />;
             case ModalType.ModalWeightEstimation:
-                return (<ModalWeightEstimation onClose={closeModal} {...currentModal.props} />);
+                return (
+                    <ModalWeightEstimation onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.ModalTwoStageLeastSquares:
-                return (<ModalTwoStageLeastSquares
-                    onClose={closeModal}
-                    {...currentModal.props}
-                />);
+                return (
+                    <ModalTwoStageLeastSquares
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalQuantiles:
                 return <ModalQuantiles onClose={closeModal} {...currentModal.props} />;
             case ModalType.ModalOptimalScaling:
-                return (<ModalOptimalScaling onClose={closeModal} {...currentModal.props} />);
+                return (
+                    <ModalOptimalScaling onClose={closeModal} {...currentModal.props} />
+                );
 
             case ModalType.KRelatedSamplesTest:
                 return <KRelatedSamplesTestModal onClose={closeModal} {...currentModal.props} />;
 
-            case ModalType.Frequencies:
-            case ModalType.FrequenciesStatistic:
-                return (<FrequenciesModal onClose={closeModal} {...currentModal.props} />);
-
             case ModalType.ChartBuilderModal:
-                return (<ChartBuilderModal onClose={closeModal} {...currentModal.props} />);
+                return (
+                    <ChartBuilderModal onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.SimpleBarModal:
                 return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
 

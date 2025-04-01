@@ -98,6 +98,7 @@ export enum ModalType {
   SimpleBarModal = "simpleBarModal",
   SetMeasurementLevel = "setMeasurementLevel",
   DefineValidationRules = "defineValidationRules",
+  PPPlots = "ppPlots",
 }
 
 interface ModalInstance {
