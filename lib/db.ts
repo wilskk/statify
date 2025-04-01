@@ -1,10 +1,10 @@
 import Dexie, { Table } from "dexie";
-import { Cell } from "@/types/Cell";
+import { Cell } from "@/types/Data";
 import { Variable } from "@/types/Variable";
-import { ValueLabel } from "@/types/ValueLabel";
-import { Log } from "@/types/Log";
-import { Analytic } from "@/types/Analytic";
-import { Statistic } from "@/types/Statistic";
+import { ValueLabel } from "@/types/Variable";
+import { Log } from "@/types/Result";
+import { Analytic } from "@/types/Result";
+import { Statistic } from "@/types/Result";
 
 class MyDatabase extends Dexie {
     cells!: Table<Cell, number>;

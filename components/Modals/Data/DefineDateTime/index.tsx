@@ -17,7 +17,7 @@ import { useMetaStore } from "@/stores/useMetaStore"; // Import meta store
 import { useVariableStore } from "@/stores/useVariableStore"; // Import variable store
 import { useDataStore } from "@/stores/useDataStore"; // Import data store
 import { Variable } from "@/types/Variable";
-import { ValueLabel } from '@/types/ValueLabel'
+import { ValueLabel } from '@/types/Variable'
 
 interface DefineDatesProps {
     onClose: () => void;

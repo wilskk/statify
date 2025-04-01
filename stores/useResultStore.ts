@@ -2,9 +2,9 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import db from "@/lib/db";
-import { Log } from '@/types/Log';
-import { Analytic } from '@/types/Analytic';
-import { Statistic } from '@/types/Statistic';
+import { Log } from '@/types/Result';
+import { Analytic } from '@/types/Result';
+import { Statistic } from '@/types/Result';
 
 export type ResultStoreError = {
     message: string;

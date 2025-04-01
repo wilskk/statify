@@ -18,7 +18,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 
 import { Variable } from "@/types/Variable";
-import { ValueLabel } from "@/types/ValueLabel";
+import { ValueLabel } from "@/types/Variable";
 
 const DEFAULT_MIN_ROWS = 45;
 const DEFAULT_VARIABLE_TYPE = "NUMERIC";

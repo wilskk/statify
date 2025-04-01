@@ -4,9 +4,9 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useResultStore } from "@/stores/useResultStore";
-import { Log } from "@/types/Log";
-import { Analytic } from "@/types/Analytic";
-import { Statistic } from "@/types/Statistic";
+import { Log } from "@/types/Result";
+import { Analytic } from "@/types/Result";
+import { Statistic } from "@/types/Result";
 
 interface SidebarItem {
     title: string;

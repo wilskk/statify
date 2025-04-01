@@ -5,7 +5,7 @@ import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import db from "@/lib/db";
 import { Variable } from "@/types/Variable";
-import { ValueLabel } from "@/types/ValueLabel";
+import { ValueLabel } from "@/types/Variable";
 
 export type VariableStoreError = {
     message: string;

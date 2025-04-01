@@ -1,4 +1,10 @@
-import { ValueLabel } from "./ValueLabel";
+export type ValueLabel = {
+    id?: number;
+    variableName: string;
+    value: number | string;
+    label: string;
+};
+
 
 export type Variable = {
     id?: number;
