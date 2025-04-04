@@ -110,7 +110,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             className="mr-2 border-[#CCCCCC]"
                         />
                         <Label htmlFor="cochranMantelHaenszel" className="text-sm cursor-pointer">
-                            Cochran's and Mantel-Haenszel statistics
+                            Cochran&apos;s and Mantel-Haenszel statistics
                         </Label>
                     </div>
 
@@ -153,7 +153,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 className="mr-2 border-[#CCCCCC]"
                             />
                             <Label htmlFor="phiAndCramersV" className="text-sm cursor-pointer">
-                                Phi and Cramer's V
+                                Phi and Cramer&apos;s V
                             </Label>
                         </div>
 
@@ -206,7 +206,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 className="mr-2 border-[#CCCCCC]"
                             />
                             <Label htmlFor="somersD" className="text-sm cursor-pointer">
-                                Somers' d
+                                Somers&apos; d
                             </Label>
                         </div>
 
@@ -218,7 +218,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 className="mr-2 border-[#CCCCCC]"
                             />
                             <Label htmlFor="kendallTauB" className="text-sm cursor-pointer">
-                                Kendall's tau-b
+                                Kendall&apos;s tau-b
                             </Label>
                         </div>
 
@@ -230,7 +230,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 className="mr-2 border-[#CCCCCC]"
                             />
                             <Label htmlFor="kendallTauC" className="text-sm cursor-pointer">
-                                Kendall's tau-c
+                                Kendall&apos;s tau-c
                             </Label>
                         </div>
                     </div>
