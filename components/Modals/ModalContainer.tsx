@@ -24,6 +24,11 @@ import ModalQuantiles from "./Regression/Quantiles/ModalQuantiles";
 import ModalOptimalScaling from "./Regression/OptimalScaling/ModalOptimalScaling";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
 import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
+import SmoothingModal from "./Analyze/TimeSeries/SmoothingModal";
+import DecompositionModal from "./Analyze/TimeSeries/DecompositionModal";
+import AutocorrelationModal from "./Analyze/TimeSeries/AutocorrelationModal";
+import UnitRootTestModal from "./Analyze/TimeSeries/UnitRootTestModal";
+import BoxJenkinsModelModal from "./Analyze/TimeSeries/BoxJenkinsModelModal";
 
 const ModalContainer: React.FC = () => {
     const { modals, closeModal } = useModal();
@@ -149,6 +154,26 @@ const ModalContainer: React.FC = () => {
                 );
             case ModalType.SimpleBarModal:
                 return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
+
+            // Time Series
+            case ModalType.Smoothing:
+                return <SmoothingModal onClose={closeModal} {...currentModal.props} />;
+            case ModalType.Decomposition:
+                return (
+                <DecompositionModal onClose={closeModal} {...currentModal.props} />
+                );
+            case ModalType.Autocorrelation:
+                return (
+                <AutocorrelationModal onClose={closeModal} {...currentModal.props} />
+                );
+            case ModalType.UnitRootTest:
+                return (
+                    <UnitRootTestModal onClose={closeModal} {...currentModal.props} />
+                );
+            case ModalType.BoxJenkinsModel:
+                return (
+                <BoxJenkinsModelModal onClose={closeModal} {...currentModal.props} />
+                );
 
             default:
                 return null;
