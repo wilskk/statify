@@ -13,6 +13,7 @@ import { InputRow } from "./timeSeriesComponent/timeSeriesInput";
 import { handleSmoothing } from "./handleAnalyze/handleSmoothing";
 import { Variable } from "@/types/Variable";
 import db from "@/lib/db";
+import { row } from "mathjs";
 
 type RawData = string[][];
 
@@ -450,7 +451,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         const smoothingVariable: Partial<Variable> = {
             name: newVarName,
             columnIndex: newVarIndex,
-            type: "NUMERIC" as const,
+            type: "NUMERIC",
             label: newVarLabel,
             values: [],
             missing: [],
@@ -467,13 +468,21 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         // Add the new variable
         await addVariable(smoothingVariable);
         
-        // Save cells to IndexDB
-        const smoothingCells = fullResult.map((value, index) => ({
-            x: smoothingVariable.columnIndex,
-            y: index,
-            value: value.toString(),
-        }));
+        // Create an array of cell updates with the correct format
+        const smoothingCells = fullResult
+            .map((value, index) => {
+                if (smoothingVariable.columnIndex !== undefined) {
+                    return {
+                        col: smoothingVariable.columnIndex,
+                        row: index,
+                        value: value.toString(),
+                    };
+                }
+                return null;
+            })
+            .filter((cell): cell is { col: number; row: number; value: string } => cell !== null);
         
+        // Use the direct db.cells.bulkPut approach as in BoxJenkinsModelModal
         await db.cells.bulkPut(smoothingCells);
     };
 

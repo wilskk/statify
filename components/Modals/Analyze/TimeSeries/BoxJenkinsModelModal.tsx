@@ -303,11 +303,18 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
         await addVariable(forecastingVariable);
         
         // Save cells to IndexDB
-        const forecastCells = fullResult.map((value, index) => ({
-            x: forecastingVariable.columnIndex,
-            y: index,
-            value: value.toString(),
-        }));
+        const forecastCells = fullResult
+            .map((value, index) => {
+                if (forecastingVariable.columnIndex !== undefined) {
+                    return {
+                        col: forecastingVariable.columnIndex,
+                        row: index,
+                        value: value.toString(),
+                    };
+                }
+                return null;
+            })
+            .filter((cell): cell is { col: number; row: number; value: string } => cell !== null);
         
         await db.cells.bulkPut(forecastCells);
     };

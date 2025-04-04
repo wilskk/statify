@@ -282,8 +282,8 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             
             // Save to IndexDB
             const cells = fullValues.map((value, index) => ({
-                x: nextColumnIndex,
-                y: index,
+                col: nextColumnIndex,
+                row: index,
                 value: value.toString(),
             }));
             
