@@ -1,8 +1,7 @@
 // stores/useModalStore.ts
 
-import { create } from 'zustand';
-import StatisticsSettingsModal
-    from "@/components/Modals/Analyze/DescriptiveStatistic/Frequencies/FrequenciesStatistics";
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 export enum ModalType {
     OpenFile = 'openFile',
@@ -28,40 +27,133 @@ export enum ModalType {
     ModalTwoStageLeastSquares = 'modalTwoStageLeastSquares',
     ModalQuantiles = 'modalQuantiles',
     ModalOptimalScaling = 'modalOptimalScaling',
+  OpenFile = "openFile",
+  SaveFile = "saveFile",
+  ExportData = "exportData",
+  ComputeVariable = "computeVariable",
 
-    // Time Series
-    Smoothing = 'smoothing', //Time Series Smoothing
-    Decomposition = 'decomposition', //Time Series Decomposition
-    StationaryTest = 'stationaryTest', //Time Series Stationary Test
-    CreateModel = 'createModel', //Time Series Create Model
+  // Punya Nopal
+  ModalAutomaticLinearModeling = "modalAutomaticLinearModeling",
+  ModalLinear = "modalLinear",
+  ModalCurveEstimation = "modalCurveEstimation",
+  ModalPartialLeastSquares = "modalPartialLeastSquares",
+  ModalBinaryLogistic = "modalBinaryLogistic",
+  ModalMultinomialLogistic = "modalMultinomialLogistic",
+  ModalOrdinal = "modalOrdinal",
+  ModalProbit = "modalProbit",
+  ModalNonlinear = "modalNonlinear",
+  ModalWeightEstimation = "modalWeightEstimation",
+  ModalTwoStageLeastSquares = "modalTwoStageLeastSquares",
+  ModalQuantiles = "modalQuantiles",
+  ModalOptimalScaling = "modalOptimalScaling",
 
-    FrequenciesStatistic = 'frequenciesStatistic',
-    DescriptiveStatistic = 'descriptiveStatistic',
-    StatisticsSettingsModal = 'statisticsSettingsModal',
-    ChartSettingsModal = 'chartSettingsModal',
+  // Time Series
+  Smoothing = "smoothing", //Time Series Smoothing
+  Decomposition = "decomposition", //Time Series Decomposition
+  Autocorrelation = 'autocorrelation', //Time Series Stationary Test
+  UnitRootTest = "unitRootTest", //Time Series Stationary Test
+  BoxJenkinsModel = "BoxJenkinsModel", //Time Series Create Model
+  FrequenciesStatistic = "frequenciesStatistic",
+  DescriptiveStatistic = "descriptiveStatistic",
+  StatisticsSettingsModal = "statisticsSettingsModal",
+  ChartSettingsModal = "chartSettingsModal",
+
+  // File
+  NewFile = "newFile",
+  OpenData = "openData",
+  OpenOutput = "openOutput",
+  ImportExcel = "importExcel",
+  ImportCSV = "importCSV",
+  ExportDatabase = "exportDatabase",
+  ExportExcel = "exportExcel",
+  ExportCSV = "exportCSV",
+  PrintPreview = "printPreview",
+  Print = "print",
+  Exit = "exit",
+
+  // Edit
+  Find = "find",
+  Replace = "replace",
+  GoToCase = "goToCase",
+  GoToVariable = "goToVariable",
+
+  // Data
+  DefineVarProps = "defineVarProps",
+  VarPropsEditor = "varPropsEditor",
+
+  MeasureUnknown = "measureUnknown",
+  CopyDataProps = "copyDataProps",
+  NewCustomAttr = "newCustomAttr",
+  DefineDateTime = "defineDateTime",
+  MultipleResponse = "multipleResponse",
+  Validate = "validate",
+  DuplicateCases = "duplicateCases",
+  UnusualCases = "unusualCases",
+  CompareDatasets = "compareDatasets",
+  SortCases = "sortCases",
+  SortVars = "sortVars",
+  Transpose = "transpose",
+  MergeFiles = "mergeFiles",
+  Restructure = "restructure",
+  Aggregate = "aggregate",
+  OrthogonalDesign = "orthogonalDesign",
+  CopyDataset = "copyDataset",
+  SplitFile = "splitFile",
+  SelectCases = "selectCases",
+  WeightCases = "weightCases",
+
+
+  // Descriptive
+  Frequencies = "frequencies",
+  Descriptive = "descriptive",
+  Explore = "explore",
+  Crosstabs = "crosstabs",
+  Ratio = "ratio",
+  QQPlots = "qqPlots",
+  ReadCSVFile = "readCSVFile",
+  ReadExcelFile = "ReadExcelFile",
+
+  // Nonparametric Test
+  KRelatedSamplesTest = 'kRelatedSamplesTest',
+
+  //Chart Builder
+  ChartBuilderModal = "chartBuilderModal",
+  SimpleBarModal = "simpleBarModal",
+  SetMeasurementLevel = "setMeasurementLevel",
+  DefineValidationRules = "defineValidationRules",
+  PPPlots = "ppPlots",
 }
 
 interface ModalInstance {
-    type: ModalType;
-    props?: any;
+  type: ModalType;
+  props?: any;
 }
 
 interface ModalStoreState {
-    modals: ModalInstance[];
-    openModal: (type: ModalType, props?: any) => void;
-    closeModal: () => void;
-    closeAllModals: () => void;
+  modals: ModalInstance[];
+  isStatisticProgress: boolean;
+  openModal: (type: ModalType, props?: any) => void;
+  closeModal: () => void;
+  closeAllModals: () => void;
+  setStatisticProgress: (value: boolean) => void;
 }
 
-export const useModalStore = create<ModalStoreState>((set, get) => ({
-    modals: [],
-    openModal: (type, props) => {
+export const useModalStore = create<ModalStoreState>()(
+    devtools((set, get) => ({
+      modals: [],
+      isStatisticProgress: false,
+      openModal: (type, props) => {
+        console.log('openModal', type, props);
         set((state) => ({ modals: [...state.modals, { type, props }] }));
-    },
-    closeModal: () => {
+      },
+      closeModal: () => {
         set((state) => ({ modals: state.modals.slice(0, -1) }));
-    },
-    closeAllModals: () => {
+      },
+      closeAllModals: () => {
         set({ modals: [] });
-    },
-}));
+      },
+      setStatisticProgress: (value: boolean) =>
+          set({ isStatisticProgress: value }),
+    }))
+);
+

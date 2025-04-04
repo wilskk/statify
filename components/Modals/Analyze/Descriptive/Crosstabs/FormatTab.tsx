@@ -1,0 +1,54 @@
+import React, { FC } from "react";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+interface FormatTabProps {
+    rowOrder: 'ascending' | 'descending';
+    setRowOrder: (value: 'ascending' | 'descending') => void;
+}
+
+const FormatTab: FC<FormatTabProps> = ({
+                                           rowOrder,
+                                           setRowOrder
+                                       }) => {
+    return (
+        <div className="p-6">
+            <div className="border border-[#E6E6E6] rounded-md p-6">
+                <div className="text-sm font-medium mb-4">Row Order</div>
+                <RadioGroup
+                    value={rowOrder}
+                    onValueChange={(value) => setRowOrder(value as 'ascending' | 'descending')}
+                    className="space-y-4"
+                >
+                    <div className="flex items-center">
+                        <RadioGroupItem
+                            value="ascending"
+                            id="ascending"
+                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                        />
+                        <Label htmlFor="ascending" className="text-sm ml-2 cursor-pointer">
+                            Ascending
+                        </Label>
+                    </div>
+
+                    <div className="flex items-center">
+                        <RadioGroupItem
+                            value="descending"
+                            id="descending"
+                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                        />
+                        <Label htmlFor="descending" className="text-sm ml-2 cursor-pointer">
+                            Descending
+                        </Label>
+                    </div>
+                </RadioGroup>
+
+                <div className="mt-4 text-xs text-[#888888]">
+                    <p>Determines the sort order of values for categorical row variables in the crosstabulation.</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default FormatTab;
