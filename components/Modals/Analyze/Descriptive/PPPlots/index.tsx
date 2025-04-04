@@ -44,16 +44,13 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // Test Distribution options
     const [testDistribution, setTestDistribution] = useState<string>("Normal");
     const [degreesOfFreedom, setDegreesOfFreedom] = useState<string>("");
 
-    // Distribution Parameters
     const [estimateFromData, setEstimateFromData] = useState<boolean>(true);
     const [location, setLocation] = useState<string>("0");
     const [scale, setScale] = useState<string>("1");
 
-    // Transform options
     const [naturalLogTransform, setNaturalLogTransform] = useState<boolean>(false);
     const [standardizeValues, setStandardizeValues] = useState<boolean>(false);
     const [difference, setDifference] = useState<boolean>(false);
@@ -62,16 +59,13 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
     const [seasonallyDifferenceValue, setSeasonallyDifferenceValue] = useState<string>("1");
     const [currentPeriodicity, setCurrentPeriodicity] = useState<string>("None");
 
-    // Proportion Estimation Formula
     const [proportionEstimation, setProportionEstimation] = useState<string>("Blom's");
 
-    // Rank Assigned to Ties
     const [rankAssignedToTies, setRankAssignedToTies] = useState<string>("Mean");
 
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    // Initialize available variables on component mount
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "");
         setAvailableVariables(validVars);
@@ -185,14 +179,8 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
         setIsCalculating(true);
 
         try {
-            // Placeholder for actual PP plots analysis
-            // In a real implementation, this would use a web worker
-
-            // Simulate analysis
             setTimeout(() => {
-                // In a real implementation, this is where you'd process results
                 const variableNames = selectedVariables.map(v => v.name).join(" ");
-
                 const logMsg = `P-P PLOTS VARIABLES=${variableNames} DIST=${testDistribution}`;
 
                 addLog({ log: logMsg }).then(logId => {
@@ -200,7 +188,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                         title: "P-P Plots",
                         note: ""
                     }).then(analyticId => {
-                        // Add sample statistics (would be actual results in a real implementation)
                         addStatistic(analyticId, {
                             title: "Probability-Probability Plot",
                             output_data: JSON.stringify({
@@ -250,7 +237,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
 
             <div className="p-6 overflow-y-auto flex-grow">
                 <div className="grid grid-cols-9 gap-6">
-                    {/* Left column: Available Variables */}
                     <div className="col-span-3">
                         <div className="text-sm mb-2 font-medium">Variables:</div>
                         {renderVariableList(availableVariables, 'available', '300px')}
@@ -260,9 +246,7 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Middle column: Variables and Transform */}
                     <div className="col-span-3 space-y-6">
-                        {/* Variables section */}
                         <div>
                             <div className="text-sm mb-2 font-medium">Selected Variables:</div>
                             <div className="flex mb-4">
@@ -286,10 +270,8 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                             </div>
                         </div>
 
-                        {/* Transform section */}
                         <div className="border border-[#E6E6E6] rounded-md p-4">
                             <div className="text-sm font-medium mb-3">Transform</div>
-
                             <div className="space-y-3">
                                 <div className="flex items-center">
                                     <Checkbox
@@ -302,7 +284,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         Natural log transform
                                     </Label>
                                 </div>
-
                                 <div className="flex items-center">
                                     <Checkbox
                                         id="standardizeValues"
@@ -314,7 +295,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         Standardize values
                                     </Label>
                                 </div>
-
                                 <div className="flex items-center">
                                     <Checkbox
                                         id="difference"
@@ -332,7 +312,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         disabled={!difference}
                                     />
                                 </div>
-
                                 <div className="flex items-center">
                                     <Checkbox
                                         id="seasonallyDifference"
@@ -351,7 +330,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         disabled={true}
                                     />
                                 </div>
-
                                 <div className="pt-2">
                                     <Label className="text-sm mr-2">
                                         Current Periodicity:
@@ -362,12 +340,9 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Right column: Distribution and Estimation options */}
                     <div className="col-span-3 space-y-6">
-                        {/* Test Distribution section */}
                         <div className="border border-[#E6E6E6] rounded-md p-4">
                             <div className="text-sm font-medium mb-3">Test Distribution</div>
-
                             <div className="space-y-3">
                                 <Select
                                     value={testDistribution}
@@ -380,12 +355,11 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         <SelectItem value="Normal">Normal</SelectItem>
                                         <SelectItem value="Uniform">Uniform</SelectItem>
                                         <SelectItem value="Exponential">Exponential</SelectItem>
-                                        <SelectItem value="t">Student's t</SelectItem>
+                                        <SelectItem value="t">Student&apos;s t</SelectItem>
                                         <SelectItem value="Chi-square">Chi-square</SelectItem>
                                         <SelectItem value="F">F</SelectItem>
                                     </SelectContent>
                                 </Select>
-
                                 <div className="flex items-center mt-2">
                                     <Label htmlFor="degreesOfFreedom" className="text-sm mr-2">
                                         df:
@@ -399,11 +373,8 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                     />
                                 </div>
                             </div>
-
-                            {/* Distribution Parameters */}
                             <div className="mt-4 border-t border-[#E6E6E6] pt-3">
                                 <div className="text-sm font-medium mb-3">Distribution Parameters</div>
-
                                 <div className="space-y-3">
                                     <div className="flex items-center">
                                         <Checkbox
@@ -416,7 +387,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             Estimate from data
                                         </Label>
                                     </div>
-
                                     <div className="flex items-center justify-between">
                                         <Label className="text-sm">
                                             Location:
@@ -428,7 +398,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             disabled={estimateFromData}
                                         />
                                     </div>
-
                                     <div className="flex items-center justify-between">
                                         <Label className="text-sm">
                                             Scale:
@@ -444,10 +413,8 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                             </div>
                         </div>
 
-                        {/* Proportion Estimation Formula */}
                         <div className="border border-[#E6E6E6] rounded-md p-4">
                             <div className="text-sm font-medium mb-3">Proportion Estimation Formula</div>
-
                             <RadioGroup
                                 value={proportionEstimation}
                                 onValueChange={setProportionEstimation}
@@ -461,10 +428,9 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                                         />
                                         <Label htmlFor="bloms" className="text-sm cursor-pointer">
-                                            Blom's
+                                            Blom&apos;s
                                         </Label>
                                     </div>
-
                                     <div className="flex items-center">
                                         <RadioGroupItem
                                             value="Rankit"
@@ -476,7 +442,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         </Label>
                                     </div>
                                 </div>
-
                                 <div className="flex space-x-4">
                                     <div className="flex items-center">
                                         <RadioGroupItem
@@ -485,10 +450,9 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                                         />
                                         <Label htmlFor="tukeys" className="text-sm cursor-pointer">
-                                            Tukey's
+                                            Tukey&apos;s
                                         </Label>
                                     </div>
-
                                     <div className="flex items-center">
                                         <RadioGroupItem
                                             value="Van der Waerden's"
@@ -496,17 +460,15 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                                         />
                                         <Label htmlFor="vanderwaerdens" className="text-sm cursor-pointer">
-                                            Van der Waerden's
+                                            Van der Waerden&apos;s
                                         </Label>
                                     </div>
                                 </div>
                             </RadioGroup>
                         </div>
 
-                        {/* Rank Assigned to Ties */}
                         <div className="border border-[#E6E6E6] rounded-md p-4">
                             <div className="text-sm font-medium mb-3">Rank Assigned to Ties</div>
-
                             <RadioGroup
                                 value={rankAssignedToTies}
                                 onValueChange={setRankAssignedToTies}
@@ -523,7 +485,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             Mean
                                         </Label>
                                     </div>
-
                                     <div className="flex items-center">
                                         <RadioGroupItem
                                             value="High"
@@ -535,7 +496,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                         </Label>
                                     </div>
                                 </div>
-
                                 <div className="flex space-x-4">
                                     <div className="flex items-center">
                                         <RadioGroupItem
@@ -547,7 +507,6 @@ const PPPlotsModal: FC<PPPlotsModalProps> = ({ onClose }) => {
                                             Low
                                         </Label>
                                     </div>
-
                                     <div className="flex items-center">
                                         <RadioGroupItem
                                             value="Break ties arbitrarily"

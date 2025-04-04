@@ -45,27 +45,23 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
 
-    // Statistics options
     const [showDescriptives, setShowDescriptives] = useState(true);
     const [showMeasuresOfCentralTendency, setShowMeasuresOfCentralTendency] = useState(true);
     const [showDispersion, setShowDispersion] = useState(true);
     const [showOutliers, setShowOutliers] = useState(false);
     const [showPercentiles, setShowPercentiles] = useState(false);
 
-    // Plots options
     const [showHistograms, setShowHistograms] = useState(true);
     const [showBoxplots, setShowBoxplots] = useState(true);
     const [showScatterplots, setShowScatterplots] = useState(false);
     const [showNormalProbabilityPlots, setShowNormalProbabilityPlots] = useState(false);
 
-    // Bootstrap options
     const [bootstrapSamples, setBootstrapSamples] = useState("1000");
     const [confidenceLevel, setConfidenceLevel] = useState("95");
 
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    // Initialize available variables on component mount
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "");
         setAvailableVariables(validVars);
@@ -103,7 +99,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
 
     const handleVariableDoubleClick = (variable: Variable, source: 'available' | 'dependent' | 'factor' | 'label') => {
         if (source === 'available') {
-            // For available variables, default to adding to dependent list
             moveToDependentVariables(variable);
         } else if (source === 'dependent') {
             moveToAvailableVariables(variable, 'dependent');
@@ -127,7 +122,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     };
 
     const moveToLabelVariable = (variable: Variable) => {
-        // Remove from label if it exists
         if (labelVariable) {
             setAvailableVariables(prev => [...prev, labelVariable]);
         }
@@ -224,9 +218,7 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
         setIsCalculating(true);
 
         try {
-            // Simulate analysis
             setTimeout(() => {
-                // In a real implementation, this is where you'd process results
                 const dependentNames = dependentVariables.map(v => v.name).join(" ");
                 const factorNames = factorVariables.map(v => v.name).join(" ");
                 const labelName = labelVariable ? labelVariable.name : "";
@@ -238,7 +230,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                         title: "Explore",
                         note: ""
                     }).then(analyticId => {
-                        // Add sample statistics (would be actual results in a real implementation)
                         addStatistic(analyticId, {
                             title: "Descriptive Statistics",
                             output_data: JSON.stringify({
@@ -307,20 +298,17 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     </TabsList>
                 </div>
 
-                {/* Variables Tab */}
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <div className="grid grid-cols-8 gap-6">
-                        {/* Left column: Available Variables */}
                         <div className="col-span-3">
                             <div className="text-sm mb-2 font-medium">Variables:</div>
                             {renderVariableList(availableVariables, 'available', '300px')}
                             <div className="text-xs mt-2 text-[#888888] flex items-center">
                                 <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                                <span>To change a variable's measurement level, right click on it in the Variables list.</span>
+                                <span>To change a variable&apos;s measurement level, right click on it in the Variables list.</span>
                             </div>
                         </div>
 
-                        {/* Middle column: Transfer buttons */}
                         <div className="col-span-1 flex flex-col items-center justify-center">
                             <div className="flex flex-col space-y-32">
                                 <div className="space-y-4">
@@ -361,7 +349,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                             </div>
                         </div>
 
-                        {/* Right column: Variable lists */}
                         <div className="col-span-4 space-y-6">
                             <div>
                                 <div className="text-sm mb-2 font-medium">Dependent List:</div>
@@ -389,7 +376,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     {errorMsg && <div className="text-red-600 text-sm mt-4">{errorMsg}</div>}
                 </TabsContent>
 
-                {/* Statistics Tab */}
                 <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
                     <div className="border border-[#E6E6E6] p-4 rounded-md">
                         <div className="text-sm font-medium mb-4">Descriptive Statistics</div>
@@ -448,7 +434,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     </div>
                 </TabsContent>
 
-                {/* Plots Tab */}
                 <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
                     <div className="border border-[#E6E6E6] p-4 rounded-md">
                         <div className="text-sm font-medium mb-4">Plot Types</div>
@@ -497,7 +482,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     </div>
                 </TabsContent>
 
-                {/* Bootstrap Tab */}
                 <TabsContent value="bootstrap" className="p-6 overflow-y-auto flex-grow">
                     <div className="border border-[#E6E6E6] p-4 rounded-md">
                         <div className="text-sm font-medium mb-4">Bootstrap Options</div>
@@ -527,7 +511,6 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     </div>
                 </TabsContent>
 
-                {/* Display Tab */}
                 <TabsContent value="display" className="p-6 overflow-y-auto flex-grow">
                     <div className="border border-[#E6E6E6] p-4 rounded-md">
                         <div className="text-sm font-medium mb-4">Display Options</div>
