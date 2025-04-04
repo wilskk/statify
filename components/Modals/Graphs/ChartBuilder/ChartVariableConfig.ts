@@ -33,6 +33,10 @@ export interface ChartVariableRequirements {
     min: number;
     max: number;
   };
+  bottom2?: {
+    min: number;
+    max: number;
+  };
 }
 
 export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
@@ -246,5 +250,33 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
     "Summary Point Plot": {
       side: { min: 1, max: 1 },
       bottom: { min: 1, max: 1 },
+    },
+    "3D Bar Chart2": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
+    "Clustered 3D Bar Chart": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
+    "3D Scatter Plot": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
+    "Grouped 3D Scatter Plot": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
+    },
+    "Stacked 3D Bar Chart": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      color: { min: 1, max: 1 },
+      bottom2: { min: 1, max: 1 },
     },
   };

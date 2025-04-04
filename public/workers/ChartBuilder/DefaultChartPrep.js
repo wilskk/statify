@@ -13,6 +13,7 @@ self.onmessage = function (event) {
 
   const xVariables = chartVariables.x;
   const yVariables = chartVariables.y;
+  const zVariables = chartVariables.z;
   const groupByVariables = chartVariables.groupBy;
   const lowVariables = chartVariables.low;
   const highVariables = chartVariables.high;
@@ -2257,6 +2258,444 @@ self.onmessage = function (event) {
               useAxis: chartConfig.useAxis ?? true,
               useLegend: chartConfig.useLegend ?? true,
               title: chartConfig.title ?? null,
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "3D Bar Chart2") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+
+      if (xIndex === -1 || yIndex === -1 || zIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const reducedData = data.reduce((acc, row) => {
+        const x = parseFloat(row[xIndex]);
+        const y = parseFloat(row[yIndex]);
+        const z = parseFloat(row[zIndex]);
+
+        if (isNaN(x) || isNaN(y) || isNaN(z)) return acc; // Lewati nilai invalid
+
+        // Buat key unik berdasarkan kombinasi x dan z
+        const key = `${x}-${z}`;
+
+        if (!acc[key]) {
+          acc[key] = { x, z, y: 0 }; // Inisialisasi jika belum ada
+        }
+
+        acc[key].y += y; // Tambahkan y ke total y yang sudah ada
+
+        return acc;
+      }, {}); // Gunakan objek untuk grouping
+
+      // Ubah kembali ke dalam bentuk array
+      const chartData = Object.values(reducedData);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "3D Scatter Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+
+      if (xIndex === -1 || yIndex === -1 || zIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const reducedData = data.reduce((acc, row) => {
+        const x = parseFloat(row[xIndex]);
+        const y = parseFloat(row[yIndex]);
+        const z = parseFloat(row[zIndex]);
+
+        if (isNaN(x) || isNaN(y) || isNaN(z)) return acc; // Lewati nilai invalid
+
+        // Buat key unik berdasarkan kombinasi x dan z
+        const key = `${x}-${z}`;
+
+        if (!acc[key]) {
+          acc[key] = { x, z, y: 0 }; // Inisialisasi jika belum ada
+        }
+
+        acc[key].y += y; // Tambahkan y ke total y yang sudah ada
+
+        return acc;
+      }, {}); // Gunakan objek untuk grouping
+
+      // Ubah kembali ke dalam bentuk array
+      const chartData = Object.values(reducedData);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Grouped 3D Scatter Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+      const groupByVariable = groupByVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+      const groupByIndex = variables.findIndex(
+        (v) => v.name === groupByVariable
+      );
+
+      if (
+        xIndex === -1 ||
+        yIndex === -1 ||
+        zIndex === -1 ||
+        groupByIndex === -1
+      ) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const chartData = data
+        .map((row) => {
+          const x = parseFloat(row[xIndex]);
+          const y = parseFloat(row[yIndex]);
+          const z = parseFloat(row[zIndex]);
+          const category = row[groupByIndex];
+
+          return { x, y, z, category };
+        })
+        .filter((d) => !isNaN(d.x) && !isNaN(d.y) && !isNaN(d.z)); // Hapus nilai invalid
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+                category: groupByVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "3D Scatter Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+
+      if (xIndex === -1 || yIndex === -1 || zIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const reducedData = data.reduce((acc, row) => {
+        const x = parseFloat(row[xIndex]);
+        const y = parseFloat(row[yIndex]);
+        const z = parseFloat(row[zIndex]);
+
+        if (isNaN(x) || isNaN(y) || isNaN(z)) return acc; // Lewati nilai invalid
+
+        // Buat key unik berdasarkan kombinasi x dan z
+        const key = `${x}-${z}`;
+
+        if (!acc[key]) {
+          acc[key] = { x, z, y: 0 }; // Inisialisasi jika belum ada
+        }
+
+        acc[key].y += y; // Tambahkan y ke total y yang sudah ada
+
+        return acc;
+      }, {}); // Gunakan objek untuk grouping
+
+      // Ubah kembali ke dalam bentuk array
+      const chartData = Object.values(reducedData);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Clustered 3D Bar Chart") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+      const groupByVariable = groupByVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+      const groupByIndex = variables.findIndex(
+        (v) => v.name === groupByVariable
+      );
+
+      if (
+        xIndex === -1 ||
+        yIndex === -1 ||
+        zIndex === -1 ||
+        groupByIndex === -1
+      ) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const chartData = data
+        .map((row) => {
+          const x = parseFloat(row[xIndex]);
+          const y = parseFloat(row[yIndex]);
+          const z = parseFloat(row[zIndex]);
+          const category = row[groupByIndex];
+
+          return { x, y, z, category };
+        })
+        .filter((d) => !isNaN(d.x) && !isNaN(d.y) && !isNaN(d.z)); // Hapus nilai invalid
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+                category: groupByVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "3D Scatter Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+
+      if (xIndex === -1 || yIndex === -1 || zIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const reducedData = data.reduce((acc, row) => {
+        const x = parseFloat(row[xIndex]);
+        const y = parseFloat(row[yIndex]);
+        const z = parseFloat(row[zIndex]);
+
+        if (isNaN(x) || isNaN(y) || isNaN(z)) return acc; // Lewati nilai invalid
+
+        // Buat key unik berdasarkan kombinasi x dan z
+        const key = `${x}-${z}`;
+
+        if (!acc[key]) {
+          acc[key] = { x, z, y: 0 }; // Inisialisasi jika belum ada
+        }
+
+        acc[key].y += y; // Tambahkan y ke total y yang sudah ada
+
+        return acc;
+      }, {}); // Gunakan objek untuk grouping
+
+      // Ubah kembali ke dalam bentuk array
+      const chartData = Object.values(reducedData);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Stacked 3D Bar Chart") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+      const zVariable = zVariables[0];
+      const groupByVariable = groupByVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+      const zIndex = variables.findIndex((v) => v.name === zVariable);
+      const groupByIndex = variables.findIndex(
+        (v) => v.name === groupByVariable
+      );
+
+      if (
+        xIndex === -1 ||
+        yIndex === -1 ||
+        zIndex === -1 ||
+        groupByIndex === -1
+      ) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      // Kita akan menyimpan setiap entry terpisah
+      const chartData = data
+        .map((row) => {
+          const x = parseFloat(row[xIndex]);
+          const y = parseFloat(row[yIndex]);
+          const z = parseFloat(row[zIndex]);
+          const category = row[groupByIndex];
+
+          return { x, y, z, category };
+        })
+        .filter((d) => !isNaN(d.x) && !isNaN(d.y) && !isNaN(d.z)); // Hapus nilai invalid
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                x: xVariable,
+                y: yVariable,
+                z: zVariable,
+                category: groupByVariable,
+              },
+              description: chartMetadata.description || null,
+              notes: chartMetadata.note || null,
+            },
+            chartData: chartData, // ChartData that holds individual entries
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title ?? "Title",
             },
           },
         ],

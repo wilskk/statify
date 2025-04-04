@@ -34,6 +34,14 @@ export const chartTypes = [
   "Dual Axes Scatter Plot",
   "Drop Line Chart",
   "Summary Point Plot",
+  "3D Bar Chart2",
+  "Clustered 3D Bar Chart",
+  "Stacked 3D Bar Chart",
+  // "3D Bar Chart",
+  // "Bar2",
+  "3D Scatter Plot",
+  "Grouped 3D Scatter Plot",
+
   // "Word Cloud",
 ] as const;
 

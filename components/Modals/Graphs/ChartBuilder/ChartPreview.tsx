@@ -5,8 +5,31 @@ import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import * as d3 from "d3"; // Mengimpor D3.js
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 import { chartVariableConfig } from "./ChartVariableConfig";
-import { number } from "mathjs";
-
+import * as echarts from "echarts/core";
+import { BarChart } from "echarts/charts";
+import { CanvasRenderer } from "echarts/renderers";
+import { Bar3DChart } from "echarts-gl/charts";
+import { Grid3DComponent } from "echarts-gl/components";
+import {
+  TooltipComponent,
+  GridComponent,
+  VisualMapComponent,
+} from "echarts/components";
+import {
+  TitleComponent, // 🔥 Tambahkan ini!
+} from "echarts/components";
+import clsx from "clsx";
+// Registrasi komponen ke ECharts
+echarts.use([
+  Grid3DComponent,
+  Bar3DChart,
+  TitleComponent, // 🔥 Jangan lupa register ini juga!
+  CanvasRenderer,
+  BarChart,
+  TooltipComponent,
+  GridComponent,
+  VisualMapComponent,
+]);
 interface ChartPreviewProps {
   chartType: ChartType;
   width: number;
@@ -15,6 +38,7 @@ interface ChartPreviewProps {
   sideVariables: string[];
   side2Variables: string[];
   bottomVariables: string[];
+  bottom2Variables: string[];
   filterVariables: string[];
   colorVariables: string[];
   lowVariables: string[];
@@ -23,13 +47,14 @@ interface ChartPreviewProps {
   onDropSide: (newSideVariables: string[]) => void;
   onDropSide2: (newSideVariables: string[]) => void;
   onDropBottom: (newBottomVariables: string[]) => void;
+  onDropBottom2: (newBottom2Variables: string[]) => void;
   onDropFilter: (newFilterVariables: string[]) => void;
   onDropColor: (newColorVariables: string[]) => void;
   onDropLow: (newLowVariables: string[]) => void;
   onDropHigh: (newHighVariables: string[]) => void;
   onDropClose: (newCloseVariables: string[]) => void;
   handleRemoveVariable: (
-    type: "side" | "bottom" | "low" | "high" | "close" | "side2",
+    type: "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2",
     index: number
   ) => void;
   validateChartVariables: (
@@ -63,6 +88,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   sideVariables,
   side2Variables,
   bottomVariables,
+  bottom2Variables,
   filterVariables,
   lowVariables,
   highVariables,
@@ -71,6 +97,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   onDropSide,
   onDropSide2,
   onDropBottom,
+  onDropBottom2,
   onDropFilter,
   onDropColor,
   onDropLow,
@@ -86,6 +113,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   const { data, loadData } = useDataStore(); // Mengambil data dari useDataStore
   const { variables, loadVariables } = useVariableStore(); // Mengambil variabel dari useVariableStore
   const svgRef = useRef<SVGSVGElement | null>(null); // Referensi untuk elemen SVG
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [modalState, setModalState] = useState<{
     type: string | null;
@@ -100,7 +128,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       : modalState.type === "side2"
       ? side2Variables
       : modalState.type === "bottom"
-      ? bottomVariables
+      ? side2Variables
+      : modalState.type === "bottom2"
+      ? bottom2Variables
       : modalState.type === "color"
       ? colorVariables
       : modalState.type === "filter"
@@ -115,7 +145,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
   // Fungsi untuk membuka modal
   const handleOpenModal = (
-    type: "side" | "bottom" | "low" | "high" | "close" | "side2"
+    type: "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2"
   ) => {
     setModalState({ type, isOpen: true });
   };
@@ -147,6 +177,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       | "low"
       | "close"
       | "side2"
+      | "bottom2"
   ) => {
     e.preventDefault();
     const variableName = e.dataTransfer.getData("text/plain");
@@ -249,6 +280,22 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         const updatedSide2Variables = [...side2Variables, variableName];
         onDropSide2(updatedSide2Variables);
         console.log(`Added to side2 variables: ${updatedSide2Variables}`);
+      }
+    } else if (
+      dropZone === "bottom2" &&
+      config.bottom2 &&
+      config.bottom2.max > 0
+    ) {
+      if (bottom2Variables.length >= config.bottom2.max) {
+        const updatedBottom2Variables = [variableName];
+        onDropBottom2(updatedBottom2Variables);
+        console.log(
+          `Replacing bottom2 variables with: ${updatedBottom2Variables}`
+        );
+      } else {
+        const updatedBottom2Variables = [...bottom2Variables, variableName];
+        onDropBottom2(updatedBottom2Variables);
+        console.log(`Added to bottom2 variables: ${updatedBottom2Variables}`);
       }
     } else {
       console.log(`Penambahan ${dropZone} tidak diizinkan`);
@@ -508,6 +555,10 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       variables.findIndex((variable) => variable.name === varName)
     );
 
+    const bottom2Indices = bottom2Variables.map((varName) =>
+      variables.findIndex((variable) => variable.name === varName)
+    );
+
     const sideIndices = sideVariables.map((varName) =>
       variables.findIndex((variable) => variable.name === varName)
     );
@@ -542,7 +593,8 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       highIndices.every((index) => index === -1) &&
       closeIndices.every((index) => index === -1) &&
       bottomIndices.every((index) => index === -1) &&
-      sideIndices.every((index) => index === -1)
+      sideIndices.every((index) => index === -1) &&
+      bottom2Indices.every((index) => index === -1)
     ) {
       return [];
     }
@@ -642,6 +694,12 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           }
         });
 
+        bottom2Indices.forEach((index, i) => {
+          if (index !== -1) {
+            result[`bottom2_${i}`] = row[index]; // Menyimpan nilai bottom dengan key yang berbeda
+          }
+        });
+
         // Jika colorIndex valid, tambahkan warna
         if (colorIndex !== -1) {
           result.color = row[colorIndex];
@@ -665,6 +723,31 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             result[`close_${i}`] = parseFloat(row[index]);
           }
         });
+
+        return result;
+      });
+    }
+
+    // Jika hanya ada variabel bottom yang valid (bisa lebih dari 1 variabel bottom)
+    if (
+      bottom2Indices.some((index) => index !== -1) &&
+      side2Indices.every((index) => index === -1) &&
+      bottomIndices.every((index) => index === -1)
+    ) {
+      return data.map((row) => {
+        const result: ChartData = { category: "", value: 0 }; // Set nilai default jika sideVariables kosong
+
+        // Iterasi untuk mengembalikan semua kategori bottom yang valid
+        bottom2Indices.forEach((index, i) => {
+          if (index !== -1) {
+            result[`bottom2_${i}`] = row[index]; // Menyimpan nilai bottom dengan key yang berbeda
+          }
+        });
+
+        // Jika colorIndex valid, tambahkan warna
+        if (colorIndex !== -1) {
+          result.color = row[colorIndex];
+        }
 
         return result;
       });
@@ -747,6 +830,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         if (closeIndices[0] !== -1) {
           result.close_0 = parseFloat(row[closeIndices[0]]) || 0;
         }
+        if (bottom2Indices[0] !== -1) {
+          result.bottom2_0 = parseFloat(row[bottom2Indices[0]]) || 0;
+        }
 
         return result;
       });
@@ -776,6 +862,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             }
             if (closeIndices[i] !== -1) {
               result[`close_${i}`] = parseFloat(row[closeIndices[i]]) || 0;
+            }
+            if (bottom2Indices[i] !== -1) {
+              result[`bottom2_${i}`] = parseFloat(row[bottom2Indices[i]]) || 0;
             }
 
             results.push(result);
@@ -2263,14 +2352,356 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
       // Jika chartNode valid, append ke svgRef
       if (chartNode && svgRef.current) {
+        console.log("chartContainerRef.current:", svgRef.current);
         svgRef.current.appendChild(chartNode); // Menambahkan node hasil dari fungsi ke dalam svgRef
+        console.log("chartContainerRef.current:", svgRef.current);
+        console.log("chart:", chartNode);
       }
+    }
+    if (chartContainerRef.current) {
+      chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+      chartContainerRef.current.id = "chart-container"; // Pastikan ada ID
+
+      const chartData = getDataForChart();
+      let chartNode = null;
+
+      switch (chartType) {
+        // case "3D Bar Chart":
+        //   chartUtils.create3DBarChart(
+        //     "chart-container", // Pakai ID container
+        //     chartData.length === 0
+        //       ? [
+        //           { x: "A", y: "D", z: 50 },
+        //           { x: "B", y: "E", z: 100 },
+        //           { x: "C", y: "G", z: 180 },
+        //           { x: "D", y: "M", z: 60 },
+        //           { x: "E", y: "O", z: 30 },
+        //           { x: "F", y: "G", z: 50 },
+        //         ]
+        //       : [],
+        //     useaxis
+        //   );
+        //   console.log(
+        //     "ECharts GL status:",
+        //     echarts.getInstanceByDom(chartContainerRef.current)
+        //   );
+
+        //   break;
+
+        case "3D Bar Chart2":
+          // Buat elemen chart
+          const d3BarChartData =
+            chartData.length === 0
+              ? [
+                  { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+                  { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+                  { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+                  { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+                  { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+                  { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+                  { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+                  { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+                  { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+                  { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+                  { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+                  { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+                  { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+                  { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+                  { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+                ]
+              : chartData.map((d) => ({
+                  x:
+                    d.category && Number(d.category) !== 0
+                      ? Number(d.category)
+                      : Number(d.bottom_0) || 0,
+
+                  y: Number(d.value) || 0,
+                  z: Number(d.bottom2_0) || 0,
+                }));
+
+          chartNode = chartUtils.create3DBarChart2(
+            d3BarChartData,
+            width,
+            height
+          );
+
+          // Tambahkan chart ke dalam container
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+          console.log("chartNode:", chartNode);
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+
+          break;
+
+        case "3D Scatter Plot":
+          // Buat elemen chart
+          const d3ScatterPlotData =
+            chartData.length === 0
+              ? [
+                  { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+                  { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+                  { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+                  { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+                  { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+                  { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+                  { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+                  { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+                  { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+                  { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+                  { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+                  { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+                  { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+                  { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+                  { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+                ]
+              : chartData.map((d) => ({
+                  x:
+                    d.category && Number(d.category) !== 0
+                      ? Number(d.category)
+                      : Number(d.bottom_0) || 0,
+
+                  y: Number(d.value) || 0,
+                  z: Number(d.bottom2_0) || 0,
+                }));
+
+          chartNode = chartUtils.create3DScatterPlot(
+            d3ScatterPlotData,
+            width,
+            height
+          );
+
+          // Tambahkan chart ke dalam container
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+          console.log("chartNode:", chartNode);
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+
+          break;
+
+        case "Grouped 3D Scatter Plot":
+          // Buat elemen chart
+          const d3GroupedScatterPlotData =
+            chartData.length === 0
+              ? [
+                  { x: 1, y: 2, z: 3, category: "A" },
+                  { x: 1, y: 2, z: 3, category: "B" },
+                  { x: 1, y: 2, z: 3, category: "C" },
+                  { x: 1, y: 4, z: 3, category: "D" },
+                  { x: 2, y: 4, z: 1, category: "A" },
+                  { x: 3, y: 1, z: 2, category: "B" },
+                  { x: 4, y: 3, z: 4, category: "B" },
+                  { x: 5, y: 2, z: 5, category: "C" },
+                  { x: 6, y: 5, z: 3, category: "C" },
+                  { x: 7, y: 3, z: 2, category: "D" },
+                  { x: 8, y: 4, z: 1, category: "D" },
+                ]
+              : chartData
+                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+                  .map((d) => ({
+                    x:
+                      d.category && Number(d.category) !== 0
+                        ? Number(d.category)
+                        : Number(d.bottom_0) || 0,
+
+                    y: Number(d.value) || 0,
+                    z: Number(d.bottom2_0) || 0,
+                    category: d.color || "unknown",
+                  }));
+
+          chartNode = chartUtils.createGrouped3DScatterPlot(
+            d3GroupedScatterPlotData,
+            width,
+            height
+          );
+
+          // Tambahkan chart ke dalam container
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+          console.log("chartNode:", chartNode);
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+
+          break;
+
+        case "Clustered 3D Bar Chart":
+          // Buat elemen chart
+          const d3ClusteredBarChartData =
+            chartData.length === 0
+              ? [
+                  { x: 1, z: 1, y: 6, category: "A" },
+
+                  { x: 2, z: 1, y: 7, category: "A" },
+                  { x: 2, z: 1, y: 6, category: "B" },
+                  { x: 2, z: 1, y: 5, category: "C" },
+                  { x: 2, z: 1, y: 6, category: "D" },
+
+                  { x: 6, z: 4, y: 7, category: "A" },
+                  { x: 6, z: 4, y: 6, category: "B" },
+                  { x: 6, z: 4, y: 5, category: "C" },
+                  { x: 6, z: 4, y: 6, category: "D" },
+
+                  { x: 4, z: 7, y: 5, category: "A" },
+
+                  { x: -4, z: 6, y: 3, category: "A" },
+                  { x: -4, z: 6, y: 6, category: "B" },
+                  { x: -4, z: 6, y: 7, category: "C" },
+                  { x: -4, z: 6, y: 1, category: "D" },
+                  { x: -4, z: 6, y: 4, category: "E" },
+
+                  { x: -9, z: 8, y: 4, category: "A" },
+                  { x: -9, z: 8, y: 6, category: "B" },
+                  { x: -9, z: 8, y: 2, category: "E" },
+
+                  { x: 8, z: -6, y: 3, category: "A" },
+                  { x: 8, z: -6, y: 4, category: "B" },
+                  { x: 8, z: -6, y: 9, category: "C" },
+                  { x: 8, z: -6, y: 2, category: "D" },
+                  { x: 8, z: -6, y: 5, category: "E" },
+
+                  { x: -8, z: -2, y: 3, category: "A" },
+                  { x: -8, z: -2, y: 6, category: "B" },
+                  { x: -8, z: -2, y: 3, category: "C" },
+                  { x: -8, z: -2, y: 1, category: "D" },
+                  { x: -8, z: -2, y: 4, category: "E" },
+                ]
+              : chartData
+                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+                  .map((d) => ({
+                    x:
+                      d.category && Number(d.category) !== 0
+                        ? Number(d.category)
+                        : Number(d.bottom_0) || 0,
+
+                    y: Number(d.value) || 0,
+                    z: Number(d.bottom2_0) || 0,
+                    category: d.color || "unknown",
+                  }));
+
+          chartNode = chartUtils.createClustered3DBarChart(
+            d3ClusteredBarChartData,
+            width,
+            height
+          );
+
+          // Tambahkan chart ke dalam container
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+          console.log("chartNode:", chartNode);
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+
+          break;
+
+        case "Stacked 3D Bar Chart":
+          // Buat elemen chart
+          const d3StackedBarChartData =
+            chartData.length === 0
+              ? [
+                  { x: 1, z: 1, y: 6, category: "A" },
+
+                  { x: 2, z: 6, y: 2, category: "A" },
+                  { x: 2, z: 6, y: 3, category: "B" },
+                  { x: 2, z: 6, y: 2, category: "C" },
+                  { x: 2, z: 6, y: 1, category: "D" },
+
+                  { x: 5, z: 4, y: 1, category: "A" },
+                  { x: 5, z: 4, y: 2, category: "B" },
+                  { x: 5, z: 4, y: 3, category: "C" },
+                  { x: 5, z: 4, y: 1, category: "D" },
+
+                  { x: 9, z: 7, y: 7, category: "A" },
+
+                  { x: -4, z: 6, y: 3, category: "A" },
+                  { x: -4, z: 6, y: 1, category: "B" },
+                  { x: -4, z: 6, y: 2, category: "C" },
+                  { x: -4, z: 6, y: 2, category: "D" },
+                  { x: -4, z: 6, y: 1, category: "E" },
+
+                  { x: -9, z: 8, y: 1, category: "A" },
+                  { x: -9, z: 8, y: 2, category: "B" },
+                  { x: -9, z: 8, y: 2, category: "E" },
+
+                  { x: 8, z: -6, y: 3, category: "A" },
+                  { x: 8, z: -6, y: 2, category: "B" },
+                  { x: 8, z: -6, y: 1, category: "C" },
+                  { x: 8, z: -6, y: 2, category: "D" },
+                  { x: 8, z: -6, y: 2, category: "E" },
+
+                  { x: -8, z: -2, y: 3, category: "A" },
+                  { x: -8, z: -2, y: 2, category: "B" },
+                  { x: -8, z: -2, y: 3, category: "C" },
+                  { x: -8, z: -2, y: 1, category: "D" },
+                  { x: -8, z: -2, y: 1, category: "E" },
+                ]
+              : chartData
+                  .filter((d) => d.color !== "" && d.color != undefined) // Hanya ambil data yang memiliki color
+                  .map((d) => ({
+                    x:
+                      d.category && Number(d.category) !== 0
+                        ? Number(d.category)
+                        : Number(d.bottom_0) || 0,
+
+                    y: Number(d.value) || 0,
+                    z: Number(d.bottom2_0) || 0,
+                    category: d.color || "unknown",
+                  }));
+
+          chartNode = chartUtils.createStacked3DBarChart(
+            d3StackedBarChartData,
+            width,
+            height
+          );
+
+          // Tambahkan chart ke dalam container
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+          console.log("chartNode:", chartNode);
+          console.log("chartContainerRef.current:", chartContainerRef.current);
+
+          break;
+
+        // case "Bar2":
+        //   chartUtils.createBarChart(
+        //     "chart-container",
+        //     chartData.length === 0
+        //       ? [
+        //           { category: "A", value: 30 },
+        //           { category: "B", value: 80 },
+        //           { category: "C", value: 45 },
+        //           { category: "D", value: 60 },
+        //           { category: "E", value: 20 },
+        //           { category: "F", value: 90 },
+        //         ]
+        //       : chartData
+        //   );
+        //   break;
+      }
+
+      // setTimeout(() => {
+      //   const chart = echarts.init(
+      //     document.getElementById("chart-container")!,
+      //     undefined,
+      //     {
+      //       width,
+      //       height,
+      //     }
+      //   );
+      //   chart.resize(); // 🔥 Paksa resize setelah render
+      // }, 100);
+
+      // window.addEventListener("resize", handleResize);
+      // return () => {
+      //   window.removeEventListener("resize", handleResize);
+      //   const instance = echarts.getInstanceByDom(chartContainerRef.current);
+      //   if (instance) {
+      //     instance.dispose();
+      //   }
+      // };
     }
   }, [
     chartType,
     sideVariables,
     side2Variables,
     bottomVariables,
+    bottom2Variables,
     colorVariables,
     filterVariables,
     lowVariables,
@@ -2347,14 +2778,28 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           (chartVariableConfig[chartType].side?.min !== 0 ||
             chartVariableConfig[chartType].side?.max !== 0) && (
             <div
-              className="absolute top-1/2 left-[-60px] transform -translate-y-1/2 rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer"
+              className={clsx(
+                "absolute top-1/2 left-[-60px] transform -translate-y-1/2 rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer",
+                (chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart") &&
+                  "border-3 border-green-500"
+              )}
               onDrop={(e) => handleDrop(e, "side")}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => handleOpenModal("side")} // Bisa klik di mana saja
             >
               {sideVariables.length === 0 ? (
                 <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                  No variables selected
+                  {chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart"
+                    ? "Y axis"
+                    : "No variables selected"}
                 </div>
               ) : (
                 (() => {
@@ -2471,14 +2916,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           (chartVariableConfig[chartType].bottom?.min !== 0 ||
             chartVariableConfig[chartType].bottom?.max !== 0) && (
             <div
-              className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+              className={clsx(
+                "absolute bottom-4 left-1/2 transform -translate-x-1/2 flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer",
+                (chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart") &&
+                  "border-red-500 left-1/3"
+              )}
               onDrop={(e) => handleDrop(e, "bottom")}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => handleOpenModal("bottom")} // Klik bisa di mana saja
             >
               {bottomVariables.length === 0 ? (
-                <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                  No variables selected
+                <div
+                  className={clsx(
+                    "bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center"
+                  )}
+                >
+                  {chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart"
+                    ? "X axis"
+                    : "No variables selected"}
                 </div>
               ) : (
                 (() => {
@@ -2598,6 +3061,86 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           );
         })()}
 
+        {/* Label "Bottom2" */}
+        {chartVariableConfig[chartType]?.bottom2 &&
+          (chartVariableConfig[chartType].bottom2?.min !== 0 ||
+            chartVariableConfig[chartType].bottom2?.max !== 0) && (
+            <div
+              className={clsx(
+                "absolute bottom-4 right-5 transform -translate-x-1/2 flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer",
+                (chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart") &&
+                  "border-3 border-blue-900"
+              )}
+              onDrop={(e) => handleDrop(e, "bottom2")}
+              onDragOver={(e) => e.preventDefault()}
+              onClick={() => handleOpenModal("bottom2")} // Bisa klik di mana saja
+            >
+              {bottom2Variables.length === 0 ? (
+                <div
+                  className={clsx(
+                    "bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center"
+                  )}
+                >
+                  {chartType === "3D Bar Chart2" ||
+                  chartType === "3D Scatter Plot" ||
+                  chartType === "Grouped 3D Scatter Plot" ||
+                  chartType === "Clustered 3D Bar Chart" ||
+                  chartType === "Stacked 3D Bar Chart"
+                    ? "Z axis"
+                    : "No variables selected"}
+                </div>
+              ) : (
+                (() => {
+                  const maxWidth = 100; // Lebar maksimal container
+                  let totalWidth = 0;
+                  let displayedVars = [];
+                  const spaceBetween = 4;
+                  let hiddenCount = 0;
+
+                  const estimateButtonWidth = (text: string) =>
+                    Math.max(40, text.length * 8);
+
+                  for (let i = 0; i < bottom2Variables.length; i++) {
+                    let btnWidth = estimateButtonWidth(bottom2Variables[i]);
+
+                    if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
+                      displayedVars.push(bottom2Variables[i]);
+                      totalWidth += btnWidth + spaceBetween;
+                    } else {
+                      hiddenCount = bottom2Variables.length - i;
+                      break;
+                    }
+                  }
+
+                  return (
+                    <div className="flex flex-wrap space-x-1 justify-center w-full">
+                      {/* Semua ini bisa diklik karena ada onClick di parent */}
+                      {displayedVars.map((variable, index) => (
+                        <div
+                          key={index}
+                          className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
+                          style={{ minWidth: "40px" }}
+                        >
+                          {variable}
+                        </div>
+                      ))}
+
+                      {hiddenCount > 0 && (
+                        <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
+                          +{hiddenCount} more
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          )}
+
         {/* Modal untuk semua variabel */}
         {modalState.isOpen && (
           <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg">
@@ -2610,6 +3153,8 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ? "Side2"
                   : modalState.type === "bottom"
                   ? "Bottom"
+                  : modalState.type === "bottom2"
+                  ? "Bottom2"
                   : modalState.type === "color"
                   ? "Color"
                   : modalState.type === "filter"
@@ -2640,7 +3185,8 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                             | "low"
                             | "high"
                             | "close"
-                            | "side2",
+                            | "side2"
+                            | "bottom2",
                           index
                         )
                       }
@@ -2660,19 +3206,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           </div>
         )}
 
-        {/* SVG Chart */}
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          preserveAspectRatio="xMidYMid meet"
-          viewBox="0 0 650 500"
-          style={{
-            width: "100%",
-            height: "100%",
-            maxWidth: "100%",
-            maxHeight: "100%",
-          }}
-        />
+        {chartType === "3D Bar Chart2" ||
+        chartType === "Clustered 3D Bar Chart" ||
+        chartType === "Stacked 3D Bar Chart" ||
+        chartType === "3D Scatter Plot" ||
+        chartType === "Grouped 3D Scatter Plot" ? (
+          <div className="w-full h-full flex justify-center items-center pb-10">
+            <div
+              id="chart-container"
+              ref={chartContainerRef}
+              className="min-w-[600px] min-h-[400px] max-w-full max-h-full"
+            />
+          </div>
+        ) : (
+          <svg
+            ref={svgRef}
+            className="w-full h-full"
+            preserveAspectRatio="xMidYMid meet"
+            viewBox="0 0 650 500"
+            style={{
+              width: "100%",
+              height: "100%",
+              maxWidth: "100%",
+              maxHeight: "100%",
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
   useaxis,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (svgRef.current) {
@@ -775,6 +776,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           svgRef.current.appendChild(chartNode);
         }
       }
+
       // else if (chartType === "Word Cloud") {
       //   // Tambahkan pemanggilan fungsi createBoxPlot untuk box plot chart
       //   const chartNode = chartUtils.createWordCloud(words, width, height, {
@@ -796,14 +798,226 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       //   }
       // }
     }
+    if (chartContainerRef.current) {
+      chartContainerRef.current.innerHTML = "";
+
+      const data1 = [
+        { x: "A", y: "D", z: 50 },
+        { x: "B", y: "E", z: 100 },
+        { x: "C", y: "G", z: 180 },
+        { x: "D", y: "M", z: 60 },
+        { x: "E", y: "O", z: 30 },
+        { x: "F", y: "G", z: 50 },
+      ];
+      if (chartType === "3D Bar Chart2") {
+        // Panggil fungsi untuk membuat chart 3D
+        const chartNode = chartUtils.create3DBarChart2(
+          [
+            { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+            { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+            { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+            { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+            { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+            { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+            { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+            { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+            { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+            { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+            { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+            { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+            { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+            { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+            { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          ],
+          width,
+          height
+        );
+
+        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
+        if (chartContainerRef.current && chartNode) {
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "3D Scatter Plot") {
+        // Panggil fungsi untuk membuat chart 3D
+        const chartNode = chartUtils.create3DScatterPlot(
+          [
+            { x: -5, y: 2, z: -5 }, // Kuadran (-, +, -)
+            { x: -4, y: 3, z: 6 }, // Kuadran (-, +, +)
+            { x: -3, y: 5, z: 4 }, // Kuadran (-, +, +)
+            { x: -2, y: 7, z: -6 }, // Kuadran (-, +, -)
+            { x: 0, y: 0, z: 0 }, // Sumbu (y positif)
+            { x: 2, y: 2, z: -6 }, // Kuadran (+, +, -)
+            { x: 2, y: 4, z: 7 }, // Kuadran (+, +, +)
+            { x: 3, y: 6, z: -5 }, // Kuadran (+, +, -)
+            { x: 4, y: 3, z: 2 }, // Kuadran (+, +, +)
+            { x: 5, y: 5, z: -9 }, // Kuadran (+, +, -)
+            { x: 6, y: 4, z: -2 }, // Kuadran (+, +, -)
+            { x: 7, y: 3, z: 5 }, // Kuadran (+, +, +)
+            { x: -7, y: 2, z: -6 }, // Kuadran (-, +, -)
+            { x: -6, y: 4, z: -2 }, // Kuadran (-, +, -)
+            { x: -5, y: 5, z: 5 }, // Kuadran (-, +, +)
+          ],
+          width,
+          height
+        );
+
+        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
+        if (chartContainerRef.current && chartNode) {
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "Grouped 3D Scatter Plot") {
+        // Panggil fungsi untuk membuat chart 3D
+        const chartNode = chartUtils.createGrouped3DScatterPlot(
+          [
+            { x: 1, y: 2, z: 3, category: "A" },
+            { x: 1, y: 2, z: 3, category: "B" },
+            { x: 1, y: 2, z: 3, category: "C" },
+            { x: 1, y: 4, z: 3, category: "D" },
+            { x: 2, y: 4, z: 1, category: "A" },
+            { x: 3, y: 1, z: 2, category: "B" },
+            { x: 4, y: 3, z: 4, category: "B" },
+            { x: 5, y: 2, z: 5, category: "C" },
+            { x: 6, y: 5, z: 3, category: "C" },
+            { x: 7, y: 3, z: 2, category: "D" },
+            { x: 8, y: 4, z: 1, category: "D" },
+          ],
+          width,
+          height
+        );
+
+        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
+        if (chartContainerRef.current && chartNode) {
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "Clustered 3D Bar Chart") {
+        // Panggil fungsi untuk membuat chart 3D
+        const chartNode = chartUtils.createClustered3DBarChart(
+          [
+            { x: 1, z: 1, y: 6, category: "A" },
+
+            { x: 2, z: 1, y: 7, category: "A" },
+            { x: 2, z: 1, y: 6, category: "B" },
+            { x: 2, z: 1, y: 5, category: "C" },
+            { x: 2, z: 1, y: 6, category: "D" },
+
+            { x: 6, z: 4, y: 7, category: "A" },
+            { x: 6, z: 4, y: 6, category: "B" },
+            { x: 6, z: 4, y: 5, category: "C" },
+            { x: 6, z: 4, y: 6, category: "D" },
+
+            { x: 4, z: 7, y: 5, category: "A" },
+
+            { x: -4, z: 6, y: 3, category: "A" },
+            { x: -4, z: 6, y: 6, category: "B" },
+            { x: -4, z: 6, y: 7, category: "C" },
+            { x: -4, z: 6, y: 1, category: "D" },
+            { x: -4, z: 6, y: 4, category: "E" },
+
+            { x: -9, z: 8, y: 4, category: "A" },
+            { x: -9, z: 8, y: 6, category: "B" },
+            { x: -9, z: 8, y: 2, category: "E" },
+
+            { x: 8, z: -6, y: 3, category: "A" },
+            { x: 8, z: -6, y: 4, category: "B" },
+            { x: 8, z: -6, y: 9, category: "C" },
+            { x: 8, z: -6, y: 2, category: "D" },
+            { x: 8, z: -6, y: 5, category: "E" },
+
+            { x: -8, z: -2, y: 3, category: "A" },
+            { x: -8, z: -2, y: 6, category: "B" },
+            { x: -8, z: -2, y: 3, category: "C" },
+            { x: -8, z: -2, y: 1, category: "D" },
+            { x: -8, z: -2, y: 4, category: "E" },
+          ],
+          width,
+          height
+        );
+
+        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
+        if (chartContainerRef.current && chartNode) {
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "Stacked 3D Bar Chart") {
+        // Panggil fungsi untuk membuat chart 3D
+        const chartNode = chartUtils.createStacked3DBarChart(
+          [
+            { x: 1, z: 1, y: 6, category: "A" },
+
+            { x: 2, z: 6, y: 2, category: "A" },
+            { x: 2, z: 6, y: 3, category: "B" },
+            { x: 2, z: 6, y: 2, category: "C" },
+            { x: 2, z: 6, y: 1, category: "D" },
+
+            { x: 5, z: 4, y: 1, category: "A" },
+            { x: 5, z: 4, y: 2, category: "B" },
+            { x: 5, z: 4, y: 3, category: "C" },
+            { x: 5, z: 4, y: 1, category: "D" },
+
+            { x: 9, z: 7, y: 7, category: "A" },
+
+            { x: -4, z: 6, y: 3, category: "A" },
+            { x: -4, z: 6, y: 1, category: "B" },
+            { x: -4, z: 6, y: 2, category: "C" },
+            { x: -4, z: 6, y: 2, category: "D" },
+            { x: -4, z: 6, y: 1, category: "E" },
+
+            { x: -9, z: 8, y: 1, category: "A" },
+            { x: -9, z: 8, y: 2, category: "B" },
+            { x: -9, z: 8, y: 2, category: "E" },
+
+            { x: 8, z: -6, y: 3, category: "A" },
+            { x: 8, z: -6, y: 2, category: "B" },
+            { x: 8, z: -6, y: 1, category: "C" },
+            { x: 8, z: -6, y: 2, category: "D" },
+            { x: 8, z: -6, y: 2, category: "E" },
+
+            { x: -8, z: -2, y: 3, category: "A" },
+            { x: -8, z: -2, y: 2, category: "B" },
+            { x: -8, z: -2, y: 3, category: "C" },
+            { x: -8, z: -2, y: 1, category: "D" },
+            { x: -8, z: -2, y: 1, category: "E" },
+          ],
+          width,
+          height
+        );
+
+        // Pastikan chartNode dan chartContainerRef.current ada sebelum append
+        if (chartContainerRef.current && chartNode) {
+          chartContainerRef.current.innerHTML = ""; // Bersihkan kontainer dulu
+          chartContainerRef.current.appendChild(chartNode);
+        }
+      }
+
+      // if (chartType === "3D Bar Chart") {
+      //   // const chartNode = chartUtils.create3DBarChart(
+      //   //   data1,
+      //   //   width,
+      //   //   height,
+      //   //   useaxis
+      //   // );
+      //   // if (svgRef.current && chartNode) {
+      //   //   svgRef.current.appendChild(chartNode); // Sama persis kayak D3
+      //   // }
+      // }
+    }
   }, [chartType, width, height, useaxis]);
 
   return (
-    <svg
-      ref={svgRef}
-      className="max-w-full max-h-full"
-      style={{ display: "block", margin: "auto" }}
-    />
+    <>
+      {chartType.includes("3D") ? (
+        <div ref={chartContainerRef} className="chart-container" />
+      ) : (
+        <svg
+          ref={svgRef}
+          className="max-w-full max-h-full"
+          style={{ display: "block", margin: "auto" }}
+        />
+      )}
+    </>
   );
 };
 

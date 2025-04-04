@@ -35,6 +35,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [sideVariables, setSideVariables] = useState<string[]>([]);
   const [side2Variables, setSide2Variables] = useState<string[]>([]);
   const [bottomVariables, setBottomVariables] = useState<string[]>([]);
+  const [bottom2Variables, setBottom2Variables] = useState<string[]>([]);
   const [colorVariables, setColorVariables] = useState<string[]>([]);
   const [filterVariables, setFilterVariables] = useState<string[]>([]);
   const [lowVariables, setLowVariables] = useState<string[]>([]);
@@ -95,6 +96,11 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     console.log("Updated Bottom Variables:", newBottomVariables);
   };
 
+  const handleDropBottom2 = (newBottom2Variables: string[]) => {
+    setBottom2Variables(newBottom2Variables);
+    console.log("Updated Bottom2 Variables:", newBottom2Variables);
+  };
+
   const handleDropColor = (newColorVariables: string[]) => {
     setColorVariables(newColorVariables);
     console.log("Updated Color Variables:", newColorVariables);
@@ -121,7 +127,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   };
 
   const handleRemoveVariable = (
-    type: "side" | "bottom" | "low" | "high" | "close" | "side2",
+    type: "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2",
     index: number
   ) => {
     if (type === "side") {
@@ -136,6 +142,8 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       setCloseVariables((prev) => prev.filter((_, i) => i !== index));
     } else if (type === "side2") {
       setSide2Variables((prev) => prev.filter((_, i) => i !== index));
+    } else if (type === "bottom2") {
+      setBottom2Variables((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -148,6 +156,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     setLowVariables([]);
     setHighVariables([]);
     setCloseVariables([]);
+    setBottom2Variables([]);
   };
 
   const handleGenerateChart = async () => {
@@ -186,6 +195,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         chartVariables: {
           y: sideVariables,
           x: bottomVariables,
+          z: bottom2Variables,
           groupBy: colorVariables,
           low: lowVariables,
           high: highVariables,
@@ -405,6 +415,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             sideVariables={sideVariables}
             side2Variables={side2Variables}
             bottomVariables={bottomVariables}
+            bottom2Variables={bottom2Variables}
             colorVariables={colorVariables}
             filterVariables={filterVariables}
             lowVariables={lowVariables}
@@ -413,6 +424,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             onDropSide={handleDropSide}
             onDropSide2={handleDropSide2}
             onDropBottom={handleDropBottom}
+            onDropBottom2={handleDropBottom2}
             onDropColor={handleDropColor}
             onDropFilter={handleDropFilter}
             onDropLow={handleDropLow}

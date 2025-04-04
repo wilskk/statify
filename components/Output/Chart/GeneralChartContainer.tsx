@@ -44,8 +44,12 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       console.log("data di container chart", parsedData);
 
       // Hapus SVG sebelumnya untuk menghindari duplikasi
-      const existingSvgs = chartRef.current.querySelectorAll("svg");
-      existingSvgs.forEach((svg) => svg.remove());
+      // const existingSvgs = chartRef.current.querySelectorAll("svg");
+      // existingSvgs.forEach((svg) => svg.remove());
+      // Hapus elemen sebelumnya dengan lebih aman
+      while (chartRef.current.firstChild) {
+        chartRef.current.removeChild(chartRef.current.firstChild);
+      }
 
       // Periksa jika ada chart data
       if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
@@ -64,7 +68,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
           console.log("chartData", chartDataPoints);
 
           // Buat grafik berdasarkan jenisnya
-          let chartNode: SVGElement | null = null;
+          let chartNode: HTMLElement | SVGElement | null = null;
 
           switch (chartType) {
             case "Vertical Bar Chart":
@@ -321,6 +325,41 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 width,
                 height,
                 useAxis
+              );
+              break;
+            case "3D Bar Chart2":
+              chartNode = chartUtils.create3DBarChart2(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Clustered 3D Bar Chart":
+              chartNode = chartUtils.createClustered3DBarChart(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Stacked 3D Bar Chart":
+              chartNode = chartUtils.createStacked3DBarChart(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "3D Scatter Plot":
+              chartNode = chartUtils.create3DScatterPlot(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Grouped 3D Scatter Plot":
+              chartNode = chartUtils.createGrouped3DScatterPlot(
+                chartDataPoints,
+                width,
+                height
               );
               break;
 
