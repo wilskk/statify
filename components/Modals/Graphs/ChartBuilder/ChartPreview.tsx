@@ -5,31 +5,8 @@ import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import * as d3 from "d3"; // Mengimpor D3.js
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 import { chartVariableConfig } from "./ChartVariableConfig";
-import * as echarts from "echarts/core";
-import { BarChart } from "echarts/charts";
-import { CanvasRenderer } from "echarts/renderers";
-import { Bar3DChart } from "echarts-gl/charts";
-import { Grid3DComponent } from "echarts-gl/components";
-import {
-  TooltipComponent,
-  GridComponent,
-  VisualMapComponent,
-} from "echarts/components";
-import {
-  TitleComponent, // 🔥 Tambahkan ini!
-} from "echarts/components";
 import clsx from "clsx";
-// Registrasi komponen ke ECharts
-echarts.use([
-  Grid3DComponent,
-  Bar3DChart,
-  TitleComponent, // 🔥 Jangan lupa register ini juga!
-  CanvasRenderer,
-  BarChart,
-  TooltipComponent,
-  GridComponent,
-  VisualMapComponent,
-]);
+
 interface ChartPreviewProps {
   chartType: ChartType;
   width: number;
