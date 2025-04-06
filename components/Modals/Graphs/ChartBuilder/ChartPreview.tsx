@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDataStore } from "@/stores/useDataStore"; // Mengambil data dari useDataStore
 import { useVariableStore } from "@/stores/useVariableStore"; // Mengambil variabel dari useVariableStore
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
@@ -135,7 +135,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   // Memuat data dan variabel ketika komponen pertama kali dimuat
   useEffect(() => {
     loadData(); // Memuat data dari useDataStore
-    loadVariables(45); // Memuat variabel dari useVariableStore
+    loadVariables(); // Updated: removed parameter as it's not needed in current implementation
   }, [loadData, loadVariables]);
 
   // Fungsi untuk menangani drag over
@@ -1442,7 +1442,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { x: 95, y: 75 },
                 ]
               : chartData.map((d) => ({
-                  x: Number(d.category), // Konversi category ke number
+                  x: parseFloat(d.category) || 0, // Parse category as number safely
                   y: d.value, // Tetap gunakan value sebagai y
                 }));
 
@@ -1474,7 +1474,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { x: 95, y: 75 },
                 ]
               : chartData.map((d) => ({
-                  x: Number(d.category), // Konversi category ke number
+                  x: parseFloat(d.category) || 0, // Parse category as number safely
                   y: d.value, // Tetap gunakan value sebagai y
                 }));
 

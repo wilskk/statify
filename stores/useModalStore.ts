@@ -2,13 +2,13 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import zukeper from "zukeeper";
 
 export enum ModalType {
   OpenFile = "openFile",
   SaveFile = "saveFile",
   ExportData = "exportData",
   ComputeVariable = "computeVariable",
+
   // Punya Nopal
   ModalAutomaticLinearModeling = "modalAutomaticLinearModeling",
   ModalLinear = "modalLinear",
@@ -28,7 +28,7 @@ export enum ModalType {
   Smoothing = "smoothing", //Time Series Smoothing
   Decomposition = "decomposition", //Time Series Decomposition
   Autocorrelation = 'autocorrelation', //Time Series Stationary Test
-    UnitRootTest = "unitRootTest", //Time Series Stationary Test
+  UnitRootTest = "unitRootTest", //Time Series Stationary Test
   BoxJenkinsModel = "BoxJenkinsModel", //Time Series Create Model
   FrequenciesStatistic = "frequenciesStatistic",
   DescriptiveStatistic = "descriptiveStatistic",
@@ -55,16 +55,30 @@ export enum ModalType {
   GoToVariable = "goToVariable",
 
   // Data
-  DefineVariableProperties = "defineVariableProperties",
-  SetMeasurementLevel = "setMeasurementLevel",
+  DefineVarProps = "defineVarProps",
+  VarPropsEditor = "varPropsEditor",
+
+  MeasureUnknown = "measureUnknown",
+  CopyDataProps = "copyDataProps",
+  NewCustomAttr = "newCustomAttr",
   DefineDateTime = "defineDateTime",
+  MultipleResponse = "multipleResponse",
+  Validate = "validate",
+  DuplicateCases = "duplicateCases",
+  UnusualCases = "unusualCases",
+  CompareDatasets = "compareDatasets",
   SortCases = "sortCases",
-  SortVariables = "sortVariables",
+  SortVars = "sortVars",
   Transpose = "transpose",
   MergeFiles = "mergeFiles",
   Restructure = "restructure",
+  Aggregate = "aggregate",
+  OrthogonalDesign = "orthogonalDesign",
+  CopyDataset = "copyDataset",
   SplitFile = "splitFile",
+  SelectCases = "selectCases",
   WeightCases = "weightCases",
+
 
   // Descriptive
   Frequencies = "frequencies",
@@ -76,9 +90,15 @@ export enum ModalType {
   ReadCSVFile = "readCSVFile",
   ReadExcelFile = "ReadExcelFile",
 
+  // Nonparametric Test
+  KRelatedSamplesTest = 'kRelatedSamplesTest',
+
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",
   SimpleBarModal = "simpleBarModal",
+  SetMeasurementLevel = "setMeasurementLevel",
+  DefineValidationRules = "defineValidationRules",
+  PPPlots = "ppPlots",
 }
 
 interface ModalInstance {
@@ -88,25 +108,29 @@ interface ModalInstance {
 
 interface ModalStoreState {
   modals: ModalInstance[];
+  isStatisticProgress: boolean;
   openModal: (type: ModalType, props?: any) => void;
   closeModal: () => void;
   closeAllModals: () => void;
+  setStatisticProgress: (value: boolean) => void;
 }
 
 export const useModalStore = create<ModalStoreState>()(
-    devtools(
-        zukeper((set, get) => ({
-            modals: [],
-            openModal: (type, props) => {
-                console.log('openModal', type, props);
-                set((state) => ({ modals: [...state.modals, { type, props }] }));
-            },
-            closeModal: () => {
-                set((state) => ({ modals: state.modals.slice(0, -1) }));
-            },
-            closeAllModals: () => {
-                set({ modals: [] });
-            },
-        }))
-    )
+    devtools((set, get) => ({
+      modals: [],
+      isStatisticProgress: false,
+      openModal: (type, props) => {
+        console.log('openModal', type, props);
+        set((state) => ({ modals: [...state.modals, { type, props }] }));
+      },
+      closeModal: () => {
+        set((state) => ({ modals: state.modals.slice(0, -1) }));
+      },
+      closeAllModals: () => {
+        set({ modals: [] });
+      },
+      setStatisticProgress: (value: boolean) =>
+          set({ isStatisticProgress: value }),
+    }))
 );
+

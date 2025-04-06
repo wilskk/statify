@@ -16,7 +16,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { useVariableStore } from "@/stores/useVariableStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { useDataStore } from "@/stores/useDataStore"; // Import useDataStore
 import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
@@ -50,9 +50,9 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
-    const totalVariables = variables.length > 0 ? variables.length : 45;
-    loadVariables(totalVariables);
-  }, [loadVariables, variables.length]);
+    // Load variables without parameters - matches the current implementation
+    loadVariables();
+  }, [loadVariables]);
 
   useEffect(() => {
     console.log("Updated Side Variables:", sideVariables);
@@ -222,21 +222,22 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             const logMsg = `GENERATE CHART TYPE ${chartType} WITH VARIABLES Y: ${sideVariables.join(
               ", "
             )} X: ${bottomVariables.join(", ")}`;
+
+            // Add log first and get the ID
             const logId = await addLog({ log: logMsg });
 
-            // 2. Tambahkan Analytic
-            const analyticId = await addAnalytic({
-              log_id: logId,
+            // Add analytic with log_id
+            const analyticId = await addAnalytic(logId, {
               title: "Chart Builder",
               note: "",
             });
 
-            // 3. Tambahkan Statistic dengan analytic_id
-            await addStatistic({
-              analytic_id: analyticId,
+            // Add statistic with analytic_id
+            await addStatistic(analyticId, {
               title: chartType,
               output_data: chartJSON,
               components: chartType,
+              description: "",
             });
 
             setIsCalculating(false);
