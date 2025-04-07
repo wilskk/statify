@@ -29,62 +29,33 @@ interface WeightCasesModalProps {
 }
 
 const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
-    // Use variable store to get variables
-    const { variables, loadVariables } = useVariableStore();
-    const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
+    const { variables } = useVariableStore();
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
 
-    // Get meta store for weight information
     const meta = useMetaStore((state) => state.meta);
     const setMeta = useMetaStore((state) => state.setMeta);
 
-    // Check console for debugging
-    console.log("Current meta state:", meta);
-    console.log("Current weight value:", meta.weight, typeof meta.weight);
-
-    // State for weight method: "none" or "byVariable"
     const [weightMethod, setWeightMethod] = useState<"none" | "byVariable">("none");
-
-    // Selected frequency variable
     const [frequencyVariable, setFrequencyVariable] = useState<string>("");
-
-    // Selected variable for highlighting
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string} | null>(null);
 
-    // Error message for invalid selections
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [errorDialogOpen, setErrorDialogOpen] = useState<boolean>(false);
 
-    // Load variables from store
     useEffect(() => {
-        const loadVariablesData = async () => {
-            await loadVariables();
-            const vars = variables.filter(v => v.name !== "");
-            setStoreVariables(vars);
-
-            // If we have a stored weight variable
-            if (meta.weight && meta.weight !== "") {
-                console.log("Applying stored weight variable:", meta.weight);
-                // Find the variable by name, should be a numeric variable
-                const weightVar = vars.find(v => v.name === meta.weight && v.type !== "STRING");
-                if (weightVar) {
-                    setHighlightedVariable({ id: weightVar.columnIndex.toString() });
-                    setFrequencyVariable(meta.weight);
-                    setWeightMethod("byVariable");
-                }
-            }
-        };
-        loadVariablesData();
-    }, [loadVariables, variables, meta.weight]);
-
-    // Update available variables when store variables are loaded
-    useEffect(() => {
-        // Filter untuk hanya menampilkan variabel numerik
-        const numericVariables = storeVariables.filter(v => v.type !== "STRING");
+        const numericVariables = variables.filter(v => v.name !== "" && v.type !== "STRING");
         setAvailableVariables(numericVariables);
-    }, [storeVariables]);
 
-    // Function to display variable name with label if available
+        if (meta.weight && meta.weight !== "") {
+            const weightVar = variables.find(v => v.name === meta.weight && v.type !== "STRING");
+            if (weightVar) {
+                setHighlightedVariable({ id: weightVar.columnIndex.toString() });
+                setFrequencyVariable(meta.weight);
+                setWeightMethod("byVariable");
+            }
+        }
+    }, [variables, meta.weight]);
+
     const getDisplayName = (variable: Variable): string => {
         if (variable.label) {
             return `${variable.label} [${variable.name}]`;
@@ -92,11 +63,9 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
         return variable.name;
     };
 
-    // Function to get appropriate icon based on variable type
     const getVariableIcon = (variable: Variable) => {
         if (!variable) return null;
 
-        // Use measure to determine icon
         switch (variable.measure) {
             case "scale":
                 return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
@@ -105,14 +74,12 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
             case "ordinal":
                 return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
             default:
-                // Fallback to type-based icons
                 return variable.type === "STRING"
                     ? <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />
                     : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
         }
     };
 
-    // Function to handle variable selection
     const handleVariableSelect = (columnIndex: number) => {
         if (highlightedVariable?.id === columnIndex.toString()) {
             setHighlightedVariable(null);
@@ -121,10 +88,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
         }
     };
 
-    // Function to select variable as frequency variable
     const handleSelectFrequencyVariable = (variable: Variable) => {
-        // Since we filter for numeric variables only in the list,
-        // this check is mostly for safety
         if (variable.type === "STRING") {
             setErrorMessage("Weight variable must be numeric");
             setErrorDialogOpen(true);
@@ -136,33 +100,24 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
         setHighlightedVariable({ id: variable.columnIndex.toString() });
     };
 
-    // Handle variable double click
     const handleVariableDoubleClick = (variable: Variable) => {
         handleSelectFrequencyVariable(variable);
     };
 
-    // Get current status text
     const currentStatus =
         weightMethod === "none"
             ? "Do not weight cases"
             : `Weight cases by: ${frequencyVariable || "(not selected)"}`;
 
-    // Handle OK button click
     const handleOk = () => {
-        // Save weight to meta store
         if (weightMethod === "none") {
             setMeta({ weight: "" });
-            console.log("Setting weight to empty string");
         } else if (weightMethod === "byVariable" && frequencyVariable) {
             setMeta({ weight: frequencyVariable });
-            console.log("Setting weight to:", frequencyVariable);
         }
-
-        // Close the dialog
         onClose();
     };
 
-    // Handle Reset button click
     const handleReset = () => {
         setWeightMethod("none");
         setFrequencyVariable("");
@@ -178,7 +133,6 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                 <Separator className="my-0" />
 
                 <div className="grid grid-cols-7 gap-2 py-2">
-                    {/* Left Column - Available Variables */}
                     <div className="col-span-3 flex flex-col">
                         <Label className="text-xs font-semibold mb-1">Variables:</Label>
                         <div className="border p-2 rounded-md h-[200px] overflow-y-auto overflow-x-hidden">
@@ -212,7 +166,6 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    {/* Middle Column - Arrow Button */}
                     <div className="col-span-1 flex flex-col items-center justify-center">
                         <Button
                             variant="link"
@@ -230,7 +183,6 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                         </Button>
                     </div>
 
-                    {/* Right Column - Weight Options */}
                     <div className="col-span-3 space-y-2">
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -297,7 +249,6 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                 </DialogFooter>
             </DialogContent>
 
-            {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-[450px] p-3">
                     <DialogHeader className="p-0 mb-2">

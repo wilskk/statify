@@ -27,7 +27,7 @@ interface SortCasesModalProps {
 
 const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
     const { sortData } = useDataStore();
-    const { variables, loadVariables } = useVariableStore();
+    const { variables } = useVariableStore();
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [sortByConfigs, setSortByConfigs] = useState<SortVariableConfig[]>([]);
@@ -41,15 +41,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
     const [fileName, setFileName] = useState<string>("");
     const [createIndex, setCreateIndex] = useState<boolean>(false);
 
-    useEffect(() => {
-        const fetchVariables = async () => {
-            await loadVariables();
-            setAvailableVariables([...variables]);
-        };
-
-        fetchVariables();
-    }, [loadVariables]);
-
+    // Initialize available variables from the store
     useEffect(() => {
         const sortByColumnIndices = sortByConfigs.map(config => config.variable.columnIndex);
         const filtered = variables.filter(v => !sortByColumnIndices.includes(v.columnIndex));
@@ -155,9 +147,10 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
         }
 
         try {
-            // Process variables in reverse priority order (last to first)
-            // This ensures that higher priority variables maintain their grouping
-            for (let i = sortByConfigs.length - 1; i >= 0; i--) {
+            // Sort by the highest priority variable first (the first in the list)
+            // Then sort by the next highest priority, and so on
+            // This maintains the correct multi-level sorting order
+            for (let i = 0; i < sortByConfigs.length; i++) {
                 const { variable, direction } = sortByConfigs[i];
                 await sortData(variable.columnIndex, direction);
             }

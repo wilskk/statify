@@ -15,7 +15,7 @@ import SetMeasurementLevel from "@/components/Modals/Data/SetMeasurementLevel";
 import SelectCases from "@/components/Modals/Data/SelectCases";
 import UnusualCases from "@/components/Modals/Data/UnusualCases";
 import DefineValidationRules from "@/components/Modals/Data/Validate/DefineValidationRules";
-import VariablePropertiesEditor from "@/components/Modals/Data/DefineVarProps/VariablePropertiesEditor";
+import PropertiesEditor from "@/components/Modals/Data/DefineVarProps/PropertiesEditor";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
@@ -42,7 +42,7 @@ export const DataModals: React.FC<DataModalsProps> = ({ modalType, onClose, prop
         case ModalType.DefineVarProps:
             return <DefineVariableProperties onClose={onClose} {...props} />;
         case ModalType.VarPropsEditor:
-            return <VariablePropertiesEditor onClose={onClose} {...props} />;
+            return <PropertiesEditor onClose={onClose} {...props} />;
         case ModalType.DefineDateTime:
             return <DefineDateTime onClose={onClose} {...props} />;
         case ModalType.SortCases:
