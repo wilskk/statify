@@ -30,14 +30,17 @@ const FileMenu: React.FC = () => {
                     Save
                 </MenubarItem>
                 <MenubarSub>
-                    <MenubarSubTrigger>Open</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.OpenData)}>
-                            Data
-                        </MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.OpenOutput)}>
-                            Output
-                        </MenubarItem>
+                    <MenubarItem onClick={() => openModal(ModalType.OpenData)}>
+                        Open Data
+                    </MenubarItem>
+                    {/*<MenubarSubTrigger>Open</MenubarSubTrigger>*/}
+                    {/*<MenubarSubContent>*/}
+                    {/*    <MenubarItem onClick={() => openModal(ModalType.OpenData)}>*/}
+                    {/*        Data*/}
+                    {/*    </MenubarItem>*/}
+                    {/*    <MenubarItem onClick={() => openModal(ModalType.OpenOutput)}>*/}
+                    {/*        Output*/}
+                    {/*    </MenubarItem>*/}
                         {/*<MenubarSub>*/}
                         {/*    <MenubarSubTrigger>Script</MenubarSubTrigger>*/}
                         {/*    <MenubarSubContent>*/}
@@ -46,7 +49,7 @@ const FileMenu: React.FC = () => {
                         {/*        <MenubarItem onClick={() => openModal(ModalType.OpenBasic)}>Basic</MenubarItem>*/}
                         {/*    </MenubarSubContent>*/}
                         {/*</MenubarSub>*/}
-                    </MenubarSubContent>
+                {/*    </MenubarSubContent>*/}
                 </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Import Data</MenubarSubTrigger>
@@ -95,9 +98,6 @@ const FileMenu: React.FC = () => {
                 {/*<MenubarItem onClick={() => openModal(ModalType.SwitchServer)}>Switch Server...</MenubarItem>*/}
                 {/*<MenubarItem onClick={() => openModal(ModalType.Repository)}>Repository</MenubarItem>*/}
                 {/*<MenubarSeparator />*/}
-                <MenubarItem onClick={() => openModal(ModalType.PrintPreview)}>
-                    Print Preview
-                </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.Print)}>
                     Print...
                 </MenubarItem>
