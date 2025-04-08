@@ -2,17 +2,15 @@
 
 import React, { useState, FC, useMemo } from "react";
 import {
-    DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
-import { FileIcon, InfoIcon, ChevronDownIcon } from "lucide-react";
+import { FileIcon, InfoIcon, ChevronDownIcon, ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,8 +37,9 @@ interface CustomSelectProps {
     options: SelectOption[];
 }
 
-interface ReadCSVFileProps {
+interface ReadCSVProps {
     onClose: () => void;
+    onBack: () => void;
     fileName: string;
     fileContent: string;
 }
@@ -67,7 +66,7 @@ const CustomSelect: FC<CustomSelectProps> = ({ label, value, onChange, options }
     </div>
 );
 
-const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) => {
+const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) => {
     // Get store functions
     const { updateCell, resetData } = useDataStore();
     const variableStore = useVariableStore();
@@ -81,6 +80,7 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
     const [decimal, setDecimal] = useState<DecimalOption>("period");
     const [textQualifier, setTextQualifier] = useState<TextQualifierOption>("doubleQuote");
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Parse preview lines with line numbers and formatting
     const previewContent = useMemo(() => {
@@ -93,7 +93,7 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                 <div className="w-10 flex-shrink-0 text-right pr-2 text-gray-500 py-1 border-r border-gray-200">
                     {index + 1}
                 </div>
-                <div className="py-1 pl-3 whitespace-nowrap">
+                <div className="py-1 pl-3 whitespace-pre overflow-x-auto">
                     {line}
                 </div>
             </div>
@@ -102,6 +102,7 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
 
     const handleOk = async () => {
         setIsProcessing(true);
+        setError(null);
 
         try {
             await resetData();
@@ -111,6 +112,10 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
             if (delimiter === 'semicolon') delim = ';';
             else if (delimiter === 'tab') delim = '\t';
 
+            let textQual = '';
+            if (textQualifier === 'doubleQuote') textQual = '"';
+            else if (textQualifier === 'singleQuote') textQual = "'";
+
             let parsedRows = fileContent
                 .split('\n')
                 .filter((line) => line.trim().length > 0)
@@ -118,6 +123,9 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                     let processedLine = line;
                     if (removeLeading) processedLine = processedLine.replace(/^\s+/gm, '');
                     if (removeTrailing) processedLine = processedLine.replace(/\s+$/gm, '');
+
+                    // Simple split by delimiter for preview
+                    // In a more robust implementation, handle text qualifiers properly
                     return processedLine.split(delim);
                 });
 
@@ -133,7 +141,9 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
 
                 const isNumeric = colData.every(val => {
                     if (!val.trim()) return true;
-                    const num = parseFloat(val);
+                    const decimalSeparator = decimal === 'period' ? '.' : ',';
+                    const numStr = val.replace(new RegExp(`\\${decimalSeparator}`, 'g'), '.');
+                    const num = parseFloat(numStr);
                     return !isNaN(num) && isFinite(num);
                 });
 
@@ -172,16 +182,24 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                 }
             }
 
+            // Process and update cells with proper decimal handling
             parsedRows.forEach((row, rowIndex) => {
                 row.forEach((value, colIndex) => {
-                    updateCell(rowIndex, colIndex, value);
+                    const variable = getVariableByColumnIndex(colIndex);
+                    if (variable && variable.type === 'NUMERIC' && decimal === 'comma') {
+                        // Convert comma to period for numeric values
+                        const processedValue = value.replace(',', '.');
+                        updateCell(rowIndex, colIndex, processedValue);
+                    } else {
+                        updateCell(rowIndex, colIndex, value);
+                    }
                 });
             });
 
             onClose();
         } catch (error) {
             console.error("Error processing CSV file:", error);
-            // Add error handling UI if needed
+            setError("Failed to process CSV file. Please check the format and try again.");
         } finally {
             setIsProcessing(false);
         }
@@ -194,15 +212,26 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
         setDelimiter("comma");
         setDecimal("period");
         setTextQualifier("doubleQuote");
+        setError(null);
     };
 
     return (
-        <DialogContent className="sm:max-w-xl p-0 overflow-hidden rounded-md bg-white">
-            <div className="border-b px-6 py-4">
-                <DialogTitle className="text-lg font-medium">Read CSV File</DialogTitle>
-                <div className="flex items-center mt-1">
-                    <FileIcon size={16} className="mr-2 text-gray-600" />
-                    <span className="text-sm truncate max-w-xs">{fileName}</span>
+        <>
+            <div className="border-b px-6 py-4 flex items-center">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBack}
+                    className="mr-2 -ml-2 text-gray-500 hover:text-black"
+                >
+                    <ArrowLeft size={16} />
+                </Button>
+                <div>
+                    <DialogTitle className="text-lg font-medium">Read CSV File</DialogTitle>
+                    <div className="flex items-center mt-1">
+                        <FileIcon size={16} className="mr-2 text-gray-600" />
+                        <span className="text-sm truncate max-w-xs">{fileName}</span>
+                    </div>
                 </div>
             </div>
 
@@ -213,7 +242,7 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                         <h3 className="text-sm font-medium mb-2">Preview</h3>
                         <div className="border rounded h-48 bg-gray-50 font-mono text-xs overflow-hidden">
                             {/* Container with fixed line numbers and horizontally scrollable content */}
-                            <div className="h-full overflow-x-auto">
+                            <div className="h-full overflow-auto">
                                 {previewContent}
                             </div>
                         </div>
@@ -294,6 +323,12 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                         </div>
                     </div>
 
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                            {error}
+                        </div>
+                    )}
+
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -348,8 +383,8 @@ const ReadCSVFile: FC<ReadCSVFileProps> = ({ onClose, fileName, fileContent }) =
                     Help
                 </Button>
             </DialogFooter>
-        </DialogContent>
+        </>
     );
 };
 
-export default ReadCSVFile;
+export default ReadCSV;

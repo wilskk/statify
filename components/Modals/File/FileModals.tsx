@@ -1,10 +1,8 @@
 // components/Modals/File/FileModals.tsx
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
-import ImportCSV from "@/components/Modals/File/import/ImportCSV";
-import ReadCSVFile from "@/components/Modals/File/import/ReadCSVFile";
-import ImportExcel from "@/components/Modals/File/import/ImportExcel";
-import ReadExcelFile from "@/components/Modals/File/import/ReadExcelFile";
+import ImportCSVModal from "@/components/Modals/File/import/csv";
+import ImportExcelModal from "@/components/Modals/File/import/excel";
 import OpenData from "@/components/Modals/File/open/OpenData";
 // import OpenOutput from "@/components/Modals/File/Open/OpenOutput";
 import PrintModal from "@/components/Modals/File/print/Print";
@@ -43,13 +41,9 @@ interface FileModalsProps {
 export const FileModals: React.FC<FileModalsProps> = ({ modalType, onClose, props }) => {
     switch (modalType) {
         case ModalType.ImportCSV:
-            return <ImportCSV onClose={onClose} {...props} />;
-        case ModalType.ReadCSVFile:
-            return <ReadCSVFile onClose={onClose} {...props} />;
+            return <ImportCSVModal onClose={onClose} {...props} />;
         case ModalType.ImportExcel:
-            return <ImportExcel onClose={onClose} {...props} />;
-        case ModalType.ReadExcelFile:
-            return <ReadExcelFile onClose={onClose} {...props} />;
+            return <ImportExcelModal onClose={onClose} {...props} />;
         case ModalType.OpenData:
             return <OpenData onClose={onClose} {...props} />;
         // case ModalType.OpenOutput:

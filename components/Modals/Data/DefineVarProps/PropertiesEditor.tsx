@@ -22,57 +22,10 @@ import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.css';
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
+import { Variable, ValueLabel } from "@/types/Variable";
 
 // Register all Handsontable modules
 registerAllModules();
-
-// Interfaces matching db.ts structure
-interface ValueLabel {
-    id?: number;
-    variableName: string;
-    value: number | string;
-    label: string;
-}
-
-interface Variable {
-    id?: number;
-    columnIndex: number;
-    name: string;
-    type:
-        | "NUMERIC"
-        | "COMMA"
-        | "SCIENTIFIC"
-        | "DATE"
-        | "ADATE"
-        | "EDATE"
-        | "SDATE"
-        | "JDATE"
-        | "QYR"
-        | "MOYR"
-        | "WKYR"
-        | "DATETIME"
-        | "TIME"
-        | "DTIME"
-        | "WKDAY"
-        | "MONTH"
-        | "DOLLAR"
-        | "CCA"
-        | "CCB"
-        | "CCC"
-        | "CCD"
-        | "CCE"
-        | "STRING"
-        | "RESTRICTED_NUMERIC";
-    width: number;
-    decimals: number;
-    label?: string;
-    values: ValueLabel[];
-    missing: (number | string)[];
-    columns: number;
-    align: "right" | "left" | "center";
-    measure: "scale" | "ordinal" | "nominal";
-    role: "input" | "target" | "both" | "none" | "partition" | "split";
-}
 
 // Dropdown options
 const ROLE_OPTIONS = ["input", "target", "both", "none", "partition", "split"];
@@ -120,7 +73,7 @@ const DATE_FORMAT_SPECS = [
     { format: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 }
 ];
 
-interface VariablePropertiesEditorProps {
+interface PropertiesEditorProps {
     onClose: () => void;
     variables: Variable[];
     caseLimit: string;
@@ -128,13 +81,13 @@ interface VariablePropertiesEditorProps {
     onSave?: (variables: Variable[]) => void;
 }
 
-const VariablePropertiesEditor: FC<VariablePropertiesEditorProps> = ({
-                                                                         onClose,
-                                                                         variables,
-                                                                         caseLimit,
-                                                                         valueLimit,
-                                                                         onSave
-                                                                     }) => {
+const PropertiesEditor: FC<PropertiesEditorProps> = ({
+                                                         onClose,
+                                                         variables,
+                                                         caseLimit,
+                                                         valueLimit,
+                                                         onSave
+                                                     }) => {
     // Get data from data store
     const { data, isLoading: dataIsLoading } = useDataStore();
 
@@ -1301,4 +1254,4 @@ const VariablePropertiesEditor: FC<VariablePropertiesEditorProps> = ({
     );
 };
 
-export default VariablePropertiesEditor;
+export default PropertiesEditor;
