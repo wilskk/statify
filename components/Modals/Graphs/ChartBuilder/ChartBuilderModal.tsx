@@ -31,7 +31,7 @@ interface ChartBuilderModalProps {
 
 const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [chartType, setChartType] = useState<ChartType>("Vertical Bar Chart");
-  const { variables, loadVariables } = useVariableStore();
+  // const { variables, loadVariables } = useVariableStore();
   const [sideVariables, setSideVariables] = useState<string[]>([]);
   const [side2Variables, setSide2Variables] = useState<string[]>([]);
   const [bottomVariables, setBottomVariables] = useState<string[]>([]);
@@ -46,13 +46,11 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { addStatistic, addLog, addAnalytic } = useResultStore();
-  const { data, loadData } = useDataStore(); // Mengambil data dari store
+  // const { data, loadData } = useDataStore(); // Mengambil data dari store
   const [showResult, setShowResult] = useState(false);
 
-  useEffect(() => {
-    // Load variables without parameters - matches the current implementation
-    loadVariables();
-  }, [loadVariables]);
+  const variables = useVariableStore.getState().variables;
+  const data = useDataStore((state) => state.data);
 
   useEffect(() => {
     console.log("Updated Side Variables:", sideVariables);
@@ -62,12 +60,12 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     console.log("Updated Bottom Variables:", bottomVariables);
   }, [bottomVariables]);
 
-  useEffect(() => {
-    // Memuat data jika belum dimuat
-    if (data.length === 0) {
-      loadData();
-    }
-  }, [data, loadData]);
+  // useEffect(() => {
+  //   // Memuat data jika belum dimuat
+  //   if (data.length === 0) {
+  //     loadData();
+  //   }
+  // }, [data, loadData]);
 
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
