@@ -52,7 +52,7 @@ interface ChartData {
   error?: number;
   x?: number;
   y?: number;
-  color?: string;
+  color?: string | number;
   group?: string;
   [key: string]: any;
 }
@@ -87,10 +87,13 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   const [chartData, setChartData] = useState(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  const { data, loadData } = useDataStore(); // Mengambil data dari useDataStore
-  const { variables, loadVariables } = useVariableStore(); // Mengambil variabel dari useVariableStore
+  // const { data } = useDataStore(); // Mengambil data dari useDataStore
+  // const { variables } = useVariableStore(); // Mengambil variabel dari useVariableStore
   const svgRef = useRef<SVGSVGElement | null>(null); // Referensi untuk elemen SVG
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const variables = useVariableStore.getState().variables;
+  const data = useDataStore((state) => state.data);
 
   const [modalState, setModalState] = useState<{
     type: string | null;
@@ -133,10 +136,10 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   };
 
   // Memuat data dan variabel ketika komponen pertama kali dimuat
-  useEffect(() => {
-    loadData(); // Memuat data dari useDataStore
-    loadVariables(); // Updated: removed parameter as it's not needed in current implementation
-  }, [loadData, loadVariables]);
+  // useEffect(() => {
+  //   loadData(); // Memuat data dari useDataStore
+  //   loadVariables(); // Updated: removed parameter as it's not needed in current implementation
+  // }, [loadData, loadVariables]);
 
   // Fungsi untuk menangani drag over
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -527,7 +530,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   //   }
   // };
 
-  const getDataForChart = (): ChartData[] => {
+  const getDataForChart = useCallback((): ChartData[] => {
     const bottomIndices = bottomVariables.map((varName) =>
       variables.findIndex((variable) => variable.name === varName)
     );
@@ -600,7 +603,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
         lowIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`low_${i}`] = parseFloat(row[index]);
+            result[`low_${i}`] = row[index];
           }
         });
 
@@ -622,7 +625,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
         highIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`high_${i}`] = parseFloat(row[index]);
+            result[`high_${i}`] = row[index];
           }
         });
 
@@ -644,7 +647,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
         closeIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`close_${i}`] = parseFloat(row[index]);
+            result[`close_${i}`] = row[index];
           }
         });
 
@@ -685,19 +688,19 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         // Handle low, high, close variables
         lowIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`low_${i}`] = parseFloat(row[index]);
+            result[`low_${i}`] = row[index];
           }
         });
 
         highIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`high_${i}`] = parseFloat(row[index]);
+            result[`high_${i}`] = row[index];
           }
         });
 
         closeIndices.forEach((index, i) => {
           if (index !== -1) {
-            result[`close_${i}`] = parseFloat(row[index]);
+            result[`close_${i}`] = row[index];
           }
         });
 
@@ -742,7 +745,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           if (index !== -1) {
             const result: ChartData = {
               category: "Unknown", // Diisi dengan nilai default
-              value: parseFloat(row[index] || "0"),
+              value: parseFloat(String(row[index] ?? "0")),
               subcategory: sideVariables[i] || "",
             };
 
@@ -753,19 +756,19 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             // Handle low, high, close variables
             lowIndices.forEach((index, i) => {
               if (index !== -1) {
-                result[`low_${i}`] = parseFloat(row[index]);
+                result[`low_${i}`] = row[index];
               }
             });
 
             highIndices.forEach((index, i) => {
               if (index !== -1) {
-                result[`high_${i}`] = parseFloat(row[index]);
+                result[`high_${i}`] = parseFloat(String(row[index] ?? "0"));
               }
             });
 
             closeIndices.forEach((index, i) => {
               if (index !== -1) {
-                result[`close_${i}`] = parseFloat(row[index]);
+                result[`close_${i}`] = parseFloat(String(row[index] ?? "0"));
               }
             });
 
@@ -788,27 +791,27 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
       return data.map((row) => {
         const result: ChartData = {
-          category: row[bottomIndices[0]], // Menggunakan index bottom pertama
+          category: String(row[bottomIndices[0]]), // Menggunakan index bottom pertama
           subcategory: sideVariableName,
-          value: parseFloat(row[sideIndex] || "0"),
+          value: parseFloat(String(row[sideIndex] || "0")),
           ...(colorIndex !== -1 ? { color: row[colorIndex] } : {}),
         };
         // Handle low, high, close variables
         if (side2Indices[0] !== -1) {
-          result.side2 = parseFloat(row[side2Indices[0]]) || 0;
+          result.side2 = parseFloat(String(row[side2Indices[0]]) || "0");
         }
         // Handle low, high, close variables
         if (lowIndices[0] !== -1) {
-          result.low_0 = parseFloat(row[lowIndices[0]]) || 0;
+          result.low_0 = parseFloat(String(row[lowIndices[0]]) || "0");
         }
         if (highIndices[0] !== -1) {
-          result.high_0 = parseFloat(row[highIndices[0]]) || 0;
+          result.high_0 = parseFloat(String(row[highIndices[0]]) || "0");
         }
         if (closeIndices[0] !== -1) {
-          result.close_0 = parseFloat(row[closeIndices[0]]) || 0;
+          result.close_0 = parseFloat(String(row[closeIndices[0]]) || "0");
         }
         if (bottom2Indices[0] !== -1) {
-          result.bottom2_0 = parseFloat(row[bottom2Indices[0]]) || 0;
+          result.bottom2_0 = parseFloat(String(row[bottom2Indices[0]]) || "0");
         }
 
         return result;
@@ -821,9 +824,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         sideIndices.forEach((index, i) => {
           if (index !== -1) {
             const result: ChartData = {
-              category: row[bottomIndices[0]], // Menggunakan index bottom pertama
+              category: String(row[bottomIndices[0]]), // Menggunakan index bottom pertama
               subcategory: sideVariables[i],
-              value: parseFloat(row[index] || "0"),
+              value: parseFloat(String(row[index] || "0")),
             };
 
             if (colorIndex !== -1) {
@@ -832,16 +835,24 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
             // Handle low, high, close variables
             if (lowIndices[i] !== -1) {
-              result[`low_${i}`] = parseFloat(row[lowIndices[i]]) || 0;
+              result[`low_${i}`] = parseFloat(
+                String(row[lowIndices[i]]) || "0"
+              );
             }
             if (highIndices[i] !== -1) {
-              result[`high_${i}`] = parseFloat(row[highIndices[i]]) || 0;
+              result[`high_${i}`] = parseFloat(
+                String(row[highIndices[i]]) || "0"
+              );
             }
             if (closeIndices[i] !== -1) {
-              result[`close_${i}`] = parseFloat(row[closeIndices[i]]) || 0;
+              result[`close_${i}`] = parseFloat(
+                String(row[closeIndices[i]]) || "0"
+              );
             }
             if (bottom2Indices[i] !== -1) {
-              result[`bottom2_${i}`] = parseFloat(row[bottom2Indices[i]]) || 0;
+              result[`bottom2_${i}`] = parseFloat(
+                String(row[bottom2Indices[i]]) || "0"
+              );
             }
 
             results.push(result);
@@ -851,7 +862,19 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
       return results;
     }
-  };
+  }, [
+    data,
+    bottomVariables,
+    bottom2Variables,
+    sideVariables,
+    side2Variables,
+    highVariables,
+    lowVariables,
+    filterVariables,
+    closeVariables,
+    colorVariables,
+    variables,
+  ]);
 
   // const getDataForChart = (): ChartData[] => {
   //   const bottomIndices = bottomVariables.map((varName) =>
@@ -1602,7 +1625,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   .map((d) => ({
                     x: Number(d.category) || 0, // Gunakan nilai default jika undefined
                     y: Number(d.value) || 0,
-                    category: d.color || d.subcategory || "unknown",
+                    category: String(d.color || d.subcategory || "unknown"),
                   }));
           console.log("Data scatter", groupedScatterData);
           chartNode = chartUtils.createGroupedScatterPlot(
@@ -1732,7 +1755,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                 ]
               : chartData.map((d) => ({
                   category: d.category || "", // Gunakan category untuk mengganti x
-                  subcategory: d.color || "",
+                  subcategory: String(d.color || ""),
                   value: d.value, // Gunakan value untuk mengganti y
                   error: 2,
                 }));
@@ -1799,7 +1822,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { value: 38, category: "C" },
                 ]
               : chartData.map((d) => ({
-                  category: d.color || "unknown", // Gunakan category untuk mengganti x
+                  category: String(d.color || "unknown"), // Gunakan category untuk mengganti x
                   // subcategory: d.color || "",
                   value: Number(d.bottom_0), // Gunakan value untuk mengganti y
                   // error: 2,
@@ -1850,7 +1873,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                 ]
               : chartData.map((d) => ({
                   category: d.category,
-                  subcategory: d.color || "",
+                  subcategory: String(d.color || ""),
                   value: d.value,
                 }));
 
@@ -2000,7 +2023,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                 ]
               : chartData.map((d) => ({
                   category: d.bottom_0 || "unknown",
-                  subcategory: d.color || "unknown",
+                  subcategory: String(d.color || "unknown"),
                   high: d.high_0 || 0,
                   low: d.low_0 || 0,
                   close: d.close_0 || 0,
@@ -2115,6 +2138,192 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           );
           break;
 
+        case "Vertical Bar & Line Chart2":
+          const barAndLine2Data =
+            chartData.length === 0
+              ? [
+                  {
+                    category: "Aceh",
+                    bars: { nilaiA: 60 },
+                    lines: { nilaiB1: 40, nilaiB2: 110 },
+                  },
+                  {
+                    category: "Sumatera Utara",
+                    bars: { nilaiA: 45 },
+                    lines: { nilaiB1: 50, nilaiB2: 120 },
+                  },
+                  {
+                    category: "Sumatera Barat",
+                    bars: { nilaiA: 70 },
+                    lines: { nilaiB1: 30, nilaiB2: 105 },
+                  },
+                  {
+                    category: "Riau",
+                    bars: { nilaiA: 35 },
+                    lines: { nilaiB1: 60, nilaiB2: 100 },
+                  },
+                  {
+                    category: "Jambi",
+                    bars: { nilaiA: 55 },
+                    lines: { nilaiB1: 45, nilaiB2: 115 },
+                  },
+                  {
+                    category: "Sumatera Selatan",
+                    bars: { nilaiA: 80 },
+                    lines: { nilaiB1: 20, nilaiB2: 130 },
+                  },
+                  {
+                    category: "Bengkulu",
+                    bars: { nilaiA: 30 },
+                    lines: { nilaiB1: 10, nilaiB2: 95 },
+                  },
+                  {
+                    category: "Lampung",
+                    bars: { nilaiA: 65 },
+                    lines: { nilaiB1: 50, nilaiB2: 140 },
+                  },
+                  {
+                    category: "BaBel",
+                    bars: { nilaiA: 25 },
+                    lines: { nilaiB1: 35, nilaiB2: 130 },
+                  },
+                  {
+                    category: "Kepulauan Riau",
+                    bars: { nilaiA: 70 },
+                    lines: { nilaiB1: 60, nilaiB2: 120 },
+                  },
+                  {
+                    category: "DKI Jakarta",
+                    bars: { nilaiA: 75 },
+                    lines: { nilaiB1: 65, nilaiB2: 145 },
+                  },
+                  {
+                    category: "Jawa Barat",
+                    bars: { nilaiA: 60 },
+                    lines: { nilaiB1: 55, nilaiB2: 135 },
+                  },
+                  {
+                    category: "Jateng",
+                    bars: { nilaiA: 50 },
+                    lines: { nilaiB1: 40, nilaiB2: 100 },
+                  },
+                  {
+                    category: "DI Yogyakarta",
+                    bars: { nilaiA: 80 },
+                    lines: { nilaiB1: 70, nilaiB2: 110 },
+                  },
+                  {
+                    category: "Jawa Timur",
+                    bars: { nilaiA: 90 },
+                    lines: { nilaiB1: 50, nilaiB2: 150 },
+                  },
+                  {
+                    category: "Banten",
+                    bars: { nilaiA: 60 },
+                    lines: { nilaiB1: 40, nilaiB2: 125 },
+                  },
+                  {
+                    category: "Bali",
+                    bars: { nilaiA: 50 },
+                    lines: { nilaiB1: 45, nilaiB2: 115 },
+                  },
+                  {
+                    category: "NTB",
+                    bars: { nilaiA: 35 },
+                    lines: { nilaiB1: 30, nilaiB2: 105 },
+                  },
+                  {
+                    category: "NTT",
+                    bars: { nilaiA: 40 },
+                    lines: { nilaiB1: 35, nilaiB2: 120 },
+                  },
+                  {
+                    category: "Kalimantan Barat",
+                    bars: { nilaiA: 70 },
+                    lines: { nilaiB1: 65, nilaiB2: 140 },
+                  },
+                  {
+                    category: "Kalteng",
+                    bars: { nilaiA: 55 },
+                    lines: { nilaiB1: 45, nilaiB2: 100 },
+                  },
+                  {
+                    category: "Kalimantan Selatan",
+                    bars: { nilaiA: 60 },
+                    lines: { nilaiB1: 50, nilaiB2: 125 },
+                  },
+                  {
+                    category: "Kalimantan Timur",
+                    bars: { nilaiA: 75 },
+                    lines: { nilaiB1: 55, nilaiB2: 130 },
+                  },
+                  {
+                    category: "Kalimantan Utara",
+                    bars: { nilaiA: 65 },
+                    lines: { nilaiB1: 40, nilaiB2: 110 },
+                  },
+                  {
+                    category: "Sulut",
+                    bars: { nilaiA: 30 },
+                    lines: { nilaiB1: 20, nilaiB2: 90 },
+                  },
+                  {
+                    category: "Sulawesi Tengah",
+                    bars: { nilaiA: 45 },
+                    lines: { nilaiB1: 35, nilaiB2: 115 },
+                  },
+                  {
+                    category: "Sulawesi Selatan",
+                    bars: { nilaiA: 70 },
+                    lines: { nilaiB1: 60, nilaiB2: 135 },
+                  },
+                  {
+                    category: "Sulawesi Tenggara",
+                    bars: { nilaiA: 55 },
+                    lines: { nilaiB1: 45, nilaiB2: 120 },
+                  },
+                  {
+                    category: "Gorontalo",
+                    bars: { nilaiA: 25 },
+                    lines: { nilaiB1: 30, nilaiB2: 100 },
+                  },
+                  {
+                    category: "Sulawesi Barat",
+                    bars: { nilaiA: 35 },
+                    lines: { nilaiB1: 25, nilaiB2: 105 },
+                  },
+                  {
+                    category: "Maluku",
+                    bars: { nilaiA: 40 },
+                    lines: { nilaiB1: 50, nilaiB2: 115 },
+                  },
+                  {
+                    category: "Maluku Utara",
+                    bars: { nilaiA: 60 },
+                    lines: { nilaiB1: 45, nilaiB2: 120 },
+                  },
+                  {
+                    category: "Papua",
+                    bars: { nilaiA: 65 },
+                    lines: { nilaiB1: 35, nilaiB2: 130 },
+                  },
+                  {
+                    category: "Papua Barat",
+                    bars: { nilaiA: 70 },
+                    lines: { nilaiB1: 30, nilaiB2: 135 },
+                  },
+                ]
+              : [];
+
+          chartNode = chartUtils.createBarAndLineChart2(
+            barAndLine2Data,
+            width,
+            height,
+            useaxis,
+            "stacked"
+          );
+          break;
+
         case "Dual Axes Scatter Plot":
           const dualAxesScatterPlotData =
             chartData.length === 0
@@ -2161,7 +2370,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
               : chartData.map((d) => ({
                   x: d.category,
                   y: Number(d.value),
-                  category: d.color || "unknown",
+                  category: String(d.color || "unknown"),
                 }));
 
           chartNode = chartUtils.createDropLineChart(
@@ -2482,7 +2691,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
                     y: Number(d.value) || 0,
                     z: Number(d.bottom2_0) || 0,
-                    category: d.color || "unknown",
+                    category: String(d.color || "unknown"),
                   }));
 
           chartNode = chartUtils.createGrouped3DScatterPlot(
@@ -2550,7 +2759,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
                     y: Number(d.value) || 0,
                     z: Number(d.bottom2_0) || 0,
-                    category: d.color || "unknown",
+                    category: String(d.color || "unknown"),
                   }));
 
           chartNode = chartUtils.createClustered3DBarChart(
@@ -2618,7 +2827,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
                     y: Number(d.value) || 0,
                     z: Number(d.bottom2_0) || 0,
-                    category: d.color || "unknown",
+                    category: String(d.color || "unknown"),
                   }));
 
           chartNode = chartUtils.createStacked3DBarChart(
@@ -2689,6 +2898,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     width,
     height,
     variables,
+    getDataForChart,
   ]);
 
   return (

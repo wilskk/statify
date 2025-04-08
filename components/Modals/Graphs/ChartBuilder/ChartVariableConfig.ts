@@ -236,6 +236,12 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       color: { min: 0, max: 0 },
       side2: { min: 1, max: 1 },
     },
+    "Vertical Bar & Line Chart2": {
+      side: { min: 1, max: Infinity },
+      bottom: { min: 1, max: 1 },
+      color: { min: 0, max: 0 },
+      side2: { min: 1, max: Infinity },
+    },
     "Dual Axes Scatter Plot": {
       side: { min: 1, max: 1 },
       bottom: { min: 1, max: 1 },

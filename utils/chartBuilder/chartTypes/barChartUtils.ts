@@ -3845,3 +3845,188 @@ export const createStacked3DBarChart = (
 
   return container;
 };
+
+type ChartData2 = {
+  category: string;
+  bars: { [seriesName: string]: number };
+  lines: { [seriesName: string]: number };
+};
+
+export const createBarAndLineChart2 = (
+  data: ChartData2[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  barMode: "grouped" | "stacked" = "grouped"
+) => {
+  const marginTop = useAxis ? 30 : 0;
+  const marginRight = useAxis ? 30 : 0;
+  const marginBottom = useAxis ? 30 : 0;
+  const marginLeft = useAxis ? 40 : 0;
+
+  const barKeys = Object.keys(data[0].bars);
+  const lineKeys = Object.keys(data[0].lines);
+
+  const allBarValues = data.flatMap((d) => Object.values(d.bars));
+  const allLineValues = data.flatMap((d) => Object.values(d.lines));
+
+  let stackedBarSums: number[] = [];
+  if (barMode === "stacked") {
+    stackedBarSums = data.map((d) => d3.sum(Object.values(d.bars)));
+  }
+
+  const allValues =
+    barMode === "stacked"
+      ? [...stackedBarSums, ...allLineValues]
+      : [...allBarValues, ...allLineValues];
+
+  const minY = Math.min(0, ...allValues);
+  const maxY = Math.max(...allValues);
+
+  const x = d3
+    .scaleBand()
+    .domain(data.map((d) => d.category))
+    .range([marginLeft, width - marginRight])
+    .padding(0.1);
+
+  const y = d3
+    .scaleLinear()
+    .domain([minY, maxY])
+    .range([height - marginBottom, marginTop]);
+
+  const svg = d3
+    .create("svg")
+    .attr("width", width + marginLeft + marginRight)
+    .attr("height", height + marginTop + marginBottom)
+    .attr("viewBox", [
+      0,
+      0,
+      width + marginLeft + marginRight,
+      height + marginTop + marginBottom,
+    ])
+    .attr("style", "max-width: 100%; height: auto;");
+
+  const colorBar = d3
+    .scaleOrdinal<string>()
+    .domain(barKeys)
+    .range(d3.schemeCategory10);
+
+  if (barMode === "grouped") {
+    const x1 = d3
+      .scaleBand()
+      .domain(barKeys)
+      .range([0, x.bandwidth()])
+      .padding(0.05);
+
+    svg
+      .append("g")
+      .selectAll("g")
+      .data(data)
+      .join("g")
+      .attr("transform", (d) => `translate(${x(d.category)},0)`)
+      .selectAll("rect")
+      .data((d) => barKeys.map((key) => ({ key, value: d.bars[key] })))
+      .join("rect")
+      .attr("x", (d) => x1(d.key)!)
+      .attr("y", (d) => (d.value >= 0 ? y(d.value) : y(0)))
+      .attr("width", x1.bandwidth())
+      .attr("height", (d) => Math.abs(y(d.value) - y(0)))
+      .attr("fill", (d) => colorBar(d.key)!)
+      .attr("opacity", 0.7); // Biar line keliatan
+  } else {
+    const stack = d3
+      .stack<ChartData2>()
+      .keys(barKeys)
+      .value((d, key) => d.bars[key]);
+
+    const series = stack(data);
+
+    svg
+      .append("g")
+      .selectAll("g")
+      .data(series)
+      .join("g")
+      .attr("fill", (d) => colorBar(d.key)!)
+      .attr("opacity", 0.7)
+      .selectAll("rect")
+      .data((d) => d)
+      .join("rect")
+      .attr("x", (d) => x(d.data.category)!)
+      .attr("y", (d) => y(Math.max(d[0], d[1])))
+      .attr("height", (d) => Math.abs(y(d[0]) - y(d[1])))
+
+      .attr("width", x.bandwidth());
+  }
+
+  const colorLine = d3
+    .scaleOrdinal<string>()
+    .domain(lineKeys)
+    .range(d3.schemeTableau10);
+
+  lineKeys.forEach((key) => {
+    const line = d3
+      .line<ChartData2>()
+      .x((d) => x(d.category)! + x.bandwidth() / 2)
+      .y((d) => y(d.lines[key]));
+
+    // Path Line
+    svg
+      .append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", colorLine(key)!)
+      .attr("stroke-width", 3)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
+      .attr("d", line);
+
+    // Dots di titik Line
+    svg
+      .selectAll(`.dot-${key}`)
+      .data(data)
+      .join("circle")
+      .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
+      .attr("cy", (d) => y(d.lines[key]))
+      .attr("r", 3.5)
+      .attr("fill", colorLine(key))
+      .attr("stroke", "white")
+      .attr("stroke-width", 1.5);
+  });
+
+  if (useAxis) {
+    const maxXTicks = 10; // atau berapa pun jumlah maksimal tick yang kamu mau
+
+    svg
+      .append("g")
+      .attr("transform", `translate(0, ${y(0)})`)
+      .call(
+        d3
+          .axisBottom(x)
+          .tickSizeOuter(0)
+          .tickValues(
+            x
+              .domain()
+              .filter(
+                (d, i) => i % Math.ceil(x.domain().length / maxXTicks) === 0
+              )
+          )
+      );
+
+    svg
+      .append("g")
+      .attr("transform", `translate(${marginLeft}, 0)`)
+      .call(d3.axisLeft(y).tickFormat((v) => (+v).toFixed(2)));
+    // .call((g) => g.select(".domain").remove());
+
+    // const y2Axis = svg
+    //   .append("g")
+    //   .attr("transform", `translate(${width - marginRight}, 0)`)
+    //   .call(d3.axisRight(y).tickFormat((v) => (+v).toFixed(2)))
+    //   .call((g) => g.select(".domain").remove());
+
+    // y2Axis.selectAll(".tick text").attr("fill", "red");
+    // y2Axis.select(".domain").attr("stroke", "red");
+  }
+
+  return svg.node();
+};
