@@ -12,8 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { InputRow } from "./timeSeriesComponent/timeSeriesInput";
 import { handleSmoothing } from "./handleAnalyze/handleSmoothing";
 import { Variable } from "@/types/Variable";
-import db from "@/lib/db";
-import { row } from "mathjs";
 
 type RawData = string[][];
 
@@ -58,8 +56,8 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     ];
 
     // Store references
-    const { variables, loadVariables, addVariable } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { variables, loadVariables, addVariable} = useVariableStore();
+    const { data, updateBulkCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Local state management
@@ -89,12 +87,12 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     // Load variables on component mount
     useEffect(() => {
-        const loadVars = async () => {
-            await loadVariables();
-            setStoreVariables(variables.filter(v => v.name !== ""));
-        };
-        loadVars();
-    }, [loadVariables, variables]);
+            const loadVars = async () => {
+                await loadVariables();
+                setStoreVariables(variables.filter(v => v.name !== ""));
+            };
+            loadVars();
+        }, [loadVariables]);
 
     // Update available variables when store variables change
     useEffect(() => {
@@ -418,32 +416,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     // Save smoothing results as a new variable
     const saveSmoothingResultsAsVariable = async (smoothingResult: any[], dataVarDef: Variable) => {
-        const rawData = data as RawData;
-        
-        // Prepare result array with proper length
-        const fullResult = [...smoothingResult];
-        if (fullResult.length < rawData.length) {
-            const missingRows = rawData.length - fullResult.length;
-            fullResult.push(...new Array(missingRows).fill(""));
-        }
-        
-        // Find first empty column for each row
-        const updatedData = rawData.map((row, index) => {
-            const updatedRow = [...row];
-            const value = fullResult[index]?.toString() || "";
-            
-            // Find first empty column
-            for (let colIndex = 0; colIndex < updatedRow.length; colIndex++) {
-                if (updatedRow[colIndex] === '') {
-                    updatedRow[colIndex] = value;
-                    break;
-                }
-            }
-            
-            return updatedRow;
-        });
-        
-        // Create new variable definition
+        // Prepare the new variable definition
         const newVarIndex = storeVariables.length;
         const newVarName = `${dataVarDef.name} ${selectedMethod[0]}-${newVarIndex}`;
         const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
@@ -458,32 +431,34 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             measure: "scale",
             width: 8,
             decimals: 2,
-            columns: 1,
+            columns: 100,
             align: "right",
         };
-        
-        // Update data store with the new data
-        setData(updatedData);
         
         // Add the new variable
         await addVariable(smoothingVariable);
         
-        // Create an array of cell updates with the correct format
-        const smoothingCells = fullResult
-            .map((value, index) => {
-                if (smoothingVariable.columnIndex !== undefined) {
-                    return {
-                        col: smoothingVariable.columnIndex,
-                        row: index,
-                        value: value.toString(),
-                    };
-                }
-                return null;
-            })
-            .filter((cell): cell is { col: number; row: number; value: string } => cell !== null);
+        // Prepare updates array similar to index.tsx pattern
+        const updates = [];
         
-        // Use the direct db.cells.bulkPut approach as in BoxJenkinsModelModal
-        await db.cells.bulkPut(smoothingCells);
+        // Add each smoothing result value to the updates array
+        for (let rowIndex = 0; rowIndex < smoothingResult.length; rowIndex++) {
+            if (smoothingVariable.columnIndex !== undefined) {
+                updates.push({
+                    row: rowIndex,
+                    col: smoothingVariable.columnIndex,
+                    value: smoothingResult[rowIndex].toString()
+                });
+            }
+        }
+        
+        // Use bulk update to efficiently add all data
+        if (updates.length > 0) {
+            await updateBulkCells(updates);
+        }
+        
+        // Reload variables to reflect changes
+        await loadVariables();
     };
 
     // Main analysis function

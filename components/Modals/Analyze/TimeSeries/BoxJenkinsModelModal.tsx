@@ -12,7 +12,6 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTit
 import { Checkbox } from "@/components/ui/checkbox";
 import { handleBoxJenkinsModel } from "./handleAnalyze/handleBoxJenkinsModel";
 import { Variable } from "@/types/Variable";
-import db from "@/lib/db";
 
 type RawData = string[][];
 
@@ -40,7 +39,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
 
     // Store references
     const { variables, loadVariables, addVariable } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { data, updateBulkCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Local state management
@@ -66,7 +65,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
             setStoreVariables(variables.filter(v => v.name !== ""));
         };
         loadVars();
-    }, [loadVariables, variables]);
+    }, [loadVariables]);
 
     // Update available variables when store variables change
     useEffect(() => {
@@ -253,32 +252,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
 
     // Save forecasting results as a new variable
     const saveForcastingAsVariable = async (forecast: any[], dataVarDef: Variable) => {
-        const rawData = data as RawData;
-        
-        // Prepare result array with proper length
-        const fullResult = [...forecast];
-        if (fullResult.length < rawData.length) {
-            const missingRows = rawData.length - fullResult.length;
-            fullResult.push(...new Array(missingRows).fill(""));
-        }
-        
-        // Find first empty column for each row
-        const updatedData = rawData.map((row, index) => {
-            const updatedRow = [...row];
-            const value = fullResult[index]?.toString() || "";
-            
-            // Find first empty column
-            for (let colIndex = 0; colIndex < updatedRow.length; colIndex++) {
-                if (updatedRow[colIndex] === '') {
-                    updatedRow[colIndex] = value;
-                    break;
-                }
-            }
-            
-            return updatedRow;
-        });
-        
-        // Create new variable definition
+        // Prepare the new variable definition
         const newVarIndex = storeVariables.length;
         const newVarName = `${dataVarDef.name} ARIMA (${arOrder},${diffOrder},${maOrder}) ${newVarIndex}`;
         
@@ -292,31 +266,34 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
             measure: "scale",
             width: 8,
             decimals: 3,
-            columns: 1,
+            columns: 100,
             align: "right",
         };
-        
-        // Update data store with the new data
-        setData(updatedData);
         
         // Add the new variable
         await addVariable(forecastingVariable);
         
-        // Save cells to IndexDB
-        const forecastCells = fullResult
-            .map((value, index) => {
-                if (forecastingVariable.columnIndex !== undefined) {
-                    return {
-                        col: forecastingVariable.columnIndex,
-                        row: index,
-                        value: value.toString(),
-                    };
-                }
-                return null;
-            })
-            .filter((cell): cell is { col: number; row: number; value: string } => cell !== null);
+        // Prepare updates array similar to index.tsx pattern
+        const updates = [];
         
-        await db.cells.bulkPut(forecastCells);
+        // Add each forecast value to the updates array
+        for (let rowIndex = 0; rowIndex < forecast.length; rowIndex++) {
+            if (forecastingVariable.columnIndex !== undefined) {
+                updates.push({
+                    row: rowIndex,
+                    col: forecastingVariable.columnIndex,
+                    value: forecast[rowIndex].toString()
+                });
+            }
+        }
+        
+        // Use bulk update to efficiently add all data
+        if (updates.length > 0) {
+            await updateBulkCells(updates);
+        }
+        
+        // Reload variables to reflect changes
+        await loadVariables();
     };
 
     // Main analysis function

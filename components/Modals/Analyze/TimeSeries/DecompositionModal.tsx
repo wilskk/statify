@@ -12,7 +12,6 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTit
 import { Checkbox } from "@/components/ui/checkbox";
 import { handleDecomposition } from "./handleAnalyze/handleDecomposition";
 import { Variable } from "@/types/Variable";
-import db from "@/lib/db";
 
 type RawData = string[][];
 
@@ -61,7 +60,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
     // Store references
     const { variables, loadVariables, addVariable } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { data, updateBulkCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Local state management
@@ -86,7 +85,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             setStoreVariables(variables.filter(v => v.name !== ""));
         };
         loadVars();
-    }, [loadVariables, variables]);
+    }, [loadVariables]);
 
     // Update available variables when store variables change
     useEffect(() => {
@@ -226,8 +225,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         forecasting: any[],
         dataVarDef: Variable
     ) => {
-        const rawData = data as RawData;
-        let currentData = [...rawData];
         let nextColumnIndex = storeVariables.length;
         
         // Helper function to add a component as a new variable
@@ -236,29 +233,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             componentType: string,
             suffix: string
         ) => {
-            // Prepare values array with proper length
-            const fullValues = [...componentValues];
-            if (fullValues.length < currentData.length) {
-                const missingRows = currentData.length - fullValues.length;
-                fullValues.push(...new Array(missingRows).fill(""));
-            }
-            
-            // Update data with new values
-            const updatedData = currentData.map((row, index) => {
-                const updatedRow = [...row];
-                const value = fullValues[index]?.toString() || "";
-                
-                // Find first empty column
-                for (let colIndex = 0; colIndex < updatedRow.length; colIndex++) {
-                    if (updatedRow[colIndex] === '') {
-                        updatedRow[colIndex] = value;
-                        break;
-                    }
-                }
-                
-                return updatedRow;
-            });
-            
             // Create variable definition
             const variableName = `${dataVarDef.name}-${suffix}-${nextColumnIndex}`;
             
@@ -272,27 +246,34 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
                 measure: "scale",
                 width: 8,
                 decimals: 3,
-                columns: 1,
+                columns: 100,
                 align: "right",
             };
             
-            // Update data and add variable
-            currentData = updatedData;
+            // Add variable
             await addVariable(newVariable);
             
-            // Save to IndexDB
-            const cells = fullValues.map((value, index) => ({
-                col: nextColumnIndex,
-                row: index,
-                value: value.toString(),
-            }));
+            // Prepare updates array
+            const updates = [];
             
-            await db.cells.bulkPut(cells);
+            // Add each value to the updates array
+            for (let rowIndex = 0; rowIndex < componentValues.length; rowIndex++) {
+                if (newVariable.columnIndex !== undefined) {
+                    updates.push({
+                        row: rowIndex,
+                        col: newVariable.columnIndex,
+                        value: componentValues[rowIndex].toString()
+                    });
+                }
+            }
+            
+            // Use bulk update to efficiently add all data
+            if (updates.length > 0) {
+                await updateBulkCells(updates);
+            }
             
             // Increment column index for next variable
             nextColumnIndex++;
-            
-            return { updatedData, newVarIndex: nextColumnIndex };
         };
         
         // Add each component as a variable
@@ -300,9 +281,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         await addComponentAsVariable(trend, "Trend Component", "TC");
         await addComponentAsVariable(irrengular, "Irregular Component", "IC");
         await addComponentAsVariable(forecasting, "Forecasting", "Forecasting");
-        
-        // Update the data store with final data
-        setData(currentData);
     };
 
     // Process decomposition results

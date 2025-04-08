@@ -36,7 +36,7 @@ const DefineDatesModal: FC<DefineDatesProps> = ({ onClose }) => {
     const { updateBulkCells, data } = useDataStore();
 
     const getMaxRow = () => {
-        return data.length > 0 ? data.length - 1 : 0;
+        return data.length > 0 ? data.length : 0;
     };
 
     // State for Cases Are options
