@@ -111,7 +111,6 @@ export const createMultilineChart = (
       typeof d.category === "string" &&
       typeof d.subcategory === "string" &&
       typeof d.value === "number" &&
-      d.value >= 0 &&
       d.category !== ""
   );
 
@@ -160,7 +159,10 @@ export const createMultilineChart = (
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(validData, (d) => d.value)!])
+    .domain([
+      d3.min(validData, (d) => d.value)!,
+      d3.max(validData, (d) => d.value)!,
+    ])
     .nice()
     .range([height - marginBottom, marginTop]);
 
@@ -187,16 +189,19 @@ export const createMultilineChart = (
     // Sumbu X
     svg
       .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x))
-      .call((g) => g.selectAll(".domain").remove());
+      .attr(
+        "transform",
+        `translate(0, ${y(0) > height ? height - marginBottom : y(0)})`
+      )
+      .call(d3.axisBottom(x));
+    // .call((g) => g.selectAll(".domain").remove());
 
     // Sumbu Y
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
       .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
+      // .call((g) => g.select(".domain").remove())
       .call((g) =>
         g
           .selectAll(".tick line")
