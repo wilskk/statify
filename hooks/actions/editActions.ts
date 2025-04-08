@@ -1,6 +1,15 @@
 import { useCallback } from 'react';
-import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useTableRefStore } from '@/stores/useTableRefStore';
+import Handsontable from 'handsontable';
+
+type ValidAlterAction =
+    | 'insert_row_above'
+    | 'insert_row_below'
+    | 'remove_row'
+    | 'insert_col_start'
+    | 'insert_col_end'
+    | 'remove_col';
 
 export type EditActionType =
     | "Undo"
@@ -16,259 +25,241 @@ export type EditActionType =
     | "InsertVariable"
     | "InsertCases";
 
-interface EditActionPayload {
-    actionType: EditActionType;
-}
-
-// Clipboard state (persists between renders but not page reloads)
-let clipboardData: {
-    data: (string | number)[][],
-    variableNames?: string[],
-    variableLabels?: string[],
-    timestamp: number
-} | null = null;
-
 export const useEditActions = () => {
-    const {
-        data,
-        selectedRange,
-        updateBulkCells,
-        addRow,
-        addColumn,
-        getSelectedData
-    } = useDataStore();
+    const { getVariableByColumnIndex } = useVariableStore();
+    const { dataTableRef } = useTableRefStore();
 
-    const {
-        variables,
-        getVariableByColumnIndex,
-        addVariable,
-        updateVariable
-    } = useVariableStore();
+    const handleAction = useCallback(async (actionType: EditActionType) => {
+        const hotInstance = dataTableRef?.current?.hotInstance;
+        if (!hotInstance) {
+            console.warn("Handsontable instance is not available.");
+            return;
+        }
 
-    const handleAction = useCallback(async ({ actionType }: { actionType: EditActionType }) => {
+        const copyPastePlugin = hotInstance.getPlugin('copyPaste');
+
+        const getSelectedRange = (): Handsontable.CellRange | undefined => {
+            const selected = hotInstance.getSelectedRange();
+            return selected && selected.length > 0 ? selected[0] : undefined;
+        };
+
+        // Helper function to get clipboard data
+        const getClipboardData = async (): Promise<string[][] | null> => {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text) return null;
+
+                // Split by newlines and tabs to get rows and columns
+                return text.split('\n')
+                    .filter(line => line.trim())
+                    .map(row => row.split('\t').map(cell => cell.trim()));
+            } catch (error) {
+                console.error("Failed to read clipboard:", error);
+                return null;
+            }
+        };
+
+        // Corrected the type for 'index' to match usage within this hook
+        const alterGrid = (
+            action: ValidAlterAction,
+            index?: number | undefined, // Adjusted type here
+            amount?: number | undefined,
+            source?: string | undefined,
+            keepEmptyRows?: boolean | undefined
+        ) => {
+            hotInstance.alter(action, index, amount, source, keepEmptyRows);
+        };
+
         switch (actionType) {
             case "Undo":
-                console.log("Performing Undo action");
-                // This would require history management implementation
+                hotInstance.undo();
                 break;
 
             case "Redo":
-                console.log("Performing Redo action");
-                // This would require history management implementation
+                hotInstance.redo();
                 break;
 
             case "Cut":
-                if (!selectedRange) return;
-
-                // Copy data to clipboard
-                const cutData = getSelectedData();
-                clipboardData = {
-                    data: cutData,
-                    timestamp: Date.now()
-                };
-
-                // Clear the selected cells
-                const cutUpdates = [];
-                for (let r = selectedRange.from.row; r <= selectedRange.to.row; r++) {
-                    for (let c = selectedRange.from.col; c <= selectedRange.to.col; c++) {
-                        cutUpdates.push({ row: r, col: c, value: "" });
-                    }
+                const rangeForCut = getSelectedRange();
+                if (rangeForCut) {
+                    copyPastePlugin.cut();
+                } else {
+                    console.warn("Cannot Cut: No cells selected.");
                 }
-
-                await updateBulkCells(cutUpdates);
-                console.log("Cut action completed");
                 break;
 
             case "Copy":
-                if (!selectedRange) return;
-
-                // Copy data to clipboard
-                const copyData = getSelectedData();
-                clipboardData = {
-                    data: copyData,
-                    timestamp: Date.now()
-                };
-
-                console.log("Copy action completed");
+                const rangeForCopy = getSelectedRange();
+                if (rangeForCopy) {
+                    copyPastePlugin.copy();
+                } else {
+                    console.warn("Cannot Copy: No cells selected.");
+                }
                 break;
 
             case "CopyWithVariableNames":
-                if (!selectedRange) return;
-
-                // Get data and variable names
-                const copyWithNamesData = getSelectedData();
-                const variableNames = [];
-
-                for (let c = selectedRange.from.col; c <= selectedRange.to.col; c++) {
-                    const variable = getVariableByColumnIndex(c);
-                    variableNames.push(variable?.name || `var${c}`);
-                }
-
-                clipboardData = {
-                    data: copyWithNamesData,
-                    variableNames,
-                    timestamp: Date.now()
-                };
-
-                console.log("Copy with variable names completed");
-                break;
-
             case "CopyWithVariableLabels":
-                if (!selectedRange) return;
-
-                // Get data and variable labels
-                const copyWithLabelsData = getSelectedData();
-                const variableLabels = [];
-
-                for (let c = selectedRange.from.col; c <= selectedRange.to.col; c++) {
-                    const variable = getVariableByColumnIndex(c);
-                    variableLabels.push(variable?.label || "");
+                const rangeForCustomCopy = getSelectedRange();
+                if (!rangeForCustomCopy) {
+                    console.warn(`Cannot ${actionType}: No cells selected.`);
+                    return;
                 }
-
-                clipboardData = {
-                    data: copyWithLabelsData,
-                    variableLabels,
-                    timestamp: Date.now()
-                };
-
-                console.log("Copy with variable labels completed");
+                const { from, to } = rangeForCustomCopy;
+                let dataToCopy: any[][] = [];
+                try {
+                    dataToCopy = hotInstance.getData(from.row, from.col, to.row, to.col);
+                } catch (error) {
+                    console.error("Error getting data:", error);
+                    return;
+                }
+                const headers: string[] = [];
+                for (let c = from.col; c <= to.col; c++) {
+                    const variable = getVariableByColumnIndex(c);
+                    headers.push(actionType === "CopyWithVariableNames"
+                        ? (variable?.name || `var${c + 1}`)
+                        : (variable?.label || variable?.name || `var${c + 1}`)
+                    );
+                }
+                const tsvHeader = headers.join('\t');
+                const tsvData = dataToCopy.map(row =>
+                    row.map(cell => (cell === null || cell === undefined) ? '' : String(cell).replace(/\n/g, ' ').replace(/\t/g, ' ') ).join('\t')
+                ).join('\n');
+                const fullTsv = `${tsvHeader}\n${tsvData}`;
+                try {
+                    await navigator.clipboard.writeText(fullTsv);
+                } catch (err) {
+                    console.error(`Failed copy with headers: ${err}`);
+                    try {
+                        copyPastePlugin.copy();
+                        console.warn("Fallback copy.");
+                    } catch(copyErr) {
+                        console.error("Fallback copy failed:", copyErr);
+                    }
+                }
                 break;
 
             case "Paste":
-                if (!selectedRange || !clipboardData) return;
-
-                const { from } = selectedRange;
-                const pasteUpdates = [];
-
-                // Insert data from clipboard
-                for (let r = 0; r < clipboardData.data.length; r++) {
-                    for (let c = 0; c < clipboardData.data[r].length; c++) {
-                        pasteUpdates.push({
-                            row: from.row + r,
-                            col: from.col + c,
-                            value: clipboardData.data[r][c]
-                        });
-                    }
+                const targetCell = hotInstance.getSelectedLast();
+                if(targetCell){
+                    hotInstance.selectCell(targetCell[0], targetCell[1]);
+                    copyPastePlugin.paste();
+                } else {
+                    hotInstance.selectCell(0,0);
+                    copyPastePlugin.paste();
                 }
-
-                await updateBulkCells(pasteUpdates);
-                console.log("Paste action completed");
                 break;
 
             case "PasteVariables":
-                if (!selectedRange || !clipboardData) return;
+                try {
+                    const clipboardData = await getClipboardData();
+                    if (!clipboardData || clipboardData.length === 0) {
+                        console.warn("No valid data in clipboard");
+                        return;
+                    }
 
-                // Create variables from clipboard data
-                const { from: pasteFrom } = selectedRange;
-                const columnCount = clipboardData.data[0]?.length || 0;
+                    // Get starting column index
+                    const selectedColCoords = hotInstance.getSelectedLast();
+                    const startColumnIndex = selectedColCoords ? selectedColCoords[1] : 0;
 
-                // First add columns to dataStore
-                for (let c = 0; c < columnCount; c++) {
-                    await addColumn(pasteFrom.col + c);
+                    // Use the first row of data (assuming it contains variable names)
+                    const variableNames = clipboardData.flatMap(row => row.filter(name => name.trim()));
+
+                    // Create variable objects (skip empty names)
+                    const variablesToAdd = variableNames.map((name, idx) => ({
+                        name,
+                        columnIndex: startColumnIndex + idx
+                    }));
+
+                    if (variablesToAdd.length === 0) {
+                        console.warn("No valid variable names found in clipboard");
+                        return;
+                    }
+
+                    // Add variables
+                    const { addMultipleVariables } = useVariableStore.getState();
+                    await addMultipleVariables(variablesToAdd);
+                } catch (error) {
+                    console.error("Error pasting variables:", error);
                 }
-
-                // Then add variables to variableStore
-                for (let c = 0; c < columnCount; c++) {
-                    // Prepare variable data
-                    const varData = {
-                        columnIndex: pasteFrom.col + c,
-                        name: clipboardData.variableNames?.[c] || `var${pasteFrom.col + c + 1}`,
-                    };
-
-                    // Add the variable
-                    await addVariable(varData);
-                }
-
-                console.log("Paste variables completed");
                 break;
 
             case "PasteWithVariableNames":
-                if (!selectedRange || !clipboardData || !clipboardData.variableNames) return;
-
-                const { from: pasteNameFrom } = selectedRange;
-
-                // First process variable names
-                for (let c = 0; c < clipboardData.variableNames.length; c++) {
-                    const colIndex = pasteNameFrom.col + c;
-                    await updateVariable(colIndex, "name", clipboardData.variableNames[c]);
-                }
-
-                // Then paste the data
-                const pasteNameUpdates = [];
-                for (let r = 0; r < clipboardData.data.length; r++) {
-                    for (let c = 0; c < clipboardData.data[r].length; c++) {
-                        pasteNameUpdates.push({
-                            row: pasteNameFrom.row + r + 1, // Skip first row because it contains variable names
-                            col: pasteNameFrom.col + c,
-                            value: clipboardData.data[r][c]
-                        });
+                try {
+                    const clipboardData = await getClipboardData();
+                    if (!clipboardData || clipboardData.length < 2) {
+                        console.warn("Clipboard must contain headers and data rows");
+                        return;
                     }
-                }
 
-                await updateBulkCells(pasteNameUpdates);
-                console.log("Paste with variable names completed");
+                    // Get the selected cell coordinates
+                    const selectedCoords = hotInstance.getSelectedLast();
+                    const startRow = selectedCoords ? selectedCoords[0] : 0;
+                    const startCol = selectedCoords ? selectedCoords[1] : 0;
+
+                    // First row contains variable names (filter out empty names)
+                    const variableNames = clipboardData[0].filter(name => name.trim());
+
+                    if (variableNames.length === 0) {
+                        console.warn("No valid variable names found in clipboard");
+                        return;
+                    }
+
+                    // Create variable objects
+                    const variablesToAdd = variableNames.map((name, idx) => ({
+                        name,
+                        columnIndex: startCol + idx
+                    }));
+
+                    // Add variables
+                    const { addMultipleVariables } = useVariableStore.getState();
+                    await addMultipleVariables(variablesToAdd);
+
+                    // Prepare data for pasting (skip the header row)
+                    const dataRows = clipboardData.slice(1);
+
+                    // Use populateFromArray to add the data
+                    // Only include columns with variable names
+                    const trimmedDataRows = dataRows.map(row =>
+                        row.slice(0, variableNames.length)
+                    );
+
+                    hotInstance.populateFromArray(startRow, startCol, trimmedDataRows);
+                } catch (error) {
+                    console.error("Error pasting with variable names:", error);
+                }
                 break;
 
             case "Clear":
-                if (!selectedRange) return;
-
-                // Clear selected cells
-                const clearUpdates = [];
-                for (let r = selectedRange.from.row; r <= selectedRange.to.row; r++) {
-                    for (let c = selectedRange.from.col; c <= selectedRange.to.col; c++) {
-                        clearUpdates.push({ row: r, col: c, value: "" });
-                    }
+                const rangeForClear = getSelectedRange();
+                if (rangeForClear) {
+                    hotInstance.emptySelectedCells();
+                } else {
+                    console.warn("Cannot Clear: No cells selected.");
                 }
-
-                await updateBulkCells(clearUpdates);
-                console.log("Clear action completed");
                 break;
 
             case "InsertVariable":
-                // If selection exists, insert at the selected column
-                const insertColIndex = selectedRange ? selectedRange.from.col : variables.length;
-
-                // Add variable to variableStore
-                await addVariable({ columnIndex: insertColIndex });
-
-                // Add column to dataStore (since stores are not connected)
-                await addColumn(insertColIndex);
-
-                console.log("Insert variable completed at index", insertColIndex);
+                const selectedColCoords = hotInstance.getSelectedLast();
+                const insertColIndex = selectedColCoords ? selectedColCoords[3] + 1 : hotInstance.countCols();
+                alterGrid('insert_col_start', insertColIndex, 1);
                 break;
 
             case "InsertCases":
-                // If selection exists, insert at the selected row
-                const insertRowIndex = selectedRange ? selectedRange.from.row : data.length;
-                await addRow(insertRowIndex);
-                console.log("Insert case completed at index", insertRowIndex);
+                const selectedRowCoords = hotInstance.getSelectedLast();
+                if (selectedRowCoords) {
+                    alterGrid('insert_row_below', selectedRowCoords[2], 1);
+                } else {
+                    alterGrid('insert_row_below');
+                }
                 break;
 
             default:
-                console.warn("Unknown edit action:", actionType);
+                const actionString = typeof actionType === 'string' ? actionType : 'Unknown Action Type';
+                console.warn("Unknown edit action:", actionString);
         }
-    }, [selectedRange, getSelectedData, updateBulkCells, addRow, addColumn, data, variables, getVariableByColumnIndex, addVariable, updateVariable]);
-
-    // Helper to check if clipboard has data
-    const hasClipboardData = useCallback(() => {
-        return clipboardData !== null;
-    }, []);
-
-    // Helper to get clipboard content for use in UI
-    const getClipboardSummary = useCallback(() => {
-        if (!clipboardData) return null;
-
-        return {
-            rowCount: clipboardData.data.length,
-            colCount: clipboardData.data[0]?.length || 0,
-            hasVariableNames: !!clipboardData.variableNames,
-            hasVariableLabels: !!clipboardData.variableLabels
-        };
-    }, []);
+    }, [dataTableRef, getVariableByColumnIndex]);
 
     return {
-        handleAction,
-        hasClipboardData,
-        getClipboardSummary
+        handleAction
     };
 };
