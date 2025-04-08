@@ -44,8 +44,12 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       console.log("data di container chart", parsedData);
 
       // Hapus SVG sebelumnya untuk menghindari duplikasi
-      const existingSvgs = chartRef.current.querySelectorAll("svg");
-      existingSvgs.forEach((svg) => svg.remove());
+      // const existingSvgs = chartRef.current.querySelectorAll("svg");
+      // existingSvgs.forEach((svg) => svg.remove());
+      // Hapus elemen sebelumnya dengan lebih aman
+      while (chartRef.current.firstChild) {
+        chartRef.current.removeChild(chartRef.current.firstChild);
+      }
 
       // Periksa jika ada chart data
       if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
@@ -64,7 +68,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
           console.log("chartData", chartDataPoints);
 
           // Buat grafik berdasarkan jenisnya
-          let chartNode: SVGElement | null = null;
+          let chartNode: HTMLElement | SVGElement | null = null;
 
           switch (chartType) {
             case "Vertical Bar Chart":
@@ -187,6 +191,178 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 useAxis
               );
               break;
+            case "Grouped Scatter Plot":
+              chartNode = chartUtils.createGroupedScatterPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Dot Plot":
+              chartNode = chartUtils.createDotPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Frequency Polygon":
+              chartNode = chartUtils.createFrequencyPolygon(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Population Pyramid":
+              chartNode = chartUtils.createPopulationPyramid(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Clustered Error Bar Chart":
+              chartNode = chartUtils.createClusteredErrorBarChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Stacked Histogram":
+              chartNode = chartUtils.createStackedHistogram(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Scatter Plot Matrix":
+              chartNode = chartUtils.createScatterPlotMatrix(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Clustered Boxplot":
+              chartNode = chartUtils.createClusteredBoxplot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "1-D Boxplot":
+              chartNode = chartUtils.create1DBoxplot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Simple Range Bar":
+              chartNode = chartUtils.createSimpleRangeBar(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Clustered Range Bar":
+              chartNode = chartUtils.createClusteredRangeBar(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "High-Low-Close Chart":
+              chartNode = chartUtils.createHighLowCloseChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Difference Area":
+              chartNode = chartUtils.createDifferenceArea(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Drop Line Chart":
+              chartNode = chartUtils.createDropLineChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Summary Point Plot":
+              chartNode = chartUtils.createSummaryPointPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Vertical Bar & Line Chart":
+              chartNode = chartUtils.createBarAndLineChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Dual Axes Scatter Plot":
+              chartNode = chartUtils.createDualAxesScatterPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "3D Bar Chart2":
+              chartNode = chartUtils.create3DBarChart2(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Clustered 3D Bar Chart":
+              chartNode = chartUtils.createClustered3DBarChart(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Stacked 3D Bar Chart":
+              chartNode = chartUtils.createStacked3DBarChart(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "3D Scatter Plot":
+              chartNode = chartUtils.create3DScatterPlot(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+            case "Grouped 3D Scatter Plot":
+              chartNode = chartUtils.createGrouped3DScatterPlot(
+                chartDataPoints,
+                width,
+                height
+              );
+              break;
+
             default:
               console.warn(`Unsupported chart type: ${chartType}`);
           }
