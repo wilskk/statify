@@ -102,8 +102,13 @@ export async function handleAutocorrelation(
             for (let i = 0; i < lag; i++) {
                 structureACF.push({
                     category: `lag ${i + 1}`,
-                    barValue: acf[i],
-                    lineValue: bartletRightACF[i],
+                    bars: {
+                        acf:acf[i]
+                    },
+                    lines: {
+                        bartletLeft: bartletLeftACF[i],
+                        bartletRight: bartletRightACF[i],
+                    },
                 });
             }
         } else {
@@ -112,12 +117,12 @@ export async function handleAutocorrelation(
         let acfGraphicJSON = JSON.stringify({
             charts: [
                 {
-                    chartType: "Vertical Bar & Line Chart",
+                    chartType: "Vertical Bar & Line Chart2",
                     chartMetadata: {
                         axisInfo: {
                             category: `lag`,
                             barValue: `acf`,
-                            lineValue: `bartlet right`,
+                            lineValue: [`bartlet left ACF`, `bartlet right ACF`],
                         },
                         description: `Autocorellation ${dataHeader} using ${lag}`,
                         notes: `Autocorellation ${dataHeader}`,
@@ -142,8 +147,13 @@ export async function handleAutocorrelation(
             for (let i = 0; i < lag; i++) {
                 structurePACF.push({
                     category: `lag ${i + 1}`,
-                    barValue: pacf[i],
-                    lineValue: bartletRightPACF[i],
+                    bars: {
+                        pacf:pacf[i]
+                    },
+                    lines: {
+                        bartletLeft: bartletLeftPACF[i],
+                        bartletRight: bartletRightPACF[i],
+                    },
                 });
             }
         } else {
@@ -152,12 +162,12 @@ export async function handleAutocorrelation(
         let pacfGraphicJSON = JSON.stringify({
             charts: [
                 {
-                    chartType: "Vertical Bar & Line Chart",
+                    chartType: "Vertical Bar & Line Chart2",
                     chartMetadata: {
                         axisInfo: {
                             category: `lag`,
-                            barValue: `acf`,
-                            lineValue: `bartlet right`,
+                            barValue: `pacf`,
+                            lineValue: [`bartlet left PACF`, `bartlet right PACF`],
                         },
                         description: `Autocorellation ${dataHeader} using ${lag}`,
                         notes: `Autocorellation ${dataHeader}`,
