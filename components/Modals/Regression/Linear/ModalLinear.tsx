@@ -1,11 +1,8 @@
-// components/Modals/Regression/Linear/ModalLinear.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable as VariableType } from '@/types/Variable';
 import { useDataStore } from '@/stores/useDataStore';
 import { useResultStore } from '@/stores/useResultStore';
 import {
@@ -18,10 +15,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pencil, ArrowRight } from 'lucide-react';
 import { useLinear } from '@/hooks/useLinear';
+import Statistics from '@/components/Modals/Regression/Linear/Statistics';
+import { ModalType } from "@/stores/useModalStore";
+import { useModal } from "@/hooks/useModal";
+import { SaveLinearParams } from './SaveLinear';
+import { StatisticsParams } from './Statistics';
 
 interface Variable {
   name: string;
-  type: string; // Changed to string to be compatible with Variable.ts
+  type: string;
   columnIndex: number;
 }
 
@@ -38,27 +40,84 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   const [selectedWLSWeightVariable, setSelectedWLSWeightVariable] = useState<Variable | null>(null);
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
   const [method, setMethod] = useState<string>('Enter');
+  const [saveParams, setSaveParams] = useState<SaveLinearParams | null>(null);
+  const { openModal } = useModal();
 
+  const defaultStatsParams: StatisticsParams = {
+    estimates: true,
+    confidenceIntervals: false,
+    covarianceMatrix: false,
+    modelFit: true,
+    rSquaredChange: false,
+    descriptives: false,
+    partAndPartial: false,
+    collinearityDiagnostics: false,
+    durbinWatson: false,
+    casewiseDiagnostics: false,
+    selectedResidualOption: '',
+    outlierThreshold: '3'
+  };
+
+  const [statsParams, setStatsParams] = useState<StatisticsParams | null>(defaultStatsParams);
+
+  const [showStatistics, setShowStatistics] = useState<boolean>(false);
+  const handleStatisticsSubmit = (params: StatisticsParams) => {
+    localStorage.setItem('temp_stats_params', JSON.stringify(params));
+    setStatsParams(params);
+    console.log("Statistics parameters received:", params);
+  };
   const variables = useVariableStore((state) => state.variables);
   const data = useDataStore((state) => state.data);
 
-  // Import fungsi regresi dan store hasil
   const { calculateLinearRegression } = useLinear();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
   useEffect(() => {
-    // Map VariableRow ke Variable, asumsikan VariableRow memiliki 'name', 'type', 'columnIndex'
     const availableVars: Variable[] = variables
-        .filter(v => v.name) // Filter variabel tanpa nama
-        .map((v) => ({
-          name: v.name,
-          type: String(v.type), // Convert to string to ensure type compatibility
-          columnIndex: v.columnIndex,
-        }));
+      .filter(v => v.name)
+      .map((v) => ({
+        name: v.name,
+        type: v.type as string,
+        columnIndex: v.columnIndex,
+      }));
     setAvailableVariables(availableVars);
   }, [variables]);
 
-  // Handlers for selecting and moving variables
+  const handleReset = () => {
+    localStorage.removeItem('temp_stats_params');
+    setStatsParams(defaultStatsParams);
+
+    if (selectedDependentVariable) {
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    }
+
+    if (selectedIndependentVariables.length > 0) {
+      setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
+    }
+
+    if (selectedSelectionVariable) {
+      setAvailableVariables(prev => [...prev, selectedSelectionVariable]);
+    }
+
+    if (selectedCaseLabelsVariable) {
+      setAvailableVariables(prev => [...prev, selectedCaseLabelsVariable]);
+    }
+
+    if (selectedWLSWeightVariable) {
+      setAvailableVariables(prev => [...prev, selectedWLSWeightVariable]);
+    }
+
+    setSelectedDependentVariable(null);
+    setSelectedIndependentVariables([]);
+    setSelectedSelectionVariable(null);
+    setSelectedCaseLabelsVariable(null);
+    setSelectedWLSWeightVariable(null);
+    setHighlightedVariable(null);
+    setMethod('Enter');
+
+    console.log("Reset button clicked - All selections returned to available variables");
+  };
+
   const handleSelectAvailableVariable = (variable: Variable) => {
     setHighlightedVariable(variable);
   };
@@ -66,7 +125,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   const handleMoveToDependent = () => {
     if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
       if (selectedDependentVariable) {
-        // Pindahkan variabel dependen yang ada kembali ke variabel yang tersedia
         setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
       }
       setSelectedDependentVariable(highlightedVariable);
@@ -83,7 +141,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     }
   };
 
-  // Handlers for removing variables
   const handleRemoveFromDependent = () => {
     if (selectedDependentVariable) {
       setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
@@ -117,367 +174,811 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     }
   };
 
+  const handleMoveToSelectionVariable = () => {
+    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
+      if (selectedSelectionVariable) {
+        setAvailableVariables((prev) => [...prev, selectedSelectionVariable]);
+      }
+      setSelectedSelectionVariable(highlightedVariable);
+      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
+      setHighlightedVariable(null);
+    }
+  };
+
+  const handleMoveToCaseLabelsVariable = () => {
+    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
+      if (selectedCaseLabelsVariable) {
+        setAvailableVariables((prev) => [...prev, selectedCaseLabelsVariable]);
+      }
+      setSelectedCaseLabelsVariable(highlightedVariable);
+      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
+      setHighlightedVariable(null);
+    }
+  };
+
+  const handleMoveToWLSWeightVariable = () => {
+    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
+      if (selectedWLSWeightVariable) {
+        setAvailableVariables((prev) => [...prev, selectedWLSWeightVariable]);
+      }
+      setSelectedWLSWeightVariable(highlightedVariable);
+      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
+      setHighlightedVariable(null);
+    }
+  };
+
   const handleClose = () => {
     onClose();
   };
 
-  // Fungsi handleAnalyze untuk melakukan regresi linier
   const handleAnalyze = async () => {
     try {
       const dependentVarName = selectedDependentVariable?.name;
       const independentVarNames = selectedIndependentVariables.map(v => v.name);
-
+  
       if (!dependentVarName || independentVarNames.length === 0) {
         alert('Please select a dependent variable and at least one independent variable.');
         return;
       }
-
-      // 1. Buat log command
+  
+      const storedParams = localStorage.getItem('temp_stats_params');
+      const retrievedStatsParams = storedParams
+          ? JSON.parse(storedParams)
+          : defaultStatsParams;
+  
+      console.log("[Analyze] Using statistics parameters:", retrievedStatsParams);
+  
       const logMessage = `REGRESSION 
-  /MISSING LISTWISE 
-  /STATISTICS COEFF OUTS R ANOVA 
-  /CRITERIA=PIN(.05) POUT(.10) 
-  /NOORIGIN 
-  /DEPENDENT ${dependentVarName} 
-  /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
-
+      /MISSING LISTWISE 
+      /STATISTICS COEFF OUTS R ANOVA 
+      /CRITERIA=PIN(.05) POUT(.10) 
+      /NOORIGIN 
+      /DEPENDENT ${dependentVarName} 
+      /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
+      
+      console.log("[Analyze] Log message:", logMessage);
       const log = { log: logMessage };
       const logId = await addLog(log);
-
-      // 2. Tambahkan Analytic dengan judul "Regression"
+  
       const analytic = {
-        title: "Regression",
-        log_id: logId,
+        title: "Linear Regression",
         note: "",
       };
       const analyticId = await addAnalytic(logId, analytic);
-
-      // 3. Lakukan regresi linier
+      console.log("[Analyze] Analytic ID:", analyticId);
+  
       const allVariables = variables;
-      const dataRows = data; // data adalah array dari baris, setiap baris adalah array string
-
-      // Dapatkan indeks kolom
+      const dataRows = data;
+  
       const dependentVar = allVariables.find(v => v.name === dependentVarName);
-      const independentVars = independentVarNames.map(name => allVariables.find(v => v.name === name)).filter(v => v) as VariableType[];
-
+      const independentVars = independentVarNames
+        .map(name => allVariables.find(v => v.name === name))
+        .filter(v => v !== undefined) as typeof allVariables;
+  
       const dependentVarIndex = dependentVar?.columnIndex;
       const independentVarIndices = independentVars.map(v => v.columnIndex);
-
-      // @ts-ignore
-      if (dependentVarIndex === undefined || independentVarIndices.includes(undefined)) {
+  
+      if (dependentVarIndex === undefined || independentVarIndices.some(index => index === undefined)) {
         throw new Error('Variable indices not found.');
       }
-
-      // Pastikan TypeScript mengetahui bahwa indeks tidak undefined
-      const depVarIndex = dependentVarIndex as number;
+  
+      const depVarIndex = dependentVarIndex;
       const indepVarIndices = independentVarIndices as number[];
-
-      // Dapatkan data untuk variabel - ensure proper type handling
-      const dependentData = dataRows.map(row => parseFloat(String(row[depVarIndex] || "0")));
-      const independentData = indepVarIndices.map(index =>
-          dataRows.map(row => parseFloat(String(row[index] || "0")))
-      );
-
-      // Handle missing data
+  
+      const dependentData = dataRows.map(row => parseFloat(String(row[depVarIndex])));
+      const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
+      console.log("[Analyze] Data awal - Dependent:", dependentData);
+      console.log("[Analyze] Data awal - Independent (per variable):", independentData);
+  
       const validIndices = dependentData.map((value, idx) => {
         if (isNaN(value) || independentData.some(indepData => isNaN(indepData[idx]))) {
           return false;
         }
         return true;
       });
-
-      // Filter data yang valid
+  
       const filteredDependentData = dependentData.filter((_, idx) => validIndices[idx]);
       const filteredIndependentData = independentData.map(indepData => indepData.filter((_, idx) => validIndices[idx]));
-
-      // Transpose independentData
-      const independentDataTransposed = filteredIndependentData[0].map((_, idx) => filteredIndependentData.map(indepData => indepData[idx]));
-
-      // Lakukan regresi linier
+      console.log("[Analyze] Data valid - Dependent:", filteredDependentData);
+      console.log("[Analyze] Data valid - Independent (per variable):", filteredIndependentData);
+  
+      const independentDataTransposed = filteredIndependentData[0].map((_, idx) =>
+        filteredIndependentData.map(indepData => indepData[idx])
+      );
+  
       const regressionResults = calculateLinearRegression(filteredDependentData, independentDataTransposed);
+      console.log("[Analyze] Hasil regresi (calculateLinearRegression):", regressionResults);
 
-      // 4. Masukkan hasil ke dalam Statistic
-      // Variables Entered/Removed
-      const variablesEnteredRemoved = {
-        title: "Variables Entered/Removed",
-        data: [
-          {
-            "Model": 1,
-            "Variables Entered": independentVarNames.join(', '),
-            "Variables Removed": ".",
-            "Method": method,
-          }
-        ],
-        footnotes: [
-          `a Dependent Variable: ${dependentVarName}`,
-          "b All requested variables entered.",
-        ],
-      };
-
-      const variablesEnteredRemovedStat = {
-        title: "Variables Entered/Removed",
-        output_data: JSON.stringify(variablesEnteredRemoved),
-        output_type: "table",
-        components: "VariablesEnteredRemoved",
-        description: ""
-      };
-
-      await addStatistic(analyticId, variablesEnteredRemovedStat);
-
-      // Model Summary
-      const modelSummary = {
-        title: "Model Summary",
-        data: [
-          {
-            "Model": 1,
-            "R": regressionResults.R.toFixed(3),
-            "R Square": regressionResults.RSquare.toFixed(3),
-            "Adjusted R Square": regressionResults.adjustedRSquare.toFixed(3),
-            "Std. Error of the Estimate": regressionResults.stdErrorEstimate.toFixed(3),
-          }
-        ],
-        footnotes: [
-          `a Predictors: (Constant), ${independentVarNames.join(', ')}`,
-        ],
-      };
-
-      const modelSummaryStat = {
-        title: "Model Summary",
-        output_data: JSON.stringify(modelSummary),
-        output_type: "table",
-        components: "ModelSummary",
-        description: ""
-      };
-
-      await addStatistic(analyticId, modelSummaryStat);
-
-      // ANOVA
-      const anovaTable = {
-        title: "ANOVA",
-        data: [
-          {
-            "Model": "Regression",
-            "Sum of Squares": regressionResults.regressionSS.toFixed(3),
-            "df": regressionResults.regressionDF,
-            "Mean Square": regressionResults.regressionMS.toFixed(3),
-            "F": regressionResults.F.toFixed(3),
-            "Sig.": regressionResults.pValue.toFixed(3),
-          },
-          {
-            "Model": "Residual",
-            "Sum of Squares": regressionResults.residualSS.toFixed(3),
-            "df": regressionResults.residualDF,
-            "Mean Square": regressionResults.residualMS.toFixed(3),
-          },
-          {
-            "Model": "Total",
-            "Sum of Squares": regressionResults.totalSS.toFixed(3),
-            "df": regressionResults.totalDF,
-          },
-        ],
-        footnotes: [
-          `a Dependent Variable: ${dependentVarName}`,
-          `b Predictors: (Constant), ${independentVarNames.join(', ')}`,
-        ],
-      };
-
-      const anovaStat = {
-        title: "ANOVA",
-        output_data: JSON.stringify(anovaTable),
-        output_type: "table",
-        components: "ANOVA",
-        description:""
-      };
-
-      await addStatistic(analyticId, anovaStat);
-
-      // Coefficients
-      const coefficientsData = regressionResults.coefficients.map((coef, idx) => {
-        return {
-          "Model": 1,
-          "Unstandardized Coefficients B": coef.coefficient.toFixed(3),
-          "Std. Error": coef.stdError.toFixed(3),
-          "Standardized Coefficients Beta": coef.standardizedCoefficient !== null ? coef.standardizedCoefficient.toFixed(3) : "",
-          "t": coef.tValue.toFixed(3),
-          "Sig.": coef.pValue.toFixed(3),
-          "Variable": idx === 0 ? "(Constant)" : independentVarNames[idx - 1],
-        };
+      const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
+      console.log("[Analyze] Mengirim data ke Worker untuk Variables Entered/Removed...");
+      variablesEnteredRemovedWorker.postMessage({
+        dependent: filteredDependentData,
+        independent: filteredIndependentData,
+        dependentName: dependentVarName,
+        independentNames: independentVarNames
       });
 
-      const coefficientsTable = {
-        title: "Coefficients",
-        data: coefficientsData,
-        footnotes: [
-          `a Dependent Variable: ${dependentVarName}`,
-        ],
+      variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
+        const variablesEnteredRemovedResults = e.data;
+        console.log("[Analyze] Hasil dari Worker Variables Entered/Removed:", variablesEnteredRemovedResults);
+
+        const variablesEnteredRemovedStat = {
+          title: "Variables Entered/Removed",
+          output_data: JSON.stringify(variablesEnteredRemovedResults),
+          components: "VariablesEnteredRemoved",
+          description: "Variables entered/removed in the regression analysis"
+        };
+
+        await addStatistic(analyticId, variablesEnteredRemovedStat);
+        console.log("[Analyze] Statistik Variables Entered/Removed disimpan.");
+        variablesEnteredRemovedWorker.terminate();
       };
 
-      const coefficientsStat = {
-        title: "Coefficients",
-        output_data: JSON.stringify(coefficientsTable),
-        output_type: "table",
-        components: "Coefficients",
-        description: ""
+      variablesEnteredRemovedWorker.onerror = (error: ErrorEvent) => {
+        console.error("[Analyze] Worker Variables Entered/Removed error:", error);
+        variablesEnteredRemovedWorker.terminate();
       };
 
-      await addStatistic(analyticId, coefficientsStat);
+      const anovaWorker = new Worker('/workers/Regression/anovaWorker.js');
+      console.log("[Analyze] Sending data to ANOVA Worker...");
+      anovaWorker.postMessage({
+        dependentData: filteredDependentData,
+        independentData: filteredIndependentData
+      });
 
-      // Tutup modal
+      anovaWorker.onmessage = async (e: MessageEvent) => {
+        const anovaStat = e.data;
+        if (anovaStat.error) {
+          console.error("[Analyze] ANOVA Worker Error:", anovaStat.error);
+          alert(`ANOVA Worker Error: ${anovaStat.error}`);
+        } else {
+          const completeStats = {
+            title: anovaStat.title,
+            output_data: anovaStat.output_data,
+            components: anovaStat.components,
+            description: "ANOVA analysis results"
+          };
+          await addStatistic(analyticId, completeStats);
+          console.log("[Analyze] ANOVA statistics saved.");
+        }
+        anovaWorker.terminate();
+      };
+
+      anovaWorker.onerror = (error: ErrorEvent) => {
+        console.error("[Analyze] ANOVA Worker error:", error, error.message);
+        alert("An error occurred in the ANOVA Worker: " + (error.message || "Unknown error"));
+        anovaWorker.terminate();
+      };
+
+      const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
+      console.log("[Analyze] Sending data to Coefficients Worker...");
+
+      coefficientsWorker.postMessage({
+        dependentData: filteredDependentData,
+        independentData: filteredIndependentData,
+        independentVarNames: independentVarNames
+      });
+
+      coefficientsWorker.onmessage = async (e: MessageEvent) => {
+        const { success, result, error } = e.data;
+
+        if (success) {
+          const coefficientsTable = result;
+          const coefficientsStat = {
+            title: "Coefficients",
+            output_data: JSON.stringify(coefficientsTable),
+            components: "Coefficients",
+            description: "Coefficients of the regression model"
+          };
+
+          await addStatistic(analyticId, coefficientsStat);
+          console.log("[Analyze] Coefficients statistics saved.");
+        } else {
+          console.error("[Analyze] Coefficients Worker error:", error);
+          alert(`Coefficients Worker Error: ${error}`);
+        }
+
+        coefficientsWorker.terminate();
+      };
+
+      coefficientsWorker.onerror = (error: ErrorEvent) => {
+        console.error("[Analyze] Coefficients Worker error:", error, error.message);
+        alert("An error occurred in the Coefficients Worker: " + (error.message || "Unknown error"));
+        coefficientsWorker.terminate();
+      };
+
+      if (retrievedStatsParams.rSquaredChange) {
+        const worker = new Worker('/workers/Regression/rsquare.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk perhitungan regresi (squared changes)...");
+        worker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        worker.onmessage = async (e: MessageEvent) => {
+          const workerResults = e.data;
+          console.log("[Analyze] Hasil dari Worker:", workerResults);
+          const rSquareStat = {
+            title: "Model Summary (R Square Change)",
+            output_data: JSON.stringify(workerResults),
+            components: "RSquareChange",
+            description: "R square change statistics"
+          };
+          await addStatistic(analyticId, rSquareStat);
+          console.log("[Analyze] Statistik R Square Change disimpan.");
+          
+          worker.terminate();
+        };
+  
+        worker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker error:", error);
+          worker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping R Square Change calculation (not selected).");
+      }
+  
+      if (retrievedStatsParams.confidenceIntervals) {
+        const confidenceWorker = new Worker('/workers/Regression/confidence_interval.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Confidence Interval...");
+        confidenceWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        confidenceWorker.onmessage = async (e: MessageEvent) => {
+          const confidenceResults = e.data;
+          console.log("[Analyze] Hasil Confidence Interval dari Worker:", confidenceResults);
+          const confidenceStat = {
+            title: "Confidence Interval",
+            output_data: JSON.stringify(confidenceResults),
+            components: "ConfidenceInterval",
+            description: "Confidence interval for regression coefficients"
+          };
+          await addStatistic(analyticId, confidenceStat);
+          console.log("[Analyze] Statistik Confidence Interval disimpan.");
+          confidenceWorker.terminate();
+        };
+  
+        confidenceWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Confidence Interval error:", error);
+          confidenceWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Confidence Interval calculation (not selected).");
+      }
+  
+      if (retrievedStatsParams.partAndPartial) {
+        const partAndPartialWorker = new Worker('/workers/Regression/coefficients_partandpartial.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Part & Partial Correlations...");
+        partAndPartialWorker.postMessage({
+          dependent: filteredDependentData,
+          independents: filteredIndependentData
+        });
+  
+        partAndPartialWorker.onmessage = async (e: MessageEvent) => {
+          const partAndPartialResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Coefficients Part & Partial:", partAndPartialResults);
+          const partAndPartialStat = {
+            title: "Coefficients (Part & Partial Correlations)",
+            output_data: JSON.stringify(partAndPartialResults),
+            components: "CoefficientsPartAndPartial",
+            description: "Part and partial correlations of regression coefficients"
+          };
+          await addStatistic(analyticId, partAndPartialStat);
+          console.log("[Analyze] Statistik Coefficients Part & Partial disimpan.");
+          partAndPartialWorker.terminate();
+        };
+  
+        partAndPartialWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Coefficients Part & Partial error:", error);
+          partAndPartialWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Part & Partial Correlations (not selected).");
+      }
+  
+      if (retrievedStatsParams.collinearityDiagnostics) {
+        const collinearityWorker = new Worker('/workers/Regression/coefficients_collinearity.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Collinearity...");
+        collinearityWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        collinearityWorker.onmessage = async (e: MessageEvent) => {
+          const collinearityResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Coefficients Collinearity:", collinearityResults);
+          const collinearityStat = {
+            title: "Collinearity Diagnostics",
+            output_data: JSON.stringify(collinearityResults),
+            components: "CollinearityStatistics",
+            description: "Collinearity statistics for regression variables"
+          };
+          await addStatistic(analyticId, collinearityStat);
+          console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
+          collinearityWorker.terminate();
+        };
+  
+        collinearityWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Coefficients Collinearity error:", error);
+          collinearityWorker.terminate();
+        };
+        
+        const collinearityDiagnosticsWorker = new Worker('/workers/Regression/collinearity_diagnostics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Collinearity Diagnostics...");
+        collinearityDiagnosticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        collinearityDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
+          const collinearityDiagnosticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Collinearity Diagnostics:", collinearityDiagnosticsResults);
+          const collinearityDiagnosticsStat = {
+            title: "Collinearity Diagnostics",
+            output_data: JSON.stringify(collinearityDiagnosticsResults),
+            components: "CollinearityDiagnostics",
+            description: "Detailed collinearity diagnostics"
+          };
+          await addStatistic(analyticId, collinearityDiagnosticsStat);
+          console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
+          collinearityDiagnosticsWorker.terminate();
+        };
+  
+        collinearityDiagnosticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Collinearity Diagnostics error:", error);
+          collinearityDiagnosticsWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Collinearity Diagnostics (not selected).");
+      }
+  
+      if (retrievedStatsParams.durbinWatson) {
+        const modelDurbinWorker = new Worker('/workers/Regression/model_durbin.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Model Durbin...");
+        modelDurbinWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        modelDurbinWorker.onmessage = async (e: MessageEvent) => {
+          const modelDurbinResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Model Durbin:", modelDurbinResults);
+          const modelDurbinStat = {
+            title: "Model Summary (Durbin-Watson)",
+            output_data: JSON.stringify(modelDurbinResults),
+            components: "ModelDurbin",
+            description: "Durbin-Watson test statistics"
+          };
+          await addStatistic(analyticId, modelDurbinStat);
+          console.log("[Analyze] Statistik Model Durbin disimpan.");
+          modelDurbinWorker.terminate();
+        };
+  
+        modelDurbinWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Model Durbin error:", error);
+          modelDurbinWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Durbin-Watson test (not selected).");
+      }
+  
+      if (retrievedStatsParams.durbinWatson || retrievedStatsParams.casewiseDiagnostics) {
+        const residualsStatisticsWorker = new Worker('/workers/Regression/residuals_statistics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Residuals Statistics...");
+        residualsStatisticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData[0]
+        });
+  
+        residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
+          const residualsStatisticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Residuals Statistics:", residualsStatisticsResults);
+          const residualsStatisticsStat = {
+            title: "Residuals Statistics",
+            output_data: JSON.stringify(residualsStatisticsResults),
+            components: "ResidualsStatistics",
+            description: "Statistics of regression residuals"
+          };
+          await addStatistic(analyticId, residualsStatisticsStat);
+          console.log("[Analyze] Statistik Residuals Statistics disimpan.");
+          residualsStatisticsWorker.terminate();
+        };
+  
+        residualsStatisticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Residuals Statistics error:", error);
+          residualsStatisticsWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Residuals Statistics (no residual option selected).");
+      }
+  
+      if (retrievedStatsParams.casewiseDiagnostics) {
+        const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics...");
+        casewiseDiagnosticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData[0],
+          threshold: parseFloat(retrievedStatsParams.outlierThreshold) || 3
+        });
+  
+        casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
+          const casewiseDiagnosticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Casewise Diagnostics:", casewiseDiagnosticsResults);
+          const casewiseDiagnosticsStat = {
+            title: "Casewise Diagnostics",
+            output_data: JSON.stringify(casewiseDiagnosticsResults),
+            components: "CasewiseDiagnostics",
+            description: "Casewise diagnostics for outlier detection"
+          };
+          await addStatistic(analyticId, casewiseDiagnosticsStat);
+          console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
+          casewiseDiagnosticsWorker.terminate();
+        };
+  
+        casewiseDiagnosticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Casewise Diagnostics error:", error);
+          casewiseDiagnosticsWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Casewise Diagnostics (not selected).");
+      }
+  
+      if (retrievedStatsParams.covarianceMatrix) {
+        const coefficientCorrelationsWorker = new Worker('/workers/Regression/coefficient_correlations.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations...");
+        coefficientCorrelationsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        coefficientCorrelationsWorker.onmessage = async (e: MessageEvent) => {
+          const correlationsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Coefficient Correlations:", correlationsResults);
+          const correlationsStat = {
+            title: "Coefficient Correlations",
+            output_data: JSON.stringify(correlationsResults),
+            components: "CoefficientCorrelations",
+            description: "Correlations between regression coefficients"
+          };
+          await addStatistic(analyticId, correlationsStat);
+          console.log("[Analyze] Statistik Coefficient Correlations disimpan.");
+          coefficientCorrelationsWorker.terminate();
+        };
+  
+        coefficientCorrelationsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Coefficient Correlations error:", error);
+          coefficientCorrelationsWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Correlation calculations (covariance matrix not selected).");
+      }
+  
+      if (retrievedStatsParams.descriptives) {
+        const descriptiveWorker = new Worker('/workers/Regression/descriptive_statistics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Descriptive Statistics...");
+        descriptiveWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        descriptiveWorker.onmessage = async (e: MessageEvent) => {
+          const descriptiveResults = e.data;
+          console.log("[Analyze] Hasil Descriptive Statistics dari Worker:", descriptiveResults);
+          const descriptiveStat = {
+            title: "Descriptive Statistics",
+            output_data: JSON.stringify(descriptiveResults),
+            components: "DescriptiveStatistics",
+            description: "Descriptive statistics for the variables"
+          };
+          await addStatistic(analyticId, descriptiveStat);
+          console.log("[Analyze] Statistik Descriptive Statistics disimpan.");
+          descriptiveWorker.terminate();
+        };
+  
+        descriptiveWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Descriptive Statistics error:", error);
+          descriptiveWorker.terminate();
+        };
+        
+        const correlationsWorker = new Worker('/workers/Regression/correlations.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Correlations...");
+        correlationsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        correlationsWorker.onmessage = async (e: MessageEvent) => {
+          const correlationsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Correlations:", correlationsResults);
+          const correlationsStat = {
+            title: "Correlations",
+            output_data: JSON.stringify(correlationsResults),
+            components: "Correlations",
+            description: "Correlation matrix between variables"
+          };
+          await addStatistic(analyticId, correlationsStat);
+          console.log("[Analyze] Statistik Correlations disimpan.");
+          correlationsWorker.terminate();
+        };
+  
+        correlationsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Correlations error:", error);
+          correlationsWorker.terminate();
+        };
+  
+      } else {
+        console.log("[Analyze] Skipping Descriptive Statistics (not selected).");
+      }
+  
+      if (retrievedStatsParams.modelFit || retrievedStatsParams.descriptives) {
+        const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Model Summary...");
+        modelSummaryWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        modelSummaryWorker.onmessage = async (e: MessageEvent) => {
+          const modelSummaryResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
+          const modelSummaryStat = {
+            title: "Model Summary",
+            output_data: JSON.stringify(modelSummaryResults),
+            components: "ModelSummary",
+            description: "Summary of the regression model"
+          };
+          await addStatistic(analyticId, modelSummaryStat);
+          console.log("[Analyze] Statistik Model Summary disimpan.");
+          modelSummaryWorker.terminate();
+        };
+  
+        modelSummaryWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Model Summary error:", error);
+          modelSummaryWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Model Summary (model fit not selected).");
+      }
+
       onClose();
-
-    } catch (error) {
-      console.error('Failed to perform linear regression:', error);
-      alert('Failed to perform linear regression. Please check your data and try again.');
+  
+    } catch (error: unknown) {
+      console.error('[Analyze] Failed to perform linear regression:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to perform linear regression: ${errorMessage}`);
     }
   };
-
+  
   return (
-      <DialogContent className="sm:max-w-[900px]">
-        <DialogHeader>
-          <DialogTitle>Linear Regression</DialogTitle>
-        </DialogHeader>
+    <DialogContent className="sm:max-w-[900px]">
+      <DialogHeader>
+        <DialogTitle>Linear Regression</DialogTitle>
+      </DialogHeader>
 
-        <Separator className="my-0" />
+      <Separator className="my-0" />
 
-        <div className="grid grid-cols-12 gap-4 py-4">
-          {/* Kolom Pertama: Daftar Variabel */}
-          <div className="col-span-3 border p-4 rounded-md max-h-[500px] overflow-y-auto">
-            <label className="font-semibold">Variables</label>
-            <ScrollArea className="mt-2 h-[450px]">
-              {availableVariables.map((variable) => (
-                  <div
-                      key={variable.name}
-                      className={`flex items-center p-2 border cursor-pointer rounded-md hover:bg-gray-100 ${
-                          highlightedVariable?.name === variable.name ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                      }`}
-                      onClick={() => handleSelectAvailableVariable(variable)}
-                  >
-                    {/* Hanya Ikon Pencil */}
+      <div className="grid grid-cols-12 gap-4 py-4">
+        <div className="col-span-3 border p-4 rounded-md max-h-[500px] overflow-y-auto">
+          <label className="font-semibold">Variables</label>
+          <ScrollArea className="mt-2 h-[450px]">
+            {availableVariables.map((variable) => (
+              <div
+                key={variable.name}
+                className={`flex items-center p-2 border cursor-pointer rounded-md hover:bg-gray-100 ${
+                  highlightedVariable?.name === variable.name ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
+                }`}
+                onClick={() => handleSelectAvailableVariable(variable)}
+              >
+                <Pencil className="h-5 w-5 mr-2 text-gray-600" />
+                {variable.name}
+              </div>
+            ))}
+          </ScrollArea>
+        </div>
+
+        <div className="col-span-6 space-y-4">
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              onClick={handleMoveToDependent}
+              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
+              className="mr-2 mt-6"
+            >
+              <ArrowRight />
+            </Button>
+            <div className="flex-1">
+              <label className="font-semibold">Dependent Variable</label>
+              <div
+                className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
+                onClick={handleRemoveFromDependent}
+              >
+                {selectedDependentVariable ? (
+                  <div className="flex items-center">
                     <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                    {variable.name}
+                    {selectedDependentVariable.name}
                   </div>
-              ))}
-            </ScrollArea>
+                ) : (
+                  <span className="text-gray-500">[None]</span>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Kolom Kedua: Tombol Panah dan Panel Variabel */}
-          <div className="col-span-6 space-y-4">
-            {/* Variabel Dependen */}
-            <div className="flex items-center">
-              {/* Tombol Panah */}
-              <Button
-                  variant="outline"
-                  onClick={handleMoveToDependent}
-                  disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
-                  className="mr-2 mt-6"
-              >
-                <ArrowRight />
-              </Button>
-              <div className="flex-1">
-                <label className="font-semibold">Dependent Variable</label>
-                <div
-                    className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
-                    onClick={handleRemoveFromDependent}
-                >
-                  {selectedDependentVariable ? (
-                      <div className="flex items-center">
-                        <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                        {selectedDependentVariable.name}
-                      </div>
-                  ) : (
-                      <span className="text-gray-500">[None]</span>
-                  )}
-                </div>
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              onClick={handleMoveToIndependent}
+              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
+              className="mr-2 mt-6"
+            >
+              <ArrowRight />
+            </Button>
+            <div className="flex-1">
+              <label className="font-semibold">Independent Variables</label>
+              <div className="mt-2 p-2 border rounded-md min-h-[100px]">
+                {selectedIndependentVariables.length > 0 ? (
+                  selectedIndependentVariables.map((variable) => (
+                    <div
+                      key={variable.name}
+                      className="flex items-center p-1 cursor-pointer hover:bg-gray-100 rounded-md"
+                      onClick={() => handleRemoveFromIndependent(variable)}
+                    >
+                      <Pencil className="h-5 w-5 mr-2 text-gray-600" />
+                      {variable.name}
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-500">[None]</span>
+                )}
               </div>
             </div>
-
-            {/* Variabel Independen */}
-            <div className="flex items-center">
-              {/* Tombol Panah */}
-              <Button
-                  variant="outline"
-                  onClick={handleMoveToIndependent}
-                  disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
-                  className="mr-2 mt-6"
-              >
-                <ArrowRight />
-              </Button>
-              <div className="flex-1">
-                <label className="font-semibold">Independent Variables</label>
-                <div className="mt-2 p-2 border rounded-md min-h-[100px]">
-                  {selectedIndependentVariables.length > 0 ? (
-                      selectedIndependentVariables.map((variable) => (
-                          <div
-                              key={variable.name}
-                              className="flex items-center p-1 cursor-pointer hover:bg-gray-100 rounded-md"
-                              onClick={() => handleRemoveFromIndependent(variable)}
-                          >
-                            <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                            {variable.name}
-                          </div>
-                      ))
-                  ) : (
-                      <span className="text-gray-500">[None]</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Method */}
-            <div className="flex items-center">
-              <div className="flex-1 ml-[50%]">
-                <label className="font-semibold">Method</label>
-                <Select onValueChange={(value) => setMethod(value)} value={method}>
-                  <SelectTrigger className="mt-2 w-full">
-                    <SelectValue placeholder="Select a method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Enter">Enter</SelectItem>
-                    <SelectItem value="Stepwise">Stepwise</SelectItem>
-                    <SelectItem value="Forward">Forward</SelectItem>
-                    <SelectItem value="Backward">Backward</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Variabel lainnya... */}
-
           </div>
 
-          {/* Kolom Ketiga: Tombol Tambahan */}
-          <div className="col-span-3 space-y-4">
-            <Button variant="outline" className="w-full">
-              Statistics...
+          <div className="flex items-center">
+            <div className="flex-1 ml-[50%]">
+              <label className="font-semibold">Method</label>
+              <Select onValueChange={(value) => setMethod(value)} value={method}>
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select a method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Enter">Enter</SelectItem>
+                  <SelectItem value="Stepwise">Stepwise</SelectItem>
+                  <SelectItem value="Forward">Forward</SelectItem>
+                  <SelectItem value="Backward">Backward</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              onClick={handleMoveToSelectionVariable}
+              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
+              className="mr-2 mt-6"
+            >
+              <ArrowRight />
             </Button>
-            <Button variant="outline" className="w-full">
-              Plots...
+            <div className="flex-1">
+              <label className="font-semibold">Selection Variable</label>
+              <div
+                className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
+                onClick={handleRemoveFromSelectionVariable}
+              >
+                {selectedSelectionVariable ? (
+                  <div className="flex items-center">
+                    <Pencil className="h-5 w-5 mr-2 text-gray-600" />
+                    {selectedSelectionVariable.name}
+                  </div>
+                ) : (
+                  <span className="text-gray-500">[None]</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              onClick={handleMoveToCaseLabelsVariable}
+              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
+              className="mr-2 mt-6"
+            >
+              <ArrowRight />
             </Button>
-            <Button variant="outline" className="w-full">
-              Save...
+            <div className="flex-1">
+              <label className="font-semibold">Case Labels</label>
+              <div
+                className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
+                onClick={handleRemoveFromCaseLabelsVariable}
+              >
+                {selectedCaseLabelsVariable ? (
+                  <div className="flex items-center">
+                    <Pencil className="h-5 w-5 mr-2 text-gray-600" />
+                    {selectedCaseLabelsVariable.name}
+                  </div>
+                ) : (
+                  <span className="text-gray-500">[None]</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              onClick={handleMoveToWLSWeightVariable}
+              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
+              className="mr-2 mt-6"
+            >
+              <ArrowRight />
             </Button>
-            <Button variant="outline" className="w-full">
-              Options...
-            </Button>
-            <Button variant="outline" className="w-full">
-              Style...
-            </Button>
-            <Button variant="outline" className="w-full">
-              Bootstrap...
-            </Button>
+            <div className="flex-1">
+              <label className="font-semibold">WLS Weight</label>
+              <div
+                className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
+                onClick={handleRemoveFromWLSWeightVariable}
+              >
+                {selectedWLSWeightVariable ? (
+                  <div className="flex items-center">
+                    <Pencil className="h-5 w-5 mr-2 text-gray-600" />
+                    {selectedWLSWeightVariable.name}
+                  </div>
+                ) : (
+                  <span className="text-gray-500">[None]</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="flex justify-center space-x-4 mt-4">
-          <Button onClick={handleAnalyze}>OK</Button>
-          <Button variant="outline">Paste</Button>
-          <Button variant="outline">Reset</Button>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
+        <div className="col-span-3 space-y-4">
+        <Button
+          onClick={() => openModal(ModalType.Statistics, { onSubmit: handleStatisticsSubmit })}
+          variant="outline"
+          className="w-full"
+        >
+          Statistics...
+        </Button>
+          <Button onClick={() => openModal(ModalType.PlotsLinear)} variant="outline" className="w-full">
+            Plots...
           </Button>
-          <Button variant="outline">Help</Button>
-        </DialogFooter>
-      </DialogContent>
+          <Button
+              variant="outline"
+              className="w-full"
+              onClick={() =>
+                  openModal(ModalType.SaveLinear, {
+                    onSave: (params: SaveLinearParams) => {
+                      setSaveParams(params);
+                      console.log(params);
+                    },
+                  })
+              }
+          >
+            Save...
+          </Button>
+          <Button onClick={() => openModal(ModalType.OptionsLinear)} variant="outline" className="w-full">
+            Options...
+          </Button>
+          <Button onClick={() => openModal(ModalType.BootstrapLinear)} variant="outline" className="w-full">
+            Bootstrap...
+          </Button>
+        </div>
+      </div>
+
+      <DialogFooter className="flex justify-center space-x-4 mt-4">
+        <Button onClick={handleAnalyze}>OK</Button>
+        <Button variant="outline">Paste</Button>
+        <Button variant="outline" onClick={handleReset}>Reset</Button>
+        <Button variant="outline" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button variant="outline">Help</Button>
+      </DialogFooter>
+    </DialogContent>
   );
 };
 

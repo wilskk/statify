@@ -4,6 +4,11 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
 export enum ModalType {
+        Statistics = 'Statistics',
+        SaveLinear = 'SaveLinear',
+        OptionsLinear = 'OptionsLinear',
+        BootstrapLinear = 'BootstrapLinear',
+        PlotsLinear = 'PlotsLinear',
   OpenFile = "openFile",
   SaveFile = "saveFile",
   ExportData = "exportData",
