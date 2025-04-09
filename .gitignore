@@ -40,6 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# wasm
+/wasm/target
+/wasm/wasm32-unknown-unknown/release/*.wasm
+/wasm/Cargo.lock
+
 # wasm-test
 /wasm-test/node_modules
 /wasm-test/.next
