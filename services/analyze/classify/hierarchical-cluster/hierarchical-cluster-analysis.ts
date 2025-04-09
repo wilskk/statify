@@ -1,6 +1,8 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { HierClusAnalysisType } from "@/models/classify/hierarchical-cluster/hierarchical-cluster-worker";
 import init, { HierarchicalCluster } from "@/wasm/pkg/wasm";
+import { resultHierarchicalCluster } from "./hierarchical-cluster-analysis-output";
+import { transformHierClusResult } from "./hierarchical-cluster-analysis-formatter";
 
 export async function analyzeHierClus({
     configData,
@@ -53,15 +55,16 @@ export async function analyzeHierClus({
     console.log("Results:", results);
     console.log("Errors:", error);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
-    // await resultHierClus({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
-    //     proximityMatrixTable: proximityMatrix,
-    //     agglomerationScheduleTable: agglomerationSchedule,
-    //     clusterMembershipTable: clusterMembership,
-    // });
+    const formattedResults = transformHierClusResult(results);
+    console.log("formattedResults", formattedResults);
+
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultHierarchicalCluster({
+        addLog,
+        addAnalytic,
+        addStatistic,
+        formattedResult: formattedResults ?? [],
+    });
 }

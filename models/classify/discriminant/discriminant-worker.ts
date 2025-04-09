@@ -1,6 +1,6 @@
 import { DiscriminantType } from "@/models/classify/discriminant/discriminant";
 import { Analytic, Log, Statistic } from "@/types/Result";
-import { ResultJson } from "./discriminant-ouput";
+import { ResultJson } from "@/types/Table";
 
 export type DiscriminantAnalysisType = {
     configData: DiscriminantType;

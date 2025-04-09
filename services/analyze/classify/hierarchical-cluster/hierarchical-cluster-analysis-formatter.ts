@@ -2,7 +2,7 @@
 import { ResultJson, Table } from "@/types/Table";
 import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
 
-export function transformClusteringResult(data: any): ResultJson {
+export function transformHierClusResult(data: any): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
     };

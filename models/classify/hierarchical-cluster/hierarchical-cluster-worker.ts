@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { HierClusType } from "./hierarchical-cluster";
+import { ResultJson } from "@/types/Table";
 
 export type HierClusAnalysisType = {
     configData: HierClusType;
@@ -27,7 +28,5 @@ export type HierClusFinalResultType = {
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
 
-    proximityMatrixTable: any;
-    agglomerationScheduleTable: any;
-    clusterMembershipTable: any;
+    formattedResult: ResultJson;
 };
