@@ -1,114 +1,159 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
-import { Scatter } from 'react-chartjs-2';
-import { Chart, registerables } from 'chart.js';
-import { Pencil, ArrowRight, Loader2 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useResultStore } from '@/stores/useResultStore';
-import models from "@/components/Modals/Regression/PartialLeastSquares/Models";
+import { Variable, VariableType } from '@/types/Variable';
+import { Chart, registerables } from 'chart.js';
+
+// Import our custom tab components
+import VariablesTab from './VariablesTab';
+import ModelsTab from './ModelsTab';
 
 Chart.register(...registerables);
-
-interface Variable {
-  name: string;
-  type: 'numeric' | 'categorical';
-  columnIndex: number;
-}
 
 interface ModalCurveEstimationProps {
   onClose: () => void;
 }
 
 const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) => {
+  // Tab state
+  const [activeTab, setActiveTab] = useState("variables");
+
+  // Variables state
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+  const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
   const [selectedCaseLabels, setSelectedCaseLabels] = useState<Variable | null>(null);
+
+  // Models state
   const [selectedModels, setSelectedModels] = useState<string[]>(['Linear']);
-  const [includeConstant, setIncludeConstant] = useState<boolean>(true); 
-  const [plotModels, setPlotModels] = useState<boolean>(true); 
+  const [includeConstant, setIncludeConstant] = useState<boolean>(true);
+  const [plotModels, setPlotModels] = useState<boolean>(true);
   const [displayANOVA, setDisplayANOVA] = useState<boolean>(false);
-  const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
   const [upperBound, setUpperBound] = useState<string>('');
+
+  // Processing state
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
+
   const workerRef = useRef<Worker | null>(null);
 
   const variables = useVariableStore((state) => state.variables);
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
+  // Define numeric variable types
+  const numericTypes: VariableType[] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC"];
+
   useEffect(() => {
-    const availableVars: Variable[] = variables
-      .filter((v) => v.name)
-      .map((v) => ({
-        name: v.name,
-        type: v.type as 'numeric' | 'categorical',
-        columnIndex: v.columnIndex,
-      }));
-    setAvailableVariables(availableVars);
-  }, [variables]);
+    // Load available variables, filtering out any already selected
+    const allVarsFiltered = variables.filter(v => {
+      if (!v.name) return false;
 
-  const handleSelectAvailableVariable = (variable: Variable) => {
-    setHighlightedVariable(variable);
-  };
+      const isDependent = selectedDependentVariable?.columnIndex === v.columnIndex;
+      const isIndependent = selectedIndependentVariables.some(iv => iv.columnIndex === v.columnIndex);
+      const isCaseLabel = selectedCaseLabels?.columnIndex === v.columnIndex;
 
-  const handleMoveToDependent = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      if (selectedDependentVariable) {
-        setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
-      }
-      setSelectedDependentVariable(highlightedVariable);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
+      return !isDependent && !isIndependent && !isCaseLabel;
+    });
 
-  const handleMoveToIndependent = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      setSelectedIndependentVariables((prev) => [...prev, highlightedVariable]);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
+    setAvailableVariables(allVarsFiltered);
+  }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
 
-  const handleMoveToCaseLabels = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      if (selectedCaseLabels) {
-        setAvailableVariables((prev) => [...prev, selectedCaseLabels]);
-      }
-      setSelectedCaseLabels(highlightedVariable);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
-
-  const handleRemoveFromDependent = () => {
+  // Variables Tab handlers
+  const handleDependentDoubleClick = (variable: Variable) => {
     if (selectedDependentVariable) {
-      setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
+      // Move current dependent back to available
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    }
+    setSelectedDependentVariable(variable);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const handleIndependentDoubleClick = (variable: Variable) => {
+    setSelectedIndependentVariables(prev => [...prev, variable]);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const handleCaseLabelsDoubleClick = (variable: Variable) => {
+    if (selectedCaseLabels) {
+      // Move current case label back to available
+      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    }
+    setSelectedCaseLabels(variable);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const moveToDependent = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) {
+      handleDependentDoubleClick(variable);
+    }
+  };
+
+  const moveToIndependent = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) {
+      handleIndependentDoubleClick(variable);
+    }
+  };
+
+  const moveToCaseLabels = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) {
+      handleCaseLabelsDoubleClick(variable);
+    }
+  };
+
+  const removeDependent = () => {
+    if (selectedDependentVariable) {
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
       setSelectedDependentVariable(null);
     }
   };
 
-  const handleRemoveFromIndependent = (variable: Variable) => {
-    setAvailableVariables((prev) => [...prev, variable]);
-    setSelectedIndependentVariables((prev) => prev.filter((item) => item !== variable));
+  const removeIndependent = (variable: Variable) => {
+    setSelectedIndependentVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setAvailableVariables(prev => [...prev, variable]);
   };
 
-  const handleRemoveFromCaseLabels = () => {
+  const removeCaseLabels = () => {
     if (selectedCaseLabels) {
-      setAvailableVariables((prev) => [...prev, selectedCaseLabels]);
+      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
       setSelectedCaseLabels(null);
     }
   };
 
+  // Models Tab handlers
+  const handleModelChange = (model: string) => {
+    setSelectedModels((prev) =>
+        prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
+    );
+  };
+
+  // General handlers
   const handleClose = () => {
     if (workerRef.current) {
       workerRef.current.terminate();
@@ -117,25 +162,20 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     onClose();
   };
 
-  const handleModelChange = (model: string) => {
-    setSelectedModels((prev) =>
-      prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
-    );
-  };
-
   const handleReset = () => {
+    // Move all selected variables back to available variables
     if (selectedDependentVariable) {
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
-    
+
     if (selectedIndependentVariables.length > 0) {
       setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
     }
-    
+
     if (selectedCaseLabels) {
       setAvailableVariables(prev => [...prev, selectedCaseLabels]);
     }
-    
+
     setSelectedDependentVariable(null);
     setSelectedIndependentVariables([]);
     setSelectedCaseLabels(null);
@@ -161,12 +201,22 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       const depCol = selectedDependentVariable.columnIndex;
       const indepCols = selectedIndependentVariables.map(iv => iv.columnIndex);
 
-      const Y = data.map(row => Number(row[depCol])).filter(val => !isNaN(val));
-      const X = data.map(row => Number(row[indepCols[0]])).filter(val => !isNaN(val));
+      // Extract and filter data for the regression
+      const validRows = data.filter(row =>
+          depCol < row.length &&
+          indepCols.every(col => col < row.length) &&
+          !isNaN(Number(row[depCol])) &&
+          indepCols.every(col => !isNaN(Number(row[col])))
+      );
 
-      const length = Math.min(X.length, Y.length);
-      const Xtrim = X.slice(0, length);
-      const Ytrim = Y.slice(0, length);
+      if (validRows.length === 0) {
+        setErrorMessage("No valid data rows found for regression analysis.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const Y = validRows.map(row => Number(row[depCol]));
+      const X = validRows.map(row => Number(row[indepCols[0]])); // Using first independent variable for now
 
       const dependentVarName = selectedDependentVariable.name;
       const independentVarNames = selectedIndependentVariables.map(iv => iv.name);
@@ -176,7 +226,7 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
 /MISSING LISTWISE 
 /STATISTICS COEFF OUTS R ANOVA 
 /CRITERIA=PIN(.05) POUT(.10) 
-/NOORIGIN 
+${includeConstant ? '/NOORIGIN' : '/ORIGIN'} 
 /DEPENDENT ${dependentVarName} 
 /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
 
@@ -194,26 +244,27 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       if (workerRef.current) {
         workerRef.current.terminate();
       }
-      
+
       workerRef.current = new Worker('/workers/CurveEstimation/curve_estimation.js');
-      
+
       workerRef.current.onmessage = async (event) => {
         const { action, data } = event.data;
-        
+
         if (action === 'regressionResults') {
           console.log("[CurveEstimation] Received regression results:", data);
-          
+
           if (data.success) {
             const regressionSummaryStat = {
               title: "Curve Estimation",
               output_data: JSON.stringify(data.result),
               components: "CurveEstimationSummary",
-              description: "Curve estimation analysis results"
+              description: `Curve estimation for ${dependentVarName} using ${selectedModels.join(', ')} models`
             };
 
             try {
               await addStatistic(analyticId, regressionSummaryStat);
               console.log("[CurveEstimation] Statistics saved successfully");
+              onClose();
             } catch (error) {
               console.error("[CurveEstimation] Failed to save statistics:", error);
               setErrorMessage("Failed to save regression results.");
@@ -222,7 +273,7 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             console.error("[CurveEstimation] Worker returned an error:", data.message);
             setErrorMessage(data.message || "An error occurred during regression analysis.");
           }
-          
+
           setIsProcessing(false);
         } else if (action === 'error') {
           console.error("[CurveEstimation] Worker error:", data.message);
@@ -230,33 +281,32 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           setIsProcessing(false);
         }
       };
-      
+
       workerRef.current.onerror = (error) => {
         console.error("[CurveEstimation] Worker error:", error.message);
         setErrorMessage(`Worker error: ${error.message}`);
         setIsProcessing(false);
-        
+
         if (workerRef.current) {
           workerRef.current.terminate();
           workerRef.current = null;
         }
       };
 
-      console.log(selectedModels);
-      console.log(upperBound);
-      console.log("[CurveEstimation] Sending data to worker");
       workerRef.current.postMessage({
         action: 'runRegression',
         data: {
           models: selectedModels,
-          X: Xtrim,
-          Y: Ytrim,
+          includeConstant,
+          X,
+          Y,
           dependentName: dependentVarName,
           independentNames: independentVarNames,
-          upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
+          upperBound: selectedModels.includes('Logistic') && upperBound ? parseFloat(upperBound) : undefined,
+          displayANOVA
         }
       });
-      
+
     } catch (error: unknown) {
       console.error("[CurveEstimation] Error in regression processing:", error);
       const errorMsg = error instanceof Error ? error.message : "Unknown error occurred";
@@ -264,249 +314,126 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       setIsProcessing(false);
     }
   };
-  
-  const getColorForModel = (model: string) => {
-    const colors: { [key: string]: string } = {
-      'Linear': 'rgba(255,99,132,1)',
-      'Quadratic': 'rgba(54,162,235,1)',
-      'Cubic': 'rgba(255,206,86,1)',
-      'Logarithmic': 'rgba(75,192,192,1)',
-      'Inverse': 'rgba(153,102,255,1)',
-      'Power': 'rgba(255,159,64,1)',
-      'Compound': 'rgba(199,199,199,1)',
-      'S': 'rgba(255,99,255,1)',
-      'Logistic': 'rgba(99,255,132,1)',
-      'Growth': 'rgba(132,99,255,1)',
-      'Exponential': 'rgba(255,50,50,1)',
-    };
-    return colors[model] || 'rgba(0,0,0,1)';
-  };
 
   return (
-    <DialogContent className="sm:max-w-[900px]">
-      <DialogHeader>
-        <DialogTitle className="text-lg">Curve Estimation</DialogTitle>
-      </DialogHeader>
-  
-      <Separator className="my-1" />
-      
-      {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
-          {errorMessage}
-        </div>
-      )}
-  
-      <div className="grid grid-cols-12 gap-2 py-2">
-        <div className="col-span-3 border p-2 rounded-md max-h-[500px] overflow-y-auto">
-          <label className="font-semibold text-sm">Variables</label>
-          <ScrollArea className="mt-1 h-[450px]">
-            {availableVariables.map((variable) => (
-              <div
-                key={variable.name}
-                className={`flex items-center p-1 border cursor-pointer rounded-md hover:bg-gray-100 ${
-                  highlightedVariable?.name === variable.name ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                }`}
-                onClick={() => handleSelectAvailableVariable(variable)}
+      <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+          <DialogTitle className="text-[22px] font-semibold">Curve Estimation</DialogTitle>
+        </DialogHeader>
+
+        {errorMessage && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
+              {errorMessage}
+            </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+          <div className="border-b border-[#E6E6E6] flex-shrink-0">
+            <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+              <TabsTrigger
+                  value="variables"
+                  className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
               >
-                <Pencil className="h-4 w-4 mr-1 text-gray-600" />
-                <span className="text-sm">{variable.name}</span>
-              </div>
-            ))}
-          </ScrollArea>
-        </div>
-  
-        <div className="col-span-6 space-y-4">
-          <div className="flex items-center">
-            <Button
-              variant="outline"
-              onClick={handleMoveToDependent}
-              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable) || isProcessing}
-              className="mr-1 p-1"
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <div className="flex-1">
-              <label className="font-semibold text-sm">Dependent Variable</label>
-              <div
-                className="mt-1 p-1 border rounded-md min-h-[40px] cursor-pointer text-sm"
-                onClick={handleRemoveFromDependent}
+                Variables
+              </TabsTrigger>
+              <TabsTrigger
+                  value="models"
+                  className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
               >
-                {selectedDependentVariable ? (
-                  <div className="flex items-center">
-                    <Pencil className="h-4 w-4 mr-1 text-gray-600" />
-                    {selectedDependentVariable.name}
-                  </div>
-                ) : (
-                  <span className="text-gray-500">[None]</span>
-                )}
-              </div>
-            </div>
+                Models
+              </TabsTrigger>
+            </TabsList>
           </div>
-  
-          <div className="flex items-start">
-            <Button
-              variant="outline"
-              onClick={handleMoveToIndependent}
-              disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable) || isProcessing}
-              className="mr-1 p-1 mt-1"
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <div className="flex-1">
-              <label className="font-semibold text-sm">Independent Variables</label>
-              <div className="mt-1 p-1 border rounded-md min-h-[80px] text-sm">
-                {selectedIndependentVariables.length > 0 ? (
-                  selectedIndependentVariables.map((variable) => (
-                    <div
-                      key={variable.name}
-                      className="flex items-center p-0.5 cursor-pointer hover:bg-gray-100 rounded-md"
-                      onClick={() => handleRemoveFromIndependent(variable)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1 text-gray-600" />
-                      {variable.name}
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-gray-500">[None]</span>
-                )}
-              </div>
-            </div>
-          </div>
-  
-          <div className="flex items-start">
-            <div className="flex items-center mr-2 w-2/3">
-              <Button
-                variant="outline"
-                onClick={handleMoveToCaseLabels}
-                disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable) || isProcessing}
-                className="mr-1 p-1"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <div className="flex-1">
-                <label className="font-semibold text-sm">Case Labels</label>
-                <div
-                  className="mt-1 p-1 border rounded-md min-h-[50px] cursor-pointer text-sm"
-                  onClick={handleRemoveFromCaseLabels}
-                >
-                  {selectedCaseLabels ? (
-                    <div className="flex items-center">
-                      <Pencil className="h-4 w-4 mr-1 text-gray-600" />
-                      {selectedCaseLabels.name}
-                    </div>
-                  ) : (
-                    <span className="text-gray-500">[None]</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col space-y-1 mt-2 w-1/3 text-sm">
-              <div className="flex items-center">
-                <Checkbox
-                  checked={includeConstant}
-                  onCheckedChange={(checked) => setIncludeConstant(checked as boolean)}
-                  disabled={isProcessing}
-                />
-                <span className="ml-1">Include constant</span>
-              </div>
-              <div className="flex items-center">
-                <Checkbox
-                  checked={plotModels}
-                  onCheckedChange={(checked) => setPlotModels(checked as boolean)}
-                  disabled={isProcessing}
-                />
-                <span className="ml-1">Plot models</span>
-              </div>
-            </div>
-          </div>
-  
-          <div className="text-sm">
-            <label className="font-semibold">Models</label>
-            <div className="mt-1 grid grid-cols-3 gap-1">
-              {[
-                'Linear',
-                'Quadratic',
-                'Compound',
-                'Growth',
-                'Logarithmic',
-                'Cubic',
-                'S',
-                'Exponential',
-                'Inverse',
-                'Power',
-                'Logistic',
-              ].map((model) => (
-                <div key={model} className="flex items-center">
-                  <Checkbox
-                    checked={selectedModels.includes(model)}
-                    onCheckedChange={() => handleModelChange(model)}
-                    disabled={isProcessing}
-                  />
-                  <span className="ml-1">{model}</span>
-                </div>
-              ))}
-            </div>
-            {selectedModels.includes('Logistic') && (
-              <div className="mt-1">
-                <label className="font-semibold text-xs">Upper Bound</label>
-                <Input
-                  type="number"
-                  placeholder="Enter upper bound"
-                  value={upperBound}
-                  onChange={(e) => setUpperBound(e.target.value)}
-                  className="mt-0.5 p-1 text-sm"
-                  disabled={isProcessing}
-                />
-              </div>
-            )}
-          </div>
-  
-          <div className="flex items-center text-sm">
-            <Checkbox
-              checked={displayANOVA}
-              onCheckedChange={(checked) => setDisplayANOVA(checked as boolean)}
-              disabled={isProcessing}
+
+          {/* Variables Tab Content */}
+          <TabsContent value="variables" className="overflow-y-auto flex-grow p-6">
+            <VariablesTab
+                availableVariables={availableVariables}
+                highlightedVariable={highlightedVariable}
+                setHighlightedVariable={setHighlightedVariable}
+                selectedDependentVariable={selectedDependentVariable}
+                selectedIndependentVariables={selectedIndependentVariables}
+                selectedCaseLabels={selectedCaseLabels}
+                handleDependentDoubleClick={handleDependentDoubleClick}
+                handleIndependentDoubleClick={handleIndependentDoubleClick}
+                handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
+                moveToDependent={moveToDependent}
+                moveToIndependent={moveToIndependent}
+                moveToCaseLabels={moveToCaseLabels}
+                removeDependent={removeDependent}
+                removeIndependent={removeIndependent}
+                removeCaseLabels={removeCaseLabels}
+                isProcessing={isProcessing}
             />
-            <span className="ml-1">Display ANOVA table</span>
+          </TabsContent>
+
+          {/* Models Tab Content */}
+          <TabsContent value="models" className="overflow-y-auto flex-grow">
+            <ModelsTab
+                selectedModels={selectedModels}
+                handleModelChange={handleModelChange}
+                includeConstant={includeConstant}
+                setIncludeConstant={setIncludeConstant}
+                plotModels={plotModels}
+                setPlotModels={setPlotModels}
+                displayANOVA={displayANOVA}
+                setDisplayANOVA={setDisplayANOVA}
+                upperBound={upperBound}
+                setUpperBound={setUpperBound}
+                isProcessing={isProcessing}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+          <div className="flex justify-end space-x-3">
+            <Button
+                className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                onClick={handleRunRegression}
+                disabled={isProcessing}
+            >
+              {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+              ) : (
+                  "OK"
+              )}
+            </Button>
+            <Button
+                variant="outline"
+                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                disabled={isProcessing}
+            >
+              Paste
+            </Button>
+            <Button
+                variant="outline"
+                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                onClick={handleReset}
+                disabled={isProcessing}
+            >
+              Reset
+            </Button>
+            <Button
+                variant="outline"
+                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                onClick={handleClose}
+                disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+                variant="outline"
+                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                disabled={isProcessing}
+            >
+              Help
+            </Button>
           </div>
-        </div>
-  
-        <div className="col-span-3 flex flex-col justify-start space-y-2">
-          <Button 
-            variant="outline" 
-            onClick={() => alert('Save configuration')} 
-            className="p-2"
-            disabled={isProcessing}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-  
-      <DialogFooter className="flex justify-center space-x-2 mt-2">
-        <Button 
-          variant="default" 
-          onClick={handleRunRegression} 
-          className="px-3 py-1"
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            "OK"
-          )}
-        </Button>
-        <Button variant="default" className="px-3 py-1" disabled={isProcessing}>Paste</Button>
-        <Button variant="default" className="px-3 py-1" disabled={isProcessing} onClick={handleReset}>Reset</Button>
-        <Button variant="outline" onClick={handleClose} className="px-3 py-1" disabled={isProcessing}>
-          Cancel
-        </Button>
-        <Button variant="default" className="px-3 py-1" disabled={isProcessing}>Help</Button>
-      </DialogFooter>
-    </DialogContent>
+        </DialogFooter>
+      </DialogContent>
   );
 };
 
