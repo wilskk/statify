@@ -319,6 +319,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 useAxis
               );
               break;
+            case "Vertical Bar & Line Chart2":
+              chartNode = chartUtils.createBarAndLineChart2(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
             case "Dual Axes Scatter Plot":
               chartNode = chartUtils.createDualAxesScatterPlot(
                 chartDataPoints,

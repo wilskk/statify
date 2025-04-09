@@ -31,6 +31,7 @@ export const chartTypes = [
   "High-Low-Close Chart",
   "Difference Area",
   "Vertical Bar & Line Chart",
+  "Vertical Bar & Line Chart2",
   "Dual Axes Scatter Plot",
   "Drop Line Chart",
   "Summary Point Plot",
