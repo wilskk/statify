@@ -16,18 +16,15 @@ import { DiscriminantDefault } from "@/constants/classify/discriminant/discrimin
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 export const DiscriminantContainer = ({
     onClose,
 }: DiscriminantContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<DiscriminantType>({

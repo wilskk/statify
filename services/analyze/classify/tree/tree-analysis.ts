@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { TreeAnalysisType } from "@/models/classify/tree/tree-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeTree({
     configData,

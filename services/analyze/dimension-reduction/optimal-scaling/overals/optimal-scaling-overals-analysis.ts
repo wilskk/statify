@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaOveralsAnalysisType } from "@/models/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaOverals({
     configData,

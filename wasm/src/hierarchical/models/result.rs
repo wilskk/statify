@@ -6,7 +6,6 @@ use super::config::ClusMethod;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClusteringResult {
     pub case_processing_summary: CaseProcessingSummary,
-    pub case_clusters: Vec<CaseCluster>,
     pub proximity_matrix: Option<ProximityMatrix>,
     pub agglomeration_schedule: Option<AgglomerationSchedule>,
     pub dendrogram: Option<Dendrogram>,
@@ -23,12 +22,6 @@ pub struct CaseProcessingSummary {
     pub missing_percent: f64,
     pub total_cases: usize,
     pub total_percent: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CaseCluster {
-    pub name: String,
-    pub cluster_count: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

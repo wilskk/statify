@@ -14,18 +14,15 @@ import { CorrespondenceStatistics } from "@/components/Modals/Analyze/dimension-
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { analyzeCorrespondence } from "@/services/analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-analysis";
 
 export const CorrespondenceContainer = ({
     onClose,
 }: CorrespondenceContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<CorrespondenceType>({

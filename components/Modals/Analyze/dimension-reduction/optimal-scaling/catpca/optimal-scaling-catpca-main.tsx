@@ -23,18 +23,15 @@ import { OptScaCatpcaCategoryPlots } from "@/components/Modals/Analyze/dimension
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { analyzeOptScaCatpca } from "@/services/analyze/dimension-reduction/optimal-scaling/catpca/optimal-scaling-catpca-analysis";
 
 export const OptScaCatpcaContainer = ({
     onClose,
 }: OptScaCatpcaContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<OptScaCatpcaType>({

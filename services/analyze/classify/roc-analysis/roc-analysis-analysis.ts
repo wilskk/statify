@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocAnalysisAnalysisType } from "@/models/classify/roc-analysis/roc-analysis-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeRocAnalysis({
     configData,

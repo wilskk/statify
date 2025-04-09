@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaMCAAnalysisType } from "@/models/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaMCA({
     configData,

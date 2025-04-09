@@ -12,18 +12,15 @@ import { RocAnalysisDefineGroups } from "@/components/Modals/Analyze/classify/ro
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { analyzeRocAnalysis } from "@/services/analyze/classify/roc-analysis/roc-analysis-analysis";
 
 export const RocAnalysisContainer = ({
     onClose,
 }: RocAnalysisContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<RocAnalysisType>({

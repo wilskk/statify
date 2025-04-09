@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { VarianceCompsAnalysisType } from "@/models/general-linear-model/variance-components/variance-components-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeVarianceComps({
     configData,

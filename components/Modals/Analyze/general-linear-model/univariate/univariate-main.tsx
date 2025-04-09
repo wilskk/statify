@@ -17,16 +17,13 @@ import { UnivariateBootstrap } from "@/components/Modals/Analyze/general-linear-
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { analyzeUnivariate } from "@/services/analyze/general-linear-model/univariate/univariate-analysis";
 
 export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<UnivariateType>({

@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { CorrespondenceAnalysisType } from "@/models/dimension-reduction/correspondence-analysis/correspondence-analysis-worker";
-import init, { CorrespondenceAnalysis } from "@/src/wasm/pkg/wasm";
+import init, { CorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeCorrespondence({
     configData,

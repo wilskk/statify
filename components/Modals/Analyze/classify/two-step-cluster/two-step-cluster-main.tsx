@@ -11,18 +11,15 @@ import { TwoStepClusterOutput } from "@/components/Modals/Analyze/classify/two-s
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { RawData, VariableDef } from "@/lib/db";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { analyzeTwoStepCluster } from "@/services/analyze/classify/two-step-cluster/two-step-cluster-analysis";
 
 export const TwoStepClusterContainer = ({
     onClose,
 }: TwoStepClusterContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<TwoStepClusterType>({

@@ -1,0 +1,40 @@
+"use client";
+
+import React from "react";
+import {
+    MenubarItem,
+    MenubarSub,
+    MenubarSubContent,
+    MenubarSubTrigger,
+} from "@/components/ui/menubar";
+import { ModalType, useModal } from "@/hooks/useModal";
+
+const GeneralLinearModelMenu: React.FC = () => {
+    const { openModal } = useModal();
+
+    return (
+        <MenubarSub>
+            <MenubarSubTrigger>General Linear Model</MenubarSubTrigger>
+            <MenubarSubContent>
+                <MenubarItem onClick={() => openModal(ModalType.Univariate)}>
+                    Univariate
+                </MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.Multivariate)}>
+                    Multivariate
+                </MenubarItem>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.RepeatedMeasures)}
+                >
+                    Repeated Measures
+                </MenubarItem>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.VarianceComponents)}
+                >
+                    Variance Components
+                </MenubarItem>
+            </MenubarSubContent>
+        </MenubarSub>
+    );
+};
+
+export default GeneralLinearModelMenu;

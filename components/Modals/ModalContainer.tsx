@@ -1,11 +1,14 @@
-"use client"
+"use client";
 
 import React from "react";
 import { ModalType, useModal } from "@/hooks/useModal";
 import { FileModals, isFileModal } from "@/components/Modals/File/FileModals";
 import { DataModals, isDataModal } from "@/components/Modals/Data/DataModals";
 import { EditModals, isEditModal } from "@/components/Modals/Edit/EditModals";
-import { DescriptiveModal, isDescriptiveModal } from "@/components/Modals/Analyze/Descriptive/DescriptiveModal";
+import {
+    DescriptiveModal,
+    isDescriptiveModal,
+} from "@/components/Modals/Analyze/Descriptive/DescriptiveModal";
 import ComputeVariableModal from "@/components/Modals/Transform/ComputeVariableModal";
 import { Dialog } from "@/components/ui/dialog";
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
@@ -24,6 +27,18 @@ import ModalQuantiles from "./Regression/Quantiles/ModalQuantiles";
 import ModalOptimalScaling from "./Regression/OptimalScaling/ModalOptimalScaling";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
 import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
+import {
+    GeneralLinearModelModals,
+    isGeneralLinearModelModal,
+} from "./Analyze/general-linear-model/general-linear-model-modals";
+import {
+    ClassifyModals,
+    isClassifyModal,
+} from "./Analyze/classify/classify-modals";
+import {
+    DimensionReductionModals,
+    isDimensionReductionModal,
+} from "./Analyze/dimension-reduction/dimension-reduction-modals";
 
 const ModalContainer: React.FC = () => {
     const { modals, closeModal } = useModal();
@@ -80,10 +95,51 @@ const ModalContainer: React.FC = () => {
         );
     }
 
+    if (isClassifyModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <ClassifyModals
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
+    if (isDimensionReductionModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <DimensionReductionModals
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
+    if (isGeneralLinearModelModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <GeneralLinearModelModals
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
     const renderModal = () => {
         switch (currentModal.type) {
             case ModalType.ComputeVariable:
-                return <ComputeVariableModal onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ComputeVariableModal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
 
             case ModalType.ModalAutomaticLinearModeling:
                 return (
@@ -93,10 +149,15 @@ const ModalContainer: React.FC = () => {
                     />
                 );
             case ModalType.ModalLinear:
-                return <ModalLinear onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ModalLinear onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.ModalCurveEstimation:
                 return (
-                    <ModalCurveEstimation onClose={closeModal} {...currentModal.props} />
+                    <ModalCurveEstimation
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
                 );
             case ModalType.ModalPartialLeastSquares:
                 return (
@@ -107,7 +168,10 @@ const ModalContainer: React.FC = () => {
                 );
             case ModalType.ModalBinaryLogistic:
                 return (
-                    <ModalBinaryLogistic onClose={closeModal} {...currentModal.props} />
+                    <ModalBinaryLogistic
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
                 );
             case ModalType.ModalMultinomialLogistic:
                 return (
@@ -117,14 +181,29 @@ const ModalContainer: React.FC = () => {
                     />
                 );
             case ModalType.ModalOrdinal:
-                return <ModalOrdinal onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ModalOrdinal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalProbit:
-                return <ModalProbit onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ModalProbit onClose={closeModal} {...currentModal.props} />
+                );
             case ModalType.ModalNonlinear:
-                return <ModalNonlinear onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ModalNonlinear
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalWeightEstimation:
                 return (
-                    <ModalWeightEstimation onClose={closeModal} {...currentModal.props} />
+                    <ModalWeightEstimation
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
                 );
             case ModalType.ModalTwoStageLeastSquares:
                 return (
@@ -134,21 +213,42 @@ const ModalContainer: React.FC = () => {
                     />
                 );
             case ModalType.ModalQuantiles:
-                return <ModalQuantiles onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <ModalQuantiles
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalOptimalScaling:
                 return (
-                    <ModalOptimalScaling onClose={closeModal} {...currentModal.props} />
+                    <ModalOptimalScaling
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
                 );
 
             case ModalType.KRelatedSamplesTest:
-                return <KRelatedSamplesTestModal onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <KRelatedSamplesTestModal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
 
             case ModalType.ChartBuilderModal:
                 return (
-                    <ChartBuilderModal onClose={closeModal} {...currentModal.props} />
+                    <ChartBuilderModal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
                 );
             case ModalType.SimpleBarModal:
-                return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
+                return (
+                    <SimpleBarModal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
 
             default:
                 return null;

@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RepeatedMeasuresAnalysisType } from "@/models/general-linear-model/repeated-measures/repeated-measures-worker";
-import init from "@/src/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeRepeatedMeasures({
     configData,

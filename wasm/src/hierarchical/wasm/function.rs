@@ -58,18 +58,6 @@ pub fn run_analysis(
         }
     };
 
-    // Clustering logic
-    let case_clusters = match core::perform_clustering(&analysis_data, config) {
-        Ok(clusters) => {
-            web_sys::console::log_1(&format!("Case Clusters: {:?}", clusters).into());
-            clusters
-        }
-        Err(e) => {
-            error_collector.add_error("perform_clustering", &e);
-            return Err(string_to_js_error(e));
-        }
-    };
-
     // Proximity matrix
     let mut proximity_matrix = None;
     if config.main.disp_stats && config.statistics.prox_matrix {
@@ -160,7 +148,6 @@ pub fn run_analysis(
     // Create final result
     let result = ClusteringResult {
         case_processing_summary,
-        case_clusters,
         proximity_matrix,
         agglomeration_schedule,
         dendrogram,

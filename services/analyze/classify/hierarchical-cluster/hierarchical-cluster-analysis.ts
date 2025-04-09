@@ -1,8 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { HierClusAnalysisType } from "@/models/classify/hierarchical-cluster/hierarchical-cluster-worker";
-import init, { HierarchicalCluster } from "@/src/wasm/pkg/wasm";
-import { convertClusteringData } from "./hierarchical-cluster-analysis-formatter";
-import { resultHierClus } from "./hierarchical-cluster-analysis-output";
+import init, { HierarchicalCluster } from "@/wasm/pkg/wasm";
 
 export async function analyzeHierClus({
     configData,
@@ -36,6 +34,10 @@ export async function analyzeHierClus({
     const varDefsForLabelCases = getVarDefs(variables, LabelCasesVariable);
 
     console.log(configData);
+    console.log("Sliced Data for Cluster:", slicedDataForCluster);
+    console.log("Sliced Data for Label Cases:", slicedDataForLabelCases);
+    console.log("Variable Definitions for Cluster:", varDefsForCluster);
+    console.log("Variable Definitions for Label Cases:", varDefsForLabelCases);
 
     const hc = new HierarchicalCluster(
         slicedDataForCluster,

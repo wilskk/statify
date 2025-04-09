@@ -6,7 +6,6 @@ import { OptScaOveralsOptions } from "@/components/Modals/Analyze/dimension-redu
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { OptScaOveralsDefault } from "@/constants/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-default";
 import { useModal } from "@/hooks/useModal";
-import { RawData, VariableDef } from "@/lib/db";
 import {
     OptScaOveralsContainerProps,
     OptScaOveralsMainType,
@@ -17,16 +16,14 @@ import {
 } from "@/models/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals";
 import { analyzeOptScaOverals } from "@/services/analyze/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-analysis";
 import { useDataStore } from "@/stores/useDataStore";
-import useResultStore from "@/stores/useResultStore";
+import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 
 export const OptScaOveralsContainer = ({
     onClose,
 }: OptScaOveralsContainerProps) => {
-    const variables = useVariableStore(
-        (state) => state.variables
-    ) as VariableDef[];
-    const dataVariables = useDataStore((state) => state.data) as RawData;
+    const variables = useVariableStore((state) => state.variables);
+    const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
 
     const [formData, setFormData] = useState<OptScaOveralsType>({
