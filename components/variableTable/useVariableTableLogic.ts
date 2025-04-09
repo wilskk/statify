@@ -351,31 +351,6 @@ export function useVariableTableLogic() {
         }
     }), [handleInsertVariable, handleDeleteVariable]);
 
-    const getCellProperties = useCallback((row: number, col: number): Partial<Handsontable.CellProperties> => {
-        const cellProperties: Partial<Handsontable.CellProperties> = {};
-        const classNames = [];
-        const variable = variables.find(v => v.columnIndex === row);
-
-        if (col === COLUMN_INDEX.TYPE) classNames.push('type-column', 'htDimmed');
-        else if (col === COLUMN_INDEX.VALUES) classNames.push('values-column', 'htDimmed');
-        else if (col === COLUMN_INDEX.MISSING) classNames.push('missing-column', 'htDimmed');
-
-        if (DIALOG_TRIGGER_COLUMNS.includes(col)) {
-            cellProperties.readOnly = true;
-            classNames.push('htReadOnly');
-        }
-
-        if (variable && variable.align) {
-            cellProperties.className = (cellProperties.className || '') + ` ht${variable.align.charAt(0).toUpperCase() + variable.align.slice(1)}`;
-        }
-
-        if(classNames.length > 0) {
-            cellProperties.className = (cellProperties.className ? cellProperties.className + ' ' : '') + classNames.join(' ');
-        }
-
-        return cellProperties;
-    }, [variables]);
-
     const handleBeforeKeyDown = useCallback((event: KeyboardEvent) => {
         const hotInstance = hotTableRef.current?.hotInstance;
         if(!hotInstance) return;
@@ -429,7 +404,6 @@ export function useVariableTableLogic() {
         getSelectedVariableMissing,
         getSelectedVariableOrDefault,
         customContextMenu,
-        getCellProperties,
         handleBeforeKeyDown,
         handleBeforeSetRangeEnd,
     };
