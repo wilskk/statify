@@ -15,12 +15,6 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useModalStore } from "@/stores/useModalStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -29,11 +23,15 @@ import { Variable } from "@/types/Variable";
 import {
     Shapes,
     Ruler,
-    BarChartHorizontal,
-    CornerDownRight,
-    CornerDownLeft,
-    InfoIcon
+    BarChartHorizontal
 } from "lucide-react";
+
+// Import tab components
+import VariablesTab from "./VariablesTab";
+import OutputTab from "./OutputTab";
+import SaveTab from "./SaveTab";
+import MissingValuesTab from "./MissingValuesTab";
+import OptionsTab from "./OptionsTab";
 
 interface IdentifyUnusualCasesProps {
     onClose: () => void;
@@ -52,12 +50,14 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
 
     const [activeTab, setActiveTab] = useState("variables");
 
+    // Output tab state
     const [showUnusualCasesList, setShowUnusualCasesList] = useState(true);
     const [peerGroupNorms, setPeerGroupNorms] = useState(false);
     const [anomalyIndices, setAnomalyIndices] = useState(false);
     const [reasonOccurrence, setReasonOccurrence] = useState(false);
     const [caseProcessed, setCaseProcessed] = useState(false);
 
+    // Save tab state
     const [saveAnomalyIndex, setSaveAnomalyIndex] = useState(false);
     const [anomalyIndexName, setAnomalyIndexName] = useState("AnomalyIndex");
     const [savePeerGroups, setSavePeerGroups] = useState(false);
@@ -67,9 +67,11 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
     const [replaceExisting, setReplaceExisting] = useState(false);
     const [exportFilePath, setExportFilePath] = useState("");
 
+    // Missing values tab state
     const [missingValuesOption, setMissingValuesOption] = useState("exclude");
     const [useProportionMissing, setUseProportionMissing] = useState(true);
 
+    // Options tab state
     const [identificationCriteria, setIdentificationCriteria] = useState("percentage");
     const [percentageValue, setPercentageValue] = useState("5");
     const [fixedNumber, setFixedNumber] = useState("");
@@ -824,37 +826,17 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
         }
     };
 
-    const renderVariableList = (variables: Variable[], source: 'available' | 'analysis' | 'identifier', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-            <div className="space-y-1">
-                {variables.map((variable) => (
-                    <TooltipProvider key={variable.columnIndex}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                    }`}
-                                    onClick={() => handleVariableSelect(variable.columnIndex, source)}
-                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
-                                >
-                                    <div className="flex items-center w-full">
-                                        {getVariableIcon(variable)}
-                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                    </div>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p className="text-xs">{getDisplayName(variable)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
-        </div>
-    );
+    // Pass shared props to render variable lists in tabs
+    const renderVariableListProps = {
+        storeVariables,
+        analysisVariables,
+        caseIdentifierVariables,
+        highlightedVariable,
+        handleVariableSelect,
+        handleVariableDoubleClick,
+        getVariableIcon,
+        getDisplayName
+    };
 
     return (
         <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
@@ -899,471 +881,77 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <div className="grid grid-cols-8 gap-6">
-                        <div className="col-span-3">
-                            <div className="text-sm mb-2 font-medium">Variables:</div>
-                            {renderVariableList(storeVariables, 'available', '300px')}
-                            <div className="text-xs mt-2 text-[#888888] flex items-center">
-                                <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                                <span>To change a variable&apos;s measurement level, right click on it in the Variables list.</span>
-                            </div>
-                        </div>
-
-                        <div className="col-span-1 flex flex-col items-center justify-center">
-                            <div className="flex flex-col space-y-32">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                    onClick={handleTopTransferClick}
-                                    disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'analysis')}
-                                >
-                                    {highlightedVariable?.source === 'analysis' ?
-                                        <CornerDownLeft size={16} /> :
-                                        <CornerDownRight size={16} />
-                                    }
-                                </Button>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                    onClick={handleBottomTransferClick}
-                                    disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'identifier')}
-                                >
-                                    {highlightedVariable?.source === 'identifier' ?
-                                        <CornerDownLeft size={16} /> :
-                                        <CornerDownRight size={16} />
-                                    }
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="col-span-4 space-y-6">
-                            <div>
-                                <div className="text-sm mb-2 font-medium">Analysis Variables:</div>
-                                {renderVariableList(analysisVariables, 'analysis', '150px')}
-                            </div>
-
-                            <div>
-                                <div className="text-sm mb-2 font-medium">Case Identifier Variable:</div>
-                                {renderVariableList(caseIdentifierVariables, 'identifier', '60px')}
-                            </div>
-                        </div>
-                    </div>
+                    <VariablesTab
+                        {...renderVariableListProps}
+                        handleTopTransferClick={handleTopTransferClick}
+                        handleBottomTransferClick={handleBottomTransferClick}
+                    />
                 </TabsContent>
 
                 <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
-                    <div className="flex items-center mb-4">
-                        <Checkbox
-                            id="unusualCasesList"
-                            checked={showUnusualCasesList}
-                            onCheckedChange={(checked) => setShowUnusualCasesList(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
-                        />
-                        <Label htmlFor="unusualCasesList" className="text-sm cursor-pointer">
-                            List of unusual cases and reasons why they are considered unusual
-                        </Label>
-                    </div>
-
-                    <div className="border border-[#E6E6E6] rounded-md p-6">
-                        <div className="text-sm font-medium mb-4">Summaries</div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="peerGroupNorms"
-                                        checked={peerGroupNorms}
-                                        onCheckedChange={(checked) => setPeerGroupNorms(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="peerGroupNorms" className="text-sm font-medium cursor-pointer">
-                                        Peer group norms
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    Peer groups are groups of cases that have similar values for analysis variables. This option displays the
-                                    distributions of analysis variables by peer group.
-                                </p>
-                            </div>
-
-                            <div>
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="anomalyIndices"
-                                        checked={anomalyIndices}
-                                        onCheckedChange={(checked) => setAnomalyIndices(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="anomalyIndices" className="text-sm font-medium cursor-pointer">
-                                        Anomaly indices
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    The anomaly index measures how unusual a case is with respect to its peer group. This option displays the
-                                    distribution of anomaly index values among unusual cases.
-                                </p>
-                            </div>
-
-                            <div>
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="reasonOccurrence"
-                                        checked={reasonOccurrence}
-                                        onCheckedChange={(checked) => setReasonOccurrence(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="reasonOccurrence" className="text-sm font-medium cursor-pointer">
-                                        Reason occurrence by analysis variable
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    Reports how often each analysis variable was responsible for a case being considered unusual.
-                                </p>
-                            </div>
-
-                            <div>
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="caseProcessed"
-                                        checked={caseProcessed}
-                                        onCheckedChange={(checked) => setCaseProcessed(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="caseProcessed" className="text-sm font-medium cursor-pointer">
-                                        Case processed
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    Summarizes the distribution of cases included and excluded from the analysis.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <OutputTab
+                        showUnusualCasesList={showUnusualCasesList}
+                        setShowUnusualCasesList={setShowUnusualCasesList}
+                        peerGroupNorms={peerGroupNorms}
+                        setPeerGroupNorms={setPeerGroupNorms}
+                        anomalyIndices={anomalyIndices}
+                        setAnomalyIndices={setAnomalyIndices}
+                        reasonOccurrence={reasonOccurrence}
+                        setReasonOccurrence={setReasonOccurrence}
+                        caseProcessed={caseProcessed}
+                        setCaseProcessed={setCaseProcessed}
+                    />
                 </TabsContent>
 
                 <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] rounded-md p-6 mb-6">
-                        <div className="text-sm font-medium mb-4">Save Variables</div>
-
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="saveAnomalyIndex"
-                                            checked={saveAnomalyIndex}
-                                            onCheckedChange={(checked) => setSaveAnomalyIndex(!!checked)}
-                                            className="mr-2 border-[#CCCCCC]"
-                                        />
-                                        <Label htmlFor="saveAnomalyIndex" className="text-sm font-medium cursor-pointer">
-                                            Anomaly index
-                                        </Label>
-                                    </div>
-                                    <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                        Measures the unusualness of each case with respect to its peer
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Label htmlFor="anomalyIndexName" className="text-xs whitespace-nowrap mr-2">
-                                        Name:
-                                    </Label>
-                                    <Input
-                                        id="anomalyIndexName"
-                                        value={anomalyIndexName}
-                                        onChange={(e) => setAnomalyIndexName(e.target.value)}
-                                        className="h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
-                                        disabled={!saveAnomalyIndex}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="savePeerGroups"
-                                            checked={savePeerGroups}
-                                            onCheckedChange={(checked) => setSavePeerGroups(!!checked)}
-                                            className="mr-2 border-[#CCCCCC]"
-                                        />
-                                        <Label htmlFor="savePeerGroups" className="text-sm font-medium cursor-pointer">
-                                            Peer groups
-                                        </Label>
-                                    </div>
-                                    <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                        Three variables are saved per peer group: ID, case count, and size
-                                        as a percentage of cases in the analysis.
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Label htmlFor="peerGroupsRootName" className="text-xs whitespace-nowrap mr-2">
-                                        Root Name:
-                                    </Label>
-                                    <Input
-                                        id="peerGroupsRootName"
-                                        value={peerGroupsRootName}
-                                        onChange={(e) => setPeerGroupsRootName(e.target.value)}
-                                        className="h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
-                                        disabled={!savePeerGroups}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="saveReasons"
-                                            checked={saveReasons}
-                                            onCheckedChange={(checked) => setSaveReasons(!!checked)}
-                                            className="mr-2 border-[#CCCCCC]"
-                                        />
-                                        <Label htmlFor="saveReasons" className="text-sm font-medium cursor-pointer">
-                                            Reasons
-                                        </Label>
-                                    </div>
-                                    <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                        Four variables are saved per reason: name of reason variable,
-                                        value of reason variable, peer group norm, and impact measure for
-                                        the reason variable.
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Label htmlFor="reasonsRootName" className="text-xs whitespace-nowrap mr-2">
-                                        Root Name:
-                                    </Label>
-                                    <Input
-                                        id="reasonsRootName"
-                                        value={reasonsRootName}
-                                        onChange={(e) => setReasonsRootName(e.target.value)}
-                                        className="h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
-                                        disabled={!saveReasons}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="border-t border-[#E6E6E6] pt-4">
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="replaceExisting"
-                                        checked={replaceExisting}
-                                        onCheckedChange={(checked) => setReplaceExisting(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="replaceExisting" className="text-sm cursor-pointer">
-                                        Replace existing variables that have the same name or root name
-                                    </Label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border border-[#E6E6E6] rounded-md p-6">
-                        <div className="text-sm font-medium mb-4">Export Model File</div>
-                        <div className="flex items-center">
-                            <Label htmlFor="exportFile" className="text-xs whitespace-nowrap mr-2">
-                                File:
-                            </Label>
-                            <Input
-                                id="exportFile"
-                                value={exportFilePath}
-                                onChange={(e) => setExportFilePath(e.target.value)}
-                                className="h-8 text-sm mr-2 border-[#CCCCCC] focus:border-black focus:ring-black"
-                            />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                            >
-                                Browse...
-                            </Button>
-                        </div>
-                    </div>
+                    <SaveTab
+                        saveAnomalyIndex={saveAnomalyIndex}
+                        setSaveAnomalyIndex={setSaveAnomalyIndex}
+                        anomalyIndexName={anomalyIndexName}
+                        setAnomalyIndexName={setAnomalyIndexName}
+                        savePeerGroups={savePeerGroups}
+                        setSavePeerGroups={setSavePeerGroups}
+                        peerGroupsRootName={peerGroupsRootName}
+                        setPeerGroupsRootName={setPeerGroupsRootName}
+                        saveReasons={saveReasons}
+                        setSaveReasons={setSaveReasons}
+                        reasonsRootName={reasonsRootName}
+                        setReasonsRootName={setReasonsRootName}
+                        replaceExisting={replaceExisting}
+                        setReplaceExisting={setReplaceExisting}
+                        exportFilePath={exportFilePath}
+                        setExportFilePath={setExportFilePath}
+                    />
                 </TabsContent>
 
                 <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
-                    <RadioGroup value={missingValuesOption} onValueChange={setMissingValuesOption} className="space-y-6">
-                        <div className="space-y-6">
-                            <div>
-                                <div className="flex items-center">
-                                    <RadioGroupItem value="exclude" id="excludeMissing" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
-                                    <Label htmlFor="excludeMissing" className="text-sm font-medium cursor-pointer">
-                                        Exclude missing values from analysis
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    User- and system-missing values are excluded.
-                                </p>
-                            </div>
-
-                            <div>
-                                <div className="flex items-center">
-                                    <RadioGroupItem value="include" id="includeMissing" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
-                                    <Label htmlFor="includeMissing" className="text-sm font-medium cursor-pointer">
-                                        Include missing values in analysis
-                                    </Label>
-                                </div>
-                                <p className="text-xs mt-2 ml-6 text-[#888888]">
-                                    For scale variables, user- and system-missing values are replaced with the variable&apos;s grand mean. For categorical
-                                    variables, user- and system-missing values are combined and included in the analysis as a category.
-                                </p>
-                            </div>
-                        </div>
-                    </RadioGroup>
-
-                    <div className="mt-4">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="useProportionMissing"
-                                checked={useProportionMissing}
-                                onCheckedChange={(checked) => setUseProportionMissing(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
-                                disabled={missingValuesOption !== "include"}
-                            />
-                            <Label htmlFor="useProportionMissing" className="text-sm cursor-pointer">
-                                Use proportion of missing values per case as analysis variable
-                            </Label>
-                        </div>
-                    </div>
+                    <MissingValuesTab
+                        missingValuesOption={missingValuesOption}
+                        setMissingValuesOption={setMissingValuesOption}
+                        useProportionMissing={useProportionMissing}
+                        setUseProportionMissing={setUseProportionMissing}
+                    />
                 </TabsContent>
 
                 <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                    <div className="grid grid-cols-5 gap-6">
-                        <div className="col-span-3 border border-[#E6E6E6] rounded-md p-6">
-                            <div className="text-sm font-medium mb-4">Criteria for Identifying Unusual Cases</div>
-
-                            <div className="space-y-4">
-                                <RadioGroup value={identificationCriteria} onValueChange={setIdentificationCriteria} className="space-y-4">
-                                    <div>
-                                        <div className="flex items-center">
-                                            <RadioGroupItem value="percentage" id="percentageCriteria" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
-                                            <Label htmlFor="percentageCriteria" className="text-sm cursor-pointer">
-                                                Percentage of cases with highest anomaly index values
-                                            </Label>
-                                        </div>
-                                        <div className="ml-6 mt-2">
-                                            <div className="flex items-center">
-                                                <Label htmlFor="percentageValue" className="text-xs mr-2">
-                                                    Percentage:
-                                                </Label>
-                                                <Input
-                                                    id="percentageValue"
-                                                    value={percentageValue}
-                                                    onChange={(e) => setPercentageValue(e.target.value)}
-                                                    className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                                                    disabled={identificationCriteria !== "percentage"}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4">
-                                        <div className="flex items-center">
-                                            <RadioGroupItem value="fixed" id="fixedNumberCriteria" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
-                                            <Label htmlFor="fixedNumberCriteria" className="text-sm cursor-pointer">
-                                                Fixed number of cases with highest anomaly index values
-                                            </Label>
-                                        </div>
-                                        <div className="ml-6 mt-2">
-                                            <div className="flex items-center">
-                                                <Label htmlFor="fixedNumber" className="text-xs mr-2">
-                                                    Number:
-                                                </Label>
-                                                <Input
-                                                    id="fixedNumber"
-                                                    value={fixedNumber}
-                                                    onChange={(e) => setFixedNumber(e.target.value)}
-                                                    className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                                                    disabled={identificationCriteria !== "fixed"}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </RadioGroup>
-
-                                <div>
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="useMinimumValue"
-                                            checked={useMinimumValue}
-                                            onCheckedChange={(checked) => setUseMinimumValue(!!checked)}
-                                            className="mr-2 border-[#CCCCCC]"
-                                        />
-                                        <Label htmlFor="useMinimumValue" className="text-sm cursor-pointer">
-                                            Identify only cases whose anomaly index value meets or exceeds a minimum value
-                                        </Label>
-                                    </div>
-                                    <div className="ml-6 mt-2">
-                                        <div className="flex items-center">
-                                            <Label htmlFor="cutoffValue" className="text-xs mr-2">
-                                                Cutoff:
-                                            </Label>
-                                            <Input
-                                                id="cutoffValue"
-                                                value={cutoffValue}
-                                                onChange={(e) => setCutoffValue(e.target.value)}
-                                                className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                                                disabled={!useMinimumValue}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="col-span-2 border border-[#E6E6E6] rounded-md p-6">
-                            <div className="text-sm font-medium mb-4">Number of Peer Groups</div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center">
-                                    <Label htmlFor="minPeerGroups" className="text-xs mr-2 w-16">
-                                        Minimum:
-                                    </Label>
-                                    <Input
-                                        id="minPeerGroups"
-                                        value={minPeerGroups}
-                                        onChange={(e) => setMinPeerGroups(e.target.value)}
-                                        className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                                    />
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Label htmlFor="maxPeerGroups" className="text-xs mr-2 w-16">
-                                        Maximum:
-                                    </Label>
-                                    <Input
-                                        id="maxPeerGroups"
-                                        value={maxPeerGroups}
-                                        onChange={(e) => setMaxPeerGroups(e.target.value)}
-                                        className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6">
-                        <div className="flex items-center">
-                            <Label htmlFor="maxReasons" className="text-sm mr-2">
-                                Maximum Number of Reasons:
-                            </Label>
-                            <Input
-                                id="maxReasons"
-                                value={maxReasons}
-                                onChange={(e) => setMaxReasons(e.target.value)}
-                                className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
-                            />
-                        </div>
-                        <p className="text-xs mt-2 text-[#888888]">
-                            Specify the number of reasons reported in output and added to the active dataset if reason variables are saved. The value
-                            is adjusted downward if it exceeds the number of analysis variables.
-                        </p>
-                    </div>
+                    <OptionsTab
+                        identificationCriteria={identificationCriteria}
+                        setIdentificationCriteria={setIdentificationCriteria}
+                        percentageValue={percentageValue}
+                        setPercentageValue={setPercentageValue}
+                        fixedNumber={fixedNumber}
+                        setFixedNumber={setFixedNumber}
+                        useMinimumValue={useMinimumValue}
+                        setUseMinimumValue={setUseMinimumValue}
+                        cutoffValue={cutoffValue}
+                        setCutoffValue={setCutoffValue}
+                        minPeerGroups={minPeerGroups}
+                        setMinPeerGroups={setMinPeerGroups}
+                        maxPeerGroups={maxPeerGroups}
+                        setMaxPeerGroups={setMaxPeerGroups}
+                        maxReasons={maxReasons}
+                        setMaxReasons={setMaxReasons}
+                    />
                 </TabsContent>
             </Tabs>
 

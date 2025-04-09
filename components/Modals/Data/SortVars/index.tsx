@@ -46,11 +46,9 @@ const fieldToColumnIndex: Record<string, number> = {
 };
 
 const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
-    // Get store functions
     const { variables, sortVariables } = useVariableStore();
-    const { data, setDataAndSync, swapColumns } = useDataStore();
+    const { data, setDataAndSync } = useDataStore();
 
-    // Daftar kolom Variable View yang bisa dipilih
     const [columns] = useState<string[]>([
         "Name",
         "Type",
@@ -64,40 +62,30 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
         "Measure",
     ]);
 
-    // Kolom yang dipilih untuk diurutkan
     const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
-
-    // Sort order: "asc" atau "desc"
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-    // State untuk opsi "Save the current (pre-sorted) variable order..."
     const [savePreSortedOrder, setSavePreSortedOrder] = useState<boolean>(false);
     const [attributeName, setAttributeName] = useState<string>("");
 
-    // Event handler untuk memilih kolom
     const handleSelectColumn = (column: string) => {
         setSelectedColumn(column);
     };
 
-    // Helper function to save original order
     const saveOriginalOrder = () => {
         if (!attributeName.trim() || !savePreSortedOrder) return;
 
         try {
-            // Save original variable order with variable name and position
             const originalOrder = variables.map((variable, index) => ({
                 name: variable.name,
                 position: index
             }));
 
             localStorage.setItem(`variableOrder_${attributeName}`, JSON.stringify(originalOrder));
-            console.log(`Original order saved as ${attributeName}`);
         } catch (error) {
             console.error("Error saving original order:", error);
         }
     };
 
-    // Tombol OK
     const handleOk = async () => {
         if (!selectedColumn) {
             alert("Please select a column to sort");
@@ -105,73 +93,62 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
         }
 
         try {
-            // Get the field name for the selected column
             const fieldName = columnToFieldMap[selectedColumn];
-
             if (!fieldName) {
                 throw new Error(`Column ${selectedColumn} not found in mapping`);
             }
 
-            // Get column index for sorting
             const columnIndex = fieldToColumnIndex[fieldName as string];
-
             if (columnIndex === undefined) {
                 throw new Error(`Field ${fieldName} not found in column index mapping`);
             }
 
-            // Save original order if requested
             if (savePreSortedOrder) {
                 saveOriginalOrder();
             }
 
-            // Get the original variable order to track column movements
-            const originalVariables = [...variables];
+            // Store the original variable order before sorting
+            const originalVariableOrder = [...variables];
 
-            // Execute the variable sort
+            // Sort the variables
             await sortVariables(sortOrder, columnIndex);
 
-            // Now we need to reorganize the data columns to match the new variable order
-            // This is necessary because sortVariables only sorts the variable definitions,
-            // not the actual data in those columns
+            // If we have data, we need to reorder it based on the new variable order
             if (data.length > 0) {
-                // Create a mapping of original columnIndex to new position
-                const reorderMap = new Map();
+                // Create a mapping from original column position to new position
+                const columnMapping = new Map();
 
                 variables.forEach((variable, newIndex) => {
-                    // Find this variable's original position
-                    const originalPosition = originalVariables.findIndex(v =>
-                        v.id === variable.id
-                    );
-
-                    if (originalPosition !== -1) {
-                        reorderMap.set(originalVariables[originalPosition].columnIndex, variable.columnIndex);
+                    // Find this variable in the original order
+                    const originalVariable = originalVariableOrder.find(v => v.id === variable.id);
+                    if (originalVariable) {
+                        // Map from original column index to new column index
+                        columnMapping.set(originalVariable.columnIndex, variable.columnIndex);
                     }
                 });
 
-                // Apply column reordering to actual data
-                const newData = structuredClone(data);
-
-                // For each row of data
-                for (let rowIndex = 0; rowIndex < newData.length; rowIndex++) {
-                    const row = newData[rowIndex];
+                // Create a new data array with reordered columns
+                const newData = data.map(row => {
+                    // Create a new row with the same length, filled with empty values
                     const newRow = Array(row.length).fill("");
 
-                    // Reorder the cells in this row according to the new column order
-                    originalVariables.forEach((variable, oldColIndex) => {
-                        const newColIndex = reorderMap.get(variable.columnIndex);
-                        if (newColIndex !== undefined && oldColIndex < row.length) {
-                            newRow[newColIndex] = row[oldColIndex];
+                    // Place each value from the original row to its new position
+                    originalVariableOrder.forEach(variable => {
+                        const oldIndex = variable.columnIndex;
+                        const newIndex = columnMapping.get(oldIndex);
+
+                        if (newIndex !== undefined && oldIndex < row.length) {
+                            newRow[newIndex] = row[oldIndex];
                         }
                     });
 
-                    newData[rowIndex] = newRow;
-                }
+                    return newRow;
+                });
 
-                // Apply the reordered data
+                // Update the data in the store
                 await setDataAndSync(newData);
             }
 
-            // Close the modal
             onClose();
         } catch (error) {
             console.error("Error sorting variables:", error);
@@ -179,7 +156,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
         }
     };
 
-    // Tombol Reset
     const handleReset = () => {
         setSelectedColumn(null);
         setSortOrder("asc");
@@ -193,7 +169,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 <DialogTitle>Sort Variables</DialogTitle>
             </DialogHeader>
 
-            {/* Daftar "Variable View Columns" */}
             <div className="mb-4">
                 <p className="font-semibold mb-2">Variable View Columns</p>
                 <ul className="border p-2 h-40 overflow-auto">
@@ -211,7 +186,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 </ul>
             </div>
 
-            {/* Sort Order */}
             <div className="mb-4">
                 <p className="font-semibold mb-2">Sort Order</p>
                 <div className="flex items-center gap-4">
@@ -236,7 +210,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* Save the current (pre-sorted) variable order */}
             <div className="mb-4 border p-2 rounded">
                 <label className="flex items-center gap-2 mb-2">
                     <input
@@ -260,7 +233,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 )}
             </div>
 
-            {/* Action Buttons */}
             <DialogFooter>
                 <Button variant="outline" onClick={handleOk}>
                     OK
