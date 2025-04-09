@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect, FC } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
     Dialog,
     DialogContent,
@@ -15,21 +14,15 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import {
-    CornerDownLeft,
-    CornerDownRight,
-    Ruler,
-    Shapes,
-    BarChartHorizontal,
-    InfoIcon
-} from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
+
+import VariablesTab from "./VariablesTab";
+import StatisticsTab from "./StatisticsTab";
+import ChartsTab from "./ChartsTab";
+import FormatTab from "./FormatTab";
 
 interface FrequenciesModalProps {
     onClose: () => void;
@@ -57,44 +50,6 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setAvailableVariables(validVars);
     }, [variables]);
 
-    const getVariableIcon = (variable: Variable) => {
-        switch (variable.measure) {
-            case "scale":
-                return <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            case "nominal":
-                return <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            case "ordinal":
-                return <BarChartHorizontal size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            default:
-                return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-        }
-    };
-
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
-            return `${variable.label} [${variable.name}]`;
-        }
-        return variable.name;
-    };
-
-    const handleVariableSelect = (variable: Variable, source: 'available' | 'selected') => {
-        if (highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: variable.columnIndex.toString(), source });
-        }
-    };
-
-    const handleVariableDoubleClick = (variable: Variable, source: 'available' | 'selected') => {
-        if (source === 'available') {
-            moveToSelectedVariables(variable);
-        } else {
-            moveToAvailableVariables(variable);
-        }
-    };
-
     const moveToSelectedVariables = (variable: Variable) => {
         setSelectedVariables(prev => [...prev, variable]);
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
@@ -106,54 +61,6 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setHighlightedVariable(null);
     };
-
-    const handleMoveVariable = () => {
-        if (!highlightedVariable) return;
-
-        if (highlightedVariable.source === 'available') {
-            const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-            if (variable) {
-                moveToSelectedVariables(variable);
-            }
-        } else {
-            const variable = selectedVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-            if (variable) {
-                moveToAvailableVariables(variable);
-            }
-        }
-    };
-
-    const renderVariableList = (variables: Variable[], source: 'available' | 'selected', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-            <div className="space-y-1">
-                {variables.map((variable) => (
-                    <TooltipProvider key={variable.columnIndex}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                    }`}
-                                    onClick={() => handleVariableSelect(variable, source)}
-                                    onDoubleClick={() => handleVariableDoubleClick(variable, source)}
-                                >
-                                    <div className="flex items-center w-full">
-                                        {getVariableIcon(variable)}
-                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                    </div>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p className="text-xs">{getDisplayName(variable)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
-        </div>
-    );
 
     const handleAnalyze = async () => {
         if (!selectedVariables.length) {
@@ -291,250 +198,34 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <div className="grid grid-cols-9 gap-6">
-                        <div className="col-span-4">
-                            <div className="text-sm mb-2 font-medium">Available Variables:</div>
-                            {renderVariableList(availableVariables, 'available', '300px')}
-                            <div className="text-xs mt-2 text-[#888888] flex items-center">
-                                <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                                <span>Double-click to move variables between lists.</span>
-                            </div>
-                        </div>
-
-                        <div className="col-span-1 flex flex-col items-center justify-center">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                onClick={handleMoveVariable}
-                                disabled={!highlightedVariable}
-                            >
-                                {highlightedVariable?.source === 'selected' ?
-                                    <CornerDownLeft size={16} /> :
-                                    <CornerDownRight size={16} />
-                                }
-                            </Button>
-                        </div>
-
-                        <div className="col-span-4">
-                            <div className="text-sm mb-2 font-medium">Selected Variables:</div>
-                            {renderVariableList(selectedVariables, 'selected', '300px')}
-                        </div>
-                    </div>
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        selectedVariables={selectedVariables}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                    />
                 </TabsContent>
 
                 <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] rounded-md p-6">
-                        <div className="text-sm font-medium mb-4">Display</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="frequencyTables"
-                                    checked={showFrequencyTables}
-                                    onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="frequencyTables" className="text-sm cursor-pointer">
-                                    Frequency tables
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="showStatistics"
-                                    checked={showStatistics}
-                                    onCheckedChange={(checked) => setShowStatistics(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="showStatistics" className="text-sm cursor-pointer">
-                                    Show statistics
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border border-[#E6E6E6] rounded-md p-6 mt-6">
-                        <div className="text-sm font-medium mb-4">Statistics</div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="percentiles"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    disabled={!showStatistics}
-                                />
-                                <Label htmlFor="percentiles" className="text-sm cursor-pointer">
-                                    Percentiles
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="centralTendency"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    checked={true}
-                                    disabled={!showStatistics}
-                                />
-                                <Label htmlFor="centralTendency" className="text-sm cursor-pointer">
-                                    Central Tendency
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="dispersion"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    checked={true}
-                                    disabled={!showStatistics}
-                                />
-                                <Label htmlFor="dispersion" className="text-sm cursor-pointer">
-                                    Dispersion
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="distribution"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    checked={true}
-                                    disabled={!showStatistics}
-                                />
-                                <Label htmlFor="distribution" className="text-sm cursor-pointer">
-                                    Distribution
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
+                    <StatisticsTab
+                        showFrequencyTables={showFrequencyTables}
+                        setShowFrequencyTables={setShowFrequencyTables}
+                        showStatistics={showStatistics}
+                        setShowStatistics={setShowStatistics}
+                    />
                 </TabsContent>
 
                 <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] rounded-md p-6">
-                        <div className="text-sm font-medium mb-4">Display</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="showCharts"
-                                    checked={showCharts}
-                                    onCheckedChange={(checked) => setShowCharts(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="showCharts" className="text-sm cursor-pointer">
-                                    Display charts
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border border-[#E6E6E6] rounded-md p-6 mt-6">
-                        <div className="text-sm font-medium mb-4">Chart Type</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="barCharts"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    checked={true}
-                                    disabled={!showCharts}
-                                />
-                                <Label htmlFor="barCharts" className="text-sm cursor-pointer">
-                                    Bar charts
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="pieCharts"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    disabled={!showCharts}
-                                />
-                                <Label htmlFor="pieCharts" className="text-sm cursor-pointer">
-                                    Pie charts
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="histograms"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    disabled={!showCharts}
-                                />
-                                <Label htmlFor="histograms" className="text-sm cursor-pointer">
-                                    Histograms (numeric variables only)
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
+                    <ChartsTab
+                        showCharts={showCharts}
+                        setShowCharts={setShowCharts}
+                    />
                 </TabsContent>
 
                 <TabsContent value="format" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] rounded-md p-6">
-                        <div className="text-sm font-medium mb-4">Order</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="ascendingValues"
-                                    className="mr-2 border-[#CCCCCC]"
-                                    checked={true}
-                                />
-                                <Label htmlFor="ascendingValues" className="text-sm cursor-pointer">
-                                    Ascending values
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="descendingValues"
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="descendingValues" className="text-sm cursor-pointer">
-                                    Descending values
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="ascendingCounts"
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="ascendingCounts" className="text-sm cursor-pointer">
-                                    Ascending counts
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="descendingCounts"
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="descendingCounts" className="text-sm cursor-pointer">
-                                    Descending counts
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="border border-[#E6E6E6] rounded-md p-6 mt-6">
-                        <div className="text-sm font-medium mb-4">Multiple Variables</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="compareVariables"
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="compareVariables" className="text-sm cursor-pointer">
-                                    Compare variables (side-by-side tables)
-                                </Label>
-                            </div>
-
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="suppressTables"
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="suppressTables" className="text-sm cursor-pointer">
-                                    Suppress tables with more than 100 distinct values
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
+                    <FormatTab />
                 </TabsContent>
             </Tabs>
 
