@@ -1,4 +1,4 @@
-// src/components/tabs/OptionsTab.tsx
+// ./components/Modals/Analyze/Descriptive/QQPlots/OptionsTab.tsx
 import React, { FC } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -74,11 +74,12 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                          }) => {
     const distributionNeedsDf = ["t", "Chi-square", "F"];
 
+    // Corrected: Escaped apostrophes in labels
     const proportionOptions = [
-        { value: "Blom's", label: "Blom's", id: "bloms" },
+        { value: "Blom's", label: "Blom&apos;s", id: "bloms" },
         { value: "Rankit", label: "Rankit", id: "rankit" },
-        { value: "Tukey's", label: "Tukey's", id: "tukeys" },
-        { value: "Van der Waerden's", label: "Van der Waerden's", id: "vanderwaerdens" },
+        { value: "Tukey's", label: "Tukey&apos;s", id: "tukeys" },
+        { value: "Van der Waerden's", label: "Van der Waerden&apos;s", id: "vanderwaerdens" },
     ];
 
     const tiesOptions = [
@@ -89,11 +90,10 @@ const OptionsTab: FC<OptionsTabProps> = ({
     ];
 
     return (
-        // Grid 1 kolom di layar kecil, 2 kolom di layar medium ke atas
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
 
             {/* Column 1: Distribution Section */}
-            <div className="flex flex-col"> {/* Tidak perlu space-y-6 disini */}
+            <div className="flex flex-col">
                 <div className="flex-1 rounded-md border border-[#E6E6E6] p-6">
                     <div className="mb-4 text-sm font-medium">Test Distribution</div>
                     <div className="space-y-5">
@@ -108,7 +108,8 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 <SelectItem value="Normal">Normal</SelectItem>
                                 <SelectItem value="Uniform">Uniform</SelectItem>
                                 <SelectItem value="Exponential">Exponential</SelectItem>
-                                <SelectItem value="t">Student's t</SelectItem>
+                                {/* Corrected: Escaped apostrophe */}
+                                <SelectItem value="t">Student&apos;s t</SelectItem>
                                 <SelectItem value="Chi-square">Chi-square</SelectItem>
                                 <SelectItem value="F">F</SelectItem>
                             </SelectContent>
@@ -171,7 +172,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
             </div>
 
             {/* Column 2: Transform & Estimation Sections */}
-            {/* Menggunakan space-y-6 untuk jarak antar kartu di kolom ini */}
             <div className="flex flex-col space-y-6">
 
                 {/* Card: Transform */}
@@ -207,7 +207,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 onCheckedChange={(checked) => setDifference(!!checked)}
                                 className="border-[#CCCCCC] flex-shrink-0"
                             />
-                            {/* Membiarkan label wrap */}
                             <Label htmlFor="difference" className="cursor-pointer text-sm">
                                 Difference:
                             </Label>
@@ -225,9 +224,8 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 checked={seasonallyDifference}
                                 onCheckedChange={(checked) => setSeasonallyDifference(!!checked)}
                                 className="border-[#CCCCCC] flex-shrink-0"
-                                disabled={true}
+                                disabled={true} // Assuming this remains intentionally disabled
                             />
-                            {/* Membiarkan label wrap */}
                             <Label htmlFor="seasonallyDifference" className="cursor-pointer text-sm text-gray-400">
                                 Seasonally difference:
                             </Label>
@@ -236,13 +234,14 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 value={seasonallyDifferenceValue}
                                 onChange={(e) => setSeasonallyDifferenceValue(e.target.value)}
                                 className="ml-auto h-9 w-16 flex-shrink-0 border-[#CCCCCC] bg-gray-100 text-sm focus:border-black focus:ring-black"
-                                disabled={true}
+                                disabled={true} // Assuming this remains intentionally disabled
                             />
                         </div>
                         <div className="flex items-center space-x-2 pt-1">
                             <Label className="text-sm">
                                 Current Periodicity:
                             </Label>
+                            {/* This 'None' is a JS string, not JSX text, so it's fine */}
                             <span className="text-sm">{currentPeriodicity || 'None'}</span>
                         </div>
                     </div>
@@ -264,6 +263,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                     className="border-[#CCCCCC] data-[state=checked]:border-black data-[state=checked]:bg-black"
                                 />
                                 <Label htmlFor={option.id} className="cursor-pointer text-sm">
+                                    {/* The label now uses the escaped value */}
                                     {option.label}
                                 </Label>
                             </div>
@@ -294,9 +294,9 @@ const OptionsTab: FC<OptionsTabProps> = ({
                     </RadioGroup>
                 </div>
 
-            </div> {/* Akhir dari Kolom 2 */}
+            </div> {/* End of Column 2 */}
 
-        </div> // Akhir dari Grid Utama
+        </div> // End of Main Grid
     );
 };
 
