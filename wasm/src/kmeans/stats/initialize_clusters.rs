@@ -19,7 +19,7 @@ pub fn initialize_clusters(
 ) -> Result<InitialClusterCenters, String> {
     let num_clusters = config.main.cluster as usize;
 
-    if num_clusters <= 0 {
+    if num_clusters == 0 {
         return Err("Number of clusters must be positive".to_string());
     }
 
@@ -33,17 +33,16 @@ pub fn initialize_clusters(
         );
     }
 
-    let mut initial_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+    let mut initial_centers = Vec::with_capacity(num_clusters);
 
+    // Use first k points as initial centers if specified in config
     if config.main.read_initial {
-        for i in 0..num_clusters {
-            initial_centers[i] = data.data_matrix[i].clone();
-        }
+        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
     } else {
-        for i in 0..num_clusters {
-            initial_centers[i] = data.data_matrix[i].clone();
-        }
+        // Initialize with first k points
+        initial_centers = data.data_matrix.iter().take(num_clusters).cloned().collect();
 
+        // Improve initial centers using a variant of k-means++
         for k in num_clusters..data.data_matrix.len() {
             let x_k = &data.data_matrix[k];
 
@@ -72,13 +71,13 @@ pub fn initialize_clusters(
         }
     }
 
+    // Convert to map format for result
     let mut centers_map = HashMap::new();
-
     for (i, var) in data.variables.iter().enumerate() {
-        let mut var_values = Vec::new();
-        for j in 0..num_clusters {
-            var_values.push(initial_centers[j][i]);
-        }
+        let var_values = initial_centers
+            .iter()
+            .map(|center| center[i])
+            .collect();
         centers_map.insert(var.clone(), var_values);
     }
 

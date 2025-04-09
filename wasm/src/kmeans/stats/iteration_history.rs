@@ -30,34 +30,32 @@ pub fn generate_iteration_history(
     let (min_center_dist, _, _) = min_distance_between_centers(&current_centers);
     let min_change_threshold = convergence_criterion * min_center_dist;
 
-    let mut iterations = Vec::new();
+    let mut iterations = Vec::with_capacity(max_iterations as usize);
     let mut convergence_note = None;
 
     for iteration in 1..=max_iterations {
         let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
         let mut cluster_counts = vec![0; num_clusters];
-        let mut changes = HashMap::new();
 
+        // Assign points to clusters and update centers
         for case in &data.data_matrix {
             let closest = find_closest_cluster(case, &current_centers);
+            cluster_counts[closest] += 1;
 
             if use_running_means {
-                cluster_counts[closest] += 1;
                 let count = cluster_counts[closest] as f64;
-
-                for j in 0..case.len() {
+                for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] =
-                        (new_centers[closest][j] * (count - 1.0) + case[j]) / count;
+                        (new_centers[closest][j] * (count - 1.0) + val) / count;
                 }
             } else {
-                cluster_counts[closest] += 1;
-
-                for j in 0..case.len() {
-                    new_centers[closest][j] += case[j];
+                for (j, &val) in case.iter().enumerate() {
+                    new_centers[closest][j] += val;
                 }
             }
         }
 
+        // Calculate batch means if not using running means
         if !use_running_means {
             for i in 0..num_clusters {
                 if cluster_counts[i] > 0 {
@@ -68,23 +66,17 @@ pub fn generate_iteration_history(
             }
         }
 
-        let mut max_change = 0.0;
+        // Calculate changes for each cluster and find maximum
+        let mut changes = HashMap::new();
+        let mut max_change: f64 = 0.0;
 
         for i in 0..num_clusters {
-            let mut cluster_change = 0.0;
-
-            for j in 0..data.variables.len() {
-                let change = (new_centers[i][j] - current_centers[i][j]).abs();
-                if change > cluster_change {
-                    cluster_change = change;
-                }
-            }
+            let cluster_change = (0..data.variables.len())
+                .map(|j| (new_centers[i][j] - current_centers[i][j]).abs())
+                .fold(0.0, |max_val, change| (max_val as f64).max(change));
 
             changes.insert(format!("{}", i + 1), cluster_change);
-
-            if cluster_change > max_change {
-                max_change = cluster_change;
-            }
+            max_change = max_change.max(cluster_change);
         }
 
         iterations.push(IterationStep {
@@ -92,6 +84,7 @@ pub fn generate_iteration_history(
             changes,
         });
 
+        // Check convergence
         if max_change <= min_change_threshold {
             convergence_note = Some(
                 format!(
@@ -105,9 +98,18 @@ pub fn generate_iteration_history(
         }
 
         current_centers = new_centers;
+
+        // Check if we've reached max iterations
+        if iteration == max_iterations {
+            convergence_note = Some(
+                format!("Maximum number of iterations ({}) reached without convergence.", max_iterations)
+            );
+        }
     }
 
-    if convergence_note.is_none() {
+    if iterations.is_empty() {
+        convergence_note = Some(String::from("No iterations performed"));
+    } else if convergence_note.is_none() {
         convergence_note = Some(
             format!("Maximum number of iterations ({}) reached without convergence.", max_iterations)
         );

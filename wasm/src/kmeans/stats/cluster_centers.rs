@@ -33,35 +33,30 @@ pub fn generate_final_cluster_centers(
     for _ in 1..=max_iterations {
         let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
         let mut cluster_counts = vec![0; num_clusters];
-        let mut max_change = 0.0;
 
+        // Assign points to clusters and sum values
         for case in &data.data_matrix {
             let closest = find_closest_cluster(case, &current_centers);
-
             cluster_counts[closest] += 1;
 
-            for j in 0..case.len() {
-                new_centers[closest][j] += case[j];
+            for (j, &val) in case.iter().enumerate() {
+                new_centers[closest][j] += val;
             }
         }
 
+        // Calculate new centers and track maximum change
+        let mut max_change: f64 = 0.0;
         for i in 0..num_clusters {
             if cluster_counts[i] > 0 {
                 for j in 0..data.variables.len() {
                     new_centers[i][j] /= cluster_counts[i] as f64;
+                    let change = (new_centers[i][j] - current_centers[i][j]).abs();
+                    max_change = max_change.max(change);
                 }
             }
         }
 
-        for i in 0..num_clusters {
-            for j in 0..data.variables.len() {
-                let change = (new_centers[i][j] - current_centers[i][j]).abs();
-                if change > max_change {
-                    max_change = change;
-                }
-            }
-        }
-
+        // Check convergence
         if max_change <= min_change_threshold {
             break;
         }
@@ -69,15 +64,13 @@ pub fn generate_final_cluster_centers(
         current_centers = new_centers;
     }
 
+    // Convert to map format for result
     let mut centers_map = HashMap::new();
-
     for (i, var) in data.variables.iter().enumerate() {
-        let mut var_values = Vec::new();
-
-        for j in 0..num_clusters {
-            var_values.push(current_centers[j][i]);
-        }
-
+        let var_values = current_centers
+            .iter()
+            .map(|center| center[i])
+            .collect();
         centers_map.insert(var.clone(), var_values);
     }
 
@@ -93,15 +86,19 @@ pub fn calculate_distances_between_centers(
     let final_centers_result = generate_final_cluster_centers(data, config)?;
     let final_centers = convert_map_to_matrix(&final_centers_result.centers, &data.variables);
 
+    // Create a distance matrix using ndarray for efficiency
     let mut distances = vec![vec![0.0; num_clusters]; num_clusters];
 
     for i in 0..num_clusters {
-        for j in 0..num_clusters {
-            distances[i][j] = if i == j {
+        for j in i..num_clusters {
+            let dist = if i == j {
                 0.0
             } else {
                 euclidean_distance(&final_centers[i], &final_centers[j])
             };
+
+            distances[i][j] = dist;
+            distances[j][i] = dist; // Symmetric
         }
     }
 

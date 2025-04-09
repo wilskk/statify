@@ -1,4 +1,44 @@
 use std::collections::HashMap;
+use ndarray::{ Array1, ArrayView1 };
+
+use statrs::distribution::{ FisherSnedecor, ContinuousCDF };
+
+pub fn mean(values: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    values.iter().sum::<f64>() / (values.len() as f64)
+}
+
+pub fn sum_squared_deviations(values: &[f64], from_value: f64) -> f64 {
+    values
+        .iter()
+        .map(|x| (x - from_value).powi(2))
+        .sum()
+}
+
+pub fn variance(values: &[f64]) -> f64 {
+    if values.len() <= 1 {
+        return 0.0;
+    }
+    let m = mean(values);
+    sum_squared_deviations(values, m) / ((values.len() - 1) as f64)
+}
+
+pub fn standard_deviation(values: &[f64]) -> f64 {
+    variance(values).sqrt()
+}
+
+pub fn f_test_p_value(f_stat: f64, df1: i32, df2: i32) -> f64 {
+    if df1 <= 0 || df2 <= 0 || f_stat <= 0.0 {
+        return 1.0;
+    }
+
+    match FisherSnedecor::new(df1 as f64, df2 as f64) {
+        Ok(dist) => 1.0 - dist.cdf(f_stat),
+        Err(_) => 0.5,
+    }
+}
 
 pub fn euclidean_distance(a: &[f64], b: &[f64]) -> f64 {
     a.iter()
@@ -8,98 +48,94 @@ pub fn euclidean_distance(a: &[f64], b: &[f64]) -> f64 {
         .sqrt()
 }
 
+pub fn euclidean_distance_ndarray(a: ArrayView1<f64>, b: ArrayView1<f64>) -> f64 {
+    (&a - &b)
+        .mapv(|x| x.powi(2))
+        .sum()
+        .sqrt()
+}
+
 pub fn find_nearest_cluster(point: &[f64], centers: &[Vec<f64>]) -> (usize, f64) {
-    let mut min_dist = f64::MAX;
-    let mut nearest = 0;
-
-    for (i, center) in centers.iter().enumerate() {
-        let dist = euclidean_distance(point, center);
-        if dist < min_dist {
-            min_dist = dist;
-            nearest = i;
-        }
-    }
-
-    (nearest, min_dist)
+    centers
+        .iter()
+        .enumerate()
+        .map(|(i, center)| (i, euclidean_distance(point, center)))
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .unwrap_or((0, f64::MAX))
 }
 
 pub fn find_closest_cluster(point: &[f64], centers: &[Vec<f64>]) -> usize {
-    let (closest, _) = find_nearest_cluster(point, centers);
-    closest
+    find_nearest_cluster(point, centers).0
 }
 
 pub fn find_second_closest_cluster(point: &[f64], centers: &[Vec<f64>], closest: usize) -> usize {
-    let mut min_dist = f64::MAX;
-    let mut second_closest = if closest == 0 { 1 } else { 0 };
-
-    for (i, center) in centers.iter().enumerate() {
-        if i != closest {
-            let dist = euclidean_distance(point, center);
-            if dist < min_dist {
-                min_dist = dist;
-                second_closest = i;
-            }
-        }
-    }
-
-    second_closest
+    centers
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != closest)
+        .map(|(i, center)| (i, euclidean_distance(point, center)))
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .map(|(i, _)| i)
+        .unwrap_or_else(|| if closest == 0 { 1 } else { 0 })
 }
 
 pub fn min_distance_between_centers(centers: &[Vec<f64>]) -> (f64, usize, usize) {
-    let mut min_dist = f64::MAX;
-    let mut min_i = 0;
-    let mut min_j = 1;
-
-    for i in 0..centers.len() {
-        for j in i + 1..centers.len() {
-            let dist = euclidean_distance(&centers[i], &centers[j]);
-            if dist < min_dist {
-                min_dist = dist;
-                min_i = i;
-                min_j = j;
-            }
-        }
-    }
-
-    (min_dist, min_i, min_j)
+    (0..centers.len())
+        .flat_map(|i|
+            (i + 1..centers.len()).map(move |j| (
+                i,
+                j,
+                euclidean_distance(&centers[i], &centers[j]),
+            ))
+        )
+        .min_by(|a, b| a.2.partial_cmp(&b.2).unwrap())
+        .map(|(i, j, dist)| (dist, i, j))
+        .unwrap_or((f64::MAX, 0, 1))
 }
 
 pub fn min_distance_from_cluster(centers: &[Vec<f64>], cluster_idx: usize) -> f64 {
-    let mut min_dist = f64::MAX;
-
-    for (i, center) in centers.iter().enumerate() {
-        if i != cluster_idx {
-            let dist = euclidean_distance(&centers[cluster_idx], center);
-            if dist < min_dist {
-                min_dist = dist;
-            }
-        }
-    }
-
-    min_dist
+    centers
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != cluster_idx)
+        .map(|(_, center)| euclidean_distance(&centers[cluster_idx], center))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap_or(f64::MAX)
 }
 
 pub fn convert_map_to_matrix(
     centers_map: &HashMap<String, Vec<f64>>,
     variables: &[String]
 ) -> Vec<Vec<f64>> {
-    let num_clusters = if centers_map.is_empty() {
-        0
-    } else {
-        centers_map.values().next().unwrap().len()
-    };
+    let num_clusters = centers_map
+        .values()
+        .next()
+        .map_or(0, |v| v.len());
+    if num_clusters == 0 {
+        return Vec::new();
+    }
 
     let mut matrix = vec![vec![0.0; variables.len()]; num_clusters];
 
     for (var_idx, var) in variables.iter().enumerate() {
         if let Some(values) = centers_map.get(var) {
-            for (cluster_idx, value) in values.iter().enumerate() {
-                if cluster_idx < matrix.len() {
-                    matrix[cluster_idx][var_idx] = *value;
-                }
+            for (cluster_idx, value) in values.iter().enumerate().take(matrix.len()) {
+                matrix[cluster_idx][var_idx] = *value;
             }
         }
     }
 
     matrix
+}
+
+pub fn to_ndarray(data: &[Vec<f64>]) -> Vec<Array1<f64>> {
+    data.iter()
+        .map(|v| Array1::from_vec(v.to_vec()))
+        .collect()
+}
+
+pub fn from_ndarray(data: &[Array1<f64>]) -> Vec<Vec<f64>> {
+    data.iter()
+        .map(|a| a.to_vec())
+        .collect()
 }

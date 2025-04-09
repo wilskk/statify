@@ -1,7 +1,7 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { KMeansClusterAnalysisType } from "@/models/classify/k-means-cluster/k-means-cluster-worker";
-import init from "@/wasm/pkg/wasm";
-import { convertClusterAnalysisData } from "./k-means-cluster-analysis-formatter";
+import init, { KMeansClusterAnalysis } from "@/wasm/pkg/wasm";
+import { transformKMeansResult } from "./k-means-cluster-analysis-formatter";
 import { resultKMeans } from "./k-means-cluster-analysis-output";
 
 export async function analyzeKMeansCluster({
@@ -35,33 +35,27 @@ export async function analyzeKMeansCluster({
     const varDefsForCaseTarget = getVarDefs(variables, CaseTargetVariable);
     console.log(configData);
 
-    // const kmeans = new KMeansClusterAnalysis(
-    //     slicedDataForTarget,
-    //     slicedDataForCaseTarget,
-    //     varDefsForTarget,
-    //     varDefsForCaseTarget,
-    //     configData
-    // );
+    const kmeans = new KMeansClusterAnalysis(
+        slicedDataForTarget,
+        slicedDataForCaseTarget,
+        varDefsForTarget,
+        varDefsForCaseTarget,
+        configData
+    );
 
-    // const results = kmeans.get_results();
-    // console.log("kmeans results", results);
+    const results = kmeans.get_results();
+    console.log("kmeans results", results);
 
-    // kmeans.perform_analysis();
-    // const formattedResults = convertClusterAnalysisData(results);
+    const formattedResults = transformKMeansResult(results);
+    console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
-    // await resultKMeans({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
-    //     initialClusterCentersTable,
-    //     iterationHistoryTable,
-    //     finalClusterCentersTable,
-    //     numberOfCasesTable,
-    //     clusterMembershipTable,
-    //     clusterStatisticsTable,
-    //     distancesFromClusterCentersTable,
-    // });
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultKMeans({
+        addLog,
+        addAnalytic,
+        addStatistic,
+        formattedResult: formattedResults ?? [],
+    });
 }

@@ -1,375 +1,310 @@
-import {
-    ClusterAnalysisInput,
-    RowData,
-    ResultJson,
-    Table,
-} from "@/models/classify/k-means-cluster/k-means-cluster-output";
+// clustering-results-formatter.ts
+import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
+import { ResultJson, Table } from "@/types/Table";
 
-/**
- * Memformat angka sesuai kebutuhan tampilan
- * @param {number | undefined | null} num - Angka yang akan diformat
- * @return {string | null} - Angka yang telah diformat sebagai string
- */
-function formatDisplayNumber(num: number | undefined | null): string | null {
-    if (typeof num === "undefined" || num === null) return null;
-    if (isNaN(Number(num))) return "NaN";
-
-    if (Number.isInteger(num)) {
-        return num.toString();
-    } else {
-        // Format angka desimal
-        if (num === 100) {
-            return "100.0";
-        } else if (num < 1 && num > 0) {
-            return num.toFixed(3).replace(/0+$/, "");
-        } else {
-            // Untuk sebagian besar nomor desimal
-            return num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
-        }
-    }
-}
-
-/**
- * Konversi data cluster analysis ke format JSON terstruktur
- * @param {ClusterAnalysisInput} jsonData - Data JSON input dari analisis cluster
- * @return {ResultJson} - Data JSON terstruktur sesuai format yang diinginkan
- */
-export function convertClusterAnalysisData(
-    jsonData: ClusterAnalysisInput
-): ResultJson {
-    // Ekstrak data dari input JSON
-    const data = jsonData.data;
-
-    // Buat struktur JSON hasil
+export function transformKMeansResult(data: any): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
     };
 
-    // 1. Tabel Distances between Final Cluster Centers
-    if (data.distance_matrix && data.distance_matrix.distances) {
-        const distancesTable: Table = {
-            title: "Distances between Final Cluster Centers",
-            columnHeaders: [{ header: "Cluster" }],
-            rows: [],
-        };
-
-        const numClusters = data.distance_matrix.num_clusters;
-
-        // Tambahkan header kolom
-        for (let i = 1; i <= numClusters; i++) {
-            distancesTable.columnHeaders.push({ header: i.toString() });
-        }
-
-        // Isi data baris
-        for (let i = 0; i < numClusters; i++) {
-            const rowValues: (string | null)[] = [];
-
-            for (let j = 0; j < numClusters; j++) {
-                if (i === j) {
-                    rowValues.push(null);
-                } else {
-                    const distance = data.distance_matrix.distances[i][j];
-                    rowValues.push(formatDisplayNumber(distance));
-                }
-            }
-
-            distancesTable.rows.push({
-                rowHeader: [(i + 1).toString(), null],
-                values: rowValues as string[],
-            });
-        }
-
-        resultJson.tables.push(distancesTable);
-    }
-
-    // 4. Quick Cluster - Initial Cluster Centers
+    // 1. Initial Cluster Centers
     if (data.initial_centers) {
-        const initialCentersTable: Table = {
+        const initialCenters = data.initial_centers;
+        const variables = Object.keys(initialCenters.centers);
+        const clusterCount = initialCenters.centers[variables[0]]?.length || 0;
+
+        const table: Table = {
+            key: "initial_cluster_centers",
             title: "Initial Cluster Centers",
-            sectionTitle: "Quick Cluster",
             columnHeaders: [
-                { header: "" },
-                { header: "Cluster", colspan: data.initial_centers.length },
+                { header: "Variable" },
+                ...Array.from({ length: clusterCount }, (_, i) => ({
+                    header: `Cluster ${i + 1}`,
+                })),
             ],
             rows: [],
         };
 
-        // Add sub-header row
-        const subHeaderValues: string[] = [];
-        for (let i = 0; i < data.initial_centers.length; i++) {
-            subHeaderValues.push((i + 1).toString());
-        }
-
-        initialCentersTable.rows.push({
-            rowHeader: ["", null],
-            values: subHeaderValues,
-            isSubHeader: true,
-        });
-
-        // Get variable names
-        const varNames = data.variable_names || [""];
-
-        // Build rows for each variable
-        for (let i = 0; i < varNames.length; i++) {
-            const row: RowData = {
-                rowHeader: [varNames[i], null],
-                values: [],
+        variables.forEach((variable) => {
+            const rowData: any = {
+                rowHeader: [variable],
             };
 
-            // Add values for each cluster
-            for (let j = 0; j < data.initial_centers.length; j++) {
-                const center = data.initial_centers[j];
-                row.values!.push(
-                    center[i] !== undefined
-                        ? formatDisplayNumber(center[i])!
-                        : ""
+            for (let i = 0; i < clusterCount; i++) {
+                rowData[`Cluster ${i + 1}`] = formatDisplayNumber(
+                    initialCenters.centers[variable]?.[i]
                 );
             }
 
-            initialCentersTable.rows.push(row);
-        }
+            table.rows.push(rowData);
+        });
 
-        resultJson.tables.push(initialCentersTable);
+        resultJson.tables.push(ensureEnoughHeaders(table));
     }
 
-    // 5. Iteration History
-    if (data.iterations) {
-        const iterationHistoryTable: Table = {
+    // 2. Iteration History
+    if (data.iteration_history) {
+        const iterHistory = data.iteration_history;
+        const clusterKeys = iterHistory.iterations[0]?.changes
+            ? Object.keys(iterHistory.iterations[0].changes)
+            : [];
+
+        const table: Table = {
+            key: "iteration_history",
             title: "Iteration History",
             columnHeaders: [
                 { header: "Iteration" },
-                {
-                    header: "Change in Cluster Centers",
-                    colspan: data.iterations[0].length,
-                },
+                ...clusterKeys.map((key) => ({
+                    header: `Change in Cluster Center ${key.replace(
+                        "Cluster ",
+                        ""
+                    )}`,
+                })),
             ],
             rows: [],
         };
 
-        // Add sub-header row
-        const subHeaderValues: string[] = [];
-        for (let i = 0; i < data.iterations[0].length; i++) {
-            subHeaderValues.push((i + 1).toString());
-        }
-
-        iterationHistoryTable.rows.push({
-            rowHeader: ["", null],
-            values: subHeaderValues,
-            isSubHeader: true,
-        });
-
-        // Add rows for each iteration
-        for (let i = 0; i < data.iterations.length; i++) {
-            const row: RowData = {
-                rowHeader: [(i + 1).toString(), null],
-                values: [],
+        iterHistory.iterations.forEach((iteration) => {
+            const rowData: any = {
+                rowHeader: [],
+                Iteration: formatDisplayNumber(iteration.iteration),
             };
 
-            // Use actual data without modification
-            for (let j = 0; j < data.iterations[i].length; j++) {
-                const value = data.iterations[i][j];
-                const formattedValue = formatDisplayNumber(value);
-                row.values!.push(formattedValue || "");
-            }
+            clusterKeys.forEach((key) => {
+                rowData[
+                    `Change in Cluster Center ${key.replace("Cluster ", "")}`
+                ] = formatDisplayNumber(iteration.changes[key]);
+            });
 
-            iterationHistoryTable.rows.push(row);
-        }
-
-        // Tambahkan footer sebagai row dengan isFooter=true
-        iterationHistoryTable.rows.push({
-            rowHeader: [
-                "a. Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is .000. The current iteration is " +
-                    data.iteration_count +
-                    ". The minimum distance between initial centers is " +
-                    formatDisplayNumber(data.min_distance_initial || NaN) +
-                    ".",
-                null,
-            ],
-            isFooter: true,
-            values: [],
+            table.rows.push(rowData);
         });
 
-        resultJson.tables.push(iterationHistoryTable);
-    }
-
-    // 6. Final Cluster Centers
-    if (data.final_centers) {
-        const finalCentersTable: Table = {
-            title: "Final Cluster Centers",
-            columnHeaders: [
-                { header: "" },
-                { header: "Cluster", colspan: data.final_centers.length },
-            ],
-            rows: [],
-        };
-
-        // Add sub-header row
-        const subHeaderValues: string[] = [];
-        for (let i = 0; i < data.final_centers.length; i++) {
-            subHeaderValues.push((i + 1).toString());
-        }
-
-        finalCentersTable.rows.push({
-            rowHeader: ["", null],
-            values: subHeaderValues,
-            isSubHeader: true,
-        });
-
-        // Get variable names
-        const varNames = data.variable_names || [""];
-
-        // Add rows for each variable
-        for (let i = 0; i < varNames.length; i++) {
-            const row: RowData = {
-                rowHeader: [varNames[i], null],
-                values: [],
-            };
-
-            // Add values for each cluster - use actual data without modification
-            for (let j = 0; j < data.final_centers.length; j++) {
-                const center = data.final_centers[j];
-                row.values!.push(
-                    center[i] !== undefined
-                        ? formatDisplayNumber(center[i])!
-                        : ""
-                );
-            }
-
-            finalCentersTable.rows.push(row);
-        }
-
-        resultJson.tables.push(finalCentersTable);
-    }
-
-    // 7. Number of Cases in each Cluster
-    if (data.case_statistics && data.case_statistics.cluster_counts) {
-        const clusterCounts = [...data.case_statistics.cluster_counts];
-
-        const caseCountTable: Table = {
-            title: "Number of Cases in each Cluster",
-            columnHeaders: [
-                { header: "Cluster" },
-                { header: "1" },
-                { header: formatDisplayNumber(clusterCounts[0])! + ".000" },
-            ],
-            rows: [],
-        };
-
-        // Add rows for each remaining cluster, valid, and missing
-        for (let i = 1; i < clusterCounts.length; i++) {
-            caseCountTable.rows.push({
-                rowHeader: [(i + 1).toString(), null],
-                values: [formatDisplayNumber(clusterCounts[i])! + ".000"],
+        if (iterHistory.convergence_note) {
+            table.rows.push({
+                rowHeader: [iterHistory.convergence_note],
+                Iteration: null,
+                ...Object.fromEntries(
+                    clusterKeys.map((key) => [
+                        `Change in Cluster Center ${key.replace(
+                            "Cluster ",
+                            ""
+                        )}`,
+                        null,
+                    ])
+                ),
             });
         }
 
-        // Calculate valid count as sum of all cluster counts
-        const validCount = clusterCounts.reduce((sum, count) => sum + count, 0);
-
-        // Add Valid and Missing rows
-        caseCountTable.rows.push({
-            rowHeader: ["Valid", null],
-            values: [formatDisplayNumber(validCount)! + ".000"],
-        });
-
-        caseCountTable.rows.push({
-            rowHeader: ["Missing", null],
-            values: [
-                formatDisplayNumber(data.case_statistics.missing_count)! +
-                    ".000",
-            ],
-        });
-
-        resultJson.tables.push(caseCountTable);
+        resultJson.tables.push(ensureEnoughHeaders(table));
     }
 
-    // 8. Cluster Membership dengan Detail
-    if (data.membership_info) {
-        const clusterMembershipDetailTable: Table = {
+    // 3. Cluster Membership
+    if (data.cluster_membership) {
+        const clusterMembership = data.cluster_membership;
+
+        const table: Table = {
+            key: "cluster_membership",
             title: "Cluster Membership",
             columnHeaders: [
                 { header: "Case Number" },
-                { header: "gender" },
                 { header: "Cluster" },
                 { header: "Distance" },
             ],
             rows: [],
         };
 
-        const caseNumbers = data.membership_info.case_numbers;
-        const clusters = data.membership_info.clusters;
-        const distances = data.membership_info.distances;
-
-        for (let i = 0; i < caseNumbers.length; i++) {
-            clusterMembershipDetailTable.rows.push({
-                rowHeader: [caseNumbers[i].toString(), null],
-                values: [
-                    "", // Kosongkan gender karena tidak tersedia
-                    (clusters[i] + 1).toString(),
-                    formatDisplayNumber(distances[i]) || "",
-                ],
+        clusterMembership.forEach((member) => {
+            table.rows.push({
+                rowHeader: [],
+                "Case Number": formatDisplayNumber(member.case_number),
+                Cluster: formatDisplayNumber(member.cluster),
+                Distance: formatDisplayNumber(member.distance),
             });
-        }
+        });
 
-        resultJson.tables.push(clusterMembershipDetailTable);
+        resultJson.tables.push(ensureEnoughHeaders(table));
     }
 
-    // 9. ANOVA Table
-    if (data.anova_table) {
-        const anovaTable: Table = {
-            title: "ANOVA",
+    // 4. Final Cluster Centers
+    if (data.final_cluster_centers) {
+        const finalCenters = data.final_cluster_centers;
+        const variables = Object.keys(finalCenters.centers);
+        const clusterCount = finalCenters.centers[variables[0]]?.length || 0;
+
+        const table: Table = {
+            key: "final_cluster_centers",
+            title: "Final Cluster Centers",
             columnHeaders: [
-                { header: "" },
-                { header: "Cluster", colspan: 2 },
-                { header: "Error", colspan: 2 },
-                { header: "" },
-                { header: "" },
+                { header: "Variable" },
+                ...Array.from({ length: clusterCount }, (_, i) => ({
+                    header: `Cluster ${i + 1}`,
+                })),
             ],
             rows: [],
         };
 
-        // Add sub-headers as a row with isSubHeader=true
-        anovaTable.rows.push({
-            rowHeader: ["", null],
-            values: ["Mean Square", "df", "Mean Square", "df", "F", "Sig."],
-            isSubHeader: true,
-        });
-
-        const variables = data.anova_table.variables;
-        const clusterMeanSquares = data.anova_table.cluster_mean_squares;
-        const errorMeanSquares = data.anova_table.error_mean_squares;
-        const clusterDf = data.anova_table.cluster_df;
-        const errorDf = data.anova_table.error_df;
-        const fValues = data.anova_table.f_values;
-        const significance = data.anova_table.significance;
-
-        for (let i = 0; i < variables.length; i++) {
-            const row: RowData = {
-                rowHeader: [variables[i], null],
-                values: [
-                    formatDisplayNumber(clusterMeanSquares[i]) || "",
-                    formatDisplayNumber(clusterDf) || "",
-                    formatDisplayNumber(errorMeanSquares[i]) || "",
-                    formatDisplayNumber(errorDf) || "",
-                    formatDisplayNumber(fValues[i]) || "",
-                    formatDisplayNumber(significance[i]) || "",
-                ],
+        variables.forEach((variable) => {
+            const rowData: any = {
+                rowHeader: [variable],
             };
 
-            anovaTable.rows.push(row);
-        }
+            for (let i = 0; i < clusterCount; i++) {
+                rowData[`Cluster ${i + 1}`] = formatDisplayNumber(
+                    finalCenters.centers[variable]?.[i]
+                );
+            }
 
-        // Add footer as a row with isFooter=true
-        anovaTable.rows.push({
-            rowHeader: [
-                "The F tests should be used only for descriptive purposes because the clusters have been chosen to maximize the differences among cases in different clusters. The observed significance levels are not corrected for this and thus cannot be interpreted as tests of the hypothesis that the cluster means are equal.",
-                null,
-            ],
-            isFooter: true,
-            values: [],
+            table.rows.push(rowData);
         });
 
-        resultJson.tables.push(anovaTable);
+        resultJson.tables.push(ensureEnoughHeaders(table));
+    }
+
+    // 5. Distances between Final Cluster Centers
+    if (data.distances_between_centers) {
+        const distances = data.distances_between_centers;
+        const clusterCount = distances.distances.length;
+
+        const table: Table = {
+            key: "distances_between_centers",
+            title: "Distances between Final Cluster Centers",
+            columnHeaders: [
+                { header: "Cluster" },
+                ...Array.from({ length: clusterCount }, (_, i) => ({
+                    header: `${i + 1}`,
+                })),
+            ],
+            rows: [],
+        };
+
+        for (let i = 0; i < clusterCount; i++) {
+            const rowData: any = {
+                rowHeader: [`${i + 1}`],
+            };
+
+            for (let j = 0; j < clusterCount; j++) {
+                rowData[`${j + 1}`] = formatDisplayNumber(
+                    distances.distances[i]?.[j]
+                );
+            }
+
+            table.rows.push(rowData);
+        }
+
+        resultJson.tables.push(ensureEnoughHeaders(table));
+    }
+
+    // 6. ANOVA Table
+    if (data.anova) {
+        const anova = data.anova;
+        const variables = Object.keys(anova.clusters);
+
+        const table: Table = {
+            key: "anova_table",
+            title: "ANOVA",
+            columnHeaders: [
+                { header: "" },
+                { header: "Cluster" },
+                { header: "Error" },
+                { header: "" },
+                { header: "" },
+            ],
+            rows: [
+                {
+                    rowHeader: [""],
+                    Cluster: "Mean Square",
+                    Error: "df",
+                    "": "Mean Square",
+                    " ": "df",
+                    F: "F",
+                    Sig: "Sig.",
+                },
+            ],
+        };
+
+        // Add F and Sig columns that weren't in the initial headers
+        table.columnHeaders.push({ header: "F" });
+        table.columnHeaders.push({ header: "Sig" });
+
+        variables.forEach((variable) => {
+            const cluster = anova.clusters[variable];
+            if (cluster) {
+                table.rows.push({
+                    rowHeader: [variable],
+                    Cluster: formatDisplayNumber(cluster.mean_square),
+                    Error: formatDisplayNumber(cluster.df),
+                    "": formatDisplayNumber(cluster.mean_square / cluster.f), // Calculate error mean square from f-ratio
+                    " ": formatDisplayNumber(cluster.df * (clusterCount - 1)), // Calculate error df
+                    F: formatDisplayNumber(cluster.f),
+                    Sig: formatDisplayNumber(cluster.significance),
+                });
+            }
+        });
+
+        table.rows.push({
+            rowHeader: [
+                "The F tests should be used only for descriptive purposes because the clusters have been chosen to maximize the differences among cases in different clusters. The observed significance levels are not corrected for this and thus cannot be interpreted as tests of the hypothesis that the cluster means are equal.",
+            ],
+            Cluster: null,
+            Error: null,
+            "": null,
+            " ": null,
+            F: null,
+            Sig: null,
+        });
+
+        resultJson.tables.push(ensureEnoughHeaders(table));
+    }
+
+    // 7. Number of Cases in each Cluster
+    if (data.cases_count) {
+        const casesCount = data.cases_count;
+        const clusterKeys = Object.keys(casesCount.clusters);
+
+        const table: Table = {
+            key: "number_of_cases",
+            title: "Number of Cases in each Cluster",
+            columnHeaders: [
+                { header: "Cluster" },
+                { header: "N" },
+                { header: "%" },
+            ],
+            rows: [],
+        };
+
+        clusterKeys.forEach((cluster) => {
+            const count = casesCount.clusters[cluster];
+            const percentage = (count / casesCount.valid) * 100;
+
+            table.rows.push({
+                rowHeader: [cluster],
+                N: formatDisplayNumber(count),
+                "%": formatDisplayNumber(percentage),
+            });
+        });
+
+        table.rows.push({
+            rowHeader: ["Valid"],
+            N: formatDisplayNumber(casesCount.valid),
+            "%": formatDisplayNumber(100),
+        });
+
+        if (casesCount.missing > 0) {
+            table.rows.push({
+                rowHeader: ["Missing"],
+                N: formatDisplayNumber(casesCount.missing),
+                "%": null,
+            });
+        }
+
+        const total = casesCount.valid + casesCount.missing;
+        table.rows.push({
+            rowHeader: ["Total"],
+            N: formatDisplayNumber(total),
+            "%": null,
+        });
+
+        resultJson.tables.push(ensureEnoughHeaders(table));
     }
 
     return resultJson;

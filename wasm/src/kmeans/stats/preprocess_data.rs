@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::kmeans::models::{
     config::ClusterConfig,
     data::{ AnalysisData, DataValue },
@@ -12,7 +14,7 @@ pub fn preprocess_data(
         return Err("No target data provided".to_string());
     }
 
-    // Use target_var from config if provided, otherwise collect all numeric variables from all datasets
+    // Determine variables to use
     let variables = if let Some(target_var) = &config.main.target_var {
         target_var.clone()
     } else {
@@ -27,18 +29,17 @@ pub fn preprocess_data(
                         .map(|(key, _)| key.clone())
                 })
             })
-            .collect::<std::collections::HashSet<String>>()
+            .collect::<HashSet<String>>()
             .into_iter()
-            .collect::<Vec<String>>()
+            .collect()
     };
 
     if variables.is_empty() {
         return Err("No valid clustering variables found".to_string());
     }
 
-    // Get the number of cases (assuming all datasets have the same length)
-    let num_cases = if !data.target_data.is_empty() { data.target_data[0].len() } else { 0 };
-
+    // Get the number of cases
+    let num_cases = data.target_data.first().map_or(0, |ds| ds.len());
     if num_cases == 0 {
         return Err("No cases found in data".to_string());
     }
@@ -48,44 +49,33 @@ pub fn preprocess_data(
 
     // Process each case
     for case_idx in 0..num_cases {
-        let mut row = Vec::new();
+        let mut row = Vec::with_capacity(variables.len());
         let mut has_missing = false;
 
         // For each variable, find its value across all datasets
-        for var in &variables {
-            let mut var_value: Option<f64> = None;
-
-            // Check each dataset for this variable
+        'var_loop: for var in &variables {
             for dataset in &data.target_data {
                 if case_idx < dataset.len() {
                     if let Some(DataValue::Number(val)) = dataset[case_idx].values.get(var) {
-                        var_value = Some(*val);
-                        break;
+                        row.push(*val);
+                        continue 'var_loop;
                     }
                 }
             }
 
-            // Add the value to the row or mark as missing
-            match var_value {
-                Some(val) => row.push(val),
-                None => {
-                    has_missing = true;
-                    if !config.options.exclude_list_wise {
-                        // If not excluding list-wise, use a default value (0.0)
-                        row.push(0.0);
-                    } else {
-                        break;
-                    }
-                }
+            // Variable not found or not numeric
+            has_missing = true;
+            if !config.options.exclude_list_wise {
+                row.push(0.0); // Default value if not excluding list-wise
+            } else {
+                break; // Skip this case if excluding list-wise
             }
         }
 
-        // Add the row if it's complete or if we're not doing list-wise exclusion
-        if !has_missing || !config.options.exclude_list_wise {
-            if row.len() == variables.len() {
-                data_matrix.push(row);
-                case_numbers.push((case_idx + 1) as i32);
-            }
+        // Add the row if complete or if not doing list-wise exclusion
+        if (!has_missing || !config.options.exclude_list_wise) && row.len() == variables.len() {
+            data_matrix.push(row);
+            case_numbers.push((case_idx + 1) as i32);
         }
     }
 
