@@ -1,4 +1,3 @@
-// components/ModalCurveEstimation.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -11,7 +10,7 @@ import { Pencil, ArrowRight, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import useResultStore from '@/stores/useResultStore';
+import { useResultStore } from '@/stores/useResultStore';
 import models from "@/components/Modals/Regression/PartialLeastSquares/Models";
 
 Chart.register(...registerables);
@@ -40,14 +39,12 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Reference to worker
   const workerRef = useRef<Worker | null>(null);
 
   const variables = useVariableStore((state) => state.variables);
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-  // Initialize variables from store
   useEffect(() => {
     const availableVars: Variable[] = variables
       .filter((v) => v.name)
@@ -59,7 +56,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     setAvailableVariables(availableVars);
   }, [variables]);
 
-  // Variable selection handlers
   const handleSelectAvailableVariable = (variable: Variable) => {
     setHighlightedVariable(variable);
   };
@@ -114,7 +110,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   };
 
   const handleClose = () => {
-    // Cleanup worker if needed
     if (workerRef.current) {
       workerRef.current.terminate();
       workerRef.current = null;
@@ -129,7 +124,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   };
 
   const handleReset = () => {
-    // Reset all selections
     if (selectedDependentVariable) {
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
@@ -167,16 +161,13 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       const depCol = selectedDependentVariable.columnIndex;
       const indepCols = selectedIndependentVariables.map(iv => iv.columnIndex);
 
-      // Prepare data
       const Y = data.map(row => parseFloat(row[depCol])).filter(val => !isNaN(val));
       const X = data.map(row => parseFloat(row[indepCols[0]])).filter(val => !isNaN(val));
 
-      // Ensure data lengths match after filtering
       const length = Math.min(X.length, Y.length);
       const Xtrim = X.slice(0, length);
       const Ytrim = Y.slice(0, length);
 
-      // Create log message
       const dependentVarName = selectedDependentVariable.name;
       const independentVarNames = selectedIndependentVariables.map(iv => iv.name);
       const method = selectedModels.join(', ');
@@ -189,29 +180,23 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
 /DEPENDENT ${dependentVarName} 
 /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
 
-      // Add log entry
       const log = { log: logMessage };
       const logId = await addLog(log);
       console.log("[CurveEstimation] Log created with ID:", logId);
 
-      // Add analytic
       const analytic = {
         title: "Curve Estimation",
-        log_id: logId,
         note: "",
       };
-      const analyticId = await addAnalytic(analytic);
+      const analyticId = await addAnalytic(logId, analytic);
       console.log("[CurveEstimation] Analytic created with ID:", analyticId);
 
-      // Create and configure web worker
       if (workerRef.current) {
         workerRef.current.terminate();
       }
       
-      // Create new worker, using the correct path
       workerRef.current = new Worker('/workers/CurveEstimation/curve_estimation.js');
       
-      // Set up message handler for worker results
       workerRef.current.onmessage = async (event) => {
         const { action, data } = event.data;
         
@@ -219,9 +204,7 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           console.log("[CurveEstimation] Received regression results:", data);
           
           if (data.success) {
-            // Create statistic entry with results
             const regressionSummaryStat = {
-              analytic_id: analyticId,
               title: "Curve Estimation",
               output_data: JSON.stringify(data.result),
               output_type: "table",
@@ -229,11 +212,8 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             };
 
             try {
-              await addStatistic(regressionSummaryStat);
+              await addStatistic(analyticId, regressionSummaryStat);
               console.log("[CurveEstimation] Statistics saved successfully");
-              
-              // Close modal on success if needed
-              // onClose();
             } catch (error) {
               console.error("[CurveEstimation] Failed to save statistics:", error);
               setErrorMessage("Failed to save regression results.");
@@ -251,7 +231,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
         }
       };
       
-      // Handle worker errors
       workerRef.current.onerror = (error) => {
         console.error("[CurveEstimation] Worker error:", error.message);
         setErrorMessage(`Worker error: ${error.message}`);
@@ -263,7 +242,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
         }
       };
 
-      // Send data to worker
       console.log(selectedModels);
       console.log(upperBound);
       console.log("[CurveEstimation] Sending data to worker");
@@ -286,7 +264,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     }
   };
   
-  // Helper function to get color for different regression models
   const getColorForModel = (model: string) => {
     const colors: { [key: string]: string } = {
       'Linear': 'rgba(255,99,132,1)',
@@ -319,7 +296,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       )}
   
       <div className="grid grid-cols-12 gap-2 py-2">
-        {/* Left Panel: Variable List */}
         <div className="col-span-3 border p-2 rounded-md max-h-[500px] overflow-y-auto">
           <label className="font-semibold text-sm">Variables</label>
           <ScrollArea className="mt-1 h-[450px]">
@@ -338,9 +314,7 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           </ScrollArea>
         </div>
   
-        {/* Middle Section */}
         <div className="col-span-6 space-y-4">
-          {/* Dependent Variable */}
           <div className="flex items-center">
             <Button
               variant="outline"
@@ -368,7 +342,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             </div>
           </div>
   
-          {/* Independent Variables */}
           <div className="flex items-start">
             <Button
               variant="outline"
@@ -399,7 +372,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             </div>
           </div>
   
-          {/* Case Labels and Checkboxes */}
           <div className="flex items-start">
             <div className="flex items-center mr-2 w-2/3">
               <Button
@@ -447,7 +419,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             </div>
           </div>
   
-          {/* Models */}
           <div className="text-sm">
             <label className="font-semibold">Models</label>
             <div className="mt-1 grid grid-cols-3 gap-1">
@@ -489,7 +460,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             )}
           </div>
   
-          {/* Display ANOVA Table */}
           <div className="flex items-center text-sm">
             <Checkbox
               checked={displayANOVA}
@@ -500,7 +470,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
           </div>
         </div>
   
-        {/* Right Panel: Save Button */}
         <div className="col-span-3 flex flex-col justify-start space-y-2">
           <Button 
             variant="outline" 

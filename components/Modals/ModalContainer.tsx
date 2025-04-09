@@ -11,7 +11,7 @@ import ExportDataModal from './File/ExportDataModal';
 import FrequenciesModal from "@/components/Modals/Analyze/DescriptiveStatistic/Frequencies/FrequenciesModal";
 import DescriptivesModal from "@/components/Modals/Analyze/DescriptiveStatistic/DescriptivesModal";
 import { Dialog } from '@/components/ui/dialog';
-import ModalAutomaticLinearModeling from '@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling'
+import ModalAutomaticLinearModeling from '@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling';
 import ModalLinear from './Regression/Linear/ModalLinear';
 import ModalCurveEstimation from './Regression/CurveEstimation/ModalCurveEstimation';
 import ModalPartialLeastSquares from './Regression/PartialLeastSquares/ModalPartialLeastSquares';
@@ -20,7 +20,6 @@ import ModalMultinomialLogistic from './Regression/MultinomialLogistic/ModalMult
 import ModalOrdinal from './Regression/Ordinal/ModalOrdinal';
 import ModalProbit from './Regression/Probit/ModalProbit';
 import ModalNonlinear from './Regression/Nonlinear/ModalNonlinear';
-
 import ModalTwoStageLeastSquares from './Regression/TwoStageLeastSquares/ModalTwoStageLeastSquares';
 import ModalWeightEstimation from './Regression/WeightEstimation/ModalWeightEstimation';
 import ModalQuantiles from './Regression/Quantiles/ModalQuantiles';
@@ -30,21 +29,7 @@ import SaveLinear from './Regression/Linear/SaveLinear';
 import OptionsLinear from './Regression/Linear/OptionsLinear';
 import BootstrapLinear from './Regression/Linear/BootstrapLinear';
 import PlotsLinear from './Regression/Linear/PlotsLinear';
-import { Dialog } from "@/components/ui/dialog";
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
-import ModalAutomaticLinearModeling from "@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling";
-import ModalLinear from "./Regression/Linear/ModalLinear";
-import ModalCurveEstimation from "./Regression/CurveEstimation/ModalCurveEstimation";
-import ModalPartialLeastSquares from "./Regression/PartialLeastSquares/ModalPartialLeastSquares";
-import ModalBinaryLogistic from "./Regression/BinaryLogistic/ModalBinaryLogistic";
-import ModalMultinomialLogistic from "./Regression/MultinomialLogistic/ModalMultinomialLogistic";
-import ModalOrdinal from "./Regression/Ordinal/ModalOrdinal";
-import ModalProbit from "./Regression/Probit/ModalProbit";
-import ModalNonlinear from "./Regression/Nonlinear/ModalNonlinear";
-import ModalTwoStageLeastSquares from "./Regression/TwoStageLeastSquares/ModalTwoStageLeastSquares";
-import ModalWeightEstimation from "./Regression/WeightEstimation/ModalWeightEstimation";
-import ModalQuantiles from "./Regression/Quantiles/ModalQuantiles";
-import ModalOptimalScaling from "./Regression/OptimalScaling/ModalOptimalScaling";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
 import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
 
@@ -116,18 +101,17 @@ const ModalContainer: React.FC = () => {
                     />
                 );
             case ModalType.ModalLinear:
-                return <ModalLinear onClose={closeModal} {...currentModal.props}/>;
-                    case ModalType.Statistics:
-                        return <Statistics onClose={closeModal} {...currentModal.props}/>;
-                    case ModalType.SaveLinear:
-                        return <SaveLinear onClose={closeModal} {...currentModal.props}/>;
-                    case ModalType.OptionsLinear:
-                        return <OptionsLinear onClose={closeModal} {...currentModal.props}/>;
-                    case ModalType.BootstrapLinear:
-                        return <BootstrapLinear onClose={closeModal} {...currentModal.props}/>;
-                    case ModalType.PlotsLinear:
-                        return <PlotsLinear onClose={closeModal} {...currentModal.props}/>;
                 return <ModalLinear onClose={closeModal} {...currentModal.props} />;
+            case ModalType.Statistics:
+                return <Statistics onClose={closeModal} {...currentModal.props} />;
+            case ModalType.SaveLinear:
+                return <SaveLinear onClose={closeModal} {...currentModal.props} />;
+            case ModalType.OptionsLinear:
+                return <OptionsLinear onClose={closeModal} {...currentModal.props} />;
+            case ModalType.BootstrapLinear:
+                return <BootstrapLinear onClose={closeModal} {...currentModal.props} />;
+            case ModalType.PlotsLinear:
+                return <PlotsLinear onClose={closeModal} {...currentModal.props} />;
             case ModalType.ModalCurveEstimation:
                 return (
                     <ModalCurveEstimation onClose={closeModal} {...currentModal.props} />
@@ -173,17 +157,14 @@ const ModalContainer: React.FC = () => {
                 return (
                     <ModalOptimalScaling onClose={closeModal} {...currentModal.props} />
                 );
-
             case ModalType.KRelatedSamplesTest:
                 return <KRelatedSamplesTestModal onClose={closeModal} {...currentModal.props} />;
-
             case ModalType.ChartBuilderModal:
                 return (
                     <ChartBuilderModal onClose={closeModal} {...currentModal.props} />
                 );
             case ModalType.SimpleBarModal:
                 return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
-
             default:
                 return null;
         }
