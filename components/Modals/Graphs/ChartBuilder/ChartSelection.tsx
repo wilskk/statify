@@ -330,6 +330,44 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "D", value: 23 },
       ];
 
+      const data26 = [
+        {
+          category: "Januari",
+          bars: { A: 30, B: 50 },
+          lines: { Target: 40 },
+        },
+        {
+          category: "Februari",
+          bars: { A: 20, B: 60 },
+          lines: { Target: 45 },
+        },
+        {
+          category: "Maret",
+          bars: { A: 50, B: 40 },
+          lines: { Target: 55 },
+        },
+        {
+          category: "April",
+          bars: { A: 35, B: 45 },
+          lines: { Target: 50 },
+        },
+        {
+          category: "Mei",
+          bars: { A: 25, B: 55 },
+          lines: { Target: 60 },
+        },
+        {
+          category: "Juni",
+          bars: { A: 40, B: 35 },
+          lines: { Target: 52 },
+        },
+        {
+          category: "Juli",
+          bars: { A: 45, B: 50 },
+          lines: { Target: 58 },
+        },
+      ];
+
       const words = [
         "freedom",
         "justice",
@@ -769,6 +807,31 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           width,
           height,
           useaxis
+        );
+
+        // Pastikan chartNode bukan null dan svgRef.current bukan null
+        if (svgRef.current && chartNode) {
+          svgRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "Drop Line Chart") {
+        const chartNode = chartUtils.createDropLineChart(
+          data24,
+          width,
+          height,
+          useaxis
+        );
+
+        // Pastikan chartNode bukan null dan svgRef.current bukan null
+        if (svgRef.current && chartNode) {
+          svgRef.current.appendChild(chartNode);
+        }
+      } else if (chartType === "Vertical Bar & Line Chart2") {
+        const chartNode = chartUtils.createBarAndLineChart2(
+          data26,
+          width,
+          height,
+          useaxis,
+          "stacked"
         );
 
         // Pastikan chartNode bukan null dan svgRef.current bukan null
