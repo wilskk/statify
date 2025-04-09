@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useVariableStore, VariableRow } from '@/stores/useVariableStore';
+import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { useResultStore } from '@/stores/useResultStore';
 import {
@@ -15,15 +15,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pencil, ArrowRight } from 'lucide-react';
 import { useLinear } from '@/hooks/useLinear';
-import { Statistics } from '@/components/Modals/Regression/Linear/Statistics';
-import {ModalType} from "@/stores/useModalStore";
-import {useModal} from "@/hooks/useModal";
+import Statistics from '@/components/Modals/Regression/Linear/Statistics';
+import { ModalType } from "@/stores/useModalStore";
+import { useModal } from "@/hooks/useModal";
 import { SaveLinearParams } from './SaveLinear';
 import { StatisticsParams } from './Statistics';
 
 interface Variable {
   name: string;
-  type: 'numeric' | 'categorical';
+  type: string;
   columnIndex: number;
 }
 
@@ -77,7 +77,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       .filter(v => v.name)
       .map((v) => ({
         name: v.name,
-        type: v.type as 'numeric' | 'categorical',
+        type: v.type as string,
         columnIndex: v.columnIndex,
       }));
     setAvailableVariables(availableVars);
@@ -253,20 +253,20 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       const dependentVar = allVariables.find(v => v.name === dependentVarName);
       const independentVars = independentVarNames
         .map(name => allVariables.find(v => v.name === name))
-        .filter(v => v);
+        .filter(v => v !== undefined) as typeof allVariables;
   
       const dependentVarIndex = dependentVar?.columnIndex;
       const independentVarIndices = independentVars.map(v => v.columnIndex);
   
-      if (dependentVarIndex === undefined || independentVarIndices.includes(undefined)) {
+      if (dependentVarIndex === undefined || independentVarIndices.some(index => index === undefined)) {
         throw new Error('Variable indices not found.');
       }
   
       const depVarIndex = dependentVarIndex;
-      const indepVarIndices = independentVarIndices;
+      const indepVarIndices = independentVarIndices as number[];
   
-      const dependentData = dataRows.map(row => parseFloat(row[depVarIndex]));
-      const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(row[index])));
+      const dependentData = dataRows.map(row => parseFloat(String(row[depVarIndex])));
+      const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
       console.log("[Analyze] Data awal - Dependent:", dependentData);
       console.log("[Analyze] Data awal - Independent (per variable):", independentData);
   
@@ -298,15 +298,15 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         independentNames: independentVarNames
       });
 
-      variablesEnteredRemovedWorker.onmessage = async (e) => {
+      variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
         const variablesEnteredRemovedResults = e.data;
         console.log("[Analyze] Hasil dari Worker Variables Entered/Removed:", variablesEnteredRemovedResults);
 
         const variablesEnteredRemovedStat = {
           title: "Variables Entered/Removed",
           output_data: JSON.stringify(variablesEnteredRemovedResults),
-          output_type: "table",
           components: "VariablesEnteredRemoved",
+          description: "Variables entered/removed in the regression analysis"
         };
 
         await addStatistic(analyticId, variablesEnteredRemovedStat);
@@ -314,7 +314,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         variablesEnteredRemovedWorker.terminate();
       };
 
-      variablesEnteredRemovedWorker.onerror = (error) => {
+      variablesEnteredRemovedWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] Worker Variables Entered/Removed error:", error);
         variablesEnteredRemovedWorker.terminate();
       };
@@ -326,7 +326,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         independentData: filteredIndependentData
       });
 
-      anovaWorker.onmessage = async (e) => {
+      anovaWorker.onmessage = async (e: MessageEvent) => {
         const anovaStat = e.data;
         if (anovaStat.error) {
           console.error("[Analyze] ANOVA Worker Error:", anovaStat.error);
@@ -335,8 +335,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           const completeStats = {
             title: anovaStat.title,
             output_data: anovaStat.output_data,
-            output_type: anovaStat.output_type,
             components: anovaStat.components,
+            description: "ANOVA analysis results"
           };
           await addStatistic(analyticId, completeStats);
           console.log("[Analyze] ANOVA statistics saved.");
@@ -344,7 +344,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         anovaWorker.terminate();
       };
 
-      anovaWorker.onerror = (error) => {
+      anovaWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] ANOVA Worker error:", error, error.message);
         alert("An error occurred in the ANOVA Worker: " + (error.message || "Unknown error"));
         anovaWorker.terminate();
@@ -359,7 +359,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         independentVarNames: independentVarNames
       });
 
-      coefficientsWorker.onmessage = async (e) => {
+      coefficientsWorker.onmessage = async (e: MessageEvent) => {
         const { success, result, error } = e.data;
 
         if (success) {
@@ -367,8 +367,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           const coefficientsStat = {
             title: "Coefficients",
             output_data: JSON.stringify(coefficientsTable),
-            output_type: "table",
             components: "Coefficients",
+            description: "Coefficients of the regression model"
           };
 
           await addStatistic(analyticId, coefficientsStat);
@@ -381,7 +381,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         coefficientsWorker.terminate();
       };
 
-      coefficientsWorker.onerror = (error) => {
+      coefficientsWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] Coefficients Worker error:", error, error.message);
         alert("An error occurred in the Coefficients Worker: " + (error.message || "Unknown error"));
         coefficientsWorker.terminate();
@@ -395,14 +395,14 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        worker.onmessage = async (e) => {
+        worker.onmessage = async (e: MessageEvent) => {
           const workerResults = e.data;
           console.log("[Analyze] Hasil dari Worker:", workerResults);
           const rSquareStat = {
             title: "Model Summary (R Square Change)",
             output_data: JSON.stringify(workerResults),
-            output_type: "table",
             components: "RSquareChange",
+            description: "R square change statistics"
           };
           await addStatistic(analyticId, rSquareStat);
           console.log("[Analyze] Statistik R Square Change disimpan.");
@@ -410,7 +410,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           worker.terminate();
         };
   
-        worker.onerror = (error) => {
+        worker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker error:", error);
           worker.terminate();
         };
@@ -426,21 +426,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        confidenceWorker.onmessage = async (e) => {
+        confidenceWorker.onmessage = async (e: MessageEvent) => {
           const confidenceResults = e.data;
           console.log("[Analyze] Hasil Confidence Interval dari Worker:", confidenceResults);
           const confidenceStat = {
             title: "Confidence Interval",
             output_data: JSON.stringify(confidenceResults),
-            output_type: "table",
             components: "ConfidenceInterval",
+            description: "Confidence interval for regression coefficients"
           };
           await addStatistic(analyticId, confidenceStat);
           console.log("[Analyze] Statistik Confidence Interval disimpan.");
           confidenceWorker.terminate();
         };
   
-        confidenceWorker.onerror = (error) => {
+        confidenceWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Confidence Interval error:", error);
           confidenceWorker.terminate();
         };
@@ -456,21 +456,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independents: filteredIndependentData
         });
   
-        partAndPartialWorker.onmessage = async (e) => {
+        partAndPartialWorker.onmessage = async (e: MessageEvent) => {
           const partAndPartialResults = e.data;
           console.log("[Analyze] Hasil dari Worker Coefficients Part & Partial:", partAndPartialResults);
           const partAndPartialStat = {
             title: "Coefficients (Part & Partial Correlations)",
             output_data: JSON.stringify(partAndPartialResults),
-            output_type: "table",
             components: "CoefficientsPartAndPartial",
+            description: "Part and partial correlations of regression coefficients"
           };
           await addStatistic(analyticId, partAndPartialStat);
           console.log("[Analyze] Statistik Coefficients Part & Partial disimpan.");
           partAndPartialWorker.terminate();
         };
   
-        partAndPartialWorker.onerror = (error) => {
+        partAndPartialWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Coefficients Part & Partial error:", error);
           partAndPartialWorker.terminate();
         };
@@ -486,21 +486,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        collinearityWorker.onmessage = async (e) => {
+        collinearityWorker.onmessage = async (e: MessageEvent) => {
           const collinearityResults = e.data;
           console.log("[Analyze] Hasil dari Worker Coefficients Collinearity:", collinearityResults);
           const collinearityStat = {
             title: "Collinearity Diagnostics",
             output_data: JSON.stringify(collinearityResults),
-            output_type: "table",
             components: "CollinearityStatistics",
+            description: "Collinearity statistics for regression variables"
           };
           await addStatistic(analyticId, collinearityStat);
           console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
           collinearityWorker.terminate();
         };
   
-        collinearityWorker.onerror = (error) => {
+        collinearityWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Coefficients Collinearity error:", error);
           collinearityWorker.terminate();
         };
@@ -512,21 +512,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        collinearityDiagnosticsWorker.onmessage = async (e) => {
+        collinearityDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
           const collinearityDiagnosticsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Collinearity Diagnostics:", collinearityDiagnosticsResults);
           const collinearityDiagnosticsStat = {
             title: "Collinearity Diagnostics",
             output_data: JSON.stringify(collinearityDiagnosticsResults),
-            output_type: "table",
             components: "CollinearityDiagnostics",
+            description: "Detailed collinearity diagnostics"
           };
           await addStatistic(analyticId, collinearityDiagnosticsStat);
           console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
           collinearityDiagnosticsWorker.terminate();
         };
   
-        collinearityDiagnosticsWorker.onerror = (error) => {
+        collinearityDiagnosticsWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Collinearity Diagnostics error:", error);
           collinearityDiagnosticsWorker.terminate();
         };
@@ -542,21 +542,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        modelDurbinWorker.onmessage = async (e) => {
+        modelDurbinWorker.onmessage = async (e: MessageEvent) => {
           const modelDurbinResults = e.data;
           console.log("[Analyze] Hasil dari Worker Model Durbin:", modelDurbinResults);
           const modelDurbinStat = {
             title: "Model Summary (Durbin-Watson)",
             output_data: JSON.stringify(modelDurbinResults),
-            output_type: "table",
             components: "ModelDurbin",
+            description: "Durbin-Watson test statistics"
           };
           await addStatistic(analyticId, modelDurbinStat);
           console.log("[Analyze] Statistik Model Durbin disimpan.");
           modelDurbinWorker.terminate();
         };
   
-        modelDurbinWorker.onerror = (error) => {
+        modelDurbinWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Model Durbin error:", error);
           modelDurbinWorker.terminate();
         };
@@ -572,21 +572,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData[0]
         });
   
-        residualsStatisticsWorker.onmessage = async (e) => {
+        residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
           const residualsStatisticsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Residuals Statistics:", residualsStatisticsResults);
           const residualsStatisticsStat = {
             title: "Residuals Statistics",
             output_data: JSON.stringify(residualsStatisticsResults),
-            output_type: "table",
             components: "ResidualsStatistics",
+            description: "Statistics of regression residuals"
           };
           await addStatistic(analyticId, residualsStatisticsStat);
           console.log("[Analyze] Statistik Residuals Statistics disimpan.");
           residualsStatisticsWorker.terminate();
         };
   
-        residualsStatisticsWorker.onerror = (error) => {
+        residualsStatisticsWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Residuals Statistics error:", error);
           residualsStatisticsWorker.terminate();
         };
@@ -603,21 +603,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           threshold: parseFloat(retrievedStatsParams.outlierThreshold) || 3
         });
   
-        casewiseDiagnosticsWorker.onmessage = async (e) => {
+        casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
           const casewiseDiagnosticsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Casewise Diagnostics:", casewiseDiagnosticsResults);
           const casewiseDiagnosticsStat = {
             title: "Casewise Diagnostics",
             output_data: JSON.stringify(casewiseDiagnosticsResults),
-            output_type: "table",
             components: "CasewiseDiagnostics",
+            description: "Casewise diagnostics for outlier detection"
           };
           await addStatistic(analyticId, casewiseDiagnosticsStat);
           console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
           casewiseDiagnosticsWorker.terminate();
         };
   
-        casewiseDiagnosticsWorker.onerror = (error) => {
+        casewiseDiagnosticsWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Casewise Diagnostics error:", error);
           casewiseDiagnosticsWorker.terminate();
         };
@@ -633,21 +633,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        coefficientCorrelationsWorker.onmessage = async (e) => {
+        coefficientCorrelationsWorker.onmessage = async (e: MessageEvent) => {
           const correlationsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Coefficient Correlations:", correlationsResults);
           const correlationsStat = {
             title: "Coefficient Correlations",
             output_data: JSON.stringify(correlationsResults),
-            output_type: "table",
             components: "CoefficientCorrelations",
+            description: "Correlations between regression coefficients"
           };
           await addStatistic(analyticId, correlationsStat);
           console.log("[Analyze] Statistik Coefficient Correlations disimpan.");
           coefficientCorrelationsWorker.terminate();
         };
   
-        coefficientCorrelationsWorker.onerror = (error) => {
+        coefficientCorrelationsWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Coefficient Correlations error:", error);
           coefficientCorrelationsWorker.terminate();
         };
@@ -663,21 +663,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        descriptiveWorker.onmessage = async (e) => {
+        descriptiveWorker.onmessage = async (e: MessageEvent) => {
           const descriptiveResults = e.data;
           console.log("[Analyze] Hasil Descriptive Statistics dari Worker:", descriptiveResults);
           const descriptiveStat = {
             title: "Descriptive Statistics",
             output_data: JSON.stringify(descriptiveResults),
-            output_type: "table",
             components: "DescriptiveStatistics",
+            description: "Descriptive statistics for the variables"
           };
           await addStatistic(analyticId, descriptiveStat);
           console.log("[Analyze] Statistik Descriptive Statistics disimpan.");
           descriptiveWorker.terminate();
         };
   
-        descriptiveWorker.onerror = (error) => {
+        descriptiveWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Descriptive Statistics error:", error);
           descriptiveWorker.terminate();
         };
@@ -689,21 +689,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        correlationsWorker.onmessage = async (e) => {
+        correlationsWorker.onmessage = async (e: MessageEvent) => {
           const correlationsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Correlations:", correlationsResults);
           const correlationsStat = {
             title: "Correlations",
             output_data: JSON.stringify(correlationsResults),
-            output_type: "table",
             components: "Correlations",
+            description: "Correlation matrix between variables"
           };
           await addStatistic(analyticId, correlationsStat);
           console.log("[Analyze] Statistik Correlations disimpan.");
           correlationsWorker.terminate();
         };
   
-        correlationsWorker.onerror = (error) => {
+        correlationsWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Correlations error:", error);
           correlationsWorker.terminate();
         };
@@ -720,21 +720,21 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           independent: filteredIndependentData
         });
   
-        modelSummaryWorker.onmessage = async (e) => {
+        modelSummaryWorker.onmessage = async (e: MessageEvent) => {
           const modelSummaryResults = e.data;
           console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
           const modelSummaryStat = {
             title: "Model Summary",
             output_data: JSON.stringify(modelSummaryResults),
-            output_type: "table",
             components: "ModelSummary",
+            description: "Summary of the regression model"
           };
           await addStatistic(analyticId, modelSummaryStat);
           console.log("[Analyze] Statistik Model Summary disimpan.");
           modelSummaryWorker.terminate();
         };
   
-        modelSummaryWorker.onerror = (error) => {
+        modelSummaryWorker.onerror = (error: ErrorEvent) => {
           console.error("[Analyze] Worker Model Summary error:", error);
           modelSummaryWorker.terminate();
         };
@@ -744,9 +744,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
 
       onClose();
   
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[Analyze] Failed to perform linear regression:', error);
-      alert('Failed to perform linear regression. Please check your data and try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to perform linear regression: ${errorMessage}`);
     }
   };
   

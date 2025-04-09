@@ -161,8 +161,8 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
       const depCol = selectedDependentVariable.columnIndex;
       const indepCols = selectedIndependentVariables.map(iv => iv.columnIndex);
 
-      const Y = data.map(row => parseFloat(row[depCol])).filter(val => !isNaN(val));
-      const X = data.map(row => parseFloat(row[indepCols[0]])).filter(val => !isNaN(val));
+      const Y = data.map(row => Number(row[depCol])).filter(val => !isNaN(val));
+      const X = data.map(row => Number(row[indepCols[0]])).filter(val => !isNaN(val));
 
       const length = Math.min(X.length, Y.length);
       const Xtrim = X.slice(0, length);
@@ -207,8 +207,8 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
             const regressionSummaryStat = {
               title: "Curve Estimation",
               output_data: JSON.stringify(data.result),
-              output_type: "table",
               components: "CurveEstimationSummary",
+              description: "Curve estimation analysis results"
             };
 
             try {
@@ -257,9 +257,10 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
         }
       });
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[CurveEstimation] Error in regression processing:", error);
-      setErrorMessage(`Error: ${error.message || "Unknown error occurred"}`);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error occurred";
+      setErrorMessage(`Error: ${errorMsg}`);
       setIsProcessing(false);
     }
   };
