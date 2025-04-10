@@ -20,6 +20,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeUnivariate } from "@/services/analyze/general-linear-model/univariate/univariate-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -41,6 +42,24 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("Univariate");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...UnivariateDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -132,6 +151,8 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("Univariate", newFormData);
+
             await analyzeUnivariate({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -148,8 +169,13 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...UnivariateDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("Univariate");
+            setFormData({ ...UnivariateDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

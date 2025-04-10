@@ -4,9 +4,11 @@ import { OptScaDefineDefault } from "@/constants/dimension-reduction/optimal-sca
 import { useModal } from "@/hooks/useModal";
 import {
     OptScaContainerProps,
+    OptScaDefineMainType,
     OptScaDefineType,
 } from "@/models/dimension-reduction/optimal-scaling-define";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const OptScaContainer = ({ onClose }: OptScaContainerProps) => {
     const [formData, setFormData] = useState<OptScaDefineType>({
@@ -15,6 +17,24 @@ export const OptScaContainer = ({ onClose }: OptScaContainerProps) => {
     const [isDefineOpen, setIsDefineOpen] = useState(true);
 
     const { closeModal } = useModal();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("OptimalScaling");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...OptScaDefineDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -30,8 +50,26 @@ export const OptScaContainer = ({ onClose }: OptScaContainerProps) => {
         }));
     };
 
-    const resetFormData = () => {
-        setFormData({ ...OptScaDefineDefault });
+    const executeOptScaDefine = async (mainData: OptScaDefineMainType) => {
+        try {
+            const newFormData = {
+                ...formData,
+                main: mainData,
+            };
+
+            await saveFormData("OptimalScaling", newFormData);
+        } catch (error) {
+            console.error("Failed to save form data:", error);
+        }
+    };
+
+    const resetFormData = async () => {
+        try {
+            await clearFormData("OptimalScaling");
+            setFormData({ ...OptScaDefineDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {
@@ -50,6 +88,7 @@ export const OptScaContainer = ({ onClose }: OptScaContainerProps) => {
                         updateFormData("main", field, value)
                     }
                     data={formData.main}
+                    onContinue={(mainData) => executeOptScaDefine(mainData)}
                     onReset={resetFormData}
                 />
             </DialogContent>

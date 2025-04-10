@@ -14,6 +14,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeTwoStepCluster } from "@/services/analyze/classify/two-step-cluster/two-step-cluster-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const TwoStepClusterContainer = ({
     onClose,
@@ -31,6 +32,24 @@ export const TwoStepClusterContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("TwoStepCluster");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...TwoStepClusterDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         if (formData.main) {
@@ -79,6 +98,8 @@ export const TwoStepClusterContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("TwoStepCluster", newFormData);
+
             await analyzeTwoStepCluster({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -95,8 +116,13 @@ export const TwoStepClusterContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...TwoStepClusterDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("TwoStepCluster");
+            setFormData({ ...TwoStepClusterDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

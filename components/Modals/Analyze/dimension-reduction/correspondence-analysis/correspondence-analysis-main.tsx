@@ -17,6 +17,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeCorrespondence } from "@/services/analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const CorrespondenceContainer = ({
     onClose,
@@ -38,6 +39,24 @@ export const CorrespondenceContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("CorrespondenceAnalysis");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...CorrespondenceDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -78,6 +97,8 @@ export const CorrespondenceContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("CorrespondenceAnalysis", newFormData);
+
             await analyzeCorrespondence({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -94,8 +115,13 @@ export const CorrespondenceContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...CorrespondenceDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("CorrespondenceAnalysis");
+            setFormData({ ...CorrespondenceDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

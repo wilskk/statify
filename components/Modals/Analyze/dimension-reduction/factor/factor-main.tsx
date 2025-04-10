@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FactorDialog } from "@/components/Modals/Analyze/dimension-reduction/factor/dialog";
 import {
     FactorContainerProps,
@@ -18,6 +18,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeFactor } from "@/services/analyze/dimension-reduction/factor/factor-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const FactorContainer = ({ onClose }: FactorContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -35,6 +36,24 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("Factor");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...FactorDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -57,6 +76,8 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("Factor", newFormData);
+
             await analyzeFactor({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -73,8 +94,13 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...FactorDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("Factor");
+            setFormData({ ...FactorDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

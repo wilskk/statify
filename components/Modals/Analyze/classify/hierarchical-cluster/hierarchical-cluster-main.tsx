@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { HierClusDialog } from "@/components/Modals/Analyze/classify/hierarchical-cluster/dialog";
 import {
     HierClusContainerProps,
@@ -16,6 +16,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeHierClus } from "@/services/analyze/classify/hierarchical-cluster/hierarchical-cluster-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -33,6 +34,24 @@ export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("HierarchicalCluster");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...HierClusDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -55,6 +74,8 @@ export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("HierarchicalCluster", newFormData);
+
             await analyzeHierClus({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -71,8 +92,13 @@ export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...HierClusDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("HierarchicalCluster");
+            setFormData({ ...HierClusDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     RocCurveContainerProps,
     RocCurveMainType,
@@ -13,6 +13,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeRocCurve } from "@/services/analyze/classify/roc-curve/roc-curve-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -27,6 +28,24 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("ROCCurve");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...RocCurveDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -49,6 +68,8 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("ROCCurve", newFormData);
+
             await analyzeRocCurve({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -65,8 +86,13 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...RocCurveDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("ROCCurve");
+            setFormData({ ...RocCurveDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

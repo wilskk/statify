@@ -12,6 +12,7 @@ export type OptScaDefineProps = {
     setIsDefineOpen: React.Dispatch<React.SetStateAction<boolean>>;
     updateFormData: (field: keyof OptScaDefineMainType, value: boolean) => void;
     data: OptScaDefineMainType;
+    onContinue: (mainState: OptScaDefineMainType) => void;
     onReset: () => void;
 };
 

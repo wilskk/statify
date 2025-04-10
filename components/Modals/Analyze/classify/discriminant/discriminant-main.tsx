@@ -19,6 +19,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
 import { useResultStore } from "@/stores/useResultStore";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const DiscriminantContainer = ({
     onClose,
@@ -41,6 +42,24 @@ export const DiscriminantContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("Discriminant");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...DiscriminantDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -96,6 +115,8 @@ export const DiscriminantContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("Discriminant", newFormData);
+
             await analyzeDiscriminant({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -112,8 +133,13 @@ export const DiscriminantContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...DiscriminantDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("Discriminant");
+            setFormData({ ...DiscriminantDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

@@ -1,13 +1,14 @@
-// utils/indexedDB.ts
 type AnalysisType =
     // Basic & Advanced Analysis
     | "Univariate"
     | "Multivariate"
+    | "RepeatedMeasuresDefine"
     | "RepeatedMeasures"
     | "VarianceComponents"
     // Dimension Reduction & Factor Analysis
     | "Factor"
     | "CorrespondenceAnalysis"
+    | "OptimalScaling"
     | "CAPTCA"
     | "MCA"
     | "OVERALS"
@@ -23,15 +24,19 @@ type AnalysisType =
     | "ROCCurve"
     | "ROCAnalysis";
 
-const DB_NAME = "AnalysisDB";
-const DB_VERSION = 1;
+const DB_NAME = "Statify";
+const STORE_NAME = "AnalysisForm";
+const DB_VERSION = 35;
 
-// Convert PascalCase to camelCase for internal store naming
-const toCamelCase = (str: string): string => {
-    return str.charAt(0).toLowerCase() + str.slice(1);
+// Generate a consistent ID for each analysis type
+const generateFormId = (
+    analysisType: AnalysisType,
+    suffix: string = "formData"
+): string => {
+    return `${analysisType}_${suffix}`;
 };
 
-// Initialize the database with all stores
+// Initialize the database with a single store
 export const initializeDatabase = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -42,56 +47,29 @@ export const initializeDatabase = (): Promise<IDBDatabase> => {
         request.onupgradeneeded = (event) => {
             const db = request.result;
 
-            // Create stores for all analysis types
-            const analysisTypes: AnalysisType[] = [
-                // Basic & Advanced Analysis
-                "Univariate",
-                "Multivariate",
-                "RepeatedMeasures",
-                "VarianceComponents",
-                // Dimension Reduction & Factor Analysis
-                "Factor",
-                "CorrespondenceAnalysis",
-                "CAPTCA",
-                "MCA",
-                "OVERALS",
-                // Clustering & Classification
-                "TwoStepCluster",
-                "KMeansCluster",
-                "HierarchicalCluster",
-                "ClusterSilhouettes",
-                // Predictive Models & Evaluation
-                "Tree",
-                "Discriminant",
-                "NearestNeighbor",
-                "ROCCurve",
-                "ROCAnalysis",
-            ];
-
-            analysisTypes.forEach((type) => {
-                const storeName = toCamelCase(type);
-                if (!db.objectStoreNames.contains(storeName)) {
-                    db.createObjectStore(storeName, { keyPath: "id" });
-                }
-            });
+            // Create a single store for all analysis forms
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: "id" });
+            }
         };
     });
 };
 
-// Simplified methods that don't require specifying DB_NAME and STORE_NAME
+// Save form data for a specific analysis type
 export const saveFormData = async (
     analysisType: AnalysisType,
     data: any,
-    id: string = "formData"
+    suffix: string = "formData"
 ): Promise<void> => {
     const db = await initializeDatabase();
-    const storeName = toCamelCase(analysisType);
+    const formId = generateFormId(analysisType, suffix);
 
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, "readwrite");
-        const store = transaction.objectStore(storeName);
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
         const request = store.put({
-            id,
+            id: formId,
+            analysisType,
             ...data,
             updatedAt: new Date().toISOString(),
         });
@@ -102,17 +80,18 @@ export const saveFormData = async (
     });
 };
 
+// Get form data for a specific analysis type
 export const getFormData = async (
     analysisType: AnalysisType,
-    id: string = "formData"
+    suffix: string = "formData"
 ): Promise<any | null> => {
     const db = await initializeDatabase();
-    const storeName = toCamelCase(analysisType);
+    const formId = generateFormId(analysisType, suffix);
 
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, "readonly");
-        const store = transaction.objectStore(storeName);
-        const request = store.get(id);
+        const transaction = db.transaction(STORE_NAME, "readonly");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(formId);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result || null);
@@ -120,17 +99,18 @@ export const getFormData = async (
     });
 };
 
+// Clear form data for a specific analysis type
 export const clearFormData = async (
     analysisType: AnalysisType,
-    id: string = "formData"
+    suffix: string = "formData"
 ): Promise<void> => {
     const db = await initializeDatabase();
-    const storeName = toCamelCase(analysisType);
+    const formId = generateFormId(analysisType, suffix);
 
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, "readwrite");
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(id);
+        const transaction = db.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(formId);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve();
@@ -138,16 +118,37 @@ export const clearFormData = async (
     });
 };
 
-// Get all saved data for a specific analysis type
-export const getAllFormData = async (
+// Get all saved forms for a specific analysis type
+export const getAllAnalysisData = async (
     analysisType: AnalysisType
 ): Promise<any[]> => {
     const db = await initializeDatabase();
-    const storeName = toCamelCase(analysisType);
 
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, "readonly");
-        const store = transaction.objectStore(storeName);
+        const transaction = db.transaction(STORE_NAME, "readonly");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            // Filter results to match the requested analysis type
+            const allData = request.result || [];
+            const filteredData = allData.filter(
+                (item) => item.analysisType === analysisType
+            );
+            resolve(filteredData);
+        };
+        transaction.oncomplete = () => db.close();
+    });
+};
+
+// Get all form data in the store
+export const getAllFormData = async (): Promise<any[]> => {
+    const db = await initializeDatabase();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, "readonly");
+        const store = transaction.objectStore(STORE_NAME);
         const request = store.getAll();
 
         request.onerror = () => reject(request.error);

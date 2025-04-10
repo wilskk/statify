@@ -19,6 +19,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeRepeatedMeasures } from "@/services/analyze/general-linear-model/repeated-measures/repeated-measures-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const RepeatedMeasuresContainer = ({
     onClose,
@@ -43,6 +44,24 @@ export const RepeatedMeasuresContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("RepeatedMeasures");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...RepeatedMeasuresDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -140,6 +159,8 @@ export const RepeatedMeasuresContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("RepeatedMeasures", newFormData);
+
             await analyzeRepeatedMeasures({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -156,8 +177,13 @@ export const RepeatedMeasuresContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...RepeatedMeasuresDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("RepeatedMeasures");
+            setFormData({ ...RepeatedMeasuresDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

@@ -20,6 +20,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeMultivariate } from "@/services/analyze/general-linear-model/multivariate/multivariate-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const MultivariateContainer = ({
     onClose,
@@ -43,6 +44,24 @@ export const MultivariateContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("Multivariate");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...MultivariateDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -146,6 +165,8 @@ export const MultivariateContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("Multivariate", newFormData);
+
             await analyzeMultivariate({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -162,8 +183,13 @@ export const MultivariateContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...MultivariateDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("Multivariate");
+            setFormData({ ...MultivariateDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

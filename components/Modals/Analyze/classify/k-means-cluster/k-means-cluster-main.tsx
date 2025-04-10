@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KMeansClusterDefault } from "@/constants/classify/k-means-cluster/k-means-cluster-default";
 import {
     KMeansClusterContainerProps,
@@ -15,6 +15,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeKMeansCluster } from "@/services/analyze/classify/k-means-cluster/k-means-cluster-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const KMeansClusterContainer = ({
     onClose,
@@ -33,6 +34,24 @@ export const KMeansClusterContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("KMeansCluster");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...KMeansClusterDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -55,6 +74,8 @@ export const KMeansClusterContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("KMeansCluster", newFormData);
+
             await analyzeKMeansCluster({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -71,8 +92,13 @@ export const KMeansClusterContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...KMeansClusterDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("KMeansCluster");
+            setFormData({ ...KMeansClusterDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

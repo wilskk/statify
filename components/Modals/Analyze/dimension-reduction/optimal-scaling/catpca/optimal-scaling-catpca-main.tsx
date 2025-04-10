@@ -26,6 +26,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeOptScaCatpca } from "@/services/analyze/dimension-reduction/optimal-scaling/catpca/optimal-scaling-catpca-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const OptScaCatpcaContainer = ({
     onClose,
@@ -55,6 +56,24 @@ export const OptScaCatpcaContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("CAPTCA");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...OptScaCatpcaDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -171,6 +190,8 @@ export const OptScaCatpcaContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("CAPTCA", newFormData);
+
             await analyzeOptScaCatpca({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -186,8 +207,13 @@ export const OptScaCatpcaContainer = ({
         closeModal();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...OptScaCatpcaDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("CAPTCA");
+            setFormData({ ...OptScaCatpcaDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

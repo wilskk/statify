@@ -33,6 +33,7 @@ export const RepeatedMeasureDefineDialog = ({
     setIsDefineOpen,
     data,
     updateFormData,
+    onContinue,
     onReset,
 }: RepeatedMeasureDefineDialogProps) => {
     // State for the form
@@ -374,6 +375,8 @@ export const RepeatedMeasureDefineDialog = ({
         Object.entries(dialogState).forEach(([key, value]) => {
             updateFormData(key as keyof RepeatedMeasureDefineData, value);
         });
+
+        onContinue(dialogState);
 
         // Generate all combinations of factor levels and measures
         const combinations = generateCombinations(

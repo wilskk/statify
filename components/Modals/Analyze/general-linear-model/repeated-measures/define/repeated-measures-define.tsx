@@ -4,9 +4,11 @@ import { useModal } from "@/hooks/useModal";
 import {
     RepeatedMeasuresDefineContainerProps,
     RepeatedMeasureDefineType,
+    RepeatedMeasureDefineData,
 } from "@/models/general-linear-model/repeated-measures/repeated-measure-define";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RepeatedMeasureDefineDialog } from "./repeated-measures-dialog";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const RepeatedMeasuresDefineContainer = ({
     onClose,
@@ -17,6 +19,24 @@ export const RepeatedMeasuresDefineContainer = ({
     const [isDefineOpen, setIsDefineOpen] = useState(true);
 
     const { closeModal } = useModal();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("RepeatedMeasuresDefine");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...RepeatedMeasureDefineDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -32,8 +52,28 @@ export const RepeatedMeasuresDefineContainer = ({
         }));
     };
 
-    const resetFormData = () => {
-        setFormData({ ...RepeatedMeasureDefineDefault });
+    const executeRepeatedMeasuresDefine = async (
+        mainData: RepeatedMeasureDefineData
+    ) => {
+        try {
+            const newFormData = {
+                ...formData,
+                main: mainData,
+            };
+
+            await saveFormData("RepeatedMeasuresDefine", newFormData);
+        } catch (error) {
+            console.error("Failed to save form data:", error);
+        }
+    };
+
+    const resetFormData = async () => {
+        try {
+            await clearFormData("RepeatedMeasuresDefine");
+            setFormData({ ...RepeatedMeasureDefineDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {
@@ -52,6 +92,9 @@ export const RepeatedMeasuresDefineContainer = ({
                         updateFormData("main", field, value)
                     }
                     data={formData.main}
+                    onContinue={(mainData) =>
+                        executeRepeatedMeasuresDefine(mainData)
+                    }
                     onReset={resetFormData}
                 />
             </DialogContent>

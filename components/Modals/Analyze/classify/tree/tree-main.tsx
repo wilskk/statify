@@ -18,6 +18,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeTree } from "@/services/analyze/classify/tree/tree-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const TreeContainer = ({ onClose }: TreeContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -35,6 +36,24 @@ export const TreeContainer = ({ onClose }: TreeContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("Tree");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...TreeDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         if (formData.main) {
@@ -78,6 +97,8 @@ export const TreeContainer = ({ onClose }: TreeContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("Tree", newFormData);
+
             await analyzeTree({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -94,8 +115,13 @@ export const TreeContainer = ({ onClose }: TreeContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...TreeDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("Tree");
+            setFormData({ ...TreeDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

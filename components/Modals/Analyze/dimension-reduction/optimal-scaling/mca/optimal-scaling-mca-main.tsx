@@ -22,6 +22,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeOptScaMCA } from "@/services/analyze/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -46,6 +47,24 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("MCA");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...OptScaMCADefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -145,6 +164,8 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("MCA", newFormData);
+
             await analyzeOptScaMCA({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -160,8 +181,13 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
         closeModal();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...OptScaMCADefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("MCA");
+            setFormData({ ...OptScaMCADefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

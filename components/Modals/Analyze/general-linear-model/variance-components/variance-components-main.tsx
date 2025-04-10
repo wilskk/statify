@@ -15,6 +15,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeVarianceComps } from "@/services/analyze/general-linear-model/variance-components/variance-components-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const VarianceCompsContainer = ({
     onClose,
@@ -33,6 +34,24 @@ export const VarianceCompsContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("ROCAnalysis");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...VarianceCompsDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         setFormData((prev) => {
@@ -80,6 +99,8 @@ export const VarianceCompsContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("ROCAnalysis", newFormData);
+
             await analyzeVarianceComps({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -96,8 +117,13 @@ export const VarianceCompsContainer = ({
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...VarianceCompsDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("ROCAnalysis");
+            setFormData({ ...VarianceCompsDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

@@ -27,6 +27,7 @@ export const OptScaInitial = ({
     setIsDefineOpen,
     updateFormData,
     data,
+    onContinue,
     onReset,
 }: OptScaDefineProps) => {
     const [mainState, setMainState] = useState<OptScaDefineMainType>({
@@ -76,6 +77,7 @@ export const OptScaInitial = ({
             updateFormData(key as keyof OptScaDefineMainType, value);
         });
         setIsDefineOpen(false);
+        onContinue(mainState);
 
         if (selectedAnalysis === "Category Principal Components") {
             closeModal();

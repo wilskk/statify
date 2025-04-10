@@ -27,6 +27,7 @@ export type RepeatedMeasureDefineDialogProps = {
         value: any
     ) => void;
     data: RepeatedMeasureDefineData;
+    onContinue: (mainState: RepeatedMeasureDefineData) => void;
     onReset: () => void;
 };
 

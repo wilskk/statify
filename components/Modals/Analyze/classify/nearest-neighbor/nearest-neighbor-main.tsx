@@ -18,6 +18,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeKNN } from "@/services/analyze/classify/nearest-neighbor/nearest-neighbor-analysis";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -35,6 +36,24 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("NearestNeighbor");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...KNNDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     useEffect(() => {
         if (formData.main.FeatureVar) {
@@ -77,6 +96,8 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 main: mainData,
             };
 
+            await saveFormData("NearestNeighbor", newFormData);
+
             await analyzeKNN({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -93,8 +114,13 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
         onClose();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...KNNDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("NearestNeighbor");
+            setFormData({ ...KNNDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {

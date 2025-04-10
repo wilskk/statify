@@ -18,6 +18,7 @@ import { analyzeOptScaOverals } from "@/services/analyze/dimension-reduction/opt
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
+import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const OptScaOveralsContainer = ({
     onClose,
@@ -39,6 +40,24 @@ export const OptScaOveralsContainer = ({
 
     const { closeModal } = useModal();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    useEffect(() => {
+        const loadFormData = async () => {
+            try {
+                const savedData = await getFormData("OVERALS");
+                if (savedData) {
+                    const { id, ...formDataWithoutId } = savedData;
+                    setFormData(formDataWithoutId);
+                } else {
+                    setFormData({ ...OptScaOveralsDefault });
+                }
+            } catch (error) {
+                console.error("Failed to load form data:", error);
+            }
+        };
+
+        loadFormData();
+    }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,
@@ -77,6 +96,8 @@ export const OptScaOveralsContainer = ({
                 main: mainData,
             };
 
+            await saveFormData("OVERALS", newFormData);
+
             await analyzeOptScaOverals({
                 configData: newFormData,
                 dataVariables: dataVariables,
@@ -92,8 +113,13 @@ export const OptScaOveralsContainer = ({
         closeModal();
     };
 
-    const resetFormData = () => {
-        setFormData({ ...OptScaOveralsDefault });
+    const resetFormData = async () => {
+        try {
+            await clearFormData("OVERALS");
+            setFormData({ ...OptScaOveralsDefault });
+        } catch (error) {
+            console.error("Failed to clear form data:", error);
+        }
     };
 
     const handleClose = () => {
