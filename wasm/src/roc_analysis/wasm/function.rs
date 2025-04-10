@@ -5,6 +5,7 @@ use crate::roc_analysis::models::{
     data::AnalysisData,
     result::ROCAnalysisResult,
 };
+use crate::roc_analysis::utils::converter::format_result;
 use crate::roc_analysis::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::roc_analysis::stats::core;
 
@@ -144,6 +145,10 @@ pub fn get_results(result: &Option<ROCAnalysisResult>) -> Result<JsValue, JsValu
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<ROCAnalysisResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {

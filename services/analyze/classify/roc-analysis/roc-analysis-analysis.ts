@@ -1,6 +1,8 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocAnalysisAnalysisType } from "@/models/classify/roc-analysis/roc-analysis-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { RocAnalysis } from "@/wasm/pkg/wasm";
+import { transformROCAnalysisResult } from "./roc-analysis-analysis-formatter";
+import { resultROCAnalysis } from "./roc-analysis-analysis-output";
 
 export async function analyzeRocAnalysis({
     configData,
@@ -44,31 +46,34 @@ export async function analyzeRocAnalysis({
 
     console.log(configData);
 
-    // const rocAnalysis = new RocAnalysis(
-    //     slicedDataForTest,
-    //     slicedDataForState,
-    //     slicedDataForTargetGroup,
-    //     varDefsForTest,
-    //     varDefsForState,
-    //     varDefsForTargetGroup,
-    //     configData
-    // );
+    const rocAnalysis = new RocAnalysis(
+        slicedDataForTest,
+        slicedDataForState,
+        slicedDataForTargetGroup,
+        varDefsForTest,
+        varDefsForState,
+        varDefsForTargetGroup,
+        configData
+    );
 
-    // const result = rocAnalysis.get_results();
-    // const error = rocAnalysis.get_all_errors();
+    const results = rocAnalysis.get_formatted_results();
+    const error = rocAnalysis.get_all_errors();
 
-    // console.log("result", result);
-    // console.log("error", error);
+    console.log("result", results);
+    console.log("error", error);
+
+    const formattedResults = transformROCAnalysisResult(results);
+    console.log("formattedResults", formattedResults);
+
+    console.log("Keys:", Object.keys(results.area_under_roc_curve));
 
     /*
-     * 1. Case Processing Summary
-     * 2. ROC Curve
-     * 3. Precission-Recall Curve
-     * 4. Area Under the ROC Curve
-     * 5. Classifier Evaluation Metrics
-     * 6. Independent-Group Area Difference Under the ROC Curve
-     * 7. Overall Model Quality
-     * 8. Coordinates of the ROC Curve
-     * 9. Coordinates of the Precision-Recall Curve
-     */
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultROCAnalysis({
+        addLog,
+        addAnalytic,
+        addStatistic,
+        formattedResult: formattedResults ?? [],
+    });
 }

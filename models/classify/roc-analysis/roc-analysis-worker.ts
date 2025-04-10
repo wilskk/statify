@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { RocAnalysisType } from "./roc-analysis";
+import { ResultJson } from "@/types/Table";
 
 export type RocAnalysisAnalysisType = {
     configData: RocAnalysisType;
@@ -26,4 +27,6 @@ export type RocAnalysisFinalResultType = {
         analyticId: number,
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
+
+    formattedResult: ResultJson;
 };
