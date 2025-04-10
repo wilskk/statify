@@ -25,7 +25,7 @@ interface ReadExcelProps {
 }
 
 const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent }) => {
-    const { updateCell, resetData } = useDataStore();
+    const { setDataAndSync, resetData } = useDataStore();
     const { resetVariables, addVariable, getVariableByColumnIndex, updateVariable, variables } = useVariableStore();
 
     // State
@@ -59,7 +59,8 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                 range: `${startCell}:${endCell}`,
                 header: 1,
                 defval: "",
-                blankrows: false
+                blankrows: false,
+                raw: true // Get raw values to ensure proper handling
             });
 
             let headerRow: string[] | undefined = undefined;
@@ -72,28 +73,45 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                 previewData = sheetData;
             }
 
-            const numCols = previewData.length > 0 ? previewData[0].length : 0;
+            const numCols = previewData.length > 0 ? Math.max(...previewData.map(row => row.length || 0), 0) : 0;
 
+            // Ensure all rows have the same number of columns
+            const normalizedData = previewData.map(row => {
+                const normalizedRow = Array(numCols).fill("");
+                for (let i = 0; i < row.length; i++) {
+                    // Explicitly check for undefined/null to avoid issues with 0 values
+                    normalizedRow[i] = row[i] !== undefined && row[i] !== null ? row[i] : "";
+                }
+                return normalizedRow;
+            });
+
+            // Process all data according to options (leading/trailing spaces)
+            const processedData = normalizedData.map(row =>
+                row.map(val => {
+                    let processed = String(val !== undefined && val !== null ? val : "");
+                    if (removeLeading) processed = processed.replace(/^\s+/, '');
+                    if (removeTrailing) processed = processed.replace(/\s+$/, '');
+                    return processed;
+                })
+            );
+
+            // Create variables for each column
             for (let colIndex = 0; colIndex < numCols; colIndex++) {
-                const colData = previewData.map((row) => row[colIndex] || "");
+                const colData = processedData.map(row => row[colIndex]);
 
-                // Determine if the column is numeric
-                const isNumeric = colData.every((val) => {
+                // Determine if the column is numeric (handle 0 values correctly)
+                const isNumeric = colData.every(val => {
                     if (!val || val.toString().trim() === '') return true;
                     const num = parseFloat(val.toString());
                     return !isNaN(num) && isFinite(num);
                 });
 
-                // Process the data according to options
-                let processedColData = colData.map(val => {
-                    let processed = String(val);
-                    if (removeLeading) processed = processed.replace(/^\s+/, '');
-                    if (removeTrailing) processed = processed.replace(/\s+$/, '');
-                    return processed;
-                });
+                const maxLength = isNumeric ? 8 : Math.max(
+                    ...colData.map(val => String(val).length),
+                    8
+                );
 
-                const maxLength = isNumeric ? 8 : Math.max(...processedColData.map(val => val.length), 0);
-                const variableName = firstLineContains && headerRow
+                const variableName = firstLineContains && headerRow && headerRow[colIndex]
                     ? headerRow[colIndex] || `VAR${colIndex + 1}`
                     : `VAR${colIndex + 1}`;
 
@@ -101,7 +119,7 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                     columnIndex: colIndex,
                     name: variableName,
                     type: isNumeric ? "NUMERIC" : "STRING",
-                    width: isNumeric ? 8 : maxLength,
+                    width: isNumeric ? 8 : Math.min(maxLength, 200),
                     decimals: isNumeric ? 2 : 0,
                     label: "",
                     values: [],
@@ -112,29 +130,11 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                     role: "input",
                 };
 
-                const existingVariable = getVariableByColumnIndex(colIndex);
-                if (existingVariable) {
-                    const rowIndex = variables.findIndex((v) => v.columnIndex === colIndex);
-                    if (rowIndex !== -1) {
-                        const keys = Object.keys(variable) as (keyof Variable)[];
-                        for (const field of keys) {
-                            await updateVariable(rowIndex, field, variable[field]);
-                        }
-                    }
-                } else {
-                    await addVariable(variable);
-                }
+                await addVariable(variable);
             }
 
-            // Update cells with processed data
-            previewData.forEach((row, rowIndex) => {
-                row.forEach((value: any, colIndex: number) => {
-                    let processedValue = String(value);
-                    if (removeLeading) processedValue = processedValue.replace(/^\s+/, '');
-                    if (removeTrailing) processedValue = processedValue.replace(/\s+$/, '');
-                    updateCell(rowIndex, colIndex, processedValue);
-                });
-            });
+            // Set all data at once instead of cell by cell
+            await setDataAndSync(processedData);
 
             onClose();
         } catch (error) {
@@ -217,7 +217,8 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                 range: range,
                 header: 1,
                 defval: "",
-                blankrows: false
+                blankrows: false,
+                raw: true
             });
 
             let headerRow: string[] | undefined;

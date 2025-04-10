@@ -8,22 +8,22 @@ import {
     DialogTitle,
     DialogFooter
 } from "@/components/ui/dialog";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger
+} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useModalStore } from "@/stores/useModalStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { Variable } from "@/types/Variable";
-import {
-    Shapes,
-    Ruler,
-    BarChartHorizontal,
-    ChevronRight
-} from "lucide-react";
+
+import VariablesTab from "./VariablesTab";
+import OptionsTab from "./OptionsTab";
+import StatisticsTab from "./StatisticsTab";
 
 interface RatioStatisticsProps {
     onClose: () => void;
@@ -35,48 +35,48 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     const { data } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
+    // Tab state
+    const [activeTab, setActiveTab] = useState("variables");
+
+    // Variables tab state
     const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
-
     const [numeratorVariable, setNumeratorVariable] = useState<Variable | null>(null);
     const [denominatorVariable, setDenominatorVariable] = useState<Variable | null>(null);
     const [groupVariable, setGroupVariable] = useState<Variable | null>(null);
 
+    // Options tab state
     const [sortByGroup, setSortByGroup] = useState(true);
     const [sortOrder, setSortOrder] = useState<"ascending" | "descending">("ascending");
     const [displayResults, setDisplayResults] = useState(true);
     const [saveToFile, setSaveToFile] = useState(false);
     const [filePath, setFilePath] = useState("");
 
+    // Statistics tab state
+    const [centralTendencyOptions, setCentralTendencyOptions] = useState({
+        median: false,
+        mean: false,
+        weightedMean: false,
+        confidenceIntervals: false
+    });
+
+    const [confidenceLevel, setConfidenceLevel] = useState("95");
+
+    const [dispersionOptions, setDispersionOptions] = useState({
+        aad: false,
+        cov: true,
+        prd: true,
+        medianCenteredCOV: true,
+        meanCenteredCOV: false,
+        standardDeviation: false,
+        range: false,
+        minimum: false,
+        maximum: false
+    });
+
     useEffect(() => {
         setStoreVariables(variables.filter(v => v.name !== ""));
     }, [variables]);
-
-    const handleVariableClick = (columnIndex: string) => {
-        setHighlightedVariable(columnIndex === highlightedVariable ? null : columnIndex);
-    };
-
-    const getVariableIcon = (variable: Variable) => {
-        switch (variable.measure) {
-            case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            default:
-                return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-        }
-    };
-
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
-            return `${variable.label} [${variable.name}]`;
-        }
-        return variable.name;
-    };
 
     const setAsNumerator = () => {
         if (!highlightedVariable) return;
@@ -108,8 +108,8 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     };
 
     const handleStatistics = () => {
-        // Statistics dialog logic would go here
-        console.log("Statistics options");
+        // Switch to statistics tab
+        setActiveTab("statistics");
     };
 
     const handleConfirm = async () => {
@@ -155,244 +155,129 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         setDisplayResults(true);
         setSaveToFile(false);
         setFilePath("");
+        setCentralTendencyOptions({
+            median: false,
+            mean: false,
+            weightedMean: false,
+            confidenceIntervals: false
+        });
+        setConfidenceLevel("95");
+        setDispersionOptions({
+            aad: false,
+            cov: true,
+            prd: true,
+            medianCenteredCOV: true,
+            meanCenteredCOV: false,
+            standardDeviation: false,
+            range: false,
+            minimum: false,
+            maximum: false
+        });
     };
 
     return (
-        <DialogContent className="max-w-[520px] p-0 bg-[#F0F0F0] border border-[#0000AA] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-4 py-2 border-b border-[#0000AA] flex-shrink-0 bg-[#DDDDFF]">
-                <DialogTitle className="text-[16px] font-semibold flex items-center">
-                    <div className="w-5 h-5 mr-2 bg-[#FF0000] border border-[#0000AA]"></div>
-                    Ratio Statistics
-                </DialogTitle>
+        <DialogContent className="max-w-[600px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Ratio Statistics</DialogTitle>
             </DialogHeader>
 
-            <div className="p-4 flex-grow">
-                <div className="grid grid-cols-6 gap-4">
-                    {/* Left side - Variable list */}
-                    <div className="col-span-3">
-                        <div className="border border-[#0000AA] bg-white h-[200px] overflow-y-auto">
-                            {storeVariables.map((variable) => (
-                                <TooltipProvider key={variable.columnIndex}>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div
-                                                className={`flex items-center p-1 cursor-pointer ${
-                                                    highlightedVariable === variable.columnIndex.toString()
-                                                        ? "bg-[#FFFF99] border border-[#888888]"
-                                                        : ""
-                                                }`}
-                                                onClick={() => handleVariableClick(variable.columnIndex.toString())}
-                                            >
-                                                <div className="flex items-center w-full">
-                                                    {getVariableIcon(variable)}
-                                                    <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                                </div>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            <p className="text-xs">{getDisplayName(variable)}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Right side - Variable selections */}
-                    <div className="col-span-3 space-y-3">
-                        {/* Numerator */}
-                        <div>
-                            <div className="text-sm mb-1 font-semibold underline">Numerator:</div>
-                            <div className="flex">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 mr-2 bg-[#BBDEFB] border-[#0000AA] hover:bg-[#90CAF9]"
-                                    onClick={setAsNumerator}
-                                    disabled={!highlightedVariable}
-                                >
-                                    <ChevronRight size={16} className="text-[#0000AA]" />
-                                </Button>
-                                <div className="border border-[#0000AA] bg-white h-8 flex-grow flex items-center px-2">
-                                    <span className="text-xs truncate">
-                                        {numeratorVariable ? getDisplayName(numeratorVariable) : ""}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Denominator */}
-                        <div>
-                            <div className="text-sm mb-1 font-semibold underline">Denominator:</div>
-                            <div className="flex">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 mr-2 bg-[#BBDEFB] border-[#0000AA] hover:bg-[#90CAF9]"
-                                    onClick={setAsDenominator}
-                                    disabled={!highlightedVariable}
-                                >
-                                    <ChevronRight size={16} className="text-[#0000AA]" />
-                                </Button>
-                                <div className="border border-[#0000AA] bg-white h-8 flex-grow flex items-center px-2">
-                                    <span className="text-xs truncate">
-                                        {denominatorVariable ? getDisplayName(denominatorVariable) : ""}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Group Variable */}
-                        <div>
-                            <div className="text-sm mb-1 font-semibold underline">Group Variable:</div>
-                            <div className="flex">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 mr-2 bg-[#BBDEFB] border-[#0000AA] hover:bg-[#90CAF9]"
-                                    onClick={setAsGroupVariable}
-                                    disabled={!highlightedVariable}
-                                >
-                                    <ChevronRight size={16} className="text-[#0000AA]" />
-                                </Button>
-                                <div className="border border-[#0000AA] bg-white h-8 flex-grow flex items-center px-2">
-                                    <span className="text-xs truncate">
-                                        {groupVariable ? getDisplayName(groupVariable) : ""}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Sort options */}
-                        <div className="mt-2 pl-10">
-                            <div className="flex items-center mb-1">
-                                <Checkbox
-                                    id="sortByGroup"
-                                    checked={sortByGroup}
-                                    onCheckedChange={(checked) => setSortByGroup(!!checked)}
-                                    className="mr-2 border-[#888888]"
-                                    disabled={!groupVariable}
-                                />
-                                <Label htmlFor="sortByGroup" className="text-sm cursor-pointer">
-                                    Sort by group variable
-                                </Label>
-                            </div>
-
-                            <div className="pl-6">
-                                <RadioGroup
-                                    value={sortOrder}
-                                    onValueChange={(value) => setSortOrder(value as "ascending" | "descending")}
-                                    className="space-y-1"
-                                    disabled={!sortByGroup || !groupVariable}
-                                >
-                                    <div className="flex items-center">
-                                        <RadioGroupItem
-                                            value="ascending"
-                                            id="ascending"
-                                            className="mr-2 border-[#888888] data-[state=checked]:bg-[#0000AA] data-[state=checked]:border-[#0000AA]"
-                                        />
-                                        <Label htmlFor="ascending" className="text-sm cursor-pointer">
-                                            Ascending order
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <RadioGroupItem
-                                            value="descending"
-                                            id="descending"
-                                            className="mr-2 border-[#888888] data-[state=checked]:bg-[#0000AA] data-[state=checked]:border-[#0000AA]"
-                                        />
-                                        <Label htmlFor="descending" className="text-sm cursor-pointer">
-                                            Descending order
-                                        </Label>
-                                    </div>
-                                </RadioGroup>
-                            </div>
-                        </div>
-                    </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-[#E6E6E6] flex-shrink-0">
+                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                        <TabsTrigger
+                            value="variables"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="options"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Options
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="statistics"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Statistics
+                        </TabsTrigger>
+                    </TabsList>
                 </div>
 
-                {/* Output options */}
-                <div className="mt-4">
-                    <div className="flex items-center mb-2">
-                        <Checkbox
-                            id="displayResults"
-                            checked={displayResults}
-                            onCheckedChange={(checked) => setDisplayResults(!!checked)}
-                            className="mr-2 border-[#888888]"
-                        />
-                        <Label htmlFor="displayResults" className="text-sm cursor-pointer font-semibold">
-                            Display results
-                        </Label>
-                    </div>
+                <TabsContent value="variables" className="overflow-y-auto flex-grow">
+                    <VariablesTab
+                        storeVariables={storeVariables}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        numeratorVariable={numeratorVariable}
+                        denominatorVariable={denominatorVariable}
+                        groupVariable={groupVariable}
+                        setAsNumerator={setAsNumerator}
+                        setAsDenominator={setAsDenominator}
+                        setAsGroupVariable={setAsGroupVariable}
+                    />
+                </TabsContent>
 
-                    <div className="flex items-center mb-2">
-                        <Checkbox
-                            id="saveToFile"
-                            checked={saveToFile}
-                            onCheckedChange={(checked) => setSaveToFile(!!checked)}
-                            className="mr-2 border-[#888888]"
-                        />
-                        <Label htmlFor="saveToFile" className="text-sm cursor-pointer">
-                            Save results to external file
-                        </Label>
-                    </div>
+                <TabsContent value="options" className="overflow-y-auto flex-grow">
+                    <OptionsTab
+                        groupVariable={groupVariable}
+                        sortByGroup={sortByGroup}
+                        setSortByGroup={setSortByGroup}
+                        sortOrder={sortOrder}
+                        setSortOrder={setSortOrder}
+                        displayResults={displayResults}
+                        setDisplayResults={setDisplayResults}
+                        saveToFile={saveToFile}
+                        setSaveToFile={setSaveToFile}
+                        handleFileBrowse={handleFileBrowse}
+                        handleStatistics={handleStatistics}
+                    />
+                </TabsContent>
 
-                    <div className="grid grid-cols-2 gap-4 mt-3">
-                        <div>
-                            <Button
-                                variant="outline"
-                                className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
-                                onClick={handleFileBrowse}
-                                disabled={!saveToFile}
-                            >
-                                File...
-                            </Button>
-                        </div>
-                        <div className="flex justify-end">
-                            <Button
-                                variant="outline"
-                                className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
-                                onClick={handleStatistics}
-                            >
-                                Statistics...
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                <TabsContent value="statistics" className="overflow-y-auto flex-grow">
+                    <StatisticsTab
+                        centralTendencyOptions={centralTendencyOptions}
+                        setCentralTendencyOptions={setCentralTendencyOptions}
+                        confidenceLevel={confidenceLevel}
+                        setConfidenceLevel={setConfidenceLevel}
+                        dispersionOptions={dispersionOptions}
+                        setDispersionOptions={setDispersionOptions}
+                    />
+                </TabsContent>
+            </Tabs>
 
-            <DialogFooter className="p-4 border-t border-[#0000AA] bg-[#F0F0F0] flex justify-center">
-                <div className="grid grid-cols-5 gap-2">
+            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <div className="flex justify-end space-x-3">
                     <Button
-                        variant="outline"
-                        className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
+                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                         onClick={handleConfirm}
                     >
                         OK
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm opacity-50"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                     >
                         Paste
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={onClose}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4 py-1 bg-[#DDDDFF] border-[#0000AA] hover:bg-[#BBBBFF] text-sm"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                     >
                         Help
                     </Button>

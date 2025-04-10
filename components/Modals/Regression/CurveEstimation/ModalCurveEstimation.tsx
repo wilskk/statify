@@ -1,468 +1,435 @@
-// components/ModalCurveEstimation.tsx
-import React, { useState, useEffect } from 'react';
+// components/Modals/CurveEstimation/ModalCurveEstimation.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useDataStore } from '@/stores/useDataStore';
-import { useCurveEstimation } from '@/hooks/useCurveEstimation';
-import { Scatter } from 'react-chartjs-2';
+import { useResultStore } from '@/stores/useResultStore';
+import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
-import { Pencil, ArrowRight } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Import our custom tab components (menggunakan struktur baru)
+import VariablesTab from './VariablesTab';
+import ModelsTab from './ModelsTab';
 
 Chart.register(...registerables);
-
-interface Variable {
-  name: string;
-  type: string; // Changed to string to be compatible with Variable.ts
-  columnIndex: number;
-}
 
 interface ModalCurveEstimationProps {
   onClose: () => void;
 }
 
 const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) => {
+  // State variables dari desain baru
+  const [activeTab, setActiveTab] = useState("variables");
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+  const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
   const [selectedCaseLabels, setSelectedCaseLabels] = useState<Variable | null>(null);
   const [selectedModels, setSelectedModels] = useState<string[]>(['Linear']);
-  const [includeConstant, setIncludeConstant] = useState<boolean>(true);
+  const [includeConstant, setIncludeConstant] = useState<boolean>(true); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [plotModels, setPlotModels] = useState<boolean>(true);
-  const [displayANOVA, setDisplayANOVA] = useState<boolean>(false);
-  const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
+  const [displayANOVA, setDisplayANOVA] = useState<boolean>(false); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [upperBound, setUpperBound] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const workerRef = useRef<Worker | null>(null);
 
   const variables = useVariableStore((state) => state.variables);
   const data = useDataStore((state) => state.data);
+  const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-  const {
-    tryLinear,
-    tryLogarithmic,
-    tryInverse,
-    tryQuadratic,
-    tryCubic,
-    tryPower,
-    tryCompound,
-    trySCurve,
-    tryGrowth,
-    tryExponential
-  } = useCurveEstimation();
-
+  // useEffect untuk memfilter availableVariables (dari kode baru)
   useEffect(() => {
-    const availableVars: Variable[] = variables
-        .filter((v) => v.name)
-        .map((v) => ({
-          name: v.name,
-          type: String(v.type), // Cast to string instead of specific type
-          columnIndex: v.columnIndex,
-        }));
-    setAvailableVariables(availableVars);
-  }, [variables]);
+    const allVarsFiltered = variables.filter(v => {
+      if (!v.name) return false;
+      const isDependent = selectedDependentVariable?.columnIndex === v.columnIndex;
+      const isIndependent = selectedIndependentVariables.some(iv => iv.columnIndex === v.columnIndex);
+      const isCaseLabel = selectedCaseLabels?.columnIndex === v.columnIndex;
+      return !isDependent && !isIndependent && !isCaseLabel;
+    });
+    setAvailableVariables(allVarsFiltered);
+  }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
 
-  const handleSelectAvailableVariable = (variable: Variable) => {
-    setHighlightedVariable(variable);
-  };
-
-  const handleMoveToDependent = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      if (selectedDependentVariable) {
-        setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
-      }
-      setSelectedDependentVariable(highlightedVariable);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
-
-  const handleMoveToIndependent = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      setSelectedIndependentVariables((prev) => [...prev, highlightedVariable]);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
-
-  const handleMoveToCaseLabels = () => {
-    if (highlightedVariable && availableVariables.includes(highlightedVariable)) {
-      if (selectedCaseLabels) {
-        setAvailableVariables((prev) => [...prev, selectedCaseLabels]);
-      }
-      setSelectedCaseLabels(highlightedVariable);
-      setAvailableVariables((prev) => prev.filter((item) => item !== highlightedVariable));
-      setHighlightedVariable(null);
-    }
-  };
-
-  const handleRemoveFromDependent = () => {
+  // Handlers untuk VariablesTab (dari kode baru)
+  const handleDependentDoubleClick = (variable: Variable) => {
     if (selectedDependentVariable) {
-      setAvailableVariables((prev) => [...prev, selectedDependentVariable]);
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    }
+    setSelectedDependentVariable(variable);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const handleIndependentDoubleClick = (variable: Variable) => {
+    setSelectedIndependentVariables(prev => [...prev, variable]);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const handleCaseLabelsDoubleClick = (variable: Variable) => {
+    if (selectedCaseLabels) {
+      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    }
+    setSelectedCaseLabels(variable);
+    setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setHighlightedVariable(null);
+  };
+
+  const moveToDependent = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) handleDependentDoubleClick(variable);
+  };
+
+  const moveToIndependent = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) handleIndependentDoubleClick(variable);
+  };
+
+  const moveToCaseLabels = () => {
+    if (!highlightedVariable) return;
+    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
+    if (variable) handleCaseLabelsDoubleClick(variable);
+  };
+
+  const removeDependent = () => {
+    if (selectedDependentVariable) {
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
       setSelectedDependentVariable(null);
     }
   };
 
-  const handleRemoveFromIndependent = (variable: Variable) => {
-    setAvailableVariables((prev) => [...prev, variable]);
-    setSelectedIndependentVariables((prev) => prev.filter((item) => item !== variable));
+  const removeIndependent = (variable: Variable) => {
+    setSelectedIndependentVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    setAvailableVariables(prev => [...prev, variable]);
   };
 
-  const handleRemoveFromCaseLabels = () => {
+  const removeCaseLabels = () => {
     if (selectedCaseLabels) {
-      setAvailableVariables((prev) => [...prev, selectedCaseLabels]);
+      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
       setSelectedCaseLabels(null);
     }
   };
 
-  const handleClose = () => {
-    onClose();
-  };
-
+  // Handler untuk ModelsTab (dari kode baru)
   const handleModelChange = (model: string) => {
     setSelectedModels((prev) =>
         prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
     );
   };
 
-  const handleRunRegression = () => {
-    // Dapatkan kolom dependent dan independent dari data
+  // Handler Close (dari kode baru)
+  const handleClose = () => {
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+    onClose();
+  };
+
+  // Handler Reset (dari kode baru)
+  const handleReset = () => {
+    if (selectedDependentVariable) {
+      setAvailableVariables(prev => [...prev, selectedDependentVariable]);
+    }
+    if (selectedIndependentVariables.length > 0) {
+      setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
+    }
+    if (selectedCaseLabels) {
+      setAvailableVariables(prev => [...prev, selectedCaseLabels]);
+    }
+    setSelectedDependentVariable(null);
+    setSelectedIndependentVariables([]);
+    setSelectedCaseLabels(null);
+    setHighlightedVariable(null);
+    setSelectedModels(['Linear']);
+    setIncludeConstant(true);
+    setPlotModels(true);
+    setDisplayANOVA(false);
+    setUpperBound('');
+    setErrorMessage(null);
+  };
+
+  // ========================================================================
+  // <<< INI ADALAH FUNGSI handleRunRegression DARI KODE LAMA >>>
+  // Menggunakan filtering data lama dan payload postMessage lama
+  // ========================================================================
+  const handleRunRegression = async () => {
     if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
-      console.warn("Pilih dependent dan minimal satu independent variable.");
+      setErrorMessage("Please select a dependent variable and at least one independent variable.");
       return;
     }
 
-    // Ambil data dari store (data: string[][])
-    const depCol = selectedDependentVariable.columnIndex;
-    const indepCols = selectedIndependentVariables.map(iv => iv.columnIndex);
+    setErrorMessage(null);
+    setIsProcessing(true);
 
-    // Ubah data menjadi number[] - convert to string first to ensure type safety
-    const Y = data.map(row => parseFloat(String(row[depCol] || "0"))).filter(val => !isNaN(val));
-    // Untuk kesederhanaan, gunakan hanya independent variable pertama
-    const X = data.map(row => parseFloat(String(row[indepCols[0]] || "0"))).filter(val => !isNaN(val));
+    try {
+      const depCol = selectedDependentVariable.columnIndex;
+      // Kode lama hanya benar-benar menggunakan kolom independen pertama untuk data X
+      const indepColX = selectedIndependentVariables[0].columnIndex;
+      const independentVarNames = selectedIndependentVariables.map(iv => iv.name); // Tetap ambil semua nama untuk log
+      const dependentVarName = selectedDependentVariable.name;
 
-    // Pastikan panjang X dan Y sama setelah filter NaN
-    const length = Math.min(X.length, Y.length);
-    const Xtrim = X.slice(0, length);
-    const Ytrim = Y.slice(0, length);
+      // Logika filtering data LAMA
+      const Y_temp = data.map(row => depCol < row.length ? Number(row[depCol]) : NaN)
+          .filter(val => !isNaN(val));
+      const X_temp = data.map(row => indepColX < row.length ? Number(row[indepColX]) : NaN)
+          .filter(val => !isNaN(val));
 
-    // Jalankan model yang dipilih
-    selectedModels.forEach((model) => {
-      let result: any = null;
-      switch (model) {
-        case 'Linear':
-          result = tryLinear(Xtrim, Ytrim);
-          console.log("=== Linear Model: Y = b0 + b1*X ===");
-          console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          break;
-        case 'Logarithmic':
-          result = tryLogarithmic(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Logarithmic Model: Y = b0 + b1*ln(X) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Logarithmic Model gagal (X<=0).");
-          }
-          break;
-        case 'Inverse':
-          result = tryInverse(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Inverse Model: Y = b0 + b1*(1/X) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Inverse Model gagal (X=0).");
-          }
-          break;
-        case 'Quadratic':
-          // Quadratic membutuhkan multipleLinearRegression, hasil coefficients[0], [1], [2]
-          const quadResult = tryQuadratic(Xtrim, Ytrim);
-          console.log("=== Quadratic Model: Y = b0 + b1*X + b2*X² ===");
-          console.log("b0:", quadResult.coefficients[0], "b1:", quadResult.coefficients[1], "b2:", quadResult.coefficients[2], "R²:", quadResult.r2);
-          break;
-        case 'Cubic':
-          const cubicResult = tryCubic(Xtrim, Ytrim);
-          console.log("=== Cubic Model: Y = b0 + b1*X + b2*X² + b3*X³ ===");
-          console.log("b0:", cubicResult.coefficients[0], "b1:", cubicResult.coefficients[1], "b2:", cubicResult.coefficients[2], "b3:", cubicResult.coefficients[3], "R²:", cubicResult.r2);
-          break;
-        case 'Power':
-          result = tryPower(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Power Model: Y = b0 * X^(b1) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Power Model gagal (X<=0 atau Y<=0).");
-          }
-          break;
-        case 'Compound':
-          result = tryCompound(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Compound Model: Y = b0 * (b1^X) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Compound Model gagal (Y<=0).");
-          }
-          break;
-        case 'S':
-          result = trySCurve(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== S-curve Model: Y = exp(b0 + b1*(1/X)) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("S-curve Model gagal (X=0 atau Y<=0).");
-          }
-          break;
-        case 'Growth':
-          result = tryGrowth(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Growth Model: Y = exp(b0 + b1*X) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Growth Model gagal (Y<=0).");
-          }
-          break;
-        case 'Exponential':
-          result = tryExponential(Xtrim, Ytrim);
-          if (result) {
-            console.log("=== Exponential Model: Y = b0 * exp(b1*X) ===");
-            console.log("b0:", result.b0, "b1:", result.b1, "R²:", result.r2);
-          } else {
-            console.log("Exponential Model gagal (Y<=0).");
-          }
-          break;
-        case 'Logistic':
-          console.log("Model Logistic belum diimplementasikan dalam contoh ini.");
-          break;
-        default:
-          console.log(`Model ${model} belum diimplementasikan.`);
+      const length = Math.min(X_temp.length, Y_temp.length);
+      const Xtrim = X_temp.slice(0, length); // Data X yang akan dikirim
+      const Ytrim = Y_temp.slice(0, length); // Data Y yang akan dikirim
+
+      if (Xtrim.length === 0 || Ytrim.length === 0) {
+        setErrorMessage("No valid data pairs found after filtering (using old method).");
+        setIsProcessing(false);
+        return;
       }
-    });
-  };
+      // Akhir logika filtering data LAMA
 
-  const getColorForModel = (model: string) => {
-    const colors: { [key: string]: string } = {
-      'Linear': 'rgba(255,99,132,1)',
-      'Quadratic': 'rgba(54,162,235,1)',
-      'Cubic': 'rgba(255,206,86,1)',
-      'Logarithmic': 'rgba(75,192,192,1)',
-      'Inverse': 'rgba(153,102,255,1)',
-      'Power': 'rgba(255,159,64,1)',
-      'Compound': 'rgba(199,199,199,1)',
-      'S': 'rgba(255,99,255,1)',
-      'Logistic': 'rgba(99,255,132,1)',
-      'Growth': 'rgba(132,99,255,1)',
-      'Exponential': 'rgba(255,50,50,1)',
-    };
-    return colors[model] || 'rgba(0,0,0,1)';
-  };
+      const method = selectedModels.join(', ');
 
+      // Log message LAMA (selalu /NOORIGIN)
+      const logMessage = `REGRESSION
+/MISSING LISTWISE
+/STATISTICS COEFF OUTS R ANOVA
+/CRITERIA=PIN(.05) POUT(.10)
+/NOORIGIN
+/DEPENDENT ${dependentVarName}
+/METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
+
+      const log = { log: logMessage };
+      const logId = await addLog(log);
+      console.log("[CurveEstimation OLD CALC] Log created with ID:", logId);
+
+      const analytic = {
+        title: "Curve Estimation",
+        note: "",
+      };
+      const analyticId = await addAnalytic(logId, analytic);
+      console.log("[CurveEstimation OLD CALC] Analytic created with ID:", analyticId);
+
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+
+      workerRef.current = new Worker('/workers/CurveEstimation/curve_estimation.js');
+
+      workerRef.current.onmessage = async (event) => {
+        const { action, data: workerData } = event.data; // Ganti nama variabel data
+
+        if (action === 'regressionResults') {
+          console.log("[CurveEstimation OLD CALC] Received regression results:", workerData);
+
+          if (workerData.success) {
+            // Deskripsi statistik LAMA (generik)
+            const regressionSummaryStat = {
+              title: "Curve Estimation",
+              output_data: JSON.stringify(workerData.result),
+              components: "CurveEstimationSummary",
+              description: "Curve estimation analysis results" // Deskripsi generik lama
+            };
+
+            try {
+              await addStatistic(analyticId, regressionSummaryStat);
+              console.log("[CurveEstimation OLD CALC] Statistics saved successfully");
+              onClose(); // Tetap tutup modal setelah sukses
+            } catch (error) {
+              console.error("[CurveEstimation OLD CALC] Failed to save statistics:", error);
+              setErrorMessage("Failed to save regression results.");
+            }
+          } else {
+            console.error("[CurveEstimation OLD CALC] Worker returned an error:", workerData.message);
+            setErrorMessage(workerData.message || "An error occurred during regression analysis.");
+          }
+
+          setIsProcessing(false);
+        } else if (action === 'error') {
+          console.error("[CurveEstimation OLD CALC] Worker error:", workerData.message);
+          setErrorMessage(workerData.message || "An error occurred during calculation.");
+          setIsProcessing(false);
+        }
+      };
+
+      workerRef.current.onerror = (error) => {
+        console.error("[CurveEstimation OLD CALC] Worker error:", error.message);
+        setErrorMessage(`Worker error: ${error.message}`);
+        setIsProcessing(false);
+
+        if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+        }
+      };
+
+      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: Xtrim.length, Y_length: Ytrim.length, upperBound: upperBound });
+      // Payload postMessage LAMA (tidak mengirim includeConstant/displayANOVA)
+      workerRef.current.postMessage({
+        action: 'runRegression',
+        data: {
+          models: selectedModels,
+          X: Xtrim, // Data X dari metode lama
+          Y: Ytrim, // Data Y dari metode lama
+          dependentName: dependentVarName,
+          independentNames: independentVarNames, // Nama tetap dikirim semua
+          upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
+          // TIDAK ADA includeConstant
+          // TIDAK ADA displayANOVA
+        }
+      });
+
+    } catch (error: unknown) {
+      console.error("[CurveEstimation OLD CALC] Error in regression processing:", error);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error occurred";
+      setErrorMessage(`Error: ${errorMsg}`);
+      setIsProcessing(false);
+    }
+  };
+  // ========================================================================
+  // <<< AKHIR DARI FUNGSI handleRunRegression KODE LAMA >>>
+  // ========================================================================
+
+
+  // Render function (JSX) dari desain baru
   return (
-      <DialogContent className="sm:max-w-[1000px]">
-        <DialogHeader>
-          <DialogTitle>Curve Estimation</DialogTitle>
-        </DialogHeader>
+      <Dialog open={true} onOpenChange={(open) => !open && handleClose()}> {/* Ensure Dialog closes */}
+        <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+          <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+            <DialogTitle className="text-[22px] font-semibold">Curve Estimation</DialogTitle>
+          </DialogHeader>
 
-        <Separator className="my-2" />
+          {errorMessage && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
+                {errorMessage}
+              </div>
+          )}
 
-        <div className="grid grid-cols-12 gap-4 py-4">
-          {/* Panel Kiri: Daftar Variabel */}
-          <div className="col-span-3 border p-4 rounded-md max-h-[600px] overflow-y-auto">
-            <label className="font-semibold">Variables</label>
-            <ScrollArea className="mt-2 h-[550px]">
-              {availableVariables.map((variable) => (
-                  <div
-                      key={variable.name}
-                      className={`flex items-center p-2 border cursor-pointer rounded-md hover:bg-gray-100 ${
-                          highlightedVariable?.name === variable.name ? 'bg-blue-100 border-blue-500' : 'border-gray-300'
-                      }`}
-                      onClick={() => handleSelectAvailableVariable(variable)}
-                  >
-                    <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                    {variable.name}
-                  </div>
-              ))}
-            </ScrollArea>
-          </div>
-
-          {/* Bagian Tengah */}
-          <div className="col-span-6 space-y-6">
-            {/* Dependent Variable */}
-            <div className="flex items-center">
-              <Button
-                  variant="outline"
-                  onClick={handleMoveToDependent}
-                  disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
-                  className="mr-2"
-              >
-                <ArrowRight />
-              </Button>
-              <div className="flex-1">
-                <label className="font-semibold">Dependent Variable</label>
-                <div
-                    className="mt-2 p-2 border rounded-md min-h-[50px] cursor-pointer"
-                    onClick={handleRemoveFromDependent}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+            <div className="border-b border-[#E6E6E6] flex-shrink-0">
+              <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                <TabsTrigger
+                    value="variables"
+                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                 >
-                  {selectedDependentVariable ? (
-                      <div className="flex items-center">
-                        <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                        {selectedDependentVariable.name}
-                      </div>
-                  ) : (
-                      <span className="text-gray-500">[None]</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Independent Variables */}
-            <div className="flex items-center">
-              <Button
-                  variant="outline"
-                  onClick={handleMoveToIndependent}
-                  disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
-                  className="mr-2"
-              >
-                <ArrowRight />
-              </Button>
-              <div className="flex-1">
-                <label className="font-semibold">Independent Variables</label>
-                <div className="mt-2 p-2 border rounded-md min-h-[100px]">
-                  {selectedIndependentVariables.length > 0 ? (
-                      selectedIndependentVariables.map((variable) => (
-                          <div
-                              key={variable.name}
-                              className="flex items-center p-1 cursor-pointer hover:bg-gray-100 rounded-md"
-                              onClick={() => handleRemoveFromIndependent(variable)}
-                          >
-                            <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                            {variable.name}
-                          </div>
-                      ))
-                  ) : (
-                      <span className="text-gray-500">[None]</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Case Labels dan Checkboxes */}
-            <div className="flex items-start">
-              <div className="flex items-center mr-4 w-2/3">
-                <Button
-                    variant="outline"
-                    onClick={handleMoveToCaseLabels}
-                    disabled={!highlightedVariable || !availableVariables.includes(highlightedVariable)}
-                    className="mr-2"
+                  Variables
+                </TabsTrigger>
+                <TabsTrigger
+                    value="models"
+                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                 >
-                  <ArrowRight />
-                </Button>
-                <div className="flex-1">
-                  <label className="font-semibold">Case Labels</label>
-                  <div
-                      className="mt-2 p-2 border rounded-md min-h-[70px] cursor-pointer"
-                      onClick={handleRemoveFromCaseLabels}
-                  >
-                    {selectedCaseLabels ? (
-                        <div className="flex items-center">
-                          <Pencil className="h-5 w-5 mr-2 text-gray-600" />
-                          {selectedCaseLabels.name}
-                        </div>
-                    ) : (
-                        <span className="text-gray-500">[None]</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col space-y-2 mt-4 w-1/3">
-                <div className="flex items-center">
-                  <Checkbox
-                      checked={includeConstant}
-                      onCheckedChange={(checked: boolean) => setIncludeConstant(checked)}
-                  />
-                  <span className="ml-2">Include constant in equation</span>
-                </div>
-                <div className="flex items-center">
-                  <Checkbox
-                      checked={plotModels}
-                      onCheckedChange={(checked: boolean) => setPlotModels(checked)}
-                  />
-                  <span className="ml-2">Plot models</span>
-                </div>
-              </div>
+                  Models
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-            {/* Models */}
-            <div>
-              <label className="font-semibold">Models</label>
-              <div className="mt-2 grid grid-cols-4 gap-2">
-                {[
-                  'Linear',
-                  'Quadratic',
-                  'Compound',
-                  'Growth',
-                  'Logarithmic',
-                  'Cubic',
-                  'S',
-                  'Exponential',
-                  'Inverse',
-                  'Power',
-                  'Logistic',
-                ].map((model) => (
-                    <div key={model} className="flex items-center">
-                      <Checkbox
-                          checked={selectedModels.includes(model)}
-                          onCheckedChange={() => handleModelChange(model)}
-                      />
-                      <span className="ml-2">{model}</span>
-                    </div>
-                ))}
-              </div>
-              {selectedModels.includes('Logistic') && (
-                  <div className="mt-2">
-                    <label className="font-semibold">Upper Bound</label>
-                    <Input
-                        type="number"
-                        placeholder="Enter upper bound"
-                        value={upperBound}
-                        onChange={(e) => setUpperBound(e.target.value)}
-                        className="mt-1"
-                    />
-                  </div>
-              )}
-            </div>
-
-            {/* Display ANOVA Table */}
-            <div className="flex items-center">
-              <Checkbox
-                  checked={displayANOVA}
-                  onCheckedChange={(checked: boolean) => setDisplayANOVA(checked)}
+            {/* Variables Tab Content */}
+            <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden"> {/* Added data-state for potential performance */}
+              <VariablesTab
+                  availableVariables={availableVariables}
+                  highlightedVariable={highlightedVariable}
+                  setHighlightedVariable={setHighlightedVariable}
+                  selectedDependentVariable={selectedDependentVariable}
+                  selectedIndependentVariables={selectedIndependentVariables}
+                  selectedCaseLabels={selectedCaseLabels}
+                  handleDependentDoubleClick={handleDependentDoubleClick}
+                  handleIndependentDoubleClick={handleIndependentDoubleClick}
+                  handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
+                  moveToDependent={moveToDependent}
+                  moveToIndependent={moveToIndependent}
+                  moveToCaseLabels={moveToCaseLabels}
+                  removeDependent={removeDependent}
+                  removeIndependent={removeIndependent}
+                  removeCaseLabels={removeCaseLabels}
+                  isProcessing={isProcessing}
               />
-              <span className="ml-2">Display ANOVA table</span>
+            </TabsContent>
+
+            {/* Models Tab Content */}
+            <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden"> {/* Added data-state */}
+              <ModelsTab
+                  selectedModels={selectedModels}
+                  handleModelChange={handleModelChange}
+                  includeConstant={includeConstant}
+                  setIncludeConstant={setIncludeConstant}
+                  plotModels={plotModels}
+                  setPlotModels={setPlotModels}
+                  displayANOVA={displayANOVA}
+                  setDisplayANOVA={setDisplayANOVA}
+                  upperBound={upperBound}
+                  setUpperBound={setUpperBound}
+                  isProcessing={isProcessing}
+              />
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <div className="flex justify-end space-x-3">
+              <Button
+                  className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                  onClick={handleRunRegression} // Memanggil fungsi lama yang sudah di-paste
+                  disabled={isProcessing}
+              >
+                {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                ) : (
+                    "OK"
+                )}
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  disabled={isProcessing}
+                  // onClick={() => { /* Logika Paste jika ada */ }}
+              >
+                Paste
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  onClick={handleReset}
+                  disabled={isProcessing}
+              >
+                Reset
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  onClick={handleClose}
+                  disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  disabled={isProcessing}
+                  // onClick={() => { /* Logika Help jika ada */ }}
+              >
+                Help
+              </Button>
             </div>
-          </div>
-
-          {/* Panel Kanan: Tombol Save */}
-          <div className="col-span-3 flex flex-col justify-start space-y-4">
-            <Button variant="outline" onClick={() => alert('Save configuration')}>
-              Save
-            </Button>
-          </div>
-        </div>
-
-        <DialogFooter className="flex justify-center space-x-4 mt-4">
-          <Button variant="default" onClick={handleRunRegression}>
-            OK
-          </Button>
-          <Button variant="default">Paste</Button>
-          <Button variant="default">Reset</Button>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button variant="default">Help</Button>
-        </DialogFooter>
-
-      </DialogContent>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 };
 

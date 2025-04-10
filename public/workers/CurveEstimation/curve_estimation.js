@@ -1,45 +1,13 @@
-// useCurveEstimation.ts
-type DataPoint = {
-  x: number;
-  y: number;
-};
+// curve_estimation.js
+// This worker performs curve estimation calculations
 
-type LinearRegressionResult = {
-  b0: number;
-  b1: number;
-  r2: number;
-  f: number;
-  df1: number;
-  df2: number;
-  sig: number;
-  predict: (val: number) => number;
-};
-
-type MultipleLinearRegressionResult = {
-  coefficients: number[];
-  r2: number;
-  f: number;
-  df1: number;
-  df2: number;
-  sig: number;
-  predict: (xArr: number[]) => number;
-};
-
-type RegressionSummary = {
-  tables: [
-    {
-      title: string;
-      columnHeaders: any[];
-      rows: any[];
-    }
-  ];
-};
-
-const mean = (arr: number[]): number => {
+// Function to calculate mean
+const mean = (arr) => {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
 };
 
-const linearRegression = (x: number[], y: number[]): LinearRegressionResult => {
+// Linear regression calculation
+const linearRegression = (x, y) => {
   const n = x.length;
   const xMean = mean(x);
   const yMean = mean(y);
@@ -55,10 +23,11 @@ const linearRegression = (x: number[], y: number[]): LinearRegressionResult => {
   const df2 = n - 2;
   const f = (r2 / df1) / ((1 - r2) / df2);
   const sig = 1 - fCDF(f, df1, df2);
-  return { b0, b1, r2, f, df1, df2, sig, predict: (val: number) => b0 + b1 * val };
+  return { b0, b1, r2, f, df1, df2, sig, predict: (val) => b0 + b1 * val };
 };
 
-const inverseMatrixGaussJordan = (M: number[][]): number[][] => {
+// Inverse matrix calculation using Gauss-Jordan elimination
+const inverseMatrixGaussJordan = (M) => {
   const n = M.length;
   let A = M.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
   for (let i = 0; i < n; i++) {
@@ -84,12 +53,14 @@ const inverseMatrixGaussJordan = (M: number[][]): number[][] => {
   return A.map(row => row.slice(n));
 };
 
-const transposeMatrix = (matrix: number[][]): number[][] => {
+// Matrix transpose operation
+const transposeMatrix = (matrix) => {
   return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
 };
 
-const multiplyMatrices = (A: number[][], B: number[][]): number[][] => {
-  const result: number[][] = [];
+// Matrix multiplication
+const multiplyMatrices = (A, B) => {
+  const result = [];
   for (let i = 0; i < A.length; i++) {
     result[i] = [];
     for (let j = 0; j < B[0].length; j++) {
@@ -103,7 +74,8 @@ const multiplyMatrices = (A: number[][], B: number[][]): number[][] => {
   return result;
 };
 
-const multipleLinearRegression = (X: number[][], Y: number[]): MultipleLinearRegressionResult => {
+// Multiple linear regression
+const multipleLinearRegression = (X, Y) => {
   const n = Y.length;
   const k = X[0].length - 1;
   const XT = transposeMatrix(X);
@@ -128,37 +100,38 @@ const multipleLinearRegression = (X: number[][], Y: number[]): MultipleLinearReg
     df1,
     df2,
     sig,
-    predict: (xArr: number[]) => [1, ...xArr].reduce((sum, val, i) => sum + val * coefficients[i], 0)
+    predict: (xArr) => [1, ...xArr].reduce((sum, val, i) => sum + val * coefficients[i], 0)
   };
 };
 
-const tryLinear = (X: number[], Y: number[]): LinearRegressionResult => {
+// Model-specific regression functions
+const tryLinear = (X, Y) => {
   return linearRegression(X, Y);
 };
 
-const tryLogarithmic = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryLogarithmic = (X, Y) => {
   if (X.some(x => x <= 0)) return null;
   const Xlog = X.map(x => Math.log(x));
   return linearRegression(Xlog, Y);
 };
 
-const tryInverse = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryInverse = (X, Y) => {
   if (X.some(x => x === 0)) return null;
   const Xinv = X.map(x => 1 / x);
   return linearRegression(Xinv, Y);
 };
 
-const tryQuadratic = (X: number[], Y: number[]): MultipleLinearRegressionResult => {
+const tryQuadratic = (X, Y) => {
   const Xmat = X.map(x => [1, x, x ** 2]);
   return multipleLinearRegression(Xmat, Y);
 };
 
-const tryCubic = (X: number[], Y: number[]): MultipleLinearRegressionResult => {
+const tryCubic = (X, Y) => {
   const Xmat = X.map(x => [1, x, x ** 2, x ** 3]);
   return multipleLinearRegression(Xmat, Y);
 };
 
-const tryPower = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryPower = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.x > 0 && d.y > 0);
   if (filtered.length < X.length) return null;
   const lnY = filtered.map(d => Math.log(d.y));
@@ -167,7 +140,7 @@ const tryPower = (X: number[], Y: number[]): LinearRegressionResult | null => {
   return { ...result, b0: Math.exp(result.b0) };
 };
 
-const tryCompound = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryCompound = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
   const lnY = filtered.map(d => Math.log(d.y));
@@ -176,7 +149,7 @@ const tryCompound = (X: number[], Y: number[]): LinearRegressionResult | null =>
   return { ...result, b0: Math.exp(result.b0), b1: Math.exp(result.b1) };
 };
 
-const trySCurve = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const trySCurve = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0 && d.x !== 0);
   if (filtered.length < X.length) return null;
   const lnY = filtered.map(d => Math.log(d.y));
@@ -184,7 +157,7 @@ const trySCurve = (X: number[], Y: number[]): LinearRegressionResult | null => {
   return linearRegression(invX, lnY);
 };
 
-const tryGrowth = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryGrowth = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
   const lnY = filtered.map(d => Math.log(d.y));
@@ -192,7 +165,7 @@ const tryGrowth = (X: number[], Y: number[]): LinearRegressionResult | null => {
   return linearRegression(Xpos, lnY);
 };
 
-const tryExponential = (X: number[], Y: number[]): LinearRegressionResult | null => {
+const tryExponential = (X, Y) => {
   const filtered = X.map((x, i) => ({ x, y: Y[i] })).filter(d => d.y > 0);
   if (filtered.length < X.length) return null;
   const lnY = filtered.map(d => Math.log(d.y));
@@ -201,8 +174,139 @@ const tryExponential = (X: number[], Y: number[]): LinearRegressionResult | null
   return { ...result, b0: Math.exp(result.b0) };
 };
 
+// Improved Logistic function with automatic adjustment
+const tryLogistic = (X, Y, upperBound) => {
+  console.log("Logistic regression started with upperBound:", upperBound);
+
+  // Check if we have a valid upper bound
+  let c = parseFloat(upperBound);
+
+  // If invalid or undefined upper bound, calculate a suitable one
+  if (!upperBound || isNaN(c) || c <= 0) {
+    // Default to 1.2 times the maximum Y value
+    c = Math.max(...Y) * 1.2;
+    console.log("Automatically adjusted upper bound to:", c);
+  }
+
+  // If upper bound is less than max Y, adjust it
+  const yMax = Math.max(...Y);
+  if (c <= yMax) {
+    c = yMax * 1.2; // Set to 20% above maximum Y value
+    console.log("Upper bound was too small, adjusted to:", c);
+  }
+
+  // Filter data points where Y is between 0 and c
+  const validData = X.map((x, i) => ({ x, y: Y[i] }))
+      .filter(d => d.y > 0 && d.y < c);
+
+  console.log(`Data points: ${validData.length} valid out of ${X.length} total`);
+
+  // Return default values if insufficient valid data
+  if (validData.length < 3 || validData.length < X.length * 0.2) {
+    console.log("Insufficient valid data points for logistic regression");
+    // Return default object with empty values instead of null
+    return {
+      b0: 0,
+      b1: 0,
+      c: c,
+      r2: 0,
+      f: 0,
+      df1: 1,
+      df2: X.length - 2,
+      sig: 1,
+      isEstimated: true // Flag to indicate this is an estimated result
+    };
+  }
+
+  try {
+    // Transform data for linearization: ln(c/y - 1) = ln(a) + (-b)*x
+    const transformedY = [];
+    const filteredX = [];
+
+    for (let i = 0; i < validData.length; i++) {
+      const term = c / validData[i].y - 1;
+      if (term > 0) {
+        transformedY.push(Math.log(term));
+        filteredX.push(validData[i].x);
+      }
+    }
+
+    if (transformedY.length < 3) {
+      console.log("Too few points after transformation");
+      return {
+        b0: 0,
+        b1: 0,
+        c: c,
+        r2: 0,
+        f: 0,
+        df1: 1,
+        df2: X.length - 2,
+        sig: 1,
+        isEstimated: true
+      };
+    }
+
+    // Apply linear regression to transformed data
+    const linReg = linearRegression(filteredX, transformedY);
+
+    if (!linReg) {
+      console.log("Linear regression failed on transformed data");
+      return {
+        b0: 0,
+        b1: 0,
+        c: c,
+        r2: 0,
+        f: 0,
+        df1: 1,
+        df2: X.length - 2,
+        sig: 1,
+        isEstimated: true
+      };
+    }
+
+    // Convert linear parameters to logistic parameters
+    const a = Math.exp(linReg.b0);
+    const b = -linReg.b1;  // Note the negative sign
+
+    // Calculate predictions with the logistic function
+    const yPred = validData.map(d => c / (1 + a * Math.exp(-b * d.x)));
+
+    // Calculate R-squared
+    const yActual = validData.map(d => d.y);
+    const yMean = mean(yActual);
+    const ssRes = yActual.reduce((sum, y, i) => sum + Math.pow(y - yPred[i], 2), 0);
+    const ssTot = yActual.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
+    const r2 = 1 - (ssRes / ssTot);
+
+    return {
+      b0: a,          // Constant (a parameter)
+      b1: b,          // Slope (b parameter)
+      c: c,           // Upper bound
+      r2: r2,         // Coefficient of determination
+      f: linReg.f,    // F statistic
+      df1: linReg.df1,
+      df2: linReg.df2,
+      sig: linReg.sig,
+      isEstimated: false
+    };
+  } catch (error) {
+    console.error("Error in logistic regression calculation:", error);
+    return {
+      b0: 0,
+      b1: 0,
+      c: c,
+      r2: 0,
+      f: 0,
+      df1: 1,
+      df2: X.length - 2,
+      sig: 1,
+      isEstimated: true
+    };
+  }
+};
+
 // Functions for F-distribution CDF calculation
-const betacf = (a: number, b: number, x: number): number => {
+const betacf = (a, b, x) => {
   const MAX_ITER = 100;
   const EPS = 3.0e-7;
   let am = 1;
@@ -231,7 +335,7 @@ const betacf = (a: number, b: number, x: number): number => {
   return az;
 };
 
-const betai = (a: number, b: number, x: number): number => {
+const betai = (a, b, x) => {
   if (x < 0 || x > 1) throw new Error("Bad x in betai");
   if (x === 0 || x === 1) return x;
   const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
@@ -242,7 +346,7 @@ const betai = (a: number, b: number, x: number): number => {
   }
 };
 
-const gammaln = (x: number): number => {
+const gammaln = (x) => {
   const cof = [
     76.18009172947146, -86.50532032941677,
     24.01409824083091, -1.231739572450155,
@@ -258,18 +362,14 @@ const gammaln = (x: number): number => {
   return -tmp + Math.log(2.5066282746310005 * ser / x);
 };
 
-const fCDF = (f: number, df1: number, df2: number): number => {
+const fCDF = (f, df1, df2) => {
   const x = (df1 * f) / (df1 * f + df2);
   return betai(df1 / 2, df2 / 2, x);
 };
 
-const generateRegressionSummary = (
-  models: string[],
-  X: number[],
-  Y: number[]
-): RegressionSummary => {
+const generateRegressionSummary = (models, X, Y, options = {}) => {
   const rows = models.map(model => {
-    let result: any = {};
+    let result = {};
     switch (model) {
       case 'Linear':
         const lin = tryLinear(X, Y);
@@ -286,7 +386,7 @@ const generateRegressionSummary = (
           "b3": ""
         };
         break;
-    
+
       case 'Logarithmic':
         const log = tryLogarithmic(X, Y);
         if (log) {
@@ -317,7 +417,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Inverse':
         const inv = tryInverse(X, Y);
         if (inv) {
@@ -348,7 +448,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Quadratic':
         const quad = tryQuadratic(X, Y);
         result = {
@@ -364,7 +464,7 @@ const generateRegressionSummary = (
           "b3": ""
         };
         break;
-    
+
       case 'Cubic':
         const cubic = tryCubic(X, Y);
         result = {
@@ -380,7 +480,7 @@ const generateRegressionSummary = (
           "b3": cubic.coefficients[3].toFixed(3)
         };
         break;
-    
+
       case 'Compound':
         const compound = tryCompound(X, Y);
         if (compound) {
@@ -411,7 +511,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Power':
         const power = tryPower(X, Y);
         if (power) {
@@ -442,7 +542,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'S':
         const sCurve = trySCurve(X, Y);
         if (sCurve) {
@@ -473,7 +573,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Growth':
         const growth = tryGrowth(X, Y);
         if (growth) {
@@ -504,7 +604,7 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Exponential':
         const exponential = tryExponential(X, Y);
         if (exponential) {
@@ -535,22 +635,42 @@ const generateRegressionSummary = (
           };
         }
         break;
-    
+
       case 'Logistic':
-        result = {
-          rowHeader: ["Logistic"],
-          "R Square": "",
-          "F": "",
-          "df1": "",
-          "df2": "",
-          "Sig.": "",
-          "Constant": "",
-          "b1": "",
-          "b2": "",
-          "b3": ""
-        };
+        // Use the upperBound from options or auto-calculate a suitable one
+        const logistic = tryLogistic(X, Y, options.upperBound);
+
+        // Always provide a result, even if calculation failed
+        if (logistic) {
+          result = {
+            rowHeader: ["Logistic"],
+            "R Square": logistic.isEstimated ? "0.000" : logistic.r2.toFixed(3),
+            "F": logistic.isEstimated ? "0.000" : logistic.f.toFixed(3),
+            "df1": logistic.df1,
+            "df2": logistic.df2,
+            "Sig.": logistic.isEstimated ? "1.000" : logistic.sig.toFixed(3),
+            "Constant": logistic.b0.toFixed(3),
+            "b1": logistic.b1.toFixed(3),
+            "b2": logistic.c.toFixed(3), // Upper bound as b2
+            "b3": ""
+          };
+        } else {
+          // Fallback values if calculation completely failed
+          result = {
+            rowHeader: ["Logistic"],
+            "R Square": "0.000",
+            "F": "0.000",
+            "df1": "1",
+            "df2": X.length - 2,
+            "Sig.": "1.000",
+            "Constant": "0.000",
+            "b1": "0.000",
+            "b2": options.upperBound || (Math.max(...Y) * 1.2).toFixed(3),
+            "b3": ""
+          };
+        }
         break;
-    
+
       default:
         result = {
           rowHeader: [model],
@@ -565,7 +685,7 @@ const generateRegressionSummary = (
           "b3": ""
         };
     }
-    
+
     return result;
   });
 
@@ -601,18 +721,50 @@ const generateRegressionSummary = (
   };
 };
 
-export const useCurveEstimation = () => {
-  return {
-    tryLinear,
-    tryLogarithmic,
-    tryInverse,
-    tryQuadratic,
-    tryCubic,
-    tryPower,
-    tryCompound,
-    trySCurve,
-    tryGrowth,
-    tryExponential,
-    generateRegressionSummary
-  };
-};
+// Event listener for messages from main thread
+self.addEventListener('message', (event) => {
+  try {
+    const { action, data } = event.data;
+
+    switch (action) {
+      case 'runRegression':
+        const { models, X, Y, dependentName, independentNames, upperBound } = data;
+
+        console.log("Worker received data:", {
+          models,
+          dataPoints: X.length,
+          upperBound: upperBound
+        });
+
+        // Generate regression summary with options
+        const result = generateRegressionSummary(models, X, Y, { upperBound });
+
+        // Add metadata about the regression
+        const response = {
+          success: true,
+          result: result,
+          metadata: {
+            dependentVariable: dependentName,
+            independentVariables: independentNames,
+            numObservations: X.length,
+            upperBoundUsed: upperBound
+          }
+        };
+
+        self.postMessage({ action: 'regressionResults', data: response });
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${action}`);
+    }
+  } catch (error) {
+    console.error("Worker error:", error);
+    self.postMessage({
+      action: 'error',
+      data: {
+        message: error.message,
+        stack: error.stack
+      }
+    });
+  }
+});

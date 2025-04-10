@@ -40,7 +40,6 @@ export default function VariableTable() {
         getSelectedVariableMissing,
         getSelectedVariableOrDefault,
         customContextMenu,
-        getCellProperties,
         handleBeforeKeyDown,
         handleBeforeSetRangeEnd,
     } = useVariableTableLogic();
@@ -66,7 +65,6 @@ export default function VariableTable() {
                     afterSelectionEnd={handleAfterSelectionEnd}
                     beforeSetRangeEnd={handleBeforeSetRangeEnd}
                     beforeKeyDown={handleBeforeKeyDown}
-                    cells={getCellProperties}
                     outsideClickDeselects={false}
                     selectionMode="single"
                 />
