@@ -1,3 +1,4 @@
+// components/Modals/CurveEstimation/ModalCurveEstimation.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
@@ -20,7 +21,7 @@ import { useResultStore } from '@/stores/useResultStore';
 import { Variable, VariableType } from '@/types/Variable';
 import { Chart, registerables } from 'chart.js';
 
-// Import our custom tab components
+// Import our custom tab components (menggunakan struktur baru)
 import VariablesTab from './VariablesTab';
 import ModelsTab from './ModelsTab';
 
@@ -31,24 +32,18 @@ interface ModalCurveEstimationProps {
 }
 
 const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) => {
-  // Tab state
+  // State variables dari desain baru
   const [activeTab, setActiveTab] = useState("variables");
-
-  // Variables state
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
   const [selectedCaseLabels, setSelectedCaseLabels] = useState<Variable | null>(null);
-
-  // Models state
   const [selectedModels, setSelectedModels] = useState<string[]>(['Linear']);
-  const [includeConstant, setIncludeConstant] = useState<boolean>(true);
+  const [includeConstant, setIncludeConstant] = useState<boolean>(true); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [plotModels, setPlotModels] = useState<boolean>(true);
-  const [displayANOVA, setDisplayANOVA] = useState<boolean>(false);
+  const [displayANOVA, setDisplayANOVA] = useState<boolean>(false); // State ini ada, tapi tidak dikirim ke worker oleh handleRunRegression versi lama
   const [upperBound, setUpperBound] = useState<string>('');
-
-  // Processing state
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -58,28 +53,21 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-  // Define numeric variable types
-  const numericTypes: VariableType[] = ["NUMERIC", "COMMA", "DOT", "SCIENTIFIC"];
-
+  // useEffect untuk memfilter availableVariables (dari kode baru)
   useEffect(() => {
-    // Load available variables, filtering out any already selected
     const allVarsFiltered = variables.filter(v => {
       if (!v.name) return false;
-
       const isDependent = selectedDependentVariable?.columnIndex === v.columnIndex;
       const isIndependent = selectedIndependentVariables.some(iv => iv.columnIndex === v.columnIndex);
       const isCaseLabel = selectedCaseLabels?.columnIndex === v.columnIndex;
-
       return !isDependent && !isIndependent && !isCaseLabel;
     });
-
     setAvailableVariables(allVarsFiltered);
   }, [variables, selectedDependentVariable, selectedIndependentVariables, selectedCaseLabels]);
 
-  // Variables Tab handlers
+  // Handlers untuk VariablesTab (dari kode baru)
   const handleDependentDoubleClick = (variable: Variable) => {
     if (selectedDependentVariable) {
-      // Move current dependent back to available
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
     setSelectedDependentVariable(variable);
@@ -95,7 +83,6 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
 
   const handleCaseLabelsDoubleClick = (variable: Variable) => {
     if (selectedCaseLabels) {
-      // Move current case label back to available
       setAvailableVariables(prev => [...prev, selectedCaseLabels]);
     }
     setSelectedCaseLabels(variable);
@@ -106,25 +93,19 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   const moveToDependent = () => {
     if (!highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) {
-      handleDependentDoubleClick(variable);
-    }
+    if (variable) handleDependentDoubleClick(variable);
   };
 
   const moveToIndependent = () => {
     if (!highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) {
-      handleIndependentDoubleClick(variable);
-    }
+    if (variable) handleIndependentDoubleClick(variable);
   };
 
   const moveToCaseLabels = () => {
     if (!highlightedVariable) return;
     const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-    if (variable) {
-      handleCaseLabelsDoubleClick(variable);
-    }
+    if (variable) handleCaseLabelsDoubleClick(variable);
   };
 
   const removeDependent = () => {
@@ -146,14 +127,14 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     }
   };
 
-  // Models Tab handlers
+  // Handler untuk ModelsTab (dari kode baru)
   const handleModelChange = (model: string) => {
     setSelectedModels((prev) =>
         prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]
     );
   };
 
-  // General handlers
+  // Handler Close (dari kode baru)
   const handleClose = () => {
     if (workerRef.current) {
       workerRef.current.terminate();
@@ -162,20 +143,17 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     onClose();
   };
 
+  // Handler Reset (dari kode baru)
   const handleReset = () => {
-    // Move all selected variables back to available variables
     if (selectedDependentVariable) {
       setAvailableVariables(prev => [...prev, selectedDependentVariable]);
     }
-
     if (selectedIndependentVariables.length > 0) {
       setAvailableVariables(prev => [...prev, ...selectedIndependentVariables]);
     }
-
     if (selectedCaseLabels) {
       setAvailableVariables(prev => [...prev, selectedCaseLabels]);
     }
-
     setSelectedDependentVariable(null);
     setSelectedIndependentVariables([]);
     setSelectedCaseLabels(null);
@@ -188,6 +166,10 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
     setErrorMessage(null);
   };
 
+  // ========================================================================
+  // <<< INI ADALAH FUNGSI handleRunRegression DARI KODE LAMA >>>
+  // Menggunakan filtering data lama dan payload postMessage lama
+  // ========================================================================
   const handleRunRegression = async () => {
     if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
       setErrorMessage("Please select a dependent variable and at least one independent variable.");
@@ -199,47 +181,49 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
 
     try {
       const depCol = selectedDependentVariable.columnIndex;
-      const indepCols = selectedIndependentVariables.map(iv => iv.columnIndex);
+      // Kode lama hanya benar-benar menggunakan kolom independen pertama untuk data X
+      const indepColX = selectedIndependentVariables[0].columnIndex;
+      const independentVarNames = selectedIndependentVariables.map(iv => iv.name); // Tetap ambil semua nama untuk log
+      const dependentVarName = selectedDependentVariable.name;
 
-      // Extract and filter data for the regression
-      const validRows = data.filter(row =>
-          depCol < row.length &&
-          indepCols.every(col => col < row.length) &&
-          !isNaN(Number(row[depCol])) &&
-          indepCols.every(col => !isNaN(Number(row[col])))
-      );
+      // Logika filtering data LAMA
+      const Y_temp = data.map(row => depCol < row.length ? Number(row[depCol]) : NaN)
+          .filter(val => !isNaN(val));
+      const X_temp = data.map(row => indepColX < row.length ? Number(row[indepColX]) : NaN)
+          .filter(val => !isNaN(val));
 
-      if (validRows.length === 0) {
-        setErrorMessage("No valid data rows found for regression analysis.");
+      const length = Math.min(X_temp.length, Y_temp.length);
+      const Xtrim = X_temp.slice(0, length); // Data X yang akan dikirim
+      const Ytrim = Y_temp.slice(0, length); // Data Y yang akan dikirim
+
+      if (Xtrim.length === 0 || Ytrim.length === 0) {
+        setErrorMessage("No valid data pairs found after filtering (using old method).");
         setIsProcessing(false);
         return;
       }
+      // Akhir logika filtering data LAMA
 
-      const Y = validRows.map(row => Number(row[depCol]));
-      const X = validRows.map(row => Number(row[indepCols[0]])); // Using first independent variable for now
-
-      const dependentVarName = selectedDependentVariable.name;
-      const independentVarNames = selectedIndependentVariables.map(iv => iv.name);
       const method = selectedModels.join(', ');
 
-      const logMessage = `REGRESSION 
-/MISSING LISTWISE 
-/STATISTICS COEFF OUTS R ANOVA 
-/CRITERIA=PIN(.05) POUT(.10) 
-${includeConstant ? '/NOORIGIN' : '/ORIGIN'} 
-/DEPENDENT ${dependentVarName} 
+      // Log message LAMA (selalu /NOORIGIN)
+      const logMessage = `REGRESSION
+/MISSING LISTWISE
+/STATISTICS COEFF OUTS R ANOVA
+/CRITERIA=PIN(.05) POUT(.10)
+/NOORIGIN
+/DEPENDENT ${dependentVarName}
 /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
 
       const log = { log: logMessage };
       const logId = await addLog(log);
-      console.log("[CurveEstimation] Log created with ID:", logId);
+      console.log("[CurveEstimation OLD CALC] Log created with ID:", logId);
 
       const analytic = {
         title: "Curve Estimation",
         note: "",
       };
       const analyticId = await addAnalytic(logId, analytic);
-      console.log("[CurveEstimation] Analytic created with ID:", analyticId);
+      console.log("[CurveEstimation OLD CALC] Analytic created with ID:", analyticId);
 
       if (workerRef.current) {
         workerRef.current.terminate();
@@ -248,42 +232,43 @@ ${includeConstant ? '/NOORIGIN' : '/ORIGIN'}
       workerRef.current = new Worker('/workers/CurveEstimation/curve_estimation.js');
 
       workerRef.current.onmessage = async (event) => {
-        const { action, data } = event.data;
+        const { action, data: workerData } = event.data; // Ganti nama variabel data
 
         if (action === 'regressionResults') {
-          console.log("[CurveEstimation] Received regression results:", data);
+          console.log("[CurveEstimation OLD CALC] Received regression results:", workerData);
 
-          if (data.success) {
+          if (workerData.success) {
+            // Deskripsi statistik LAMA (generik)
             const regressionSummaryStat = {
               title: "Curve Estimation",
-              output_data: JSON.stringify(data.result),
+              output_data: JSON.stringify(workerData.result),
               components: "CurveEstimationSummary",
-              description: `Curve estimation for ${dependentVarName} using ${selectedModels.join(', ')} models`
+              description: "Curve estimation analysis results" // Deskripsi generik lama
             };
 
             try {
               await addStatistic(analyticId, regressionSummaryStat);
-              console.log("[CurveEstimation] Statistics saved successfully");
-              onClose();
+              console.log("[CurveEstimation OLD CALC] Statistics saved successfully");
+              onClose(); // Tetap tutup modal setelah sukses
             } catch (error) {
-              console.error("[CurveEstimation] Failed to save statistics:", error);
+              console.error("[CurveEstimation OLD CALC] Failed to save statistics:", error);
               setErrorMessage("Failed to save regression results.");
             }
           } else {
-            console.error("[CurveEstimation] Worker returned an error:", data.message);
-            setErrorMessage(data.message || "An error occurred during regression analysis.");
+            console.error("[CurveEstimation OLD CALC] Worker returned an error:", workerData.message);
+            setErrorMessage(workerData.message || "An error occurred during regression analysis.");
           }
 
           setIsProcessing(false);
         } else if (action === 'error') {
-          console.error("[CurveEstimation] Worker error:", data.message);
-          setErrorMessage(data.message || "An error occurred during calculation.");
+          console.error("[CurveEstimation OLD CALC] Worker error:", workerData.message);
+          setErrorMessage(workerData.message || "An error occurred during calculation.");
           setIsProcessing(false);
         }
       };
 
       workerRef.current.onerror = (error) => {
-        console.error("[CurveEstimation] Worker error:", error.message);
+        console.error("[CurveEstimation OLD CALC] Worker error:", error.message);
         setErrorMessage(`Worker error: ${error.message}`);
         setIsProcessing(false);
 
@@ -293,147 +278,158 @@ ${includeConstant ? '/NOORIGIN' : '/ORIGIN'}
         }
       };
 
+      console.log("[CurveEstimation OLD CALC] Sending data to worker:", { models: selectedModels, X_length: Xtrim.length, Y_length: Ytrim.length, upperBound: upperBound });
+      // Payload postMessage LAMA (tidak mengirim includeConstant/displayANOVA)
       workerRef.current.postMessage({
         action: 'runRegression',
         data: {
           models: selectedModels,
-          includeConstant,
-          X,
-          Y,
+          X: Xtrim, // Data X dari metode lama
+          Y: Ytrim, // Data Y dari metode lama
           dependentName: dependentVarName,
-          independentNames: independentVarNames,
-          upperBound: selectedModels.includes('Logistic') && upperBound ? parseFloat(upperBound) : undefined,
-          displayANOVA
+          independentNames: independentVarNames, // Nama tetap dikirim semua
+          upperBound: selectedModels.includes('Logistic') ? parseFloat(upperBound) : undefined
+          // TIDAK ADA includeConstant
+          // TIDAK ADA displayANOVA
         }
       });
 
     } catch (error: unknown) {
-      console.error("[CurveEstimation] Error in regression processing:", error);
+      console.error("[CurveEstimation OLD CALC] Error in regression processing:", error);
       const errorMsg = error instanceof Error ? error.message : "Unknown error occurred";
       setErrorMessage(`Error: ${errorMsg}`);
       setIsProcessing(false);
     }
   };
+  // ========================================================================
+  // <<< AKHIR DARI FUNGSI handleRunRegression KODE LAMA >>>
+  // ========================================================================
 
+
+  // Render function (JSX) dari desain baru
   return (
-      <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-        <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-          <DialogTitle className="text-[22px] font-semibold">Curve Estimation</DialogTitle>
-        </DialogHeader>
+      <Dialog open={true} onOpenChange={(open) => !open && handleClose()}> {/* Ensure Dialog closes */}
+        <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+          <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+            <DialogTitle className="text-[22px] font-semibold">Curve Estimation</DialogTitle>
+          </DialogHeader>
 
-        {errorMessage && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
-              {errorMessage}
+          {errorMessage && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
+                {errorMessage}
+              </div>
+          )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+            <div className="border-b border-[#E6E6E6] flex-shrink-0">
+              <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                <TabsTrigger
+                    value="variables"
+                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                >
+                  Variables
+                </TabsTrigger>
+                <TabsTrigger
+                    value="models"
+                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                >
+                  Models
+                </TabsTrigger>
+              </TabsList>
             </div>
-        )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-          <div className="border-b border-[#E6E6E6] flex-shrink-0">
-            <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-              <TabsTrigger
-                  value="variables"
-                  className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+            {/* Variables Tab Content */}
+            <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden"> {/* Added data-state for potential performance */}
+              <VariablesTab
+                  availableVariables={availableVariables}
+                  highlightedVariable={highlightedVariable}
+                  setHighlightedVariable={setHighlightedVariable}
+                  selectedDependentVariable={selectedDependentVariable}
+                  selectedIndependentVariables={selectedIndependentVariables}
+                  selectedCaseLabels={selectedCaseLabels}
+                  handleDependentDoubleClick={handleDependentDoubleClick}
+                  handleIndependentDoubleClick={handleIndependentDoubleClick}
+                  handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
+                  moveToDependent={moveToDependent}
+                  moveToIndependent={moveToIndependent}
+                  moveToCaseLabels={moveToCaseLabels}
+                  removeDependent={removeDependent}
+                  removeIndependent={removeIndependent}
+                  removeCaseLabels={removeCaseLabels}
+                  isProcessing={isProcessing}
+              />
+            </TabsContent>
+
+            {/* Models Tab Content */}
+            <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden"> {/* Added data-state */}
+              <ModelsTab
+                  selectedModels={selectedModels}
+                  handleModelChange={handleModelChange}
+                  includeConstant={includeConstant}
+                  setIncludeConstant={setIncludeConstant}
+                  plotModels={plotModels}
+                  setPlotModels={setPlotModels}
+                  displayANOVA={displayANOVA}
+                  setDisplayANOVA={setDisplayANOVA}
+                  upperBound={upperBound}
+                  setUpperBound={setUpperBound}
+                  isProcessing={isProcessing}
+              />
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <div className="flex justify-end space-x-3">
+              <Button
+                  className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                  onClick={handleRunRegression} // Memanggil fungsi lama yang sudah di-paste
+                  disabled={isProcessing}
               >
-                Variables
-              </TabsTrigger>
-              <TabsTrigger
-                  value="models"
-                  className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                ) : (
+                    "OK"
+                )}
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  disabled={isProcessing}
+                  // onClick={() => { /* Logika Paste jika ada */ }}
               >
-                Models
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Variables Tab Content */}
-          <TabsContent value="variables" className="overflow-y-auto flex-grow p-6">
-            <VariablesTab
-                availableVariables={availableVariables}
-                highlightedVariable={highlightedVariable}
-                setHighlightedVariable={setHighlightedVariable}
-                selectedDependentVariable={selectedDependentVariable}
-                selectedIndependentVariables={selectedIndependentVariables}
-                selectedCaseLabels={selectedCaseLabels}
-                handleDependentDoubleClick={handleDependentDoubleClick}
-                handleIndependentDoubleClick={handleIndependentDoubleClick}
-                handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
-                moveToDependent={moveToDependent}
-                moveToIndependent={moveToIndependent}
-                moveToCaseLabels={moveToCaseLabels}
-                removeDependent={removeDependent}
-                removeIndependent={removeIndependent}
-                removeCaseLabels={removeCaseLabels}
-                isProcessing={isProcessing}
-            />
-          </TabsContent>
-
-          {/* Models Tab Content */}
-          <TabsContent value="models" className="overflow-y-auto flex-grow">
-            <ModelsTab
-                selectedModels={selectedModels}
-                handleModelChange={handleModelChange}
-                includeConstant={includeConstant}
-                setIncludeConstant={setIncludeConstant}
-                plotModels={plotModels}
-                setPlotModels={setPlotModels}
-                displayANOVA={displayANOVA}
-                setDisplayANOVA={setDisplayANOVA}
-                upperBound={upperBound}
-                setUpperBound={setUpperBound}
-                isProcessing={isProcessing}
-            />
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-          <div className="flex justify-end space-x-3">
-            <Button
-                className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                onClick={handleRunRegression}
-                disabled={isProcessing}
-            >
-              {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-              ) : (
-                  "OK"
-              )}
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                disabled={isProcessing}
-            >
-              Paste
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                onClick={handleReset}
-                disabled={isProcessing}
-            >
-              Reset
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                onClick={handleClose}
-                disabled={isProcessing}
-            >
-              Cancel
-            </Button>
-            <Button
-                variant="outline"
-                className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                disabled={isProcessing}
-            >
-              Help
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
+                Paste
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  onClick={handleReset}
+                  disabled={isProcessing}
+              >
+                Reset
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  onClick={handleClose}
+                  disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                  variant="outline"
+                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                  disabled={isProcessing}
+                  // onClick={() => { /* Logika Help jika ada */ }}
+              >
+                Help
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 };
 
