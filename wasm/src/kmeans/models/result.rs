@@ -20,7 +20,9 @@ pub struct ANOVATable {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ANOVACluster {
     pub mean_square: f64,
+    pub error_mean_square: f64,
     pub df: i32,
+    pub error_df: i32,
     pub f: f64,
     pub significance: f64,
 }

@@ -67,7 +67,9 @@ pub fn calculate_anova(data: &ProcessedData, config: &ClusterConfig) -> Result<A
 
         anova_clusters.insert(var_name.clone(), ANOVACluster {
             mean_square: mean_square_between,
+            error_mean_square: mean_square_within,
             df: df_between,
+            error_df: df_within,
             f: f_statistic,
             significance,
         });
