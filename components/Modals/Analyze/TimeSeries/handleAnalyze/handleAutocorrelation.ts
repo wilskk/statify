@@ -129,8 +129,8 @@ export async function handleAutocorrelation(
                     },
                     chartData: structureACF,
                     config: {
-                        "width": 600,
-                        "height": 300,
+                        "width": 800,
+                        "height": 600,
                         "chartColor": ["#4682B4"],
                         "useLegend": true,
                         "useAxis": true,
@@ -174,8 +174,8 @@ export async function handleAutocorrelation(
                     },
                     chartData: structurePACF,
                     config: {
-                        "width": 600,
-                        "height": 300,
+                        "width": 800,
+                        "height": 600,
                         "chartColor": ["#4682B4"],
                         "useLegend": true,
                         "useAxis": true,

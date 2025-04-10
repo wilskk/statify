@@ -45,6 +45,8 @@ next-env.d.ts
 /wasm-test/.next
 /wasm-test
 package-lock.json
+**/wasm/target
+**/wasm/Cargo.lock
 
 # dist
 /dist
