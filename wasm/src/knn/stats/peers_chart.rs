@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{ HashMap, HashSet };
 
 use crate::knn::models::{
     config::KnnConfig,
@@ -6,7 +6,7 @@ use crate::knn::models::{
     result::{ NeighborDetail, PeersChart, FocalNeighborSet },
 };
 
-use super::core::{ find_k_nearest_neighbors, preprocess_knn_data };
+use super::core::{ calculate_feature_weights, find_k_nearest_neighbors, preprocess_knn_data };
 
 pub fn calculate_peers_chart(
     data: &AnalysisData,
@@ -32,8 +32,12 @@ pub fn calculate_peers_chart(
         // If focal_case_iden_var is provided, use the focal indices from knn_data
         knn_data.focal_indices.clone()
     } else {
-        // Otherwise, use all training indices as focal points
-        knn_data.training_indices.clone()
+        // Otherwise, use all indices (not just training indices)
+        let mut all_indices = Vec::new();
+        for i in 0..knn_data.data_matrix.len() {
+            all_indices.push(i);
+        }
+        all_indices
     };
 
     if focal_indices.is_empty() {
@@ -41,20 +45,34 @@ pub fn calculate_peers_chart(
     }
 
     let use_euclidean = config.neighbors.metric_eucli;
+    let weights = calculate_feature_weights(&knn_data, config);
     let mut focal_neighbor_sets = Vec::new();
+
+    // Combine training and holdout indices for finding neighbors
+    let mut all_candidate_indices = Vec::new();
+    all_candidate_indices.extend_from_slice(&knn_data.training_indices);
+    all_candidate_indices.extend_from_slice(&knn_data.holdout_indices);
+    all_candidate_indices.sort();
+    all_candidate_indices.dedup();
 
     // Process each focal point
     for &focal_idx in &focal_indices {
         let focal_record = knn_data.case_identifiers[focal_idx];
 
+        let candidate_indices: Vec<usize> = all_candidate_indices
+            .iter()
+            .filter(|&&idx| knn_data.case_identifiers[idx] != focal_record)
+            .copied()
+            .collect();
+
         // Find k nearest neighbors to this focal case
         let neighbors = find_k_nearest_neighbors(
             &knn_data.data_matrix[focal_idx],
             &knn_data.data_matrix,
-            &knn_data.training_indices,
+            &candidate_indices,
             k,
             use_euclidean,
-            None // No feature weights for now
+            weights.as_deref()
         );
 
         // Create neighbor details

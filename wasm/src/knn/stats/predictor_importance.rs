@@ -2,50 +2,41 @@ use std::collections::HashMap;
 
 use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::PredictorImportance };
 
-use super::core::{ calculate_knn_error, preprocess_knn_data };
+use super::core::{ calculate_knn_error, determine_k_value, preprocess_knn_data };
 
 pub fn calculate_predictor_importance(
     data: &AnalysisData,
     config: &KnnConfig
 ) -> Result<PredictorImportance, String> {
     // Check if we have a target variable - required for predictor importance
-    if config.main.dep_var.is_none() {
-        return Err(
+    let dep_var = config.main.dep_var
+        .as_ref()
+        .ok_or_else(||
             "A target variable is required for calculating predictor importance".to_string()
-        );
-    }
+        )?;
 
     // Preprocess data
     let knn_data = preprocess_knn_data(data, config)?;
-    web_sys::console::log_1(&format!("KNN Data: {:?}", knn_data).into());
 
     // Determine k value
-    let k = if config.neighbors.specify {
-        config.neighbors.specify_k as usize
-    } else if config.neighbors.auto_selection {
-        config.neighbors.min_k as usize
-    } else {
-        3 // Default k value
-    };
-
-    // Get target variable
-    let dep_var = match &config.main.dep_var {
-        Some(var) => var.clone(),
-        None => {
-            return Err(
-                "A target variable is required for calculating predictor importance".to_string()
-            );
-        }
-    };
+    let k = determine_k_value(config);
+    let use_euclidean = config.neighbors.metric_eucli;
 
     // Calculate baseline error with all features
-    let use_euclidean = config.neighbors.metric_eucli;
-    let baseline_error = calculate_knn_error(&knn_data, k, use_euclidean, None, None)?;
+    let baseline_error = calculate_knn_error(
+        &knn_data,
+        k,
+        use_euclidean,
+        None,
+        None,
+        config.neighbors.predictions_median
+    )?;
 
     // Calculate error when each feature is removed
-    let mut importance = HashMap::new();
+    let mut importance_values = Vec::with_capacity(knn_data.features.len());
+    let n_features = knn_data.features.len();
 
-    for (feature_idx, feature_name) in knn_data.features.iter().enumerate() {
+    for feature_idx in 0..n_features {
         // Create a list of indices to exclude this feature
         let excluded_features = vec![feature_idx];
 
@@ -55,29 +46,41 @@ pub fn calculate_predictor_importance(
             k,
             use_euclidean,
             Some(&excluded_features),
-            None
+            None,
+            config.neighbors.predictions_median
         )?;
 
-        // Calculate importance ratio
-        let ratio = if baseline_error > 0.0 {
-            feature_error / baseline_error
-        } else {
-            1.0 / (knn_data.features.len() as f64)
-        };
+        // Calculate importance according to the formula:
+        // FI(p) = e(p) + 1/m
+        // where e(p) is the error ratio when feature p is removed,
+        // and m is the number of features
+        let error_ratio = if baseline_error > 0.0 { feature_error / baseline_error } else { 1.0 };
 
-        importance.insert(feature_name.clone(), ratio);
+        let importance = error_ratio + 1.0 / (n_features as f64);
+        importance_values.push((knn_data.features[feature_idx].clone(), importance));
     }
 
     // Normalize importance values
-    let sum: f64 = importance.values().sum();
+    let sum: f64 = importance_values
+        .iter()
+        .map(|(_, v)| *v)
+        .sum();
+
+    let mut predictors = HashMap::new();
     if sum > 0.0 {
-        for val in importance.values_mut() {
-            *val /= sum;
+        for (name, value) in importance_values {
+            predictors.insert(name, value / sum);
+        }
+    } else {
+        // Equal importance if sum is zero
+        let equal_importance = 1.0 / (n_features as f64);
+        for name in knn_data.features.iter() {
+            predictors.insert(name.clone(), equal_importance);
         }
     }
 
     Ok(PredictorImportance {
-        predictors: importance,
-        target: dep_var,
+        predictors,
+        target: dep_var.clone(),
     })
 }

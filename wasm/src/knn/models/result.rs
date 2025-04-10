@@ -52,20 +52,15 @@ pub struct PredictorImportance {
 pub struct ClassificationTable {
     pub training: ClassificationPartition,
     pub holdout: ClassificationPartition,
-    pub overall_percent: OverallPercent,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClassificationPartition {
     pub observed: Vec<usize>,
     pub predicted: Vec<usize>,
-    pub percent_correct: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OverallPercent {
-    pub training: f64,
-    pub holdout: f64,
+    pub missing: Vec<usize>,
+    pub overall_percent: Vec<f64>,
+    pub percent_correct: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { KNNType } from "./nearest-neighbor";
+import { ResultJson } from "@/types/Table";
 
 export type KNNAnalysisType = {
     configData: KNNType;
@@ -26,4 +27,6 @@ export type KNNFinalResultType = {
         analyticId: number,
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
+
+    formattedResult: ResultJson;
 };
