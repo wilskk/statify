@@ -1,8 +1,15 @@
+// common.rs - Perbaikan implementasi untuk auto-clustering
+
 use std::collections::HashMap;
-
 use crate::twostep::models::result::CFEntry;
-
-use super::core::{ calculate_cluster_distance, calculate_min_intercluster_distance };
+use super::distance::{ calculate_cluster_distance, calculate_min_intercluster_distance };
+use super::cf_tree::{
+    cf_entry_new,
+    cf_entry_mean,
+    cf_entry_variance,
+    cf_entry_merge_with,
+    cf_entry_clone_with_cases,
+};
 
 // Hierarchical clustering to group sub-clusters into final clusters
 pub fn hierarchical_clustering(
@@ -103,7 +110,7 @@ pub fn determine_optimal_clusters(
 
     for k in 1..=max_k {
         // Temporarily cluster sub-clusters into k clusters
-        let cluster_assignments = hierarchical_clustering(sub_clusters, k as usize, false);
+        let cluster_assignments = hierarchical_clustering(sub_clusters, k as usize, use_euclidean);
 
         // Calculate both criteria
         let (bic, aic) = calculate_information_criteria(sub_clusters, &cluster_assignments, k);
@@ -129,7 +136,11 @@ pub fn determine_optimal_clusters(
                 use_euclidean
             );
 
-            let prev_assignments = hierarchical_clustering(sub_clusters, (k - 1) as usize, false);
+            let prev_assignments = hierarchical_clustering(
+                sub_clusters,
+                (k - 1) as usize,
+                use_euclidean
+            );
 
             let min_dist_prev = calculate_min_intercluster_distance(
                 sub_clusters,
@@ -152,49 +163,51 @@ pub fn determine_optimal_clusters(
             return 1;
         }
 
-        // First stage: Find initial estimate using ratio of BIC changes
+        // First stage: Using BIC criterion
         let first_change = bic_changes[0];
         if first_change < 0.0 {
             return 1;
         }
 
-        let mut initial_k = 1;
+        // Use 0.04 threshold per documentation
         const BIC_CHANGE_THRESHOLD: f64 = 0.04;
+
+        let mut initial_k = max_k;
         for (i, &change) in bic_changes.iter().enumerate() {
             let ratio = change / first_change;
             if ratio < BIC_CHANGE_THRESHOLD {
-                initial_k = i + 2; // +1 for 1-based, +1 for the next cluster after change
+                initial_k = (i as i32) + 2; // +2 because i is 0-based and we need the next k
                 break;
             }
         }
 
         // Second stage: Find largest relative increase in distance
-        refine_optimal_clusters(initial_k as i32, &distance_ratios)
+        refine_optimal_clusters(initial_k, &distance_ratios)
     } else {
-        // Use AIC changes
+        // Use AIC criterion
         if aic_changes.is_empty() {
             return 1;
         }
 
-        // First stage: Find initial estimate using ratio of AIC changes
         let first_change = aic_changes[0];
         if first_change < 0.0 {
             return 1;
         }
 
-        let mut initial_k = 1;
-        const BIC_CHANGE_THRESHOLD: f64 = 0.4;
+        // For AIC we use 0.4 threshold per documentation
+        const AIC_CHANGE_THRESHOLD: f64 = 0.4;
+
+        let mut initial_k = max_k;
         for (i, &change) in aic_changes.iter().enumerate() {
             let ratio = change / first_change;
-            if ratio < BIC_CHANGE_THRESHOLD {
-                // Using same threshold for simplicity
-                initial_k = i + 2;
+            if ratio < AIC_CHANGE_THRESHOLD {
+                initial_k = (i as i32) + 2;
                 break;
             }
         }
 
         // Second stage: Find largest relative increase in distance
-        refine_optimal_clusters(initial_k as i32, &distance_ratios)
+        refine_optimal_clusters(initial_k, &distance_ratios)
     }
 }
 
@@ -204,7 +217,7 @@ pub fn refine_optimal_clusters(initial_k: i32, distance_ratios: &[(i32, f64)]) -
     let mut sorted_ratios = distance_ratios.to_vec();
     sorted_ratios.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Check if largest ratio is significantly larger than second largest
+    // Check if largest ratio is significantly larger than second largest (1.15 ratio threshold)
     if sorted_ratios.len() >= 2 && sorted_ratios[0].1 > sorted_ratios[1].1 * 1.15 {
         sorted_ratios[0].0
     } else if sorted_ratios.len() >= 2 {
@@ -292,7 +305,8 @@ pub fn calculate_information_criteria(
             let sc = &sub_clusters[sc_idx];
 
             for j in 0..num_continuous {
-                let mean_diff = sc.mean(j) - cluster_means[j];
+                let mean_j = cf_entry_mean(sc, j);
+                let mean_diff = mean_j - cluster_means[j];
                 cluster_vars[j] += (sc.n as f64) * mean_diff.powi(2);
             }
         }
@@ -327,6 +341,8 @@ pub fn calculate_information_criteria(
         .iter()
         .map(|sc| sc.n)
         .sum::<i32>() as f64;
+
+    // Formula from documentation: mJ ≡ J(2K^A + ∑(k=1 to K^B)(L_k - 1))
     let num_params =
         (k as f64) *
         // For continuous variables: means and variances
@@ -340,7 +356,7 @@ pub fn calculate_information_criteria(
                     .sum::<usize>() as f64
             ));
 
-    // Calculate BIC and AIC
+    // Calculate BIC and AIC according to documentation
     let bic = -2.0 * log_likelihood + num_params * total_cases.ln();
     let aic = -2.0 * log_likelihood + 2.0 * num_params;
 

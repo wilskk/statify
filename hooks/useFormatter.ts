@@ -1,21 +1,34 @@
 import { Table } from "@/types/Table";
 
-export function formatDisplayNumber(
-    num: number | undefined | null
-): string | null {
-    if (typeof num === "undefined" || num === null) return null;
+export function formatDisplayNumber(num: number | undefined | null): string {
+    if (typeof num === "undefined") return "undefined";
+    if (num === null) return "null";
 
+    // Handle special values
+    if (isNaN(num)) return "NaN";
+    if (!isFinite(num)) return num > 0 ? "Infinity" : "-Infinity";
+
+    // Handle very small numbers that are essentially zero
+    if (Math.abs(num) < 1e-10) {
+        return "0";
+    }
+
+    // Handle very small non-zero numbers with scientific notation
+    if (Math.abs(num) > 0 && Math.abs(num) < 1e-5) {
+        return num.toExponential(3);
+    }
+
+    // Handle integers
     if (Number.isInteger(num)) {
-        return num.toString();
-    } else {
+        // Special case for 100
         if (num === 100) {
             return "100.0";
-        } else if (num < 1 && num > 0) {
-            return num.toFixed(3).replace(/0+$/, "");
-        } else {
-            return num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
         }
+        return num.toString();
     }
+
+    // Handle all other decimal numbers consistently
+    return num.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 // Helper function to ensure columnHeaders are sufficient for all rows

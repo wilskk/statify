@@ -1,4 +1,5 @@
 use crate::twostep::models::result::CFEntry;
+use super::cf_tree::{ cf_entry_new, cf_entry_mean, cf_entry_variance };
 
 // Calculate distance between two clusters
 pub fn calculate_cluster_distance(
@@ -11,8 +12,8 @@ pub fn calculate_cluster_distance(
         let mut sum_squared = 0.0;
 
         for i in 0..cluster1.sum_values.len() {
-            let mean1 = cluster1.mean(i);
-            let mean2 = cluster2.mean(i);
+            let mean1 = cf_entry_mean(cluster1, i);
+            let mean2 = cf_entry_mean(cluster2, i);
             sum_squared += (mean1 - mean2).powi(2);
         }
 
@@ -46,10 +47,9 @@ pub fn calculate_xi_term(cluster: &CFEntry) -> f64 {
 
     // Continuous variables contribution
     for i in 0..cluster.sum_values.len() {
-        // σ²k is a small constant (1e-10) to avoid log(0)
-        // σ²vk is the variance of the kth variable in the cluster
+        // σ²k is a very small constant to avoid log(0)
         let sigma2_k = 1e-10;
-        let sigma2_vk = cluster.variance(i).max(1e-10);
+        let sigma2_vk = cf_entry_variance(cluster, i).max(1e-10);
         xi += 0.5 * (sigma2_k + sigma2_vk).ln();
     }
 
@@ -74,7 +74,7 @@ pub fn calculate_xi_term(cluster: &CFEntry) -> f64 {
 
 // Helper function to create a combined cluster from two clusters
 pub fn combine_clusters(cluster1: &CFEntry, cluster2: &CFEntry) -> CFEntry {
-    let mut combined = CFEntry::new(cluster1.sum_values.len(), cluster1.category_counts.len());
+    let mut combined = cf_entry_new(cluster1.sum_values.len(), cluster1.category_counts.len());
 
     // Sum counts
     combined.n = cluster1.n + cluster2.n;
@@ -96,6 +96,10 @@ pub fn combine_clusters(cluster1: &CFEntry, cluster2: &CFEntry) -> CFEntry {
         }
     }
 
+    // Combine case indices
+    combined.cases.extend(cluster1.cases.iter());
+    combined.cases.extend(cluster2.cases.iter());
+
     combined
 }
 
@@ -108,7 +112,7 @@ pub fn calculate_euclidean_distance(
     let mut sum_squared = 0.0;
 
     for i in 0..num_continuous.min(data_point.len()).min(cluster.sum_values.len()) {
-        let cluster_mean = cluster.mean(i);
+        let cluster_mean = cf_entry_mean(cluster, i);
         sum_squared += (data_point[i] - cluster_mean).powi(2);
     }
 
@@ -116,7 +120,6 @@ pub fn calculate_euclidean_distance(
 }
 
 // Calculate log-likelihood distance between a data point and a cluster
-// Based on the formula d(j, s) = ξj + ξs - ξ<j,s> adapted for point-to-cluster case
 pub fn calculate_log_likelihood_distance(
     data_point: &[f64],
     cat_point: &[String],
@@ -124,9 +127,6 @@ pub fn calculate_log_likelihood_distance(
     num_continuous: usize,
     num_categorical: usize
 ) -> f64 {
-    // For a point-to-cluster distance, we adapt the cluster-to-cluster formula
-    // by treating the point as a degenerate cluster with n=1
-
     // Create a temporary cluster representing the single point
     let point_cluster = create_point_cluster(
         data_point,
@@ -156,7 +156,7 @@ pub fn create_point_cluster(
     num_continuous: usize,
     num_categorical: usize
 ) -> CFEntry {
-    let mut entry = CFEntry::new(num_continuous, num_categorical);
+    let mut entry = cf_entry_new(num_continuous, num_categorical);
 
     // Set count to 1
     entry.n = 1;

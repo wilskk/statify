@@ -1,3 +1,4 @@
+// evaluation.rs
 use std::collections::HashMap;
 
 use crate::twostep::models::{
@@ -6,6 +7,7 @@ use crate::twostep::models::{
 };
 
 use super::core::{ calculate_euclidean_distance, calculate_log_likelihood_distance };
+use super::cf_tree::{ cf_entry_new, cf_entry_mean };
 
 // Calculate silhouette coefficient for cluster quality assessment
 pub fn calculate_silhouette(processed_data: &ProcessedData, use_euclidean: bool) -> f64 {
@@ -123,7 +125,7 @@ pub fn calculate_silhouette(processed_data: &ProcessedData, use_euclidean: bool)
 
 // Helper function to create a CFEntry representing a single data point
 fn create_point_as_cfentry(continuous: &[f64], categorical: &[String]) -> CFEntry {
-    let mut entry = CFEntry::new(continuous.len(), categorical.len());
+    let mut entry = cf_entry_new(continuous.len(), categorical.len());
 
     // Set count to 1
     entry.n = 1;
@@ -142,7 +144,7 @@ fn create_point_as_cfentry(continuous: &[f64], categorical: &[String]) -> CFEntr
     entry
 }
 
-// Calculate model summary (unchanged)
+// Calculate model summary
 pub fn calculate_model_summary(
     processed_data: &ProcessedData,
     config: &ClusterConfig

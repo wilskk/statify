@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { TwoStepClusterType } from "./two-step-cluster";
+import { ResultJson } from "@/types/Table";
 
 export type TwoStepClusterAnalysisType = {
     configData: TwoStepClusterType;
@@ -26,4 +27,6 @@ export type TwoStepClusterFinalResultType = {
         analyticId: number,
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
+
+    formattedResult: ResultJson;
 };

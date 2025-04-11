@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocCurveAnalysisType } from "@/models/classify/roc-curve/roc-curve-worker";
-import init, { RocCurve } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 import { transformROCCurveResult } from "./roc-curve-analysis-formatter";
 import { resultROCCurve } from "./roc-curve-analysis-output";
 
@@ -36,30 +36,30 @@ export async function analyzeRocCurve({
 
     console.log(configData);
 
-    const rocCurve = new RocCurve(
-        slicedDataForTest,
-        slicedDataForState,
-        varDefsForTest,
-        varDefsForState,
-        configData
-    );
+    // const rocCurve = new RocCurve(
+    //     slicedDataForTest,
+    //     slicedDataForState,
+    //     varDefsForTest,
+    //     varDefsForState,
+    //     configData
+    // );
 
-    const results = rocCurve.get_formatted_results();
-    const error = rocCurve.get_all_errors();
+    // const results = rocCurve.get_formatted_results();
+    // const error = rocCurve.get_all_errors();
 
-    console.log("results", results);
-    console.log("error", error);
+    // console.log("results", results);
+    // console.log("error", error);
 
-    const formattedResults = transformROCCurveResult(results);
-    console.log("formattedResults", formattedResults);
+    // const formattedResults = transformROCCurveResult(results);
+    // console.log("formattedResults", formattedResults);
 
-    /*
-     * 🎉 Final Result Process 🎯
-     * */
-    await resultROCCurve({
-        addLog,
-        addAnalytic,
-        addStatistic,
-        formattedResult: formattedResults ?? [],
-    });
+    // /*
+    //  * 🎉 Final Result Process 🎯
+    //  * */
+    // await resultROCCurve({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }
