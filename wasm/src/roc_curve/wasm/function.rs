@@ -5,6 +5,7 @@ use crate::roc_curve::models::{
     data::AnalysisData,
     result::ROCCurveResult,
 };
+use crate::roc_curve::utils::converter::format_result;
 use crate::roc_curve::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::roc_curve::stats::core;
 
@@ -50,7 +51,7 @@ pub fn run_analysis(
         };
     }
 
-    // Step 4: Calculate Area Under ROC Curve
+    // Step 3: Calculate Area Under ROC Curve
     let mut area_under_roc_curve = None;
     executed_functions.push("calculate_area_under_roc_curve".to_string());
     match core::calculate_area_under_roc_curve(data, config) {
@@ -81,6 +82,10 @@ pub fn get_results(result: &Option<ROCCurveResult>) -> Result<JsValue, JsValue> 
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<ROCCurveResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {

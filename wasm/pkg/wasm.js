@@ -182,6 +182,32 @@ function passArrayF64ToWasm0(arg, malloc) {
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }
+
+function passArrayJsValueToWasm0(array, malloc) {
+    const ptr = malloc(array.length * 4, 4) >>> 0;
+    for (let i = 0; i < array.length; i++) {
+        const add = addToExternrefTable0(array[i]);
+        getDataViewMemory0().setUint32(ptr + 4 * i, add, true);
+    }
+    WASM_VECTOR_LEN = array.length;
+    return ptr;
+}
+
+function getArrayF64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_export_4.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
+}
 /**
  * @param {Float64Array} data
  * @param {Float64Array} forecast
@@ -252,10 +278,6 @@ export function mape(data, forecast) {
     return ret;
 }
 
-function getArrayF64FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
-}
 /**
  * @param {Float64Array} data
  * @returns {Float64Array}
@@ -300,27 +322,6 @@ function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_export_4.get(idx);
     wasm.__externref_table_dealloc(idx);
     return value;
-}
-
-function passArrayJsValueToWasm0(array, malloc) {
-    const ptr = malloc(array.length * 4, 4) >>> 0;
-    for (let i = 0; i < array.length; i++) {
-        const add = addToExternrefTable0(array[i]);
-        getDataViewMemory0().setUint32(ptr + 4 * i, add, true);
-    }
-    WASM_VECTOR_LEN = array.length;
-    return ptr;
-}
-
-function getArrayJsValueFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    const mem = getDataViewMemory0();
-    const result = [];
-    for (let i = ptr; i < ptr + 4 * len; i += 4) {
-        result.push(wasm.__wbindgen_export_4.get(mem.getUint32(i, true)));
-    }
-    wasm.__externref_drop_slice(ptr, len);
-    return result;
 }
 
 let cachedUint32ArrayMemory0 = null;
@@ -837,13 +838,22 @@ export class Decomposition {
         wasm.decomposition_set_trend_equation(this.__wbg_ptr, ptr0, len0);
     }
     /**
-     * @param {Float64Array} centered_ma
      * @returns {Float64Array}
      */
-    calculate_multiplicative_seasonal_component(centered_ma) {
-        const ptr0 = passArrayF64ToWasm0(centered_ma, wasm.__wbindgen_malloc);
+    calculate_centered_moving_average() {
+        const ret = wasm.decomposition_calculate_centered_moving_average(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {string} trend
+     * @returns {Float64Array}
+     */
+    multiplicative_decomposition(trend) {
+        const ptr0 = passStringToWasm0(trend, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.decomposition_calculate_multiplicative_seasonal_component(this.__wbg_ptr, ptr0, len0);
+        const ret = wasm.decomposition_multiplicative_decomposition(this.__wbg_ptr, ptr0, len0);
         var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v2;
@@ -888,6 +898,15 @@ export class Decomposition {
         return v2;
     }
     /**
+     * @returns {Float64Array}
+     */
+    additive_decomposition() {
+        const ret = wasm.decomposition_additive_decomposition(this.__wbg_ptr);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
      * @param {Float64Array} centered_ma
      * @returns {Float64Array}
      */
@@ -895,6 +914,18 @@ export class Decomposition {
         const ptr0 = passArrayF64ToWasm0(centered_ma, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.decomposition_calculate_additive_trend_component(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * @param {Float64Array} centered_ma
+     * @returns {Float64Array}
+     */
+    calculate_multiplicative_seasonal_component(centered_ma) {
+        const ptr0 = passArrayF64ToWasm0(centered_ma, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.decomposition_calculate_multiplicative_seasonal_component(this.__wbg_ptr, ptr0, len0);
         var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v2;
@@ -921,78 +952,46 @@ export class Decomposition {
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v2;
     }
-    /**
-     * @returns {Float64Array}
-     */
-    calculate_centered_moving_average() {
-        const ret = wasm.decomposition_calculate_centered_moving_average(this.__wbg_ptr);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {string} trend
-     * @returns {Float64Array}
-     */
-    multiplicative_decomposition(trend) {
-        const ptr0 = passStringToWasm0(trend, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.decomposition_multiplicative_decomposition(this.__wbg_ptr, ptr0, len0);
-        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v2;
-    }
-    /**
-     * @returns {Float64Array}
-     */
-    additive_decomposition() {
-        const ret = wasm.decomposition_additive_decomposition(this.__wbg_ptr);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
 }
 
-const RocAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+const RocCurveFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_rocanalysis_free(ptr >>> 0, 1));
+    : new FinalizationRegistry(ptr => wasm.__wbg_roccurve_free(ptr >>> 0, 1));
 
-export class RocAnalysis {
+export class RocCurve {
 
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
-        RocAnalysisFinalization.unregister(this);
+        RocCurveFinalization.unregister(this);
         return ptr;
     }
 
     free() {
         const ptr = this.__destroy_into_raw();
-        wasm.__wbg_rocanalysis_free(ptr, 0);
+        wasm.__wbg_roccurve_free(ptr, 0);
     }
     /**
      * @param {any} test_data
      * @param {any} state_data
-     * @param {any} group_data
      * @param {any} test_data_defs
      * @param {any} state_data_defs
-     * @param {any} group_data_defs
      * @param {any} config_data
      */
-    constructor(test_data, state_data, group_data, test_data_defs, state_data_defs, group_data_defs, config_data) {
-        const ret = wasm.rocanalysis_new(test_data, state_data, group_data, test_data_defs, state_data_defs, group_data_defs, config_data);
+    constructor(test_data, state_data, test_data_defs, state_data_defs, config_data) {
+        const ret = wasm.roccurve_new(test_data, state_data, test_data_defs, state_data_defs, config_data);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
         this.__wbg_ptr = ret[0] >>> 0;
-        RocAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        RocCurveFinalization.register(this, this.__wbg_ptr, this);
         return this;
     }
     /**
      * @returns {any}
      */
     get_results() {
-        const ret = wasm.rocanalysis_get_results(this.__wbg_ptr);
+        const ret = wasm.roccurve_get_results(this.__wbg_ptr);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
@@ -1002,7 +1001,7 @@ export class RocAnalysis {
      * @returns {any}
      */
     get_formatted_results() {
-        const ret = wasm.rocanalysis_get_formatted_results(this.__wbg_ptr);
+        const ret = wasm.roccurve_get_formatted_results(this.__wbg_ptr);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
@@ -1012,7 +1011,7 @@ export class RocAnalysis {
      * @returns {any}
      */
     get_executed_functions() {
-        const ret = wasm.rocanalysis_get_executed_functions(this.__wbg_ptr);
+        const ret = wasm.roccurve_get_executed_functions(this.__wbg_ptr);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
@@ -1022,14 +1021,14 @@ export class RocAnalysis {
      * @returns {any}
      */
     get_all_errors() {
-        const ret = wasm.rocanalysis_get_all_errors(this.__wbg_ptr);
+        const ret = wasm.roccurve_get_all_errors(this.__wbg_ptr);
         return ret;
     }
     /**
      * @returns {any}
      */
     clear_errors() {
-        const ret = wasm.rocanalysis_clear_errors(this.__wbg_ptr);
+        const ret = wasm.roccurve_clear_errors(this.__wbg_ptr);
         return ret;
     }
 }
@@ -1202,6 +1201,16 @@ export class Smoothing {
         return v1;
     }
     /**
+     * @param {Float64Array} forecast
+     * @returns {any}
+     */
+    smoothing_evaluation(forecast) {
+        const ptr0 = passArrayF64ToWasm0(forecast, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.smoothing_smoothing_evaluation(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
      * @param {number} alpha
      * @param {number} beta
      * @returns {Float64Array}
@@ -1224,16 +1233,6 @@ export class Smoothing {
         var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v1;
-    }
-    /**
-     * @param {Float64Array} forecast
-     * @returns {any}
-     */
-    smoothing_evaluation(forecast) {
-        const ptr0 = passArrayF64ToWasm0(forecast, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.smoothing_smoothing_evaluation(this.__wbg_ptr, ptr0, len0);
-        return ret;
     }
 }
 

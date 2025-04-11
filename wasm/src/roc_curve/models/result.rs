@@ -20,14 +20,6 @@ pub struct CaseProcessingSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PrecisionRecallCoordinate {
-    #[serde(rename = "positive_if_greater_than")]
-    pub positive_if_greater_than: f64,
-    pub precision: f64,
-    pub recall: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RocCoordinate {
     #[serde(rename = "positive_if_greater_than")]
     pub positive_if_greater_than: f64,
@@ -53,13 +45,4 @@ pub struct Interval {
     pub lower_bound: f64,
     #[serde(rename = "upper_bound")]
     pub upper_bound: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ClassifierEvaluationMetrics {
-    #[serde(rename = "gini_index")]
-    pub gini_index: f64,
-    #[serde(rename = "max_k_s")]
-    pub max_k_s: f64,
-    pub cutoff: f64,
 }
