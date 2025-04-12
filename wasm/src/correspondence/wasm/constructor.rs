@@ -22,8 +22,10 @@ impl CorrespondenceAnalysis {
     pub fn new(
         row_data: JsValue,
         col_data: JsValue,
+        weight_data: JsValue,
         row_data_defs: JsValue,
         col_data_defs: JsValue,
+        weight_data_defs: JsValue,
         config_data: JsValue
     ) -> Result<CorrespondenceAnalysis, JsValue> {
         // Initialize error collector
@@ -48,6 +50,15 @@ impl CorrespondenceAnalysis {
             }
         };
 
+        let weight_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(weight_data) {
+            Ok(data) => data,
+            Err(e) => {
+                let msg = format!("Failed to parse weight data: {}", e);
+                error_collector.add_error("constructor.weight_data", &msg);
+                return Err(string_to_js_error(msg));
+            }
+        };
+
         let row_data_defs: Vec<Vec<VariableDefinition>> = match
             serde_wasm_bindgen::from_value(row_data_defs)
         {
@@ -66,6 +77,17 @@ impl CorrespondenceAnalysis {
             Err(e) => {
                 let msg = format!("Failed to parse column data definitions: {}", e);
                 error_collector.add_error("constructor.col_data_defs", &msg);
+                return Err(string_to_js_error(msg));
+            }
+        };
+
+        let weight_data_defs: Vec<Vec<VariableDefinition>> = match
+            serde_wasm_bindgen::from_value(weight_data_defs)
+        {
+            Ok(data) => data,
+            Err(e) => {
+                let msg = format!("Failed to parse weight data definitions: {}", e);
+                error_collector.add_error("constructor.weight_data_defs", &msg);
                 return Err(string_to_js_error(msg));
             }
         };
@@ -117,8 +139,10 @@ impl CorrespondenceAnalysis {
         let data = AnalysisData {
             row_data,
             col_data,
+            weight_data,
             row_data_defs,
             col_data_defs,
+            weight_data_defs,
         };
 
         // Create instance
@@ -144,6 +168,10 @@ impl CorrespondenceAnalysis {
     // Use functions from function.rs
     pub fn get_results(&self) -> Result<JsValue, JsValue> {
         function::get_results(&self.result)
+    }
+
+    pub fn get_formatted_results(&self) -> Result<JsValue, JsValue> {
+        function::get_formatted_results(&self.result)
     }
 
     pub fn get_all_errors(&self) -> JsValue {

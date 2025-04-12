@@ -108,6 +108,8 @@ pub struct VariableDefinition {
 pub struct AnalysisData {
     pub row_data: Vec<Vec<DataRecord>>,
     pub col_data: Vec<Vec<DataRecord>>,
+    pub weight_data: Vec<Vec<DataRecord>>,
     pub row_data_defs: Vec<Vec<VariableDefinition>>,
     pub col_data_defs: Vec<Vec<VariableDefinition>>,
+    pub weight_data_defs: Vec<Vec<VariableDefinition>>,
 }

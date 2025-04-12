@@ -9,11 +9,14 @@ export interface Table {
     rows: Row[];
 }
 
-export interface ColumnHeader {
+interface ColumnHeader {
     header: string;
+    key?: string;
+    children?: ColumnHeader[];
 }
 
 export interface Row {
     rowHeader: (string | null)[];
     [key: string]: any;
+    children?: Row[];
 }

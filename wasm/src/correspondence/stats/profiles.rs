@@ -24,9 +24,6 @@ pub fn calculate_row_profiles(
         return Err("Grand total is zero or negative".to_string());
     }
 
-    // Calculate column sums
-    let col_sums = calculate_column_sums(&correspondence_table.data);
-
     for (row_idx, row) in correspondence_table.data.iter().enumerate() {
         let row_sum = correspondence_table.active_margin[row_idx];
 

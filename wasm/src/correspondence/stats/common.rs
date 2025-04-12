@@ -42,6 +42,45 @@ pub fn extract_data_for_variable(
     Ok(result)
 }
 
+pub fn extract_weight_values(data: &AnalysisData) -> Vec<Vec<f64>> {
+    // Check if weight data is available and not empty
+    if data.weight_data.is_empty() {
+        // Return default weights (all 1.0)
+        return vec![vec![1.0; data.row_data.iter().map(|ds| ds.len()).sum::<usize>()]];
+    }
+
+    // Extract weight values from each dataset
+    let mut result = Vec::with_capacity(data.weight_data.len());
+
+    for dataset in &data.weight_data {
+        let mut dataset_weights = Vec::with_capacity(dataset.len());
+
+        for record in dataset {
+            // Use the first numeric value found in the record as weight
+            let weight = record.values
+                .values()
+                .find_map(|value| {
+                    match value {
+                        DataValue::Number(w) => Some(*w),
+                        _ => None,
+                    }
+                })
+                .unwrap_or(1.0); // Default to 1.0 if no numeric value found
+
+            dataset_weights.push(weight);
+        }
+
+        result.push(dataset_weights);
+    }
+
+    if result.is_empty() {
+        // Return default weights if no weights were extracted
+        vec![vec![1.0; data.row_data.iter().map(|ds| ds.len()).sum::<usize>()]]
+    } else {
+        result
+    }
+}
+
 // Get unique categories for a variable
 pub fn get_unique_categories(
     records: &[DataRecord],

@@ -16,6 +16,7 @@ pub struct CorrespondenceAnalysisResult {
 pub struct CorrespondenceTable {
     pub data: Vec<Vec<f64>>,
     pub active_margin: Vec<f64>,
+    pub active_margin_col: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

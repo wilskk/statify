@@ -18,6 +18,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { analyzeCorrespondence } from "@/services/analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { useMetaStore } from "@/stores/useMetaStore";
 
 export const CorrespondenceContainer = ({
     onClose,
@@ -25,6 +26,7 @@ export const CorrespondenceContainer = ({
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
     const tempVariables = variables.map((variables) => variables.name);
+    const meta = useMetaStore((state) => state.meta);
 
     const [formData, setFormData] = useState<CorrespondenceType>({
         ...CorrespondenceDefault,
@@ -103,6 +105,7 @@ export const CorrespondenceContainer = ({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
+                meta: meta,
                 addLog,
                 addAnalytic,
                 addStatistic,

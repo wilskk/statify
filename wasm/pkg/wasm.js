@@ -252,50 +252,6 @@ export function mape(data, forecast) {
     return ret;
 }
 
-function getArrayF64FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
-}
-/**
- * @param {Float64Array} data
- * @returns {Float64Array}
- */
-export function first_difference(data) {
-    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.first_difference(ptr0, len0);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
-/**
- * @param {Float64Array} data
- * @returns {Float64Array}
- */
-export function second_difference(data) {
-    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.second_difference(ptr0, len0);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
-/**
- * @param {Float64Array} data
- * @param {number} season
- * @returns {Float64Array}
- */
-export function seasonal_difference(data, season) {
-    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.seasonal_difference(ptr0, len0, season);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_export_4.get(idx);
     wasm.__externref_table_dealloc(idx);
@@ -310,6 +266,11 @@ function passArrayJsValueToWasm0(array, malloc) {
     }
     WASM_VECTOR_LEN = array.length;
     return ptr;
+}
+
+function getArrayF64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 
 function getArrayJsValueFromWasm0(ptr, len) {
@@ -354,6 +315,46 @@ export function partial_kj(k, j, partial_autocorrelate) {
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.partial_kj(k, j, ptr0, len0);
     return ret;
+}
+
+/**
+ * @param {Float64Array} data
+ * @returns {Float64Array}
+ */
+export function first_difference(data) {
+    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.first_difference(ptr0, len0);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+/**
+ * @param {Float64Array} data
+ * @returns {Float64Array}
+ */
+export function second_difference(data) {
+    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.second_difference(ptr0, len0);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+/**
+ * @param {Float64Array} data
+ * @param {number} season
+ * @returns {Float64Array}
+ */
+export function seasonal_difference(data, season) {
+    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.seasonal_difference(ptr0, len0, season);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
 }
 
 const AutocorrelationFinalization = (typeof FinalizationRegistry === 'undefined')
@@ -672,12 +673,14 @@ export class CorrespondenceAnalysis {
     /**
      * @param {any} row_data
      * @param {any} col_data
+     * @param {any} weight_data
      * @param {any} row_data_defs
      * @param {any} col_data_defs
+     * @param {any} weight_data_defs
      * @param {any} config_data
      */
-    constructor(row_data, col_data, row_data_defs, col_data_defs, config_data) {
-        const ret = wasm.correspondenceanalysis_new(row_data, col_data, row_data_defs, col_data_defs, config_data);
+    constructor(row_data, col_data, weight_data, row_data_defs, col_data_defs, weight_data_defs, config_data) {
+        const ret = wasm.correspondenceanalysis_new(row_data, col_data, weight_data, row_data_defs, col_data_defs, weight_data_defs, config_data);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }
@@ -690,6 +693,16 @@ export class CorrespondenceAnalysis {
      */
     get_results() {
         const ret = wasm.correspondenceanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.correspondenceanalysis_get_formatted_results(this.__wbg_ptr);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }

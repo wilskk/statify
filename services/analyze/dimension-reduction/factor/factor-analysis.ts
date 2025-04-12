@@ -42,9 +42,22 @@ export async function analyzeFactor({
     //     configData
     // );
 
-    // const result = factor.get_results();
+    // const results = factor.get_results();
     // const error = factor.get_all_errors();
 
-    // console.log(result);
-    // console.log(error);
+    // console.log("results", results);
+    // console.log("error", error);
+
+    // const formattedResults = transformClusteringResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    // /*
+    //  * 🎉 Final Result Process 🎯
+    //  * */
+    // await resultTwoStepCluster({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }
