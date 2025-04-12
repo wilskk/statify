@@ -3,6 +3,7 @@
 import React from "react";
 import {
     MenubarItem,
+    MenubarSeparator,
     MenubarSub,
     MenubarSubContent,
     MenubarSubTrigger,
@@ -24,6 +25,7 @@ const DimensionReductionMenu: React.FC = () => {
                 >
                     Correspondence Analysis
                 </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem
                     onClick={() => openModal(ModalType.OptimalScaling)}
                 >

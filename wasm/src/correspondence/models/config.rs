@@ -68,6 +68,8 @@ pub struct ModelConfig {
     pub dimensions: i32,
     #[serde(rename = "CustomDimensions")]
     pub custom_dimensions: i32,
+    #[serde(rename = "CustomQ")]
+    pub custom_q: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

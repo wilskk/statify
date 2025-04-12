@@ -78,6 +78,7 @@ export type CorrespondenceModelType = {
     ColPrincipal: boolean;
     Dimensions: number | null;
     CustomDimensions: number | null;
+    CustomQ: number | null;
 };
 
 export type CorrespondenceModelProps = {

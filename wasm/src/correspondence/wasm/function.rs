@@ -21,6 +21,9 @@ pub fn run_analysis(
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
+    // Log data to track the input data
+    web_sys::console::log_1(&format!("Data: {:?}", data).into());
+
     // Step 1: Create correspondence table
     executed_functions.push("create_correspondence_table".to_string());
     let mut correspondence_table = None;

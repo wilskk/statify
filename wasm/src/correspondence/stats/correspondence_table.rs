@@ -4,12 +4,7 @@ use crate::correspondence::models::{
     result::CorrespondenceTable,
 };
 
-use super::core::{
-    apply_equality_constraints,
-    extract_data_for_variable,
-    filter_active_categories,
-    get_unique_categories,
-};
+use super::core::{ filter_active_categories, get_unique_categories, apply_equality_constraints };
 
 // Create correspondence table from the input data and configuration
 pub fn create_correspondence_table(
@@ -22,15 +17,30 @@ pub fn create_correspondence_table(
         .as_ref()
         .ok_or("Column target variable not specified")?;
 
-    // Find the datasets containing the target variables
-    let row_data = extract_data_for_variable(data, row_var)?;
-    let col_data = extract_data_for_variable(data, col_var)?;
+    // Collect all unique row and column values from the data
+    let mut all_row_records = Vec::new();
+    for dataset in &data.row_data {
+        for record in dataset {
+            if record.values.contains_key(row_var) {
+                all_row_records.push(record.clone());
+            }
+        }
+    }
 
-    // Get unique row and column categories
-    let row_categories = get_unique_categories(&row_data, row_var)?;
-    let col_categories = get_unique_categories(&col_data, col_var)?;
+    let mut all_col_records = Vec::new();
+    for dataset in &data.col_data {
+        for record in dataset {
+            if record.values.contains_key(col_var) {
+                all_col_records.push(record.clone());
+            }
+        }
+    }
 
-    // Determine active and supplementary categories
+    // Get unique categories
+    let row_categories = get_unique_categories(&all_row_records, row_var)?;
+    let col_categories = get_unique_categories(&all_col_records, col_var)?;
+
+    // Filter active categories based on configuration
     let active_row_cats = filter_active_categories(&row_categories, &config.define_range_row)?;
     let active_col_cats = filter_active_categories(&col_categories, &config.define_range_column)?;
 
@@ -40,10 +50,22 @@ pub fn create_correspondence_table(
     let mut active_margin_row: Vec<f64> = vec![0.0; active_row_cats.len()];
     let mut active_margin_col: Vec<f64> = vec![0.0; active_col_cats.len()];
 
-    // Fill the table with data counts
-    for dataset in &data.row_data {
-        for records in dataset {
-            let row_value = match records.values.get(row_var) {
+    // Process each dataset pair
+    let min_datasets = std::cmp::min(data.row_data.len(), data.col_data.len());
+
+    for dataset_idx in 0..min_datasets {
+        let row_dataset = &data.row_data[dataset_idx];
+        let col_dataset = &data.col_data[dataset_idx];
+
+        // Match records by index within each dataset
+        let min_records = std::cmp::min(row_dataset.len(), col_dataset.len());
+
+        for record_idx in 0..min_records {
+            let row_record = &row_dataset[record_idx];
+            let col_record = &col_dataset[record_idx];
+
+            // Extract row value
+            let row_value = match row_record.values.get(row_var) {
                 Some(DataValue::Text(s)) => s.clone(),
                 Some(DataValue::Number(n)) => n.to_string(),
                 _ => {
@@ -51,7 +73,8 @@ pub fn create_correspondence_table(
                 }
             };
 
-            let col_value = match records.values.get(col_var) {
+            // Extract column value
+            let col_value = match col_record.values.get(col_var) {
                 Some(DataValue::Text(s)) => s.clone(),
                 Some(DataValue::Number(n)) => n.to_string(),
                 _ => {
@@ -59,7 +82,7 @@ pub fn create_correspondence_table(
                 }
             };
 
-            // Find indices in the active categories
+            // Find indices in active categories
             if
                 let (Some(row_idx), Some(col_idx)) = (
                     active_row_cats.iter().position(|c| c == &row_value),
@@ -80,6 +103,15 @@ pub fn create_correspondence_table(
         &mut active_margin_col,
         config
     )?;
+
+    // Debug output
+    println!("Created correspondence table of size {}x{}", table_data.len(), if
+        table_data.is_empty()
+    {
+        0
+    } else {
+        table_data[0].len()
+    });
 
     Ok(CorrespondenceTable {
         data: table_data,

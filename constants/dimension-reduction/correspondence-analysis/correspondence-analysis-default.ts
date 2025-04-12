@@ -50,6 +50,7 @@ export const CorrespondenceModelDefault: CorrespondenceModelType = {
     ColPrincipal: false,
     Dimensions: 2,
     CustomDimensions: 0,
+    CustomQ: null,
 };
 
 export const CorrespondenceStatisticsDefault: CorrespondenceStatisticsType = {

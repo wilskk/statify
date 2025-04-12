@@ -123,9 +123,18 @@ pub fn get_normalization_parameters(config: &CorrespondenceAnalysisConfig) -> (f
         (0.0, 1.0)
     } else if config.model.custom {
         // Custom normalization with q parameter
-        // Use model.custom_dimensions as a proxy for q value
-        let q = ((config.model.custom_dimensions as f64) / 100.0).max(-1.0).min(1.0);
-        ((1.0 + q) / 2.0, (1.0 - q) / 2.0)
+        // Use custom_q if available (direct q specification), otherwise use scaled custom_dimensions
+        let q = match config.model.custom_q {
+            Some(q_value) => q_value.max(-1.0).min(1.0),
+            None => ((config.model.custom_dimensions as f64) / 100.0).max(-1.0).min(1.0),
+        };
+
+        // Calculate alpha and beta based on q using the formula from documentation
+        // q=0 (symmetrical), q=1 (row principal), q=-1 (column principal)
+        let alpha = (1.0 + q) / 2.0;
+        let beta = (1.0 - q) / 2.0;
+
+        (alpha, beta)
     } else {
         // Default to symmetrical
         (0.5, 0.5)

@@ -309,11 +309,11 @@ export const CorrespondenceModel = ({
                                                     </Label>
                                                     <div className="w-[150px]">
                                                         <Input
-                                                            id="CustomDimensions"
+                                                            id="CustomQ"
                                                             type="number"
                                                             placeholder=""
                                                             value={
-                                                                modelState.CustomDimensions ??
+                                                                modelState.CustomQ ??
                                                                 0
                                                             }
                                                             disabled={
@@ -321,7 +321,7 @@ export const CorrespondenceModel = ({
                                                             }
                                                             onChange={(e) =>
                                                                 handleChange(
-                                                                    "CustomDimensions",
+                                                                    "CustomQ",
                                                                     Number(
                                                                         e.target
                                                                             .value

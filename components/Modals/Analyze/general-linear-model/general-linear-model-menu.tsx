@@ -3,6 +3,7 @@
 import React from "react";
 import {
     MenubarItem,
+    MenubarSeparator,
     MenubarSub,
     MenubarSubContent,
     MenubarSubTrigger,
@@ -27,6 +28,7 @@ const GeneralLinearModelMenu: React.FC = () => {
                 >
                     Repeated Measures
                 </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem
                     onClick={() => openModal(ModalType.VarianceComponents)}
                 >

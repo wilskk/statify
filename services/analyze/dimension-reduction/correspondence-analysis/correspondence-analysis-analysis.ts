@@ -36,17 +36,30 @@ export async function analyzeCorrespondence({
 
     console.log(configData);
 
-    // const correspondence = new CorrespondenceAnalysis(
-    //     slicedDataForRow,
-    //     slicedDataForCol,
-    //     varDefsForRow,
-    //     varDefsForCol,
-    //     configData
-    // );
+    const correspondence = new CorrespondenceAnalysis(
+        slicedDataForRow,
+        slicedDataForCol,
+        varDefsForRow,
+        varDefsForCol,
+        configData
+    );
 
-    // const result = correspondence.get_results();
-    // const error = correspondence.get_all_errors();
+    const results = correspondence.get_results();
+    const error = correspondence.get_all_errors();
 
-    // console.log(result);
-    // console.log(error);
+    // console.log("results", results);
+    // console.log("error", error);
+
+    // const formattedResults = transformClusteringResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    // /*
+    //  * 🎉 Final Result Process 🎯
+    //  * */
+    // await resultTwoStepCluster({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }

@@ -3,6 +3,7 @@
 import React from "react";
 import {
     MenubarItem,
+    MenubarSeparator,
     MenubarSub,
     MenubarSubContent,
     MenubarSubTrigger,
@@ -34,17 +35,20 @@ const ClassifyMenu: React.FC = () => {
                 >
                     Cluster Silhouettes
                 </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.Tree)}>
                     Tree
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.Discriminant)}>
                     Discriminant
                 </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem
                     onClick={() => openModal(ModalType.NearestNeighbor)}
                 >
                     Nearest Neighbor
                 </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.ROCCurve)}>
                     ROC Curve
                 </MenubarItem>
