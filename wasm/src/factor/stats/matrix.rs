@@ -2,14 +2,18 @@ use std::collections::HashMap;
 
 use nalgebra::{ DMatrix, DVector };
 
-use crate::factor::models::result::{
-    AntiImageMatrices,
-    CorrelationMatrix,
-    DescriptiveStatistic,
-    InverseCorrelationMatrix,
+use crate::factor::models::{
+    config::FactorAnalysisConfig,
+    data::AnalysisData,
+    result::{
+        AntiImageMatrices,
+        CorrelationMatrix,
+        DescriptiveStatistic,
+        InverseCorrelationMatrix,
+    },
 };
 
-use super::core::incomplete_beta;
+use super::core::{ extract_data_matrix, incomplete_beta };
 
 pub fn calculate_matrix(
     data_matrix: &DMatrix<f64>,
@@ -66,9 +70,11 @@ pub fn calculate_matrix(
 
 // Calculate descriptive statistics
 pub fn calculate_descriptive_statistics(
-    data_matrix: &DMatrix<f64>,
-    var_names: &[String]
-) -> Vec<DescriptiveStatistic> {
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<Vec<DescriptiveStatistic>, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+
     let n_rows = data_matrix.nrows();
     let n_cols = data_matrix.ncols();
     let mut stats = Vec::with_capacity(n_cols);
@@ -95,12 +101,29 @@ pub fn calculate_descriptive_statistics(
         });
     }
 
-    stats
+    Ok(stats)
 }
 
-// Create correlation matrix for results
-pub fn create_correlation_matrix(matrix: &DMatrix<f64>, var_names: &[String]) -> CorrelationMatrix {
-    let n_vars = matrix.nrows();
+// Independent correlation matrix functions
+pub fn calculate_correlation_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<CorrelationMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let matrix = calculate_matrix(&data_matrix, "correlation")?;
+
+    let n_vars = var_names.len();
+    if matrix.nrows() != n_vars || matrix.ncols() != n_vars {
+        return Err(
+            format!(
+                "Matrix dimensions {}x{} don't match variable count {}",
+                matrix.nrows(),
+                matrix.ncols(),
+                n_vars
+            )
+        );
+    }
+
     let mut correlations = HashMap::new();
     let mut sig_values = HashMap::new();
 
@@ -138,18 +161,89 @@ pub fn create_correlation_matrix(matrix: &DMatrix<f64>, var_names: &[String]) ->
         sig_values.insert(var_name.clone(), var_sig_values);
     }
 
-    CorrelationMatrix {
+    Ok(CorrelationMatrix {
         correlations,
         sig_values,
-    }
+    })
 }
 
-// Create inverse correlation matrix for results
-pub fn create_inverse_correlation_matrix(
-    inverse: &DMatrix<f64>,
-    var_names: &[String]
-) -> InverseCorrelationMatrix {
-    let n_vars = inverse.nrows();
+pub fn calculate_covariance_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<CorrelationMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let matrix = calculate_matrix(&data_matrix, "covariance")?;
+
+    let n_vars = var_names.len();
+    if matrix.nrows() != n_vars || matrix.ncols() != n_vars {
+        return Err(
+            format!(
+                "Matrix dimensions {}x{} don't match variable count {}",
+                matrix.nrows(),
+                matrix.ncols(),
+                n_vars
+            )
+        );
+    }
+
+    let mut correlations = HashMap::new();
+    let mut sig_values = HashMap::new();
+
+    for i in 0..n_vars {
+        let var_name = &var_names[i];
+        let mut var_correlations = HashMap::new();
+        let mut var_sig_values = HashMap::new();
+
+        for j in 0..n_vars {
+            let other_var = &var_names[j];
+            var_correlations.insert(other_var.clone(), matrix[(i, j)]);
+
+            // Calculate significance (p-value)
+            let p_value = if i == j {
+                0.0
+            } else {
+                // Fisher's z-transformation for correlation significance
+                let n = matrix.nrows();
+                let r = matrix[(i, j)];
+                let z = 0.5 * ((1.0 + r) / (1.0 - r)).ln();
+                let se = 1.0 / ((n - 3) as f64).sqrt();
+                let t = z / se;
+
+                // Two-tailed p-value approximation using t distribution with n-2 degrees of freedom
+                let df = n - 2;
+                let x = (df as f64) / ((df as f64) + t * t);
+                let beta = 0.5 * incomplete_beta(0.5 * (df as f64), 0.5, x);
+                2.0 * beta
+            };
+
+            var_sig_values.insert(other_var.clone(), p_value);
+        }
+
+        correlations.insert(var_name.clone(), var_correlations);
+        sig_values.insert(var_name.clone(), var_sig_values);
+    }
+
+    Ok(CorrelationMatrix {
+        correlations,
+        sig_values,
+    })
+}
+
+pub fn calculate_inverse_correlation_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<InverseCorrelationMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+
+    let inverse = match corr_matrix.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("Could not invert correlation matrix".to_string());
+        }
+    };
+
+    let n_vars = var_names.len();
     let mut inverse_correlations = HashMap::new();
 
     for i in 0..n_vars {
@@ -164,17 +258,26 @@ pub fn create_inverse_correlation_matrix(
         inverse_correlations.insert(var_name.clone(), var_inverse);
     }
 
-    InverseCorrelationMatrix {
+    Ok(InverseCorrelationMatrix {
         inverse_correlations,
-    }
+    })
 }
 
-// Calculate anti-image matrices
 pub fn calculate_anti_image_matrices(
-    inverse: &DMatrix<f64>,
-    var_names: &[String]
-) -> AntiImageMatrices {
-    let n_vars = inverse.nrows();
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<AntiImageMatrices, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+
+    let inverse = match corr_matrix.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("Could not invert correlation matrix".to_string());
+        }
+    };
+
+    let n_vars = var_names.len();
     let mut anti_image_covariance = HashMap::new();
     let mut anti_image_correlation = HashMap::new();
 
@@ -209,8 +312,8 @@ pub fn calculate_anti_image_matrices(
         anti_image_correlation.insert(var_name.clone(), var_corr);
     }
 
-    AntiImageMatrices {
+    Ok(AntiImageMatrices {
         anti_image_covariance,
         anti_image_correlation,
-    }
+    })
 }

@@ -4,6 +4,7 @@ use nalgebra::DMatrix;
 
 use crate::factor::models::{
     config::FactorAnalysisConfig,
+    data::AnalysisData,
     result::{
         ComponentTransformationMatrix,
         ExtractionResult,
@@ -11,6 +12,8 @@ use crate::factor::models::{
         RotationResult,
     },
 };
+
+use super::core::{ calculate_matrix, extract_data_matrix, extract_factors };
 
 // Rotate factors using specified method
 pub fn rotate_factors(
@@ -964,11 +967,15 @@ pub fn rotate_promax(
     })
 }
 
-// Create rotated component matrix result
-pub fn create_rotated_component_matrix(
-    rotation_result: &RotationResult,
-    var_names: &[String]
-) -> RotatedComponentMatrix {
+pub fn calculate_rotated_component_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<RotatedComponentMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+    let rotation_result = rotate_factors(&extraction_result, config)?;
+
     let mut components = HashMap::new();
     let rotated_loadings = &rotation_result.rotated_loadings;
     let n_rows = rotated_loadings.nrows();
@@ -986,15 +993,21 @@ pub fn create_rotated_component_matrix(
         }
     }
 
-    RotatedComponentMatrix {
+    Ok(RotatedComponentMatrix {
         components,
-    }
+    })
 }
 
-// Create component transformation matrix result
-pub fn create_component_transformation_matrix(
-    rotation_result: &RotationResult
-) -> ComponentTransformationMatrix {
+pub fn calculate_component_transformation_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ComponentTransformationMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+    let rotation_result = rotate_factors(&extraction_result, config)?;
+
+    // Create component transformation matrix directly
     let transformation_matrix = &rotation_result.transformation_matrix;
     let n_rows = transformation_matrix.nrows();
     let n_cols = transformation_matrix.ncols();
@@ -1011,7 +1024,5 @@ pub fn create_component_transformation_matrix(
         components.push(row);
     }
 
-    ComponentTransformationMatrix {
-        components,
-    }
+    Ok(ComponentTransformationMatrix { components })
 }

@@ -22,6 +22,9 @@ pub fn run_analysis(
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
+    // Log data to track the input data
+    web_sys::console::log_1(&format!("Data: {:?}", data).into());
+
     // Step 1: Case Processing Summary (always executed)
     executed_functions.push("case_processing_summary".to_string());
     let mut case_processing_summary = None;

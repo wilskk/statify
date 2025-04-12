@@ -1,26 +1,34 @@
 use std::collections::HashMap;
-
 use nalgebra::DMatrix;
 
 use crate::factor::models::{
     config::FactorAnalysisConfig,
+    data::AnalysisData,
     result::{
         Communalities,
         ComponentMatrix,
         ComponentScoreCoefficientMatrix,
         ComponentScoreCovarianceMatrix,
-        ExtractionResult,
+        ComponentTransformationMatrix,
         ReproducedCorrelations,
+        RotatedComponentMatrix,
+        RotationResult,
         ScreePlot,
         TotalVarianceComponent,
         TotalVarianceExplained,
     },
 };
 
-pub fn create_communalities(
-    extraction_result: &ExtractionResult,
-    var_names: &[String]
-) -> Communalities {
+use super::core::{ calculate_matrix, extract_data_matrix, extract_factors };
+
+pub fn calculate_communalities(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<Communalities, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
     let mut initial = HashMap::new();
     let mut extraction = HashMap::new();
 
@@ -31,51 +39,74 @@ pub fn create_communalities(
         }
     }
 
-    Communalities {
+    Ok(Communalities {
         initial,
         extraction,
-    }
+    })
 }
 
-// Create total variance explained result
-pub fn create_total_variance_explained(
-    extraction_result: &ExtractionResult
-) -> TotalVarianceExplained {
+pub fn calculate_total_variance_explained(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<TotalVarianceExplained, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
     let n_factors = extraction_result.n_factors;
-    let mut initial_eigenvalues = Vec::with_capacity(n_factors);
+    let n_variables = var_names.len();
+
+    let mut initial_eigenvalues = Vec::with_capacity(n_variables);
     let mut extraction_sums = Vec::with_capacity(n_factors);
     let mut rotation_sums = Vec::new(); // Will be filled if rotation is applied
 
-    for i in 0..n_factors {
-        let eigenvalue = extraction_result.eigenvalues[i];
-        let percent = extraction_result.explained_variance[i];
-        let cumulative = extraction_result.cumulative_variance[i];
+    // Get total variance (sum of eigenvalues)
+    let total_variance: f64 = if extraction_result.eigenvalues.len() < n_variables {
+        // If we have fewer eigenvalues than variables, total variance is number of variables
+        n_variables as f64
+    } else {
+        extraction_result.eigenvalues.iter().sum()
+    };
+
+    // Fill eigenvalues for all variables
+    let mut cumulative_percent = 0.0;
+    for i in 0..n_variables {
+        let eigenvalue = if i < extraction_result.eigenvalues.len() {
+            extraction_result.eigenvalues[i]
+        } else {
+            0.0 // Eigenvalues below threshold
+        };
+
+        let percent_variance = (eigenvalue / total_variance) * 100.0;
+        cumulative_percent += percent_variance;
 
         initial_eigenvalues.push(TotalVarianceComponent {
             total: eigenvalue,
-            percent_of_variance: percent,
-            cumulative_percent: cumulative,
-        });
-
-        extraction_sums.push(TotalVarianceComponent {
-            total: eigenvalue,
-            percent_of_variance: percent,
-            cumulative_percent: cumulative,
+            percent_of_variance: percent_variance,
+            cumulative_percent: cumulative_percent,
         });
     }
 
-    TotalVarianceExplained {
+    // Only extracted components for extraction sums
+    for i in 0..n_factors {
+        extraction_sums.push(initial_eigenvalues[i].clone());
+    }
+
+    Ok(TotalVarianceExplained {
         initial_eigenvalues,
         extraction_sums,
         rotation_sums,
-    }
+    })
 }
 
-// Create component/factor matrix result
-pub fn create_component_matrix(
-    extraction_result: &ExtractionResult,
-    var_names: &[String]
-) -> ComponentMatrix {
+pub fn calculate_component_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ComponentMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
     let mut components = HashMap::new();
 
     for (i, var_name) in var_names.iter().enumerate() {
@@ -90,18 +121,20 @@ pub fn create_component_matrix(
         }
     }
 
-    ComponentMatrix {
+    Ok(ComponentMatrix {
         components,
-    }
+    })
 }
 
-// Calculate reproduced correlations
 pub fn calculate_reproduced_correlations(
-    extraction_result: &ExtractionResult,
-    original_matrix: &DMatrix<f64>,
-    var_names: &[String]
-) -> ReproducedCorrelations {
-    let n_vars = extraction_result.loadings.nrows();
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ReproducedCorrelations, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
+    let n_vars = var_names.len();
     let mut reproduced_correlation = HashMap::new();
     let mut residual = HashMap::new();
 
@@ -110,41 +143,77 @@ pub fn calculate_reproduced_correlations(
     let reproduced_matrix = loadings * loadings.transpose();
 
     for (i, var_name) in var_names.iter().enumerate() {
-        if i < n_vars {
-            let mut var_reproduced = HashMap::new();
-            let mut var_residual = HashMap::new();
+        let mut var_reproduced = HashMap::new();
+        let mut var_residual = HashMap::new();
 
-            for (j, other_var) in var_names.iter().enumerate() {
-                if j < n_vars {
-                    // Reproduced correlation
-                    let repro_corr = reproduced_matrix[(i, j)];
-                    var_reproduced.insert(other_var.clone(), repro_corr);
+        for (j, other_var) in var_names.iter().enumerate() {
+            // Reproduced correlation
+            let repro_corr = if i < reproduced_matrix.nrows() && j < reproduced_matrix.ncols() {
+                reproduced_matrix[(i, j)]
+            } else {
+                0.0
+            };
+            var_reproduced.insert(other_var.clone(), repro_corr);
 
-                    // Residual (original - reproduced)
-                    let residual_corr = original_matrix[(i, j)] - repro_corr;
-                    var_residual.insert(other_var.clone(), residual_corr);
-                }
-            }
+            // Residual (original - reproduced)
+            let orig_corr = if i < corr_matrix.nrows() && j < corr_matrix.ncols() {
+                corr_matrix[(i, j)]
+            } else {
+                if i == j { 1.0 } else { 0.0 }
+            };
 
-            reproduced_correlation.insert(var_name.clone(), var_reproduced);
-            residual.insert(var_name.clone(), var_residual);
+            let residual_corr = orig_corr - repro_corr;
+            var_residual.insert(other_var.clone(), residual_corr);
         }
+
+        reproduced_correlation.insert(var_name.clone(), var_reproduced);
+        residual.insert(var_name.clone(), var_residual);
     }
 
-    ReproducedCorrelations {
+    Ok(ReproducedCorrelations {
         reproduced_correlation,
         residual,
-    }
+    })
 }
 
-// Calculate factor scores
-pub fn calculate_score_coefficients(
-    matrix: &DMatrix<f64>,
-    result: &ExtractionResult,
-    config: &FactorAnalysisConfig,
-    var_names: &[String]
-) -> Result<(ComponentScoreCoefficientMatrix, ComponentScoreCovarianceMatrix), String> {
-    let loadings = &result.loadings;
+pub fn calculate_scree_plot(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ScreePlot, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
+    let n_variables = var_names.len();
+
+    // Ensure we have eigenvalues for all variables
+    let mut eigenvalues = extraction_result.eigenvalues.clone();
+
+    // Pad with zeros if needed
+    eigenvalues.resize(n_variables, 0.0);
+
+    // Create component numbers
+    let mut component_numbers = Vec::with_capacity(n_variables);
+    for i in 0..n_variables {
+        component_numbers.push(i + 1);
+    }
+
+    Ok(ScreePlot {
+        eigenvalues,
+        component_numbers,
+    })
+}
+
+pub fn calculate_component_score_coefficient_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ComponentScoreCoefficientMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
+    // Calculate score coefficients directly
+    let loadings = &extraction_result.loadings;
     let n_rows = loadings.nrows();
     let n_cols = loadings.ncols();
 
@@ -153,8 +222,7 @@ pub fn calculate_score_coefficients(
     // Choose factor score coefficient method
     if config.scores.regression {
         // Regression method
-        // W = R^(-1) * A where A is the loadings matrix and R is the correlation matrix
-        match matrix.clone().try_inverse() {
+        match corr_matrix.clone().try_inverse() {
             Some(inv_matrix) => {
                 coefficients = inv_matrix * loadings;
             }
@@ -166,26 +234,20 @@ pub fn calculate_score_coefficients(
         }
     } else if config.scores.bartlett {
         // Bartlett method
-        // W = (A'*U^(-2)*A)^(-1)*A'*U^(-2) where U^2 = diag(1-h_j^2)
-
-        // Calculate U^(-2) matrix - diagonal matrix of reciprocals of uniquenesses
         let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
         for i in 0..n_rows {
-            let h_squared = if i < result.communalities.len() {
-                result.communalities[i]
+            let h_squared = if i < extraction_result.communalities.len() {
+                extraction_result.communalities[i]
             } else {
                 0.0
             };
 
-            // Avoid division by zero
             let u_squared = (1.0 - h_squared).max(0.001);
             u_inv_squared[(i, i)] = 1.0 / u_squared;
         }
 
-        // Calculate (A'*U^(-2)*A)
         let a_transpose_u_inv_squared_a = loadings.transpose() * u_inv_squared.clone() * loadings;
 
-        // Invert (A'*U^(-2)*A)
         match a_transpose_u_inv_squared_a.try_inverse() {
             Some(ata_inv) => {
                 coefficients = ata_inv * loadings.transpose() * u_inv_squared;
@@ -196,29 +258,23 @@ pub fn calculate_score_coefficients(
         }
     } else if config.scores.anderson {
         // Anderson-Rubin method
-        // W = U^(-1)*A*(A'*U^(-2)*A)^(-1/2)
-
-        // Calculate U^(-1) matrix - diagonal matrix of reciprocals of sqrt of uniquenesses
         let mut u_inv = DMatrix::zeros(n_rows, n_rows);
         let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
 
         for i in 0..n_rows {
-            let h_squared = if i < result.communalities.len() {
-                result.communalities[i]
+            let h_squared = if i < extraction_result.communalities.len() {
+                extraction_result.communalities[i]
             } else {
                 0.0
             };
 
-            // Avoid division by zero
             let u_squared = (1.0 - h_squared).max(0.001);
             u_inv[(i, i)] = 1.0 / u_squared.sqrt();
             u_inv_squared[(i, i)] = 1.0 / u_squared;
         }
 
-        // Calculate A'*U^(-2)*A
         let a_transpose_u_inv_squared_a = loadings.transpose() * u_inv_squared * loadings;
 
-        // Calculate symmetric square root
         match symmetric_matrix_sqrt(&a_transpose_u_inv_squared_a) {
             Some(ata_u_sqrt) => {
                 match ata_u_sqrt.try_inverse() {
@@ -240,7 +296,7 @@ pub fn calculate_score_coefficients(
         }
     } else {
         // Default to regression method
-        match matrix.clone().try_inverse() {
+        match corr_matrix.clone().try_inverse() {
             Some(inv_matrix) => {
                 coefficients = inv_matrix * loadings;
             }
@@ -252,7 +308,7 @@ pub fn calculate_score_coefficients(
         }
     }
 
-    // Convert to result structures
+    // Convert to result structure
     let mut component_score_coefficient_matrix = ComponentScoreCoefficientMatrix {
         components: HashMap::new(),
     };
@@ -269,10 +325,22 @@ pub fn calculate_score_coefficients(
         }
     }
 
-    // Calculate factor score covariance matrix
-    // For regression method: (B'R^(-1)B)
-    // For Bartlett method: (A'U^(-2)A)^(-1)
-    // For Anderson-Rubin method: Identity matrix
+    Ok(component_score_coefficient_matrix)
+}
+
+pub fn calculate_component_score_covariance_matrix(
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<ComponentScoreCovarianceMatrix, String> {
+    let (data_matrix, var_names) = extract_data_matrix(data, config)?;
+    let corr_matrix = calculate_matrix(&data_matrix, "correlation")?;
+    let extraction_result = extract_factors(&corr_matrix, config, &var_names)?;
+
+    // Calculate score covariance matrix directly
+    let loadings = &extraction_result.loadings;
+    let n_rows = loadings.nrows();
+    let n_cols = loadings.ncols();
+
     let mut component_score_covariance_matrix = ComponentScoreCovarianceMatrix {
         components: vec![vec![0.0; n_cols]; n_cols],
     };
@@ -288,8 +356,8 @@ pub fn calculate_score_coefficients(
         // Bartlett method: (A'U^(-2)A)^(-1)
         let mut u_inv_squared = DMatrix::zeros(n_rows, n_rows);
         for i in 0..n_rows {
-            let h_squared = if i < result.communalities.len() {
-                result.communalities[i]
+            let h_squared = if i < extraction_result.communalities.len() {
+                extraction_result.communalities[i]
             } else {
                 0.0
             };
@@ -323,8 +391,12 @@ pub fn calculate_score_coefficients(
         }
     } else {
         // Regression method: (B'R^(-1)B)
-        match matrix.clone().try_inverse() {
+        // First calculate coefficients
+        let mut coefficients = DMatrix::zeros(n_rows, n_cols);
+
+        match corr_matrix.clone().try_inverse() {
             Some(r_inv) => {
+                coefficients = r_inv.clone() * loadings;
                 let cov_matrix = coefficients.transpose() * r_inv * coefficients;
                 for i in 0..n_cols {
                     for j in 0..n_cols {
@@ -347,7 +419,7 @@ pub fn calculate_score_coefficients(
         }
     }
 
-    Ok((component_score_coefficient_matrix, component_score_covariance_matrix))
+    Ok(component_score_covariance_matrix)
 }
 
 // Helper function to calculate the symmetric square root of a matrix
@@ -374,16 +446,54 @@ pub fn symmetric_matrix_sqrt(matrix: &DMatrix<f64>) -> Option<DMatrix<f64>> {
     Some(eigen.eigenvectors.clone() * d_sqrt * eigen.eigenvectors.transpose())
 }
 
-pub fn create_scree_plot(extraction_result: &ExtractionResult) -> ScreePlot {
-    let eigenvalues = extraction_result.eigenvalues.clone();
-    let mut component_numbers = Vec::with_capacity(eigenvalues.len());
+// Create rotated component matrix
+pub fn create_rotated_component_matrix(
+    rotation_result: &RotationResult,
+    var_names: &[String]
+) -> RotatedComponentMatrix {
+    let mut components = HashMap::new();
+    let rotated_loadings = &rotation_result.rotated_loadings;
+    let n_rows = rotated_loadings.nrows();
+    let n_cols = rotated_loadings.ncols();
 
-    for i in 0..eigenvalues.len() {
-        component_numbers.push(i + 1);
+    for (i, var_name) in var_names.iter().enumerate() {
+        if i < n_rows {
+            let mut loadings = Vec::with_capacity(n_cols);
+
+            for j in 0..n_cols {
+                loadings.push(rotated_loadings[(i, j)]);
+            }
+
+            components.insert(var_name.clone(), loadings);
+        }
     }
 
-    ScreePlot {
-        eigenvalues,
-        component_numbers,
+    RotatedComponentMatrix {
+        components,
+    }
+}
+
+// Create component transformation matrix
+pub fn create_component_transformation_matrix(
+    rotation_result: &RotationResult
+) -> ComponentTransformationMatrix {
+    let transformation_matrix = &rotation_result.transformation_matrix;
+    let n_rows = transformation_matrix.nrows();
+    let n_cols = transformation_matrix.ncols();
+
+    let mut components = Vec::with_capacity(n_rows);
+
+    for i in 0..n_rows {
+        let mut row = Vec::with_capacity(n_cols);
+
+        for j in 0..n_cols {
+            row.push(transformation_matrix[(i, j)]);
+        }
+
+        components.push(row);
+    }
+
+    ComponentTransformationMatrix {
+        components,
     }
 }

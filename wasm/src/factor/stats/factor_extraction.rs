@@ -27,7 +27,7 @@ pub fn extract_factors(
     }
 }
 
-// Principal Components Analysis extraction
+// Principal Components Analysis extraction - Perbaikan untuk menyesuaikan dengan dokumentasi
 pub fn extract_principal_components(
     matrix: &DMatrix<f64>,
     config: &FactorAnalysisConfig,
@@ -37,14 +37,16 @@ pub fn extract_principal_components(
 
     // Perform eigenvalue decomposition
     let eigen = matrix.clone().symmetric_eigen();
-    let mut eigenvalues = Vec::with_capacity(n_vars);
-    let mut eigenvectors = DMatrix::zeros(n_vars, n_vars);
 
     // Sort eigenvalues and eigenvectors in descending order
     let mut indices: Vec<usize> = (0..n_vars).collect();
     indices.sort_by(|&i, &j|
         eigen.eigenvalues[j].partial_cmp(&eigen.eigenvalues[i]).unwrap_or(std::cmp::Ordering::Equal)
     );
+
+    // Extract all eigenvalues for reporting purposes
+    let mut eigenvalues = Vec::with_capacity(n_vars);
+    let mut eigenvectors = DMatrix::zeros(n_vars, n_vars);
 
     for i in 0..n_vars {
         eigenvalues.push(eigen.eigenvalues[indices[i]]);
@@ -77,7 +79,7 @@ pub fn extract_principal_components(
     }
 
     // Calculate explained variance
-    let total_variance: f64 = eigenvalues.iter().sum();
+    let total_variance: f64 = n_vars as f64; // For correlation matrix, total variance is number of variables
     let explained_variance: Vec<f64> = eigenvalues
         .iter()
         .take(n_factors)
@@ -94,7 +96,7 @@ pub fn extract_principal_components(
 
     Ok(ExtractionResult {
         loadings,
-        eigenvalues: eigenvalues.into_iter().take(n_factors).collect(),
+        eigenvalues, // Store all eigenvalues for full reporting
         communalities,
         explained_variance,
         cumulative_variance,
@@ -103,6 +105,7 @@ pub fn extract_principal_components(
     })
 }
 
+// Principal Axis Factoring - Memperbaiki penanganan konvergensi
 pub fn extract_principal_axis_factoring(
     matrix: &DMatrix<f64>,
     config: &FactorAnalysisConfig,
@@ -178,6 +181,9 @@ pub fn extract_principal_axis_factoring(
         // Perform eigenvalue decomposition on adjusted correlation matrix
         let eigen = r_matrix.clone().symmetric_eigen();
 
+        // Store all eigenvalues for reporting
+        let mut all_eigenvalues = Vec::with_capacity(n_vars);
+
         // Sort eigenvalues and eigenvectors
         let mut indices: Vec<usize> = (0..n_vars).collect();
         indices.sort_by(|&i, &j|
@@ -193,6 +199,7 @@ pub fn extract_principal_axis_factoring(
 
         let mut sorted_eigenvectors = DMatrix::zeros(n_vars, n_vars);
         for i in 0..n_vars {
+            all_eigenvalues.push(sorted_eigenvalues[i]);
             for j in 0..n_vars {
                 sorted_eigenvectors[(i, j)] = eigen.eigenvectors[(i, indices[j])];
             }
@@ -232,7 +239,7 @@ pub fn extract_principal_axis_factoring(
             }
 
             // Calculate explained variance
-            let total_variance: f64 = sorted_eigenvalues.iter().sum();
+            let total_variance: f64 = n_vars as f64; // For correlation matrix, total variance equals number of variables
             let explained_variance: Vec<f64> = sorted_eigenvalues
                 .iter()
                 .take(n_factors)
@@ -249,7 +256,7 @@ pub fn extract_principal_axis_factoring(
 
             return Ok(ExtractionResult {
                 loadings,
-                eigenvalues: sorted_eigenvalues.into_iter().take(n_factors).collect(),
+                eigenvalues: all_eigenvalues, // Store all eigenvalues for reporting
                 communalities: new_communalities,
                 explained_variance,
                 cumulative_variance,
@@ -270,7 +277,7 @@ pub fn extract_principal_axis_factoring(
     extract_factors_from_adjusted_matrix(&r_matrix, config, var_names, communalities)
 }
 
-// Helper function to extract factors from adjusted matrix
+// Helper function to extract factors from adjusted matrix - Modified to return all eigenvalues
 fn extract_factors_from_adjusted_matrix(
     r_matrix: &DMatrix<f64>,
     config: &FactorAnalysisConfig,
@@ -282,6 +289,9 @@ fn extract_factors_from_adjusted_matrix(
     // Perform eigenvalue decomposition
     let eigen = r_matrix.clone().symmetric_eigen();
 
+    // Store all eigenvalues for reporting
+    let mut all_eigenvalues = Vec::with_capacity(n_vars);
+
     // Sort eigenvalues and eigenvectors
     let mut indices: Vec<usize> = (0..n_vars).collect();
     indices.sort_by(|&i, &j|
@@ -290,7 +300,11 @@ fn extract_factors_from_adjusted_matrix(
 
     let sorted_eigenvalues: Vec<f64> = indices
         .iter()
-        .map(|&i| eigen.eigenvalues[i].max(0.0)) // Ensure non-negative
+        .map(|&i| {
+            let val = eigen.eigenvalues[i].max(0.0); // Ensure non-negative
+            all_eigenvalues.push(val);
+            val
+        })
         .collect();
 
     let mut sorted_eigenvectors = DMatrix::zeros(n_vars, n_vars);
@@ -315,7 +329,7 @@ fn extract_factors_from_adjusted_matrix(
     }
 
     // Calculate explained variance
-    let total_variance: f64 = sorted_eigenvalues.iter().sum();
+    let total_variance: f64 = n_vars as f64; // For correlation matrix, total variance equals number of variables
     let explained_variance: Vec<f64> = sorted_eigenvalues
         .iter()
         .take(n_factors)
@@ -332,13 +346,36 @@ fn extract_factors_from_adjusted_matrix(
 
     Ok(ExtractionResult {
         loadings,
-        eigenvalues: sorted_eigenvalues.into_iter().take(n_factors).collect(),
+        eigenvalues: all_eigenvalues, // Return all eigenvalues for reporting
         communalities,
         explained_variance,
         cumulative_variance,
         n_factors,
         var_names: var_names.to_vec(),
     })
+}
+
+// Determine number of factors to retain - no change needed
+pub fn determine_factors_to_retain(eigenvalues: &[f64], config: &FactorAnalysisConfig) -> usize {
+    if let Some(max_factors) = config.extraction.max_factors {
+        let max = max_factors as usize;
+        if max > 0 && max <= eigenvalues.len() {
+            return max;
+        }
+    }
+
+    // Use eigenvalue criterion (Kaiser criterion by default)
+    let eigen_cutoff = config.extraction.eigen_val;
+    let count = eigenvalues
+        .iter()
+        .take_while(|&&val| val >= eigen_cutoff)
+        .count();
+
+    if count == 0 {
+        1 // Always retain at least one factor
+    } else {
+        count
+    }
 }
 
 // Unweighted Least Squares extraction
@@ -1080,27 +1117,4 @@ pub fn extract_image_factoring(
         n_factors,
         var_names: var_names.to_vec(),
     })
-}
-
-// Determine number of factors to retain
-pub fn determine_factors_to_retain(eigenvalues: &[f64], config: &FactorAnalysisConfig) -> usize {
-    if let Some(max_factors) = config.extraction.max_factors {
-        let max = max_factors as usize;
-        if max > 0 && max <= eigenvalues.len() {
-            return max;
-        }
-    }
-
-    // Use eigenvalue criterion (Kaiser criterion by default)
-    let eigen_cutoff = config.extraction.eigen_val;
-    let count = eigenvalues
-        .iter()
-        .take_while(|&&val| val >= eigen_cutoff)
-        .count();
-
-    if count == 0 {
-        1 // Always retain at least one factor
-    } else {
-        count
-    }
 }

@@ -1,14 +1,20 @@
 use nalgebra::DMatrix;
 
-use crate::factor::models::result::KMOBartlettsTest;
+use crate::factor::models::{
+    config::FactorAnalysisConfig,
+    data::AnalysisData,
+    result::KMOBartlettsTest,
+};
 
-use super::core::chi_square_cdf;
+use super::core::{ calculate_matrix, chi_square_cdf, extract_data_matrix };
 
-// Calculate KMO and Bartlett's test
 pub fn calculate_kmo_bartletts_test(
-    correlation_matrix: &DMatrix<f64>,
-    data_matrix: &DMatrix<f64>
-) -> KMOBartlettsTest {
+    data: &AnalysisData,
+    config: &FactorAnalysisConfig
+) -> Result<KMOBartlettsTest, String> {
+    let (data_matrix, _) = extract_data_matrix(data, config)?;
+    let correlation_matrix = calculate_matrix(&data_matrix, "correlation")?;
+
     let n_vars = correlation_matrix.nrows();
     let n_obs = data_matrix.nrows();
 
@@ -17,12 +23,12 @@ pub fn calculate_kmo_bartletts_test(
         Some(inv) => inv,
         None => {
             // If matrix is singular, return default values
-            return KMOBartlettsTest {
+            return Ok(KMOBartlettsTest {
                 kaiser_meyer_olkin: 0.0,
                 bartletts_test_chi_square: 0.0,
                 df: (n_vars * (n_vars - 1)) / 2,
                 significance: 1.0,
-            };
+            });
         }
     };
 
@@ -86,10 +92,10 @@ pub fn calculate_kmo_bartletts_test(
     // Calculate significance (p-value) using chi-square distribution
     let significance = chi_square_cdf(chi_square, df as f64);
 
-    KMOBartlettsTest {
+    Ok(KMOBartlettsTest {
         kaiser_meyer_olkin: kmo,
         bartletts_test_chi_square: chi_square,
         df,
         significance: 1.0 - significance,
-    }
+    })
 }
