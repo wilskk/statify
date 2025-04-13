@@ -44,11 +44,9 @@ pub fn calculate_descriptive_statistics(
 
     // Create combined dataset for easier processing
     let combined_data = create_combined_dataset(data, dep_var_name, &factors)?;
-    web_sys::console::log_1(&format!("Combined dataset: {:?}", combined_data).into());
 
     // Process combinations and get entries with metadata
     let entries_with_metadata = process_all_combinations(&combined_data, dep_var_name, &factors)?;
-    web_sys::console::log_1(&format!("Entries with metadata: {:?}", entries_with_metadata).into());
 
     // Build hierarchical structure
     let groups = build_hierarchical_groups(&entries_with_metadata, &factors);

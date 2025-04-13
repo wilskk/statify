@@ -119,6 +119,10 @@ impl HierarchicalCluster {
         function::get_results(&self.result)
     }
 
+    pub fn get_formatted_results(&self) -> Result<JsValue, JsValue> {
+        function::get_formatted_results(&self.result)
+    }
+
     pub fn get_all_errors(&self) -> JsValue {
         JsValue::from_str(&self.error_collector.get_error_summary())
     }

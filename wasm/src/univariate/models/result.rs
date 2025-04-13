@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub struct UnivariateResult {
     pub between_subjects_factors: HashMap<String, BetweenSubjectFactors>,
     pub descriptive_statistics: Option<HashMap<String, DescriptiveStatistics>>,
-    pub levene_test: Option<LeveneTest>,
+    pub levene_test: Option<Vec<LeveneTest>>,
     pub tests_of_between_subjects_effects: Option<TestsBetweenSubjectsEffects>,
     pub parameter_estimates: Option<ParameterEstimates>,
     pub general_estimable_function: Option<GeneralEstimableFunction>,
@@ -53,6 +53,8 @@ pub struct LeveneTest {
     pub df1: usize,
     pub df2: usize,
     pub significance: f64,
+    pub function: String,
+    pub design: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

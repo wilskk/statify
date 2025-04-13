@@ -170,10 +170,6 @@ pub fn calculate_canonical_functions(
     }
 
     Ok(CanonicalFunctions {
-        eigenvalues,
-        variance_percentage,
-        cumulative_percentage,
-        canonical_correlation,
         coefficients,
         standardized_coefficients,
         function_at_centroids,

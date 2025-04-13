@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 use crate::kmeans::models::{ config::ClusterConfig, data::AnalysisData, result::ClusteringResult };
+use crate::kmeans::utils::converter::format_result;
 use crate::kmeans::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::kmeans::stats::core;
 
@@ -155,6 +156,10 @@ pub fn get_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {

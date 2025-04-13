@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
 use crate::knn::stats::core;
+use crate::knn::utils::converter::format_result;
 use crate::knn::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
@@ -160,6 +161,10 @@ pub fn get_results(result: &Option<NearestNeighborAnalysis>) -> Result<JsValue, 
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<NearestNeighborAnalysis>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {

@@ -6,6 +6,7 @@ use crate::discriminant::models::{
     result::DiscriminantResult,
 };
 use crate::discriminant::stats::core;
+use crate::discriminant::utils::format_result;
 use crate::discriminant::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
@@ -369,6 +370,10 @@ pub fn get_results(result: &Option<DiscriminantResult>) -> Result<JsValue, JsVal
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<DiscriminantResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<DiscriminantResult>) -> Result<JsValue, JsValue> {
