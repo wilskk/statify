@@ -1,10 +1,13 @@
+// summary_processing.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
     config::UnivariateConfig,
-    data::{ AnalysisData, DataValue },
+    data::AnalysisData,
     result::BetweenSubjectFactors,
 };
+
+use super::core::data_value_to_string;
 
 /// Process basic data summary - always executed
 pub fn basic_processing_summary(
@@ -17,11 +20,7 @@ pub fn basic_processing_summary(
 
     let mut result = HashMap::new();
     let factor_names = match &config.main.fix_factor {
-        Some(names) =>
-            names
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect::<Vec<String>>(),
+        Some(names) => names,
         None => {
             return Err("No fixed factors specified in configuration".to_string());
         }
@@ -34,18 +33,9 @@ pub fn basic_processing_summary(
 
         let mut level_counts = HashMap::new();
         for records in &data.fix_factor_data[i] {
-            for record in records {
-                for (key, value) in &record.values {
-                    if key == factor_name {
-                        let level = match value {
-                            DataValue::Number(n) => n.to_string(),
-                            DataValue::Text(t) => t.clone(),
-                            DataValue::Boolean(b) => b.to_string(),
-                            DataValue::Null => "null".to_string(),
-                        };
-                        *level_counts.entry(level).or_insert(0) += 1;
-                    }
-                }
+            if let Some(value) = records.values.get(factor_name) {
+                let level = data_value_to_string(value);
+                *level_counts.entry(level).or_insert(0) += 1;
             }
         }
 

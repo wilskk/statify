@@ -1,23 +1,26 @@
+// generate_plots.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
-    config::{ PlotsConfig, UnivariateConfig },
+    config::UnivariateConfig,
     data::AnalysisData,
     result::{ ConfidenceInterval, PlotData, PlotPoint, PlotSeries },
 };
 
 use super::core::{
+    calculate_mean,
+    calculate_std_deviation,
+    calculate_t_critical,
     extract_dependent_value,
-    get_factor_combinations,
     get_factor_levels,
-    matches_combination,
+    data_value_to_string,
 };
 
 /// Generate plots based on configuration
 pub fn generate_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<HashMap<String, PlotData>, String> {
+) -> Result<Option<HashMap<String, PlotData>>, String> {
     if config.plots.src_list.is_empty() {
         return Ok(None);
     }
@@ -53,29 +56,9 @@ pub fn generate_plots(
 
                 for records in &data.dependent_data {
                     for record in records {
-                        let mut matches = false;
+                        let record_level = record.values.get(factor).map(data_value_to_string);
 
-                        for (key, value) in &record.values {
-                            if key == factor {
-                                let record_level = match value {
-                                    crate::univariate::models::data::DataValue::Number(n) =>
-                                        n.to_string(),
-                                    crate::univariate::models::data::DataValue::Text(t) =>
-                                        t.clone(),
-                                    crate::univariate::models::data::DataValue::Boolean(b) =>
-                                        b.to_string(),
-                                    crate::univariate::models::data::DataValue::Null =>
-                                        "null".to_string(),
-                                };
-
-                                if record_level == *level {
-                                    matches = true;
-                                }
-                                break;
-                            }
-                        }
-
-                        if matches {
+                        if record_level.as_deref() == Some(level) {
                             if let Some(value) = extract_dependent_value(record, &dep_var_name) {
                                 values.push(value);
                             }
@@ -88,13 +71,9 @@ pub fn generate_plots(
                 }
 
                 // Calculate mean and standard error
-                let mean = values.iter().sum::<f64>() / (values.len() as f64);
-                let variance =
-                    values
-                        .iter()
-                        .map(|x| (x - mean).powi(2))
-                        .sum::<f64>() / ((values.len() - 1) as f64);
-                let std_error = (variance / (values.len() as f64)).sqrt();
+                let mean = calculate_mean(&values);
+                let std_deviation = calculate_std_deviation(&values, Some(mean));
+                let std_error = std_deviation / (values.len() as f64).sqrt();
 
                 // Add point
                 points.push(PlotPoint {
@@ -113,10 +92,7 @@ pub fn generate_plots(
                     if config.plots.confidence_interval {
                         // Use confidence interval
                         let df = values.len() - 1;
-                        let t_critical = super::core::calculate_t_critical(
-                            df,
-                            config.options.sig_level / 2.0
-                        );
+                        let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
                         let ci_width = std_error * t_critical;
 
                         error_bars.push(ConfidenceInterval {
@@ -154,6 +130,7 @@ pub fn generate_plots(
                 }],
                 y_axis_starts_at_zero: config.plots.y_axis_start_0,
                 includes_reference_line: config.plots.include_ref_line_for_grand_mean,
+                reference_line: None,
             };
 
             // Add grand mean reference line if requested
@@ -170,8 +147,7 @@ pub fn generate_plots(
                 }
 
                 if !all_values.is_empty() {
-                    let grand_mean = all_values.iter().sum::<f64>() / (all_values.len() as f64);
-                    plot_data.reference_line = Some(grand_mean);
+                    plot_data.reference_line = Some(calculate_mean(&all_values));
                 }
             }
 
@@ -198,42 +174,13 @@ pub fn generate_plots(
 
                     for records in &data.dependent_data {
                         for record in records {
-                            let mut f1_match = false;
-                            let mut f2_match = false;
+                            let f1_match =
+                                record.values.get(factor1).map(data_value_to_string).as_deref() ==
+                                Some(f1_level);
 
-                            for (key, value) in &record.values {
-                                if key == factor1 {
-                                    let record_level = match value {
-                                        crate::univariate::models::data::DataValue::Number(n) =>
-                                            n.to_string(),
-                                        crate::univariate::models::data::DataValue::Text(t) =>
-                                            t.clone(),
-                                        crate::univariate::models::data::DataValue::Boolean(b) =>
-                                            b.to_string(),
-                                        crate::univariate::models::data::DataValue::Null =>
-                                            "null".to_string(),
-                                    };
-
-                                    if record_level == *f1_level {
-                                        f1_match = true;
-                                    }
-                                } else if key == factor2 {
-                                    let record_level = match value {
-                                        crate::univariate::models::data::DataValue::Number(n) =>
-                                            n.to_string(),
-                                        crate::univariate::models::data::DataValue::Text(t) =>
-                                            t.clone(),
-                                        crate::univariate::models::data::DataValue::Boolean(b) =>
-                                            b.to_string(),
-                                        crate::univariate::models::data::DataValue::Null =>
-                                            "null".to_string(),
-                                    };
-
-                                    if record_level == *f2_level {
-                                        f2_match = true;
-                                    }
-                                }
-                            }
+                            let f2_match =
+                                record.values.get(factor2).map(data_value_to_string).as_deref() ==
+                                Some(f2_level);
 
                             if f1_match && f2_match {
                                 if let Some(value) = extract_dependent_value(record, &dep_var_name) {
@@ -248,13 +195,9 @@ pub fn generate_plots(
                     }
 
                     // Calculate mean and standard error
-                    let mean = values.iter().sum::<f64>() / (values.len() as f64);
-                    let variance =
-                        values
-                            .iter()
-                            .map(|x| (x - mean).powi(2))
-                            .sum::<f64>() / ((values.len() - 1) as f64);
-                    let std_error = (variance / (values.len() as f64)).sqrt();
+                    let mean = calculate_mean(&values);
+                    let std_deviation = calculate_std_deviation(&values, Some(mean));
+                    let std_error = std_deviation / (values.len() as f64).sqrt();
 
                     // Add point
                     points.push(PlotPoint {
@@ -270,7 +213,7 @@ pub fn generate_plots(
                         if config.plots.confidence_interval {
                             // Use confidence interval
                             let df = values.len() - 1;
-                            let t_critical = super::core::calculate_t_critical(
+                            let t_critical = calculate_t_critical(
                                 df,
                                 config.options.sig_level / 2.0
                             );
@@ -322,5 +265,5 @@ pub fn generate_plots(
         }
     }
 
-    Ok(result)
+    Ok(Some(result))
 }

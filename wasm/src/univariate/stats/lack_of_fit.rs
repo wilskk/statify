@@ -1,24 +1,27 @@
-use std::collections::HashMap;
+// lack_of_fit.rs
+use std::collections::{ HashMap, HashSet };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
-    data::{ AnalysisData, DataRecord, DataValue },
+    data::{ AnalysisData, DataRecord },
     result::LackOfFitTests,
 };
 
 use super::core::{
+    calculate_mean,
     calculate_f_significance,
     calculate_observed_power,
     count_total_cases,
     extract_dependent_value,
     matches_combination,
+    data_value_to_string,
 };
 
 /// Calculate lack of fit tests if requested
 pub fn calculate_lack_of_fit_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<LackOfFitTests, String> {
+) -> Result<Option<LackOfFitTests>, String> {
     if !config.options.lack_of_fit {
         return Ok(None);
     }
@@ -55,7 +58,7 @@ pub fn calculate_lack_of_fit_tests(
         }
 
         if !combo_values.is_empty() {
-            let combo_mean = combo_values.iter().sum::<f64>() / (combo_values.len() as f64);
+            let combo_mean = calculate_mean(&combo_values);
             for val in &combo_values {
                 all_values.push(*val);
                 fitted_values.push(combo_mean);
@@ -79,7 +82,7 @@ pub fn calculate_lack_of_fit_tests(
         }
 
         if !combo_values.is_empty() {
-            let combo_mean = combo_values.iter().sum::<f64>() / (combo_values.len() as f64);
+            let combo_mean = calculate_mean(&combo_values);
             pure_error_ss += combo_values
                 .iter()
                 .map(|val| (val - combo_mean).powi(2))
@@ -98,7 +101,7 @@ pub fn calculate_lack_of_fit_tests(
     let lack_of_fit_ss = residual_ss - pure_error_ss;
 
     // Calculate degrees of freedom
-    let df_lack_of_fit = if config.model.factors_var.len() > 0 {
+    let df_lack_of_fit = if !config.model.factors_var.is_empty() {
         n_unique - (config.model.factors_var.len() + 1) // +1 for intercept
     } else {
         n_unique - 1 // Just intercept
@@ -143,16 +146,18 @@ pub fn calculate_lack_of_fit_tests(
         config.options.sig_level
     );
 
-    Ok(LackOfFitTests {
-        sum_of_squares: lack_of_fit_ss,
-        df: df_lack_of_fit,
-        mean_square: ms_lack_of_fit,
-        f_value,
-        significance,
-        partial_eta_squared,
-        noncent_parameter,
-        observed_power,
-    })
+    Ok(
+        Some(LackOfFitTests {
+            sum_of_squares: lack_of_fit_ss,
+            df: df_lack_of_fit,
+            mean_square: ms_lack_of_fit,
+            f_value,
+            significance,
+            partial_eta_squared,
+            noncent_parameter,
+            observed_power,
+        })
+    )
 }
 
 /// Get unique predictor combinations for lack of fit tests
@@ -161,35 +166,24 @@ pub fn get_unique_predictor_combinations(
     config: &UnivariateConfig
 ) -> Result<Vec<HashMap<String, String>>, String> {
     let mut combinations = Vec::new();
-    let mut unique_combos = std::collections::HashSet::new();
+    let mut unique_combos = HashSet::new();
 
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for records in &data.fix_factor_data {
-            for record in records.iter().flatten() {
+    if let Some(factors) = &config.main.fix_factor {
+        for records_group in &data.fix_factor_data {
+            for records in records_group {
                 let mut combo = HashMap::new();
 
-                for factor in &factors {
-                    if let Some(value) = record.values.get(*factor) {
-                        let level = match value {
-                            DataValue::Number(n) => n.to_string(),
-                            DataValue::Text(t) => t.clone(),
-                            DataValue::Boolean(b) => b.to_string(),
-                            DataValue::Null => "null".to_string(),
-                        };
-
+                for factor in factors {
+                    if let Some(value) = records.values.get(factor) {
+                        let level = data_value_to_string(value);
                         combo.insert(factor.to_string(), level);
                     }
                 }
 
                 // Generate a unique key for this combination
                 let mut key = String::new();
-                for factor in &factors {
-                    if let Some(level) = combo.get(*factor) {
+                for factor in factors {
+                    if let Some(level) = combo.get(factor) {
                         key.push_str(&format!("{}:{},", factor, level));
                     }
                 }

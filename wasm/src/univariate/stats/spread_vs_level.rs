@@ -1,16 +1,23 @@
+// spread_vs_level.rs
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::{ SpreadVsLevelPlots, SpreadVsLevelPoint },
 };
 
-use super::core::{ extract_dependent_value, get_factor_combinations, matches_combination };
+use super::core::{
+    calculate_mean,
+    calculate_std_deviation,
+    extract_dependent_value,
+    get_factor_combinations,
+    matches_combination,
+};
 
 /// Calculate spread vs. level plots if requested
 pub fn calculate_spread_vs_level_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<SpreadVsLevelPlots, String> {
+) -> Result<Option<SpreadVsLevelPlots>, String> {
     if !config.options.spr_vs_level {
         return Ok(None);
     }
@@ -39,13 +46,8 @@ pub fn calculate_spread_vs_level_plots(
         }
 
         if values.len() > 1 {
-            let level_mean = values.iter().sum::<f64>() / (values.len() as f64);
-            let variance =
-                values
-                    .iter()
-                    .map(|v| (v - level_mean).powi(2))
-                    .sum::<f64>() / ((values.len() - 1) as f64);
-            let std_deviation = variance.sqrt();
+            let level_mean = calculate_mean(&values);
+            let std_deviation = calculate_std_deviation(&values, Some(level_mean));
 
             points.push(SpreadVsLevelPoint {
                 level_mean,
@@ -54,5 +56,5 @@ pub fn calculate_spread_vs_level_plots(
         }
     }
 
-    Ok(SpreadVsLevelPlots { points })
+    Ok(Some(SpreadVsLevelPlots { points }))
 }

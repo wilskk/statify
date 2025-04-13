@@ -1,3 +1,4 @@
+// descriptive_statistics.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
@@ -6,19 +7,25 @@ use crate::univariate::models::{
     result::{ DescriptiveStatistics, DescriptiveStatisticsEntry },
 };
 
-use super::core::{ extract_dependent_value, get_factor_combinations, matches_combination };
+use super::core::{
+    calculate_mean,
+    calculate_std_deviation,
+    extract_dependent_value,
+    get_factor_combinations,
+    matches_combination,
+};
 
 /// Calculate descriptive statistics if requested
 pub fn calculate_descriptive_statistics(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<HashMap<String, DescriptiveStatistics>, String> {
+) -> Result<Option<HashMap<String, DescriptiveStatistics>>, String> {
     if !config.options.desc_stats || data.dependent_data.is_empty() {
         return Ok(None);
     }
 
     let dep_var_name = match &config.main.dep_var {
-        Some(name) => name.clone(),
+        Some(name) => name,
         None => {
             return Err("No dependent variable specified in configuration".to_string());
         }
@@ -38,7 +45,7 @@ pub fn calculate_descriptive_statistics(
             for record in records {
                 // Check if this record matches the factor combination
                 if matches_combination(record, combo, data, config) {
-                    if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                    if let Some(value) = extract_dependent_value(record, dep_var_name) {
                         values.push(value);
                     }
                 }
@@ -48,13 +55,8 @@ pub fn calculate_descriptive_statistics(
         if !values.is_empty() {
             // Calculate statistics
             let n = values.len();
-            let mean = values.iter().sum::<f64>() / (n as f64);
-            let variance =
-                values
-                    .iter()
-                    .map(|x| (x - mean).powi(2))
-                    .sum::<f64>() / (n as f64);
-            let std_deviation = variance.sqrt();
+            let mean = calculate_mean(&values);
+            let std_deviation = calculate_std_deviation(&values, Some(mean));
 
             entries.push(DescriptiveStatisticsEntry {
                 mean,
@@ -64,6 +66,6 @@ pub fn calculate_descriptive_statistics(
         }
     }
 
-    result.insert(dep_var_name, DescriptiveStatistics { entries });
-    Ok(result)
+    result.insert(dep_var_name.clone(), DescriptiveStatistics { entries });
+    Ok(Some(result))
 }

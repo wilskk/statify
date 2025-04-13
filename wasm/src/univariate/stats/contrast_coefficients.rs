@@ -1,3 +1,4 @@
+// contrast_coefficients.rs
 use crate::univariate::models::{
     config::{ ContrastMethod, UnivariateConfig },
     data::AnalysisData,
@@ -10,7 +11,12 @@ use super::core::get_factor_levels;
 pub fn calculate_contrast_coefficients(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<ContrastCoefficients, String> {
+) -> Result<Option<ContrastCoefficients>, String> {
+    // Skip if no contrast method specified or if ContrastMethod::None
+    if config.contrast.contrast_method == ContrastMethod::None {
+        return Ok(None);
+    }
+
     let mut parameter = Vec::new();
     let mut coefficients = Vec::new();
 
@@ -20,13 +26,8 @@ pub fn calculate_contrast_coefficients(
     }
 
     // Add factor parameters
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for factor in &factors {
+    if let Some(factors) = &config.main.fix_factor {
+        for factor in factors {
             let factor_levels = get_factor_levels(data, factor)?;
             for level in &factor_levels {
                 parameter.push(format!("{}={}", factor, level));
@@ -47,13 +48,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
 
@@ -82,13 +78,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
                     let ref_level = if config.contrast.first { 0 } else { level_count - 1 };
@@ -118,13 +109,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
 
@@ -154,13 +140,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
 
@@ -190,13 +171,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
 
@@ -224,13 +200,8 @@ pub fn calculate_contrast_coefficients(
 
             // Set factor coefficients
             let mut param_idx = if config.model.intercept { 1 } else { 0 };
-            if let Some(factor_str) = &config.main.fix_factor {
-                let factors: Vec<&str> = factor_str
-                    .split(',')
-                    .map(|s| s.trim())
-                    .collect();
-
-                for factor in &factors {
+            if let Some(factors) = &config.main.fix_factor {
+                for factor in factors {
                     let factor_levels = get_factor_levels(data, factor)?;
                     let level_count = factor_levels.len();
 
@@ -254,10 +225,12 @@ pub fn calculate_contrast_coefficients(
         }
     }
 
-    Ok(ContrastCoefficients {
-        parameter,
-        coefficients,
-    })
+    Ok(
+        Some(ContrastCoefficients {
+            parameter,
+            coefficients,
+        })
+    )
 }
 
 /// Generate polynomial contrasts of specified degree for a given number of levels

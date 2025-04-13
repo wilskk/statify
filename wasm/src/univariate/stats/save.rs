@@ -1,18 +1,24 @@
-use std::collections::HashMap;
-
+// save.rs
 use crate::univariate::models::{
-    config::{ SaveConfig, UnivariateConfig },
-    data::{ AnalysisData, DataRecord, DataValue },
+    config::UnivariateConfig,
+    data::{ AnalysisData, DataValue },
     result::SavedVariables,
 };
 
-use super::core::{ extract_dependent_value };
+use super::core::{
+    calculate_mean,
+    extract_dependent_value,
+    get_factor_levels,
+    data_value_to_string,
+    matrix_inverse,
+    matrix_multiply,
+};
 
 /// Save variables as requested in the configuration
 pub fn save_variables(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<SavedVariables, String> {
+) -> Result<Option<SavedVariables>, String> {
     if
         !config.save.res_weighted &&
         !config.save.pre_weighted &&
@@ -68,44 +74,36 @@ pub fn save_variables(
                 }
 
                 // Add factors
-                if let Some(factor_str) = &config.main.fix_factor {
-                    for factor in factor_str.split(',').map(|s| s.trim()) {
+                if let Some(factors) = &config.main.fix_factor {
+                    for factor in factors {
                         // Get factor value
-                        for (key, value) in &record.values {
-                            if key == factor {
-                                // Create dummy variables for factor levels
-                                let factor_levels = super::core::get_factor_levels(data, factor)?;
-                                let factor_value = match value {
-                                    DataValue::Number(n) => n.to_string(),
-                                    DataValue::Text(t) => t.clone(),
-                                    DataValue::Boolean(b) => b.to_string(),
-                                    DataValue::Null => "null".to_string(),
-                                };
+                        if let Some(factor_value) = record.values.get(factor) {
+                            // Create dummy variables for factor levels
+                            let factor_levels = get_factor_levels(data, factor)?;
+                            let value_str = data_value_to_string(factor_value);
 
-                                for level in &factor_levels {
-                                    x_row.push(if *level == factor_value { 1.0 } else { 0.0 });
-                                }
-                                break;
+                            for level in &factor_levels {
+                                x_row.push(if *level == value_str { 1.0 } else { 0.0 });
                             }
                         }
                     }
                 }
 
                 // Add covariates
-                if let Some(covar_str) = &config.main.covar {
-                    for covar in covar_str.split(',').map(|s| s.trim()) {
+                if let Some(covariates) = &config.main.covar {
+                    for covar in covariates {
                         // Get covariate value
-                        let mut value = 0.0;
-                        for (key, val) in &record.values {
-                            if key == covar {
-                                value = match val {
+                        let value = record.values
+                            .get(covar)
+                            .map(|val| {
+                                match val {
                                     DataValue::Number(n) => *n,
                                     DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                     _ => 0.0,
-                                };
-                                break;
-                            }
-                        }
+                                }
+                            })
+                            .unwrap_or(0.0);
+
                         x_row.push(value);
                     }
                 }
@@ -115,15 +113,12 @@ pub fn save_variables(
                 // Add weight value
                 let mut weight = 1.0;
                 if let Some(wls_weight) = &config.main.wls_weight {
-                    for (key, value) in &record.values {
-                        if key == wls_weight {
-                            weight = match value {
-                                DataValue::Number(n) => *n,
-                                DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
-                                _ => 1.0,
-                            };
-                            break;
-                        }
+                    if let Some(value) = record.values.get(wls_weight) {
+                        weight = match value {
+                            DataValue::Number(n) => *n,
+                            DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
+                            _ => 1.0,
+                        };
                     }
                 }
                 weight_values.push(weight);
@@ -139,55 +134,32 @@ pub fn save_variables(
         return Err("No valid data for saved variables calculation".to_string());
     }
 
-    // Create matrices
-    let mut x = Vec::new();
-    for i in 0..n {
-        let mut row = Vec::new();
-        for j in 0..p {
-            row.push(x_matrix[i][j]);
-        }
-        x.push(row);
-    }
-
-    // Calculate X'X
+    // Calculate X'WX
     let mut xtx = vec![vec![0.0; p]; p];
     for i in 0..p {
         for j in 0..p {
             let mut sum = 0.0;
             for k in 0..n {
-                sum += x[k][i] * x[k][j] * weight_values[k];
+                sum += x_matrix[k][i] * x_matrix[k][j] * weight_values[k];
             }
             xtx[i][j] = sum;
         }
     }
 
-    // Calculate (X'X)^-1
-    let mut xtx_inv = vec![vec![0.0; p]; p];
+    // Calculate (X'WX)^-1
+    let xtx_inv = matrix_inverse(&xtx)?;
 
-    // Simple matrix inversion for 1x1 matrix
-    if p == 1 {
-        xtx_inv[0][0] = 1.0 / xtx[0][0];
-    } else {
-        // For larger matrices, use a library like nalgebra
-        // This is a placeholder - in practice, use a linear algebra library
-        for i in 0..p {
-            for j in 0..p {
-                xtx_inv[i][j] = if i == j { 1.0 / xtx[i][i] } else { 0.0 };
-            }
-        }
-    }
-
-    // Calculate X'Y
+    // Calculate X'WY
     let mut xty = vec![0.0; p];
     for i in 0..p {
         let mut sum = 0.0;
         for j in 0..n {
-            sum += x[j][i] * y_values[j] * weight_values[j];
+            sum += x_matrix[j][i] * y_values[j] * weight_values[j];
         }
         xty[i] = sum;
     }
 
-    // Calculate beta = (X'X)^-1 X'Y
+    // Calculate beta = (X'WX)^-1 X'WY
     let mut beta = vec![0.0; p];
     for i in 0..p {
         let mut sum = 0.0;
@@ -202,7 +174,7 @@ pub fn save_variables(
     for i in 0..n {
         let mut sum = 0.0;
         for j in 0..p {
-            sum += x[i][j] * beta[j];
+            sum += x_matrix[i][j] * beta[j];
         }
         y_hat[i] = sum;
     }
@@ -220,7 +192,7 @@ pub fn save_variables(
         for j in 0..p {
             let mut h_ij = 0.0;
             for k in 0..p {
-                h_ij += x[i][j] * xtx_inv[j][k] * x[i][k];
+                h_ij += x_matrix[i][j] * xtx_inv[j][k] * x_matrix[i][k];
             }
             sum += h_ij;
         }
@@ -321,5 +293,5 @@ pub fn save_variables(
         }
     }
 
-    Ok(result)
+    Ok(Some(result))
 }

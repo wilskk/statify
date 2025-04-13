@@ -1,16 +1,17 @@
+// posthoc.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
-    config::{ CategoryMethod, PosthocConfig, UnivariateConfig },
+    config::{ CategoryMethod, UnivariateConfig },
     data::AnalysisData,
     result::{ ConfidenceInterval, ParameterEstimateEntry },
 };
 
 use super::core::{
+    calculate_mean,
     calculate_f_significance,
     calculate_t_critical,
     calculate_t_significance,
-    extract_dependent_value,
     get_factor_levels,
     get_level_values,
 };
@@ -19,7 +20,7 @@ use super::core::{
 pub fn calculate_posthoc_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<HashMap<String, Vec<ParameterEstimateEntry>>, String> {
+) -> Result<Option<HashMap<String, Vec<ParameterEstimateEntry>>>, String> {
     // Return None if posthoc tests are not requested
     if config.posthoc.src_list.is_none() || config.posthoc.src_list.as_ref().unwrap().is_empty() {
         return Ok(None);
@@ -68,7 +69,7 @@ pub fn calculate_posthoc_tests(
         for level in &factor_levels {
             let values = get_level_values(data, factor, level, &dep_var_name)?;
             if !values.is_empty() {
-                let mean = values.iter().sum::<f64>() / (values.len() as f64);
+                let mean = calculate_mean(&values);
                 let variance =
                     values
                         .iter()
@@ -112,8 +113,8 @@ pub fn calculate_posthoc_tests(
                     continue;
                 }
 
-                let n_i = values_i.len() as f64;
-                let n_j = values_j.len() as f64;
+                let n_i = values_i.len() as f64; // FIX: Removed '*' dereferencing operator
+                let n_j = values_j.len() as f64; // FIX: Removed '*' dereferencing operator
                 let mean_diff = mean_i - mean_j;
 
                 // Calculate standard error based on test type
@@ -125,10 +126,10 @@ pub fn calculate_posthoc_tests(
                 {
                     // For unequal variance tests (Tamhane's T2, Dunnett's T3, Games-Howell, Dunnett's C)
                     let std_error = (var_i / n_i + var_j / n_j).sqrt();
-                    let df =
+                    let df_value =
                         (var_i / n_i + var_j / n_j).powi(2) /
                         ((var_i / n_i).powi(2) / (n_i - 1.0) + (var_j / n_j).powi(2) / (n_j - 1.0));
-                    (std_error, df.round() as usize)
+                    (std_error, df_value.round() as usize)
                 } else {
                     // For equal variance tests
                     let ms_error = pooled_variance;
@@ -167,34 +168,34 @@ pub fn calculate_posthoc_tests(
                 } else if config.posthoc.tu {
                     // Tukey's HSD
                     test_name = "Tukey";
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     // Use Tukey's studentized range distribution (approximated)
                     let alpha = 0.05; // Fixed alpha for now
-                    let adjusted_q = q / (2.0 * (alpha * 0.5)).ln().sqrt();
+                    let adjusted_q = q / ((2.0 * (alpha * 0.5)) as f64).ln().sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.tub {
                     // Tukey's b
                     test_name = "Tukey's b";
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     let alpha = 0.05;
-                    let adjusted_q = q / (2.0 * (alpha * 0.5)).ln().sqrt();
+                    let adjusted_q = q / ((2.0 * (alpha * 0.5)) as f64).ln().sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.snk {
                     // Student-Newman-Keuls
                     test_name = "SNK";
                     let num_steps = (j - i) as f64;
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     let alpha = 0.05;
-                    let adjusted_q = q / ((2.0 * (alpha * 0.5)).ln() * num_steps).sqrt();
+                    let adjusted_q = q / (((2.0 * (alpha * 0.5)) as f64).ln() * num_steps).sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.dun {
                     // Duncan
                     test_name = "Duncan";
                     let num_steps = (j - i) as f64;
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     let alpha = 0.05;
-                    let adjusted_alpha = 1.0 - (1.0 - alpha).powf(num_steps);
-                    let adjusted_q = q / (2.0 * (adjusted_alpha * 0.5)).ln().sqrt();
+                    let adjusted_alpha = 1.0 - ((1.0 - alpha) as f64).powf(num_steps);
+                    let adjusted_q = q / ((2.0 * (adjusted_alpha * 0.5)) as f64).ln().sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.hoc {
                     // Hochberg's GT2
@@ -219,10 +220,10 @@ pub fn calculate_posthoc_tests(
                     // Ryan-Einot-Gabriel-Welsch Q
                     test_name = "R-E-G-W Q";
                     let num_steps = (j - i) as f64;
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     let alpha = 0.05;
                     let adjusted_alpha = alpha / num_steps;
-                    let adjusted_q = q / (2.0 * (adjusted_alpha * 0.5)).ln().sqrt();
+                    let adjusted_q = q / ((2.0 * (adjusted_alpha * 0.5)) as f64).ln().sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.waller {
                     // Waller-Duncan
@@ -269,15 +270,15 @@ pub fn calculate_posthoc_tests(
                 } else if config.posthoc.games {
                     // Games-Howell
                     test_name = "Games-Howell";
-                    let q = t_abs * (2.0_f64).sqrt();
+                    let q = t_abs * (2.0_f64).sqrt(); // FIX: Added explicit f64 type annotation
                     let alpha = 0.05;
-                    let adjusted_q = q / (2.0 * (alpha * 0.5)).ln().sqrt();
+                    let adjusted_q = q / ((2.0 * (alpha * 0.5)) as f64).ln().sqrt();
                     (1.0 - adjusted_q.exp()).max(0.0)
                 } else if config.posthoc.dunc {
                     // Dunnett's C
                     test_name = "Dunnett's C";
                     let alpha = 0.05;
-                    let c_value = (2.0 * alpha.ln()).sqrt() * -1.0;
+                    let c_value = ((2.0 * alpha.ln()) as f64).sqrt() * -1.0;
                     if t_abs > c_value {
                         0.01
                     } else {
@@ -337,6 +338,6 @@ pub fn calculate_posthoc_tests(
     if result.is_empty() {
         Ok(None)
     } else {
-        Ok(result)
+        Ok(Some(result))
     }
 }

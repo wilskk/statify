@@ -1,12 +1,16 @@
-use nalgebra::{ DMatrix, DVector };
-
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::{ AnalysisData, DataValue },
     result::{ BPTest, FTest, HeteroscedasticityTests, ModifiedBPTest, WhiteTest },
 };
 
-use super::core::{ chi_square_cdf, extract_dependent_value, f_distribution_cdf };
+use super::core::{
+    chi_square_cdf,
+    f_distribution_cdf,
+    extract_dependent_value,
+    to_dmatrix,
+    to_dvector,
+};
 
 /// Calculate heteroscedasticity tests if requested
 pub fn calculate_heteroscedasticity_tests(
@@ -35,17 +39,12 @@ pub fn calculate_heteroscedasticity_tests(
     let mut predictor_names = Vec::new();
 
     // Identify predictors
-    if let Some(factor_str) = &config.main.fix_factor {
-        predictor_names = factor_str
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .collect();
+    if let Some(factors) = &config.main.fix_factor {
+        predictor_names = factors.clone();
     }
 
-    if let Some(covar_str) = &config.main.covar {
-        for cov in covar_str.split(',').map(|s| s.trim()) {
-            predictor_names.push(cov.to_string());
-        }
+    if let Some(covariates) = &config.main.covar {
+        predictor_names.extend(covariates.clone());
     }
 
     if predictor_names.is_empty() {
@@ -89,8 +88,8 @@ pub fn calculate_heteroscedasticity_tests(
         return Err("No valid data points for heteroscedasticity tests".to_string());
     }
 
-    let y = DVector::from_vec(y_values);
-    let x = DMatrix::from_fn(n, p, |i, j| x_matrix[i][j]);
+    let y = to_dvector(&y_values);
+    let x = to_dmatrix(&x_matrix);
 
     // Calculate OLS residuals
     let xtx = &x.transpose() * &x;
@@ -179,7 +178,7 @@ pub fn calculate_heteroscedasticity_tests(
             }
 
             let z_cols = z_data[0].len();
-            let z = DMatrix::from_fn(n, z_cols, |i, j| z_data[i][j]);
+            let z = to_dmatrix(&z_data);
 
             // Estimate auxiliary regression
             let ztz = z.transpose() * &z;

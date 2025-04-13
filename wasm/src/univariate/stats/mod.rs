@@ -5,7 +5,6 @@ pub mod between_subjects_effects;
 pub mod contrast_coefficients;
 pub mod descriptive_statistics;
 pub mod emmeans;
-pub mod factors;
 pub mod generate_plots;
 pub mod heteroscedasticity;
 pub mod lack_of_fit;

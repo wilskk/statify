@@ -1,3 +1,4 @@
+// parameter_estimates.rs
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
@@ -10,6 +11,7 @@ use crate::univariate::models::{
 };
 
 use super::core::{
+    calculate_mean,
     calculate_observed_power_t,
     calculate_t_critical,
     calculate_t_significance,
@@ -23,7 +25,7 @@ use super::core::{
 pub fn calculate_general_estimable_function(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<GeneralEstimableFunction, String> {
+) -> Result<Option<GeneralEstimableFunction>, String> {
     if !config.options.general_fun {
         return Ok(None);
     }
@@ -37,13 +39,8 @@ pub fn calculate_general_estimable_function(
     }
 
     // Add zeros for factor parameters
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for factor in &factors {
+    if let Some(factors) = &config.main.fix_factor {
+        for factor in factors {
             let factor_levels = get_factor_levels(data, factor)?;
             for _ in 0..factor_levels.len() - 1 {
                 row.push(0);
@@ -54,12 +51,7 @@ pub fn calculate_general_estimable_function(
     matrix.push(row);
 
     // Add rows for each factor level
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
+    if let Some(factors) = &config.main.fix_factor {
         for (f_idx, factor) in factors.iter().enumerate() {
             let factor_levels = get_factor_levels(data, factor)?;
 
@@ -67,7 +59,7 @@ pub fn calculate_general_estimable_function(
             if config.model.intercept {
                 // Skip parameters for factors before this one
                 for i in 0..f_idx {
-                    let prev_factor = factors[i];
+                    let prev_factor = &factors[i];
                     let prev_levels = get_factor_levels(data, prev_factor)?;
                     base_idx += prev_levels.len() - 1;
                 }
@@ -88,16 +80,16 @@ pub fn calculate_general_estimable_function(
         }
     }
 
-    Ok(GeneralEstimableFunction { matrix })
+    Ok(Some(GeneralEstimableFunction { matrix }))
 }
 
 /// Calculate parameter estimates if requested
 pub fn calculate_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<ParameterEstimates, String> {
+) -> Result<Option<ParameterEstimates>, String> {
     if !config.options.param_est {
-        return Ok(());
+        return Ok(None);
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -120,7 +112,7 @@ pub fn calculate_parameter_estimates(
         }
     }
 
-    let grand_mean = all_values.iter().sum::<f64>() / (all_values.len() as f64);
+    let grand_mean = calculate_mean(&all_values);
     let error_variance =
         all_values
             .iter()
@@ -162,13 +154,8 @@ pub fn calculate_parameter_estimates(
     }
 
     // Add parameters for factors
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for factor in &factors {
+    if let Some(factors) = &config.main.fix_factor {
+        for factor in factors {
             let factor_levels = get_factor_levels(data, factor)?;
             let reference_level = factor_levels.last().unwrap().clone(); // Use last level as reference
 
@@ -181,8 +168,8 @@ pub fn calculate_parameter_estimates(
                 let ref_values = get_level_values(data, factor, &reference_level, &dep_var_name)?;
 
                 // Calculate parameter estimate (difference from reference level)
-                let level_mean = level_values.iter().sum::<f64>() / (level_values.len() as f64);
-                let ref_mean = ref_values.iter().sum::<f64>() / (ref_values.len() as f64);
+                let level_mean = calculate_mean(&level_values);
+                let ref_mean = calculate_mean(&ref_values);
                 let effect = level_mean - ref_mean;
 
                 // Calculate standard error
@@ -243,5 +230,5 @@ pub fn calculate_parameter_estimates(
         }
     }
 
-    Ok(ParameterEstimates { estimates })
+    Ok(Some(ParameterEstimates { estimates }))
 }

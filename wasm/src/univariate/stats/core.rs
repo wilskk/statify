@@ -4,7 +4,6 @@ pub use crate::univariate::stats::common::*;
 pub use crate::univariate::stats::contrast_coefficients::*;
 pub use crate::univariate::stats::descriptive_statistics::*;
 pub use crate::univariate::stats::emmeans::*;
-pub use crate::univariate::stats::factors::*;
 pub use crate::univariate::stats::generate_plots::*;
 pub use crate::univariate::stats::heteroscedasticity::*;
 pub use crate::univariate::stats::lack_of_fit::*;

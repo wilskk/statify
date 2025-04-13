@@ -1,14 +1,20 @@
+// levene_test.rs
 use statrs::distribution::{ ContinuousCDF, FisherSnedecor };
 
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData, result::LeveneTest };
 
-use super::core::{ extract_dependent_value, get_factor_combinations, matches_combination };
+use super::core::{
+    calculate_mean,
+    extract_dependent_value,
+    get_factor_combinations,
+    matches_combination,
+};
 
 /// Calculate Levene's Test for homogeneity of variances if requested
 pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<LeveneTest, String> {
+) -> Result<Option<LeveneTest>, String> {
     if !config.options.homogen_test {
         return Ok(None);
     }
@@ -42,10 +48,14 @@ pub fn calculate_levene_test(
         }
     }
 
+    if groups.len() < 2 {
+        return Ok(None); // Need at least 2 groups for Levene's test
+    }
+
     // Calculate group means
     let group_means: Vec<f64> = groups
         .iter()
-        .map(|group| group.iter().sum::<f64>() / (group.len() as f64))
+        .map(|group| calculate_mean(group))
         .collect();
 
     // Calculate absolute deviations from group means
@@ -61,14 +71,14 @@ pub fn calculate_levene_test(
 
     // Calculate the overall mean of absolute deviations
     let all_deviations: Vec<f64> = abs_deviations.iter().flatten().cloned().collect();
-    let overall_mean = all_deviations.iter().sum::<f64>() / (all_deviations.len() as f64);
+    let overall_mean = calculate_mean(&all_deviations);
 
     // Calculate sum of squares between groups
     let ss_between = abs_deviations
         .iter()
         .enumerate()
         .map(|(i, group)| {
-            let group_mean = group.iter().sum::<f64>() / (group.len() as f64);
+            let group_mean = calculate_mean(group);
             (group.len() as f64) * (group_mean - overall_mean).powi(2)
         })
         .sum::<f64>();
@@ -78,7 +88,7 @@ pub fn calculate_levene_test(
         .iter()
         .enumerate()
         .map(|(i, group)| {
-            let group_mean = group.iter().sum::<f64>() / (group.len() as f64);
+            let group_mean = calculate_mean(group);
             group
                 .iter()
                 .map(|val| (val - group_mean).powi(2))
@@ -99,11 +109,13 @@ pub fn calculate_levene_test(
     let f_dist = FisherSnedecor::new(df1 as f64, df2 as f64).unwrap();
     let significance = 1.0 - f_dist.cdf(f_statistic);
 
-    Ok(LeveneTest {
-        dependent_variable: dep_var_name,
-        f_statistic,
-        df1,
-        df2,
-        significance,
-    })
+    Ok(
+        Some(LeveneTest {
+            dependent_variable: dep_var_name,
+            f_statistic,
+            df1,
+            df2,
+            significance,
+        })
+    )
 }

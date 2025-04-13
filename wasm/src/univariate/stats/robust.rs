@@ -1,3 +1,4 @@
+// robust.rs
 use nalgebra::{ DMatrix, DVector };
 
 use crate::univariate::models::{
@@ -10,16 +11,19 @@ use super::core::{
     calculate_t_critical,
     calculate_t_significance,
     extract_dependent_value,
-    count_total_cases,
+    get_factor_levels,
+    data_value_to_string,
+    to_dmatrix,
+    to_dvector,
 };
 
 /// Calculate parameter estimates with robust standard errors
 pub fn calculate_robust_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<ParameterEstimates, String> {
+) -> Result<Option<ParameterEstimates>, String> {
     if !config.options.param_est_rob_std_err {
-        return Ok(());
+        return Ok(None);
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -40,14 +44,9 @@ pub fn calculate_robust_parameter_estimates(
     }
 
     // Add fixed factors
-    if let Some(factor_str) = &config.main.fix_factor {
-        let factors: Vec<&str> = factor_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for factor in &factors {
-            let factor_levels = super::core::get_factor_levels(data, factor)?;
+    if let Some(factors) = &config.main.fix_factor {
+        for factor in factors {
+            let factor_levels = get_factor_levels(data, factor)?;
 
             // For factors, create parameter names
             for level in &factor_levels {
@@ -57,15 +56,8 @@ pub fn calculate_robust_parameter_estimates(
     }
 
     // Add covariates if any
-    if let Some(covar_str) = &config.main.covar {
-        let covariates: Vec<&str> = covar_str
-            .split(',')
-            .map(|s| s.trim())
-            .collect();
-
-        for covariate in &covariates {
-            parameter_names.push(covariate.to_string());
-        }
+    if let Some(covariates) = &config.main.covar {
+        parameter_names.extend(covariates.clone());
     }
 
     // Extract y values and build X matrix
@@ -83,37 +75,20 @@ pub fn calculate_robust_parameter_estimates(
                 }
 
                 // Add factors and covariates
-                if let Some(factor_str) = &config.main.fix_factor {
-                    for factor in factor_str.split(',').map(|s| s.trim()) {
+                if let Some(factors) = &config.main.fix_factor {
+                    for factor in factors {
                         // Find factor value
-                        let mut found = false;
-                        for (key, value) in &record.values {
-                            if key == factor {
-                                let factor_level = match value {
-                                    DataValue::Number(n) => n.to_string(),
-                                    DataValue::Text(t) => t.clone(),
-                                    DataValue::Boolean(b) => b.to_string(),
-                                    DataValue::Null => "null".to_string(),
-                                };
+                        let factor_level = record.values.get(factor).map(data_value_to_string);
 
-                                // Add dummy variables for each level (except reference level)
-                                let factor_levels = super::core::get_factor_levels(data, factor)?;
-                                for level in &factor_levels {
-                                    if *level == factor_level {
-                                        x_row.push(1.0);
-                                    } else {
-                                        x_row.push(0.0);
-                                    }
-                                }
-
-                                found = true;
-                                break;
+                        if let Some(level) = factor_level {
+                            // Add dummy variables for each level (except reference level)
+                            let factor_levels = get_factor_levels(data, factor)?;
+                            for fl in &factor_levels {
+                                x_row.push(if *fl == level { 1.0 } else { 0.0 });
                             }
-                        }
-
-                        if !found {
+                        } else {
                             // Add zeros for all levels of this factor
-                            let factor_levels = super::core::get_factor_levels(data, factor)?;
+                            let factor_levels = get_factor_levels(data, factor)?;
                             for _ in &factor_levels {
                                 x_row.push(0.0);
                             }
@@ -122,19 +97,19 @@ pub fn calculate_robust_parameter_estimates(
                 }
 
                 // Add covariates if any
-                if let Some(covar_str) = &config.main.covar {
-                    for covar in covar_str.split(',').map(|s| s.trim()) {
-                        let mut value = 0.0;
-                        for (key, val) in &record.values {
-                            if key == covar {
-                                value = match val {
+                if let Some(covariates) = &config.main.covar {
+                    for covar in covariates {
+                        let value = record.values
+                            .get(covar)
+                            .map(|val| {
+                                match val {
                                     DataValue::Number(n) => *n,
                                     DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                     _ => 0.0,
-                                };
-                                break;
-                            }
-                        }
+                                }
+                            })
+                            .unwrap_or(0.0);
+
                         x_row.push(value);
                     }
                 }
@@ -152,8 +127,8 @@ pub fn calculate_robust_parameter_estimates(
         return Err("No valid data for robust standard errors calculation".to_string());
     }
 
-    let y = DVector::from_vec(y_values);
-    let x = DMatrix::from_fn(n, p, |i, j| x_matrix[i][j]);
+    let y = to_dvector(&y_values);
+    let x = to_dmatrix(&x_matrix);
 
     // Calculate OLS parameters and residuals
     let xtx = &x.transpose() * &x;
@@ -256,7 +231,7 @@ pub fn calculate_robust_parameter_estimates(
             });
         }
 
-        Ok(ParameterEstimates { estimates })
+        Ok(Some(ParameterEstimates { estimates }))
     } else {
         Err("Matrix inversion failed in robust standard errors calculation".to_string())
     }

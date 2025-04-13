@@ -1,89 +1,100 @@
+// emmeans.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
-    config::{ CIMethod, EmmmeansConfig, UnivariateConfig },
+    config::{ CIMethod, UnivariateConfig },
     data::AnalysisData,
     result::{ ConfidenceInterval, ParameterEstimateEntry },
 };
 
 use super::core::{
+    calculate_mean,
     calculate_t_critical,
     calculate_t_significance,
     extract_dependent_value,
-    get_factor_combinations,
     get_factor_levels,
-    matches_combination,
+    data_value_to_string,
 };
 
-/// Calculate estimated marginal means if requested
 pub fn calculate_emmeans(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<HashMap<String, Vec<ParameterEstimateEntry>>, String> {
-    if config.emmeans.src_list.is_empty() {
-        return Ok(None);
-    }
+) -> Result<Option<HashMap<String, Vec<ParameterEstimateEntry>>>, String> {
+    // Check if target_list exists and is not empty
+    let target_list = match &config.emmeans.target_list {
+        Some(list) if !list.is_empty() => list,
+        _ => {
+            return Ok(None);
+        } // Return early if target_list is empty or None
+    };
 
-    let dep_var_name = match &config.main.dep_var {
+    // Get dependent variable and fixed factors
+    let dep_var = match &config.main.dep_var {
         Some(name) => name.clone(),
         None => {
             return Err("No dependent variable specified in configuration".to_string());
         }
     };
 
+    let fix_factors = match &config.main.fix_factor {
+        Some(factors) if !factors.is_empty() => factors.clone(),
+        _ => {
+            return Err("No fixed factors available for analysis".to_string());
+        }
+    };
+
+    // Determine which factor combinations to analyze
+    let factors_to_analyze: Vec<String> = if target_list.iter().any(|x| x == "(OVERALS)") {
+        // Generate all possible combinations when (OVERALS) is present
+        let mut base_factors = Vec::new();
+        base_factors.push(dep_var.clone());
+        for factor in &fix_factors {
+            base_factors.push(factor.clone());
+        }
+
+        // Generate all possible combinations of all possible lengths
+        let mut all_combinations = Vec::new();
+
+        // Add individual factors
+        for factor in &base_factors {
+            all_combinations.push(factor.clone());
+        }
+
+        // Generate combinations of all other sizes (from 2 up to base_factors.len())
+        generate_factor_combinations(&base_factors, &mut Vec::new(), 0, &mut all_combinations);
+
+        all_combinations
+    } else {
+        // Use the target_list directly
+        target_list.clone()
+    };
+
     let mut result = HashMap::new();
 
-    // Process each source in the EMMEANS list
-    for src in &config.emmeans.src_list {
+    // Process each factor or factor combination
+    for factor_spec in &factors_to_analyze {
         let mut estimates = Vec::new();
 
-        // Check if source is a single factor or an interaction term
-        let factors: Vec<&str> = src
+        // Split factor specification to identify individual factors vs. interaction terms
+        let factors: Vec<&str> = factor_spec
             .split('*')
             .map(|s| s.trim())
             .collect();
 
         // Get all combinations of levels for the factors
-        let mut all_level_combinations = Vec::new();
         let mut factor_levels = Vec::new();
-
         for factor in &factors {
             let levels = get_factor_levels(data, factor)?;
             factor_levels.push(levels);
         }
 
         // Generate all combinations of factor levels
-        fn generate_combinations(
-            current_combination: &mut Vec<(String, String)>,
-            factor_list: &[&str],
-            level_list: &[Vec<String>],
-            index: usize,
-            result: &mut Vec<Vec<(String, String)>>
-        ) {
-            if index == factor_list.len() {
-                result.push(current_combination.clone());
-                return;
-            }
-
-            for level in &level_list[index] {
-                current_combination.push((factor_list[index].to_string(), level.clone()));
-                generate_combinations(
-                    current_combination,
-                    factor_list,
-                    level_list,
-                    index + 1,
-                    result
-                );
-                current_combination.pop();
-            }
-        }
-
-        let mut current = Vec::new();
         let mut combinations = Vec::new();
-        generate_combinations(&mut current, &factors, &factor_levels, 0, &mut combinations);
+        let mut current = Vec::new();
+        generate_level_combinations(&mut current, &factors, &factor_levels, 0, &mut combinations);
 
         // Calculate marginal means for each combination
-        for combination in combinations {
+        for combination in &combinations {
             // Convert to HashMap for easier lookup
             let combo_map: HashMap<String, String> = combination
                 .iter()
@@ -92,45 +103,23 @@ pub fn calculate_emmeans(
 
             // Extract values matching this combination
             let mut values = Vec::new();
-            let mut weight_sum = 0.0;
 
             for records in &data.dependent_data {
                 for record in records {
                     let mut matches = true;
 
                     for (factor, level) in &combo_map {
-                        let mut factor_match = false;
+                        let record_level = record.values.get(factor).map(data_value_to_string);
 
-                        for (key, value) in &record.values {
-                            if key == factor {
-                                let record_level = match value {
-                                    crate::univariate::models::data::DataValue::Number(n) =>
-                                        n.to_string(),
-                                    crate::univariate::models::data::DataValue::Text(t) =>
-                                        t.clone(),
-                                    crate::univariate::models::data::DataValue::Boolean(b) =>
-                                        b.to_string(),
-                                    crate::univariate::models::data::DataValue::Null =>
-                                        "null".to_string(),
-                                };
-
-                                if record_level == *level {
-                                    factor_match = true;
-                                }
-                                break;
-                            }
-                        }
-
-                        if !factor_match {
+                        if record_level.as_deref() != Some(level) {
                             matches = false;
                             break;
                         }
                     }
 
                     if matches {
-                        if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                        if let Some(value) = extract_dependent_value(record, &dep_var) {
                             values.push(value);
-                            weight_sum += 1.0; // Could be adjusted for weighted designs
                         }
                     }
                 }
@@ -141,11 +130,11 @@ pub fn calculate_emmeans(
             }
 
             // Calculate mean and standard error
-            let mean = values.iter().sum::<f64>() / (values.len() as f64);
+            let mean = calculate_mean(&values);
             let variance =
                 values
                     .iter()
-                    .map(|x| (x - mean).powi(2))
+                    .map(|v| (v - mean).powi(2))
                     .sum::<f64>() / ((values.len() - 1) as f64);
             let std_error = (variance / (values.len() as f64)).sqrt();
 
@@ -186,7 +175,6 @@ pub fn calculate_emmeans(
                 partial_eta_squared: t_value.powi(2) / (t_value.powi(2) + (df as f64)),
                 noncent_parameter: t_value.abs(),
                 observed_power: if config.options.obs_power {
-                    // Simplified power calculation
                     1.0 - (-t_value.abs() * 0.5).exp()
                 } else {
                     0.0
@@ -194,9 +182,8 @@ pub fn calculate_emmeans(
             });
         }
 
-        // Add comparisons if requested
+        // Add pairwise comparisons if requested
         if config.emmeans.comp_main_effect && factors.len() == 1 {
-            // Add pairwise comparisons for main effects
             let factor = factors[0];
             let levels = &factor_levels[0];
 
@@ -274,9 +261,57 @@ pub fn calculate_emmeans(
             }
         }
 
-        // Add results for this source
-        result.insert(src.clone(), estimates);
+        // Add all estimates for this factor to the result
+        result.insert(factor_spec.clone(), estimates);
     }
 
-    Ok(result)
+    Ok(Some(result))
+}
+
+/// Helper function to generate all possible combinations of factors
+/// This creates combinations like "A", "B", "A*B", "A*B*C", etc.
+fn generate_factor_combinations(
+    all_factors: &[String],
+    current_combination: &mut Vec<String>,
+    start_index: usize,
+    result: &mut Vec<String>
+) {
+    // Skip combinations of size 1 as we've already added them
+    if current_combination.len() > 1 {
+        // Join the current combination with "*" and add to result
+        result.push(current_combination.join("*"));
+    }
+
+    // Try adding each remaining factor
+    for i in start_index..all_factors.len() {
+        current_combination.push(all_factors[i].clone());
+        generate_factor_combinations(all_factors, current_combination, i + 1, result);
+        current_combination.pop();
+    }
+}
+
+/// Helper function to generate all combinations of factor levels
+fn generate_level_combinations(
+    current_combination: &mut Vec<(String, String)>,
+    factor_list: &[&str],
+    level_list: &[Vec<String>],
+    index: usize,
+    result: &mut Vec<Vec<(String, String)>>
+) {
+    if index == factor_list.len() {
+        result.push(current_combination.clone());
+        return;
+    }
+
+    for level in &level_list[index] {
+        current_combination.push((factor_list[index].to_string(), level.clone()));
+        generate_level_combinations(
+            current_combination,
+            factor_list,
+            level_list,
+            index + 1,
+            result
+        );
+        current_combination.pop();
+    }
 }
