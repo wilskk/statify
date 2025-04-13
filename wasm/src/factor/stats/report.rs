@@ -19,7 +19,7 @@ use crate::factor::models::{
     },
 };
 
-use super::core::{ calculate_matrix, extract_data_matrix, extract_factors };
+use super::core::{ calculate_matrix, extract_data_matrix, extract_factors, rotate_factors };
 
 pub fn calculate_communalities(
     data: &AnalysisData,
@@ -90,6 +90,83 @@ pub fn calculate_total_variance_explained(
     // Only extracted components for extraction sums
     for i in 0..n_factors {
         extraction_sums.push(initial_eigenvalues[i].clone());
+    }
+
+    // Calculate rotation sums if rotation is applied (not NOROTATE)
+    if !config.rotation.none {
+        // Perform rotation
+        match rotate_factors(&extraction_result, config) {
+            Ok(rotation_result) => {
+                let rotated_loadings = &rotation_result.rotated_loadings;
+
+                // Check if we have valid dimensions
+                if rotated_loadings.nrows() > 0 && rotated_loadings.ncols() == n_factors {
+                    // Check if rotation is orthogonal or oblique
+                    let is_oblique = config.rotation.oblimin || config.rotation.promax;
+
+                    if is_oblique && rotation_result.factor_correlations.is_some() {
+                        // For oblique rotation, handle the factor correlations
+                        let factor_correlations = rotation_result.factor_correlations
+                            .as_ref()
+                            .unwrap();
+
+                        // Calculate variance components from pattern matrix for oblique rotation
+                        let mut rotated_eigenvalues = vec![0.0; n_factors];
+
+                        for j in 0..n_factors {
+                            let mut sum_squared = 0.0;
+                            for i in 0..rotated_loadings.nrows() {
+                                sum_squared += rotated_loadings[(i, j)].powi(2);
+                            }
+                            rotated_eigenvalues[j] = sum_squared;
+                        }
+
+                        // Create rotation sums components
+                        let mut cum_percent = 0.0;
+                        for j in 0..n_factors {
+                            // Note: For oblique rotations, sums represent variance explained by each factor
+                            // but aren't additive to total variance due to factor correlations
+                            let percent_var =
+                                (rotated_eigenvalues[j] / (n_variables as f64)) * 100.0;
+                            cum_percent += percent_var;
+
+                            rotation_sums.push(TotalVarianceComponent {
+                                total: rotated_eigenvalues[j],
+                                percent_of_variance: percent_var,
+                                cumulative_percent: cum_percent,
+                            });
+                        }
+                    } else {
+                        // For orthogonal rotation, use the pattern matrix (rotated loadings)
+                        let mut rotated_eigenvalues = vec![0.0; n_factors];
+
+                        for j in 0..n_factors {
+                            let mut sum_squared = 0.0;
+                            for i in 0..rotated_loadings.nrows() {
+                                sum_squared += rotated_loadings[(i, j)].powi(2);
+                            }
+                            rotated_eigenvalues[j] = sum_squared;
+                        }
+
+                        // Create rotation sums components
+                        let mut cum_percent = 0.0;
+                        for j in 0..n_factors {
+                            let percent_var = (rotated_eigenvalues[j] / total_variance) * 100.0;
+                            cum_percent += percent_var;
+
+                            rotation_sums.push(TotalVarianceComponent {
+                                total: rotated_eigenvalues[j],
+                                percent_of_variance: percent_var,
+                                cumulative_percent: cum_percent,
+                            });
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                // If rotation fails, we continue without rotation sums
+            }
+        }
     }
 
     Ok(TotalVarianceExplained {

@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { FactorType } from "./factor";
+import { ResultJson } from "@/types/Table";
 
 export type FactorAnalysisType = {
     configData: FactorType;
@@ -26,4 +27,6 @@ export type FactorFinalResultType = {
         analyticId: number,
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
+
+    formattedResult: ResultJson;
 };

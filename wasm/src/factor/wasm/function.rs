@@ -6,6 +6,7 @@ use crate::factor::models::{
     result::FactorAnalysisResult,
 };
 use crate::factor::stats::core;
+use crate::factor::utils::converter::format_result;
 use crate::factor::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
@@ -276,6 +277,10 @@ pub fn get_results(result: &Option<FactorAnalysisResult>) -> Result<JsValue, JsV
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<FactorAnalysisResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {

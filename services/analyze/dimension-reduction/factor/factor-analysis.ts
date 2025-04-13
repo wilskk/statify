@@ -1,6 +1,8 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { FactorAnalysisType } from "@/models/dimension-reduction/factor/factor-worker";
 import init, { FactorAnalysis } from "@/wasm/pkg/wasm";
+import { transformFactorAnalysisResult } from "./factor-analysis-formatter";
+import { resultFactorAnalysis } from "./factor-analysis-output";
 
 export async function analyzeFactor({
     configData,
@@ -42,22 +44,22 @@ export async function analyzeFactor({
         configData
     );
 
-    const results = factor.get_results();
+    const results = factor.get_formatted_results();
     const error = factor.get_all_errors();
 
     console.log("results", results);
     console.log("error", error);
 
-    // const formattedResults = transformClusteringResult(results);
-    // console.log("formattedResults", formattedResults);
+    const formattedResults = transformFactorAnalysisResult(results);
+    console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
-    // await resultTwoStepCluster({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
-    //     formattedResult: formattedResults ?? [],
-    // });
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultFactorAnalysis({
+        addLog,
+        addAnalytic,
+        addStatistic,
+        formattedResult: formattedResults ?? [],
+    });
 }

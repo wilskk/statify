@@ -138,6 +138,10 @@ impl FactorAnalysis {
         function::get_results(&self.result)
     }
 
+    pub fn get_formatted_results(&self) -> Result<JsValue, JsValue> {
+        function::get_formatted_results(&self.result)
+    }
+
     // Function to get all errors
     pub fn get_all_errors(&self) -> JsValue {
         function::get_all_errors(&self.error_collector)
