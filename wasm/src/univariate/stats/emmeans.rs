@@ -44,7 +44,7 @@ pub fn calculate_emmeans(
     };
 
     // Determine which factor combinations to analyze
-    let factors_to_analyze: Vec<String> = if target_list.iter().any(|x| x == "(OVERALS)") {
+    let factors_to_analyze: Vec<String> = if target_list.iter().any(|x| x == "(OVERALL)") {
         // Generate all possible combinations when (OVERALS) is present
         let mut base_factors = Vec::new();
         base_factors.push(dep_var.clone());

@@ -22,6 +22,9 @@ pub fn run_analysis(
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
+    // Log data to track the data being processed
+    web_sys::console::log_1(&format!("Data: {:?}", data).into());
+
     // Step 1: Basic processing summary (always executed)
     executed_functions.push("basic_processing_summary".to_string());
     let processing_summary = match core::basic_processing_summary(data, config) {
@@ -245,7 +248,7 @@ pub fn run_analysis(
 
     // Create the final result
     let result = UnivariateResult {
-        between_subjects_factors: processing__summary,
+        between_subjects_factors: processing_summary,
         descriptive_statistics,
         levene_test,
         tests_of_between_subjects_effects,

@@ -27,11 +27,20 @@ pub struct BetweenSubjectFactors {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DescriptiveStatistics {
-    pub entries: Vec<DescriptiveStatisticsEntry>,
+    pub dependent_variable: String,
+    pub groups: Vec<StatGroup>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DescriptiveStatisticsEntry {
+pub struct StatGroup {
+    pub factor_name: String,
+    pub factor_value: String,
+    pub stats: StatsEntry,
+    pub subgroups: Vec<StatGroup>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StatsEntry {
     pub mean: f64,
     pub std_deviation: f64,
     pub n: usize,
