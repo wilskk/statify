@@ -1,5 +1,5 @@
 // robust.rs
-use nalgebra::{ DMatrix, DVector };
+use nalgebra::DMatrix;
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -21,9 +21,9 @@ use super::core::{
 pub fn calculate_robust_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<ParameterEstimates>, String> {
+) -> Result<ParameterEstimates, String> {
     if !config.options.param_est_rob_std_err {
-        return Ok(None);
+        return Err("Robust parameter estimates not requested in configuration".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -231,7 +231,7 @@ pub fn calculate_robust_parameter_estimates(
             });
         }
 
-        Ok(Some(ParameterEstimates { estimates }))
+        Ok(ParameterEstimates { estimates })
     } else {
         Err("Matrix inversion failed in robust standard errors calculation".to_string())
     }

@@ -1,5 +1,5 @@
 // posthoc.rs
-use std::collections::HashMap;
+use std::{ collections::HashMap, f32::consts::E };
 
 use crate::univariate::models::{
     config::{ CategoryMethod, UnivariateConfig },
@@ -20,10 +20,10 @@ use super::core::{
 pub fn calculate_posthoc_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<HashMap<String, Vec<ParameterEstimateEntry>>>, String> {
+) -> Result<HashMap<String, Vec<ParameterEstimateEntry>>, String> {
     // Return None if posthoc tests are not requested
     if config.posthoc.src_list.is_none() || config.posthoc.src_list.as_ref().unwrap().is_empty() {
-        return Ok(None);
+        return Err("Post-hoc tests not requested in configuration".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -45,7 +45,7 @@ pub fn calculate_posthoc_tests(
     };
 
     if factors_to_process.is_empty() {
-        return Ok(None);
+        return Err("No factors specified for post-hoc tests".to_string());
     }
 
     // Process each factor
@@ -277,7 +277,7 @@ pub fn calculate_posthoc_tests(
                 } else if config.posthoc.dunc {
                     // Dunnett's C
                     test_name = "Dunnett's C";
-                    let alpha = 0.05;
+                    let alpha: f64 = 0.05;
                     let c_value = ((2.0 * alpha.ln()) as f64).sqrt() * -1.0;
                     if t_abs > c_value {
                         0.01
@@ -336,8 +336,8 @@ pub fn calculate_posthoc_tests(
     }
 
     if result.is_empty() {
-        Ok(None)
+        Err("No significant post-hoc results found".to_string())
     } else {
-        Ok(Some(result))
+        Ok(result)
     }
 }

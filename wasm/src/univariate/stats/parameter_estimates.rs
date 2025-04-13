@@ -25,9 +25,9 @@ use super::core::{
 pub fn calculate_general_estimable_function(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<GeneralEstimableFunction>, String> {
+) -> Result<GeneralEstimableFunction, String> {
     if !config.options.general_fun {
-        return Ok(None);
+        return Err("General estimable function not requested in configuration".to_string());
     }
 
     let mut matrix = Vec::new();
@@ -80,16 +80,16 @@ pub fn calculate_general_estimable_function(
         }
     }
 
-    Ok(Some(GeneralEstimableFunction { matrix }))
+    Ok(GeneralEstimableFunction { matrix })
 }
 
 /// Calculate parameter estimates if requested
 pub fn calculate_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<ParameterEstimates>, String> {
+) -> Result<ParameterEstimates, String> {
     if !config.options.param_est {
-        return Ok(None);
+        return Err("Parameter estimates not requested in configuration".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -230,5 +230,5 @@ pub fn calculate_parameter_estimates(
         }
     }
 
-    Ok(Some(ParameterEstimates { estimates }))
+    Ok(ParameterEstimates { estimates })
 }

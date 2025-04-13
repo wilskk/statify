@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateResult {
-    pub between_subjects_factors: Option<HashMap<String, BetweenSubjectFactors>>,
+    pub between_subjects_factors: HashMap<String, BetweenSubjectFactors>,
     pub descriptive_statistics: Option<HashMap<String, DescriptiveStatistics>>,
     pub levene_test: Option<LeveneTest>,
     pub tests_of_between_subjects_effects: Option<TestsBetweenSubjectsEffects>,

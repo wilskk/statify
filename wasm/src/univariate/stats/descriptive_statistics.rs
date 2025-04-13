@@ -19,9 +19,11 @@ use super::core::{
 pub fn calculate_descriptive_statistics(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<HashMap<String, DescriptiveStatistics>>, String> {
+) -> Result<HashMap<String, DescriptiveStatistics>, String> {
     if !config.options.desc_stats || data.dependent_data.is_empty() {
-        return Ok(None);
+        return Err(
+            "Descriptive statistics not requested or no dependent data available".to_string()
+        );
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -67,5 +69,5 @@ pub fn calculate_descriptive_statistics(
     }
 
     result.insert(dep_var_name.clone(), DescriptiveStatistics { entries });
-    Ok(Some(result))
+    Ok(result)
 }

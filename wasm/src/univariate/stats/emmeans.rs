@@ -19,12 +19,12 @@ use super::core::{
 pub fn calculate_emmeans(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<HashMap<String, Vec<ParameterEstimateEntry>>>, String> {
+) -> Result<HashMap<String, Vec<ParameterEstimateEntry>>, String> {
     // Check if target_list exists and is not empty
     let target_list = match &config.emmeans.target_list {
         Some(list) if !list.is_empty() => list,
         _ => {
-            return Ok(None);
+            return Err("Target list is empty or not specified in configuration".to_string());
         } // Return early if target_list is empty or None
     };
 
@@ -265,7 +265,7 @@ pub fn calculate_emmeans(
         result.insert(factor_spec.clone(), estimates);
     }
 
-    Ok(Some(result))
+    Ok(result)
 }
 
 /// Helper function to generate all possible combinations of factors

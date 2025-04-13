@@ -6,19 +6,17 @@ use crate::univariate::models::{
 };
 
 use super::core::{
-    calculate_mean,
     extract_dependent_value,
     get_factor_levels,
     data_value_to_string,
     matrix_inverse,
-    matrix_multiply,
 };
 
 /// Save variables as requested in the configuration
 pub fn save_variables(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<SavedVariables>, String> {
+) -> Result<SavedVariables, String> {
     if
         !config.save.res_weighted &&
         !config.save.pre_weighted &&
@@ -31,7 +29,7 @@ pub fn save_variables(
         !config.save.studentized_res &&
         !config.save.deleted_res
     {
-        return Ok(None);
+        return Err("Configuration does not request any saved variables".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -293,5 +291,5 @@ pub fn save_variables(
         }
     }
 
-    Ok(Some(result))
+    Ok(result)
 }

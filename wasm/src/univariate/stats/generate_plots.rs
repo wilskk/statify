@@ -20,9 +20,9 @@ use super::core::{
 pub fn generate_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<HashMap<String, PlotData>>, String> {
+) -> Result<HashMap<String, PlotData>, String> {
     if config.plots.src_list.is_empty() {
-        return Ok(None);
+        return Err("No source list specified for plots".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -265,5 +265,5 @@ pub fn generate_plots(
         }
     }
 
-    Ok(Some(result))
+    Ok(result)
 }

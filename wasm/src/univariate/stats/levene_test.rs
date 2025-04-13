@@ -14,9 +14,9 @@ use super::core::{
 pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<LeveneTest>, String> {
+) -> Result<LeveneTest, String> {
     if !config.options.homogen_test {
-        return Ok(None);
+        return Err("Levene's test not requested in configuration".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -49,7 +49,7 @@ pub fn calculate_levene_test(
     }
 
     if groups.len() < 2 {
-        return Ok(None); // Need at least 2 groups for Levene's test
+        return Err("At least two groups are required for Levene's test".to_string());
     }
 
     // Calculate group means
@@ -109,13 +109,11 @@ pub fn calculate_levene_test(
     let f_dist = FisherSnedecor::new(df1 as f64, df2 as f64).unwrap();
     let significance = 1.0 - f_dist.cdf(f_statistic);
 
-    Ok(
-        Some(LeveneTest {
-            dependent_variable: dep_var_name,
-            f_statistic,
-            df1,
-            df2,
-            significance,
-        })
-    )
+    Ok(LeveneTest {
+        dependent_variable: dep_var_name,
+        f_statistic,
+        df1,
+        df2,
+        significance,
+    })
 }

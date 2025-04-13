@@ -11,10 +11,10 @@ use super::core::get_factor_levels;
 pub fn calculate_contrast_coefficients(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<ContrastCoefficients>, String> {
+) -> Result<ContrastCoefficients, String> {
     // Skip if no contrast method specified or if ContrastMethod::None
     if config.contrast.contrast_method == ContrastMethod::None {
-        return Ok(None);
+        return Err("No contrast method specified".to_string());
     }
 
     let mut parameter = Vec::new();
@@ -225,12 +225,10 @@ pub fn calculate_contrast_coefficients(
         }
     }
 
-    Ok(
-        Some(ContrastCoefficients {
-            parameter,
-            coefficients,
-        })
-    )
+    Ok(ContrastCoefficients {
+        parameter,
+        coefficients,
+    })
 }
 
 /// Generate polynomial contrasts of specified degree for a given number of levels

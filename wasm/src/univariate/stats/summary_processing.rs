@@ -13,9 +13,9 @@ use super::core::data_value_to_string;
 pub fn basic_processing_summary(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<HashMap<String, BetweenSubjectFactors>>, String> {
+) -> Result<HashMap<String, BetweenSubjectFactors>, String> {
     if data.fix_factor_data.is_empty() {
-        return Ok(None);
+        return Err("No fixed factor data available".to_string());
     }
 
     let mut result = HashMap::new();
@@ -42,5 +42,5 @@ pub fn basic_processing_summary(
         result.insert(factor_name.clone(), BetweenSubjectFactors { factors: level_counts });
     }
 
-    Ok(Some(result))
+    Ok(result)
 }

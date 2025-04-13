@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { UnivariateAnalysisType } from "@/models/general-linear-model/univariate/univariate-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { UnivariateAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeUnivariate({
     configData,
@@ -58,23 +58,23 @@ export async function analyzeUnivariate({
 
     console.log(configData);
 
-    // const univariate = new UnivariateAnalysis(
-    //     slicedDataForDependent,
-    //     slicedDataForFixFactor,
-    //     slicedDataForRandomFactor,
-    //     slicedDataForCovariate,
-    //     slicedDataForWlsWeight,
-    //     varDefsForDependent,
-    //     varDefsForFixFactor,
-    //     varDefsForRandomFactor,
-    //     varDefsForCovariate,
-    //     varDefsForWlsWeight,
-    //     configData
-    // );
+    const univariate = new UnivariateAnalysis(
+        slicedDataForDependent,
+        slicedDataForFixFactor,
+        slicedDataForRandomFactor,
+        slicedDataForCovariate,
+        slicedDataForWlsWeight,
+        varDefsForDependent,
+        varDefsForFixFactor,
+        varDefsForRandomFactor,
+        varDefsForCovariate,
+        varDefsForWlsWeight,
+        configData
+    );
 
-    // const result = univariate.get_results();
-    // const error = univariate.get_all_errors();
+    const result = univariate.get_results();
+    const error = univariate.get_all_errors();
 
-    // console.log(result);
-    // console.log(error);
+    console.log(result);
+    console.log(error);
 }

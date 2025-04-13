@@ -17,9 +17,9 @@ use super::core::{
 pub fn calculate_spread_vs_level_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<SpreadVsLevelPlots>, String> {
+) -> Result<SpreadVsLevelPlots, String> {
     if !config.options.spr_vs_level {
-        return Ok(None);
+        return Err("Spread vs. level plots not requested in configuration".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -56,5 +56,5 @@ pub fn calculate_spread_vs_level_plots(
         }
     }
 
-    Ok(Some(SpreadVsLevelPlots { points }))
+    Ok(SpreadVsLevelPlots { points })
 }

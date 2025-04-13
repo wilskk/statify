@@ -245,7 +245,7 @@ pub fn run_analysis(
 
     // Create the final result
     let result = UnivariateResult {
-        between_subjects_factors: processing_summary,
+        between_subjects_factors: processing__summary,
         descriptive_statistics,
         levene_test,
         tests_of_between_subjects_effects,
