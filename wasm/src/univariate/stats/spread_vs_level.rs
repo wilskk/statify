@@ -10,7 +10,7 @@ use super::core::{ extract_dependent_value, get_factor_combinations, matches_com
 pub fn calculate_spread_vs_level_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<SpreadVsLevelPlots>, String> {
+) -> Result<SpreadVsLevelPlots, String> {
     if !config.options.spr_vs_level {
         return Ok(None);
     }
@@ -54,5 +54,5 @@ pub fn calculate_spread_vs_level_plots(
         }
     }
 
-    Ok(Some(SpreadVsLevelPlots { points }))
+    Ok(SpreadVsLevelPlots { points })
 }

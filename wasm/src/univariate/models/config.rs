@@ -41,7 +41,7 @@ pub enum SumOfSquaresMethod {
     TypeIV,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub enum ContrastMethod {
     #[serde(rename = "none")]
     None,

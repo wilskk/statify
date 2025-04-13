@@ -22,9 +22,9 @@ use super::core::{
 pub fn calculate_tests_between_subjects_effects(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<TestsBetweenSubjectsEffects>, String> {
+) -> Result<TestsBetweenSubjectsEffects, String> {
     if data.dependent_data.is_empty() {
-        return Ok(None);
+        return Err("No dependent data available".to_string());
     }
 
     let dep_var_name = match &config.main.dep_var {
@@ -95,7 +95,7 @@ pub fn calculate_tests_between_subjects_effects(
 
     // Calculate main effects based on selected sum of squares method
     if let Some(factor_str) = &config.main.fix_factor {
-        let factors:  = factor_str.clone();
+        let factors = factor_str.clone();
 
         match config.model.sum_of_square_method {
             SumOfSquaresMethod::TypeI => {
@@ -138,7 +138,7 @@ pub fn calculate_tests_between_subjects_effects(
                             continue;
                         }
                         for (key, value) in &record.values {
-                            if key == *factor {
+                            if key == factor {
                                 let level = match value {
                                     DataValue::Number(n) => n.to_string(),
                                     DataValue::Text(t) => t.clone(),
@@ -383,11 +383,9 @@ pub fn calculate_tests_between_subjects_effects(
         (1.0 - r_squared) *
             (((n_total - 1) as f64) / ((n_total - factor_combinations.len()) as f64));
 
-    Ok(
-        Some(TestsBetweenSubjectsEffects {
-            source,
-            r_squared,
-            adjusted_r_squared,
-        })
-    )
+    Ok(TestsBetweenSubjectsEffects {
+        source,
+        r_squared,
+        adjusted_r_squared,
+    })
 }

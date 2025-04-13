@@ -12,6 +12,12 @@ pub struct UnivariateResult {
     pub contrast_coefficients: Option<ContrastCoefficients>,
     pub lack_of_fit_tests: Option<LackOfFitTests>,
     pub spread_vs_level_plots: Option<SpreadVsLevelPlots>,
+    pub posthoc_tests: Option<HashMap<String, Vec<ParameterEstimateEntry>>>,
+    pub emmeans: Option<HashMap<String, Vec<ParameterEstimateEntry>>>,
+    pub robust_parameter_estimates: Option<ParameterEstimates>,
+    pub plots: Option<HashMap<String, PlotData>>,
+    pub saved_variables: Option<SavedVariables>,
+    pub executed_functions: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -152,4 +158,45 @@ pub struct FTest {
     pub df1: usize,
     pub df2: usize,
     pub p_value: f64,
+}
+
+// Añadir estas nuevas estructuras
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PlotData {
+    pub title: String,
+    pub x_label: String,
+    pub y_label: String,
+    pub series: Vec<PlotSeries>,
+    pub y_axis_starts_at_zero: bool,
+    pub includes_reference_line: bool,
+    pub reference_line: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PlotSeries {
+    pub name: String,
+    pub points: Vec<PlotPoint>,
+    pub error_bars: Option<Vec<ConfidenceInterval>>,
+    pub series_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PlotPoint {
+    pub x: f64,
+    pub y: f64,
+    pub label: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SavedVariables {
+    pub predicted_values: Vec<f64>,
+    pub weighted_predicted_values: Vec<f64>,
+    pub residuals: Vec<f64>,
+    pub weighted_residuals: Vec<f64>,
+    pub deleted_residuals: Vec<f64>,
+    pub standardized_residuals: Vec<f64>,
+    pub studentized_residuals: Vec<f64>,
+    pub standard_errors: Vec<f64>,
+    pub cook_distances: Vec<f64>,
+    pub leverages: Vec<f64>,
 }

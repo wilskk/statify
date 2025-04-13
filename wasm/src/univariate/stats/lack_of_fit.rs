@@ -18,7 +18,7 @@ use super::core::{
 pub fn calculate_lack_of_fit_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<LackOfFitTests>, String> {
+) -> Result<LackOfFitTests, String> {
     if !config.options.lack_of_fit {
         return Ok(None);
     }
@@ -143,18 +143,16 @@ pub fn calculate_lack_of_fit_tests(
         config.options.sig_level
     );
 
-    Ok(
-        Some(LackOfFitTests {
-            sum_of_squares: lack_of_fit_ss,
-            df: df_lack_of_fit,
-            mean_square: ms_lack_of_fit,
-            f_value,
-            significance,
-            partial_eta_squared,
-            noncent_parameter,
-            observed_power,
-        })
-    )
+    Ok(LackOfFitTests {
+        sum_of_squares: lack_of_fit_ss,
+        df: df_lack_of_fit,
+        mean_square: ms_lack_of_fit,
+        f_value,
+        significance,
+        partial_eta_squared,
+        noncent_parameter,
+        observed_power,
+    })
 }
 
 /// Get unique predictor combinations for lack of fit tests

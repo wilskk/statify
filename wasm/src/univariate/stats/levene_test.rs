@@ -8,7 +8,7 @@ use super::core::{ extract_dependent_value, get_factor_combinations, matches_com
 pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
-) -> Result<Option<LeveneTest>, String> {
+) -> Result<LeveneTest, String> {
     if !config.options.homogen_test {
         return Ok(None);
     }
@@ -99,13 +99,11 @@ pub fn calculate_levene_test(
     let f_dist = FisherSnedecor::new(df1 as f64, df2 as f64).unwrap();
     let significance = 1.0 - f_dist.cdf(f_statistic);
 
-    Ok(
-        Some(LeveneTest {
-            dependent_variable: dep_var_name,
-            f_statistic,
-            df1,
-            df2,
-            significance,
-        })
-    )
+    Ok(LeveneTest {
+        dependent_variable: dep_var_name,
+        f_statistic,
+        df1,
+        df2,
+        significance,
+    })
 }

@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+use crate::univariate::models::config::ContrastMethod;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
@@ -62,11 +63,11 @@ pub fn run_analysis(
     }
 
     // Step 4: Tests of Between-Subjects Effects (ANOVA)
-    let mut tests_between_subjects_effects = None;
+    let mut tests_of_between_subjects_effects = None;
     match core::calculate_tests_between_subjects_effects(data, config) {
         Ok(tests) => {
             executed_functions.push("calculate_tests_between_subjects_effects".to_string());
-            tests_between_subjects_effects = Some(tests);
+            tests_of_between_subjects_effects = Some(tests);
         }
         Err(e) => {
             error_collector.add_error("calculate_tests_between_subjects_effects", &e);
@@ -131,14 +132,113 @@ pub fn run_analysis(
         }
     }
 
-    // Step 9: Generate plots if requested
+    // Calcular los posthoc tests si se solicitan
+    let mut posthoc_tests = None;
+    if config.posthoc.src_list.is_some() && !config.posthoc.src_list.as_ref().unwrap().is_empty() {
+        executed_functions.push("calculate_posthoc_tests".to_string());
+        match core::calculate_posthoc_tests(data, config) {
+            Ok(tests) => {
+                posthoc_tests = Some(tests);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_posthoc_tests", &e);
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Calcular emmeans si se solicitan
+    let mut emmeans = None;
+    if !config.emmeans.src_list.is_empty() {
+        executed_functions.push("calculate_emmeans".to_string());
+        match core::calculate_emmeans(data, config) {
+            Ok(means) => {
+                emmeans = Some(means);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_emmeans", &e);
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Calcular robust standard errors si se solicitan
+    let mut robust_parameter_estimates = None;
+    if config.options.param_est_rob_std_err {
+        executed_functions.push("calculate_robust_parameter_estimates".to_string());
+        match core::calculate_robust_parameter_estimates(data, config) {
+            Ok(estimates) => {
+                robust_parameter_estimates = Some(estimates);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_robust_parameter_estimates", &e);
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Generate plots if requested
+    let mut plots = None;
     if config.plots.line_chart_type || config.plots.bar_chart_type {
         executed_functions.push("generate_plots".to_string());
         match core::generate_plots(data, config) {
-            Ok(_) => {}
+            Ok(plot_data) => {
+                plots = Some(plot_data);
+            }
             Err(e) => {
                 error_collector.add_error("generate_plots", &e);
-                // Continue execution despite errors for non-critical functions
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Save variables if requested
+    let mut saved_variables = None;
+    if
+        config.save.res_weighted ||
+        config.save.pre_weighted ||
+        config.save.unstandardized_res ||
+        config.save.leverage ||
+        config.save.cooks_d
+    {
+        executed_functions.push("save_variables".to_string());
+        match core::save_variables(data, config) {
+            Ok(vars) => {
+                saved_variables = Some(vars);
+            }
+            Err(e) => {
+                error_collector.add_error("save_variables", &e);
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Calculate general estimable function
+    let mut general_estimable_function = None;
+    if config.options.general_fun {
+        executed_functions.push("calculate_general_estimable_function".to_string());
+        match core::calculate_general_estimable_function(data, config) {
+            Ok(gef) => {
+                general_estimable_function = Some(gef);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_general_estimable_function", &e);
+                // Continue execution despite errors
+            }
+        }
+    }
+
+    // Calculate contrast coefficients
+    let mut contrast_coefficients = None;
+    if config.contrast.contrast_method != ContrastMethod::None {
+        executed_functions.push("calculate_contrast_coefficients".to_string());
+        match core::calculate_contrast_coefficients(data, config) {
+            Ok(coefs) => {
+                contrast_coefficients = Some(coefs);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_contrast_coefficients", &e);
+                // Continue execution despite errors
             }
         }
     }
@@ -154,6 +254,12 @@ pub fn run_analysis(
         contrast_coefficients,
         lack_of_fit_tests,
         spread_vs_level_plots,
+        posthoc_tests,
+        emmeans,
+        robust_parameter_estimates,
+        plots,
+        saved_variables,
+        executed_functions,
     };
 
     Ok(Some(result))
