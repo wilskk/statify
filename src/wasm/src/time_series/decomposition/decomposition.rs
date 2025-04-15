@@ -4,8 +4,6 @@ use wasm_bindgen::prelude::*;
 pub struct Decomposition {
     data: Vec<f64>,
     data_header: String,
-    time: Vec<String>,
-    time_header: String,
     seasonal_component: Vec<f64>,
     trend_component: Vec<f64>,
     irregular_component: Vec<f64>,
@@ -17,12 +15,10 @@ pub struct Decomposition {
 #[wasm_bindgen]
 impl Decomposition{
     #[wasm_bindgen(constructor)]
-    pub fn new(data: Vec<f64>, data_header: String, time: Vec<String>, time_header: String, period: i32) -> Decomposition{
+    pub fn new(data: Vec<f64>, data_header: String, period: i32) -> Decomposition{
         Decomposition{
             data,
             data_header,
-            time,
-            time_header,
             seasonal_component: Vec::new(),
             trend_component: Vec::new(),
             irregular_component: Vec::new(),
@@ -38,12 +34,6 @@ impl Decomposition{
     }
     pub fn get_data_header(&self) -> String{
         self.data_header.clone()
-    }
-    pub fn get_time(&self) -> Vec<String>{
-        self.time.clone()
-    }   
-    pub fn get_time_header(&self) -> String{
-        self.time_header.clone()
     }
     pub fn get_seasonal_component(&self) -> Vec<f64>{
         self.seasonal_component.clone()

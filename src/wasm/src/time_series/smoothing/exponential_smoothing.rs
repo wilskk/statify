@@ -25,11 +25,11 @@ impl Smoothing {
     pub fn calculate_des(&self, alpha:f64) -> Vec<f64> {
         let mut des_values: Vec<f64> = Vec::new();
         // first exponential smoothing
-        let exp1: Smoothing = Smoothing::new(self.get_data_header(), self.get_data(), self.get_time_header(), self.get_time());
+        let exp1: Smoothing = Smoothing::new(self.get_data_header(), self.get_data());
         let mut exp1_values: Vec<f64> = exp1.calculate_ses(alpha);
         exp1_values.remove(0);
         // second exponential smoothing
-        let exp2: Smoothing = Smoothing::new(exp1.get_data_header(), exp1_values.clone(), exp1.get_time_header(), exp1.get_time());
+        let exp2: Smoothing = Smoothing::new(exp1.get_data_header(), exp1_values.clone());
         let mut exp2_values: Vec<f64> = exp2.calculate_ses(alpha);
         exp2_values.insert(0, 0.0);
         exp1_values.insert(0, 0.0);
