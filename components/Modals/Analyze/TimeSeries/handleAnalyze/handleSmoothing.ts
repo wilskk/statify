@@ -1,36 +1,32 @@
 import init, {Smoothing} from '../../../../../src/wasm/pkg/wasm.js';
+import {generateDate} from '../generateDate/generateDateTimeSeries';
 
 export async function handleSmoothing(
     data: (number)[], 
     dataHeader: (string), 
-    time: (string)[], 
-    timeHeader: (string), 
     pars: (number)[], 
+    periodicity: (number),
+    typeDate: (string),
+    startDate: (number),
     method: string): 
 Promise<[number[], string, string]> {
     await init(); // Inisialisasi WebAssembly
-    const inputData = Array.isArray(data) && Array.isArray(time) ? data : null;
+    const inputData = Array.isArray(data)? data : null;
     
     if (!inputData) {
         throw new Error("Invalid input data");
     }
 
     try {
-        if(data.length != time.length){
-            throw new Error("Data and Time length is not equal");
-        }
         if (!data.every((val) => typeof val === 'number')) {
             throw new Error("dataValues contains non-numeric values");
-        }
-        if (!(time as string[]).every((val) => typeof val === 'string')) {
-            throw new Error("timeValues contains non-string values");
         }
 
         let smoothing;
         let smoothingValue;
         let nameMethod;
         
-        smoothing = new Smoothing(dataHeader, new Float64Array(data), timeHeader as string, time as string[]);
+        smoothing = new Smoothing(dataHeader, new Float64Array(data));
         console.log("Smoothing initialized:", smoothing);
         switch (method) {
             case 'sma':
@@ -54,7 +50,7 @@ Promise<[number[], string, string]> {
                 nameMethod = 'Holt\'s Method';
                 break;
             case 'winter':
-                smoothingValue = smoothing.calculate_winter(pars[0], pars[1], pars[2], pars[3]);
+                smoothingValue = smoothing.calculate_winter(pars[0], pars[1], pars[2], periodicity);
                 nameMethod = 'Winter\'s Method';
                 break;
             default:
@@ -64,16 +60,17 @@ Promise<[number[], string, string]> {
         let smoothingArray = Array.from(smoothingValue);
         let smoothingRound = smoothingArray.map(value => Number(parseFloat(value.toString()).toFixed(3)));
         let structuredSmoothing: any[] = [];
+        let dateArray = await generateDate(periodicity, typeDate, startDate, data.length);
         // Validasi panjang array
-        if (time.length === data.length && data.length === smoothingArray.length) {
-            for (let i = 0; i < time.length; i++) {
+        if (data.length === smoothingArray.length) {
+            for (let i = 0; i < data.length; i++) {
                 structuredSmoothing.push({
-                    category: time[i],
+                    category: `${dateArray[i]}`,
                     subcategory: `${dataHeader}`,
                     value: data[i],
                 });
                 structuredSmoothing.push({
-                    category: time[i],
+                    category: `${dateArray[i]}`,
                     subcategory: `${nameMethod}`,
                     value: smoothingArray[i] === 0? null : smoothingArray[i],
                 });
@@ -87,7 +84,7 @@ Promise<[number[], string, string]> {
                     chartType: "Multiple Line Chart",
                     chartMetaData: {
                         axisInfo: {
-                            category: `${timeHeader}`,
+                            category: `date`,
                             subCategory: [`${dataHeader}`, `$(nameMethod) Smoothing`],
                         },
                         description: `Smoothing ${dataHeader} using ${nameMethod}`,

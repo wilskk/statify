@@ -1,17 +1,18 @@
 import init, {Decomposition} from '../../../../../src/wasm/pkg/wasm.js';
+import {generateDate} from '../generateDate/generateDateTimeSeries';
 
 export async function handleDecomposition(
     data: (number)[],
     dataHeader: (string),
-    time: (string)[],
-    timeHeader: (string),
     decompostionMethod: string,
     trendMethod: string,
     periodValue: number,
     periodLable: string,
-): Promise<[number[], number[], number[], number[], number[], string, string, string]> {
+    typeDate: string,
+    startDate: number,
+): Promise<[number[], number[], number[], number[], number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
-    const inputData = Array.isArray(data) && Array.isArray(time) ? data : null;
+    const inputData = Array.isArray(data) ? data : null;
 
     if (!inputData) {
         throw new Error("Invalid input data");
@@ -24,14 +25,8 @@ export async function handleDecomposition(
     }
 
     try {
-        if(data.length != time.length){
-            throw new Error("Data and Time length is not equal");
-        }
         if (!data.every((val) => typeof val === 'number')) {
             throw new Error("dataValues contains non-numeric values");
-        }
-        if (!(time as string[]).every((val) => typeof val === 'string')) {
-            throw new Error("timeValues contains non-string values");
         }
 
         let decomposition;
@@ -39,12 +34,12 @@ export async function handleDecomposition(
         let forecastingRound;
         switch (decompostionMethod) {
             case 'additive':
-                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, time as string[], timeHeader as string, periodValue);
+                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, periodValue);
                 forecastingValue = Array.from(decomposition.additive_decomposition());
                 forecastingRound = forecastingValue.map(value => Number(parseFloat(value.toString()).toFixed(3)));
                 break;
             case 'multiplicative':
-                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, time as string[], timeHeader as string, periodValue);
+                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, periodValue);
                 forecastingValue = Array.from(decomposition.multiplicative_decomposition(trendMethod));
                 forecastingRound = forecastingValue.map(value => Number(parseFloat(value.toString()).toFixed(3)));
                 break;
@@ -79,6 +74,49 @@ export async function handleDecomposition(
         let seasonalRound = seasonalComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
         let trendRound = trendComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
         let irregularRound = irregularComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+
+        let structuredForecasting: any[] = [];
+        let dateArray = await generateDate(periodValue, typeDate, startDate, data.length);
+        // Validasi panjang array
+        if (data.length === forecastingRound.length) {
+            for (let i = 0; i < data.length; i++) {
+                structuredForecasting.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `${dataHeader}`,
+                    value: data[i],
+                });
+                structuredForecasting.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `Decomposition Forecasting`,
+                    value: forecastingRound[i] === 0? null : forecastingRound[i],
+                });
+            }
+        } else {
+            throw new Error("Panjang array tidak sama!");
+        }
+        let graphicJSON = JSON.stringify({
+            charts: [
+                {
+                    chartType: "Multiple Line Chart",
+                    chartMetaData: {
+                        axisInfo: {
+                            category: `date`,
+                            subCategory: [`${dataHeader}`, `Decomposition Forecasting`],
+                        },
+                        description: `Decomposition ${dataHeader}`,
+                        notes: `Decomposition ${dataHeader}`,
+                    },
+                    chartData: structuredForecasting,
+                    chartConfig: {
+                        "width": 800,
+                        "height": 600,
+                        "chartColor": ["#4682B4"],
+                        "useLegend": true,
+                        "useAxis": true,
+                    }
+                }
+            ]
+        });
 
         let evalValue = await decomposition.decomposition_evaluation(new Float64Array(forecastingValue)) as Record<string, number>;
         let evalJSON = JSON.stringify({
@@ -128,9 +166,9 @@ export async function handleDecomposition(
             ]
         });
 
-        return [centered,seasonalRound,trendRound,irregularRound,forecastingRound,evalJSON,seasonJSON,equationJSON];
+        return [centered,seasonalRound,trendRound,irregularRound,forecastingRound,evalJSON,seasonJSON,equationJSON,graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),JSON.stringify({ error: errorMessage.message }),JSON.stringify({ error: errorMessage.message })];
+        return [[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","",""];
     }
 }

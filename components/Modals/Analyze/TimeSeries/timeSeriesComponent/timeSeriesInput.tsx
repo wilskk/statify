@@ -15,7 +15,7 @@ const InputRow: React.FC<InputRowProps> = ({ label, id, value, min, max, step, o
                 {label} :
             </label>
             <input
-                className="w-[40px]  text-sm font-semibold rounded-lg pl-1"
+                className="w-[55px] text-sm font-semibold rounded-lg pl-1"
                 type="number"
                 id={id}
                 value={value}

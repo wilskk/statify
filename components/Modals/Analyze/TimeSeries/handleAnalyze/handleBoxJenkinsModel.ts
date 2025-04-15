@@ -1,14 +1,15 @@
 import init, {Arima} from '../../../../../src/wasm/pkg/wasm.js';
+import {generateDate} from '../generateDate/generateDateTimeSeries';
 
 export async function handleBoxJenkinsModel(
     data: (number)[], 
     dataHeader: (string), 
-    time: (string)[], 
-    timeHeader: (string),
     orderParameter: (number)[],
     forecasting: boolean,
-    period: number
-):Promise<[number[], string, string, string, number[]]> {
+    period: number,
+    typeDate: string,
+    startDate: number,
+):Promise<[number[], string, string, string, number[], string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -119,8 +120,53 @@ export async function handleBoxJenkinsModel(
         let forecast;
         let forecastEval;
         let forecastEvalJson = "";
+        let graphicJSON = "";
         if (forecasting) {
             forecast = Array.from(arima.forecast());
+            let structuredForecasting: any[] = [];
+            let dateArray = await generateDate(period, typeDate, startDate, data.length);
+            // Validasi panjang array
+            if (data.length === forecast.length) {
+                for (let i = 0; i < data.length; i++) {
+                    structuredForecasting.push({
+                        category: `${dateArray[i]}`,
+                        subcategory: `${dataHeader}`,
+                        value: data[i],
+                    });
+                    structuredForecasting.push({
+                        category: `${dateArray[i]}`,
+                        subcategory: `ARIMA Forecasting`,
+                        value: forecast[i] === 0? null : forecast[i],
+                    });
+                }
+            } else {
+                throw new Error("Panjang array tidak sama!");
+            }
+
+            graphicJSON = JSON.stringify({
+                charts: [
+                    {
+                        chartType: "Multiple Line Chart",
+                        chartMetaData: {
+                            axisInfo: {
+                                category: `date`,
+                                subCategory: [`${dataHeader}`, `ARIMA Forecasting`],
+                            },
+                            description: `ARIMA ${dataHeader}`,
+                            notes: `ARIMA ${dataHeader}`,
+                        },
+                        chartData: structuredForecasting,
+                        chartConfig: {
+                            "width": 800,
+                            "height": 600,
+                            "chartColor": ["#4682B4"],
+                            "useLegend": true,
+                            "useAxis": true,
+                        }
+                    }
+                ]
+            });
+
             forecastEval = arima.forecasting_evaluation() as Record<string, number>;
             forecastEvalJson = JSON.stringify({
                 tables: [
@@ -139,9 +185,9 @@ export async function handleBoxJenkinsModel(
             forecast = [0];
         }
 
-        return [[...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast];
+        return [[...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],"" , "",JSON.stringify({ error: errorMessage.message }),[0]];
+        return [[0],"" , "",JSON.stringify({ error: errorMessage.message }),[0],""];
     }
 }

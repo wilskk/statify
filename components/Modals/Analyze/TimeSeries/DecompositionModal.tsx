@@ -4,6 +4,7 @@ import { CornerDownLeft, CornerDownRight } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
+import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
@@ -11,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { handleDecomposition } from "./handleAnalyze/handleDecomposition";
+import { InputRow } from "./timeSeriesComponent/timeSeriesInput";
 import { Variable } from "@/types/Variable";
 
 type RawData = string[][];
@@ -49,13 +51,16 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
     ];
 
     const periods: PeriodOption[] = [
-        { value: '7', label: 'Daily in Week', id: 'diw'},
-        { value: '30', label: 'Daily in Month', id: 'dim'},
-        { value: '4', label: 'Weekly in Month', id: 'wim'},
-        { value: '2', label: 'Semi Annual', id: 'sa'},
-        { value: '3', label: 'Four-Monthly', id: 'fm'},
-        { value: '4', label: 'Quarterly', id: 'q'},
-        { value: '12', label: 'Monthly', id: 'm'},
+        { value: '0', label: 'Years', id: 'y'},
+        { value: '2', label: 'Years-Semesters', id: 'ys'},
+        { value: '4', label: 'Years-Quarters', id: 'yq'},
+        { value: '12', label: 'Years-Months', id: 'ym'},
+        { value: '5', label: 'Weeks-Work Days(5)', id: 'wwd5'},
+        { value: '6', label: 'Weeks-Work Days(6)', id: 'wwd6'},
+        { value: '7', label: 'Weeks-Days', id: 'wd'},
+        { value: '8', label: 'Days-Work Hours(8)', id: 'dwh'},
+        { value: '24', label: 'Days-Hour', id: 'dh'},
+        { value: '0', label: 'Not Dated', id: 'nd'},
     ];
 
     // Store references
@@ -67,13 +72,13 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
     const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
     const [dataVariable, setDataVariable] = useState<string[]>([]);
-    const [timeVariable, setTimeVariable] = useState<string[]>([]);
+    const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
     
     // UI state management
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
     const [selectedDecompositionMethod, setSelectedDecompositionMethod] = useState<string[]>(['additive','additive']);
     const [selectedTrendedMethod, setSelectedTrendedMethod] = useState<string[]>(['linear','Linear']);
-    const [selectedPeriod, setSelectedPeriod] = useState<string[]>(['7','Daily in Week']);
+    const [selectedPeriod, setSelectedPeriod] = useState<string[]>([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
     const [saveDecomposition, setSaveDecomposition] = useState<boolean>(false);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -111,16 +116,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         }
     };
 
-    const handleSelectTimeVariable = (variable: string) => {
-        if (highlightedVariable === variable && timeVariable.length === 0) {
-            setTimeVariable([variable]);
-            setAvailableVariables(prev => prev.filter(item => item !== variable));
-            setHighlightedVariable(null);
-        } else {
-            setErrorMsg("A variable can only belong to one group, and Time Variable can only contain one variable.");
-        }
-    };
-
     const handleDeselectDataVariable = (variable: string) => {
         if (highlightedVariable === variable) {
             setAvailableVariables(prev => [...prev, variable]);
@@ -131,27 +126,67 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         }
     };
 
-    const handleDeselectTimeVariable = (variable: string) => {
-        if (highlightedVariable === variable) {
-            setAvailableVariables(prev => [...prev, variable]);
-            setTimeVariable([]);
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable(variable);
-        }
+    const handleSelectedPeriod = (id: string) => {
+        const period = periods.find(p => p.id === id);
+        if (!period) return;
+        setSelectedPeriod([period.value, period.label]);
+        setTypeDate(period.id as any); // Ensure type safety
     };
 
     // Reset all selections
     const handleReset = () => {
+        setTypeDate('nd');
         setSelectedDecompositionMethod(['additive','additive']);
         setSelectedTrendedMethod(['linear','Linear']);
-        setSelectedPeriod(['7','Daily in Week']);
+        setSelectedPeriod([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
         setSaveDecomposition(false);
         setAvailableVariables(storeVariables.map(v => v.name));
         setDataVariable([]);
-        setTimeVariable([]);
         setHighlightedVariable(null);
         setErrorMsg(null);
+    };
+
+    const inputPeriods = (period: string) => {
+        switch (period) {
+            case 'y': case 'ys': case 'yq': case 'ym':
+                return (
+                    <InputRow
+                        label="year" 
+                        id="year" 
+                        value={getYear()} 
+                        min={'1900'} 
+                        max={'2100'} 
+                        step={'1'} 
+                        onChange={(value) => setYear(value)}
+                    />
+                );
+            case 'wwd5': case 'wwd6': case 'wd':
+                return (
+                    <InputRow
+                        label="week" 
+                        id="week" 
+                        value={getWeek()} 
+                        min={'1'} 
+                        max={'52'} 
+                        step={'1'} 
+                        onChange={(value) => setWeek(value)}
+                    />
+                );
+            case 'dwh': case 'dh':
+                return (
+                    <InputRow
+                        label="day" 
+                        id="day" 
+                        value={getDay()} 
+                        min={'1'} 
+                        max={'31'} 
+                        step={'1'} 
+                        onChange={(value) => setDay(value)}
+                    />
+                );
+            default:
+                return (<div></div>);
+        }
     };
 
     // Validate input and prepare data for processing
@@ -159,11 +194,11 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         if (!dataVariable.length) {
             return "Please select at least one used variable.";
         }
-        if (!timeVariable.length) {
-            return "Please select at least one time variable.";
-        }
         if (!selectedTrendedMethod[0]) {
             return "Please select a method.";
+        }
+        if (selectedPeriod[0] === '0') {
+            return "Please the selected time spesification don't have periodicity.";
         }
         return null;
     };
@@ -172,15 +207,18 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
     const prepareData = () => {
         // Find variables that match the selected names
         const dataVarDef = storeVariables.find(v => v.name === dataVariable[0]);
-        const timeVarDef = storeVariables.find(v => v.name === timeVariable[0]);
         
-        if (!dataVarDef || !timeVarDef) {
+        if (!dataVarDef) {
             throw new Error("Selected variables not found");
+        }
+
+        if (dataVarDef.type !== "NUMERIC") {
+            throw new Error("Selected variable is not numeric");
         }
 
         // Find last row with data in selected variables
         let maxIndex = -1;
-        const selectedVariables = [dataVarDef, timeVarDef];
+        const selectedVariables = [dataVarDef];
         
         (data as RawData).forEach((row, rowIndex) => {
             let hasData = false;
@@ -198,23 +236,20 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
         // Extract data values and time values
         const dataValues: number[] = [];
-        const timeValues: string[] = [];
         
         for (let i = 0; i <= maxIndex; i++) {
             const row = (data as RawData)[i];
             const rawDataValue = row[dataVarDef.columnIndex];
-            const rawTimeValue = row[timeVarDef.columnIndex];
             
-            if (rawDataValue && rawTimeValue) {
+            if (rawDataValue) {
                 const numVal = parseFloat(rawDataValue as string);
                 if (!isNaN(numVal)) {
                     dataValues.push(numVal);
-                    timeValues.push(String(rawTimeValue));
                 }
             }
         }
         
-        return { dataValues, timeValues, dataVarDef, timeVarDef };
+        return { dataValues, dataVarDef};
     };
 
     // Save decomposition results as new variables
@@ -285,11 +320,10 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
     // Process decomposition results
     const processDecompositionResults = async (
-        results: [any[], any[], any[], any[], any[], any, any, any],
+        results: [any[], any[], any[], any[], any[], any, any, any, any],
         dataVarDef: Variable,
-        timeVarDef: Variable
     ) => {
-        const [testing, seasonal, trend, irrengular, forecasting, evaluation, seasonIndices, equation] = results;
+        const [testing, seasonal, trend, irrengular, forecasting, evaluation, seasonIndices, equation, graphic] = results;
         
         // Create log entry
         const logMsg = `DECOMPOSITION: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedDecompositionMethod[1]}.`;
@@ -319,6 +353,13 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             });
         }
 
+        await addStatistic(analyticId, {
+            title: "Graphic Forecasting",
+            output_data: graphic,
+            components: "Graphic Forecasting",
+            description: "",
+        });
+
         // Add evaluation statistic
         await addStatistic(analyticId, {
             title: "Evalution",
@@ -347,17 +388,11 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         
         try {
             // Prepare data for processing
-            const { dataValues, timeValues, dataVarDef, timeVarDef } = prepareData();
+            const { dataValues, dataVarDef} = prepareData();
             
             // Validate data
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variables.");
-            }
-            if (timeValues.length === 0) {
-                throw new Error("No data available for the selected time variables.");
-            }
-            if (dataValues.length !== timeValues.length) {
-                throw new Error("Data and Time length is not equal");
             }
             
             // Additional validation for periodicity
@@ -370,19 +405,33 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             }
             
             // Execute decomposition calculation
+            let startDate: number;
+            switch (getTypeDate()) {
+                case 'y': case 'ys': case 'yq': case 'ym':
+                    startDate = getYear();
+                    break;
+                case 'wwd5': case 'wwd6': case 'wd':
+                    startDate = getWeek();
+                    break;
+                case 'dwh': case 'dh':
+                    startDate = getDay();
+                    break;
+                default:
+                    startDate = 0;
+            };
             const results = await handleDecomposition(
                 dataValues,
                 dataVarDef.name,
-                timeValues,
-                timeVarDef.name,
                 selectedDecompositionMethod[0],
                 selectedTrendedMethod[0],
                 Number(selectedPeriod[0]),
-                selectedPeriod[1]
+                selectedPeriod[1],
+                getTypeDate(),
+                startDate,
             );
             
             // Process and save results
-            await processDecompositionResults(results, dataVarDef, timeVarDef);
+            await processDecompositionResults(results, dataVarDef);
             
             setIsCalculating(false);
             onClose();
@@ -409,7 +458,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             <div className="flex items-center justify-center">
                 <div className="flex md:flex-row flex-col gap-4">
                     {/* Available Variables Column */}
-                    <div className="col-span-3 flex flex-col border-2 gap-4 p-4 rounded-md max-h-[300px] overflow-y-auto w-[200px]">
+                    <div className="col-span-3 flex flex-col border-2 gap-4 p-4 rounded-md max-h-[330px] overflow-y-auto w-[200px]">
                         <label className="font-semibold text-center">Available Variables</label>
                         <div className="space-y-2">
                             {availableVariables.map((variable) => (
@@ -469,39 +518,41 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
                         
                         {/* Time Variable Row */}
                         <div className="flex flex-row gap-4">
-                            <div className="flex items-center">
-                                <Button
-                                    variant="link"
-                                    className="border-2 rounded-md"
-                                    disabled={!highlightedVariable}
-                                    onClick={() => highlightedVariable && (timeVariable.length === 0 || availableVariables.includes(highlightedVariable)) ?
-                                        handleSelectTimeVariable(highlightedVariable) : 
-                                        highlightedVariable && handleDeselectTimeVariable(highlightedVariable)
-                                    }
-                                >
-                                    {highlightedVariable && availableVariables.includes(highlightedVariable) ? (
-                                        <CornerDownRight size={24} />
-                                    ) : highlightedVariable && timeVariable.includes(highlightedVariable) ? (
-                                        <CornerDownLeft size={24} />
-                                    ) : (
-                                        <CornerDownLeft size={24} />
-                                    )}
-                                </Button>
-                            </div>
-                            <div className="flex flex-col border-2 gap-4 p-4 rounded-md h-[120px] overflow-y-auto w-[200px]">
-                                <label className="font-semibold text-center">Time Variable</label>
-                                <div className="space-y-2">
-                                    {timeVariable.map((variable) => (
-                                        <div 
-                                            key={variable} 
-                                            className={`p-2 border cursor-pointer rounded-md hover:bg-blue-100 ${
-                                                highlightedVariable === variable ? "bg-blue-100 border-blue-500" : "border-gray-300"
-                                            }`} 
-                                            onClick={() => handleVariableHighlight(variable)}
-                                        >
-                                            {variable}
+                            <div className="border-2 rounded-md w-[350px] h-full pb-4">
+                                <div className="mt-4 ml-4">
+                                        <label className="font-semibold">Time Option</label>
+                                </div>
+                                <div className="flex items-center p-4">
+                                    <div className="flex flex-row w-full">
+                                        <div className="flex items-center">
+                                            <label className="w-[150px] text-sm font-semibold">
+                                                time spesification :
+                                            </label>
                                         </div>
-                                    ))}
+                                        <Select 
+                                            onValueChange={handleSelectedPeriod} 
+                                            defaultValue={selectedPeriod[1]}
+                                        >
+                                            <SelectTrigger className="">
+                                                <SelectValue>{selectedPeriod[1]}</SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {periods.map((period) => (
+                                                    <SelectItem key={period.id} value={period.id}>
+                                                        {period.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center ml-4">
+                                    <label className="w-full text-sm font-semibold">
+                                        periodicity : {selectedPeriod[0] === '0' ? "don't have periodicity" : selectedPeriod[0]}
+                                    </label>
+                                </div>
+                                <div className="flex flex-col ml-4 mt-5">
+                                    {inputPeriods(getTypeDate())}
                                 </div>
                             </div>
                         </div>
@@ -561,32 +612,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
                                     </RadioGroup>
                                 </div>
                             )}
-                            
-                            <div className="flex flex-row gap-2 items-center">
-                                <label className="text-sm w-[150px] font-semibold">
-                                    periodicity : {selectedPeriod[0]}
-                                </label>
-                                <Select
-                                    onValueChange={(value) => {
-                                        const selected = periods.find(p => p.id === value);
-                                        if (selected) {
-                                            setSelectedPeriod([selected.value, selected.label]);
-                                        }
-                                    }}
-                                    defaultValue={periods.find(p => p.value === selectedPeriod[0])?.id}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue>{selectedPeriod[1]}</SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {periods.map((period) => (
-                                            <SelectItem key={period.id} value={period.id}>
-                                                {period.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
 
                         {/* Save Options Section */}

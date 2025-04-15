@@ -4,6 +4,7 @@ import { CornerDownLeft, CornerDownRight } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
+import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";  
 import { Label } from "@/components/ui/label";
@@ -46,32 +47,35 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     ];
 
     const periods: PeriodOption[] = [
-        { value: '7', label: 'Daily in Week', id: 'diw'},
-        { value: '30', label: 'Daily in Month', id: 'dim'},
-        { value: '4', label: 'Weekly in Month', id: 'wim'},
-        { value: '2', label: 'Semi Annual', id: 'sa'},
-        { value: '3', label: 'Four-Monthly', id: 'fm'},
-        { value: '4', label: 'Quarterly', id: 'q'},
-        { value: '12', label: 'Monthly', id: 'm'},
+        { value: '0', label: 'Years', id: 'y'},
+        { value: '2', label: 'Years-Semesters', id: 'ys'},
+        { value: '4', label: 'Years-Quarters', id: 'yq'},
+        { value: '12', label: 'Years-Months', id: 'ym'},
+        { value: '5', label: 'Weeks-Work Days(5)', id: 'wwd5'},
+        { value: '6', label: 'Weeks-Work Days(6)', id: 'wwd6'},
+        { value: '7', label: 'Weeks-Days', id: 'wd'},
+        { value: '8', label: 'Days-Work Hours(8)', id: 'dwh'},
+        { value: '24', label: 'Days-Hour', id: 'dh'},
+        { value: '0', label: 'Not Dated', id: 'nd'},
     ];
 
     // Store references
     const { variables, loadVariables, addVariable} = useVariableStore();
     const { data, updateBulkCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
 
     // Local state management
     const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
     const [dataVariable, setDataVariable] = useState<string[]>([]);
-    const [timeVariable, setTimeVariable] = useState<string[]>([]);
     
     // UI state management
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
-    const [selectedMethod, setSelectedMethod] = useState<string[]>(['','']);
+    const [selectedMethod, setSelectedMethod] = useState<string[]>(['sma','Simple Moving Average']);
     const [parameters, setParameters] = useState<number[]>([]);
-    const [selectedPeriod, setSelectedPeriod] = useState<string[]>(['7','Daily in Week']);
-    const [saveForecasting, setSaveForecasting] = useState<boolean>(false);
+    const [selectedPeriod, setSelectedPeriod] = useState<string[]>([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
+    const [saveForecasting, setSaveForecasting] = useState<boolean>(true);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -87,19 +91,19 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     // Load variables on component mount
     useEffect(() => {
-            const loadVars = async () => {
-                await loadVariables();
-                setStoreVariables(variables.filter(v => v.name !== ""));
-            };
-            loadVars();
-        }, [loadVariables]);
+        const loadVars = async () => {
+            await loadVariables();
+            setStoreVariables(variables.filter(v => v.name !== ""));
+        };
+        loadVars();
+    }, [loadVariables]);
 
     // Update available variables when store variables change
     useEffect(() => {
         setAvailableVariables(storeVariables.map(v => v.name));
     }, [storeVariables]);
 
-    // Update parameters when method changes
+    // Update parameters when method changes - FIX: Separate dependencies for selectedMethod vs selectedPeriod
     useEffect(() => {
         if (selectedMethod[0] && defaultParameters[selectedMethod[0]]) {
             const newParams = [...defaultParameters[selectedMethod[0]]];
@@ -110,7 +114,18 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         } else {
             setParameters([]);
         }
-    }, [selectedMethod, selectedPeriod]);
+    }, [selectedMethod[0]]);
+
+    // Only update parameters[3] when period changes and method is winter
+    useEffect(() => {
+        if (selectedMethod[0] === 'winter') {
+            setParameters(prev => {
+                const newParams = [...prev];
+                newParams[3] = parseInt(selectedPeriod[0]);
+                return newParams;
+            });
+        }
+    }, [selectedPeriod[0], selectedMethod[0]]);
 
     // Variable selection handlers
     const handleVariableHighlight = (variable: string) => {
@@ -122,7 +137,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     };
 
     const handleSelectDataVariable = (variable: string) => {
-        if (highlightedVariable === variable && dataVariable.length === 0) {
+        if (dataVariable.length === 0) {
             setDataVariable([variable]);
             setAvailableVariables(prev => prev.filter(item => item !== variable));
             setHighlightedVariable(null);
@@ -131,34 +146,10 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         }
     };
 
-    const handleSelectTimeVariable = (variable: string) => {
-        if (highlightedVariable === variable && timeVariable.length === 0) {
-            setTimeVariable([variable]);
-            setAvailableVariables(prev => prev.filter(item => item !== variable));
-            setHighlightedVariable(null);
-        } else {
-            setErrorMsg("A variable can only belong to one group, and Time Variable can only contain one variable.");
-        }
-    };
-
     const handleDeselectDataVariable = (variable: string) => {
-        if (highlightedVariable === variable) {
-            setAvailableVariables(prev => [...prev, variable]);
-            setDataVariable([]);
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable(variable);
-        }
-    };
-
-    const handleDeselectTimeVariable = (variable: string) => {
-        if (highlightedVariable === variable) {
-            setAvailableVariables(prev => [...prev, variable]);
-            setTimeVariable([]);
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable(variable);
-        }
+        setAvailableVariables(prev => [...prev, variable]);
+        setDataVariable([]);
+        setHighlightedVariable(null);
     };
 
     // Method and parameter handlers
@@ -171,36 +162,73 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const handleSelectedPeriod = (id: string) => {
         const period = periods.find(p => p.id === id);
         if (!period) return;
-        
         setSelectedPeriod([period.value, period.label]);
-        
-        if (selectedMethod[0] === 'winter') {
-            const periodValue = parseInt(period.value);
-            const newParams = [...parameters];
-            newParams[3] = periodValue;
-            setParameters(newParams);
-        }
+        setTypeDate(period.id as any); // Ensure type safety
     };
 
     const handleInputChange = (index: number, value: number) => {
-        const newParameters = [...parameters];
-        newParameters[index] = value;
-        setParameters(newParameters);
+        setParameters(prevParams => {
+            const newParameters = [...prevParams];
+            newParameters[index] = value;
+            return newParameters;
+        });
     };
 
     // Reset all selections
     const handleReset = () => {
-        setSelectedMethod(['','']);
+        setTypeDate('nd');
+        setSelectedMethod(['sma','Simple Moving Average']);
         setParameters([]);
-        setSelectedPeriod(['7','Daily in Week']);
-        setSaveForecasting(false);
+        setSelectedPeriod([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
+        setSaveForecasting(true);
         setAvailableVariables(storeVariables.map(v => v.name));
         setDataVariable([]);
-        setTimeVariable([]);
         setHighlightedVariable(null);
         setErrorMsg(null);
     };
 
+    const inputPeriods = (period: string) => {
+        switch (period) {
+            case 'y': case 'ys': case 'yq': case 'ym':
+                return (
+                    <InputRow
+                        label="year" 
+                        id="year" 
+                        value={getYear()} 
+                        min={'1900'} 
+                        max={'2100'} 
+                        step={'1'} 
+                        onChange={(value) => setYear(value)}
+                    />
+                );
+            case 'wwd5': case 'wwd6': case 'wd':
+                return (
+                    <InputRow
+                        label="week" 
+                        id="week" 
+                        value={getWeek()} 
+                        min={'1'} 
+                        max={'52'} 
+                        step={'1'} 
+                        onChange={(value) => setWeek(value)}
+                    />
+                );
+            case 'dwh': case 'dh':
+                return (
+                    <InputRow
+                        label="day" 
+                        id="day" 
+                        value={getDay()} 
+                        min={'1'} 
+                        max={'31'} 
+                        step={'1'} 
+                        onChange={(value) => setDay(value)}
+                    />
+                );
+            default:
+                return (<div></div>);
+        }
+    };
     // Prepare input parameters UI based on selected method
     const inputParameters = (method: string) => {
         switch (method) {
@@ -283,29 +311,6 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                                 onChange={(value) => handleInputChange(2, value)} 
                             />
                         </div>
-                        
-                        <div className="flex flex-row mt-2">
-                            <div className="flex items-center">
-                                <label className="w-[100px] text-sm font-semibold" htmlFor="par4">
-                                    periodicity : {selectedPeriod[0]}
-                                </label>
-                            </div>
-                            <Select 
-                                onValueChange={handleSelectedPeriod} 
-                                defaultValue={selectedPeriod[1]}
-                            >
-                                <SelectTrigger className="">
-                                    <SelectValue>{selectedPeriod[1]}</SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {periods.map((period) => (
-                                        <SelectItem key={period.id} value={period.id}>
-                                            {period.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
                     </div>
                 );
             default:
@@ -318,11 +323,14 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         if (!dataVariable.length) {
             return "Please select at least one used variable.";
         }
-        if (!timeVariable.length) {
-            return "Please select at least one time variable.";
-        }
         if (!selectedMethod[0]) {
             return "Please select a method.";
+        }
+        if (selectedPeriod[1] === 'nd') {
+            return "Please select a another time spesification.";
+        }
+        if (selectedPeriod[0] === '0' && selectedMethod[0] === 'winter') {
+            return "Please the selected time spesification don't have periodicity.";
         }
         return null;
     };
@@ -331,15 +339,18 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const prepareData = () => {
         // Find variables that match the selected names
         const dataVarDef = storeVariables.find(v => v.name === dataVariable[0]);
-        const timeVarDef = storeVariables.find(v => v.name === timeVariable[0]);
         
-        if (!dataVarDef || !timeVarDef) {
+        if (!dataVarDef) {
             throw new Error("Selected variables not found");
+        }
+
+        if (dataVarDef.type !== "NUMERIC") {
+            throw new Error("Selected variable is not numeric");
         }
 
         // Find last row with data in selected variables
         let maxIndex = -1;
-        const selectedVariables = [dataVarDef, timeVarDef];
+        const selectedVariables = [dataVarDef];
         
         (data as RawData).forEach((row, rowIndex) => {
             let hasData = false;
@@ -357,30 +368,26 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
         // Extract data values and time values
         const dataValues: number[] = [];
-        const timeValues: string[] = [];
         
         for (let i = 0; i <= maxIndex; i++) {
             const row = (data as RawData)[i];
             const rawDataValue = row[dataVarDef.columnIndex];
-            const rawTimeValue = row[timeVarDef.columnIndex];
             
-            if (rawDataValue && rawTimeValue) {
+            if (rawDataValue) {
                 const numVal = parseFloat(rawDataValue as string);
                 if (!isNaN(numVal)) {
                     dataValues.push(numVal);
-                    timeValues.push(String(rawTimeValue));
                 }
             }
         }
         
-        return { dataValues, timeValues, dataVarDef, timeVarDef };
+        return { dataValues, dataVarDef};
     };
 
     // Process smoothing results
     const processSmoothingResults = async (
         smoothingResult: any[],
         dataVarDef: Variable,
-        timeVarDef: Variable,
         smoothingGraphic: any,
         smoothingEvaluation: any
     ) => {
@@ -475,17 +482,11 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         
         try {
             // Prepare data for processing
-            const { dataValues, timeValues, dataVarDef, timeVarDef } = prepareData();
+            const { dataValues, dataVarDef } = prepareData();
             
             // Validate data
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variables.");
-            }
-            if (timeValues.length === 0) {
-                throw new Error("No data available for the selected time variables.");
-            }
-            if (dataValues.length !== timeValues.length) {
-                throw new Error("Data and Time length is not equal");
             }
             
             // Additional validation for Winter's method
@@ -500,12 +501,28 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             }
             
             // Execute smoothing calculation
+            let startDate: number;
+            switch (getTypeDate()) {
+                case 'y': case 'ys': case 'yq': case 'ym':
+                    startDate = getYear();
+                    break;
+                case 'wwd5': case 'wwd6': case 'wd':
+                    startDate = getWeek();
+                    break;
+                case 'dwh': case 'dh':
+                    startDate = getDay();
+                    break;
+                default:
+                    startDate = 0;
+            };
+            
             const [smoothingResult, smoothingGraphic, smoothingEvaluation] = await handleSmoothing(
                 dataValues,
                 dataVarDef.name,
-                timeValues,
-                timeVarDef.name,
                 parameters,
+                parseInt(selectedPeriod[0]),
+                getTypeDate(),
+                startDate,
                 selectedMethod[0]
             );
             
@@ -513,7 +530,6 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             await processSmoothingResults(
                 smoothingResult, 
                 dataVarDef, 
-                timeVarDef, 
                 smoothingGraphic, 
                 smoothingEvaluation
             );
@@ -543,7 +559,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             <div className="flex items-center justify-center">
                 <div className="flex md:flex-row flex-col gap-4">
                     {/* Available Variables Column */}
-                    <div className="col-span-3 flex flex-col border-2 gap-4 p-4 rounded-md max-h-[300px] overflow-y-auto w-[200px]">
+                    <div className="col-span-3 flex flex-col border-2 gap-4 p-4 rounded-md max-h-[330px] overflow-y-auto w-[200px]">
                         <label className="font-semibold text-center">Available Variables</label>
                         <div className="space-y-2">
                             {availableVariables.map((variable) => (
@@ -569,15 +585,18 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                                     variant="link"
                                     className="border-2 rounded-md"
                                     disabled={!highlightedVariable}
-                                    onClick={() => highlightedVariable && (dataVariable.length === 0 || availableVariables.includes(highlightedVariable)) ?
-                                        handleSelectDataVariable(highlightedVariable) : 
-                                        highlightedVariable && handleDeselectDataVariable(highlightedVariable)
-                                    }
+                                    onClick={() => {
+                                        if (!highlightedVariable) return;
+                                        
+                                        if (availableVariables.includes(highlightedVariable)) {
+                                            handleSelectDataVariable(highlightedVariable);
+                                        } else if (dataVariable.includes(highlightedVariable)) {
+                                            handleDeselectDataVariable(highlightedVariable);
+                                        }
+                                    }}
                                 >
                                     {highlightedVariable && availableVariables.includes(highlightedVariable) ? (
                                         <CornerDownRight size={24} />
-                                    ) : highlightedVariable && dataVariable.includes(highlightedVariable) ? (
-                                        <CornerDownLeft size={24} />
                                     ) : (
                                         <CornerDownLeft size={24} />
                                     )}
@@ -603,39 +622,41 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                         
                         {/* Time Variable Row */}
                         <div className="flex flex-row gap-4">
-                            <div className="flex items-center">
-                                <Button
-                                    variant="link"
-                                    className="border-2 rounded-md"
-                                    disabled={!highlightedVariable}
-                                    onClick={() => highlightedVariable && (timeVariable.length === 0 || availableVariables.includes(highlightedVariable)) ?
-                                        handleSelectTimeVariable(highlightedVariable) : 
-                                        highlightedVariable && handleDeselectTimeVariable(highlightedVariable)
-                                    }
-                                >
-                                    {highlightedVariable && availableVariables.includes(highlightedVariable) ? (
-                                        <CornerDownRight size={24} />
-                                    ) : highlightedVariable && timeVariable.includes(highlightedVariable) ? (
-                                        <CornerDownLeft size={24} />
-                                    ) : (
-                                        <CornerDownLeft size={24} />
-                                    )}
-                                </Button>
-                            </div>
-                            <div className="flex flex-col border-2 gap-4 p-4 rounded-md h-[120px] overflow-y-auto w-[200px]">
-                                <label className="font-semibold text-center">Time Variable</label>
-                                <div className="space-y-2">
-                                    {timeVariable.map((variable) => (
-                                        <div 
-                                            key={variable} 
-                                            className={`p-2 border cursor-pointer rounded-md hover:bg-blue-100 ${
-                                                highlightedVariable === variable ? "bg-blue-100 border-blue-500" : "border-gray-300"
-                                            }`} 
-                                            onClick={() => handleVariableHighlight(variable)}
-                                        >
-                                            {variable}
+                            <div className="border-2 rounded-md w-[350px] h-full pb-4">
+                                <div className="mt-4 ml-4">
+                                        <label className="font-semibold">Time Option</label>
+                                </div>
+                                <div className="flex items-center p-4">
+                                    <div className="flex flex-row w-full">
+                                        <div className="flex items-center">
+                                            <label className="w-[150px] text-sm font-semibold">
+                                                time spesification :
+                                            </label>
                                         </div>
-                                    ))}
+                                        <Select 
+                                            onValueChange={handleSelectedPeriod} 
+                                            defaultValue={selectedPeriod[1]}
+                                        >
+                                            <SelectTrigger className="">
+                                                <SelectValue>{selectedPeriod[1]}</SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {periods.map((period) => (
+                                                    <SelectItem key={period.id} value={period.id}>
+                                                        {period.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center ml-4">
+                                    <label className="w-full text-sm font-semibold">
+                                        periodicity : {selectedPeriod[0] === '0' ? "don't have periodicity" : selectedPeriod[0]}
+                                    </label>
+                                </div>
+                                <div className="flex flex-col ml-4 mt-5">
+                                    {inputPeriods(getTypeDate())}
                                 </div>
                             </div>
                         </div>
@@ -652,11 +673,9 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                                 <div className="flex items-center">
                                     <Label className="font-semibold">method:</Label>
                                 </div>
-                                <Select onValueChange={handleSelectedMethod}>
+                                <Select onValueChange={handleSelectedMethod} defaultValue={selectedMethod[1]}>
                                     <SelectTrigger className="mr-2">
-                                        <SelectValue placeholder="Choose Your Method">
-                                            {selectedMethod[1] || "Choose Your Method"}
-                                        </SelectValue>
+                                        <SelectValue>{selectedMethod[1]}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {methods.map((method) => (
