@@ -196,6 +196,7 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
 
     // Process unit root test results
     const processUnitRootTestResults = async (
+        descriptionTable: any,
         df_stat: any,
         coef_stat: any,
         sel_crit: any,
@@ -213,6 +214,13 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
         });
 
         // Add Dickey Fuller test statistic
+        await addStatistic(analyticId, {
+            title: `Description Table`,
+            output_data: descriptionTable,
+            components: `Description Table`,
+            description: "",
+        });
+
         await addStatistic(analyticId, {
             title: `${methodName} Test Statistic`,
             output_data: df_stat,
@@ -259,7 +267,7 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
             }
             
             // Execute unit root test calculation
-            const [testing, df_stat, coef_stat, sel_crit, methodName] = await handleUnitRootTest(
+            const [descriptionTable, testing, df_stat, coef_stat, sel_crit, methodName] = await handleUnitRootTest(
                 dataValues,
                 dataVarDef.name,
                 selectedMethod[0],
@@ -270,6 +278,7 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
             
             // Process results
             await processUnitRootTestResults(
+                descriptionTable,
                 df_stat,
                 coef_stat,
                 sel_crit,

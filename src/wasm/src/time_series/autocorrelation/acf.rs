@@ -17,6 +17,9 @@ impl Autocorrelation{
             denominator += (data[i] - mean).powi(2);
         }
         for i in 1..lag + 1{
+            if i >= n as i32{
+                break;
+            }
             for j in 0..n - i as usize{
                 numerator += (data[j] - mean) * (data[j + i as usize] - mean);
             }
@@ -28,7 +31,7 @@ impl Autocorrelation{
 
     pub fn calculate_acf_se(&self, autocorelate: Vec<f64>) -> Vec<f64>{
         let mut autocorrelation_se: Vec<f64> = Vec::new();
-        for i in 0..self.get_lag(){
+        for i in 0..autocorelate.len(){
             let autocorelate_pow_2 = autocorelate[0..i as usize].iter().map(|x| x.powi(2)).collect::<Vec<f64>>();
             let total = autocorelate_pow_2[0..i as usize].iter().sum::<f64>();
             let se = sqrt((1.0 + (2.0 * total)) / self.get_data().len() as f64) as f64;

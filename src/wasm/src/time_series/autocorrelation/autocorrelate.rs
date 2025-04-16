@@ -4,10 +4,10 @@ use crate::{first_difference, second_difference, seasonal_difference};
 
 #[wasm_bindgen]
 impl Autocorrelation{
-    pub fn autocorelate(&mut self, difference: String, seasonally: i32){
+    pub fn autocorelate(&mut self, difference: String, use_seasonal: bool, seasonally: i32){
         let data = self.get_data();
         let fix_diff: Vec<f64>;
-        if seasonally != 0{
+        if use_seasonal{
             let season_diff = seasonal_difference(data, seasonally);
             match difference.as_str(){
                 "level" => {
@@ -47,7 +47,7 @@ impl Autocorrelation{
         let pacf: Vec<f64> = self.calculate_pacf(acf.clone());
         let pacf_se: Vec<f64> = self.calculate_pacf_se(pacf.clone());
         let lb: Vec<f64> = self.calculate_ljung_box(acf.clone());
-        let df_lb: Vec<usize> = self.df_ljung_box();
+        let df_lb: Vec<usize> = self.df_ljung_box(lb.clone());
         let pvalue_lb: Vec<f64> = self.pvalue_ljung_box(lb.clone());
 
         self.set_acf(acf.clone());

@@ -19,8 +19,7 @@ statrs = "0.18.0"
 web-sys = { version = "0.3", features = ["console"] }
 nalgebra = { version = "0.32", features = ["std"] }
 csv = "1.1"
-ndarray = { version = "0.15.4", features = ["serde"] }
-arima = "0.3.0"       
+ndarray = { version = "0.15.4", features = ["serde"] }    
 num = "0.4"           
 finitediff = "0.1"   
 rand = "0.8"

@@ -320,10 +320,10 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
     // Process decomposition results
     const processDecompositionResults = async (
-        results: [any[], any[], any[], any[], any[], any, any, any, any],
+        results: [any, any[], any[], any[], any[], any[], any, any, any, any],
         dataVarDef: Variable,
     ) => {
-        const [testing, seasonal, trend, irrengular, forecasting, evaluation, seasonIndices, equation, graphic] = results;
+        const [descriptionTable, testing, seasonal, trend, irrengular, forecasting, evaluation, seasonIndices, equation, graphic] = results;
         
         // Create log entry
         const logMsg = `DECOMPOSITION: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedDecompositionMethod[1]}.`;
@@ -336,6 +336,13 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
         });
 
         // Add seasonal indices statistic
+        await addStatistic(analyticId, {
+            title: "Description Table",
+            output_data: descriptionTable,
+            components: "Description Table",
+            description: "",
+        });
+        
         await addStatistic(analyticId, {
             title: "Seasonal Indices",
             output_data: seasonIndices,

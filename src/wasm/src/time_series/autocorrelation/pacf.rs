@@ -17,7 +17,7 @@ pub fn partial_kj(k: i32, j: i32, partial_autocorrelate: Vec<f64>) -> f64{
 impl Autocorrelation{
     pub fn calculate_pacf(&self, autocorrelate: Vec<f64>) -> Vec<f64>{
         let mut partial_autocorrelate = Vec::new();
-        for k in 0..self.get_lag(){
+        for k in 0..autocorrelate.len() as i32{
             if k == 0{
                 partial_autocorrelate.push(autocorrelate[k as usize]);
             }else if k == 1{

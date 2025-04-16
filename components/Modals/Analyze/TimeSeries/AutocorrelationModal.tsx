@@ -194,7 +194,7 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
         if (!dataVariable.length) {
             return "Please select at least one used variable.";
         }
-        if (selectedPeriod[0] === '0') {
+        if (selectedPeriod[0] === '0' && seasonally) {
             return "Please the selected time spesification don't have periodicity.";
         }
         return null;
@@ -251,6 +251,7 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
 
     // Process autocorrelation results
     const processAutocorrelationResults = async (
+        descriptionTable: any,
         acfValue: any[],
         acf: any,
         pacf: any,
@@ -269,6 +270,13 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
         });
 
         // Add ACF table statistic
+        await addStatistic(analyticId, {
+            title: "Description Table",
+            output_data: descriptionTable,
+            components: "Description Table",
+            description: "",
+        });
+
         await addStatistic(analyticId, {
             title: "Autocorrelation Table",
             output_data: acf,
@@ -334,16 +342,18 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
             }
             
             // Execute autocorrelation calculation
-            const [acfValue, acf, pacf, acfGraphicJSON, pacfGraphicJSON] = await handleAutocorrelation(
+            const [descriptionTable, acfValue, acf, pacf, acfGraphicJSON, pacfGraphicJSON] = await handleAutocorrelation(
                 dataValues,
                 dataVarDef.name,
                 maximumLag,
                 selectedDifference[0],
-                seasonally ? Number(selectedPeriod[0]) : 0
+                seasonally,
+                Number(selectedPeriod[0]),
             );
             
             // Process results
             await processAutocorrelationResults(
+                descriptionTable,
                 acfValue,
                 acf,
                 pacf,

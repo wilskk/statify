@@ -1,3 +1,4 @@
+import { string } from 'mathjs';
 import init, {Arima} from '../../../../../src/wasm/pkg/wasm.js';
 import {generateDate} from '../generateDate/generateDateTimeSeries';
 
@@ -9,7 +10,7 @@ export async function handleBoxJenkinsModel(
     period: number,
     typeDate: string,
     startDate: number,
-):Promise<[number[], string, string, string, number[], string]> {
+):Promise<[string, number[], string, string, string, number[], string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -30,10 +31,49 @@ export async function handleBoxJenkinsModel(
         let pValue = Array.from(arima.p_value());
         let selCritValue = Array.from(arima.selection_criteria());
 
+        // Description Table
+        let dateArray = await generateDate(period, typeDate, startDate, data.length);
+        let descriptionJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Description Table`,
+                    columnHeaders: [{header:""},{header: 'description'}],
+                    rows: [
+                        {
+                            rowHeader: [`Name Method`],
+                            description: `ARIMA (${orderParameter[0]}, ${orderParameter[1]}, ${orderParameter[2]})`,
+                        },
+                        {
+                            rowHeader: [`Estimation Method`],
+                            description: `Conditional Least Squares (CLS)`,
+                        },
+                        {
+                            rowHeader: [`Function Estimation`],
+                            description: `Conditional Sum of Squares (CSS)`,
+                        },
+                        {
+                            rowHeader: [`Optimalization Method`],
+                            description: `L-BFGS`,
+                        },
+                        {
+                            rowHeader: [`Series Name`],
+                            description: `${dataHeader}`,
+                        },
+                        {
+                            rowHeader: [`Series Period`],
+                            description: `${dateArray[0]} - ${dateArray[dateArray.length - 1]}`,
+                        },
+                        {
+                            rowHeader: [`Series Length`],
+                            description: `${data.length}`,
+                        },
+                    ],
+                }
+            ],
+        });
+
         let coefName = ['Constant'];
-        // if(orderParameter[1] == 0){
-        //     coefName.push(`Constant`);
-        // }
+
         if(orderParameter[0] > 0){
             for(let i = 1; i <= orderParameter[0]; i++){
                 coefName.push(`AR(${i})`);
@@ -124,7 +164,6 @@ export async function handleBoxJenkinsModel(
         if (forecasting) {
             forecast = Array.from(arima.forecast());
             let structuredForecasting: any[] = [];
-            let dateArray = await generateDate(period, typeDate, startDate, data.length);
             // Validasi panjang array
             if (data.length === forecast.length) {
                 for (let i = 0; i < data.length; i++) {
@@ -185,9 +224,9 @@ export async function handleBoxJenkinsModel(
             forecast = [0];
         }
 
-        return [[...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
+        return [descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],"" , "",JSON.stringify({ error: errorMessage.message }),[0],""];
+        return ["", [0], "", "", JSON.stringify({ error: errorMessage.message }), [0], ""];
     }
 }

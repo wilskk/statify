@@ -1,5 +1,19 @@
 use wasm_bindgen::prelude::*;
-use crate::{time_series::smoothing::Smoothing, Decomposition};
+use crate::Decomposition;
+
+pub fn moving_average (data: Vec<f64>, distance: usize) -> Vec<f64> {
+    let mut sma_values: Vec<f64> = Vec::new();
+    let mut avg: f64;
+    for i in 0..data.len(){
+        if i < distance-1{
+            sma_values.push(0.0);
+        }else{
+            avg = data[i-distance+1..i+1].iter().sum::<f64>() / distance as f64;
+            sma_values.push(avg);
+        }
+    }
+    sma_values
+}
 
 // Calculate Centered Moving Average
 #[wasm_bindgen]
@@ -8,15 +22,14 @@ impl Decomposition{
         // Initialize the variables
         let period = self.get_period() as usize;
         let mut centered_ma: Vec<f64>;
-        let data = Smoothing::new(self.get_data_header(), self.get_data());
+        // let data = Smoothing::new(self.get_data());
         
         // Calculate Moving Average
         if period%2 == 0{ // if the period is even
-            let moving_average = data.calculate_sma(period);
-            let second_moving_average = Smoothing::new(data.get_data_header(), moving_average.clone());
-            centered_ma = second_moving_average.calculate_sma(2);
+            let sma = moving_average(self.get_data(), period);
+            centered_ma = moving_average(sma.clone(), 2);
         }else{ // if the period is odd
-            centered_ma = data.calculate_sma(period);
+            centered_ma = moving_average(self.get_data(), period);
         }
 
         // Move the moving average values to the center

@@ -6,7 +6,7 @@ use statrs::distribution::{Normal, ContinuousCDF};
 impl Autocorrelation{
     pub fn calculate_bartlet_left(&self, se: Vec<f64>, alpha: f64) -> Vec<f64>{
         let mut bartlet_left = Vec::new();
-        let lag = self.get_lag() as usize;
+        let lag = se.len() as usize;
         let normal = Normal::new(0.0, 1.0).unwrap();
         let z_alpha_2 = normal.inverse_cdf(1.0 - alpha / 2.0);
         for i in 0..lag{
@@ -18,7 +18,7 @@ impl Autocorrelation{
     
     pub fn calculate_bartlet_right(&self, se: Vec<f64>, alpha: f64) -> Vec<f64>{
         let mut bartlet_right = Vec::new();
-        let lag = self.get_lag() as usize;
+        let lag = se.len() as usize;
         let normal = Normal::new(0.0, 1.0).unwrap();
         let z_alpha_2 = normal.inverse_cdf(1.0 - alpha / 2.0);
         for i in 0..lag{

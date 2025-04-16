@@ -4,13 +4,13 @@ import {generateDate} from '../generateDate/generateDateTimeSeries';
 export async function handleDecomposition(
     data: (number)[],
     dataHeader: (string),
-    decompostionMethod: string,
+    decompositionMethod: string,
     trendMethod: string,
     periodValue: number,
     periodLable: string,
     typeDate: string,
     startDate: number,
-): Promise<[number[], number[], number[], number[], number[], string, string, string, string]> {
+): Promise<[string, number[], number[], number[], number[], number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
 
@@ -32,19 +32,22 @@ export async function handleDecomposition(
         let decomposition;
         let forecastingValue;
         let forecastingRound;
-        switch (decompostionMethod) {
+        let decompositionMethodName;
+        switch (decompositionMethod) {
             case 'additive':
-                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, periodValue);
+                decomposition = new Decomposition(new Float64Array(data), periodValue);
                 forecastingValue = Array.from(decomposition.additive_decomposition());
                 forecastingRound = forecastingValue.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+                decompositionMethodName = 'Additive Decomposition';
                 break;
             case 'multiplicative':
-                decomposition = new Decomposition(new Float64Array(data), dataHeader as string, periodValue);
+                decomposition = new Decomposition(new Float64Array(data), periodValue);
                 forecastingValue = Array.from(decomposition.multiplicative_decomposition(trendMethod));
                 forecastingRound = forecastingValue.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+                decompositionMethodName = 'Multiplicative Decomposition';
                 break;
             default:
-                throw new Error(`Unknown method: ${decompostionMethod}`);
+                throw new Error(`Unknown method: ${decompositionMethod}`);
         }
 
         // Testing
@@ -75,8 +78,48 @@ export async function handleDecomposition(
         let trendRound = trendComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
         let irregularRound = irregularComponent.map(value => Number(parseFloat(value.toString()).toFixed(3)));
 
-        let structuredForecasting: any[] = [];
+        // Description Table
         let dateArray = await generateDate(periodValue, typeDate, startDate, data.length);
+        let descriptionJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Description Table`,
+                    columnHeaders: [{header:""},{header: 'description'}],
+                    rows: [
+                        {
+                            rowHeader: [`Decomposition Method`],
+                            description: `${decompositionMethodName}`,
+                        },
+                        {
+                            rowHeader: [`Formula of Calculating Decomposition`],
+                            description: `Classical Decomposition`,
+                        },
+                        {
+                            rowHeader: [`Trend Method`],
+                            description: `${decompositionMethod === 'additive' ? 'none' : trendMethod}`,
+                        },
+                        {
+                            rowHeader: [`Series Name`],
+                            description: `${dataHeader}`,
+                        },
+                        {
+                            rowHeader: [`Series Period`],
+                            description: `${dateArray[0]} - ${dateArray[dateArray.length - 1]}`,
+                        },
+                        {
+                            rowHeader: [`Periodicity`],
+                            description: `${periodValue}`,
+                        },
+                        {
+                            rowHeader: [`Observations`],
+                            description: `${data.length}`,
+                        },
+                    ],
+                }
+            ],
+        });
+
+        let structuredForecasting: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
             for (let i = 0; i < data.length; i++) {
@@ -166,9 +209,9 @@ export async function handleDecomposition(
             ]
         });
 
-        return [centered,seasonalRound,trendRound,irregularRound,forecastingRound,evalJSON,seasonJSON,equationJSON,graphicJSON];
+        return [descriptionJSON,centered,seasonalRound,trendRound,irregularRound,forecastingRound,evalJSON,seasonJSON,equationJSON,graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","",""];
+        return ["",[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","",""];
     }
 }

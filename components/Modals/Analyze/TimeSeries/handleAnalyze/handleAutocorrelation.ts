@@ -5,8 +5,9 @@ export async function handleAutocorrelation(
     dataHeader: (string), 
     lag: (number),
     difference: (string),
+    useSeasonal: (boolean),
     seasonal: (number),
-):Promise<[number[], string, string, string, string]> {
+):Promise<[string, number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -19,8 +20,8 @@ export async function handleAutocorrelation(
             throw new Error("dataValues contains non-numeric values");
         }
 
-        const autocorrelation = new Autocorrelation(new Float64Array(data), dataHeader, lag as number);
-        await autocorrelation.autocorelate(difference, seasonal);
+        const autocorrelation = new Autocorrelation(new Float64Array(data), lag as number);
+        await autocorrelation.autocorelate(difference, useSeasonal, seasonal);
 
         // Untuk testing hasil di console
         const test1 = Array.from(autocorrelation.calculate_acf(new Float64Array(data)));
@@ -28,7 +29,7 @@ export async function handleAutocorrelation(
         const test3 = Array.from(autocorrelation.calculate_pacf(new Float64Array(test1)));
         const test4 = Array.from(autocorrelation.calculate_pacf_se(new Float64Array(test3)));
         const test5 = Array.from(autocorrelation.calculate_ljung_box(new Float64Array(test1)));
-        const test6 = Array.from(autocorrelation.df_ljung_box());
+        // const test6 = Array.from(autocorrelation.df_ljung_box());
         const test7 = Array.from(autocorrelation.pvalue_ljung_box(new Float64Array(test5)));
 
         // Nilai yang sebenarnya
@@ -39,6 +40,53 @@ export async function handleAutocorrelation(
         const lb = Array.from(autocorrelation.get_lb());
         const pval = Array.from(autocorrelation.get_pvalue_lb());
         const df = Array.from(autocorrelation.get_df_lb());
+
+        // Description Table
+        let descriptionJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Description Table`,
+                    columnHeaders: [{header:""},{header: 'description'}],
+                    rows: [
+                        {
+                            rowHeader: [`Name Method`],
+                            description: `Autocorrelation`,
+                        },
+                        {
+                            rowHeader: [`Series Name`],
+                            description: `${dataHeader}`,
+                        },
+                        {
+                            rowHeader: [`Differencing`],
+                            description: `${difference === "level" ? "none" : difference}`,
+                        },
+                        {
+                            rowHeader: [`Seasonal Differencing`],
+                            description: `${useSeasonal ? "with seasonal-differencing" : "none"}`,
+                        },
+                        {
+                            rowHeader: [`Periodicity`],
+                            description: `${seasonal === 0 ? "none" : seasonal}`,
+                        },
+                        {
+                            rowHeader: [`Approach Method of Standard Error`],
+                            description: `Bartlett Formula`,
+                        },
+                        {
+                            rowHeader: [`Observations`],
+                            description: `${data.length}`,
+                        },
+                        {
+                            rowHeader: [`Number Observations of Computable First Lags`],
+                            description: `${
+                                useSeasonal ? data.length - 1 - seasonal : 
+                                difference === 'first-difference' ? data.length - 2 : 
+                                difference === 'second-difference' ? data.length - 3 : data.length - 1}`,
+                        },
+                    ],
+                }
+            ],
+        });
 
         let acfStruct: Record<string, any> = {}; // Menggunakan objek kosong
         // Mengecek panjang seluruh data apakah sama
@@ -184,9 +232,9 @@ export async function handleAutocorrelation(
             ]
         });
 
-        return [test7,acfJSON ,pacfJSON, acfGraphicJSON, pacfGraphicJSON];
+        return [descriptionJSON,test7,acfJSON ,pacfJSON, acfGraphicJSON, pacfGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],"" ,JSON.stringify({ error: errorMessage.message }), "", ""];
+        return ["",[0],"" ,JSON.stringify({ error: errorMessage.message }), "", ""];
     }
 }

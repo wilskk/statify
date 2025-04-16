@@ -9,7 +9,7 @@ export async function handleSmoothing(
     typeDate: (string),
     startDate: (number),
     method: string): 
-Promise<[number[], string, string]> {
+Promise<[string, number[], string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data)? data : null;
     
@@ -25,45 +25,123 @@ Promise<[number[], string, string]> {
         let smoothing;
         let smoothingValue;
         let nameMethod;
+        let parametersUsed;
         
-        smoothing = new Smoothing(dataHeader, new Float64Array(data));
+        smoothing = new Smoothing(new Float64Array(data));
         console.log("Smoothing initialized:", smoothing);
         switch (method) {
             case 'sma':
                 smoothingValue = smoothing.calculate_sma(pars[0]);
                 nameMethod = 'Simple Moving Average';
+                parametersUsed = [{
+                    rowHeader: [`Distance`],
+                    description: `${pars[0]}`,
+                }]
                 break;
             case 'dma':
                 smoothingValue = smoothing.calculate_dma(pars[0]);
                 nameMethod = 'Double Moving Average';
+                parametersUsed = [{
+                    rowHeader: [`Distance`],
+                    description: `${pars[0]}`,
+                }]
                 break;
             case 'ses':
                 smoothingValue = smoothing.calculate_ses(pars[0]);
                 nameMethod = 'Simple Exponential Smoothing';
+                parametersUsed = [{
+                    rowHeader: [`Alpha`],
+                    description: `${pars[0]}`,
+                }]
                 break;
             case 'des':
                 smoothingValue = smoothing.calculate_des(pars[0]);
                 nameMethod = 'Double Exponential Smoothing';
+                parametersUsed = [{
+                    rowHeader: [`Alpha`],
+                    description: `${pars[0]}`,
+                }]
                 break;
             case 'holt':
                 smoothingValue = smoothing.calculate_holt(pars[0], pars[1]);
                 nameMethod = 'Holt\'s Method';
+                parametersUsed = [{
+                    rowHeader: [`Alpha`],
+                    description: `${pars[0]}`,
+                }, {
+                    rowHeader: [`Beta`],
+                    description: `${pars[1]}`,
+                }]
                 break;
             case 'winter':
                 smoothingValue = smoothing.calculate_winter(pars[0], pars[1], pars[2], periodicity);
                 nameMethod = 'Winter\'s Method';
+                parametersUsed = [{
+                    rowHeader: [`Alpha`],
+                    description: `${pars[0]}`,
+                }, {
+                    rowHeader: [`Beta`],
+                    description: `${pars[1]}`,
+                }, {
+                    rowHeader: [`Gamma`],
+                    description: `${pars[2]}`,
+                }]
                 break;
             default:
                 throw new Error(`Unknown method: ${method}`);
         }
 
+        // Description Table
+        let smoothingLength = 0;
+        for (let i = 0; i < smoothingValue.length; i++) {
+            if (smoothingValue[i] !== 0) {
+                smoothingLength++;
+            }
+        }
         let smoothingArray = Array.from(smoothingValue);
         let smoothingRound = smoothingArray.map(value => Number(parseFloat(value.toString()).toFixed(3)));
+        let dateArray = await generateDate(periodicity, typeDate, startDate, smoothingArray.length);
+        let descriptionJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Description Table`,
+                    columnHeaders: [{header:""},{header: 'description'}],
+                    rows: [
+                        {
+                            rowHeader: [`Smoothing Method`],
+                            description: `${nameMethod}`,
+                        },
+                        ...parametersUsed,
+                        {
+                            rowHeader: [`Series Name`],
+                            description: `${dataHeader}`,
+                        },
+                        {
+                            rowHeader: [`Series Period`],
+                            description: `${dateArray[0]} - ${dateArray[dateArray.length - 1]}`,
+                        },
+                        {
+                            rowHeader: [`Periodicity`],
+                            description: `${(periodicity === 0) ? 'None' : periodicity}`,
+                        },
+                        {
+                            rowHeader: [`Series Length`],
+                            description: `${data.length}`,
+                        },
+                        {
+                            rowHeader: [`Observations`],
+                            description: `${smoothingLength}`,
+                        },
+                    ],
+                }
+            ],
+        });
+
+        // Smoothing Graph
         let structuredSmoothing: any[] = [];
-        let dateArray = await generateDate(periodicity, typeDate, startDate, data.length);
         // Validasi panjang array
         if (data.length === smoothingArray.length) {
-            for (let i = 0; i < data.length; i++) {
+            for (let i = 0; i < smoothingArray.length; i++) {
                 structuredSmoothing.push({
                     category: `${dateArray[i]}`,
                     subcategory: `${dataHeader}`,
@@ -74,6 +152,9 @@ Promise<[number[], string, string]> {
                     subcategory: `${nameMethod}`,
                     value: smoothingArray[i] === 0? null : smoothingArray[i],
                 });
+                if (smoothingArray[i] === 0.0){
+                    smoothingRound[i] = NaN;
+                }
             }
         } else {
             throw new Error("Panjang array tidak sama!");
@@ -115,9 +196,9 @@ Promise<[number[], string, string]> {
                 },
             ],
         });
-        return [smoothingRound, graphicJSON, evalJSON];
+        return [descriptionJSON, smoothingRound, graphicJSON, evalJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],"" ,JSON.stringify({ error: errorMessage.message })];
+        return ["",[0],"",JSON.stringify({ error: errorMessage.message })];
     }
 }

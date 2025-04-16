@@ -70,24 +70,24 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
     const [dataVariable, setDataVariable] = useState<string[]>([]);
     
+    // Default parameters for each method
+    const defaultParameters: MethodParameters = {
+        'sma': [2, 0, 0],
+        'dma': [2, 0, 0],
+        'ses': [0.1, 0, 0],
+        'des': [0.1, 0, 0],
+        'holt': [0.1, 0.1, 0],
+        'winter': [0.1, 0.1, 0.1],
+    };
+
     // UI state management
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string[]>(['sma','Simple Moving Average']);
-    const [parameters, setParameters] = useState<number[]>([]);
+    const [parameters, setParameters] = useState<number[]>(defaultParameters['sma']);
     const [selectedPeriod, setSelectedPeriod] = useState<string[]>([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
     const [saveForecasting, setSaveForecasting] = useState<boolean>(true);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-    // Default parameters for each method
-    const defaultParameters: MethodParameters = {
-        'sma': [2],
-        'dma': [2],
-        'ses': [0.1],
-        'des': [0.1],
-        'holt': [0.1, 0.1],
-        'winter': [0.1, 0.1, 0.1, 7],
-    };
 
     // Load variables on component mount
     useEffect(() => {
@@ -107,25 +107,11 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     useEffect(() => {
         if (selectedMethod[0] && defaultParameters[selectedMethod[0]]) {
             const newParams = [...defaultParameters[selectedMethod[0]]];
-            if (selectedMethod[0] === 'winter') {
-                newParams[3] = parseInt(selectedPeriod[0]);
-            }
             setParameters(newParams);
         } else {
             setParameters([]);
         }
     }, [selectedMethod[0]]);
-
-    // Only update parameters[3] when period changes and method is winter
-    useEffect(() => {
-        if (selectedMethod[0] === 'winter') {
-            setParameters(prev => {
-                const newParams = [...prev];
-                newParams[3] = parseInt(selectedPeriod[0]);
-                return newParams;
-            });
-        }
-    }, [selectedPeriod[0], selectedMethod[0]]);
 
     // Variable selection handlers
     const handleVariableHighlight = (variable: string) => {
@@ -168,6 +154,10 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     const handleInputChange = (index: number, value: number) => {
         setParameters(prevParams => {
+            if (index < 0 || index >= prevParams.length) {
+                console.warn(`Invalid parameter index: ${index}`);
+                return prevParams;
+            }
             const newParameters = [...prevParams];
             newParameters[index] = value;
             return newParameters;
@@ -178,7 +168,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const handleReset = () => {
         setTypeDate('nd');
         setSelectedMethod(['sma','Simple Moving Average']);
-        setParameters([]);
+        setParameters(defaultParameters['sma']);
         setSelectedPeriod([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
         setSaveForecasting(true);
         setAvailableVariables(storeVariables.map(v => v.name));
@@ -311,6 +301,10 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                                 onChange={(value) => handleInputChange(2, value)} 
                             />
                         </div>
+                        <div className="flex flex-col mt-2 gap-2">
+                            <label className="w-full text-sm font-semibold">note:</label>
+                            <label className="w-full text-sm font-semibold">winter's method need time spesification with periodicity</label>
+                        </div>
                     </div>
                 );
             default:
@@ -326,7 +320,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         if (!selectedMethod[0]) {
             return "Please select a method.";
         }
-        if (selectedPeriod[1] === 'nd') {
+        if (selectedPeriod[1] === 'Not Dated') {
             return "Please select a another time spesification.";
         }
         if (selectedPeriod[0] === '0' && selectedMethod[0] === 'winter') {
@@ -386,13 +380,31 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     // Process smoothing results
     const processSmoothingResults = async (
+        descriptionTable: any,
         smoothingResult: any[],
         dataVarDef: Variable,
         smoothingGraphic: any,
         smoothingEvaluation: any
     ) => {
         // Create log entry
-        const logMsg = `SMOOTHING: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedMethod[1]} method with parameters ${parameters.join(", ")}.`;
+        let parametersUsed: string;
+        switch (selectedMethod[0]) {
+            case 'sma': case 'dma':
+                parametersUsed = `distance: ${parameters[0]}`;
+                break;
+            case 'ses': case 'des':
+                parametersUsed = `alpha: ${parameters[0]}`;
+                break;
+            case 'holt':
+                parametersUsed = `alpha: ${parameters[0]}, beta: ${parameters[1]}`;
+                break;
+            case 'winter':
+                parametersUsed = `alpha: ${parameters[0]}, beta: ${parameters[1]}, gamma: ${parameters[2]}`;
+                break;
+            default:
+                parametersUsed = "No parameters used";
+        }
+        const logMsg = `SMOOTHING: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedMethod[1]} method with ${parametersUsed}.`;
         const logId = await addLog({ log: logMsg });
 
         // Create analytic entry
@@ -402,6 +414,13 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         });
 
         // Add statistics
+        await addStatistic(analyticId, {
+            title: `Description Table`,
+            output_data: descriptionTable,
+            components: "Description Table",
+            description: "",
+        });
+
         await addStatistic(analyticId, {
             title: `Smoothing Graphic`,
             output_data: smoothingGraphic,
@@ -425,7 +444,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const saveSmoothingResultsAsVariable = async (smoothingResult: any[], dataVarDef: Variable) => {
         // Prepare the new variable definition
         const newVarIndex = storeVariables.length;
-        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}-${newVarIndex}`;
+        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}`;
         const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
         
         const smoothingVariable: Partial<Variable> = {
@@ -516,7 +535,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                     startDate = 0;
             };
             
-            const [smoothingResult, smoothingGraphic, smoothingEvaluation] = await handleSmoothing(
+            const [descriptionTable, smoothingResult, smoothingGraphic, smoothingEvaluation] = await handleSmoothing(
                 dataValues,
                 dataVarDef.name,
                 parameters,
@@ -528,6 +547,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             
             // Process and save results
             await processSmoothingResults(
+                descriptionTable,
                 smoothingResult, 
                 dataVarDef, 
                 smoothingGraphic, 

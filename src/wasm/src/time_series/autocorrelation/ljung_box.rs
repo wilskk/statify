@@ -8,7 +8,7 @@ impl Autocorrelation{
     pub fn calculate_ljung_box(&self, autocorrelate: Vec<f64>) -> Vec<f64>{
         let mut ljung_box = Vec::new();
         let n = self.get_data().len() as f64;
-        for i in 1..self.get_lag() + 1{
+        for i in 1..autocorrelate.len() + 1{
             let mut var_corr = 0.0;
             for j in 0..i{
                 var_corr += autocorrelate[j as usize].powi(2) / (n - j as f64 - 1.0);
@@ -29,9 +29,9 @@ impl Autocorrelation{
         pvalue
     }
 
-    pub fn df_ljung_box(&self) -> Vec<usize>{
+    pub fn df_ljung_box(&self, ljung_box: Vec<f64>) -> Vec<usize>{
         let mut df = Vec::new();
-        for i in 0..self.get_lag(){
+        for i in 0..ljung_box.len(){
             df.push(i as usize + 1);
         }
         df

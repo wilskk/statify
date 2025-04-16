@@ -175,8 +175,8 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
         if (!dataVariable.length) {
             return "Please select at least one used variable.";
         }
-        if (selectedPeriod[0] === '0') {
-            return "Please the selected time spesification don't have periodicity.";
+        if (selectedPeriod[1] === 'Not Dated') {
+            return "Please select a another time spesification.";
         }
         return null;
     };
@@ -232,10 +232,10 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
 
     // Process Box-Jenkins model results
     const processBoxJenkinsResults = async (
-        results: [any[], any, any, any, any[], any],
+        results: [any, any[], any, any, any, any[], any],
         dataVarDef: Variable
     ) => {
-        const [test, coefficient, criteria, evaluation, forecast, graphic] = results;
+        const [descriptionTable, test, coefficient, criteria, evaluation, forecast, graphic] = results;
         
         // Create log entry
         const logMsg = `ARIMA(${arOrder},${diffOrder},${maOrder}) ${dataVarDef.label || dataVarDef.name}.`;
@@ -248,6 +248,13 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
         });
 
         // Add coefficient test statistic
+        await addStatistic(analyticId, {
+            title: `Description Table`,
+            output_data: descriptionTable,
+            components: `Description Table`,
+            description: "",
+        });
+
         await addStatistic(analyticId, {
             title: `Coeficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
             output_data: coefficient,

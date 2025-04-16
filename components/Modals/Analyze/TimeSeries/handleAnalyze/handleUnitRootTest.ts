@@ -1,6 +1,4 @@
-import { row } from 'mathjs';
 import init, {DickeyFuller, AugmentedDickeyFuller, get_t} from '../../../../../src/wasm/pkg/wasm.js';
-import { headers } from 'next/headers.js';
 
 export async function handleUnitRootTest(
     data: (number)[], 
@@ -8,8 +6,8 @@ export async function handleUnitRootTest(
     method: (string),
     lag: (number),
     equation: (string),
-    level: (string),
-):Promise<[number[], string, string, string, string]> {
+    differencing: (string),
+):Promise<[string, number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -26,10 +24,10 @@ export async function handleUnitRootTest(
         let methodName;
         
         if(method === "dickey-fuller"){
-            unitroot = new DickeyFuller(new Float64Array(data), equation, level);
+            unitroot = new DickeyFuller(new Float64Array(data), equation, differencing);
             methodName = "Dickey-Fuller";
         } else if(method === "augmented-dickey-fuller"){
-            unitroot = new AugmentedDickeyFuller(new Float64Array(data), equation, level, lag);
+            unitroot = new AugmentedDickeyFuller(new Float64Array(data), equation, differencing, lag);
             methodName = "Augmented Dickey-Fuller";
         } else {
             throw new Error("Invalid equation");
@@ -46,6 +44,7 @@ export async function handleUnitRootTest(
         let coef_statistic = Array.from(await unitroot.get_test_stat_vec());
         let sel_crit = Array.from(await unitroot.get_sel_crit());
 
+        // Testing
         let t: number[] = [];
         let difference: number[] = [];
         let x: number[] = [];
@@ -54,6 +53,53 @@ export async function handleUnitRootTest(
             difference.push(data[i+1] - data[i]);
             x.push(data[i]);
         }
+
+        // Description Table
+        let descriptionJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Description Table`,
+                    columnHeaders: [{header:""},{header: 'description'}],
+                    rows: [
+                        {
+                            rowHeader: [`Name Method`],
+                            description: `${methodName}`,
+                        },
+                        {
+                            rowHeader: [`Series Name`],
+                            description: `${dataHeader}`,
+                        },
+                        {
+                            rowHeader: [`Equation`],
+                            description: `${equation}`,
+                        },
+                        {
+                            rowHeader: [`Number of Lags`],
+                            description: `${lag}`,
+                        },
+                        {
+                            rowHeader: [`Differencing`],
+                            description: `${differencing === "level" ? "none" : differencing}`,
+                        },
+                        {
+                            rowHeader: [`Probability Value`],
+                            description: `Use MacKinnon (1996) one-sided p-values`,
+                        },
+                        {
+                            rowHeader: [`Observations`],
+                            description: `${data.length}`,
+                        },
+                        {
+                            rowHeader: [`Number Observations After Computing`],
+                            description: `${
+                                differencing === 'first-difference' ? data.length - 2 - lag: 
+                                differencing === 'second-difference' ? data.length - 3 - lag : data.length - 1 -lag}`,
+                        },
+                    ],
+                }
+            ],
+        });
+
         let adfJSON = JSON.stringify({
             tables: [{
                 title: `${methodName} Test Statistic`,
@@ -162,9 +208,9 @@ export async function handleUnitRootTest(
             }]
         });
         
-        return [[...critical_value, adf_statistic, ...coeficient, ...standard_error, adf_pvalue], adfJSON, coefJSON, sel_critJSON, methodName];
+        return [descriptionJSON, [...critical_value, adf_statistic, ...coeficient, ...standard_error, adf_pvalue], adfJSON, coefJSON, sel_critJSON, methodName];
     } catch (error) {
         let errorMessage = error as Error;
-        return [[0],"" , "", JSON.stringify({ error: errorMessage.message }), ""];
+        return ["", [0], "", "", JSON.stringify({ error: errorMessage.message }), ""];
     }
 }

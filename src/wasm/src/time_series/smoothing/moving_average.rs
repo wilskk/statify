@@ -23,10 +23,10 @@ impl Smoothing {
     pub fn calculate_dma(&self, distance: usize) -> Vec<f64> {
         let mut dma_values: Vec<f64> = Vec::new();
         // fisrt moving average
-        let ma_st: Smoothing = Smoothing::new(self.get_data_header(), self.get_data());
+        let ma_st: Smoothing = Smoothing::new(self.get_data());
         let ma_st_values:Vec<f64> = ma_st.calculate_sma(distance);
         // second moving average
-        let ma_nd: Smoothing = Smoothing::new(ma_st.get_data_header(), ma_st_values.clone());
+        let ma_nd: Smoothing = Smoothing::new(ma_st_values.clone());
         let ma_nd_values:Vec<f64> = ma_nd.calculate_sma(distance);
         for i in 0..self.get_data().len(){
             if i >= 2*(distance-1){

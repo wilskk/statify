@@ -22,6 +22,7 @@ impl Smoothing {
             data_copy.remove(0);
             forecast_copy.remove(0);
         }
+        // forecast_copy.remove(forecast_copy.len()-1);
         let mse = mse(data_copy.clone(), forecast_copy.clone()) as f64;
         let rmse = rmse(data_copy.clone(), forecast_copy.clone()) as f64;
         let mae = mae(data_copy.clone(), forecast_copy.clone()) as f64;
