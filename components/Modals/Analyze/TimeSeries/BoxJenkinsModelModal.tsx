@@ -357,6 +357,9 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variables.");
             }
+            if (dataValues.length < 20) {
+                throw new Error(`Data length is less than 20 observations.`);
+            }
             
             // Execute Box-Jenkins model calculation
             let startDate: number;

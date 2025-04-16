@@ -150,8 +150,8 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
         if (!dataVariable.length) {
             return "Please select at least one used variable.";
         }
-        if (lengthLag < 1 || lengthLag > 5) {
-            return "Lag length must be between 1 and 5.";
+        if (lengthLag < 1 ) {
+            return "Lag length minimum is 1.";
         }
         return null;
     };
@@ -264,6 +264,9 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
             // Validate data
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variable.");
+            }
+            if (dataValues.length < 20) {
+                throw new Error(`Data length is less than 20 observations.`);
             }
             
             // Execute unit root test calculation
