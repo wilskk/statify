@@ -1,0 +1,41 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Removed pnpm install
+
+# Install dependencies using npm ci (expects package-lock.json)
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy source code and build
+# Copy tsconfig separately first
+COPY tsconfig.json ./
+# Copy server code (assuming it's in server/)
+COPY server ./server
+# Use npm run build
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Removed pnpm install
+
+# Copy package.json and lockfile
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only using npm
+RUN npm install --omit=dev
+
+# Copy build artifacts from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Create temp directory
+RUN mkdir -p /app/temp
+
+EXPOSE 5000
+
+# Run the server using npm start script
+CMD ["npm", "run", "start"]

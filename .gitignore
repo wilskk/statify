@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+frontend/node_modules
+backend/node_modules
 /.pnp
 .pnp.js
 
@@ -16,6 +18,7 @@
 
 # next.js
 /.next/
+frontend/.next/
 /out/
 
 # production
@@ -32,19 +35,24 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.development
+.env.production
+.env
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+# next-env.d.ts (Keep if not moved to frontend)
 
 # wasm-test
 /wasm-test/node_modules
 /wasm-test/.next
 /wasm-test
-package-lock.json
+# package-lock.json (Keep if maybe used elsewhere, or remove if definitely unused)
 
 # dist
 /dist
+backend/dist
+/_test/

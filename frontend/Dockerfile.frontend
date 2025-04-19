@@ -1,0 +1,31 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies using npm ci (expects package-lock.json)
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only using npm
+RUN npm install --omit=dev
+
+# Copy build artifacts from builder stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./
+
+EXPOSE 3001
+
+# Run Next.js using npm start script
+CMD ["npm", "run", "start"]
