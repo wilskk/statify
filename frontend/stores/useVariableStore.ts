@@ -2,8 +2,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import db from "@/lib/db";
-import { Variable } from "@/types/Variable";
-import { ValueLabel } from "@/types/Variable";
+import { Variable, ValueLabel } from "@/types/Variable";
 
 export type VariableStoreError = {
     message: string;
@@ -81,6 +80,7 @@ interface VariableStoreState {
     addMultipleVariables: (variablesData: Partial<Variable>[]) => Promise<void>;
     sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     ensureCompleteVariables: () => Promise<void>;
+    saveVariables: () => Promise<void>;
 }
 
 export const useVariableStore = create<VariableStoreState>()(
@@ -504,6 +504,29 @@ export const useVariableStore = create<VariableStoreState>()(
                     console.error("Error sorting variables:", error);
                     set((draft) => { draft.error = { message: error.message || "Error sorting variables", source: "sortVariables", originalError: error }; });
                     await get().loadVariables();
+                }
+            },
+
+            saveVariables: async () => {
+                const currentVariables = get().variables;
+                try {
+                    await db.transaction('rw', db.variables, async () => {
+                        await db.variables.clear();
+                        if (currentVariables.length > 0) {
+                            await db.variables.bulkPut(currentVariables);
+                        }
+                    });
+                    set((draft) => { draft.error = null; draft.lastUpdated = new Date(); });
+                } catch (error: any) {
+                    console.error("Failed to explicitly save variables:", error);
+                    set((draft) => {
+                        draft.error = {
+                            message: error.message || "Failed to save variables during explicit save",
+                            source: "saveVariables",
+                            originalError: error
+                        };
+                    });
+                    throw error;
                 }
             }
         }))

@@ -145,3 +145,43 @@ export function SidebarSkeleton() {
         </div>
     );
 }
+
+// New Skeleton for Dashboard Landing Page Loading State
+export function DashboardLandingSkeleton() {
+    const actionCardCount = 3;
+
+    return (
+        <div className="container mx-auto px-4 py-12 max-w-6xl animate-pulse">
+            {/* Header Skeleton */}
+            <div className="mb-12">
+                <div className="h-8 bg-gray-200 rounded w-1/3 mb-3"></div>
+                <div className="h-5 bg-gray-200 rounded w-1/2"></div>
+            </div>
+
+            {/* Action Cards Skeleton */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+                {Array.from({ length: actionCardCount }).map((_, index) => (
+                    <div key={index} className="h-48 bg-gray-100 border border-gray-200 rounded p-6 flex flex-col items-center justify-center">
+                        <div className="h-12 w-12 bg-gray-200 rounded-full mb-4"></div>
+                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    </div>
+                ))}
+            </div>
+
+             {/* Placeholder for Recent Projects / Resources might also be added here if desired */}
+             <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-4">
+                    <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+                    <div className="h-24 bg-gray-100 border border-gray-200 rounded"></div>
+                    <div className="h-24 bg-gray-100 border border-gray-200 rounded"></div>
+                </div>
+                 <div className="space-y-4">
+                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                    <div className="h-20 bg-gray-100 border border-gray-200 rounded"></div>
+                    <div className="h-20 bg-gray-100 border border-gray-200 rounded"></div>
+                </div>
+            </div>
+        </div>
+    );
+}

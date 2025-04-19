@@ -29,6 +29,9 @@ const FileMenu: React.FC = () => {
                 <MenubarItem onClick={() => handleAction({ actionType: "Save" })}>
                     Save
                 </MenubarItem>
+                <MenubarItem onClick={() => handleAction({ actionType: "SaveAs" })}>
+                    Save As...
+                </MenubarItem>
                 <MenubarSub>
                     <MenubarItem onClick={() => openModal(ModalType.OpenData)}>
                         Open Data
@@ -104,9 +107,10 @@ const FileMenu: React.FC = () => {
                 <MenubarSeparator />
                 {/*<MenubarItem onClick={() => openModal(ModalType.WelcomeDialog)}>Welcome Dialog...</MenubarItem>*/}
                 {/*<MenubarItem onClick={() => openModal(ModalType.RecentlyUsedData)}>Recently Used Data</MenubarItem>*/}
+                {/* Comment out RecentlyUsedFiles again to fix linter error */}
                 {/*<MenubarItem onClick={() => openModal(ModalType.RecentlyUsedFiles)}>Recently Used Files</MenubarItem>*/}
                 {/*<MenubarSeparator />*/}
-                <MenubarItem onClick={() => openModal(ModalType.Exit)}>
+                <MenubarItem onClick={() => handleAction({ actionType: "Exit" })}>
                     Exit
                 </MenubarItem>
             </MenubarContent>

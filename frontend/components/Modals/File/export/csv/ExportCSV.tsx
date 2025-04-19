@@ -19,7 +19,7 @@ import { useModal } from "@/hooks/useModal";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useToast } from "@/hooks/use-toast";
-import { generateCsvContent, CsvExportOptions } from "./csvUtils"; // Import utilitas baru
+import { generateCsvContent, CsvExportOptions } from "./csvUtils";
 import { FileText, Loader2, InfoIcon, HelpCircle } from "lucide-react";
 
 interface ExportCSVProps {
@@ -31,7 +31,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
     const { toast } = useToast();
     const { data } = useDataStore();
     const { variables } = useVariableStore();
-    const [isExporting, startExportTransition] = useTransition(); // Gunakan useTransition untuk state pending
+    const [isExporting, startExportTransition] = useTransition();
 
     const [exportOptions, setExportOptions] = useState<Omit<CsvExportOptions, 'delimiter'> & { filename: string, delimiter: string, encoding: string }>({
         filename: "statify-export",
@@ -46,8 +46,13 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
         setExportOptions(prev => ({ ...prev, [field]: value }));
     };
 
+    const handleFilenameChange = (value: string) => {
+        const sanitized = value.replace(/[\\/:*?"<>|]/g, '');
+        handleChange("filename", sanitized);
+    };
+
     const handleExport = async () => {
-        if (!data) { // Cek data saja, bisa jadi 0 baris tapi ada variabel
+        if (!data) {
             toast({
                 title: "Export Failed",
                 description: "No data available to export.",
@@ -64,39 +69,35 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
             return;
         }
 
-        startExportTransition(async () => { // Mulai transisi async
+        startExportTransition(async () => {
             try {
-                // Siapkan opsi untuk utilitas
                 const csvOptions: CsvExportOptions = {
-                    delimiter: exportOptions.delimiter === '\\t' ? '\t' : exportOptions.delimiter, // Handle tab literal
+                    delimiter: exportOptions.delimiter === '\\t' ? '\t' : exportOptions.delimiter,
                     includeHeaders: exportOptions.includeHeaders,
                     includeVariableProperties: exportOptions.includeVariableProperties,
                     quoteStrings: exportOptions.quoteStrings,
                 };
 
-                // Generate CSV content menggunakan utilitas
                 const csvContent = generateCsvContent(data, variables, csvOptions);
 
-                // Create blob and download
                 const blob = new Blob([csvContent], {
                     type: `text/csv;charset=${exportOptions.encoding}`
                 });
 
-                // Create download link
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `${exportOptions.filename.trim()}.csv`; // Trim filename
-                document.body.appendChild(link); // Required for Firefox
+                const finalFilename = `${exportOptions.filename.trim()}.csv`;
+                link.download = finalFilename;
+                document.body.appendChild(link);
                 link.click();
 
-                // Clean up
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
                 toast({
                     title: "Export Successful",
-                    description: `Data successfully exported to ${exportOptions.filename.trim()}.csv`,
+                    description: `Data successfully exported to ${finalFilename}`,
                 });
 
                 closeModal();
@@ -123,19 +124,17 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
 
             <TooltipProvider delayDuration={200}>
                 <div className="mb-6 space-y-5">
-                    {/* File Name */}
                     <div className="space-y-2">
                         <Label htmlFor="filename" className="block text-sm font-medium">File Name</Label>
                         <Input
                             id="filename"
                             value={exportOptions.filename}
-                            onChange={(e) => handleChange("filename", e.target.value)}
+                            onChange={(e) => handleFilenameChange(e.target.value)}
                             className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
                             placeholder="Enter file name (e.g., dataset_export)"
                         />
                     </div>
 
-                    {/* Delimiter */}
                     <div className="space-y-2">
                         <Label htmlFor="delimiter" className="block text-sm font-medium">Delimiter</Label>
                         <Select
@@ -154,7 +153,6 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                         </Select>
                     </div>
 
-                    {/* Encoding */}
                     <div className="space-y-2">
                         <Label htmlFor="encoding" className="block text-sm font-medium">Encoding</Label>
                         <Select
@@ -172,11 +170,9 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                         </Select>
                     </div>
 
-                    {/* Export Options Checkboxes */}
                     <div className="space-y-3 pt-2">
                         <Label className="block text-sm font-medium mb-1">Options</Label>
 
-                        {/* Include Headers */}
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="includeHeaders"
@@ -196,7 +192,6 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                             </Label>
                         </div>
 
-                        {/* Include Variable Properties */}
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="includeVariableProperties"
@@ -216,7 +211,6 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                             </Label>
                         </div>
 
-                        {/* Quote Strings */}
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="quoteStrings"
@@ -239,13 +233,11 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                 </div>
             </TooltipProvider>
 
-            {/* Info Footer */}
             <div className="flex items-center py-3 text-xs text-gray-500 border-t border-gray-200 mt-4">
                 <InfoIcon size={14} className="mr-2 flex-shrink-0" />
                 <span>CSV is a common format for data exchange. Ensure compatibility with the target application.</span>
             </div>
 
-            {/* Dialog Actions */}
             <DialogFooter className="gap-3 mt-2">
                 <Button
                     variant="outline"
@@ -258,7 +250,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                 <Button
                     onClick={handleExport}
                     disabled={isExporting || !exportOptions.filename.trim()}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[110px]" // Wider button for loading state
+                    className="bg-black text-white hover:bg-[#444444] min-w-[110px]"
                 >
                     {isExporting ? (
                         <>

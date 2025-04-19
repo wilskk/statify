@@ -3,10 +3,13 @@ import { useModal } from "@/hooks/useModal";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import {useResultStore} from "@/stores/useResultStore";
+import { useMetaStore } from "@/stores/useMetaStore";
+import { useRouter } from 'next/navigation';
 
 export type FileActionType =
     | "New"
     | "Save"
+    | "SaveAs"
     | "Exit";
 
 interface FileActionPayload {
@@ -16,15 +19,33 @@ interface FileActionPayload {
 
 export const useFileActions = () => {
     const { openModal } = useModal();
+    const router = useRouter();
 
     const handleAction = async ({ actionType, data }: FileActionPayload) => {
         switch (actionType) {
             case "New":
-                useDataStore.getState().resetData();
-                useVariableStore.getState().resetVariables();
+                await useDataStore.getState().resetData();
+                await useVariableStore.getState().resetVariables();
+                await useMetaStore.getState().resetMeta();
                 useResultStore.getState().clearAll();
+                console.log("New session started. Data, variables, and metadata reset.");
                 break;
             case "Save":
+                // Explicitly save the current state of all relevant stores
+                try {
+                    console.log("Explicit save action triggered.");
+                    // Assuming existence of explicit save functions in stores
+                    await useMetaStore.getState().saveMeta();
+                    await useVariableStore.getState().saveVariables();
+                    await useDataStore.getState().saveData();
+                    console.log("All stores saved successfully.");
+                    // Add user feedback (e.g., toast notification)
+                } catch (error) {
+                    console.error("Error during explicit save action:", error);
+                    alert("An error occurred while saving data. Please check the console.");
+                }
+                break;
+            case "SaveAs":
                 const dataMatrix = useDataStore.getState().data;
                 const variablesStore = useVariableStore.getState().variables;
 
@@ -126,14 +147,24 @@ export const useFileActions = () => {
                     a.remove();
                     window.URL.revokeObjectURL(url);
                 } catch (error) {
-                    console.error("Error during save action:", error);
-                    openModal("Terjadi kesalahan saat menyimpan file .sav.");
+                    console.error(`Error during ${actionType} action:`, error);
+                    alert(`Terjadi kesalahan saat menyimpan file .sav (${actionType}). Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 break;
 
             case "Exit":
-                window.location.href = "/";
-            break;
+                try {
+                    await useDataStore.getState().resetData();
+                    await useVariableStore.getState().resetVariables();
+                    await useMetaStore.getState().resetMeta();
+                    await useResultStore.getState().clearAll();
+                    console.log("Exiting application. All data cleared.");
+                    router.push('/');
+                } catch (error) {
+                    console.error("Error during Exit action while resetting stores:", error);
+                    alert("An error occurred while clearing data before exiting. Please try again.");
+                }
+                break;
             default:
                 console.warn("Unknown file action:", actionType);
         }

@@ -20,7 +20,7 @@ export default function DashboardLayout({
                 <header className="flex-shrink-0 z-50">
                     <Header />
                 </header>
-                <main className="flex-grow overflow-hidden relative">
+                <main className="flex-grow overflow-y-auto relative bg-[#F7F7F7]">
                     <LoadingOverlay>
                         {children}
                     </LoadingOverlay>

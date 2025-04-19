@@ -39,6 +39,7 @@ export interface DataStoreState {
     swapRows: (row1: number, row2: number) => Promise<void>;
     swapColumns: (col1: number, col2: number) => Promise<void>;
     ensureMatrixDimensions: (maxRow: number, maxCol: number, minColCount?: number) => void;
+    saveData: () => Promise<void>;
 }
 
 export const useDataStore = create<DataStoreState>()(
@@ -344,6 +345,37 @@ export const useDataStore = create<DataStoreState>()(
                 const currentData = get().data;
                 await get().setDataAndSync(currentData);
             },
+
+            saveData: async () => {
+                const currentData = get().data;
+                try {
+                    await db.transaction('rw', db.cells, async () => {
+                        await db.cells.clear();
+                        const cells = [];
+                        for (let row = 0; row < currentData.length; row++) {
+                            for (let col = 0; col < currentData[row].length; col++) {
+                                if (currentData[row][col] !== "") {
+                                    cells.push({ row, col, value: currentData[row][col] });
+                                }
+                            }
+                        }
+                        if (cells.length > 0) {
+                            await db.cells.bulkPut(cells);
+                        }
+                    });
+                    set((state) => { state.error = null; state.lastUpdated = new Date(); });
+                } catch (error: any) {
+                    console.error("Failed to explicitly save data:", error);
+                    set((state) => {
+                        state.error = {
+                            message: error.message || "Failed to save data during explicit save",
+                            source: "saveData",
+                            originalError: error
+                        };
+                    });
+                    throw error;
+                }
+            }
 
         }))
     )

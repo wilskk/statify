@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ModalType, useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { useMetaStore } from "@/stores/useMetaStore";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, X, AlertCircle } from "lucide-react";
@@ -61,6 +62,7 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
     const { closeModal } = useModal();
     const { overwriteVariables, resetVariables } = useVariableStore();
     const { setDataAndSync, resetData } = useDataStore();
+    const { setMeta: setProjectMeta } = useMetaStore();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0] || null;
@@ -164,7 +166,8 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
 
                 await overwriteVariables(variables);
                 await setDataAndSync(dataMatrix);
-
+                // Set project meta to navigate to data view
+                await setProjectMeta({ name: file.name, location: file.name, created: new Date() });
                 closeModal();
             } catch (error) {
                 console.error("Error uploading or processing file:", error);

@@ -5,6 +5,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
+import { useMetaStore } from '@/stores/useMetaStore';
 
 interface LoadingOverlayProps {
     children: React.ReactNode;
@@ -15,11 +16,12 @@ function GlobalLoadingIndicator() {
     const dataIsLoading = useDataStore((state) => state.isLoading);
     const variablesIsLoading = useVariableStore((state) => state.isLoading);
     const logsLoading = useResultStore((state) => state.isLoading);
+    const metaIsLoading = useMetaStore((state) => state.isLoading);
     const [visible, setVisible] = useState(false);
     const [opacity, setOpacity] = useState(0);
     const [scale, setScale] = useState(0.98);
 
-    const isLoading = dataIsLoading || variablesIsLoading || logsLoading;
+    const isLoading = dataIsLoading || variablesIsLoading || logsLoading || metaIsLoading;
 
     useEffect(() => {
         if (isLoading) {

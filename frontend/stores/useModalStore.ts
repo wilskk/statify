@@ -104,6 +104,7 @@ export enum ModalType {
   SetMeasurementLevel = "setMeasurementLevel",
   DefineValidationRules = "defineValidationRules",
   PPPlots = "ppPlots",
+  ExampleDataset = "exampleDataset",
 }
 
 interface ModalInstance {

@@ -53,7 +53,19 @@ interface MetaStoreState {
     setSingleVarRules: (rules: SingleVariableRule[]) => Promise<void>;
     setCrossVarRules: (rules: CrossVariableRule[]) => Promise<void>;
     _saveMetaToDb: (metaToSave: Meta) => Promise<void>;
+    resetMeta: () => Promise<void>;
+    saveMeta: () => Promise<void>;
 }
+
+const initialMetaState: Meta = {
+    name: '',
+    location: '',
+    created: new Date(),
+    weight: '',
+    dates: '',
+    singleVarRules: [],
+    crossVarRules: []
+};
 
 export const useMetaStore = create<MetaStoreState>()(
     devtools(
@@ -165,6 +177,45 @@ export const useMetaStore = create<MetaStoreState>()(
                 });
                 if (updatedMeta) {
                     await get()._saveMetaToDb(updatedMeta);
+                }
+            },
+
+            resetMeta: async () => {
+                try {
+                    await db.metadata.delete(META_DB_ID);
+                    set(state => {
+                        state.meta = { ...initialMetaState, created: new Date() };
+                        state.error = null;
+                        state.isLoaded = false;
+                    });
+                    await get()._saveMetaToDb({ ...initialMetaState, created: new Date() });
+                } catch (error: any) {
+                    console.error("Failed to reset metadata:", error);
+                    set(state => {
+                        state.error = {
+                            message: error.message || "Failed to reset metadata",
+                            source: "resetMeta",
+                            originalError: error
+                        };
+                    });
+                }
+            },
+
+            saveMeta: async () => {
+                const currentMeta = get().meta;
+                try {
+                    await get()._saveMetaToDb(currentMeta);
+                    set(state => { state.error = null; });
+                } catch (error: any) {
+                    console.error("Failed to explicitly save metadata:", error);
+                    set(state => {
+                        state.error = {
+                            message: error.message || "Failed to save metadata during explicit save",
+                            source: "saveMeta",
+                            originalError: error
+                        };
+                    });
+                    throw error;
                 }
             }
         })),
