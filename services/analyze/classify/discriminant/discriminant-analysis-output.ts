@@ -17,7 +17,7 @@ export async function resultDiscriminant({
             return foundTable ? JSON.stringify({ tables: [foundTable] }) : null;
         };
 
-        const discriminantResult = async () => {
+        const discriminantAnalysisResult = async () => {
             /*
              * 🎉 Title Result 🎉
              * */
@@ -29,25 +29,48 @@ export async function resultDiscriminant({
             });
 
             /*
-             * 📊 Analysis Case Result 📊
+             * 📊 Analysis Case Processing Summary Result 📊
              * */
-            const caseProcessingSummary = findTable("case_processing_summary");
-            if (caseProcessingSummary) {
-                const analyzeCaseId = await addAnalytic(logId, {
+            const processingsSummary = findTable("processing_summary");
+            if (processingsSummary) {
+                const processingSummaryId = await addAnalytic(logId, {
                     title: `Analysis Case Processing Summary`,
                     note: "",
                 });
 
-                await addStatistic(analyzeCaseId, {
-                    title: `Analyse Case Processing Summary`,
+                await addStatistic(processingSummaryId, {
+                    title: `Analysis Case Processing Summary`,
                     description: `Analysis Case Processing Summary`,
-                    output_data: caseProcessingSummary,
-                    components: `Analyse Case Processing Summary`,
+                    output_data: processingsSummary,
+                    components: `Analysis Case Processing Summary`,
                 });
             }
 
             /*
-             * 📈 Group Statistics Result 📈
+             * 📈 Classification Processing Summary Result 📈
+             * */
+            const classificationProcessingSummary = findTable(
+                "classification_processing_summary"
+            );
+            if (classificationProcessingSummary) {
+                const classificationProcessingSummaryId = await addAnalytic(
+                    logId,
+                    {
+                        title: `Classification Processing Summary`,
+                        note: "",
+                    }
+                );
+
+                await addStatistic(classificationProcessingSummaryId, {
+                    title: `Classification Processing Summary`,
+                    description: `Classification Processing Summary`,
+                    output_data: classificationProcessingSummary,
+                    components: `Classification Processing Summary`,
+                });
+            }
+
+            /*
+             * 📊 Group Statistics Result 📊
              * */
             const groupStatistics = findTable("group_statistics");
             if (groupStatistics) {
@@ -65,43 +88,45 @@ export async function resultDiscriminant({
             }
 
             /*
-             * 📊 Tests of Equality Result 📊
+             * 📈 Tests of Equality of Group Means Result 📈
              * */
-            const testsOfEquality = findTable("equality_tests");
-            if (testsOfEquality) {
-                const testsOfEqualityId = await addAnalytic(logId, {
+            const equalityTests = findTable("equality_tests");
+            if (equalityTests) {
+                const equalityTestsId = await addAnalytic(logId, {
                     title: `Tests of Equality of Group Means`,
                     note: "",
                 });
 
-                await addStatistic(testsOfEqualityId, {
+                await addStatistic(equalityTestsId, {
                     title: `Tests of Equality of Group Means`,
                     description: `Tests of Equality of Group Means`,
-                    output_data: testsOfEquality,
+                    output_data: equalityTests,
                     components: `Tests of Equality of Group Means`,
                 });
             }
 
             /*
-             * 📈 Pooled Within-Group Covariance Matrices Result 📈
+             * 🔍 Pooled Within-Groups Matrices Result 🔍
              * */
-            const pooledMatrices = findTable("pooled_within_groups_matrices");
-            if (pooledMatrices) {
-                const pooledMatricesId = await addAnalytic(logId, {
-                    title: `Pooled Within-Group Covariance Matrices`,
+            const pooledWithinGroupsMatrices = findTable(
+                "pooled_within_groups_matrices"
+            );
+            if (pooledWithinGroupsMatrices) {
+                const pooledWithinGroupsMatricesId = await addAnalytic(logId, {
+                    title: `Pooled Within-Groups Matrices`,
                     note: "",
                 });
 
-                await addStatistic(pooledMatricesId, {
-                    title: `Pooled Within-Group Covariance Matrices`,
-                    description: `Pooled Within-Group Covariance Matrices`,
-                    output_data: pooledMatrices,
-                    components: `Pooled Within-Group Covariance Matrices`,
+                await addStatistic(pooledWithinGroupsMatricesId, {
+                    title: `Pooled Within-Groups Matrices`,
+                    description: `Pooled Within-Groups Matrices`,
+                    output_data: pooledWithinGroupsMatrices,
+                    components: `Pooled Within-Groups Matrices`,
                 });
             }
 
             /*
-             * 📈 Covariance Matrices Result 📈
+             * 📊 Covariance Matrices Result 📊
              * */
             const covarianceMatrices = findTable("covariance_matrices");
             if (covarianceMatrices) {
@@ -119,258 +144,261 @@ export async function resultDiscriminant({
             }
 
             /*
-             * 📊 Box's Test of Equality of Covariance Matrices Result 📊
+             * 📈 Log Determinants Result 📈
              * */
-            const boxTestLogDeterminants = findTable("log_determinants");
-            const boxTestResults = findTable("box_m_test");
-            if (boxTestLogDeterminants || boxTestResults) {
-                const boxTest = await addAnalytic(logId, {
-                    title: `Box's Test of Equality of Covariance Matrices`,
+            const logDeterminants = findTable("log_determinants");
+            if (logDeterminants) {
+                const logDeterminantsId = await addAnalytic(logId, {
+                    title: `Log Determinants`,
                     note: "",
                 });
 
-                if (boxTestLogDeterminants) {
-                    await addStatistic(boxTest, {
-                        title: `Box's Test of Equality of Covariance Matrices`,
-                        description: `Box's Test of Equality of Covariance Matrices - Log Determinants`,
-                        output_data: boxTestLogDeterminants,
-                        components: `Box's Test of Equality of Covariance Matrices`,
-                    });
-                }
-
-                if (boxTestResults) {
-                    await addStatistic(boxTest, {
-                        title: `Box's Test of Equality of Covariance Matrices`,
-                        description: `Box's Test of Equality of Covariance Matrices - Results`,
-                        output_data: boxTestResults,
-                        components: `Box's Test of Equality of Covariance Matrices`,
-                    });
-                }
+                await addStatistic(logDeterminantsId, {
+                    title: `Log Determinants`,
+                    description: `Log Determinants`,
+                    output_data: logDeterminants,
+                    components: `Log Determinants`,
+                });
             }
 
             /*
-             * 🚀 Stepwise Statistics Result 🚀
+             * 🔍 Box's M Test Results 🔍
              * */
-            const variablesEnteredTable = findTable("stepwise_statistics");
-            const variablesInAnalysisTable = findTable("variables_in_analysis");
-            const variablesNotInAnalysisTable = findTable(
-                "variables_not_in_analysis"
-            );
-            const wilksLambdaStepsTable = findTable("wilks_lambda_steps");
-            const pairwiseGroupComparisonsTable = findTable(
-                "pairwise_group_comparisons"
-            );
+            const boxMTest = findTable("box_m_test");
+            if (boxMTest) {
+                const boxMTestId = await addAnalytic(logId, {
+                    title: `Box's M Test Results`,
+                    note: "",
+                });
 
-            if (
-                variablesEnteredTable ||
-                variablesInAnalysisTable ||
-                variablesNotInAnalysisTable ||
-                wilksLambdaStepsTable ||
-                pairwiseGroupComparisonsTable
-            ) {
+                await addStatistic(boxMTestId, {
+                    title: `Box's M Test Results`,
+                    description: `Box's M Test Results`,
+                    output_data: boxMTest,
+                    components: `Box's M Test Results`,
+                });
+            }
+
+            /*
+             * 📊 Prior Probabilities for Groups Result 📊
+             * */
+            const priorProbabilities = findTable("prior_probabilities");
+            if (priorProbabilities) {
+                const priorProbabilitiesId = await addAnalytic(logId, {
+                    title: `Prior Probabilities for Groups`,
+                    note: "",
+                });
+
+                await addStatistic(priorProbabilitiesId, {
+                    title: `Prior Probabilities for Groups`,
+                    description: `Prior Probabilities for Groups`,
+                    output_data: priorProbabilities,
+                    components: `Prior Probabilities for Groups`,
+                });
+            }
+
+            /*
+             * 📈 Classification Function Coefficients Result 📈
+             * */
+            const classificationFunctionCoefficients = findTable(
+                "classification_function_coefficients"
+            );
+            if (classificationFunctionCoefficients) {
+                const classificationFunctionCoefficientsId = await addAnalytic(
+                    logId,
+                    {
+                        title: `Classification Function Coefficients`,
+                        note: "",
+                    }
+                );
+
+                await addStatistic(classificationFunctionCoefficientsId, {
+                    title: `Classification Function Coefficients`,
+                    description: `Classification Function Coefficients`,
+                    output_data: classificationFunctionCoefficients,
+                    components: `Classification Function Coefficients`,
+                });
+            }
+
+            /*
+             * 🧩 Canonical Discriminant Function Coefficients Result 🧩
+             * */
+            const canonicalDiscriminantFunctionCoefficients = findTable(
+                "canonical_discriminant_function_coefficients"
+            );
+            if (canonicalDiscriminantFunctionCoefficients) {
+                const canonicalDiscriminantFunctionCoefficientsId =
+                    await addAnalytic(logId, {
+                        title: `Canonical Discriminant Function Coefficients`,
+                        note: "",
+                    });
+
+                await addStatistic(
+                    canonicalDiscriminantFunctionCoefficientsId,
+                    {
+                        title: `Canonical Discriminant Function Coefficients`,
+                        description: `Canonical Discriminant Function Coefficients`,
+                        output_data: canonicalDiscriminantFunctionCoefficients,
+                        components: `Canonical Discriminant Function Coefficients`,
+                    }
+                );
+            }
+
+            /*
+             * 🔄 Standardized Canonical Discriminant Function Coefficients Result 🔄
+             * */
+            const standardizedCoefficients = findTable(
+                "standardized_coefficients"
+            );
+            if (standardizedCoefficients) {
+                const standardizedCoefficientsId = await addAnalytic(logId, {
+                    title: `Standardized Canonical Discriminant Function Coefficients`,
+                    note: "",
+                });
+
+                await addStatistic(standardizedCoefficientsId, {
+                    title: `Standardized Canonical Discriminant Function Coefficients`,
+                    description: `Standardized Canonical Discriminant Function Coefficients`,
+                    output_data: standardizedCoefficients,
+                    components: `Standardized Canonical Discriminant Function Coefficients`,
+                });
+            }
+
+            /*
+             * 📊 Functions at Group Centroids Result 📊
+             * */
+            const functionsAtGroupCentroids = findTable(
+                "functions_at_group_centroids"
+            );
+            if (functionsAtGroupCentroids) {
+                const functionsAtGroupCentroidsId = await addAnalytic(logId, {
+                    title: `Functions at Group Centroids`,
+                    note: "",
+                });
+
+                await addStatistic(functionsAtGroupCentroidsId, {
+                    title: `Functions at Group Centroids`,
+                    description: `Functions at Group Centroids`,
+                    output_data: functionsAtGroupCentroids,
+                    components: `Functions at Group Centroids`,
+                });
+            }
+
+            /*
+             * 📈 Structure Matrix Result 📈
+             * */
+            const structureMatrix = findTable("structure_matrix");
+            if (structureMatrix) {
+                const structureMatrixId = await addAnalytic(logId, {
+                    title: `Structure Matrix`,
+                    note: "",
+                });
+
+                await addStatistic(structureMatrixId, {
+                    title: `Structure Matrix`,
+                    description: `Structure Matrix`,
+                    output_data: structureMatrix,
+                    components: `Structure Matrix`,
+                });
+            }
+
+            /*
+             * 🔍 Stepwise Statistics Result 🔍
+             * */
+            const stepwiseStatistics = findTable("stepwise_statistics");
+            if (stepwiseStatistics) {
                 const stepwiseStatisticsId = await addAnalytic(logId, {
                     title: `Stepwise Statistics`,
                     note: "",
                 });
 
-                if (variablesEnteredTable) {
-                    await addStatistic(stepwiseStatisticsId, {
-                        title: `Variables Entered`,
-                        description: `Variables Entered in Stepwise Analysis`,
-                        output_data: variablesEnteredTable,
-                        components: `Variables Entered`,
-                    });
-                }
-
-                if (variablesInAnalysisTable) {
-                    await addStatistic(stepwiseStatisticsId, {
-                        title: `Variables in the Analysis`,
-                        description: `Variables in the Stepwise Analysis`,
-                        output_data: variablesInAnalysisTable,
-                        components: `Variables in the Analysis`,
-                    });
-                }
-
-                if (variablesNotInAnalysisTable) {
-                    await addStatistic(stepwiseStatisticsId, {
-                        title: `Variables Not in the Analysis`,
-                        description: `Variables Not in the Stepwise Analysis`,
-                        output_data: variablesNotInAnalysisTable,
-                        components: `Variables Not in the Analysis`,
-                    });
-                }
-
-                if (wilksLambdaStepsTable) {
-                    await addStatistic(stepwiseStatisticsId, {
-                        title: `Wilks' Lambda Steps`,
-                        description: `Wilks' Lambda Steps in Stepwise Analysis`,
-                        output_data: wilksLambdaStepsTable,
-                        components: `Wilks' Lambda Steps`,
-                    });
-                }
-
-                /*
-                 * 📈 Pairwise Group Comparisons Result 📈
-                 * */
-                if (pairwiseGroupComparisonsTable) {
-                    await addStatistic(stepwiseStatisticsId, {
-                        title: `Pairwise Group Comparisons`,
-                        description: `Pairwise Group Comparisons in Stepwise Analysis`,
-                        output_data: pairwiseGroupComparisonsTable,
-                        components: `Pairwise Group Comparisons`,
-                    });
-                }
+                await addStatistic(stepwiseStatisticsId, {
+                    title: `Stepwise Statistics`,
+                    description: `Stepwise Statistics`,
+                    output_data: stepwiseStatistics,
+                    components: `Stepwise Statistics`,
+                });
             }
 
             /*
-             * 📜 Summary Canonical Result 📜
+             * 📊 Variables in the Analysis Result 📊
              * */
-            const eigenvaluesTable = findTable("eigenvalues");
-            const wilksLambdaTable = findTable("wilks_lambda_test");
-            if (eigenvaluesTable || wilksLambdaTable) {
-                const summaryCanonicalId = await addAnalytic(logId, {
-                    title: `Summary Canonical`,
+            const variablesInAnalysis = findTable("variables_in_analysis");
+            if (variablesInAnalysis) {
+                const variablesInAnalysisId = await addAnalytic(logId, {
+                    title: `Variables in the Analysis`,
                     note: "",
                 });
 
-                if (eigenvaluesTable) {
-                    await addStatistic(summaryCanonicalId, {
-                        title: `Eigenvalues`,
-                        description: `Eigenvalues of Canonical Discriminant Functions`,
-                        output_data: eigenvaluesTable,
-                        components: `Eigenvalues`,
-                    });
-                }
-
-                if (wilksLambdaTable) {
-                    await addStatistic(summaryCanonicalId, {
-                        title: `Wilks' Lambda`,
-                        description: `Wilks' Lambda Test of Canonical Functions`,
-                        output_data: wilksLambdaTable,
-                        components: `Wilks' Lambda`,
-                    });
-                }
+                await addStatistic(variablesInAnalysisId, {
+                    title: `Variables in the Analysis`,
+                    description: `Variables in the Analysis`,
+                    output_data: variablesInAnalysis,
+                    components: `Variables in the Analysis`,
+                });
             }
 
             /*
-             * 🛠️ Standardized Function Result 🛠️
+             * 📈 Variables Not in the Analysis Result 📈
              * */
-            const stdCoefficientsTable = findTable(
-                "standardized_canonical_coefficients"
+            const variablesNotInAnalysis = findTable(
+                "variables_not_in_analysis"
             );
-            const structureMatrixTable = findTable("structure_matrix");
-            if (stdCoefficientsTable || structureMatrixTable) {
-                const standardizedFunctionId = await addAnalytic(logId, {
-                    title: `Standardized Function`,
+            if (variablesNotInAnalysis) {
+                const variablesNotInAnalysisId = await addAnalytic(logId, {
+                    title: `Variables Not in the Analysis`,
                     note: "",
                 });
 
-                if (stdCoefficientsTable) {
-                    await addStatistic(standardizedFunctionId, {
-                        title: `Standardized Coefficients`,
-                        description: `Standardized Canonical Discriminant Function Coefficients`,
-                        output_data: stdCoefficientsTable,
-                        components: `Standardized Coefficients`,
-                    });
-                }
-
-                if (structureMatrixTable) {
-                    await addStatistic(standardizedFunctionId, {
-                        title: `Structure Matrix`,
-                        description: `Structure Matrix of Discriminant Functions`,
-                        output_data: structureMatrixTable,
-                        components: `Structure Matrix`,
-                    });
-                }
+                await addStatistic(variablesNotInAnalysisId, {
+                    title: `Variables Not in the Analysis`,
+                    description: `Variables Not in the Analysis`,
+                    output_data: variablesNotInAnalysis,
+                    components: `Variables Not in the Analysis`,
+                });
             }
 
             /*
-             * 🎯 Function Group Centroids Result 🎯
+             * 🔍 Wilks' Lambda Test Result 🔍
              * */
-            const groupCentroidsTable = findTable(
-                "functions_at_group_centroids"
-            );
-            if (groupCentroidsTable) {
-                const functionGroupCentroidsId = await addAnalytic(logId, {
-                    title: `Function Group Centroids`,
+            const wilksLambdaTest = findTable("wilks_lambda_test");
+            if (wilksLambdaTest) {
+                const wilksLambdaTestId = await addAnalytic(logId, {
+                    title: `Wilks' Lambda Test`,
                     note: "",
                 });
 
-                await addStatistic(functionGroupCentroidsId, {
-                    title: `Group Centroids`,
-                    description: `Functions at Group Centroids`,
-                    output_data: groupCentroidsTable,
-                    components: `Group Centroids`,
+                await addStatistic(wilksLambdaTestId, {
+                    title: `Wilks' Lambda Test`,
+                    description: `Wilks' Lambda Test`,
+                    output_data: wilksLambdaTest,
+                    components: `Wilks' Lambda Test`,
                 });
             }
 
             /*
-             * 🎯 Classification Results 🎯
+             * 📊 Eigenvalues Result 📊
              * */
-            const classificationSummaryTable = findTable(
-                "classification_processing_summary"
-            );
-            const priorProbabilitiesTable = findTable("prior_probabilities");
-            const classificationFunctionCoefficientsTable = findTable(
-                "classification_function_coefficients"
-            );
-            const classificationResultsTable = findTable(
-                "classification_results"
-            );
-
-            if (
-                classificationSummaryTable ||
-                priorProbabilitiesTable ||
-                classificationFunctionCoefficientsTable ||
-                classificationResultsTable
-            ) {
-                const classificationResultsId = await addAnalytic(logId, {
-                    title: `Classification Results`,
+            const eigenvalues = findTable("eigenvalues");
+            if (eigenvalues) {
+                const eigenvaluesId = await addAnalytic(logId, {
+                    title: `Eigenvalues`,
                     note: "",
                 });
 
-                if (classificationSummaryTable) {
-                    await addStatistic(classificationResultsId, {
-                        title: `Classification Processing Summary`,
-                        description: `Classification Processing Summary`,
-                        output_data: classificationSummaryTable,
-                        components: `Classification Processing Summary`,
-                    });
-                }
-
-                if (priorProbabilitiesTable) {
-                    await addStatistic(classificationResultsId, {
-                        title: `Prior Probabilites for Groups`,
-                        description: `Prior Probabilities Used in Classification`,
-                        output_data: priorProbabilitiesTable,
-                        components: `Prior Probabilites for Groups`,
-                    });
-                }
-
-                if (classificationFunctionCoefficientsTable) {
-                    await addStatistic(classificationResultsId, {
-                        title: `Classification Function Coefficients`,
-                        description: `Classification Function Coefficients (Fisher's linear discriminant functions)`,
-                        output_data: classificationFunctionCoefficientsTable,
-                        components: `Classification Function Coefficients`,
-                    });
-                }
-
-                if (classificationResultsTable) {
-                    await addStatistic(classificationResultsId, {
-                        title: `Classification Results`,
-                        description: `Classification Results Table`,
-                        output_data: classificationResultsTable,
-                        components: `Classification Results`,
-                    });
-                }
+                await addStatistic(eigenvaluesId, {
+                    title: `Eigenvalues`,
+                    description: `Eigenvalues`,
+                    output_data: eigenvalues,
+                    components: `Eigenvalues`,
+                });
             }
 
             /*
-             * 📝 Casewise Statistics Results 📝
+             * 🔄 Casewise Statistics Result 🔄
              * */
-            const casewiseStatisticsTable = findTable("casewise_statistics");
-            if (casewiseStatisticsTable) {
+            const casewiseStatistics = findTable("casewise_statistics");
+            if (casewiseStatistics) {
                 const casewiseStatisticsId = await addAnalytic(logId, {
                     title: `Casewise Statistics`,
                     note: "",
@@ -378,14 +406,32 @@ export async function resultDiscriminant({
 
                 await addStatistic(casewiseStatisticsId, {
                     title: `Casewise Statistics`,
-                    description: `Casewise Statistics for Classification`,
-                    output_data: casewiseStatisticsTable,
+                    description: `Casewise Statistics`,
+                    output_data: casewiseStatistics,
                     components: `Casewise Statistics`,
+                });
+            }
+
+            /*
+             * 📈 Classification Results 📈
+             * */
+            const classificationResults = findTable("classification_results");
+            if (classificationResults) {
+                const classificationResultsId = await addAnalytic(logId, {
+                    title: `Classification Results`,
+                    note: "",
+                });
+
+                await addStatistic(classificationResultsId, {
+                    title: `Classification Results`,
+                    description: `Classification Results`,
+                    output_data: classificationResults,
+                    components: `Classification Results`,
                 });
             }
         };
 
-        await discriminantResult();
+        await discriminantAnalysisResult();
     } catch (e) {
         console.error(e);
     }

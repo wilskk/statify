@@ -42,7 +42,7 @@ pub fn calculate_prior_probabilities(
 
             prior_probabilities.push(equal_prob);
             unweighted_counts.push(group_size);
-            weighted_counts.push((group_size * 1000) / group_size); // Multiply by 1000 for display purposes
+            weighted_counts.push(group_size);
         }
     } else {
         // Calculate based on group sizes

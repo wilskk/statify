@@ -1,5 +1,5 @@
 // discriminant-analysis-formatter.ts
-import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
+import { formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table } from "@/types/Table";
 
 export function transformDiscriminantResult(data: any): ResultJson {
@@ -9,1022 +9,1460 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 1. Analysis Case Processing Summary
     if (data.processing_summary) {
-        const ps = data.processing_summary;
         const table: Table = {
-            key: "case_processing_summary",
+            key: "processing_summary",
             title: "Analysis Case Processing Summary",
             columnHeaders: [
-                { header: "" },
-                { header: "" },
-                { header: "N" },
-                { header: "Percent" },
+                { header: "", key: "case_category" },
+                { header: "", key: "sub_category" },
+                { header: "N", key: "n" },
+                { header: "Percent", key: "percent" },
             ],
             rows: [],
         };
 
+        // Valid row
         table.rows.push({
-            rowHeader: ["Valid", null],
-            N: ps.valid_cases,
-            Percent: formatDisplayNumber(ps.valid_percent),
+            rowHeader: ["Valid"],
+            n: formatDisplayNumber(data.processing_summary.valid_count),
+            percent: formatDisplayNumber(data.processing_summary.valid_percent),
         });
 
-        if (ps.missing_group_codes !== undefined) {
+        // Excluded rows - only add if defined
+        if (data.processing_summary.missing_group_codes !== undefined) {
             table.rows.push({
                 rowHeader: ["Excluded", "Missing or out-of-range group codes"],
-                N: ps.missing_group_codes,
-                Percent: formatDisplayNumber(ps.missing_group_percent),
+                n: formatDisplayNumber(
+                    data.processing_summary.missing_group_codes
+                ),
+                percent: formatDisplayNumber(
+                    data.processing_summary.missing_group_percent
+                ),
             });
         }
 
-        if (ps.missing_disc_vars !== undefined) {
+        if (data.processing_summary.missing_disc_vars !== undefined) {
             table.rows.push({
                 rowHeader: ["", "At least one missing discriminating variable"],
-                N: ps.missing_disc_vars,
-                Percent: formatDisplayNumber(ps.missing_disc_percent),
+                n: formatDisplayNumber(
+                    data.processing_summary.missing_disc_vars
+                ),
+                percent: formatDisplayNumber(
+                    data.processing_summary.missing_disc_percent
+                ),
             });
         }
 
-        if (ps.both_missing !== undefined) {
+        if (data.processing_summary.both_missing !== undefined) {
             table.rows.push({
                 rowHeader: [
                     "",
                     "Both missing or out-of-range group codes and at least one missing discriminating variable",
                 ],
-                N: ps.both_missing,
-                Percent: formatDisplayNumber(ps.both_missing_percent),
+                n: formatDisplayNumber(data.processing_summary.both_missing),
+                percent: formatDisplayNumber(
+                    data.processing_summary.both_missing_percent
+                ),
             });
         }
 
+        // Total excluded
         table.rows.push({
             rowHeader: ["", "Total"],
-            N: ps.excluded_cases,
-            Percent: formatDisplayNumber(ps.total_excluded_percent),
+            n: formatDisplayNumber(data.processing_summary.excluded_count),
+            percent: formatDisplayNumber(
+                data.processing_summary.total_excluded_percent
+            ),
         });
 
+        // Grand total
         table.rows.push({
-            rowHeader: ["Total", null],
-            N: ps.total_cases,
-            Percent: formatDisplayNumber(100),
+            rowHeader: ["Total"],
+            n: formatDisplayNumber(data.processing_summary.total_count),
+            percent: formatDisplayNumber(100.0),
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
     // 2. Classification Processing Summary
     if (data.processing_summary) {
-        const ps = data.processing_summary;
         const table: Table = {
             key: "classification_processing_summary",
             title: "Classification Processing Summary",
-            columnHeaders: [{ header: "" }, { header: "" }, { header: "" }],
-            rows: [],
-        };
-
-        table.rows.push({
-            rowHeader: ["Processed", ""],
-            "": formatDisplayNumber(ps.total_cases),
-        });
-
-        if (ps.missing_group_codes !== undefined) {
-            table.rows.push({
-                rowHeader: ["Excluded", "Missing or out-of-range group codes"],
-                "": formatDisplayNumber(ps.missing_group_codes),
-            });
-        }
-
-        if (ps.missing_disc_vars !== undefined) {
-            table.rows.push({
-                rowHeader: ["", "At least one missing discriminating variable"],
-                "": formatDisplayNumber(ps.missing_disc_vars),
-            });
-        }
-
-        table.rows.push({
-            rowHeader: ["Used in Output", ""],
-            "": formatDisplayNumber(ps.valid_cases),
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 3. Prior Probabilities for Groups
-    if (data.prior_probabilities) {
-        const pp = data.prior_probabilities;
-        const table: Table = {
-            key: "prior_probabilities",
-            title: "Prior Probabilities for Groups",
             columnHeaders: [
-                { header: "category" },
-                { header: "Prior" },
-                { header: "Unweighted" },
-                { header: "Weighted" },
+                { header: "", key: "category" },
+                { header: "", key: "subcategory" },
+                { header: "", key: "value" },
             ],
             rows: [],
         };
 
-        for (let i = 0; i < pp.groups.length; i++) {
-            const group = pp.groups[i];
-            const unweighted = pp.cases_used?.Unweighted?.[i];
-            const weighted = pp.cases_used?.Weighted?.[i];
+        // Processed
+        table.rows.push({
+            rowHeader: ["Processed"],
+            value: formatDisplayNumber(data.processing_summary.valid_count),
+        });
 
+        // Excluded rows
+        if (data.processing_summary.missing_group_codes !== undefined) {
             table.rows.push({
-                rowHeader: [group.toString()],
-                Prior: formatDisplayNumber(pp.prior_probabilities[i]),
-                Unweighted: formatDisplayNumber(unweighted),
-                Weighted: formatDisplayNumber(weighted),
+                rowHeader: ["Excluded", "Missing or out-of-range group codes"],
+                value: formatDisplayNumber(
+                    data.processing_summary.missing_group_codes
+                ),
             });
         }
 
-        const totalUnweighted = pp.cases_used?.Unweighted
-            ? pp.cases_used.Unweighted.reduce((a, b) => a + b, 0)
-            : null;
-        const totalWeighted = pp.cases_used?.Weighted
-            ? pp.cases_used.Weighted.reduce((a, b) => a + b, 0)
-            : null;
+        if (data.processing_summary.missing_disc_vars !== undefined) {
+            table.rows.push({
+                rowHeader: ["", "At least one missing discriminating variable"],
+                value: formatDisplayNumber(
+                    data.processing_summary.missing_disc_vars
+                ),
+            });
+        }
 
+        // Used in Output
         table.rows.push({
-            rowHeader: ["Total"],
-            Prior: formatDisplayNumber(pp.total),
-            Unweighted: formatDisplayNumber(totalUnweighted),
-            Weighted: formatDisplayNumber(totalWeighted),
+            rowHeader: ["Used in Output"],
+            value: formatDisplayNumber(data.processing_summary.valid_count),
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 4. Group Statistics
+    // 3. Group Statistics
     if (data.group_statistics) {
-        const gs = data.group_statistics;
         const table: Table = {
             key: "group_statistics",
             title: "Group Statistics",
             columnHeaders: [
-                { header: "category" },
-                { header: "" },
-                { header: "Mean" },
-                { header: "Std. Deviation" },
-                { header: "Valid N (listwise)" },
-                { header: "Unweighted" },
-                { header: "Weighted" },
+                { header: "category", key: "category" },
+                { header: "", key: "var" },
+                { header: "Mean", key: "mean" },
+                { header: "Std. Deviation", key: "std_deviation" },
+                {
+                    header: "Valid N (listwise)",
+                    key: "valid_n",
+                    children: [
+                        { header: "Unweighted", key: "unweighted" },
+                        { header: "Weighted", key: "weighted" },
+                    ],
+                },
             ],
             rows: [],
         };
 
-        gs.groups.forEach((group: string, groupIndex: number) => {
-            gs.variables.forEach((variable: string) => {
-                const mean = gs.means[variable]?.[groupIndex];
-                const stdDev = gs.std_deviations[variable]?.[groupIndex];
+        // Process each group
+        data.group_statistics.groups.forEach(
+            (group: string, groupIndex: number) => {
+                // Process each variable's mean for this group
+                data.group_statistics.means.forEach((meanEntry: any) => {
+                    const variableName = meanEntry.variable;
 
-                table.rows.push({
-                    rowHeader: [group, variable],
-                    Mean: formatDisplayNumber(mean),
-                    "Std. Deviation": formatDisplayNumber(stdDev),
-                    Unweighted: null, // Data not available in the result structure
-                    Weighted: null, // Data not available in the result structure
+                    // Find the corresponding std deviation entry
+                    const stdDevEntry =
+                        data.group_statistics.std_deviations.find(
+                            (entry: any) => entry.variable === variableName
+                        );
+
+                    if (stdDevEntry) {
+                        table.rows.push({
+                            rowHeader: [group, variableName],
+                            mean: formatDisplayNumber(
+                                meanEntry.values[groupIndex]
+                            ),
+                            std_deviation: formatDisplayNumber(
+                                stdDevEntry.values[groupIndex]
+                            ),
+                            unweighted: "Invalid",
+                            weighted: "Invalid",
+                        });
+                    }
                 });
-            });
-        });
+            }
+        );
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 5. Tests of Equality of Group Means
+    // 4. Tests of Equality of Group Means
     if (data.equality_tests) {
-        const et = data.equality_tests;
         const table: Table = {
             key: "equality_tests",
             title: "Tests of Equality of Group Means",
             columnHeaders: [
-                { header: "" },
-                { header: "Wilks' Lambda" },
-                { header: "F" },
-                { header: "df1" },
-                { header: "df2" },
-                { header: "Sig." },
+                { header: "", key: "var" },
+                { header: "Wilks' Lambda", key: "wilks_lambda" },
+                { header: "F", key: "f" },
+                { header: "df1", key: "df1" },
+                { header: "df2", key: "df2" },
+                { header: "Sig.", key: "sig" },
             ],
             rows: [],
         };
 
-        et.variables.forEach((variable: string, index: number) => {
+        // Iterate through variables
+        for (let i = 0; i < data.equality_tests.variables.length; i++) {
             table.rows.push({
-                rowHeader: [variable],
-                "Wilks' Lambda": formatDisplayNumber(et.wilks_lambda[index]),
-                F: formatDisplayNumber(et.f_values[index]),
-                df1: formatDisplayNumber(et.df1[index]),
-                df2: formatDisplayNumber(et.df2[index]),
-                "Sig.": formatDisplayNumber(et.significance[index]),
+                rowHeader: [data.equality_tests.variables[i]],
+                wilks_lambda: formatDisplayNumber(
+                    data.equality_tests.wilks_lambda[i]
+                ),
+                f: formatDisplayNumber(data.equality_tests.f_values[i]),
+                df1: formatDisplayNumber(data.equality_tests.df1[i]),
+                df2: formatDisplayNumber(data.equality_tests.df2[i]),
+                sig: formatDisplayNumber(data.equality_tests.significance[i]),
             });
-        });
+        }
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 6. Pooled Within-Groups Matrices
+    // 5. Pooled Within-Groups Matrices
     if (data.pooled_matrices) {
-        const pm = data.pooled_matrices;
+        const variableCount = data.pooled_matrices.variables.length;
+
         const table: Table = {
             key: "pooled_within_groups_matrices",
             title: "Pooled Within-Groups Matrices",
             columnHeaders: [
-                { header: "" },
-                { header: "" },
-                ...pm.variables.map((v: string) => ({ header: v })),
+                { header: "", key: "matrix_type" },
+                { header: "Variable", key: "var" },
+                ...data.pooled_matrices.variables.map(
+                    (variable: string, index: number) => ({
+                        header: variable,
+                        key: `var_${index}`,
+                    })
+                ),
             ],
             rows: [],
         };
 
-        pm.variables.forEach((rowVar: string) => {
-            const covRow: any = {
-                rowHeader: ["Covariance", rowVar],
-            };
+        // Covariance matrix
+        table.rows.push({ rowHeader: ["Covariance"] });
 
-            pm.variables.forEach((colVar: string) => {
-                covRow[colVar] = formatDisplayNumber(
-                    pm.covariance[rowVar]?.[colVar]
+        for (let i = 0; i < variableCount; i++) {
+            const entry = data.pooled_matrices.covariance[i];
+
+            const rowData: any = {};
+
+            for (let j = 0; j < entry.values.length; j++) {
+                rowData[`var_${j}`] = formatDisplayNumber(
+                    entry.values[j].value
                 );
-            });
+            }
 
-            table.rows.push(covRow);
+            table.rows.push(rowData);
+        }
+
+        // Correlation matrix
+        table.rows.push({ rowHeader: ["Correlation"] });
+
+        for (let i = 0; i < variableCount; i++) {
+            const entry = data.pooled_matrices.correlation[i];
+
+            const rowData: any = {};
+
+            for (let j = 0; j < entry.values.length; j++) {
+                rowData[`var_${j}`] = formatDisplayNumber(
+                    entry.values[j].value
+                );
+            }
+
+            table.rows.push(rowData);
+        }
+
+        // Add footnote
+        table.rows.push({
+            rowHeader: ["a. The covariance matrix has 7 degrees of freedom."],
         });
 
-        pm.variables.forEach((rowVar: string) => {
-            const corrRow: any = {
-                rowHeader: ["Correlation", rowVar],
-            };
-
-            pm.variables.forEach((colVar: string) => {
-                corrRow[colVar] = formatDisplayNumber(
-                    pm.correlation[rowVar]?.[colVar]
-                );
-            });
-
-            table.rows.push(corrRow);
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 7. Covariance Matrices
+    // 6. Covariance Matrices
     if (data.covariance_matrices) {
-        const cm = data.covariance_matrices;
         const table: Table = {
             key: "covariance_matrices",
             title: "Covariance Matrices",
             columnHeaders: [
-                { header: "category" },
-                { header: "" },
-                ...cm.variables.map((v: string) => ({ header: v })),
+                { header: "category", key: "category" },
+                { header: "", key: "var" },
+                ...data.covariance_matrices.variables.map(
+                    (variable: string, index: number) => ({
+                        header: variable,
+                        key: `var_${index}`,
+                    })
+                ),
             ],
             rows: [],
         };
 
-        cm.groups.forEach((group: string) => {
-            cm.variables.forEach((rowVar: string) => {
+        // Iterate through groups and their matrices
+        for (let g = 0; g < data.covariance_matrices.matrices.length; g++) {
+            const groupEntry = data.covariance_matrices.matrices[g];
+
+            // For each variable in the group's matrix
+            for (let v = 0; v < groupEntry.matrix.length; v++) {
+                const entry = groupEntry.matrix[v];
+
                 const rowData: any = {
-                    rowHeader: [group, rowVar],
+                    rowHeader: [groupEntry.group, entry.variable],
                 };
 
-                cm.variables.forEach((colVar: string) => {
-                    rowData[colVar] = formatDisplayNumber(
-                        cm.matrices[group]?.[rowVar]?.[colVar]
+                // For each value in the variable's row
+                for (let i = 0; i < entry.values.length; i++) {
+                    rowData[`var_${i}`] = formatDisplayNumber(
+                        entry.values[i].value
                     );
-                });
+                }
 
                 table.rows.push(rowData);
-            });
+            }
+        }
+
+        // Add footnote based on actual degrees of freedom
+        table.rows.push({
+            rowHeader: [
+                "a. The total covariance matrix has 9 degrees of freedom.",
+            ],
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 8. Log Determinants
+    // 7. Log Determinants
     if (data.log_determinants) {
-        const ld = data.log_determinants;
         const table: Table = {
             key: "log_determinants",
             title: "Log Determinants",
             columnHeaders: [
-                { header: "category" },
-                { header: "Rank" },
-                { header: "Log Determinant" },
+                { header: "category", key: "category" },
+                { header: "Rank", key: "rank" },
+                { header: "Log Determinant", key: "log_determinant" },
             ],
             rows: [],
         };
 
-        ld.groups.forEach((group: string, index: number) => {
+        // Group log determinants
+        for (let i = 0; i < data.log_determinants.groups.length; i++) {
             table.rows.push({
-                rowHeader: [group],
-                Rank: formatDisplayNumber(ld.ranks[index]),
-                "Log Determinant": formatDisplayNumber(
-                    ld.log_determinants[index]
+                rowHeader: [data.log_determinants.groups[i]],
+                rank: formatDisplayNumber(data.log_determinants.ranks[i]),
+                log_determinant: formatDisplayNumber(
+                    data.log_determinants.log_determinants[i]
                 ),
             });
-        });
+        }
 
+        // Pooled within-groups
         table.rows.push({
             rowHeader: ["Pooled within-groups"],
-            Rank: formatDisplayNumber(ld.rank_pooled),
-            "Log Determinant": formatDisplayNumber(ld.pooled_log_determinant),
+            rank: formatDisplayNumber(data.log_determinants.rank_pooled),
+            log_determinant: formatDisplayNumber(
+                data.log_determinants.pooled_log_determinant
+            ),
         });
 
+        // Add footnote
         table.rows.push({
             rowHeader: [
                 "The ranks and natural logarithms of determinants printed are those of the group covariance matrices.",
             ],
-            Rank: null,
-            "Log Determinant": null,
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 9. Box's M Test
+    // 8. Box's M Test Results
     if (data.box_m_test) {
-        const bm = data.box_m_test;
         const table: Table = {
             key: "box_m_test",
             title: "Test Results",
-            columnHeaders: [{ header: "" }, { header: "" }],
+            columnHeaders: [
+                { header: "", key: "test" },
+                { header: "" },
+                { header: "", key: "value" },
+            ],
             rows: [
-                { rowHeader: ["Box's M"], "": formatDisplayNumber(bm.box_m) },
                 {
-                    rowHeader: ["F Approx."],
-                    "": formatDisplayNumber(bm.f_approx),
+                    rowHeader: ["Box's M"],
+                    value: formatDisplayNumber(data.box_m_test.box_m),
                 },
-                { rowHeader: ["df1"], "": formatDisplayNumber(bm.df1) },
-                { rowHeader: ["df2"], "": formatDisplayNumber(bm.df2) },
-                { rowHeader: ["Sig."], "": formatDisplayNumber(bm.p_value) },
+                {
+                    rowHeader: ["F", "Approx."],
+                    value: formatDisplayNumber(data.box_m_test.f_approx),
+                },
+                {
+                    rowHeader: ["", "df1"],
+                    value: formatDisplayNumber(data.box_m_test.df1),
+                },
+                {
+                    rowHeader: ["", "df2"],
+                    value: formatDisplayNumber(data.box_m_test.df2),
+                },
+                {
+                    rowHeader: ["", "Sig."],
+                    value: formatDisplayNumber(data.box_m_test.p_value),
+                },
                 {
                     rowHeader: [
                         "Tests null hypothesis of equal population covariance matrices.",
                     ],
-                    "": null,
                 },
             ],
         };
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
+    }
+
+    // 9. Prior Probabilities for Groups
+    if (data.prior_probabilities) {
+        const table: Table = {
+            key: "prior_probabilities",
+            title: "Prior Probabilities for Groups",
+            columnHeaders: [
+                { header: "Group", key: "group" },
+                { header: "Prior", key: "prior" },
+                {
+                    header: "Cases Used in Analysis",
+                    key: "cases_used",
+                    children: [
+                        { header: "Unweighted", key: "unweighted" },
+                        { header: "Weighted", key: "weighted" },
+                    ],
+                },
+            ],
+            rows: [],
+        };
+
+        // Group prior probabilities
+        for (let i = 0; i < data.prior_probabilities.groups.length; i++) {
+            const unweightedData = data.prior_probabilities.cases_used.find(
+                (c: any) => c.case_type === "Unweighted"
+            );
+
+            const weightedData = data.prior_probabilities.cases_used.find(
+                (c: any) => c.case_type === "Weighted"
+            );
+
+            const unweightedCount = unweightedData
+                ? unweightedData.counts[i]
+                : 0;
+            const weightedCount = weightedData ? weightedData.counts[i] : 0;
+
+            table.rows.push({
+                rowHeader: [data.prior_probabilities.groups[i].toString()],
+                prior: formatDisplayNumber(
+                    data.prior_probabilities.prior_probabilities[i]
+                ),
+                unweighted: formatDisplayNumber(unweightedCount),
+                weighted: formatDisplayNumber(weightedCount),
+            });
+        }
+
+        // Total row
+        const totalUnweighted =
+            data.prior_probabilities.cases_used
+                .find((c: any) => c.case_type === "Unweighted")
+                ?.counts.reduce((sum: number, val: number) => sum + val, 0) ||
+            0;
+
+        const totalWeighted =
+            data.prior_probabilities.cases_used
+                .find((c: any) => c.case_type === "Weighted")
+                ?.counts.reduce((sum: number, val: number) => sum + val, 0) ||
+            0;
+
+        table.rows.push({
+            rowHeader: ["Total"],
+            prior: formatDisplayNumber(data.prior_probabilities.total),
+            unweighted: formatDisplayNumber(totalUnweighted),
+            weighted: formatDisplayNumber(totalWeighted),
+        });
+
+        resultJson.tables.push(table);
     }
 
     // 10. Classification Function Coefficients
     if (data.classification_function_coefficients) {
-        const cfc = data.classification_function_coefficients;
         const table: Table = {
             key: "classification_function_coefficients",
             title: "Classification Function Coefficients",
             columnHeaders: [
-                { header: "" },
-                ...cfc.groups.map((g: number) => ({ header: g.toString() })),
+                { header: "", key: "var" },
+                ...data.classification_function_coefficients.groups.map(
+                    (group: number) => ({
+                        header: group.toString(),
+                        key: `group_${group}`,
+                    })
+                ),
             ],
             rows: [],
         };
 
-        cfc.variables.forEach((variable: string) => {
+        // Variable coefficients
+        for (
+            let v = 0;
+            v < data.classification_function_coefficients.variables.length;
+            v++
+        ) {
+            const variable =
+                data.classification_function_coefficients.variables[v];
             const rowData: any = {
                 rowHeader: [variable],
             };
 
-            cfc.groups.forEach((group: number, index: number) => {
-                rowData[group.toString()] = formatDisplayNumber(
-                    cfc.coefficients[variable]?.[index]
+            const coeff =
+                data.classification_function_coefficients.coefficients.find(
+                    (c: any) => c.variable === variable
                 );
-            });
+
+            if (coeff) {
+                for (
+                    let g = 0;
+                    g < data.classification_function_coefficients.groups.length;
+                    g++
+                ) {
+                    const group =
+                        data.classification_function_coefficients.groups[g];
+                    rowData[`group_${group}`] = formatDisplayNumber(
+                        coeff.values[g]
+                    );
+                }
+            }
 
             table.rows.push(rowData);
-        });
+        }
 
+        // Constant terms
         const constantRow: any = {
             rowHeader: ["(Constant)"],
         };
 
-        cfc.groups.forEach((group: number, index: number) => {
-            constantRow[group.toString()] = formatDisplayNumber(
-                cfc.constant_terms[index]
+        for (
+            let g = 0;
+            g < data.classification_function_coefficients.groups.length;
+            g++
+        ) {
+            const group = data.classification_function_coefficients.groups[g];
+            constantRow[`group_${group}`] = formatDisplayNumber(
+                data.classification_function_coefficients.constant_terms[g]
             );
-        });
+        }
 
         table.rows.push(constantRow);
+
+        // Add footnote
         table.rows.push({
             rowHeader: ["Fisher's linear discriminant functions"],
-            ...Object.fromEntries(cfc.groups.map((g) => [g.toString(), null])),
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 11. Casewise Statistics
-    if (data.casewise_statistics) {
-        const cs = data.casewise_statistics;
-        const table: Table = {
-            key: "casewise_statistics",
-            title: "Casewise Statistics",
-            columnHeaders: [
-                { header: "" },
-                { header: "Case Number" },
-                { header: "Actual Group" },
-                { header: "Predicted Group" },
-                { header: "P(D>d | G=g)" },
-                { header: "df" },
-                { header: "P(G=g | D=d)" },
-                { header: "Squared Mahalanobis Distance" },
-                { header: "Group" },
-                { header: "Second Highest P(G=g | D=d)" },
-                { header: "Second Highest Squared Mahalanobis Distance" },
-                { header: "Second Highest Group" },
-                ...Object.keys(cs.discriminant_scores).map((func) => ({
-                    header: func,
-                })),
-            ],
-            rows: [],
-        };
-
-        const n = cs.case_number.length;
-
-        for (let i = 0; i < n; i++) {
-            const rowData: any = {
-                rowHeader: ["Original"],
-                "Case Number": formatDisplayNumber(cs.case_number[i]),
-                "Actual Group": cs.actual_group[i],
-                "Predicted Group": cs.predicted_group[i],
-                "P(D>d | G=g)": formatDisplayNumber(
-                    cs.highest_group.p_value[i]
-                ),
-                df: formatDisplayNumber(cs.highest_group.df[i]),
-                "P(G=g | D=d)": formatDisplayNumber(
-                    cs.highest_group.p_g_equals_d[i]
-                ),
-                "Squared Mahalanobis Distance": formatDisplayNumber(
-                    cs.highest_group.squared_mahalanobis_distance[i]
-                ),
-                "Second Highest P(G=g | D=d)": formatDisplayNumber(
-                    cs.second_highest_group.p_g_equals_d[i]
-                ),
-                "Second Highest Squared Mahalanobis Distance":
-                    formatDisplayNumber(
-                        cs.second_highest_group.squared_mahalanobis_distance[i]
-                    ),
-                "Second Highest Group": cs.second_highest_group.group[i],
-            };
-
-            // Add discriminant scores
-            Object.keys(cs.discriminant_scores).forEach((func) => {
-                rowData[func] = formatDisplayNumber(
-                    cs.discriminant_scores[func][i]
-                );
-            });
-
-            table.rows.push(rowData);
-        }
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 12. Stepwise Statistics
-    if (data.stepwise_statistics) {
-        const ss = data.stepwise_statistics;
-        const table: Table = {
-            key: "stepwise_statistics",
-            title: "Stepwise Statistics",
-            columnHeaders: [
-                { header: "Step" },
-                { header: "Entered" },
-                { header: "Removed" },
-                { header: "Wilks' Lambda" },
-                { header: "df1" },
-                { header: "df2" },
-                { header: "df3" },
-                { header: "Exact F Statistic" },
-                { header: "Exact F df1" },
-                { header: "Exact F df2" },
-                { header: "Sig." },
-            ],
-            rows: [],
-        };
-
-        for (let i = 0; i < ss.variables_entered.length; i++) {
-            table.rows.push({
-                rowHeader: [],
-                Step: formatDisplayNumber(i + 1),
-                Entered: ss.variables_entered[i] || null,
-                Removed: ss.variables_removed[i] || null,
-                "Wilks' Lambda": formatDisplayNumber(ss.wilks_lambda[i]),
-                df1: formatDisplayNumber(ss.df1[i]),
-                df2: formatDisplayNumber(ss.df2[i]),
-                df3: formatDisplayNumber(ss.df3[i]),
-                "Exact F Statistic": formatDisplayNumber(ss.exact_f[i]),
-                "Exact F df1": formatDisplayNumber(ss.exact_df1[i]),
-                "Exact F df2": formatDisplayNumber(ss.exact_df2[i]),
-                "Sig.": formatDisplayNumber(ss.significance[i]),
-            });
-        }
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 13. Variables in the Analysis
-    if (data.stepwise_statistics?.variables_in_analysis) {
-        const via = data.stepwise_statistics.variables_in_analysis;
-        const table: Table = {
-            key: "variables_in_analysis",
-            title: "Variables in the Analysis",
-            columnHeaders: [
-                { header: "Step" },
-                { header: "Variable" },
-                { header: "Tolerance" },
-                { header: "F to Remove" },
-                { header: "Wilks' Lambda" },
-            ],
-            rows: [],
-        };
-
-        Object.entries(via).forEach(([step, variables]) => {
-            variables.forEach((varData: any) => {
-                table.rows.push({
-                    rowHeader: [],
-                    Step: step,
-                    Variable: varData.variable,
-                    Tolerance: formatDisplayNumber(varData.tolerance),
-                    "F to Remove": formatDisplayNumber(varData.f_to_remove),
-                    "Wilks' Lambda": formatDisplayNumber(varData.wilks_lambda),
-                });
-            });
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 14. Variables Not in the Analysis
-    if (data.stepwise_statistics?.variables_not_in_analysis) {
-        const vnia = data.stepwise_statistics.variables_not_in_analysis;
-        const table: Table = {
-            key: "variables_not_in_analysis",
-            title: "Variables Not in the Analysis",
-            columnHeaders: [
-                { header: "Step" },
-                { header: "Variable" },
-                { header: "Tolerance" },
-                { header: "Min. Tolerance" },
-                { header: "F to Enter" },
-                { header: "Wilks' Lambda" },
-            ],
-            rows: [],
-        };
-
-        Object.entries(vnia).forEach(([step, variables]) => {
-            variables.forEach((varData: any) => {
-                table.rows.push({
-                    rowHeader: [],
-                    Step: step,
-                    Variable: varData.variable,
-                    Tolerance: formatDisplayNumber(varData.tolerance),
-                    "Min. Tolerance": formatDisplayNumber(
-                        varData.min_tolerance
-                    ),
-                    "F to Enter": formatDisplayNumber(varData.f_to_enter),
-                    "Wilks' Lambda": formatDisplayNumber(varData.wilks_lambda),
-                });
-            });
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 15. Wilks' Lambda (Steps)
-    if (data.stepwise_statistics) {
-        const ss = data.stepwise_statistics;
-        const table: Table = {
-            key: "wilks_lambda_steps",
-            title: "Wilks' Lambda",
-            columnHeaders: [
-                { header: "Step" },
-                { header: "Number of Variables" },
-                { header: "Lambda" },
-                { header: "df1" },
-                { header: "df2" },
-                { header: "df3" },
-                { header: "Exact F Statistic" },
-                { header: "Exact F df1" },
-                { header: "Exact F df2" },
-                { header: "Sig." },
-            ],
-            rows: [],
-        };
-
-        for (let i = 0; i < ss.variables_entered.length; i++) {
-            table.rows.push({
-                rowHeader: [],
-                Step: formatDisplayNumber(i + 1),
-                "Number of Variables": formatDisplayNumber(i + 1),
-                Lambda: formatDisplayNumber(ss.wilks_lambda[i]),
-                df1: formatDisplayNumber(ss.df1[i]),
-                df2: formatDisplayNumber(ss.df2[i]),
-                df3: formatDisplayNumber(ss.df3[i]),
-                "Exact F Statistic": formatDisplayNumber(ss.exact_f[i]),
-                "Exact F df1": formatDisplayNumber(ss.exact_df1[i]),
-                "Exact F df2": formatDisplayNumber(ss.exact_df2[i]),
-                "Sig.": formatDisplayNumber(ss.significance[i]),
-            });
-        }
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 16. Pairwise Group Comparisons
-    if (data.stepwise_statistics?.pairwise_comparisons) {
-        const pc = data.stepwise_statistics.pairwise_comparisons;
-        const table: Table = {
-            key: "pairwise_group_comparisons",
-            title: "Pairwise Group Comparisons",
-            columnHeaders: [
-                { header: "Step" },
-                { header: "Group" },
-                { header: "Comparison Group" },
-                { header: "F Value" },
-                { header: "Significance" },
-            ],
-            rows: [],
-        };
-
-        Object.entries(pc).forEach(([step, groups]) => {
-            Object.entries(groups).forEach(([group, comparisons]) => {
-                comparisons.forEach((comparison: any) => {
-                    table.rows.push({
-                        rowHeader: [],
-                        Step: step,
-                        Group: group,
-                        "Comparison Group": comparison.group_name,
-                        "F Value": formatDisplayNumber(comparison.f_value),
-                        Significance: formatDisplayNumber(
-                            comparison.significance
-                        ),
-                    });
-                });
-            });
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 17. Classification Results
-    if (data.classification_results) {
-        const cr = data.classification_results;
-        const groups = Object.keys(cr.original_classification);
-        const table: Table = {
-            key: "classification_results",
-            title: "Classification Results",
-            columnHeaders: [
-                { header: "" },
-                { header: "" },
-                { header: "category" },
-                ...groups.map((g) => ({ header: g })),
-                { header: "Total" },
-            ],
-            rows: [],
-        };
-
-        // Original classification count
-        groups.forEach((group) => {
-            const rowData: any = {
-                rowHeader: ["Original", "Count"],
-                category: group,
-                Total: formatDisplayNumber(
-                    cr.original_classification[group].reduce((a, b) => a + b, 0)
-                ),
-            };
-
-            groups.forEach((g, i) => {
-                rowData[g] = formatDisplayNumber(
-                    cr.original_classification[group][i]
-                );
-            });
-
-            table.rows.push(rowData);
-        });
-
-        // Original classification percentage
-        groups.forEach((group) => {
-            const rowData: any = {
-                rowHeader: ["", "%"],
-                category: group,
-                Total: formatDisplayNumber(100),
-            };
-
-            groups.forEach((g, i) => {
-                rowData[g] = formatDisplayNumber(
-                    cr.original_percentage[group][i]
-                );
-            });
-
-            table.rows.push(rowData);
-        });
-
-        // Cross-validated classification if available
-        if (cr.cross_validated_classification) {
-            groups.forEach((group) => {
-                const rowData: any = {
-                    rowHeader: ["Cross-validated", "Count"],
-                    category: group,
-                    Total: formatDisplayNumber(
-                        cr.cross_validated_classification[group].reduce(
-                            (a, b) => a + b,
-                            0
-                        )
-                    ),
-                };
-
-                groups.forEach((g, i) => {
-                    rowData[g] = formatDisplayNumber(
-                        cr.cross_validated_classification[group][i]
-                    );
-                });
-
-                table.rows.push(rowData);
-            });
-
-            // Cross-validated classification percentage
-            groups.forEach((group) => {
-                const rowData: any = {
-                    rowHeader: ["", "%"],
-                    category: group,
-                    Total: formatDisplayNumber(100),
-                };
-
-                groups.forEach((g, i) => {
-                    rowData[g] = formatDisplayNumber(
-                        cr.cross_validated_percentage[group][i]
-                    );
-                });
-
-                table.rows.push(rowData);
-            });
-        }
-
-        // Calculate and add original correct classification percentage
-        const originalCorrectCount = Object.entries(
-            cr.original_classification
-        ).reduce((sum, [group, values], idx) => sum + values[idx], 0);
-        const totalCases = Object.values(cr.original_classification).reduce(
-            (sum, values) => sum + values.reduce((a, b) => a + b, 0),
-            0
-        );
-        const originalCorrectPercent =
-            (originalCorrectCount / totalCases) * 100;
-
-        table.rows.push({
-            rowHeader: [
-                `${formatDisplayNumber(
-                    originalCorrectPercent
-                )}% of original grouped cases correctly classified.`,
-            ],
-            category: null,
-        });
-
-        // Add cross-validation footnote if applicable
-        if (cr.cross_validated_classification) {
-            table.rows.push({
-                rowHeader: [
-                    "Cross validation is done only for those cases in the analysis. In cross validation, each case is classified by the functions derived from all cases other than that case.",
-                ],
-                category: null,
-            });
-
-            const crossCorrectCount = Object.entries(
-                cr.cross_validated_classification
-            ).reduce((sum, [group, values], idx) => sum + values[idx], 0);
-            const crossCorrectPercent = (crossCorrectCount / totalCases) * 100;
-
-            table.rows.push({
-                rowHeader: [
-                    `${formatDisplayNumber(
-                        crossCorrectPercent
-                    )}% of cross-validated grouped cases correctly classified.`,
-                ],
-                category: null,
-            });
-        }
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 18. Eigenvalues
-    if (data.eigen_description) {
-        const ed = data.eigen_description;
-        const table: Table = {
-            key: "eigenvalues",
-            title: "Eigenvalues",
-            columnHeaders: [
-                { header: "Function" },
-                { header: "Eigenvalue" },
-                { header: "% of Variance" },
-                { header: "Cumulative %" },
-                { header: "Canonical Correlation" },
-            ],
-            rows: [],
-        };
-
-        for (let i = 0; i < ed.functions.length; i++) {
-            table.rows.push({
-                rowHeader: [],
-                Function: ed.functions[i],
-                Eigenvalue: formatDisplayNumber(ed.eigenvalue[i]),
-                "% of Variance": formatDisplayNumber(ed.variance_percentage[i]),
-                "Cumulative %": formatDisplayNumber(
-                    ed.cumulative_percentage[i]
-                ),
-                "Canonical Correlation": formatDisplayNumber(
-                    ed.canonical_correlation[i]
-                ),
-            });
-        }
-
-        const usedFunctions = Math.min(ed.functions.length, 1);
-        table.rows.push({
-            rowHeader: [
-                `First ${usedFunctions} canonical discriminant functions were used in the analysis.`,
-            ],
-            Function: null,
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 19. Wilks' Lambda Test
-    if (data.wilks_lambda_test) {
-        const wlt = data.wilks_lambda_test;
-        const table: Table = {
-            key: "wilks_lambda_test",
-            title: "Wilks' Lambda",
-            columnHeaders: [
-                { header: "Test of Function(s)" },
-                { header: "Wilks' Lambda" },
-                { header: "Chi-square" },
-                { header: "df" },
-                { header: "Sig." },
-            ],
-            rows: [],
-        };
-
-        for (let i = 0; i < wlt.test_of_functions.length; i++) {
-            table.rows.push({
-                rowHeader: [],
-                "Test of Function(s)": wlt.test_of_functions[i],
-                "Wilks' Lambda": formatDisplayNumber(wlt.wilks_lambda[i]),
-                "Chi-square": formatDisplayNumber(wlt.chi_square[i]),
-                df: formatDisplayNumber(wlt.df[i]),
-                "Sig.": formatDisplayNumber(wlt.significance[i]),
-            });
-        }
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 20. Standardized Canonical Discriminant Function Coefficients
-    if (data.canonical_functions?.standardized_coefficients) {
-        const sc = data.canonical_functions.standardized_coefficients;
-        const functionCount = Object.values(sc)[0]?.length || 0;
-
-        const table: Table = {
-            key: "standardized_canonical_coefficients",
-            title: "Standardized Canonical Discriminant Function Coefficients",
-            columnHeaders: [
-                { header: "" },
-                ...Array.from({ length: functionCount }, (_, i) => ({
-                    header: `Function ${i + 1}`,
-                })),
-            ],
-            rows: [],
-        };
-
-        Object.entries(sc).forEach(([variable, values]) => {
-            const rowData: any = {
-                rowHeader: [variable],
-            };
-
-            values.forEach((value, i) => {
-                rowData[`Function ${i + 1}`] = formatDisplayNumber(value);
-            });
-
-            table.rows.push(rowData);
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
-    }
-
-    // 21. Structure Matrix
-    if (data.structure_matrix) {
-        const sm = data.structure_matrix;
-        const functionCount =
-            sm.variables.length && sm.correlations[sm.variables[0]]
-                ? sm.correlations[sm.variables[0]].length
+    // 11. Canonical Discriminant Function Coefficients
+    if (data.canonical_functions && data.canonical_functions.coefficients) {
+        // Get the number of functions from the first coefficient's values length
+        const numFunctions =
+            data.canonical_functions.coefficients.length > 0
+                ? data.canonical_functions.coefficients[0].values.length
                 : 0;
 
-        const table: Table = {
-            key: "structure_matrix",
-            title: "Structure Matrix",
-            columnHeaders: [
-                { header: "" },
-                ...Array.from({ length: functionCount }, (_, i) => ({
-                    header: `Function ${i + 1}`,
-                })),
-            ],
-            rows: [],
-        };
-
-        sm.variables.forEach((variable: string) => {
-            const rowData: any = {
-                rowHeader: [variable],
-            };
-
-            if (sm.correlations[variable]) {
-                sm.correlations[variable].forEach((value, i) => {
-                    rowData[`Function ${i + 1}`] = formatDisplayNumber(value);
+        if (numFunctions > 0) {
+            // Create column headers dynamically based on number of functions
+            const functionChildren = [];
+            for (let i = 1; i <= numFunctions; i++) {
+                functionChildren.push({
+                    header: i.toString(),
+                    key: `function_${i}`,
                 });
             }
 
-            table.rows.push(rowData);
-        });
+            const table: Table = {
+                key: "canonical_discriminant_function_coefficients",
+                title: "Canonical Discriminant Function Coefficients",
+                columnHeaders: [
+                    { header: "", key: "var" },
+                    {
+                        header: "Function",
+                        key: "function",
+                        children: functionChildren,
+                    },
+                ],
+                rows: [],
+            };
 
-        table.rows.push({
-            rowHeader: [
-                "Pooled within-groups correlations between discriminating variables and standardized canonical discriminant functions",
-            ],
-        });
+            // Variable coefficients
+            for (
+                let i = 0;
+                i < data.canonical_functions.coefficients.length;
+                i++
+            ) {
+                const coeff = data.canonical_functions.coefficients[i];
+                const rowData: any = {
+                    rowHeader: [coeff.variable],
+                };
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+                // Add each function value dynamically
+                for (let j = 0; j < numFunctions; j++) {
+                    rowData[`function_${j + 1}`] = formatDisplayNumber(
+                        coeff.values[j]
+                    );
+                }
+
+                table.rows.push(rowData);
+            }
+
+            // Add footnote
+            table.rows.push({
+                rowHeader: ["Unstandardized coefficients"],
+            });
+
+            resultJson.tables.push(table);
+        }
     }
 
-    // 22. Canonical Discriminant Function Coefficients
-    if (data.canonical_functions?.coefficients) {
-        const cc = data.canonical_functions.coefficients;
-        const functionCount = Object.values(cc)[0]?.length || 0;
+    // 12. Standardized Canonical Discriminant Function Coefficients
+    if (
+        data.canonical_functions &&
+        data.canonical_functions.standardized_coefficients &&
+        data.canonical_functions.standardized_coefficients.length > 0
+    ) {
+        // Get the number of functions from the first coefficient's values length
+        const numFunctions =
+            data.canonical_functions.standardized_coefficients[0].values.length;
+
+        // Create column headers dynamically based on number of functions
+        const functionChildren = [];
+        for (let i = 1; i <= numFunctions; i++) {
+            functionChildren.push({
+                header: i.toString(),
+                key: `function_${i}`,
+            });
+        }
 
         const table: Table = {
-            key: "canonical_discriminant_coefficients",
-            title: "Canonical Discriminant Function Coefficients",
+            key: "standardized_coefficients",
+            title: "Standardized Canonical Discriminant Function Coefficients",
             columnHeaders: [
-                { header: "" },
-                ...Array.from({ length: functionCount }, (_, i) => ({
-                    header: `Function ${i + 1}`,
-                })),
+                { header: "", key: "var" },
+                {
+                    header: "Function",
+                    key: "function",
+                    children: functionChildren,
+                },
             ],
             rows: [],
         };
 
-        Object.entries(cc).forEach(([variable, values]) => {
+        // Iterate through variables and their coefficients
+        for (
+            let i = 0;
+            i < data.canonical_functions.standardized_coefficients.length;
+            i++
+        ) {
+            const coeff = data.canonical_functions.standardized_coefficients[i];
             const rowData: any = {
-                rowHeader: [variable],
+                rowHeader: [coeff.variable],
             };
 
-            values.forEach((value, i) => {
-                rowData[`Function ${i + 1}`] = formatDisplayNumber(value);
-            });
+            // Add each function value dynamically
+            for (let j = 0; j < numFunctions; j++) {
+                rowData[`function_${j + 1}`] = formatDisplayNumber(
+                    coeff.values[j]
+                );
+            }
 
             table.rows.push(rowData);
-        });
+        }
 
-        table.rows.push({
-            rowHeader: ["Unstandardized coefficients"],
-        });
-
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
-    // 23. Functions at Group Centroids
-    if (data.canonical_functions?.function_at_centroids) {
-        const fc = data.canonical_functions.function_at_centroids;
-        const functionCount = Object.values(fc)[0]?.length || 0;
+    // 13. Functions at Group Centroids
+    if (
+        data.canonical_functions &&
+        data.canonical_functions.function_at_centroids &&
+        data.canonical_functions.function_at_centroids.length > 0
+    ) {
+        // Get the number of functions from the first centroid's values length
+        const numFunctions =
+            data.canonical_functions.function_at_centroids[0].values.length;
+
+        // Create column headers dynamically based on number of functions
+        const functionChildren = [];
+        for (let i = 1; i <= numFunctions; i++) {
+            functionChildren.push({
+                header: i.toString(),
+                key: `function_${i}`,
+            });
+        }
 
         const table: Table = {
             key: "functions_at_group_centroids",
             title: "Functions at Group Centroids",
             columnHeaders: [
-                { header: "category" },
-                ...Array.from({ length: functionCount }, (_, i) => ({
-                    header: `Function ${i + 1}`,
-                })),
+                { header: "Group", key: "group" },
+                {
+                    header: "Function",
+                    key: "function",
+                    children: functionChildren,
+                },
             ],
             rows: [],
         };
 
-        Object.entries(fc).forEach(([group, values]) => {
+        // Group centroids
+        for (
+            let i = 0;
+            i < data.canonical_functions.function_at_centroids.length;
+            i++
+        ) {
+            const centroid = data.canonical_functions.function_at_centroids[i];
             const rowData: any = {
-                rowHeader: [group],
+                rowHeader: [centroid.group],
             };
 
-            values.forEach((value, i) => {
-                rowData[`Function ${i + 1}`] = formatDisplayNumber(value);
-            });
+            // Add each function value dynamically
+            for (let j = 0; j < numFunctions; j++) {
+                rowData[`function_${j + 1}`] = formatDisplayNumber(
+                    centroid.values[j]
+                );
+            }
 
             table.rows.push(rowData);
-        });
+        }
 
+        // Add footnote
         table.rows.push({
             rowHeader: [
                 "Unstandardized canonical discriminant functions evaluated at group means",
             ],
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
+    }
+
+    // 14. Structure Matrix
+    if (
+        data.structure_matrix &&
+        data.structure_matrix.correlations &&
+        data.structure_matrix.correlations.length > 0
+    ) {
+        // Get the number of functions from the first correlation's values length
+        const numFunctions =
+            data.structure_matrix.correlations[0].values.length;
+
+        // Create column headers dynamically based on number of functions
+        const functionChildren = [];
+        for (let i = 1; i <= numFunctions; i++) {
+            functionChildren.push({
+                header: i.toString(),
+                key: `function_${i}`,
+            });
+        }
+
+        const table: Table = {
+            key: "structure_matrix",
+            title: "Structure Matrix",
+            columnHeaders: [
+                { header: "", key: "var" },
+                {
+                    header: "Function",
+                    key: "function",
+                    children: functionChildren,
+                },
+            ],
+            rows: [],
+        };
+
+        // Iterate through variables (correlations)
+        for (let i = 0; i < data.structure_matrix.correlations.length; i++) {
+            const corr = data.structure_matrix.correlations[i];
+            const rowData: any = {
+                rowHeader: [corr.variable],
+            };
+
+            // Find the largest absolute correlation value for this variable
+            let maxAbsValueIndex = 0;
+            let maxAbsValue = Math.abs(corr.values[0]);
+
+            for (let j = 1; j < numFunctions; j++) {
+                if (Math.abs(corr.values[j]) > maxAbsValue) {
+                    maxAbsValue = Math.abs(corr.values[j]);
+                    maxAbsValueIndex = j;
+                }
+            }
+
+            // Add each function value dynamically, marking the largest with superscript
+            for (let j = 0; j < numFunctions; j++) {
+                rowData[`function_${j + 1}`] =
+                    formatDisplayNumber(corr.values[j]) +
+                    (j === maxAbsValueIndex ? "ᵃ" : "");
+            }
+
+            table.rows.push(rowData);
+        }
+
+        // Add footnotes
+        table.rows.push({
+            rowHeader: [
+                "Pooled within-groups correlations between discriminating variables and standardized canonical discriminant functions",
+            ],
+        });
+        table.rows.push({
+            rowHeader: [
+                "Variables ordered by absolute size of correlation within function.",
+            ],
+        });
+        table.rows.push({
+            rowHeader: [
+                "a. Largest absolute correlation between each variable and any discriminant function",
+            ],
+        });
+
+        resultJson.tables.push(table);
+    }
+
+    // 15. Stepwise Statistics
+    if (
+        data.stepwise_statistics &&
+        data.stepwise_statistics.variables_entered
+    ) {
+        const table: Table = {
+            key: "stepwise_statistics",
+            title: "Stepwise Statistics",
+            columnHeaders: [
+                { header: "", key: "step_header" },
+                { header: "Step", key: "step" },
+                { header: "Entered", key: "entered" },
+                { header: "Removed", key: "removed" },
+                {
+                    header: "Wilks' Lambda",
+                    key: "wilks_lambda",
+                    children: [
+                        { header: "Statistic", key: "statistic" },
+                        { header: "df1", key: "df1" },
+                        { header: "df2", key: "df2" },
+                        { header: "df3", key: "df3" },
+                    ],
+                },
+                {
+                    header: "Exact F",
+                    key: "exact_f",
+                    children: [
+                        { header: "Statistic", key: "f_statistic" },
+                        { header: "df1", key: "f_df1" },
+                        { header: "df2", key: "f_df2" },
+                        { header: "Sig.", key: "sig" },
+                    ],
+                },
+            ],
+            rows: [],
+        };
+
+        const stepsCount = data.stepwise_statistics.variables_entered.length;
+
+        for (let i = 0; i < stepsCount; i++) {
+            table.rows.push({
+                rowHeader: [""],
+                step: formatDisplayNumber(i + 1),
+                entered: data.stepwise_statistics.variables_entered[i] || "",
+                removed: data.stepwise_statistics.variables_removed[i]
+                    ? data.stepwise_statistics.variables_removed[i]
+                    : "",
+                statistic: formatDisplayNumber(
+                    data.stepwise_statistics.wilks_lambda[i]
+                ),
+                df1: formatDisplayNumber(data.stepwise_statistics.df1[i]),
+                df2: formatDisplayNumber(data.stepwise_statistics.df2[i]),
+                df3: formatDisplayNumber(data.stepwise_statistics.df3[i]),
+                f_statistic: formatDisplayNumber(
+                    data.stepwise_statistics.exact_f[i]
+                ),
+                f_df1: formatDisplayNumber(
+                    data.stepwise_statistics.exact_df1[i]
+                ),
+                f_df2: formatDisplayNumber(
+                    data.stepwise_statistics.exact_df2[i]
+                ),
+                sig: formatDisplayNumber(
+                    data.stepwise_statistics.significance[i]
+                ),
+            });
+        }
+
+        // Add footnotes
+        table.rows.push({
+            rowHeader: [
+                "At each step, the variable that minimizes the overall Wilks' Lambda is entered.",
+            ],
+        });
+        table.rows.push({
+            rowHeader: ["a. Maximum number of steps is 4."],
+        });
+        table.rows.push({
+            rowHeader: ["b. Minimum partial F to enter is 3.84."],
+        });
+        table.rows.push({
+            rowHeader: ["c. Maximum partial F to remove is 2.71."],
+        });
+        table.rows.push({
+            rowHeader: [
+                "d. F level, tolerance, or VIN insufficient for further computation.",
+            ],
+        });
+
+        resultJson.tables.push(table);
+    }
+
+    // 16. Variables in the Analysis
+    if (
+        data.stepwise_statistics &&
+        data.stepwise_statistics.variables_in_analysis
+    ) {
+        const table: Table = {
+            key: "variables_in_analysis",
+            title: "Variables in the Analysis",
+            columnHeaders: [
+                { header: "Step", key: "step" },
+                { header: "", key: "var" },
+                { header: "Tolerance", key: "tolerance" },
+                { header: "F to Remove", key: "f_to_remove" },
+                { header: "Wilks' Lambda", key: "wilks_lambda" },
+            ],
+            rows: [],
+        };
+
+        // Iterate through steps and variables
+        for (
+            let i = 0;
+            i < data.stepwise_statistics.variables_in_analysis.length;
+            i++
+        ) {
+            const stepData = data.stepwise_statistics.variables_in_analysis[i];
+            const step = stepData.step;
+
+            // Check if variables array exists and has items
+            if (stepData.variables && stepData.variables.length > 0) {
+                for (let j = 0; j < stepData.variables.length; j++) {
+                    const variable = stepData.variables[j];
+
+                    table.rows.push({
+                        rowHeader: [step, variable.variable],
+                        tolerance: formatDisplayNumber(variable.tolerance),
+                        f_to_remove: formatDisplayNumber(variable.f_to_remove),
+                        wilks_lambda: formatDisplayNumber(
+                            variable.wilks_lambda
+                        ),
+                    });
+                }
+            }
+        }
+
+        resultJson.tables.push(table);
+    }
+
+    // 17. Variables Not in the Analysis
+    if (
+        data.stepwise_statistics &&
+        data.stepwise_statistics.variables_not_in_analysis
+    ) {
+        const table: Table = {
+            key: "variables_not_in_analysis",
+            title: "Variables Not in the Analysis",
+            columnHeaders: [
+                { header: "Step", key: "step" },
+                { header: "", key: "var" },
+                { header: "Tolerance", key: "tolerance" },
+                { header: "F to Enter", key: "f_to_enter" },
+                { header: "Wilks' Lambda", key: "wilks_lambda" },
+            ],
+            rows: [],
+        };
+
+        // Iterate through steps and variables
+        for (
+            let i = 0;
+            i < data.stepwise_statistics.variables_not_in_analysis.length;
+            i++
+        ) {
+            const stepData =
+                data.stepwise_statistics.variables_not_in_analysis[i];
+            const step = stepData.step;
+
+            // Check if variables array exists and has items
+            if (stepData.variables && stepData.variables.length > 0) {
+                for (let j = 0; j < stepData.variables.length; j++) {
+                    const variable = stepData.variables[j];
+
+                    table.rows.push({
+                        rowHeader: [step, variable.variable],
+                        tolerance: formatDisplayNumber(variable.tolerance),
+                        f_to_enter: formatDisplayNumber(variable.f_to_remove),
+                        wilks_lambda: formatDisplayNumber(
+                            variable.wilks_lambda
+                        ),
+                    });
+                }
+            }
+        }
+
+        resultJson.tables.push(table);
+    }
+
+    // 18. Wilks' Lambda Test
+    if (data.wilks_lambda_test) {
+        const testTable: Table = {
+            key: "wilks_lambda_test",
+            title: "Wilks' Lambda",
+            columnHeaders: [
+                { header: "Test of Function(s)", key: "test_functions" },
+                { header: "Wilks' Lambda", key: "wilks_lambda" },
+                { header: "Chi-square", key: "chi_square" },
+                { header: "df", key: "df" },
+                { header: "Sig.", key: "sig" },
+            ],
+            rows: [],
+        };
+
+        // Iterate through test of functions
+        for (
+            let i = 0;
+            i < data.wilks_lambda_test.test_of_functions.length;
+            i++
+        ) {
+            testTable.rows.push({
+                rowHeader: [data.wilks_lambda_test.test_of_functions[i]],
+                wilks_lambda: formatDisplayNumber(
+                    data.wilks_lambda_test.wilks_lambda[i]
+                ),
+                chi_square: formatDisplayNumber(
+                    data.wilks_lambda_test.chi_square[i]
+                ),
+                df: formatDisplayNumber(data.wilks_lambda_test.df[i]),
+                sig: formatDisplayNumber(
+                    data.wilks_lambda_test.significance[i]
+                ),
+            });
+        }
+
+        resultJson.tables.push(testTable);
+    }
+
+    // 19. Eigenvalues
+    if (data.eigen_description) {
+        const table: Table = {
+            key: "eigenvalues",
+            title: "Eigenvalues",
+            columnHeaders: [
+                { header: "Function", key: "function" },
+                { header: "Eigenvalue", key: "eigenvalue" },
+                { header: "% of Variance", key: "variance_percent" },
+                { header: "Cumulative %", key: "cumulative_percent" },
+                {
+                    header: "Canonical Correlation",
+                    key: "canonical_correlation",
+                },
+            ],
+            rows: [],
+        };
+
+        // Iterate through functions
+        for (let i = 0; i < data.eigen_description.functions.length; i++) {
+            table.rows.push({
+                rowHeader: [data.eigen_description.functions[i]],
+                eigenvalue:
+                    formatDisplayNumber(data.eigen_description.eigenvalue[i]) +
+                    (i === 0 ? "ᵃ" : ""), // Add superscript for the first function
+                variance_percent: formatDisplayNumber(
+                    data.eigen_description.variance_percentage[i]
+                ),
+                cumulative_percent: formatDisplayNumber(
+                    data.eigen_description.cumulative_percentage[i]
+                ),
+                canonical_correlation: formatDisplayNumber(
+                    data.eigen_description.canonical_correlation[i]
+                ),
+            });
+        }
+
+        // Add footnote
+        table.rows.push({
+            rowHeader: [
+                "a. First 1 canonical discriminant functions were used in the analysis.",
+            ],
+        });
+
+        resultJson.tables.push(table);
+    }
+
+    // 20. Casewise Statistics
+    if (data.casewise_statistics) {
+        // Check if discriminant_scores exists and has entries
+        const numFunctions =
+            data.casewise_statistics.discriminant_scores &&
+            data.casewise_statistics.discriminant_scores.length > 0
+                ? data.casewise_statistics.discriminant_scores.length
+                : 0;
+
+        // Create dynamic function headers
+        const functionChildren = [];
+        if (numFunctions > 0) {
+            for (let i = 0; i < numFunctions; i++) {
+                const func = data.casewise_statistics.discriminant_scores[i];
+                // Use the function name if available, otherwise use "Function X"
+                const functionName = func.function || `Function ${i + 1}`;
+                functionChildren.push({
+                    header: functionName,
+                    key: `function_${i + 1}`,
+                });
+            }
+        }
+
+        const table: Table = {
+            key: "casewise_statistics",
+            title: "Casewise Statistics",
+            columnHeaders: [
+                { header: "", key: "header" },
+                { header: "Case Number", key: "case_number" },
+                { header: "Actual Group", key: "actual_group" },
+                { header: "Predicted Group", key: "predicted_group" },
+                {
+                    header: "Highest Group",
+                    key: "highest_group",
+                    children: [
+                        { header: "p", key: "p" },
+                        { header: "df", key: "df" },
+                        { header: "P(D=d | G=g)", key: "p_d_g" },
+                        {
+                            header: "Squared Mahalanobis Distance to Centroid",
+                            key: "mahalanobis",
+                        },
+                        { header: "Group", key: "group" },
+                    ],
+                },
+                {
+                    header: "Second Highest Group",
+                    key: "second_highest_group",
+                    children: [
+                        { header: "P(G=g | D=d)", key: "p_g_d" },
+                        {
+                            header: "Squared Mahalanobis Distance to Centroid",
+                            key: "second_mahalanobis",
+                        },
+                        { header: "Group", key: "second_group" },
+                    ],
+                },
+                ...(numFunctions > 0
+                    ? [
+                          {
+                              header: "Discriminant Scores",
+                              key: "discriminant_scores",
+                              children: functionChildren,
+                          },
+                      ]
+                    : []),
+            ],
+            rows: [],
+        };
+
+        // Add section header
+        table.rows.push({
+            rowHeader: ["Original"],
+        });
+
+        // Process each case
+        for (let i = 0; i < data.casewise_statistics.case_number.length; i++) {
+            // Check if this is a misclassified case (add asterisk)
+            const predictedGroup = data.casewise_statistics.predicted_group[i];
+            const actualGroup = data.casewise_statistics.actual_group[i];
+            const isMisclassified = predictedGroup !== actualGroup;
+
+            // Handle discriminant scores dynamically for all functions
+            const scoreData: any = {};
+            if (
+                data.casewise_statistics.discriminant_scores &&
+                data.casewise_statistics.discriminant_scores.length > 0
+            ) {
+                for (let j = 0; j < numFunctions; j++) {
+                    const func =
+                        data.casewise_statistics.discriminant_scores[j];
+                    scoreData[`function_${j + 1}`] = formatDisplayNumber(
+                        func.values[i]
+                    );
+                }
+            }
+
+            table.rows.push({
+                rowHeader: [""],
+                case_number: formatDisplayNumber(
+                    data.casewise_statistics.case_number[i]
+                ),
+                actual_group: data.casewise_statistics.actual_group[i],
+                predicted_group:
+                    data.casewise_statistics.predicted_group[i] +
+                    (isMisclassified ? "**" : ""),
+                p: formatDisplayNumber(
+                    data.casewise_statistics.highest_group.p_value[i]
+                ),
+                df: formatDisplayNumber(
+                    data.casewise_statistics.highest_group.df[i]
+                ),
+                p_d_g: formatDisplayNumber(
+                    data.casewise_statistics.highest_group.p_g_equals_d[i]
+                ),
+                mahalanobis: formatDisplayNumber(
+                    data.casewise_statistics.highest_group
+                        .squared_mahalanobis_distance[i]
+                ),
+                group: data.casewise_statistics.highest_group.group[i],
+                p_g_d: formatDisplayNumber(
+                    data.casewise_statistics.second_highest_group.p_value[i]
+                ),
+                second_mahalanobis: formatDisplayNumber(
+                    data.casewise_statistics.second_highest_group
+                        .squared_mahalanobis_distance[i]
+                ),
+                second_group:
+                    data.casewise_statistics.second_highest_group.group[i],
+                ...scoreData,
+            });
+        }
+
+        resultJson.tables.push(table);
+    }
+
+    // 21. Classification Results
+    if (
+        data.classification_results &&
+        data.classification_results.original_classification &&
+        data.classification_results.original_classification.length > 0
+    ) {
+        // Get the groups from original classification
+        const groups = data.classification_results.original_classification.map(
+            (item) => item.group
+        );
+        const groupCount = groups.length;
+
+        const table: Table = {
+            key: "classification_results",
+            title: "Classification Results",
+            columnHeaders: [
+                { header: "", key: "category" },
+                { header: "", key: "subcategory" },
+                {
+                    header: "Predicted Group Membership",
+                    key: "predicted_groups",
+                    children: groups.map((group, i) => ({
+                        header: group,
+                        key: `group_${i}`,
+                    })),
+                },
+                { header: "Total", key: "total" },
+            ],
+            rows: [],
+        };
+
+        // Original classification counts
+        table.rows.push({ rowHeader: ["Original", "Count"] });
+
+        for (
+            let i = 0;
+            i < data.classification_results.original_classification.length;
+            i++
+        ) {
+            const classification =
+                data.classification_results.original_classification[i];
+
+            const rowData: any = {
+                rowHeader: ["", classification.group],
+                total: formatDisplayNumber(
+                    classification.counts.reduce((sum, count) => sum + count, 0)
+                ),
+            };
+
+            for (let j = 0; j < classification.counts.length; j++) {
+                rowData[`group_${j}`] = formatDisplayNumber(
+                    classification.counts[j]
+                );
+            }
+
+            table.rows.push(rowData);
+        }
+
+        // Original classification percentages
+        table.rows.push({ rowHeader: ["", "%"] });
+
+        for (
+            let i = 0;
+            i < data.classification_results.original_percentage.length;
+            i++
+        ) {
+            const percentage =
+                data.classification_results.original_percentage[i];
+
+            const rowData: any = {
+                rowHeader: ["", percentage.group],
+                total: "100.0", // Total percentage is always 100%
+            };
+
+            for (let j = 0; j < percentage.percentages.length; j++) {
+                rowData[`group_${j}`] = formatDisplayNumber(
+                    percentage.percentages[j]
+                );
+            }
+
+            table.rows.push(rowData);
+        }
+
+        // Cross-validated classification if available
+        if (data.classification_results.cross_validated_classification) {
+            table.rows.push({ rowHeader: ["Cross-validated", "Count"] });
+
+            for (
+                let i = 0;
+                i <
+                data.classification_results.cross_validated_classification
+                    .length;
+                i++
+            ) {
+                const classification =
+                    data.classification_results.cross_validated_classification[
+                        i
+                    ];
+
+                const rowData: any = {
+                    rowHeader: ["", classification.group],
+                    total: formatDisplayNumber(
+                        classification.counts.reduce(
+                            (sum, count) => sum + count,
+                            0
+                        )
+                    ),
+                };
+
+                for (let j = 0; j < classification.counts.length; j++) {
+                    rowData[`group_${j}`] = formatDisplayNumber(
+                        classification.counts[j]
+                    );
+                }
+
+                table.rows.push(rowData);
+            }
+
+            // Cross-validated percentages
+            table.rows.push({ rowHeader: ["", "%"] });
+
+            for (
+                let i = 0;
+                i <
+                data.classification_results.cross_validated_percentage.length;
+                i++
+            ) {
+                const percentage =
+                    data.classification_results.cross_validated_percentage[i];
+
+                const rowData: any = {
+                    rowHeader: ["", percentage.group],
+                    total: "100.0", // Total percentage is always 100%
+                };
+
+                for (let j = 0; j < percentage.percentages.length; j++) {
+                    rowData[`group_${j}`] = formatDisplayNumber(
+                        percentage.percentages[j]
+                    );
+                }
+
+                table.rows.push(rowData);
+            }
+        }
+
+        // Calculate original correct classification percentage
+        let originalCorrect = 0;
+        let classifiedCount = 0;
+        for (
+            let i = 0;
+            i < data.classification_results.original_classification.length;
+            i++
+        ) {
+            if (
+                data.classification_results.original_classification[i].counts[
+                    i
+                ] > 0
+            ) {
+                originalCorrect +=
+                    data.classification_results.original_classification[i]
+                        .counts[i];
+                classifiedCount +=
+                    data.classification_results.original_classification[
+                        i
+                    ].counts.reduce((sum, val) => sum + val, 0);
+            }
+        }
+
+        const originalCorrectPct =
+            classifiedCount > 0 ? (originalCorrect / classifiedCount) * 100 : 0;
+
+        // Add footnotes
+        table.rows.push({
+            rowHeader: [
+                `a. ${formatDisplayNumber(
+                    originalCorrectPct
+                )}% of original grouped cases correctly classified.`,
+            ],
+        });
+
+        if (data.classification_results.cross_validated_classification) {
+            table.rows.push({
+                rowHeader: [
+                    "b. Cross validation is done only for those cases in the analysis. In cross validation, each case is classified by the functions derived from all cases other than that case.",
+                ],
+            });
+
+            // Calculate cross-validated correct classification percentage
+            let crossValidatedCorrect = 0;
+            let crossValidatedCount = 0;
+            for (
+                let i = 0;
+                i <
+                data.classification_results.cross_validated_classification
+                    .length;
+                i++
+            ) {
+                if (
+                    data.classification_results.cross_validated_classification[
+                        i
+                    ].counts[i] > 0
+                ) {
+                    crossValidatedCorrect +=
+                        data.classification_results
+                            .cross_validated_classification[i].counts[i];
+                    crossValidatedCount +=
+                        data.classification_results.cross_validated_classification[
+                            i
+                        ].counts.reduce((sum, val) => sum + val, 0);
+                }
+            }
+
+            const crossValidatedCorrectPct =
+                crossValidatedCount > 0
+                    ? (crossValidatedCorrect / crossValidatedCount) * 100
+                    : 0;
+
+            table.rows.push({
+                rowHeader: [
+                    `c. ${formatDisplayNumber(
+                        crossValidatedCorrectPct
+                    )}% of cross-validated grouped cases correctly classified.`,
+                ],
+            });
+        }
+
+        resultJson.tables.push(table);
     }
 
     return resultJson;

@@ -1,6 +1,6 @@
 // pub mod captca;
 // pub mod correspondence;
-// pub mod discriminant;
+pub mod discriminant;
 // pub mod factor;
 // pub mod hierarchical;
 // pub mod kmeans;
@@ -14,7 +14,7 @@
 pub mod time_series;
 // pub mod tree;
 // pub mod twostep;
-pub mod univariate;
+// pub mod univariate;
 // pub mod varcomps;
 
 pub use time_series::smoothing::smoothing::Smoothing;
