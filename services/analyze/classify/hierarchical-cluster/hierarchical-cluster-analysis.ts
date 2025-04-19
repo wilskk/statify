@@ -45,7 +45,7 @@ export async function analyzeHierClus({
     //     configData
     // );
 
-    // const results = hc.get_results();
+    // const results = hc.get_formatted_results();
     // const error = hc.get_all_errors();
 
     // console.log("Results:", results);

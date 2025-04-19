@@ -19,10 +19,10 @@ pub fn string_to_js_error(error: String) -> JsValue {
 pub fn format_result(result: &Option<NearestNeighborAnalysis>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => {
-            let formatted = FormatResult::from_nn_analysis_result(result);
+            let formatted = FormatResult::from_analysis_result(result);
             Ok(serde_wasm_bindgen::to_value(&formatted).unwrap())
         }
-        None => Err(JsValue::from_str("No nearest neighbor analysis results available")),
+        None => Err(JsValue::from_str("No analysis results available")),
     }
 }
 
@@ -41,14 +41,14 @@ struct FormatResult {
 
 #[derive(Serialize)]
 struct FormattedPredictorImportance {
-    predictors: Vec<PredictorValue>,
+    predictors: Vec<PredictorEntry>,
     target: String,
 }
 
 #[derive(Serialize)]
-struct PredictorValue {
-    predictor: String,
-    importance: f64,
+struct PredictorEntry {
+    name: String,
+    value: f64,
 }
 
 #[derive(Serialize)]
@@ -65,59 +65,59 @@ struct FormattedQuadrantMap {
 
 #[derive(Serialize)]
 struct FeatureEntry {
-    feature: String,
+    name: String,
     values: Vec<f64>,
 }
 
 impl FormatResult {
-    fn from_nn_analysis_result(result: &NearestNeighborAnalysis) -> Self {
-        let predictor_importance = result.predictor_importance.as_ref().map(|importance| {
-            let predictors = importance.predictors
+    fn from_analysis_result(result: &NearestNeighborAnalysis) -> Self {
+        let predictor_importance = result.predictor_importance.as_ref().map(|pi| {
+            let predictors = pi.predictors
                 .iter()
-                .map(|(predictor, value)| {
-                    PredictorValue {
-                        predictor: predictor.clone(),
-                        importance: *value,
+                .map(|(name, value)| {
+                    PredictorEntry {
+                        name: name.clone(),
+                        value: *value,
                     }
                 })
                 .collect();
 
             FormattedPredictorImportance {
                 predictors,
-                target: importance.target.clone(),
+                target: pi.target.clone(),
             }
         });
 
-        let peers_chart = result.peers_chart.as_ref().map(|chart| {
-            let features = chart.features
+        let peers_chart = result.peers_chart.as_ref().map(|pc| {
+            let features = pc.features
                 .iter()
-                .map(|(feature, values)| {
+                .map(|(name, values)| {
                     FeatureEntry {
-                        feature: feature.clone(),
+                        name: name.clone(),
                         values: values.clone(),
                     }
                 })
                 .collect();
 
             FormattedPeersChart {
-                focal_neighbor_sets: chart.focal_neighbor_sets.clone(),
+                focal_neighbor_sets: pc.focal_neighbor_sets.clone(),
                 features,
             }
         });
 
-        let quadrant_map = result.quadrant_map.as_ref().map(|map| {
-            let features = map.features
+        let quadrant_map = result.quadrant_map.as_ref().map(|qm| {
+            let features = qm.features
                 .iter()
-                .map(|(feature, values)| {
+                .map(|(name, values)| {
                     FeatureEntry {
-                        feature: feature.clone(),
+                        name: name.clone(),
                         values: values.clone(),
                     }
                 })
                 .collect();
 
             FormattedQuadrantMap {
-                focal_neighbor_sets: map.focal_neighbor_sets.clone(),
+                focal_neighbor_sets: qm.focal_neighbor_sets.clone(),
                 features,
             }
         });

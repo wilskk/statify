@@ -17,7 +17,7 @@ export async function resultHierarchicalCluster({
             return foundTable ? JSON.stringify({ tables: [foundTable] }) : null;
         };
 
-        const hierarchicalClusterResult = async () => {
+        const hierarchicalClusterAnalysisResult = async () => {
             /*
              * 🎉 Title Result 🎉
              * */
@@ -33,21 +33,21 @@ export async function resultHierarchicalCluster({
              * */
             const caseProcessingSummary = findTable("case_processing_summary");
             if (caseProcessingSummary) {
-                const caseProcessingId = await addAnalytic(logId, {
+                const caseProcessingSummaryId = await addAnalytic(logId, {
                     title: `Case Processing Summary`,
                     note: "",
                 });
 
-                await addStatistic(caseProcessingId, {
+                await addStatistic(caseProcessingSummaryId, {
                     title: `Case Processing Summary`,
-                    description: `Summary of cases processed in the analysis`,
+                    description: `Case Processing Summary`,
                     output_data: caseProcessingSummary,
                     components: `Case Processing Summary`,
                 });
             }
 
             /*
-             * 📊 Proximity Matrix Result 📊
+             * 📈 Proximity Matrix Result 📈
              * */
             const proximityMatrix = findTable("proximity_matrix");
             if (proximityMatrix) {
@@ -58,14 +58,14 @@ export async function resultHierarchicalCluster({
 
                 await addStatistic(proximityMatrixId, {
                     title: `Proximity Matrix`,
-                    description: `Distance matrix between cases`,
+                    description: `Proximity Matrix`,
                     output_data: proximityMatrix,
                     components: `Proximity Matrix`,
                 });
             }
 
             /*
-             * 📈 Agglomeration Schedule Result 📈
+             * 📊 Agglomeration Schedule Result 📊
              * */
             const agglomerationSchedule = findTable("agglomeration_schedule");
             if (agglomerationSchedule) {
@@ -76,104 +76,68 @@ export async function resultHierarchicalCluster({
 
                 await addStatistic(agglomerationScheduleId, {
                     title: `Agglomeration Schedule`,
-                    description: `Stages of the clustering process`,
+                    description: `Agglomeration Schedule`,
                     output_data: agglomerationSchedule,
                     components: `Agglomeration Schedule`,
                 });
             }
 
             /*
-             * 🌳 Dendrogram Result 🌳
+             * 🧩 Cluster Memberships Result 🧩
              * */
-            const dendrogram = findTable("dendrogram");
-            if (dendrogram) {
-                const dendrogramId = await addAnalytic(logId, {
-                    title: `Dendrogram`,
-                    note: "",
-                });
-
-                await addStatistic(dendrogramId, {
-                    title: `Dendrogram`,
-                    description: `Hierarchical tree diagram showing cluster formation`,
-                    output_data: dendrogram,
-                    components: `Dendrogram`,
-                });
-            }
-
-            /*
-             * 🧊 Icicle Plot Result 🧊
-             * */
-            const iciclePlot = findTable("icicle_plot");
-            if (iciclePlot) {
-                const iciclePlotId = await addAnalytic(logId, {
-                    title: `Icicle Plot`,
-                    note: "",
-                });
-
-                await addStatistic(iciclePlotId, {
-                    title: `Icicle Plot`,
-                    description: `Alternative visualization of the hierarchical clustering`,
-                    output_data: iciclePlot,
-                    components: `Icicle Plot`,
-                });
-            }
-
-            /*
-             * 👥 Cluster Membership Result 👥
-             * */
-            const clusterMembership = findTable("cluster_membership");
-            if (clusterMembership) {
-                const clusterMembershipId = await addAnalytic(logId, {
+            const clusterMemberships = findTable("cluster_memberships");
+            if (clusterMemberships) {
+                const clusterMembershipsId = await addAnalytic(logId, {
                     title: `Cluster Membership`,
                     note: "",
                 });
 
-                await addStatistic(clusterMembershipId, {
+                await addStatistic(clusterMembershipsId, {
                     title: `Cluster Membership`,
-                    description: `Case assignments to clusters for selected solutions`,
-                    output_data: clusterMembership,
+                    description: `Cluster Membership`,
+                    output_data: clusterMemberships,
                     components: `Cluster Membership`,
                 });
             }
 
             /*
-             * 📊 Cluster Means Result 📊
+             * 📉 Icicle Plot Data Result 📉
              * */
-            const clusterMeans = findTable("cluster_means");
-            if (clusterMeans) {
-                const clusterMeansId = await addAnalytic(logId, {
-                    title: `Cluster Means`,
+            const iciclePlotData = findTable("icicle_plot_data");
+            if (iciclePlotData) {
+                const iciclePlotDataId = await addAnalytic(logId, {
+                    title: `Icicle Plot Data`,
                     note: "",
                 });
 
-                await addStatistic(clusterMeansId, {
-                    title: `Cluster Means`,
-                    description: `Average values of variables within each cluster`,
-                    output_data: clusterMeans,
-                    components: `Cluster Means`,
+                await addStatistic(iciclePlotDataId, {
+                    title: `Icicle Plot Data`,
+                    description: `Icicle Plot Data`,
+                    output_data: iciclePlotData,
+                    components: `Icicle Plot Data`,
                 });
             }
 
             /*
-             * 🧮 Silhouette Measures Result 🧮
+             * 🌳 Dendrogram Data Result 🌳
              * */
-            const silhouetteMeasures = findTable("silhouette_measures");
-            if (silhouetteMeasures) {
-                const silhouetteMeasuresId = await addAnalytic(logId, {
-                    title: `Silhouette Measures`,
+            const dendrogramData = findTable("dendrogram_data");
+            if (dendrogramData) {
+                const dendrogramDataId = await addAnalytic(logId, {
+                    title: `Dendrogram Data`,
                     note: "",
                 });
 
-                await addStatistic(silhouetteMeasuresId, {
-                    title: `Silhouette Measures`,
-                    description: `Measures of cluster cohesion and separation`,
-                    output_data: silhouetteMeasures,
-                    components: `Silhouette Measures`,
+                await addStatistic(dendrogramDataId, {
+                    title: `Dendrogram Data`,
+                    description: `Dendrogram Data`,
+                    output_data: dendrogramData,
+                    components: `Dendrogram Data`,
                 });
             }
         };
 
-        await hierarchicalClusterResult();
+        await hierarchicalClusterAnalysisResult();
     } catch (e) {
         console.error(e);
     }

@@ -1,6 +1,6 @@
-// clustering-formatter.ts
-import { ResultJson, Table } from "@/types/Table";
-import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
+// hierarchical-clustering-formatter.ts
+import { formatDisplayNumber } from "@/hooks/useFormatter";
+import { ResultJson, Table, Row } from "@/types/Table";
 
 export function transformHierClusResult(data: any): ResultJson {
     const resultJson: ResultJson = {
@@ -9,115 +9,287 @@ export function transformHierClusResult(data: any): ResultJson {
 
     // 1. Case Processing Summary
     if (data.case_processing_summary) {
-        const cps = data.case_processing_summary;
         const table: Table = {
             key: "case_processing_summary",
             title: "Case Processing Summary",
             columnHeaders: [
-                { header: "Cases" },
-                { header: "N" },
-                { header: "Percent" },
+                {
+                    header: "Cases",
+                    key: "cases",
+                    children: [
+                        {
+                            header: "Valid",
+                            key: "valid",
+                            children: [
+                                { header: "N", key: "valid_n" },
+                                { header: "Percent", key: "valid_percent" },
+                            ],
+                        },
+                        {
+                            header: "Missing",
+                            key: "missing",
+                            children: [
+                                { header: "N", key: "missing_n" },
+                                { header: "Percent", key: "missing_percent" },
+                            ],
+                        },
+                        {
+                            header: "Total",
+                            key: "total",
+                            children: [
+                                { header: "N", key: "total_n" },
+                                { header: "Percent", key: "total_percent" },
+                            ],
+                        },
+                    ],
+                },
             ],
             rows: [
                 {
-                    rowHeader: ["Valid"],
-                    N: formatDisplayNumber(cps.valid_cases),
-                    Percent: formatDisplayNumber(cps.valid_percent),
-                },
-                {
-                    rowHeader: ["Missing"],
-                    N: formatDisplayNumber(cps.missing_cases),
-                    Percent: formatDisplayNumber(cps.missing_percent),
-                },
-                {
-                    rowHeader: ["Total"],
-                    N: formatDisplayNumber(cps.total_cases),
-                    Percent: formatDisplayNumber(cps.total_percent),
+                    rowHeader: [""],
+                    valid_n: formatDisplayNumber(
+                        data.case_processing_summary.valid_cases
+                    ),
+                    valid_percent: formatDisplayNumber(
+                        data.case_processing_summary.valid_percent
+                    ),
+                    missing_n: formatDisplayNumber(
+                        data.case_processing_summary.missing_cases
+                    ),
+                    missing_percent: formatDisplayNumber(
+                        data.case_processing_summary.missing_percent
+                    ),
+                    total_n: formatDisplayNumber(
+                        data.case_processing_summary.total_cases
+                    ),
+                    total_percent: formatDisplayNumber(
+                        data.case_processing_summary.total_percent
+                    ),
                 },
             ],
         };
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        // Add footnote for the clustering method
+        if (data.executed_functions && data.executed_functions.length > 0) {
+            const method = data.executed_functions.find((fn: string) =>
+                fn.includes("Linkage")
+            );
+            if (method) {
+                table.rows.push({
+                    rowHeader: [`a. ${method}`],
+                });
+            }
+        }
+
+        resultJson.tables.push(table);
     }
 
     // 2. Proximity Matrix
-    if (data.proximity_matrix) {
-        const pm = data.proximity_matrix;
-        const cases = new Set<string>();
-
-        // Extract unique case names
-        Object.keys(pm.distances).forEach((key) => {
-            const [case1, case2] = key.replace(/[()]/g, "").split(",");
-            cases.add(case1.trim());
-            cases.add(case2.trim());
+    if (
+        data.proximity_matrix &&
+        data.proximity_matrix.distances &&
+        data.proximity_matrix.distances.length > 0
+    ) {
+        // Extract unique case names to build header
+        const caseNames = new Set<string>();
+        data.proximity_matrix.distances.forEach((entry: any) => {
+            caseNames.add(entry.case1);
+            caseNames.add(entry.case2);
         });
 
-        const sortedCases = Array.from(cases).sort();
+        const uniqueCases = Array.from(caseNames).sort();
 
         const table: Table = {
             key: "proximity_matrix",
-            title: "Proximity Matrix (Squared Euclidean Distance)",
+            title: "Proximity Matrix",
             columnHeaders: [
-                { header: "Case" },
-                ...sortedCases.map((c) => ({ header: c })),
+                { header: "Case", key: "case" },
+                ...uniqueCases.map((caseName, index) => ({
+                    header: `${index + 1}:${caseName}`,
+                    key: `case_${index}`,
+                })),
             ],
             rows: [],
         };
 
-        sortedCases.forEach((rowCase) => {
+        // Add subtitle description
+        table.rows.push({
+            rowHeader: ["This is a dissimilarity matrix"],
+        });
+
+        // Build distance matrix
+        uniqueCases.forEach((caseName, rowIndex) => {
             const rowData: any = {
-                rowHeader: [rowCase],
+                rowHeader: [`${rowIndex + 1}:${caseName}`],
             };
 
-            sortedCases.forEach((colCase) => {
-                const distance =
-                    pm.distances[`(${rowCase}, ${colCase})`] ||
-                    pm.distances[`(${colCase}, ${rowCase})`] ||
-                    (rowCase === colCase ? 0 : null);
+            uniqueCases.forEach((otherCase, colIndex) => {
+                // Find the appropriate distance entry
+                let distanceValue: number | null = null;
 
-                if (distance !== null) {
-                    rowData[colCase] = formatDisplayNumber(distance);
+                if (caseName === otherCase) {
+                    distanceValue = 0; // diagonal is always 0
+                } else {
+                    // Search for this pair in the distances array
+                    const entry = data.proximity_matrix.distances.find(
+                        (d: any) =>
+                            (d.case1 === caseName && d.case2 === otherCase) ||
+                            (d.case1 === otherCase && d.case2 === caseName)
+                    );
+
+                    if (entry) {
+                        distanceValue = entry.distance;
+                    }
                 }
+
+                rowData[`case_${colIndex}`] =
+                    distanceValue !== null
+                        ? formatDisplayNumber(distanceValue)
+                        : null;
             });
 
             table.rows.push(rowData);
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
     }
 
     // 3. Agglomeration Schedule
-    if (data.agglomeration_schedule) {
-        const as = data.agglomeration_schedule;
+    if (data.agglomeration_schedule && data.agglomeration_schedule.stages) {
         const table: Table = {
             key: "agglomeration_schedule",
             title: "Agglomeration Schedule",
             columnHeaders: [
-                { header: "Stage" },
-                { header: "Cluster Combined" },
-                { header: "Coefficients" },
-                { header: "Stage Cluster First Appears" },
-                { header: "Cluster 1" },
-                { header: "Cluster 2" },
-                { header: "Next Stage" },
+                { header: "Stage", key: "stage" },
+                {
+                    header: "Cluster Combined",
+                    key: "cluster_combined",
+                    children: [
+                        { header: "Cluster 1", key: "cluster1" },
+                        { header: "Cluster 2", key: "cluster2" },
+                    ],
+                },
+                { header: "Coefficients", key: "coefficients" },
+                {
+                    header: "Stage Cluster First Appears",
+                    key: "first_appears",
+                    children: [
+                        { header: "Cluster 1", key: "first_appears1" },
+                        { header: "Cluster 2", key: "first_appears2" },
+                    ],
+                },
+                { header: "Next Stage", key: "next_stage" },
             ],
             rows: [],
         };
 
-        as.stages.forEach((stage: any, index: number) => {
+        data.agglomeration_schedule.stages.forEach((stage: any) => {
             table.rows.push({
-                rowHeader: [null],
-                Stage: formatDisplayNumber(index + 1),
-                "Cluster Combined": `${stage.clusters_combined[0]} ${stage.clusters_combined[1]}`,
-                Coefficients: formatDisplayNumber(stage.coefficients),
-                "Stage Cluster First Appears": `${stage.cluster_first_appears[0]} ${stage.cluster_first_appears[1]}`,
-                "Cluster 1": formatDisplayNumber(stage.clusters_combined[0]),
-                "Cluster 2": formatDisplayNumber(stage.clusters_combined[1]),
-                "Next Stage": formatDisplayNumber(stage.next_stage),
+                rowHeader: [formatDisplayNumber(stage.stage)],
+                cluster1: formatDisplayNumber(stage.cluster1),
+                cluster2: formatDisplayNumber(stage.cluster2),
+                coefficients: formatDisplayNumber(stage.coefficient),
+                first_appears1: formatDisplayNumber(stage.first_appears1),
+                first_appears2: formatDisplayNumber(stage.first_appears2),
+                next_stage: formatDisplayNumber(stage.next_stage),
             });
         });
 
-        resultJson.tables.push(ensureEnoughHeaders(table));
+        resultJson.tables.push(table);
+    }
+
+    // 4. Cluster Memberships
+    if (data.cluster_memberships && data.cluster_memberships.length > 0) {
+        // Sort by number of clusters ascending
+        const sortedMemberships = [...data.cluster_memberships].sort(
+            (a, b) => a.num_clusters - b.num_clusters
+        );
+
+        const table: Table = {
+            key: "cluster_memberships",
+            title: "Cluster Membership",
+            columnHeaders: [
+                { header: "Case", key: "case" },
+                ...sortedMemberships.map((membership) => ({
+                    header: `${membership.num_clusters} Clusters`,
+                    key: `clusters_${membership.num_clusters}`,
+                })),
+            ],
+            rows: [],
+        };
+
+        // Determine maximum number of cases
+        const maxCases = Math.max(
+            ...sortedMemberships.map((m) => m.case_assignments.length)
+        );
+
+        // Fill in cluster assignments for each case
+        for (let caseIndex = 0; caseIndex < maxCases; caseIndex++) {
+            const rowData: any = {
+                rowHeader: [`Case ${caseIndex + 1}`],
+            };
+
+            sortedMemberships.forEach((membership) => {
+                if (caseIndex < membership.case_assignments.length) {
+                    rowData[`clusters_${membership.num_clusters}`] =
+                        formatDisplayNumber(
+                            membership.case_assignments[caseIndex].cluster
+                        );
+                }
+            });
+
+            table.rows.push(rowData);
+        }
+
+        resultJson.tables.push(table);
+    }
+
+    // 5. Icicle Plot data (if available, for reference)
+    if (data.icicle_plot) {
+        const table: Table = {
+            key: "icicle_plot_data",
+            title: "Icicle Plot Data",
+            columnHeaders: [
+                { header: "Cluster", key: "cluster" },
+                { header: "Number of Clusters", key: "num_clusters" },
+            ],
+            rows: [],
+        };
+
+        if (data.icicle_plot.clusters && data.icicle_plot.num_clusters) {
+            for (let i = 0; i < data.icicle_plot.clusters.length; i++) {
+                table.rows.push({
+                    rowHeader: [data.icicle_plot.clusters[i]],
+                    num_clusters: formatDisplayNumber(
+                        data.icicle_plot.num_clusters[i]
+                    ),
+                });
+            }
+        }
+
+        resultJson.tables.push(table);
+    }
+
+    // 6. Dendrogram data (if available)
+    if (data.dendrogram && data.dendrogram.nodes) {
+        const table: Table = {
+            key: "dendrogram_data",
+            title: "Dendrogram Data",
+            columnHeaders: [
+                { header: "Case", key: "case" },
+                { header: "Linkage Distance", key: "linkage_distance" },
+            ],
+            rows: [],
+        };
+
+        data.dendrogram.nodes.forEach((node: any) => {
+            table.rows.push({
+                rowHeader: [node.case],
+                linkage_distance: formatDisplayNumber(node.linkage_distance),
+            });
+        });
+
+        resultJson.tables.push(table);
     }
 
     return resultJson;

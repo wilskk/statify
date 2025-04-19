@@ -17,7 +17,7 @@ export async function resultKMeans({
             return foundTable ? JSON.stringify({ tables: [foundTable] }) : null;
         };
 
-        const kMeansResult = async () => {
+        const kMeansClusterAnalysisResult = async () => {
             /*
              * 🎉 Title Result 🎉
              * */
@@ -33,12 +33,12 @@ export async function resultKMeans({
              * */
             const initialClusterCenters = findTable("initial_cluster_centers");
             if (initialClusterCenters) {
-                const initialClustersId = await addAnalytic(logId, {
+                const initialClusterCentersId = await addAnalytic(logId, {
                     title: `Initial Cluster Centers`,
                     note: "",
                 });
 
-                await addStatistic(initialClustersId, {
+                await addStatistic(initialClusterCentersId, {
                     title: `Initial Cluster Centers`,
                     description: `Initial Cluster Centers`,
                     output_data: initialClusterCenters,
@@ -58,14 +58,14 @@ export async function resultKMeans({
 
                 await addStatistic(iterationHistoryId, {
                     title: `Iteration History`,
-                    description: `Convergence History of Cluster Centers`,
+                    description: `Iteration History`,
                     output_data: iterationHistory,
                     components: `Iteration History`,
                 });
             }
 
             /*
-             * 📊 Cluster Membership Result 📊
+             * 👥 Cluster Membership Result 👥
              * */
             const clusterMembership = findTable("cluster_membership");
             if (clusterMembership) {
@@ -76,23 +76,23 @@ export async function resultKMeans({
 
                 await addStatistic(clusterMembershipId, {
                     title: `Cluster Membership`,
-                    description: `Cluster Membership of Cases`,
+                    description: `Cluster Membership`,
                     output_data: clusterMembership,
                     components: `Cluster Membership`,
                 });
             }
 
             /*
-             * 🛠️ Final Cluster Centers Result 🛠️
+             * 📊 Final Cluster Centers Result 📊
              * */
             const finalClusterCenters = findTable("final_cluster_centers");
             if (finalClusterCenters) {
-                const finalClustersId = await addAnalytic(logId, {
+                const finalClusterCentersId = await addAnalytic(logId, {
                     title: `Final Cluster Centers`,
                     note: "",
                 });
 
-                await addStatistic(finalClustersId, {
+                await addStatistic(finalClusterCentersId, {
                     title: `Final Cluster Centers`,
                     description: `Final Cluster Centers`,
                     output_data: finalClusterCenters,
@@ -101,63 +101,63 @@ export async function resultKMeans({
             }
 
             /*
-             * 📏 Distances Between Clusters Result 📏
+             * 📏 Distances between Final Cluster Centers Result 📏
              * */
             const distancesBetweenCenters = findTable(
                 "distances_between_centers"
             );
             if (distancesBetweenCenters) {
-                const distancesId = await addAnalytic(logId, {
-                    title: `Distances Between Final Cluster Centers`,
+                const distancesBetweenCentersId = await addAnalytic(logId, {
+                    title: `Distances between Final Cluster Centers`,
                     note: "",
                 });
 
-                await addStatistic(distancesId, {
-                    title: `Distances Between Final Cluster Centers`,
-                    description: `Euclidean Distances Between Final Cluster Centers`,
+                await addStatistic(distancesBetweenCentersId, {
+                    title: `Distances between Final Cluster Centers`,
+                    description: `Distances between Final Cluster Centers`,
                     output_data: distancesBetweenCenters,
-                    components: `Distances Between Final Cluster Centers`,
+                    components: `Distances between Final Cluster Centers`,
                 });
             }
 
             /*
              * 📊 ANOVA Table Result 📊
              * */
-            const anovaTable = findTable("anova_table");
+            const anovaTable = findTable("anova");
             if (anovaTable) {
-                const anovaId = await addAnalytic(logId, {
-                    title: `ANOVA`,
+                const anovaTableId = await addAnalytic(logId, {
+                    title: `ANOVA Table`,
                     note: "",
                 });
 
-                await addStatistic(anovaId, {
-                    title: `ANOVA`,
-                    description: `ANOVA Table for Cluster Analysis`,
+                await addStatistic(anovaTableId, {
+                    title: `ANOVA Table`,
+                    description: `ANOVA Table`,
                     output_data: anovaTable,
-                    components: `ANOVA`,
+                    components: `ANOVA Table`,
                 });
             }
 
             /*
-             * 🔢 Number of Cases Result 🔢
+             * 📈 Number of Cases in each Cluster Result 📈
              * */
             const numberOfCases = findTable("number_of_cases");
             if (numberOfCases) {
-                const casesCountId = await addAnalytic(logId, {
+                const numberOfCasesId = await addAnalytic(logId, {
                     title: `Number of Cases in each Cluster`,
                     note: "",
                 });
 
-                await addStatistic(casesCountId, {
+                await addStatistic(numberOfCasesId, {
                     title: `Number of Cases in each Cluster`,
-                    description: `Distribution of Cases Across Clusters`,
+                    description: `Number of Cases in each Cluster`,
                     output_data: numberOfCases,
                     components: `Number of Cases in each Cluster`,
                 });
             }
         };
 
-        await kMeansResult();
+        await kMeansClusterAnalysisResult();
     } catch (e) {
         console.error(e);
     }

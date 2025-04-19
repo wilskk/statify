@@ -43,7 +43,7 @@ export async function analyzeKMeansCluster({
     //     configData
     // );
 
-    // const results = kmeans.get_results();
+    // const results = kmeans.get_formatted_results();
     // console.log("kmeans results", results);
 
     // const formattedResults = transformKMeansResult(results ?? {});

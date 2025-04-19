@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { KNNAnalysisType } from "@/models/classify/nearest-neighbor/nearest-neighbor-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { KNNAnalysis } from "@/wasm/pkg/wasm";
 import { transformNearestNeighborResult } from "./nearest-neighbor-analysis-formatter";
 import { resultNearestNeighbor } from "./nearest-neighbor-analysis-output";
 
@@ -62,36 +62,36 @@ export async function analyzeKNN({
 
     console.log("configData", configData);
 
-    // const knn = new KNNAnalysis(
-    //     slicedDataForTarget,
-    //     slicedDataForFeatures,
-    //     slicedDataForFocalCaseIdentifier,
-    //     slicedDataForCaseIdentifier,
-    //     varDefsForTarget,
-    //     varDefsForFeatures,
-    //     varDefsForFocalCaseIdentifier,
-    //     varDefsForCaseIdentifier,
-    //     configData
-    // );
+    const knn = new KNNAnalysis(
+        slicedDataForTarget,
+        slicedDataForFeatures,
+        slicedDataForFocalCaseIdentifier,
+        slicedDataForCaseIdentifier,
+        varDefsForTarget,
+        varDefsForFeatures,
+        varDefsForFocalCaseIdentifier,
+        varDefsForCaseIdentifier,
+        configData
+    );
 
-    // const results = knn.get_results();
-    // const error = knn.get_all_errors();
-    // const executed = knn.get_executed_functions();
+    const results = knn.get_formatted_results();
+    const error = knn.get_all_errors();
+    const executed = knn.get_executed_functions();
 
-    // console.log("knn results", results);
-    // console.log("error", error);
-    // console.log("executed", executed);
+    console.log("knn results", results);
+    console.log("error", error);
+    console.log("executed", executed);
 
-    // const formattedResults = transformNearestNeighborResult(results);
-    // console.log("formattedResults", formattedResults);
+    const formattedResults = transformNearestNeighborResult(results);
+    console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
-    // await resultNearestNeighbor({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
-    //     formattedResult: formattedResults ?? [],
-    // });
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    await resultNearestNeighbor({
+        addLog,
+        addAnalytic,
+        addStatistic,
+        formattedResult: formattedResults ?? [],
+    });
 }
