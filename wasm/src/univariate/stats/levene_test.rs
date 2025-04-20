@@ -4,6 +4,7 @@ use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData, r
 
 use super::core::{
     calculate_mean,
+    data_value_to_string,
     extract_dependent_value,
     get_factor_combinations,
     matches_combination,
@@ -40,13 +41,19 @@ pub fn calculate_levene_test(
         }
     };
 
-    let mut design = String::new();
-    if config.model.intercept {
-        // Build design description
-        design = "Design: Intercept".to_string();
+    // Build design string
+    let mut design = if config.model.intercept {
+        "Design: Intercept".to_string()
     } else {
-        // Build design description without intercept
-        design = "Design: ".to_string();
+        "Design: ".to_string()
+    };
+
+    // Add covariates
+    if let Some(covariates) = &config.main.covar {
+        for covariate in covariates {
+            design.push_str(" + ");
+            design.push_str(covariate);
+        }
     }
 
     // Add fixed factors
@@ -70,21 +77,54 @@ pub fn calculate_levene_test(
     let mut results = Vec::new();
 
     for dep_var_name in dep_vars {
-        // Extract values by group
-        let mut groups: Vec<Vec<f64>> = Vec::new();
+        // Get factor combinations
         let factor_combinations = get_factor_combinations(data, config)?;
         web_sys::console::log_1(&format!("Factor combinations: {:?}", factor_combinations).into());
 
+        // Organize data values by group
+        let mut groups: Vec<Vec<f64>> = Vec::new();
+
+        // For each combination, find all matching records
         for combo in &factor_combinations {
             let mut group_values = Vec::new();
 
-            for records in &data.fix_factor_data {
-                for record in records {
-                    if matches_combination(record, combo, data, config) {
+            // We need to iterate through all records in the dependent data
+            for (dataset_idx, records) in data.dependent_data.iter().enumerate() {
+                for (record_idx, record) in records.iter().enumerate() {
+                    // Check if this record's corresponding factor values match the current combination
+                    let mut matches = true;
+
+                    if let Some(factors) = &config.main.fix_factor {
+                        for (i, factor) in factors.iter().enumerate() {
+                            if
+                                i >= data.fix_factor_data.len() ||
+                                record_idx >= data.fix_factor_data[i].len()
+                            {
+                                matches = false;
+                                break;
+                            }
+
+                            let factor_record = &data.fix_factor_data[i][record_idx];
+                            let record_level = factor_record.values
+                                .get(factor)
+                                .map(data_value_to_string);
+                            let combo_level = combo.get(factor);
+
+                            match (record_level, combo_level) {
+                                (Some(ref r_level), Some(c_level)) if r_level == c_level => {
+                                    continue;
+                                }
+                                _ => {
+                                    matches = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // If this record matches, add its dependent value to the group
+                    if matches {
                         if let Some(value) = extract_dependent_value(record, &dep_var_name) {
-                            web_sys::console::log_1(
-                                &format!("Value for {}: {:?}", dep_var_name, value).into()
-                            );
                             group_values.push(value);
                         }
                     }
@@ -98,8 +138,9 @@ pub fn calculate_levene_test(
 
         web_sys::console::log_1(&format!("Groups for {}: {:?}", dep_var_name, groups).into());
 
+        // Skip if not enough groups for analysis
         if groups.len() < 2 {
-            continue; // Skip this dependent variable if it doesn't have enough groups
+            continue;
         }
 
         // Calculate group means
@@ -118,6 +159,12 @@ pub fn calculate_levene_test(
                 .collect();
             abs_deviations.push(deviations);
         }
+
+        // Calculate total sample size for correct df calculation
+        let total_samples = groups
+            .iter()
+            .map(|group| group.len())
+            .sum::<usize>();
 
         // Calculate the overall mean of absolute deviations
         let all_deviations: Vec<f64> = abs_deviations.iter().flatten().cloned().collect();
@@ -148,7 +195,7 @@ pub fn calculate_levene_test(
 
         // Calculate degrees of freedom
         let df1 = groups.len() - 1;
-        let df2 = all_deviations.len() - groups.len();
+        let df2 = total_samples - groups.len();
 
         // Calculate F statistic
         let ms_between = ss_between / (df1 as f64);

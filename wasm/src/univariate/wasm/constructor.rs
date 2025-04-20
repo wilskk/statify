@@ -197,6 +197,10 @@ impl UnivariateAnalysis {
         function::get_results(&self.result)
     }
 
+    pub fn get_formatted_results(&self) -> Result<JsValue, JsValue> {
+        function::get_formatted_results(&self.result)
+    }
+
     pub fn get_executed_functions(&self) -> Result<JsValue, JsValue> {
         function::get_executed_functions(&self.result)
     }

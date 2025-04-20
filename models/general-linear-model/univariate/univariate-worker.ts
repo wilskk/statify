@@ -1,5 +1,6 @@
 import { Analytic, Log, Statistic } from "@/types/Result";
 import { UnivariateType } from "./univariate";
+import { ResultJson } from "@/types/Table";
 
 export type UnivariateAnalysisType = {
     configData: UnivariateType;
@@ -26,4 +27,6 @@ export type UnivariateFinalResultType = {
         analyticId: number,
         statistic: Omit<Statistic, "id" | "analytic_id">
     ) => Promise<number>;
+
+    formattedResult: ResultJson;
 };

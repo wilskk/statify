@@ -7,6 +7,7 @@ use crate::univariate::models::{
     result::UnivariateResult,
 };
 use crate::univariate::stats::core;
+use crate::univariate::utils::converter::format_result;
 use crate::univariate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
@@ -152,7 +153,7 @@ pub fn run_analysis(
 
     // Calcular emmeans si se solicitan
     let mut emmeans = None;
-    if !config.emmeans.src_list.is_empty() {
+    if config.emmeans.target_list.as_ref().map_or(false, |v| !v.is_empty()) {
         executed_functions.push("calculate_emmeans".to_string());
         match core::calculate_emmeans(data, config) {
             Ok(means) => {
@@ -160,7 +161,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_emmeans", &e);
-                // Continue execution despite errors
             }
         }
     }
@@ -273,6 +273,10 @@ pub fn get_results(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
         None => Err(string_to_js_error("No analysis results available".to_string())),
     }
+}
+
+pub fn get_formatted_results(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue> {
+    format_result(result)
 }
 
 pub fn get_executed_functions(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue> {
