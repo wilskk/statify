@@ -6,7 +6,13 @@ import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable } from '@/types/Variable';
 import { getColumnConfig, getDisplayMatrix, areValuesEqual } from './utils';
-import { DEFAULT_MIN_COLUMNS } from './constants';
+import { DEFAULT_MIN_COLUMNS, DEFAULT_COLUMN_WIDTH } from './constants';
+
+// Helper function for default spare column config
+const getDefaultSpareColumnConfig = () => ({
+    type: 'text',
+    width: DEFAULT_COLUMN_WIDTH,
+});
 
 export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | null>) => {
     const pendingOperations = useRef<Array<{ type: string, payload: any }>>([]);
@@ -30,22 +36,23 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         addMultipleVariables
     } = useVariableStore();
 
-    const calculateColumnCount = () => {
-        const columnCountFromData = data[0]?.length || 0;
+    const numColumns = useMemo(() => {
         const maxVariableIndex = variables.length > 0
             ? Math.max(...variables.map(v => v.columnIndex))
             : -1;
-        const variableBasedColumnCount = maxVariableIndex + 1;
-        return Math.max(columnCountFromData, variableBasedColumnCount, DEFAULT_MIN_COLUMNS);
-    };
-
-    const numColumns = useMemo(calculateColumnCount, [data, variables]);
+        const requiredColsByVars = maxVariableIndex + 1;
+        const requiredCols = Math.max(requiredColsByVars, DEFAULT_MIN_COLUMNS);
+        return requiredCols + 1;
+    }, [variables]);
 
     const colHeaders = useMemo(() => {
-        return Array.from({ length: numColumns }, (_, index) => {
+        const actualColCount = numColumns - 1;
+        const headers = Array.from({ length: actualColCount }, (_, index) => {
             const variable = variables.find(v => v.columnIndex === index);
             return variable?.name || `var`;
         });
+        headers.push('var');
+        return headers;
     }, [variables, numColumns]);
 
     const displayMatrix = useMemo(() => {
@@ -53,15 +60,18 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
             ? Math.max(...variables.map(v => v.columnIndex))
             : -1;
         const variableCount = maxVariableIndex + 1;
-        return getDisplayMatrix(data, variableCount);
+        const matrixColCount = Math.max(variableCount, DEFAULT_MIN_COLUMNS);
+        return getDisplayMatrix(data, matrixColCount);
     }, [data, variables]);
 
-
     const columns = useMemo(() => {
-        return Array.from({ length: numColumns }, (_, index) => {
+        const actualColCount = numColumns - 1;
+        const configs = Array.from({ length: actualColCount }, (_, index) => {
             const variable = variables.find(v => v.columnIndex === index);
             return getColumnConfig(variable);
         });
+        configs.push(getDefaultSpareColumnConfig());
+        return configs;
     }, [variables, numColumns]);
 
     const processCellUpdates = useCallback(async (updatePayload: {
@@ -72,7 +82,8 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         const { changesByColumn, maxModifiedColumn, maxModifiedRow } = updatePayload;
         const maxExistingVarIndex = variables.length > 0 ? Math.max(...variables.map(v => v.columnIndex)) : -1;
 
-        await ensureMatrixDimensions(maxModifiedRow + 1, Math.max(maxModifiedColumn, maxExistingVarIndex) + 1);
+        const requiredColsForData = Math.max(maxModifiedColumn, maxExistingVarIndex) + 1;
+        await ensureMatrixDimensions(maxModifiedRow + 1, requiredColsForData);
 
         const cellUpdates: { row: number; col: number; value: any }[] = [];
 
@@ -126,7 +137,6 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         }
     }, [variables, ensureMatrixDimensions, updateBulkCells]);
 
-
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;
         isProcessing.current = true;
@@ -140,11 +150,24 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
 
         try {
             switch (operation.type) {
-                case 'CREATE_VARIABLES_AND_UPDATE':
+                case 'CREATE_VARIABLES_AND_UPDATE': {
                     const { newVariables, pendingChanges } = operation.payload;
+                    const maxExistingVarIndex = variables.length > 0 ? Math.max(...variables.map(v => v.columnIndex)) : -1;
+
+                    const variablesToAdd = newVariables
+                        .filter((v: Partial<Variable>) => v.columnIndex !== undefined && v.columnIndex > maxExistingVarIndex)
+                        .sort((a: Partial<Variable>, b: Partial<Variable>) => (a.columnIndex ?? 0) - (b.columnIndex ?? 0));
+
+                    for (const newVar of variablesToAdd) {
+                        if (newVar.columnIndex !== undefined) {
+                            await addColumn(newVar.columnIndex);
+                        }
+                    }
+
                     await addMultipleVariables(newVariables);
                     await processCellUpdates(pendingChanges);
                     break;
+                }
                 case 'UPDATE_CELLS':
                     await processCellUpdates(operation.payload);
                     break;
@@ -159,8 +182,7 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
                 queueMicrotask(processPendingOperations);
             }
         }
-    }, [addMultipleVariables, processCellUpdates]);
-
+    }, [variables, addColumn, addMultipleVariables, processCellUpdates]);
 
     const handleBeforeChange = useCallback((
         changes: (Handsontable.CellChange | null)[],
@@ -379,7 +401,6 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
             }
         };
     }, [applyAlignment, hotTableRef]);
-
 
     return {
         displayMatrix,
