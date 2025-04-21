@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useCallback } from "react"; // Import useCallback
-import { HotTable, HotTableClass } from "@handsontable/react";
+import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 
@@ -17,6 +17,7 @@ import {
     DEFAULT_VARIABLE_WIDTH,
     DEFAULT_VARIABLE_DECIMALS
 } from './constants'; // Asumsi path ini benar
+import { VariableType } from "@/types/Variable"; // Import VariableType
 import './VariableTable.css'; // Import CSS
 
 registerAllModules();
@@ -25,35 +26,77 @@ export default function VariableTable() {
     const {
         hotTableRef,
         tableData,
-        actualVariableCount, // <-- Ambil nilai ini
+        variables, // Get the full variables array
+
+        // Event Handlers from useVariableTableEvents (via useVariableTableLogic)
+        handleBeforeChange,
+        handleAfterSelectionEnd,
+        // handleInsertVariable, // Keep if triggered by external buttons
+        // handleDeleteVariable, // Keep if triggered by external buttons
+
+        // Dialog State & Handlers from useVariableTableDialogs (via useVariableTableLogic)
         showTypeDialog,
         setShowTypeDialog,
         showValuesDialog,
         setShowValuesDialog,
         showMissingDialog,
         setShowMissingDialog,
+        selectedVariable, // Use this directly
         selectedVariableType,
-        handleBeforeChange,
-        handleAfterSelectionEnd,
-        handleTypeSelection,
-        handleValuesSelection,
-        handleMissingSelection,
-        getSelectedVariableName,
-        getSelectedVariableValues,
-        getSelectedVariableMissing,
-        getSelectedVariableOrDefault,
-        customContextMenu,
-        handleBeforeKeyDown,
-        handleBeforeSetRangeEnd,
+        handleTypeChange,
+        handleValuesChange,
+        handleMissingChange,
+        // closeAllDialogs, // Keep if needed
     } = useVariableTableLogic();
 
+    const variableCount = variables.length; // Derive count from variables array
+
     const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
-        if (row >= actualVariableCount) {
+        // Use variableCount derived from the variables array length
+        if (row >= variableCount) {
             TH.classList.add('grayed-header');
         } else {
             TH.classList.remove('grayed-header');
         }
-    }, [actualVariableCount]);
+    }, [variableCount]); // Depend on variableCount
+
+    // Wrapper function for VariableTypeDialog onSave
+    const handleSaveTypeDialog = useCallback((type: string, width: number, decimals: number) => {
+        // Construct the payload expected by handleTypeChange
+        const payload = {
+            type: type as VariableType, // Cast string to VariableType (ensure type safety if needed)
+            width: width,
+            decimals: decimals
+        };
+        handleTypeChange(payload);
+    }, [handleTypeChange]);
+
+    // Prepare props for dialogs using selectedVariable
+    const typeDialogProps = {
+        open: showTypeDialog,
+        onOpenChange: setShowTypeDialog,
+        onSave: handleSaveTypeDialog, // Use the wrapper function
+        initialType: selectedVariable?.type ?? DEFAULT_VARIABLE_TYPE,
+        initialWidth: selectedVariable?.width ?? DEFAULT_VARIABLE_WIDTH,
+        initialDecimals: selectedVariable?.decimals ?? DEFAULT_VARIABLE_DECIMALS,
+    };
+
+    const valuesDialogProps = {
+        open: showValuesDialog,
+        onOpenChange: setShowValuesDialog,
+        onSave: handleValuesChange, // Use the new handler
+        initialValues: selectedVariable?.values || [],
+        variableName: selectedVariable?.name || "",
+        variableType: selectedVariableType, // This is already derived in the hook
+    };
+
+    const missingDialogProps = {
+        open: showMissingDialog,
+        onOpenChange: setShowMissingDialog,
+        onSave: handleMissingChange, // Use the new handler
+        initialMissingValues: selectedVariable?.missing || null,
+        variableType: selectedVariableType, // This is already derived in the hook
+    };
 
     return (
         <div className="h-full w-full relative">
@@ -69,44 +112,27 @@ export default function VariableTable() {
                     autoWrapRow={true}
                     autoWrapCol={true}
                     manualColumnResize={true}
-                    contextMenu={customContextMenu}
+                    // contextMenu={customContextMenu} // Removed - needs reimplementation
                     licenseKey="non-commercial-and-evaluation"
                     minSpareRows={1}
-                    afterGetRowHeader={handleAfterGetRowHeader} // <-- Tambahkan prop ini
+                    afterGetRowHeader={handleAfterGetRowHeader}
                     beforeChange={handleBeforeChange}
                     afterSelectionEnd={handleAfterSelectionEnd}
-                    beforeSetRangeEnd={handleBeforeSetRangeEnd}
-                    beforeKeyDown={handleBeforeKeyDown}
-                    outsideClickDeselects={false}
-                    selectionMode="single"
+                    // beforeSetRangeEnd={handleBeforeSetRangeEnd} // Removed - needs reimplementation
+                    // beforeKeyDown={handleBeforeKeyDown} // Removed - needs reimplementation
+                    outsideClickDeselects={false} // Keep this to prevent dialogs closing unexpectedly
+                    selectionMode="single" // Keep single selection mode
                 />
             </div>
 
-            <VariableTypeDialog
-                open={showTypeDialog}
-                onOpenChange={setShowTypeDialog}
-                onSave={handleTypeSelection}
-                initialType={getSelectedVariableOrDefault('type', DEFAULT_VARIABLE_TYPE)}
-                initialWidth={getSelectedVariableOrDefault('width', DEFAULT_VARIABLE_WIDTH)}
-                initialDecimals={getSelectedVariableOrDefault('decimals', DEFAULT_VARIABLE_DECIMALS)}
-            />
-
-            <ValueLabelsDialog
-                open={showValuesDialog}
-                onOpenChange={setShowValuesDialog}
-                onSave={handleValuesSelection}
-                initialValues={getSelectedVariableValues()}
-                variableName={getSelectedVariableName()}
-                variableType={selectedVariableType}
-            />
-
-            <MissingValuesDialog
-                open={showMissingDialog}
-                onOpenChange={setShowMissingDialog}
-                onSave={handleMissingSelection}
-                initialMissingValues={getSelectedVariableMissing()}
-                variableType={selectedVariableType}
-            />
+            {/* Render dialogs only if the required variable data is available */}
+            {selectedVariable && (
+                <>
+                    <VariableTypeDialog {...typeDialogProps} />
+                    <ValueLabelsDialog {...valuesDialogProps} />
+                    <MissingValuesDialog {...missingDialogProps} />
+                </>
+            )}
         </div>
     );
 }
