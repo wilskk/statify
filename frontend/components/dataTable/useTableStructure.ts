@@ -65,6 +65,8 @@ export const useTableStructure = (
             }
         };
 
+        const DEFAULT_COLUMN_WIDTH = 64; // Define a default width
+
         const generatedColumns = Array(displayNumCols).fill(null).map((_, colIndex) => {
             if (colIndex < actualNumCols) {
                 const variable = variables.find(v => v.columnIndex === colIndex);
@@ -75,18 +77,28 @@ export const useTableStructure = (
                     
                     // Construct the column config
                     return {
-                        data: colIndex, // Map to data source index
+                        data: colIndex,
                         type: type,
                         readOnly: false,
-                        className: getAlignmentClass(variable.align) // Apply alignment class
-                        // Add other variable-derived settings here later if needed (e.g., format)
+                        className: getAlignmentClass(variable.align),
+                        width: variable.columns > 0 ? variable.columns : DEFAULT_COLUMN_WIDTH
                     };
                 }
-                // Fallback for a data column missing a variable (shouldn't happen ideally)
-                return { data: colIndex, type: 'text', readOnly: false, className: 'htLeft' }; 
+                // Fallback for a data column missing a variable
+                return { 
+                    data: colIndex, 
+                    type: 'text', 
+                    readOnly: false, 
+                    className: 'htLeft', 
+                    width: DEFAULT_COLUMN_WIDTH
+                }; 
             }
             // Config for visual spare columns
-            return { data: colIndex, ...getDefaultSpareColumnConfig() };
+            return { 
+                data: colIndex, 
+                ...getDefaultSpareColumnConfig(),
+                width: DEFAULT_COLUMN_WIDTH
+            };
         });
         return generatedColumns;
     }, [variables, actualNumCols, displayNumCols]);

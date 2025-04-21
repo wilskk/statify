@@ -427,19 +427,18 @@ export const useTableUpdates = ({
         console.log('Column Resized', { currentColumn, newSize });
 
         // Use variables from the hook's closure (updated on re-render)
-        console.log('Variables available in handleAfterColumnResize (closure):', variables);
+        // console.log('Variables available in handleAfterColumnResize (closure):', variables);
 
         const variable = variables.find(v => v.columnIndex === currentColumn);
 
-        if (variable && variable.id !== undefined && variable.columns !== newSize) {
+        if (variable && variable.columns !== newSize) {
             console.log(`Updating variable via Column Index: ${currentColumn}, Field: 'columns', New Value: ${newSize}`);
             // Use updateVariable from the hook's closure, using columnIndex as identifier
             updateVariable(currentColumn, 'columns', newSize);
         } else {
-            console.log('Skipping variable update. Reason:', {
+            // Adjust log message
+            console.log('Skipping variable columns update. Reason:', {
                 foundVariable: !!variable,
-                hasId: variable?.id !== undefined,
-                idValue: variable?.id,
                 currentColumns: variable?.columns,
                 newSize: newSize,
                 sizeChanged: variable?.columns !== newSize
