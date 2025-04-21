@@ -37,4 +37,37 @@ export async function analyzeRepeatedMeasures({
     const varDefsForSubject = getVarDefs(variables, SubjectVariables);
     const varDefsForFactors = getVarDefs(variables, FactorsVariables);
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
+
+    console.log(configData);
+
+    // const repeatedMeasure = new RepeatedMeasureAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
+
+    // const results = repeatedMeasure.get_formatted_results();
+    // const error = repeatedMeasure.get_all_errors();
+
+    // console.log("Results", results);
+    // console.log(error);
+
+    // const formattedResults = transformRepeatedMeasureResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    // await resultRepeatedMeasureAnalysis({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }

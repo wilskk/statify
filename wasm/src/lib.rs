@@ -6,7 +6,7 @@
 // pub mod kmeans;
 // pub mod knn;
 // pub mod mca;
-// pub mod multivariate;
+pub mod multivariate;
 // pub mod overals;
 // pub mod repeated_measure;
 // pub mod roc_analysis;
@@ -14,7 +14,7 @@
 pub mod time_series;
 // pub mod tree;
 // pub mod twostep;
-pub mod univariate;
+// pub mod univariate;
 // pub mod varcomps;
 
 pub use time_series::smoothing::smoothing::Smoothing;

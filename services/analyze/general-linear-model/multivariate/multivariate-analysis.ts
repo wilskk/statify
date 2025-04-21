@@ -47,4 +47,37 @@ export async function analyzeMultivariate({
     const varDefsForFixFactor = getVarDefs(variables, FixFactorVariables);
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
     const varDefsForWlsWeight = getVarDefs(variables, WlsWeightVariable);
+
+    console.log(configData);
+
+    // const multivariate = new MultivariateAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
+
+    // const results = multivariate.get_formatted_results();
+    // const error = multivariate.get_all_errors();
+
+    // console.log("Results", results);
+    // console.log(error);
+
+    // const formattedResults = transformMultivariateResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    // await resultMultivariateAnalysis({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }

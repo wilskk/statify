@@ -48,9 +48,6 @@ pub fn calculate_lack_of_fit_tests(
     let n_unique = predictor_combinations.len();
     let n_total = count_total_cases(data);
 
-    web_sys::console::log_1(&format!("Number of unique combinations: {}", n_unique).into());
-    web_sys::console::log_1(&format!("Total sample size: {}", n_total).into());
-
     // Collect all dependent values and corresponding predictor values
     let mut all_y_values = Vec::new(); // All dependent values
     let mut all_x_values = Vec::new(); // All predictor values (for regression)
@@ -102,8 +99,6 @@ pub fn calculate_lack_of_fit_tests(
     // Calculate regression coefficients
     let coefficients = calculate_regression_coefficients(&all_x_values, &all_y_values)?;
 
-    web_sys::console::log_1(&format!("Regression coefficients: {:?}", coefficients).into());
-
     // Calculate fitted values using regression model
     let fitted_values: Vec<f64> = all_x_values
         .iter()
@@ -146,10 +141,6 @@ pub fn calculate_lack_of_fit_tests(
         }
     }
 
-    web_sys::console::log_1(
-        &format!("Residual SS: {}, Pure Error SS: {}", residual_ss, pure_error_ss).into()
-    );
-
     // Calculate lack of fit sum of squares
     let lack_of_fit_ss = residual_ss - pure_error_ss;
 
@@ -158,17 +149,10 @@ pub fn calculate_lack_of_fit_tests(
     let df_lack_of_fit = if n_unique > num_parameters {
         n_unique - num_parameters
     } else {
-        web_sys::console::log_1(
-            &"Warning: Not enough unique combinations for model parameters".into()
-        );
         1 // Fallback to avoid zero/negative df
     };
 
     let df_pure_error = n_total - n_unique;
-
-    web_sys::console::log_1(
-        &format!("DF Lack of Fit: {}, DF Pure Error: {}", df_lack_of_fit, df_pure_error).into()
-    );
 
     // Calculate mean squares
     let ms_lack_of_fit = if df_lack_of_fit > 0 {
@@ -360,11 +344,6 @@ fn calculate_regression_coefficients(
             Ok(beta.as_slice().to_vec())
         }
         None => {
-            // If matrix is singular, try adding a small regularization
-            web_sys::console::log_1(
-                &"Warning: X'X matrix is nearly singular, adding regularization".into()
-            );
-
             // Add small regularization to diagonal (ridge-like)
             let n = xtx.nrows();
             let mut xtx_reg = xtx.clone();

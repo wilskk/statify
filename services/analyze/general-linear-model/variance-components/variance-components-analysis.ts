@@ -55,4 +55,37 @@ export async function analyzeVarianceComps({
     const varDefsForRandomFactor = getVarDefs(variables, RandomFactorVariables);
     const varDefsForCovariate = getVarDefs(variables, CovariateVariables);
     const varDefsForWlsWeight = getVarDefs(variables, WlsWeightVariable);
+
+    console.log(configData);
+
+    // const varianceComps = new VarianceCompsAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
+
+    // const results = varianceComps.get_formatted_results();
+    // const error = varianceComps.get_all_errors();
+
+    // console.log("Results", results);
+    // console.log(error);
+
+    // const formattedResults = transformVarianceCompsResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    // await resultVarianceCompsAnalysis({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }
