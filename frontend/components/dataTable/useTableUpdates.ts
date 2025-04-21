@@ -37,7 +37,6 @@ export const useTableUpdates = ({
         deleteRow,
         deleteColumn,
         updateBulkCells,
-        ensureMatrixDimensions
     } = useDataStore();
 
     const {
@@ -57,11 +56,6 @@ export const useTableUpdates = ({
     }) => {
         const { changes, targetStateRows, targetStateCols } = updatePayload;
 
-        if (targetStateRows <= 0 || targetStateCols <= 0) return; // Avoid ensuring 0 or negative dimensions
-
-        // Ensure state dimensions can accommodate the highest index being changed
-        await ensureMatrixDimensions(targetStateRows - 1, targetStateCols - 1);
-
         const cellUpdates: { row: number; col: number; value: any }[] = [];
 
         for (const change of changes) {
@@ -71,8 +65,6 @@ export const useTableUpdates = ({
             const rowIndex = typeof row === 'number' ? row : -1;
 
             if (columnIndex === -1 || rowIndex === -1) continue;
-            // Check against the TARGET state size for this batch
-            if (rowIndex >= targetStateRows || columnIndex >= targetStateCols) continue;
 
             if (areValuesEqual(oldValue, newValue)) continue;
 
@@ -127,7 +119,7 @@ export const useTableUpdates = ({
                 // TODO: Add user feedback
             }
         }
-    }, [variables, ensureMatrixDimensions, updateBulkCells]); // Dependencies: variables for type checking, store actions
+    }, [variables, updateBulkCells]); // Dependencies: variables for type checking, store actions
 
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;

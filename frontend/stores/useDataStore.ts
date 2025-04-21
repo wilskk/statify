@@ -24,7 +24,6 @@ export interface DataStoreState {
     setData: (data: DataRow[]) => void;
     loadData: () => Promise<void>;
     resetData: () => Promise<void>;
-    ensureMatrixDimensions: (maxRow: number, maxCol: number, minColCount?: number) => void;
 
     updateCell: (row: number, col: number, value: string | number) => Promise<void>;
     updateBulkCells: (updates: CellUpdate[]) => Promise<void>;
@@ -49,44 +48,61 @@ export interface DataStoreState {
 }
 
 // Define the initial state explicitly with the correct type
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addColumn' | 'deleteRow' | 'deleteColumn' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureMatrixDimensions' | 'setData'> = {
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addColumn' | 'deleteRow' | 'deleteColumn' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData'> = {
     data: [],
     isLoading: false,
     error: null,
     lastUpdated: null,
+    setData: function (data: DataRow[]): void {
+        throw new Error("Function not implemented.");
+    }
 };
 
-// Fungsi helper yang disederhanakan dan diperbaiki
-const ensureMatrixDimensions = (state: WritableDraft<DataStoreState>, maxRow: number, maxCol: number, minColCount?: number): boolean => {
+// Fungsi helper yang disederhanakan dan diperbaiki, diganti nama menjadi internal
+const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, maxRow: number, maxCol: number, minColCount?: number): boolean => {
+    console.log(`[_ensureMatrixDimensionsInternal] Called with: maxRow=${maxRow}, maxCol=${maxCol}, minColCount=${minColCount}`);
     const effectiveMaxCol = minColCount !== undefined ? Math.max(maxCol, minColCount - 1) : maxCol;
     const currentRows = state.data?.length || 0;
     const initialCols = currentRows > 0 ? (state.data[0]?.length || 0) : 0;
+    console.log(`  -> Before: currentRows=${currentRows}, currentCols=${initialCols}, effectiveMaxCol=${effectiveMaxCol}`);
 
     let structureChanged = false;
-    const targetRows = maxRow + 1;
-    const targetCols = Math.max(initialCols, effectiveMaxCol + 1);
+    const targetRows = maxRow + 1; // Need rows up to index maxRow
+    const targetCols = Math.max(initialCols, effectiveMaxCol + 1); // Need columns up to index effectiveMaxCol
 
-    // 1. Tambah baris jika diperlukan
+    // Check if expansion is needed at all
+    if (targetRows <= currentRows && targetCols <= initialCols) {
+        console.log("  -> No dimension change needed based on targetRows/targetCols.");
+        return false; // No change needed
+    }
+
+    // 1. Add rows if needed
     if (targetRows > currentRows) {
         const rowsToAdd = targetRows - currentRows;
+        console.log(`  -> Adding ${rowsToAdd} rows (from ${currentRows} to ${targetRows - 1})`);
         for (let i = 0; i < rowsToAdd; i++) {
-            // Tambahkan baris baru dengan lebar *target* langsung
+            // Add new rows with the *target* width directly
             state.data.push(Array(targetCols).fill(""));
         }
         structureChanged = true;
     }
 
-    // 2. Pastikan semua baris (termasuk yang sudah ada) memiliki lebar kolom target
+    // 2. Ensure all rows (including existing ones) have the target column width
     let columnWidthChanged = false;
-    for (let i = 0; i < state.data.length; i++) { // Loop hingga panjang state.data yang mungkin baru
+    const finalRowCount = state.data.length; // Use updated length
+    for (let i = 0; i < finalRowCount; i++) {
         const currentRowWidth = state.data[i]?.length || 0;
         if (!state.data[i] || currentRowWidth < targetCols) {
-             // Jika baris tidak ada atau terlalu pendek, buat ulang/perpanjang
-             const existingRowContent = state.data[i] || [];
-             state.data[i] = [...existingRowContent, ...Array(targetCols - currentRowWidth).fill("")];
-             columnWidthChanged = true;
+            const existingRowContent = state.data[i] || [];
+            const colsToAdd = targetCols - currentRowWidth;
+            if (colsToAdd > 0) {
+                 // If row doesn't exist or is too short, create/extend it
+                 console.log(`  -> Padding row ${i}: CurrentWidth=${currentRowWidth}, TargetWidth=${targetCols}, Adding=${colsToAdd}`);
+                 state.data[i] = [...existingRowContent, ...Array(colsToAdd).fill("")];
+                 columnWidthChanged = true;
+            }
         }
-        // Opsional: Pangkas jika terlalu lebar (seharusnya tidak terjadi dengan logika ini)
+        // Optional: Trim if too wide (shouldn't happen with this logic)
         // else if (currentRowWidth > targetCols) {
         //     state.data[i] = state.data[i].slice(0, targetCols);
         //     columnWidthChanged = true;
@@ -99,9 +115,16 @@ const ensureMatrixDimensions = (state: WritableDraft<DataStoreState>, maxRow: nu
 
     if (structureChanged) {
         state.lastUpdated = new Date();
+        console.log(`  -> Structure changed. New dimensions: ${state.data.length}x${state.data[0]?.length || 0}`);
+    } else {
+        console.log("  -> No structure change detected within _ensureMatrixDimensionsInternal logic.");
     }
-    
-    console.log(`[ensureMatrixDimensions] Input: maxR=${maxRow}, maxC=${maxCol}. Output: Rows=${state.data.length}, Cols=${targetCols}, Changed=${structureChanged}`);
+
+    // Log final state of specific row if error involves it (example)
+    if (maxRow >= 3 && state.data && state.data.length > 3) {
+        console.log(`  -> Final state.data[3] length: ${state.data[3]?.length}, exists: ${!!state.data[3]}`);
+    }
+
     return structureChanged;
 };
 
@@ -179,41 +202,49 @@ export const useDataStore = create<DataStoreState>()(
                 set((state) => {
                     console.log(`[updateCell] Before ensure: R=${row}, C=${col}, Val="${value}"`);
                     const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
-                    structureActuallyChanged = ensureMatrixDimensions(state, row, col, minCols);
+                    // Use the renamed internal helper
+                    structureActuallyChanged = _ensureMatrixDimensionsInternal(state, row, col, minCols);
+                    console.log(`[updateCell] State after ensure: Rows=${state.data.length}, Cols=${state.data[0]?.length || 0}, StructureChanged=${structureActuallyChanged}`);
 
-                    // Periksa lagi *setelah* ensureMatrixDimensions
+                    // Periksa lagi *setelah* _ensureMatrixDimensionsInternal
                     if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
                          if (state.data[row][col] !== value) {
+                             console.log(`[updateCell] Applying update: (${row}, ${col}) = "${value}"`);
                             state.data[row][col] = value;
                             dataChangedInState = true;
+                        } else {
+                            console.log(`[updateCell] Skipping update (value same): (${row}, ${col})`);
                         }
                     } else {
-                         // Ini seharusnya tidak terjadi jika ensureMatrixDimensions benar
-                         console.error(`[updateCell] State inconsistency: Cell (${row}, ${col}) STILL not accessible after ensureMatrixDimensions.`);
+                         // Ini seharusnya tidak terjadi jika _ensureMatrixDimensionsInternal benar
+                         console.error(`[updateCell] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
                     }
 
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
-                        console.log(`[updateCell] State updated: Changed=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
+                        console.log(`[updateCell] State updated flag set: DataChanged=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
                     } else {
-                         console.log(`[updateCell] No state changes made within set.`);
+                         console.log(`[updateCell] No state changes detected within set.`);
                     }
                 });
 
                  // Hanya lakukan operasi DB jika nilai data benar-benar berubah
                  if (!dataChangedInState) {
-                      console.log("[updateCell] Skipping DB update as only structure might have changed.");
+                      console.log("[updateCell] Skipping DB update as only data state might have changed.");
                       return;
                   }
 
                 try {
-                     console.log(`[updateCell] DB op: ${value === "" || value === null || value === undefined ? 'delete' : 'put'} (${row}, ${col})`);
+                     console.log(`[updateCell] DB op: ${value === "" || value === null || value === undefined ? 'delete' : 'put'} for cell (${row}, ${col})`);
                     if (value === "" || value === null || value === undefined) {
                          // Correct key order for delete
                         await db.cells.delete([col, row]); // Use primary key [col, row]
                     } else {
                         await db.cells.put({ row, col, value });
                     }
+                    console.log(`[updateCell] DB op successful for cell (${row}, ${col})`);
+                    // Clear related error on success
+                    set(state => { if(state.error?.source === 'updateCell') state.error = null; });
                 } catch (error: any) {
                     console.error(`[updateCell] DB update failed for (${row}, ${col}):`, error);
                     // Rollback state
@@ -226,86 +257,119 @@ export const useDataStore = create<DataStoreState>()(
             },
 
             updateBulkCells: async (updates) => {
-                const oldData = get().data;
-                const validUpdates = updates.filter(({ row, col, value }) => {
+                 console.log('[updateBulkCells] Received updates:', JSON.stringify(updates)); // Log input
+                if (!updates || updates.length === 0) {
+                     console.log('[updateBulkCells] Received no updates. Skipping.');
+                     return;
+                }
+
+                const oldData = get().data; // For rollback and comparison
+
+                // Calculate max dimensions based on ALL incoming updates *before* filtering
+                let maxRow = -1; let maxCol = -1;
+                updates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
+                 console.log(`[updateBulkCells] Max dimensions from incoming updates: R=${maxRow}, C=${maxCol}`);
+
+                // Filter updates *before* expansion (based on oldData) to determine if DB op needed later
+                // And to potentially avoid unnecessary state expansion if all updates are identical or empty new cells
+                 const validUpdatesForPotentialChange = updates.filter(({ row, col, value }) => {
                     const currentValue = oldData[row]?.[col];
                     const isNewCell = !(row < oldData.length && col < (oldData[row]?.length ?? 0));
-                    // Update jika nilai berbeda ATAU jika ini sel baru (kecuali nilainya kosong)
-                    return (currentValue !== value) || (isNewCell && value !== "" && value !== null && value !== undefined);
+                    const isMeaningfulNewValue = value !== "" && value !== null && value !== undefined;
+                    // Update needed if: value changes OR it's a new cell with a meaningful value
+                    const needsUpdate = (currentValue !== value) || (isNewCell && isMeaningfulNewValue);
+                     // console.log(`  Filter Check: (${row},${col}) Val='${value}', Old='${currentValue}', isNew=${isNewCell}, meaningfulNew=${isMeaningfulNewValue} -> NeedsUpdate=${needsUpdate}`);
+                    return needsUpdate;
                 });
 
-                 console.log(`[updateBulkCells] Received ${updates.length} updates, ${validUpdates.length} are valid.`);
-                if (validUpdates.length === 0) return;
+                 console.log(`[updateBulkCells] Received ${updates.length} updates, ${validUpdatesForPotentialChange.length} are potentially meaningful changes.`);
+                // Early exit if no meaningful changes are detected *before* state manipulation
+                // Note: This might skip expansion if only structure would change, which might be desired or not.
+                // If expansion MUST happen even for empty cells, remove this early exit.
+                // if (validUpdatesForPotentialChange.length === 0) {
+                //     console.log('[updateBulkCells] No meaningful changes detected based on old data. Skipping state update and DB ops.');
+                //     return;
+                // }
 
-                const oldDataCopy = get().data.map(r => [...r]); // Deep copy untuk rollback
-
-                let maxRow = -1; let maxCol = -1;
-                validUpdates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
-                 console.log(`[updateBulkCells] Max dimensions from updates: R=${maxRow}, C=${maxCol}`);
+                const oldDataCopy = oldData.map(r => [...r]); // Deep copy for rollback
 
                 let dataChangedInState = false;
                 let structureActuallyChanged = false;
 
                 set((state) => {
-                    console.log(`[updateBulkCells] Before ensure.`);
+                    console.log(`[updateBulkCells] Entering set function.`);
                     const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
-                    structureActuallyChanged = ensureMatrixDimensions(state, maxRow, maxCol, minCols);
-                    console.log(`[updateBulkCells] After ensure. State dims: R=${state.data.length}, C=${state.data[0]?.length || 0}`);
+                    // Use the renamed internal helper, ensure dimensions based on maxRow/maxCol from *all* updates
+                    structureActuallyChanged = _ensureMatrixDimensionsInternal(state, maxRow, maxCol, minCols);
+                    console.log(`[updateBulkCells] State after ensure: Rows=${state.data.length}, Cols=${state.data[0]?.length || 0}, StructureChanged=${structureActuallyChanged}`);
 
-                    validUpdates.forEach(({ row, col, value }) => {
+                    // Iterate through the *original* updates again, but apply based on the *current* (potentially expanded) state
+                    updates.forEach(({ row, col, value }) => {
+                        // Check bounds against the *current* state inside 'set'
                         if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
-                            if(state.data[row][col] !== value) {
+                            // Apply if value is different in the *current* state
+                             if(state.data[row][col] !== value) {
+                                console.log(`[updateBulkCells] Applying update: (${row}, ${col}) = "${value}"`);
                                 state.data[row][col] = value;
-                                dataChangedInState = true;
+                                dataChangedInState = true; // Mark that data *in the state* definitely changed
+                            } else {
+                                 console.log(`[updateBulkCells] Skipping update (value same in current state): (${row}, ${col})`);
                             }
                         } else {
-                            console.error(`[updateBulkCells] State inconsistency: Cell (${row}, ${col}) STILL not accessible after ensureMatrixDimensions.`);
+                            // This error check is still valid, should not happen if ensure is correct
+                            console.error(`[updateBulkCells] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
                         }
                     });
 
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
-                        console.log(`[updateBulkCells] State updated: Changed=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
+                        console.log(`[updateBulkCells] State updated flag set: DataChanged=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
                     } else {
-                         console.log(`[updateBulkCells] No state changes made within set.`);
+                         console.log(`[updateBulkCells] No state changes detected within set.`);
                     }
                 });
 
-                 // Hanya lakukan operasi DB jika nilai data benar-benar berubah
-                if (!dataChangedInState) {
-                     console.log("[updateBulkCells] Skipping DB update as only structure might have changed.");
+                 // Perform DB operations based on the `validUpdatesForPotentialChange` list determined *before* the `set` call.
+                 // This ensures we only write to DB if there was an actual intended change from the original state.
+                if (validUpdatesForPotentialChange.length === 0) {
+                     console.log("[updateBulkCells] Skipping DB operations as no meaningful changes were initially detected.");
                      return;
                  }
 
-                const cellsToPut = validUpdates
+                const cellsToPut = validUpdatesForPotentialChange
                     .filter(({ value }) => value !== "" && value !== null && value !== undefined)
                     .map(({ row, col, value }) => ({ row, col, value }));
 
                 // Explicitly type keysToDelete and use correct key order [col, row]
-                const keysToDelete: CellPrimaryKey[] = validUpdates
+                const keysToDelete: CellPrimaryKey[] = validUpdatesForPotentialChange
                     .filter(({ value }) => value === "" || value === null || value === undefined)
-                    .map(({ row, col }): CellPrimaryKey => [col, row]); // Use correct key order [col, row] and assert type
+                     // Ensure the mapping result conforms to CellPrimaryKey [number, number]
+                    .map(({ row, col }): CellPrimaryKey => [col, row]);
 
-                console.log(`[updateBulkCells] DB ops: Putting ${cellsToPut.length} cells, Deleting ${keysToDelete.length} keys.`);
+                console.log(`[updateBulkCells] DB ops based on initial check: Putting ${cellsToPut.length} cells, Deleting ${keysToDelete.length} keys.`);
 
                 if (cellsToPut.length > 0 || keysToDelete.length > 0) {
                     try {
                         await db.transaction('rw', db.cells, async () => {
+                            // Use bulkDelete with the correctly typed keys
                             if (keysToDelete.length > 0) await db.cells.bulkDelete(keysToDelete);
                             if (cellsToPut.length > 0) await db.cells.bulkPut(cellsToPut);
                         });
                         console.log("[updateBulkCells] DB transaction successful.");
-                        // Clear error on success
+                        // Clear related error on success
                         set(state => { if(state.error?.source === 'updateBulkCells') state.error = null; });
                     } catch (error: any) {
                         console.error("[updateBulkCells] DB transaction failed:", error);
-                        // Rollback state
+                        // Rollback state using the copy made *before* the 'set' call
                         set((state) => {
-                            state.data = oldDataCopy; // Gunakan copy yang dibuat sebelum 'set'
-                            state.error = { message: "Bulk update failed", source: "updateBulkCells", originalError: error };
+                            state.data = oldDataCopy;
+                            state.lastUpdated = new Date(); // Reflect rollback time? Or keep original lastUpdated? This resets it.
+                            state.error = { message: "Bulk update failed, state rolled back", source: "updateBulkCells", originalError: error };
                             console.log("[updateBulkCells] State rolled back due to DB error.");
                         });
                     }
+                } else {
+                     console.log("[updateBulkCells] No DB operations needed based on filtered updates.");
                 }
             },
 
@@ -563,83 +627,6 @@ export const useDataStore = create<DataStoreState>()(
                 }
                 if (updates.length > 0) await get().updateBulkCells(updates);
                 return { isValid, issues };
-            },
-
-            ensureMatrixDimensions: (maxRow, maxCol, minColCount) => {
-                set((state) => {
-                    console.log(`ensureMatrixDimensions called: maxRow=${maxRow}, maxCol=${maxCol}, minColCount=${minColCount}`);
-                    const effectiveMaxCol = minColCount !== undefined ? Math.max(maxCol, minColCount - 1) : maxCol;
-                    const currentRows = state.data?.length || 0;
-                    const currentCols = currentRows > 0 ? (state.data[0]?.length || 0) : 0;
-                    console.log(`  -> Before: currentRows=${currentRows}, currentCols=${currentCols}, effectiveMaxCol=${effectiveMaxCol}`);
-
-                    if (maxRow < currentRows && effectiveMaxCol < currentCols) {
-                        console.log("  -> No dimensions change needed.");
-                        return; // No change needed
-                    }
-
-                    let structureChanged = false;
-                    if (currentRows === 0) {
-                        if (maxRow >= 0 || effectiveMaxCol >= 0) {
-                            const rowsCount = maxRow + 1; 
-                            const colsCount = effectiveMaxCol + 1;
-                            console.log(`  -> Initializing empty matrix: ${rowsCount}x${colsCount}`);
-                            state.data = Array.from({ length: rowsCount }, () => Array(colsCount).fill(""));
-                            structureChanged = true;
-                        } else { 
-                            console.log("  -> Initializing empty matrix: No rows/cols needed.");
-                            return; 
-                        }
-                    } else {
-                        // Ensure rows exist up to maxRow
-                        if (maxRow >= currentRows) {
-                            const targetCols = Math.max(currentCols, effectiveMaxCol + 1);
-                            console.log(`  -> Adding rows from ${currentRows} to ${maxRow} with ${targetCols} columns.`);
-                            for (let i = currentRows; i <= maxRow; i++) { 
-                                state.data.push(Array(targetCols).fill("")); 
-                            }
-                            structureChanged = true;
-                        }
-
-                        // Ensure all rows have enough columns
-                        const checkRows = state.data.length; // Use updated length
-                        const checkCols = checkRows > 0 ? (state.data[0]?.length || 0) : 0; // Re-check initial cols
-                        if (effectiveMaxCol >= checkCols) {
-                            const additionalColsCount = effectiveMaxCol + 1 - checkCols;
-                            if (additionalColsCount > 0) {
-                                console.log(`  -> Padding columns for ${checkRows} rows. Adding ${additionalColsCount} columns (from ${checkCols} to ${effectiveMaxCol + 1}).`);
-                                for (let i = 0; i < checkRows; i++) {
-                                    if (state.data[i]) {
-                                        // Check if this specific row needs padding (might already be long enough)
-                                        const currentRowLength = state.data[i].length;
-                                        if (effectiveMaxCol >= currentRowLength) {
-                                             const neededPadding = effectiveMaxCol + 1 - currentRowLength;
-                                             if (neededPadding > 0) {
-                                                state.data[i].push(...Array(neededPadding).fill(""));
-                                             }
-                                        }
-                                    } else {
-                                        // This case should be rare if row adding logic is correct
-                                        console.warn(`  -> Row ${i} was unexpectedly undefined during column padding. Recreating.`);
-                                        state.data[i] = Array(effectiveMaxCol + 1).fill("");
-                                    }
-                                }
-                                structureChanged = true;
-                            }
-                        }
-                    }
-
-                    if (structureChanged) { 
-                        console.log(`  -> Structure changed. New dimensions: ${state.data.length}x${state.data[0]?.length || 0}`);
-                        state.lastUpdated = new Date(); 
-                    } else {
-                        console.log("  -> No structure change detected within ensureMatrixDimensions logic.");
-                    }
-                    // Log final state of specific row if error involves it
-                    if (maxRow >= 3) {
-                         console.log(`  -> Final state.data[3] length: ${state.data[3]?.length}, exists: ${!!state.data[3]}`);
-                    }
-                });
             },
         }))
     )
