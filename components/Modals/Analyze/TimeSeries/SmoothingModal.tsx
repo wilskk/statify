@@ -186,7 +186,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                         id="year" 
                         value={getYear()} 
                         min={'1900'} 
-                        max={'2100'} 
+                        max={'2050'} 
                         step={'1'} 
                         onChange={(value) => setYear(value)}
                     />
@@ -443,8 +443,25 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     // Save smoothing results as a new variable
     const saveSmoothingResultsAsVariable = async (smoothingResult: any[], dataVarDef: Variable) => {
         // Prepare the new variable definition
+        let parametersUsed: string;
+        switch (selectedMethod[0]) {
+            case 'sma': case 'dma':
+                parametersUsed = `${parameters[0]}`;
+                break;
+            case 'ses': case 'des':
+                parametersUsed = `${parameters[0]}`;
+                break;
+            case 'holt':
+                parametersUsed = `${parameters[0]}_${parameters[1]}`;
+                break;
+            case 'winter':
+                parametersUsed = `${parameters[0]}_${parameters[1]}_${parameters[2]}`;
+                break;
+            default:
+                parametersUsed = "No parameters used";
+        }
         const newVarIndex = storeVariables.length;
-        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}`;
+        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}_${parametersUsed}`;
         const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
         
         const smoothingVariable: Partial<Variable> = {

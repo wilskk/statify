@@ -90,7 +90,7 @@ impl Arima{
             if ar.len() > 0 {
                 for i in 1..=ar_tmp.len(){
                     if i == 1 {
-                        ar_adj.push(2.0 + ar[1]);
+                        ar_adj.push(2.0 + ar[0]);
                     } else if i == ar_tmp.len() {
                         ar_adj.push(ar[ar.len()-1]);
                     } else {

@@ -236,6 +236,10 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
         dataVarDef: Variable
     ) => {
         const [descriptionTable, test, coefficient, criteria, evaluation, forecast, graphic] = results;
+        console.log(test);
+        console.log(criteria);
+        console.log(evaluation);
+        console.log(forecast);
         
         // Create log entry
         const logMsg = `ARIMA(${arOrder},${diffOrder},${maOrder}) ${dataVarDef.label || dataVarDef.name}.`;
@@ -295,7 +299,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
     const saveForcastingAsVariable = async (forecast: any[], dataVarDef: Variable) => {
         // Prepare the new variable definition
         const newVarIndex = storeVariables.length;
-        const newVarName = `${dataVarDef.name} ARIMA (${arOrder},${diffOrder},${maOrder}) ${newVarIndex}`;
+        const newVarName = `${dataVarDef.name} ARIMA (${arOrder},${diffOrder},${maOrder})`;
         
         const forecastingVariable: Partial<Variable> = {
             name: newVarName,

@@ -66,7 +66,11 @@ export async function handleAutocorrelation(
                         },
                         {
                             rowHeader: [`Periodicity`],
-                            description: `${seasonal === 0 ? "none" : seasonal}`,
+                            description: `${useSeasonal ? seasonal : ""}`,
+                        },
+                        {
+                            rowHeader: [`Maximum Lag`],
+                            description: `${lag}`,
                         },
                         {
                             rowHeader: [`Approach Method of Standard Error`],
@@ -78,8 +82,10 @@ export async function handleAutocorrelation(
                         },
                         {
                             rowHeader: [`Number Observations of Computable First Lags`],
-                            description: `${
-                                useSeasonal ? data.length - 1 - seasonal : 
+                            description: `${ 
+                                difference === 'first-difference' && useSeasonal ? data.length - 2 - seasonal :
+                                difference === 'second-difference' && useSeasonal ? data.length - 3 - seasonal :
+                                useSeasonal ? data.length - 1 - seasonal :
                                 difference === 'first-difference' ? data.length - 2 : 
                                 difference === 'second-difference' ? data.length - 3 : data.length - 1}`,
                         },
@@ -146,21 +152,17 @@ export async function handleAutocorrelation(
         let bartletRightACF = Array.from(autocorrelation.calculate_bartlet_right (new Float64Array(acf_se), 0.05));
         let structureACF: any[] = [];
         // Validasi panjang array
-        if (acf.length === lag && pacf.length === lag) {
-            for (let i = 0; i < lag; i++) {
-                structureACF.push({
-                    category: `lag ${i + 1}`,
-                    bars: {
-                        acf:acf[i]
-                    },
-                    lines: {
-                        bartletLeft: bartletLeftACF[i],
-                        bartletRight: bartletRightACF[i],
-                    },
-                });
-            }
-        } else {
-            throw new Error("Panjang array tidak sama!");
+        for (let i = 0; i < acf.length; i++) {
+            structureACF.push({
+                category: `lag ${i + 1}`,
+                bars: {
+                    acf:acf[i]
+                },
+                lines: {
+                    bartletLeft: bartletLeftACF[i],
+                    bartletRight: bartletRightACF[i],
+                },
+            });
         }
         let acfGraphicJSON = JSON.stringify({
             charts: [
@@ -191,21 +193,17 @@ export async function handleAutocorrelation(
         let bartletRightPACF = Array.from(autocorrelation.calculate_bartlet_right(new Float64Array(pacf_se), 0.05));
         let structurePACF: any[] = [];
         // Validasi panjang array
-        if (acf.length === lag && pacf.length === lag) {
-            for (let i = 0; i < lag; i++) {
-                structurePACF.push({
-                    category: `lag ${i + 1}`,
-                    bars: {
-                        pacf:pacf[i]
-                    },
-                    lines: {
-                        bartletLeft: bartletLeftPACF[i],
-                        bartletRight: bartletRightPACF[i],
-                    },
-                });
-            }
-        } else {
-            throw new Error("Panjang array tidak sama!");
+        for (let i = 0; i < pacf.length; i++) {
+            structurePACF.push({
+                category: `lag ${i + 1}`,
+                bars: {
+                    pacf:pacf[i]
+                },
+                lines: {
+                    bartletLeft: bartletLeftPACF[i],
+                    bartletRight: bartletRightPACF[i],
+                },
+            });
         }
         let pacfGraphicJSON = JSON.stringify({
             charts: [

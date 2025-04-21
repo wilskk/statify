@@ -25,7 +25,7 @@ pub fn mae(data: Vec<f64>, forecast: Vec<f64>) -> f64{
 pub fn mpe(data: Vec<f64>, forecast: Vec<f64>) -> f64{
     let mut sum: f64 = 0.0;
     for i in 0..data.len(){
-        sum += (data[i] - forecast[i]) / data[i];
+        sum += (data[i] - forecast[i]) / data[i] * 100.0;
     }
     sum / data.len() as f64
 }
@@ -34,7 +34,7 @@ pub fn mpe(data: Vec<f64>, forecast: Vec<f64>) -> f64{
 pub fn mape(data: Vec<f64>, forecast: Vec<f64>) -> f64{
     let mut sum: f64 = 0.0;
     for i in 0..data.len(){
-        sum += ((data[i] - forecast[i]) / data[i]).abs();
+        sum += ((data[i] - forecast[i]) / data[i] * 100.0).abs();
     }
     sum / data.len() as f64
 }

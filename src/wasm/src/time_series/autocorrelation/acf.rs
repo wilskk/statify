@@ -17,7 +17,7 @@ impl Autocorrelation{
             denominator += (data[i] - mean).powi(2);
         }
         for i in 1..lag + 1{
-            if i >= n as i32{
+            if i >= n as i32 - 1{
                 break;
             }
             for j in 0..n - i as usize{

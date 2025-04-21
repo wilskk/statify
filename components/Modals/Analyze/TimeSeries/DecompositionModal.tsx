@@ -46,7 +46,6 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
     const trendedMethods: TrendedMethod[] = [
         { value: 'linear', label: 'Linear' },
-        { value: 'quadratic', label: 'Quadratic' },
         { value: 'exponential', label: 'Exponential' },
     ];
 
@@ -269,7 +268,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             suffix: string
         ) => {
             // Create variable definition
-            const variableName = `${dataVarDef.name}-${suffix}-${nextColumnIndex}`;
+            const variableName = `${dataVarDef.name}-${suffix}`;
             
             const newVariable: Partial<Variable> = {
                 name: variableName,

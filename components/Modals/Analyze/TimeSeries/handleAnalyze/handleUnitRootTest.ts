@@ -75,7 +75,7 @@ export async function handleUnitRootTest(
                         },
                         {
                             rowHeader: [`Number of Lags`],
-                            description: `${lag}`,
+                            description: `${methodName === "Dickey-Fuller" ? 0 : lag}`,
                         },
                         {
                             rowHeader: [`Differencing`],
@@ -92,8 +92,11 @@ export async function handleUnitRootTest(
                         {
                             rowHeader: [`Number Observations After Computing`],
                             description: `${
-                                differencing === 'first-difference' ? data.length - 2 - lag: 
-                                differencing === 'second-difference' ? data.length - 3 - lag : data.length - 1 -lag}`,
+                                differencing === 'first-difference' && methodName === "Augmented Dickey-Fuller"? data.length - 2 - lag : 
+                                differencing === 'second-difference' && methodName === "Augmented Dickey-Fuller"? data.length - 3 - lag :
+                                methodName === "Augmented Dickey-Fuller"? data.length - 1 - lag :
+                                differencing === 'first-difference' ? data.length - 2 : 
+                                differencing === 'second-difference' ? data.length - 3 : data.length - 1}`,
                         },
                     ],
                 }

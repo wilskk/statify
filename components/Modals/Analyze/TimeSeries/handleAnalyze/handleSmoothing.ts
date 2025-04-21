@@ -129,7 +129,7 @@ Promise<[string, number[], string, string]> {
                             description: `${data.length}`,
                         },
                         {
-                            rowHeader: [`Observations`],
+                            rowHeader: [`Smoothing Length`],
                             description: `${smoothingLength}`,
                         },
                     ],

@@ -69,7 +69,7 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
     const [selectedDifference, setSelectedDifference] = useState<string[]>(['level', 'level']);
     const [selectedPeriod, setSelectedPeriod] = useState<string[]>([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
-    const [maximumLag, setMaximumLag] = useState<number>(10);
+    const [maximumLag, setMaximumLag] = useState<number>(16);
     const [seasonally, setSeasonally] = useState<boolean>(false);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -138,7 +138,7 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
         setTypeDate('nd');
         setSelectedDifference(['level', 'level']);
         setSelectedPeriod([periods.find(p => p.id === getTypeDate())?.value || '0', periods.find(p => p.id === getTypeDate())?.label || 'Not Dated']);
-        setMaximumLag(10);
+        setMaximumLag(16);
         setSeasonally(false);
         setAvailableVariables(storeVariables.map(v => v.name));
         setDataVariable([]);
@@ -259,6 +259,8 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
         pacfGraphicJSON: any,
         dataVarDef: Variable
     ) => {
+        console.log(acf);
+        console.log(pacf);
         // Create log entry
         const logMsg = `AUTOCORRELATION: ${dataVarDef.label || dataVarDef.name} on ${selectedDifference[1]} ${seasonally ? `with periodicity ${selectedPeriod[1]}` : ""} with maximum lag ${maximumLag}`;
         const logId = await addLog({ log: logMsg });

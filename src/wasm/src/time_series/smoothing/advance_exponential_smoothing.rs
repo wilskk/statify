@@ -10,16 +10,11 @@ impl Smoothing{
         let mut holt_values: Vec<f64> = Vec::new();
         for i in 0..self.get_data().len(){
             if i == 0{
-                level.push(0.0);
+                level.push(self.get_data()[0]);
                 trend.push(0.0);
-                holt_values.push(0.0);
-            } else if i == 1{
-                level.push(self.get_data()[1]);
-                trend.push(self.get_data()[1] - self.get_data()[0]);
-                holt_values.push(0.0);
-            }
-            else{
-                level.push((alpha * self.get_data()[i]) + ((1.0 - alpha) * (level[i-1] - trend[i-1])));
+                holt_values.push(self.get_data()[0]);
+            }else{
+                level.push((alpha * self.get_data()[i]) + ((1.0 - alpha) * (level[i-1] + trend[i-1])));
                 trend.push(beta * (level[i] - level[i-1]) + (1.0 - beta) * trend[i-1]);
                 holt_values.push(level[i-1] + trend[i-1]);
             }
