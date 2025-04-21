@@ -4,6 +4,14 @@ import { ColumnSettings } from 'handsontable/settings';
 import { Variable } from '@/types/Variable';
 import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMNS, DEFAULT_MIN_ROWS } from './constants';
 
+// Helper function for default spare column config
+export const getDefaultSpareColumnConfig = (): ColumnSettings => ({
+    type: 'text',
+    width: DEFAULT_COLUMN_WIDTH,
+    className: 'htDimmed',
+    readOnly: false, // Allow typing
+});
+
 export const getColumnConfig = (variable?: Variable): ColumnSettings => {
     if (!variable) {
         return { width: DEFAULT_COLUMN_WIDTH };
@@ -45,6 +53,8 @@ export const getColumnConfig = (variable?: Variable): ColumnSettings => {
     return config;
 };
 
+// Remove unused getDisplayMatrix function
+/*
 export const getDisplayMatrix = (
     stateData: (string | number | null)[][],
     varCount: number
@@ -64,6 +74,7 @@ export const getDisplayMatrix = (
         return fullRow;
     });
 };
+*/
 
 export const areValuesEqual = (val1: any, val2: any): boolean => {
     if (val1 === val2) return true;

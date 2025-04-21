@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { HotTable, HotTableClass } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
 
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useDataTableLogic } from './useDataTableLogic';
+import './DataTable.css';
 
 registerAllModules();
 
@@ -26,7 +27,29 @@ export default function DataTable() {
         handleAfterRemoveCol,
         handleAfterColumnResize,
         handleAfterValidate,
+        isRangeSelected,
+        actualNumRows,
+        actualNumCols,
     } = useDataTableLogic(hotTableRef);
+
+    const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
+        if (row >= actualNumRows) {
+            TH.classList.add('grayed-row-header', 'visual-spare-header');
+        } else {
+            TH.classList.remove('grayed-row-header', 'visual-spare-header');
+        }
+    }, [actualNumRows]);
+
+    const handleAfterGetColHeader = useCallback((col: number, TH: HTMLTableCellElement) => {
+        TH.classList.remove('grayed-col-header', 'visual-spare-header');
+
+        if (col >= actualNumCols) {
+            TH.classList.add('grayed-col-header', 'visual-spare-header');
+        } else {
+            // Active columns (0 <= col < actualNumCols) - ensure spare styles are removed
+            // No specific class needed unless you want a distinct active style
+        }
+    }, [actualNumCols]);
 
     useEffect(() => {
         if (hotTableRef.current) {
@@ -66,12 +89,12 @@ export default function DataTable() {
                 manualRowResize={false}
                 manualColumnMove={false}
                 manualRowMove={false}
-                dropdownMenu={true}
+                dropdownMenu={false}
                 filters={true}
                 customBorders={true}
                 copyPaste={true}
                 licenseKey="non-commercial-and-evaluation"
-                minSpareRows={1}
+                minSpareRows={0}
                 minSpareCols={0}
                 allowInvalid={false}
                 outsideClickDeselects={false}
@@ -84,6 +107,8 @@ export default function DataTable() {
                 afterRemoveCol={handleAfterRemoveCol}
                 afterColumnResize={handleAfterColumnResize}
                 afterValidate={handleAfterValidate}
+                afterGetRowHeader={handleAfterGetRowHeader}
+                afterGetColHeader={handleAfterGetColHeader}
             />
         </div>
     );

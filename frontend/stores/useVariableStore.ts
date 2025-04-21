@@ -232,116 +232,109 @@ export const useVariableStore = create<VariableStoreState>()(
             addVariable: async (variableData?: Partial<Variable>) => {
                 try {
                     await db.transaction('rw', db.variables, async () => {
-                        const existingVariables = [...get().variables];
-                        const targetIndex = variableData?.columnIndex !== undefined
-                            ? variableData.columnIndex
-                            : existingVariables.reduce((max, v) => Math.max(max, v.columnIndex), -1) + 1;
-
-                        const variablesToShift = existingVariables
-                            .filter(variable => variable.columnIndex >= targetIndex)
-                            .map(variable => ({ ...variable, columnIndex: variable.columnIndex + 1 }));
-
-                        if (variablesToShift.length > 0) {
-                            await db.variables.bulkPut(variablesToShift);
-                        }
-
-                        const defaultVar = createDefaultVariable(targetIndex, existingVariables);
+                        // 1. Read ALL current variables within the transaction
+                        const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
+                        let maxCurrentIndex = allCurrentVariables.length > 0 ? allCurrentVariables[allCurrentVariables.length - 1].columnIndex : -1;
+            
+                        // 2. Determine target index for the new variable
+                        // If columnIndex is provided, use it for initial sorting placement,
+                        // otherwise, place it at the end for sorting.
+                        const intendedSortIndex = variableData?.columnIndex ?? (maxCurrentIndex + 1);
+            
+                        // 3. Prepare the new variable
+                        const defaultVar = createDefaultVariable(intendedSortIndex, allCurrentVariables);
                         const inferredValues = variableData?.type ? inferDefaultValues(variableData.type) : {};
-
-                        const newVariable: Variable = {
-                            ...defaultVar,
-                            ...inferredValues,
-                            ...variableData,
-                            columnIndex: targetIndex
-                        };
-
-                        if (variableData?.name) {
-                            const currentVariableNames = get().variables.map(v => v.name);
-                            const nameResult = processVariableName(variableData.name, get().variables);
-                            if (nameResult.isValid && nameResult.processedName) {
-                                newVariable.name = nameResult.processedName;
-                            }
-                        }
-
-                        const id = await db.variables.add(newVariable);
-
+                        const newVariableBase: Variable = { ...defaultVar, ...inferredValues, ...variableData };
+                        
+                        // Ensure name is unique relative to existing vars
+                        const nameResult = processVariableName(newVariableBase.name, allCurrentVariables);
+                        const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name; // Fallback to original default if needed
+            
+                        const newVariable: Variable = { ...newVariableBase, name: finalName, columnIndex: intendedSortIndex };
+            
+                        // 4. Combine, sort by intended index, re-index sequentially
+                        const combined = [...allCurrentVariables, newVariable];
+                        // Sort primarily by intended columnIndex, secondarily maybe by ID or original position if needed?
+                        // For now, simple columnIndex sort is enough as we re-index.
+                        combined.sort((a, b) => a.columnIndex - b.columnIndex);
+            
+                        const finalVariables = combined.map((variable, index) => ({
+                            ...variable,
+                            columnIndex: index // Assign final sequential index
+                        }));
+            
+                        // 5. Clear table and bulkPut final list
+                        await db.variables.clear();
+                        await db.variables.bulkPut(finalVariables);
+            
+                        // 6. Update Zustand state
                         set((draft) => {
-                            const shiftedIndices = new Set(variablesToShift.map(v => v.id));
-                            draft.variables = draft.variables.filter(v => !shiftedIndices.has(v.id) || v.columnIndex < targetIndex);
-                            draft.variables.push(...variablesToShift);
-                            draft.variables.push({ ...newVariable, id });
-                            draft.variables.sort((a, b) => a.columnIndex - b.columnIndex);
+                            draft.variables = finalVariables;
                             draft.lastUpdated = new Date();
+                            draft.error = null;
                         });
                     });
-                    await get().ensureCompleteVariables();
+                    // No need for ensureCompleteVariables as we rebuild the index
                 } catch (error: any) {
                     console.error("Error in addVariable:", error);
                     set((draft) => { draft.error = { message: error.message || "Error adding variable", source: "addVariable", originalError: error }; });
-                    await get().loadVariables();
+                    await get().loadVariables(); // Reload on error
                 }
             },
 
             addMultipleVariables: async (variablesData) => {
                 try {
                     await db.transaction('rw', db.variables, async () => {
-                        const existingVariables = [...get().variables];
+                        // 1. Read ALL current variables within the transaction
+                        const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
+                        let maxCurrentIndex = allCurrentVariables.length > 0 ? allCurrentVariables[allCurrentVariables.length - 1].columnIndex : -1;
+            
+                        // 2. Prepare new variables
                         const newVariablesInput = [...variablesData];
-                        const addedVariables: Variable[] = [];
+                        const preparedNewVariables: Variable[] = [];
+                        let tempIndexCounter = 1; // For assigning temporary sort indices if needed
+            
+                        for (const data of newVariablesInput) {
+                            const intendedSortIndex = data.columnIndex ?? (maxCurrentIndex + tempIndexCounter++); // Place at end if no index
+                            const currentAndPrepared = [...allCurrentVariables, ...preparedNewVariables]; // Check against existing + already prepared new ones
+                            
+                            const defaultVar = createDefaultVariable(intendedSortIndex, currentAndPrepared);
+                            const inferredValues = data.type ? inferDefaultValues(data.type) : {};
+                            const newVariableBase: Variable = { ...defaultVar, ...inferredValues, ...data };
 
-                        newVariablesInput.sort((a, b) => (a.columnIndex ?? Infinity) - (b.columnIndex ?? Infinity));
-
-                        let currentIndex = existingVariables.reduce((max, v) => Math.max(max, v.columnIndex), -1) + 1;
-                        const variablesToShift: Variable[] = [];
-                        const variablesToAdd: Variable[] = [];
-
-                        for (const variableData of newVariablesInput) {
-                            const targetIndex = variableData.columnIndex ?? currentIndex;
-
-                            existingVariables.forEach(existingVar => {
-                                if (existingVar.columnIndex >= targetIndex && !variablesToShift.find(v => v.id === existingVar.id)) {
-                                    variablesToShift.push({ ...existingVar });
-                                }
-                            });
-
-                            const allKnownVars = [...existingVariables, ...addedVariables];
-                            const defaultVar = createDefaultVariable(targetIndex, allKnownVars);
-                            const inferredValues = variableData.type ? inferDefaultValues(variableData.type) : {};
-                            const newVariable: Variable = { ...defaultVar, ...inferredValues, ...variableData, columnIndex: targetIndex };
-
-                            if (variableData.name) {
-                                const nameResult = processVariableName(variableData.name, allKnownVars);
-                                if (nameResult.isValid && nameResult.processedName) newVariable.name = nameResult.processedName;
-                            }
-                            variablesToAdd.push(newVariable);
-                            addedVariables.push(newVariable);
-
-                            if (variableData.columnIndex === undefined) {
-                                currentIndex++;
-                            }
+                            // Ensure name is unique
+                            const nameResult = processVariableName(newVariableBase.name, currentAndPrepared);
+                            const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
+                            
+                            preparedNewVariables.push({ ...newVariableBase, name: finalName, columnIndex: intendedSortIndex });
                         }
-
-                        const finalShiftedVariables = variablesToShift.map(v => ({ ...v, columnIndex: v.columnIndex + variablesToAdd.length }));
-
-                        if (finalShiftedVariables.length > 0) {
-                            await db.variables.bulkPut(finalShiftedVariables);
-                        }
-                        const ids = await db.variables.bulkAdd(variablesToAdd, { allKeys: true });
-
+            
+                        // 3. Combine current and new, sort by intended final columnIndex
+                        const combined = [...allCurrentVariables, ...preparedNewVariables];
+                        combined.sort((a, b) => a.columnIndex - b.columnIndex);
+            
+                        // 4. Re-index the combined list sequentially from 0
+                        const finalVariables = combined.map((variable, index) => ({
+                             ...variable,
+                             columnIndex: index // Assign final sequential index
+                        }));
+            
+                        // 5. Clear the table and bulkPut the final, correctly indexed list
+                        await db.variables.clear();
+                        await db.variables.bulkPut(finalVariables);
+            
+                        // 6. Update Zustand state
                         set(draft => {
-                            const shiftedIds = new Set(finalShiftedVariables.map(v => v.id));
-                            draft.variables = draft.variables.filter(v => !shiftedIds.has(v.id));
-                            draft.variables.push(...finalShiftedVariables);
-                            draft.variables.push(...variablesToAdd.map((v, i) => ({ ...v, id: ids[i] })));
-                            draft.variables.sort((a, b) => a.columnIndex - b.columnIndex);
+                            draft.variables = finalVariables;
                             draft.lastUpdated = new Date();
+                            draft.error = null; // Clear previous errors on success
                         });
                     });
-                    await get().ensureCompleteVariables();
+                    // No need for ensureCompleteVariables
                 } catch (error: any) {
                     console.error("Error adding multiple variables:", error);
                     set((draft) => { draft.error = { message: error.message || "Error adding multiple variables", source: "addMultipleVariables", originalError: error }; });
-                    await get().loadVariables();
+                    await get().loadVariables(); // Reload on error
                 }
             },
 
@@ -396,43 +389,44 @@ export const useVariableStore = create<VariableStoreState>()(
             deleteVariable: async (columnIndex: number) => {
                 try {
                     await db.transaction('rw', db.variables, async () => {
-                        const variableToDelete = await db.variables.where('columnIndex').equals(columnIndex).first();
-                        if (!variableToDelete || variableToDelete.id === undefined) {
-                            const stateIndex = get().variables.findIndex(v => v.columnIndex === columnIndex);
-                            if (stateIndex === -1) {
-                                console.warn(`Variable with column index ${columnIndex} not found in DB or state.`);
-                                return;
-                            }
-                        } else {
-                            await db.variables.delete(variableToDelete.id);
+                        // 1. Read all variables
+                        const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
+
+                        // 2. Filter out the variable to delete
+                        const variablesAfterDelete = allCurrentVariables.filter(v => v.columnIndex !== columnIndex);
+
+                        // 3. Check if anything was actually deleted (important to avoid unnecessary writes)
+                        if (variablesAfterDelete.length === allCurrentVariables.length) {
+                            console.warn(`Variable with column index ${columnIndex} not found for deletion.`);
+                            // Optionally set an error or just return if the variable didn't exist
+                            // set((draft) => { draft.error = { message: `Variable index ${columnIndex} not found`, source: "deleteVariable" }; });
+                            return; 
                         }
 
-                        const variablesToShift = await db.variables.where('columnIndex').above(columnIndex).toArray();
-                        const shiftedVariables = variablesToShift.map(variable => ({ ...variable, columnIndex: variable.columnIndex - 1 }));
+                        // 4. Re-index the remaining variables sequentially
+                        const finalVariables = variablesAfterDelete.map((variable, index) => ({
+                            ...variable,
+                            columnIndex: index // Assign final sequential index
+                        }));
 
-                        if (shiftedVariables.length > 0) {
-                            await db.variables.bulkPut(shiftedVariables);
+                        // 5. Clear table and bulkPut the re-indexed list
+                        await db.variables.clear();
+                        if (finalVariables.length > 0) { // Only bulkPut if there are remaining variables
+                            await db.variables.bulkPut(finalVariables);
                         }
 
+                        // 6. Update Zustand state
                         set((draft) => {
-                            const variableIndex = draft.variables.findIndex(v => v.columnIndex === columnIndex);
-                            if (variableIndex !== -1) {
-                                draft.variables.splice(variableIndex, 1);
-                                draft.variables.forEach(v => {
-                                    if(v.columnIndex > columnIndex) {
-                                        v.columnIndex -= 1;
-                                    }
-                                });
-                                draft.variables.sort((a, b) => a.columnIndex - b.columnIndex);
-                                draft.lastUpdated = new Date();
-                            }
+                            draft.variables = finalVariables;
+                            draft.lastUpdated = new Date();
+                            draft.error = null; // Clear error on success
                         });
                     });
-                    await get().ensureCompleteVariables();
+                    // No need for ensureCompleteVariables
                 } catch (error: any) {
                     console.error("Error deleting variable:", error);
                     set((draft) => { draft.error = { message: error.message || "Error deleting variable", source: "deleteVariable", originalError: error }; });
-                    await get().loadVariables();
+                    await get().loadVariables(); // Reload on error
                 }
             },
 
