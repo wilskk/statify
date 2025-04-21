@@ -269,6 +269,191 @@ fn generate_combinations(
     }
 }
 
+/// Generate all possible interaction terms from a list of factors
+pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
+    if factors.is_empty() {
+        return Vec::new();
+    }
+
+    // We'll store all the interaction terms here
+    let mut interactions = Vec::new();
+
+    // Generate all possible combinations of factors from size 2 to size N
+    // (We start from 2 because size 1 would just be the individual factors)
+    for size in 2..=factors.len() {
+        generate_factor_combinations(factors, size, &mut Vec::new(), 0, &mut interactions);
+    }
+
+    interactions
+}
+
+/// Helper function to recursively generate factor combinations of a specific size
+fn generate_factor_combinations(
+    factors: &[String],
+    size: usize,
+    current: &mut Vec<String>,
+    start_idx: usize,
+    result: &mut Vec<String>
+) {
+    // If we've selected the required number of factors, create the interaction term
+    if current.len() == size {
+        // Join the selected factors with "*" to form the interaction term
+        let interaction = current.join("*");
+        result.push(interaction);
+        return;
+    }
+
+    // Try including each remaining factor
+    for i in start_idx..factors.len() {
+        // Add this factor to our current selection
+        current.push(factors[i].clone());
+
+        // Recursively generate combinations with this factor included
+        generate_factor_combinations(factors, size, current, i + 1, result);
+
+        // Remove this factor for the next iteration (backtracking)
+        current.pop();
+    }
+}
+
+/// Parse an interaction term into its component factors
+pub fn parse_interaction_term(term: &str) -> Vec<String> {
+    term.split('*')
+        .map(|s| s.trim().to_string())
+        .collect()
+}
+
+/// Check if a record matches an interaction term
+/// An interaction term might be something like "age*month" or "age*month*year"
+pub fn record_matches_interaction(
+    record: &DataRecord,
+    combination: &HashMap<String, String>,
+    interaction_term: &str
+) -> bool {
+    let factors = parse_interaction_term(interaction_term);
+
+    for factor in &factors {
+        if let Some(expected_level) = combination.get(factor) {
+            let actual_level = record.values.get(factor).map(data_value_to_string);
+            match actual_level {
+                Some(ref level) if level == expected_level => {
+                    continue;
+                }
+                _ => {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Get factor combinations that include interactions
+pub fn get_factor_combinations_with_interactions(
+    data: &AnalysisData,
+    config: &UnivariateConfig
+) -> Result<Vec<HashMap<String, String>>, String> {
+    let mut combinations = get_factor_combinations(data, config)?;
+
+    // If there are no fixed factors or only one, return the basic combinations
+    if config.main.fix_factor.is_none() || config.main.fix_factor.as_ref().unwrap().len() <= 1 {
+        return Ok(combinations);
+    }
+
+    // Generate interaction terms
+    let factors = config.main.fix_factor.as_ref().unwrap();
+    let interaction_terms = generate_interaction_terms(factors);
+
+    // For each combination, add derived values for each interaction term
+    for combo in &mut combinations {
+        for term in &interaction_terms {
+            // For interaction terms, we could store a special value that indicates
+            // this is a combination of the individual factors, but for simplicity
+            // we'll just store the term name as the key and value
+            combo.insert(term.clone(), term.clone());
+        }
+    }
+
+    Ok(combinations)
+}
+
+/// Extract values for records that match a specific interaction
+pub fn get_interaction_level_values(
+    data: &AnalysisData,
+    interaction_term: &str,
+    dep_var_name: &str
+) -> Result<Vec<f64>, String> {
+    let factors = parse_interaction_term(interaction_term);
+    let mut values = Vec::new();
+
+    // Get the levels for each factor in the interaction
+    let mut factor_levels = Vec::new();
+    for factor in &factors {
+        factor_levels.push(get_factor_levels(data, factor)?);
+    }
+
+    // Generate all possible level combinations for this interaction
+    let mut level_combinations = Vec::new();
+    let mut current = HashMap::new();
+
+    fn generate_level_combinations(
+        current: &mut HashMap<String, String>,
+        factors: &[String],
+        levels: &[Vec<String>],
+        index: usize,
+        result: &mut Vec<HashMap<String, String>>
+    ) {
+        if index == factors.len() {
+            result.push(current.clone());
+            return;
+        }
+
+        for level in &levels[index] {
+            current.insert(factors[index].clone(), level.clone());
+            generate_level_combinations(current, factors, levels, index + 1, result);
+        }
+    }
+
+    generate_level_combinations(&mut current, &factors, &factor_levels, 0, &mut level_combinations);
+
+    // For each level combination, extract matching records
+    for combo in &level_combinations {
+        let mut combo_values = Vec::new();
+
+        for records in &data.dependent_data {
+            for record in records {
+                let mut matches = true;
+
+                for (factor, expected_level) in combo {
+                    let actual_level = record.values.get(factor).map(data_value_to_string);
+                    match actual_level {
+                        Some(ref level) if level == expected_level => {
+                            continue;
+                        }
+                        _ => {
+                            matches = false;
+                            break;
+                        }
+                    }
+                }
+
+                if matches {
+                    if let Some(value) = extract_dependent_value(record, dep_var_name) {
+                        combo_values.push(value);
+                    }
+                }
+            }
+        }
+
+        values.extend(combo_values);
+    }
+
+    Ok(values)
+}
+
 /// Check if a record matches a particular factor combination
 pub fn matches_combination(
     record: &DataRecord,

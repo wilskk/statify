@@ -28,13 +28,16 @@ pub fn run_analysis(
 
     // Step 1: Basic processing summary (always executed)
     executed_functions.push("basic_processing_summary".to_string());
-    let processing_summary = match core::basic_processing_summary(data, config) {
-        Ok(summary) => summary,
+    let mut processing_summary = None;
+    match core::basic_processing_summary(data, config) {
+        Ok(summary) => {
+            // Store the summary in the result
+            processing_summary = Some(summary);
+        }
         Err(e) => {
             error_collector.add_error("basic_processing_summary", &e);
-            return Err(string_to_js_error(e));
         }
-    };
+    }
 
     // Step 2: Descriptive statistics if requested
     let mut descriptive_statistics = None;
@@ -75,7 +78,6 @@ pub fn run_analysis(
         }
         Err(e) => {
             error_collector.add_error("calculate_tests_between_subjects_effects", &e);
-            return Err(string_to_js_error(e));
         }
     }
 

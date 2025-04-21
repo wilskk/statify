@@ -6,8 +6,8 @@ use super::core::{
     calculate_mean,
     data_value_to_string,
     extract_dependent_value,
+    generate_interaction_terms,
     get_factor_combinations,
-    matches_combination,
 };
 
 /// Calculate Levene's Test for homogeneity of variances if requested
@@ -56,20 +56,41 @@ pub fn calculate_levene_test(
         }
     }
 
-    // Add fixed factors
-    if let Some(fix_factors) = &config.main.fix_factor {
-        for factor in fix_factors {
+    // Collect all terms (factors and interactions)
+    let mut all_terms = Vec::new();
+
+    // Add fixed factors and collect them for later interaction generation
+    let fix_factors = if let Some(factors) = &config.main.fix_factor {
+        // Add individual factors to design
+        for factor in factors {
             design.push_str(" + ");
             design.push_str(factor);
+            all_terms.push(factor.clone());
         }
-    }
 
-    // Add interactions if specified in model
+        // Generate interactions if there's more than one factor and term_text isn't specified
+        if factors.len() > 1 && config.model.term_text.is_none() {
+            let interaction_terms = generate_interaction_terms(factors);
+            for term in &interaction_terms {
+                design.push_str(" + ");
+                design.push_str(term);
+                all_terms.push(term.clone());
+            }
+        }
+
+        factors.clone()
+    } else {
+        Vec::new()
+    };
+
+    // Add explicitly specified interactions if term_text is provided
     if let Some(term_text) = &config.model.term_text {
         for term in term_text.split('+') {
-            if term.contains('*') {
+            let trimmed = term.trim();
+            if trimmed.contains('*') {
                 design.push_str(" + ");
-                design.push_str(term.trim());
+                design.push_str(trimmed);
+                all_terms.push(trimmed.to_string());
             }
         }
     }
@@ -77,9 +98,8 @@ pub fn calculate_levene_test(
     let mut results = Vec::new();
 
     for dep_var_name in dep_vars {
-        // Get factor combinations
+        // Get factor combinations for the basic fixed factors
         let factor_combinations = get_factor_combinations(data, config)?;
-        web_sys::console::log_1(&format!("Factor combinations: {:?}", factor_combinations).into());
 
         // Organize data values by group
         let mut groups: Vec<Vec<f64>> = Vec::new();
@@ -94,30 +114,34 @@ pub fn calculate_levene_test(
                     // Check if this record's corresponding factor values match the current combination
                     let mut matches = true;
 
-                    if let Some(factors) = &config.main.fix_factor {
-                        for (i, factor) in factors.iter().enumerate() {
-                            if
-                                i >= data.fix_factor_data.len() ||
-                                record_idx >= data.fix_factor_data[i].len()
-                            {
-                                matches = false;
-                                break;
+                    if !fix_factors.is_empty() {
+                        // Check if this record matches the current combination of factor levels
+                        for (factor, combo_level) in combo {
+                            // Find the factor value for this record
+                            let mut found = false;
+
+                            // Look for the factor in fix_factor_data
+                            for (i, factor_name) in fix_factors.iter().enumerate() {
+                                if
+                                    factor_name == factor &&
+                                    i < data.fix_factor_data.len() &&
+                                    record_idx < data.fix_factor_data[i].len()
+                                {
+                                    let factor_record = &data.fix_factor_data[i][record_idx];
+                                    if let Some(value) = factor_record.values.get(factor) {
+                                        let record_level = data_value_to_string(value);
+                                        if &record_level != combo_level {
+                                            matches = false;
+                                        }
+                                        found = true;
+                                        break;
+                                    }
+                                }
                             }
 
-                            let factor_record = &data.fix_factor_data[i][record_idx];
-                            let record_level = factor_record.values
-                                .get(factor)
-                                .map(data_value_to_string);
-                            let combo_level = combo.get(factor);
-
-                            match (record_level, combo_level) {
-                                (Some(ref r_level), Some(c_level)) if r_level == c_level => {
-                                    continue;
-                                }
-                                _ => {
-                                    matches = false;
-                                    break;
-                                }
+                            if !found {
+                                matches = false;
+                                break;
                             }
                         }
                     }
@@ -135,8 +159,6 @@ pub fn calculate_levene_test(
                 groups.push(group_values);
             }
         }
-
-        web_sys::console::log_1(&format!("Groups for {}: {:?}", dep_var_name, groups).into());
 
         // Skip if not enough groups for analysis
         if groups.len() < 2 {

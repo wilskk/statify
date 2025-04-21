@@ -86,10 +86,10 @@ export async function analyzeUnivariate({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    await resultUnivariateAnalysis({
-        addLog,
-        addAnalytic,
-        addStatistic,
-        formattedResult: formattedResults ?? [],
-    });
+    // await resultUnivariateAnalysis({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }

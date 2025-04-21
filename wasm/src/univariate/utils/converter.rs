@@ -105,8 +105,8 @@ struct FormattedPlot {
 
 impl FormatResult {
     fn from_univariate_result(result: &UnivariateResult) -> Self {
-        let between_subjects_factors = if !result.between_subjects_factors.is_empty() {
-            let factors = result.between_subjects_factors
+        let between_subjects_factors = result.between_subjects_factors.as_ref().map(|factors| {
+            factors
                 .iter()
                 .map(|(name, bsf)| {
                     FormattedBetweenSubjectFactor {
@@ -122,11 +122,8 @@ impl FormatResult {
                             .collect(),
                     }
                 })
-                .collect();
-            Some(factors)
-        } else {
-            None
-        };
+                .collect()
+        });
 
         let descriptive_statistics = result.descriptive_statistics.as_ref().map(|stats| {
             stats
