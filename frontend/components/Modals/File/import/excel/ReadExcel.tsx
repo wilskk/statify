@@ -122,8 +122,6 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                     width: isNumeric ? 8 : Math.min(maxLength, 200),
                     decimals: isNumeric ? 2 : 0,
                     label: "",
-                    values: [],
-                    missing: [],
                     columns: 200,
                     align: isNumeric ? "right" : "left",
                     measure: "nominal",

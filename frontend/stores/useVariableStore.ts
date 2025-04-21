@@ -57,7 +57,7 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
     const nameResult = processVariableName(baseName, existingVariables);
     return {
         columnIndex: index, name: nameResult.processedName || baseName, type: "NUMERIC", width: 8, decimals: 2,
-        label: "", values: [], missing: [], columns: 64, align: "right", measure: "unknown", role: "input"
+        label: "", values: [], missing: null, columns: 64, align: "right", measure: "unknown", role: "input"
     };
 };
 

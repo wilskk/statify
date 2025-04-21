@@ -160,12 +160,12 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
                     width: isNumeric ? 8 : maxLength,
                     decimals: isNumeric ? 2 : 0,
                     label: '',
-                    values: [],
-                    missing: [],
                     columns: 200,
                     align: isNumeric ? 'right' : 'left',
                     measure: 'nominal',
-                    role: 'input'
+                    role: 'input',
+                    values: [],
+                    missing: null
                 };
 
                 const existingVariable = getVariableByColumnIndex(colIndex);

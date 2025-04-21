@@ -128,7 +128,7 @@ const ComputeVariable: React.FC<ComputeVariableProps> = ({ onClose }) => {
               decimals: variableType === "NUMERIC" ? 2 : 0,
               label: variableLabel,
               values: [],
-              missing: [],
+              missing: null,
               columns: 200,
               align: variableType === "NUMERIC" ? "right" : "left",
               measure: variableType === "NUMERIC" ? "scale" : "nominal",

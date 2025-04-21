@@ -264,7 +264,6 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
                     { variableName: "filter_$", value: 0, label: "Not Selected" },
                     { variableName: "filter_$", value: 1, label: "Selected" }
                 ],
-                missing: []
             });
 
             await updateBulkCells(updates);
@@ -372,7 +371,6 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
                 values: [
                     { variableName: "filter_$", value: 1, label: "Selected" }
                 ],
-                missing: []
             });
 
             await updateBulkCells(updates);

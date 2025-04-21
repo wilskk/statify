@@ -1,0 +1,10 @@
+/* components/VariableTable.css atau file CSS global */
+.handsontable th.grayed-header {
+    color: #999999;
+    background-color: #f8f9fa;
+    font-weight: normal;
+}
+
+.handsontable th {
+    /* Styling dasar TH jika diperlukan */
+}

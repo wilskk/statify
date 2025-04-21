@@ -1,3 +1,4 @@
+// statify/components/modal/OpenData.tsx
 "use client";
 
 import React, { useState, FC } from "react";
@@ -13,6 +14,7 @@ import { ModalType, useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
+import { Variable, VariableType, ValueLabel, MissingValuesSpec, MissingRange } from "@/types/Variable";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, X, AlertCircle } from "lucide-react";
@@ -21,34 +23,15 @@ interface OpenDataProps {
     onClose: () => void;
 }
 
-// Helper function to map SPSS format types to our interface types
-const mapSPSSTypeToInterface = (formatType: string): string => {
-    const typeMap: { [key: string]: string } = {
-        "F": "NUMERIC",
-        "COMMA": "COMMA",
-        "E": "SCIENTIFIC",
-        "DATE": "DATE",
-        "ADATE": "ADATE",
-        "EDATE": "EDATE",
-        "SDATE": "SDATE",
-        "JDATE": "JDATE",
-        "QYR": "QYR",
-        "MOYR": "MOYR",
-        "WKYR": "WKYR",
-        "DATETIME": "DATETIME",
-        "TIME": "TIME",
-        "DTIME": "DTIME",
-        "WKDAY": "WKDAY",
-        "MONTH": "MONTH",
-        "DOLLAR": "DOLLAR",
-        "A": "STRING",
-        "CCA": "CCA",
-        "CCB": "CCB",
-        "CCC": "CCC",
-        "CCD": "CCD",
-        "CCE": "CCE"
+const mapSPSSTypeToInterface = (formatType: string): VariableType => {
+    const typeMap: { [key: string]: VariableType } = {
+        "F": "NUMERIC", "COMMA": "COMMA", "E": "SCIENTIFIC", "DATE": "DATE",
+        "ADATE": "ADATE", "EDATE": "EDATE", "SDATE": "SDATE", "JDATE": "JDATE",
+        "QYR": "QYR", "MOYR": "MOYR", "WKYR": "WKYR", "DATETIME": "DATETIME",
+        "TIME": "TIME", "DTIME": "DTIME", "WKDAY": "WKDAY", "MONTH": "MONTH",
+        "DOLLAR": "DOLLAR", "A": "STRING", "CCA": "CCA", "CCB": "CCB",
+        "CCC": "CCC", "CCD": "CCD", "CCE": "CCE"
     };
-
     return typeMap[formatType] || "NUMERIC";
 };
 
@@ -56,8 +39,6 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [meta, setMeta] = useState<any>(null);
-    const [rows, setRows] = useState<any[]>([]);
 
     const { closeModal } = useModal();
     const { overwriteVariables, resetVariables } = useVariableStore();
@@ -67,13 +48,12 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0] || null;
         setFile(selected);
-        setError(null); // Clear error when a new file is selected
+        setError(null);
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
-
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             const droppedFile = e.dataTransfer.files[0];
             if (droppedFile.name.endsWith('.sav')) {
@@ -102,76 +82,118 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 await resetData();
                 await resetVariables();
 
-                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'; // Get backend URL
-                const response = await fetch(`${backendUrl}/api/sav/upload`, { // Use full URL
+                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+                const response = await fetch(`${backendUrl}/api/sav/upload`, {
                     method: "POST",
                     body: formData,
                 });
 
                 if (!response.ok) {
-                    throw new Error("Failed to process file");
+                    const errorData = await response.json().catch(() => null);
+                    throw new Error(errorData?.message || "Failed to process file on backend");
                 }
 
                 const result = await response.json();
-                console.log("Metadata:", result.meta);
-                console.log("Data rows:", result.rows);
 
-                setMeta(result.meta);
-                setRows(result.rows);
+                const metaHeader = result.meta?.header;
+                const sysvars = result.meta?.sysvars;
+                const valueLabelsData = result.meta?.valueLabels;
+                const dataRowsRaw = result.rows;
 
-                const numCases = result.meta.header.n_cases;
-                const numVars = result.meta.header.n_vars;
-                const sysvars = result.meta.sysvars;
+                if (!metaHeader || !sysvars || !dataRowsRaw) {
+                    throw new Error("Invalid response structure from backend");
+                }
 
-                const variables = sysvars.map((varInfo: any, colIndex: number) => {
-                    const variableName = varInfo.name || `VAR${colIndex + 1}`;
-                    const formatType = varInfo.printFormat.typestr;
-                    const isString = formatType === "A" || varInfo.type === 1;
+                const numCases = metaHeader.n_cases;
+                const numVars = metaHeader.n_vars;
 
-                    const valueLabelsObj = result.meta.valueLabels?.find(
-                        (vl: any) => vl.appliesToNames.includes(variableName)
+                // Proses metadata menjadi array 'variables'
+                const variables: Variable[] = sysvars.map((varInfo: any, colIndex: number): Variable => {
+                    const variableName = varInfo.name || `VAR${String(colIndex + 1).padStart(3, '0')}`;
+                    const formatType = varInfo.printFormat?.typestr || (varInfo.type === 1 ? "A" : "F");
+                    const isString = formatType === "A";
+
+                    const valueLabelsObj = valueLabelsData?.find(
+                        (vl: any) => vl.appliesToNames?.includes(variableName)
                     );
-
-                    const valueLabels = valueLabelsObj ?
-                        valueLabelsObj.entries.map((entry: any) => ({
-                            id: undefined,
+                    const values: ValueLabel[] = valueLabelsObj ?
+                        valueLabelsObj.entries.map((entry: any): ValueLabel => ({
                             variableName,
                             value: entry.val,
                             label: entry.label
                         })) : [];
 
+                    let missingValueSpec: MissingValuesSpec | null = null;
+                    const rawMissing = varInfo.missing;
+
+                    if (rawMissing !== null && rawMissing !== undefined) {
+                        if (typeof rawMissing === 'object' && !Array.isArray(rawMissing) && (rawMissing.hasOwnProperty('min') || rawMissing.hasOwnProperty('max'))) {
+                            const range: MissingRange = {};
+                            if (rawMissing.min !== undefined && typeof rawMissing.min === 'number') {
+                                range.min = rawMissing.min;
+                            }
+                            if (rawMissing.max !== undefined && typeof rawMissing.max === 'number') {
+                                range.max = rawMissing.max;
+                            }
+                            if (range.min !== undefined || range.max !== undefined) {
+                                missingValueSpec = { range };
+                            }
+                        } else if (Array.isArray(rawMissing)) {
+                            const discreteValues = rawMissing.filter(v => typeof v === 'string' || typeof v === 'number');
+                            if (discreteValues.length > 0) {
+                                missingValueSpec = { discrete: discreteValues };
+                            }
+                        } else if (typeof rawMissing === 'string' || typeof rawMissing === 'number') {
+                            missingValueSpec = { discrete: [rawMissing] };
+                        } else {
+                            console.warn("Unknown SAV missing value format in OpenData:", rawMissing);
+                        }
+                    }
+
                     return {
                         columnIndex: colIndex,
                         name: variableName,
                         type: mapSPSSTypeToInterface(formatType),
-                        width: varInfo.printFormat.width,
-                        decimals: varInfo.printFormat.nbdec,
+                        width: varInfo.printFormat?.width || (isString ? 8 : 8),
+                        decimals: varInfo.printFormat?.nbdec ?? (isString ? 0 : 2),
                         label: varInfo.label || "",
-                        values: valueLabels,
-                        missing: varInfo.missing ? [varInfo.missing] : [],
-                        columns: 200,
+                        values: values,
+                        missing: missingValueSpec,
+                        columns: 64,
                         align: isString ? "left" : "right",
-                        measure: isString ? "nominal" : "scale",
+                        measure: "unknown",
                         role: "input"
                     };
                 });
 
-                const dataMatrix = Array(numCases).fill(0).map((_, rowIndex) => {
-                    const rowData = result.rows[rowIndex] || {};
-                    return Array(numVars).fill(0).map((_, colIndex) => {
+                // Proses data menjadi 'dataMatrix'
+                const dataMatrix = Array(numCases).fill(null).map((_, rowIndex) => {
+                    const rowData = dataRowsRaw[rowIndex] || {};
+                    return Array(numVars).fill("").map((_, colIndex) => {
                         const colName = sysvars[colIndex]?.name;
-                        return rowData[colName] !== undefined ? rowData[colName] : "";
+                        return (colName && rowData[colName] !== undefined) ? rowData[colName] : "";
                     });
                 });
 
+                // --- PENAMBAHAN CONSOLE LOG ---
+                console.log("Processed Metadata (Variables):", variables);
+                console.log("Processed Data (Matrix):", dataMatrix);
+                // --- AKHIR PENAMBAHAN ---
+
                 await overwriteVariables(variables);
                 await setDataAndSync(dataMatrix);
-                // Set project meta to navigate to data view
-                await setProjectMeta({ name: file.name, location: file.name, created: new Date() });
+
+                await setProjectMeta({
+                    name: file.name,
+                    location: "local",
+                    created: metaHeader.created ? new Date(metaHeader.created) : new Date(),
+                });
+
                 closeModal();
-            } catch (error) {
+
+            } catch (error: any) {
                 console.error("Error uploading or processing file:", error);
-                setError("Error uploading or processing file");
+                setError(error.message || "Error uploading or processing file");
             } finally {
                 setLoading(false);
             }
@@ -192,13 +214,13 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
             <div className="mb-6">
                 <div
                     className={`border-2 border-dashed rounded p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                        error ? "border-black bg-[#E6E6E6]" : "border-[#CCCCCC] hover:border-black"
+                        error ? "border-red-500 bg-red-50" : "border-[#CCCCCC] hover:border-black"
                     }`}
                     onClick={() => document.getElementById("file-upload")?.click()}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                 >
-                    <Upload size={24} className="mb-4" />
+                    <Upload size={24} className="mb-4 text-gray-500" />
                     <p className="text-center font-medium mb-1">
                         {file ? file.name : "Click to select a .sav file"}
                     </p>
@@ -219,16 +241,16 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 </div>
 
                 {error && (
-                    <div className="flex items-center gap-2 mt-2 text-[14px] text-black">
+                    <div className="flex items-center gap-2 mt-2 text-[14px] text-red-600">
                         <AlertCircle size={16} />
                         <span>{error}</span>
                     </div>
                 )}
 
                 {file && !error && (
-                    <div className="flex items-center gap-2 mt-2 text-[14px] text-[#888888] italic">
+                    <div className="flex items-center gap-2 mt-2 text-[14px] text-green-700">
                         <FileText size={16} />
-                        <span>Ready to upload {file.name}</span>
+                        <span>Ready to upload: {file.name}</span>
                     </div>
                 )}
             </div>
@@ -245,7 +267,7 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 <Button
                     onClick={handleSubmit}
                     disabled={loading || !file}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[80px] flex items-center gap-2"
+                    className="bg-black text-white hover:bg-[#444444] min-w-[80px] flex items-center gap-2 disabled:opacity-50"
                 >
                     {loading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

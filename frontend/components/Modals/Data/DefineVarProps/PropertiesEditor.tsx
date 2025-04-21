@@ -22,7 +22,7 @@ import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.css';
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable, ValueLabel } from "@/types/Variable";
+import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
 
 // Register all Handsontable modules
 registerAllModules();
@@ -107,16 +107,16 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
         variables.length > 0 ? {
             ...variables[0],
             values: Array.isArray(variables[0].values) ? variables[0].values : [],
-            missing: Array.isArray(variables[0].missing) ? variables[0].missing : []
+            missing: variables[0].missing
         } : null
     );
 
     // Modified variables to keep track of changes
     const [modifiedVariables, setModifiedVariables] = useState<Variable[]>(
-        variables.map(variable => ({
+        variables.map((variable): Variable => ({
             ...variable,
             values: Array.isArray(variable.values) ? variable.values : [],
-            missing: Array.isArray(variable.missing) ? variable.missing : []
+            missing: variable.missing
         }))
     );
 
@@ -239,11 +239,11 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
             );
 
             // Check which values are marked as missing
-            const missingValuesSet = new Set(
-                Array.isArray(currentVariable.missing)
-                    ? currentVariable.missing.map(mv => String(mv))
-                    : []
-            );
+            const missingValuesSet = new Set<string>();
+            if (currentVariable.missing?.discrete) {
+                currentVariable.missing.discrete.forEach(mv => missingValuesSet.add(String(mv)));
+            }
+            // TODO: Handle range if grid logic supports it in the future
 
             // Convert to grid data format
             const newGridData = uniqueValuesData.map((item, index) => {
@@ -315,16 +315,21 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 label: row[5]
             }));
 
-        // Extract missing values
-        const missingValues = gridData
-            .filter(row => row[2] && row[4] !== '')
-            .map(row => isNaN(Number(row[4])) ? row[4] : Number(row[4]));
+        // Extract missing values (currently only supports discrete from grid)
+        const missingDiscreteValues = gridData
+            .filter(row => row[2] && row[4] !== '') // Checkbox is checked and value is not empty
+            .map(row => isNaN(Number(row[4])) ? String(row[4]) : Number(row[4]));
+
+        const newMissingSpec: MissingValuesSpec | null = missingDiscreteValues.length > 0
+            ? { discrete: missingDiscreteValues }
+            : null;
+        // TODO: Add logic to preserve/edit range if it exists and grid supports it
 
         // Update the current variable with latest grid data
         const updatedVariable = {
             ...currentVariable,
             values: valueLabels,
-            missing: missingValues,
+            missing: newMissingSpec,
         };
 
         // Update in modified variables array
@@ -350,7 +355,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
         setCurrentVariable({
             ...variable,
             values: Array.isArray(variable.values) ? variable.values : [],
-            missing: Array.isArray(variable.missing) ? variable.missing : []
+            missing: variable.missing // Cukup salin, tipenya sudah benar
         });
     };
 
@@ -576,6 +581,36 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
         setSuggestDialogOpen(true);
     };
 
+    // Helper function to check if a value is considered missing
+    const isMissingValue = (value: number | string | undefined | null, missingSpec: MissingValuesSpec | null): boolean => {
+        if (value === undefined || value === null || value === "" || missingSpec === null) {
+            return false; // Treat undefined/null/empty as not explicitly missing unless specified
+        }
+
+        const strValue = String(value);
+
+        // Check discrete values
+        if (missingSpec.discrete && missingSpec.discrete.some(mv => String(mv) === strValue)) {
+            return true;
+        }
+
+        // Check range (only if value is numeric)
+        if (missingSpec.range && typeof value === 'number') {
+            const { min, max } = missingSpec.range;
+            if (min !== undefined && max !== undefined && value >= min && value <= max) {
+                return true;
+            }
+            if (min !== undefined && max === undefined && value >= min) {
+                return true;
+            }
+            if (min === undefined && max !== undefined && value <= max) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     // Logic to determine appropriate measurement level
     const suggestMeasurementLevel = (variable: Variable, dataSet: any[]) => {
         const columnIndex = variable.columnIndex;
@@ -586,11 +621,9 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
         const columnValues = dataToScan
             .map(row => row[columnIndex])
             .filter(value => {
-                // Skip empty values and values marked as missing
-                if (value === "" || value === undefined) return false;
-                const strValue = String(value);
-                return !Array.isArray(variable.missing) ||
-                    !variable.missing.some(mv => String(mv) === strValue);
+                // Skip empty values and values marked as missing according to the new spec
+                if (value === "" || value === undefined || value === null) return false;
+                return !isMissingValue(value, variable.missing);
             });
 
         if (columnValues.length === 0) {

@@ -1,12 +1,10 @@
+// statify/hooks/useVariableTableLogic.ts
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import Handsontable from "handsontable";
 import { HotTableClass } from "@handsontable/react";
-
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useTableRefStore } from "@/stores/useTableRefStore";
-
-
 import { transformVariablesToTableData } from './utils';
 import {
     DEFAULT_VARIABLE_TYPE,
@@ -16,6 +14,7 @@ import {
     COLUMN_INDEX_TO_FIELD_MAP,
     DIALOG_TRIGGER_COLUMNS
 } from './constants';
+import { Variable, ValueLabel, VariableType, VariableAlign, VariableMeasure, VariableRole, MissingValuesSpec } from "@/types/Variable";
 
 type OperationType =
     | 'CREATE_VARIABLE'
@@ -28,8 +27,6 @@ interface PendingOperation {
     payload: any;
 }
 
-// Mengimpor tipe yang sudah didefinisikan secara eksplisit
-import { Variable, ValueLabel, VariableType, VariableAlign, VariableMeasure, VariableRole } from "@/types/Variable";
 
 export function useVariableTableLogic() {
     const hotTableRef = useRef<HotTableClass>(null);
@@ -57,6 +54,8 @@ export function useVariableTableLogic() {
     const [showValuesDialog, setShowValuesDialog] = useState(false);
     const [showMissingDialog, setShowMissingDialog] = useState(false);
     const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+
+    const actualVariableCount = useMemo(() => variables.length, [variables]);
 
     const selectedVariable = useMemo(() => {
         if (!selectedCell) return null;
@@ -133,6 +132,7 @@ export function useVariableTableLogic() {
             pendingOperations.current.shift();
 
         } catch (error) {
+            console.error("Error processing operation:", error, pendingOperations.current[0]);
             pendingOperations.current.shift();
         } finally {
             isProcessing.current = false;
@@ -201,6 +201,10 @@ export function useVariableTableLogic() {
         }
 
         if (shouldPreventDefault) {
+            const firstChange = changes.find(c => c !== null);
+            if (firstChange && typeof firstChange[0] === 'number' && typeof firstChange[1] === 'number') {
+                openDialogForCell(firstChange[0], firstChange[1]);
+            }
             return false;
         }
 
@@ -223,7 +227,7 @@ export function useVariableTableLogic() {
         });
 
         return true;
-    }, [variables, enqueueOperation]);
+    }, [variables, enqueueOperation, openDialogForCell]);
 
     const handleAfterSelectionEnd = useCallback((
         row: number, column: number, row2: number, column2: number, selectionLayerLevel: number
@@ -260,62 +264,32 @@ export function useVariableTableLogic() {
         enqueueOperation({ type: 'DELETE_VARIABLE', payload: { row } });
     }, [enqueueOperation]);
 
-    const handleTypeSelection = useCallback((type: string, width: number, decimals: number) => {
+    const handleTypeSelection = useCallback((type: VariableType, width: number, decimals: number) => {
         if (!selectedCell) return;
-        const { row } = selectedCell;
-        const variableExists = !!(variables.find(v => v.columnIndex === row));
-
-        // Validasi tipe untuk memastikan sesuai dengan VariableType
-        const isValidType = (value: string): value is VariableType => {
-            return [
-                "NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "DATE", "ADATE", "EDATE",
-                "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "DATETIME", "TIME",
-                "DTIME", "WKDAY", "MONTH", "DOLLAR", "CCA", "CCB", "CCC",
-                "CCD", "CCE", "STRING", "RESTRICTED_NUMERIC"
-            ].includes(value);
-        };
-
-        // Gunakan tipe default jika tipe tidak valid
-        const validType: VariableType = isValidType(type) ? type : DEFAULT_VARIABLE_TYPE;
-
-        const changes: Partial<Variable> = {
-            type: validType,
-            width,
-            decimals
-        };
-
-        if (variableExists) {
-            enqueueOperation({ type: 'UPDATE_VARIABLE', payload: { row, changes } });
-        } else {
-            enqueueOperation({ type: 'CREATE_VARIABLE', payload: { row, variableData: changes } });
-        }
-    }, [selectedCell, variables, enqueueOperation]);
+        enqueueOperation({
+            type: 'UPDATE_VARIABLE',
+            payload: { row: selectedCell.row, changes: { type, width, decimals } }
+        });
+        setShowTypeDialog(false);
+    }, [selectedCell, enqueueOperation]);
 
     const handleValuesSelection = useCallback((values: ValueLabel[]) => {
         if (!selectedCell) return;
-        const { row } = selectedCell;
-        const variableExists = !!(variables.find(v => v.columnIndex === row));
-        const changes: Partial<Variable> = { values };
+        enqueueOperation({
+            type: 'UPDATE_VARIABLE',
+            payload: { row: selectedCell.row, changes: { values } }
+        });
+        setShowValuesDialog(false);
+    }, [selectedCell, enqueueOperation]);
 
-        if (variableExists) {
-            enqueueOperation({ type: 'UPDATE_VARIABLE', payload: { row, changes } });
-        } else {
-            enqueueOperation({ type: 'CREATE_VARIABLE', payload: { row, variableData: changes } });
-        }
-    }, [selectedCell, variables, enqueueOperation]);
-
-    const handleMissingSelection = useCallback((missing: (number | string)[]) => {
+    const handleMissingSelection = useCallback((missingValues: MissingValuesSpec | null) => {
         if (!selectedCell) return;
-        const { row } = selectedCell;
-        const variableExists = !!(variables.find(v => v.columnIndex === row));
-        const changes: Partial<Variable> = { missing };
-
-        if (variableExists) {
-            enqueueOperation({ type: 'UPDATE_VARIABLE', payload: { row, changes } });
-        } else {
-            enqueueOperation({ type: 'CREATE_VARIABLE', payload: { row, variableData: changes } });
-        }
-    }, [selectedCell, variables, enqueueOperation]);
+        enqueueOperation({
+            type: 'UPDATE_VARIABLE',
+            payload: { row: selectedCell.row, changes: { missing: missingValues } }
+        });
+        setShowMissingDialog(false);
+    }, [selectedCell, enqueueOperation]);
 
     const getSelectedVariableName = useCallback((): string => {
         const variable = selectedCell ? variables.find(v => v.columnIndex === selectedCell.row) : null;
@@ -323,14 +297,12 @@ export function useVariableTableLogic() {
     }, [selectedCell, variables]);
 
     const getSelectedVariableValues = useCallback((): ValueLabel[] => {
-        const variable = selectedCell ? variables.find(v => v.columnIndex === selectedCell.row) : null;
-        return variable?.values || [];
-    }, [selectedCell, variables]);
+        return selectedVariable?.values || [];
+    }, [selectedVariable]);
 
-    const getSelectedVariableMissing = useCallback((): (number | string)[] => {
-        const variable = selectedCell ? variables.find(v => v.columnIndex === selectedCell.row) : null;
-        return variable?.missing || [];
-    }, [selectedCell, variables]);
+    const getSelectedVariableMissing = useCallback((): MissingValuesSpec | null => {
+        return selectedVariable?.missing || null;
+    }, [selectedVariable]);
 
     const getSelectedVariableOrDefault = useCallback((key: keyof Variable, defaultValue: any) => {
         const variable = selectedCell ? variables.find(v => v.columnIndex === selectedCell.row) : null;
@@ -357,8 +329,9 @@ export function useVariableTableLogic() {
 
         const isNavigationKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key);
         const isShortcut = (event.metaKey || event.ctrlKey) && ['c', 'v', 'x', 'a'].includes(event.key.toLowerCase());
+        const isEditKey = ['Backspace', 'Delete', 'F2'].includes(event.key);
 
-        if (isNavigationKey || isShortcut) {
+        if (isNavigationKey || isShortcut || isEditKey) {
             return;
         }
 
@@ -368,9 +341,10 @@ export function useVariableTableLogic() {
             if (DIALOG_TRIGGER_COLUMNS.includes(col) && event.key.length === 1 && !event.altKey) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
+                openDialogForCell(selected[0], selected[1]);
             }
         }
-    }, []);
+    }, [openDialogForCell]);
 
     const handleBeforeSetRangeEnd = useCallback((coords: { col: number; row: number }) => {
         const hotInstance = hotTableRef.current?.hotInstance;
@@ -387,6 +361,7 @@ export function useVariableTableLogic() {
     return {
         hotTableRef,
         tableData,
+        actualVariableCount, // <-- Return nilai baru
         showTypeDialog,
         setShowTypeDialog,
         showValuesDialog,

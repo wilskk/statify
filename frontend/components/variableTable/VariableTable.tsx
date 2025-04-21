@@ -1,6 +1,7 @@
+// components/VariableTable.tsx (sesuaikan path jika perlu)
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react"; // Import useCallback
 import { HotTable, HotTableClass } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
@@ -15,7 +16,8 @@ import {
     DEFAULT_VARIABLE_TYPE,
     DEFAULT_VARIABLE_WIDTH,
     DEFAULT_VARIABLE_DECIMALS
-} from './constants';
+} from './constants'; // Asumsi path ini benar
+import './VariableTable.css'; // Import CSS
 
 registerAllModules();
 
@@ -23,6 +25,7 @@ export default function VariableTable() {
     const {
         hotTableRef,
         tableData,
+        actualVariableCount, // <-- Ambil nilai ini
         showTypeDialog,
         setShowTypeDialog,
         showValuesDialog,
@@ -44,6 +47,14 @@ export default function VariableTable() {
         handleBeforeSetRangeEnd,
     } = useVariableTableLogic();
 
+    const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
+        if (row >= actualVariableCount) {
+            TH.classList.add('grayed-header');
+        } else {
+            TH.classList.remove('grayed-header');
+        }
+    }, [actualVariableCount]);
+
     return (
         <div className="h-full w-full relative">
             <div className="h-full w-full relative z-0">
@@ -61,6 +72,7 @@ export default function VariableTable() {
                     contextMenu={customContextMenu}
                     licenseKey="non-commercial-and-evaluation"
                     minSpareRows={1}
+                    afterGetRowHeader={handleAfterGetRowHeader} // <-- Tambahkan prop ini
                     beforeChange={handleBeforeChange}
                     afterSelectionEnd={handleAfterSelectionEnd}
                     beforeSetRangeEnd={handleBeforeSetRangeEnd}

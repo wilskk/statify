@@ -249,12 +249,12 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                 width: 64,
                 decimals: 0,
                 label: "Original Variable Name",
-                values: [],
-                missing: [],
                 columns: 64,
                 align: "left",
                 measure: "nominal",
-                role: "input"
+                role: "input",
+                values: [],
+                missing: null
             };
 
             transposedVariables.push(caseLabelVariable);
@@ -291,12 +291,12 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                     width: 8,
                     decimals: 2,
                     label: "",
-                    values: [],
-                    missing: [],
                     columns: 8,
                     align: "right",
                     measure: "scale",
-                    role: "input"
+                    role: "input",
+                    values: [],
+                    missing: null
                 };
 
                 newVariables.push(newVar);

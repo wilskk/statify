@@ -1,29 +1,37 @@
-import { Variable, ValueLabel } from "@/types/Variable";
+import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
 import { DEFAULT_MIN_ROWS, COLUMN_INDEX_TO_FIELD_MAP } from './constants';
 
 export function formatMissingValuesDisplay(variable: Variable): string {
-    if (!Array.isArray(variable.missing) || variable.missing.length === 0) {
+    if (!variable.missing) {
         return "";
     }
 
-    const isRange =
-        variable.missing.length >= 2 &&
-        variable.type !== "STRING" &&
-        typeof variable.missing[0] === 'number' &&
-        typeof variable.missing[1] === 'number' &&
-        variable.missing[0] <= variable.missing[1];
+    const displayParts: string[] = [];
 
-    if (isRange) {
-        let display = `${variable.missing[0]} thru ${variable.missing[1]}`;
-        if (variable.missing.length > 2 && variable.missing[2] !== undefined) {
-            display += `, ${variable.missing[2]}`;
+    // Format range
+    if (variable.missing.range) {
+        const { min, max } = variable.missing.range;
+        if (min !== undefined && max !== undefined && typeof min === 'number' && typeof max === 'number' && min <= max) {
+            displayParts.push(`${min} thru ${max}`);
+        } else if (min !== undefined && max === undefined) {
+            displayParts.push(`${min} thru HIGHEST`); // Consider localization or better term
+        } else if (min === undefined && max !== undefined) {
+            displayParts.push(`LOWEST thru ${max}`); // Consider localization or better term
         }
-        return display;
+        // Note: Consider if range should be mutually exclusive with discrete, or how they combine.
+        // Current logic allows both range and discrete values to be displayed if present.
     }
 
-    return variable.missing
-        .map(m => (m === " " ? "'[Space]'" : m))
-        .join(", ");
+    // Format discrete values
+    if (variable.missing.discrete && variable.missing.discrete.length > 0) {
+        const discreteDisplay = variable.missing.discrete
+            .map(m => (m === " " ? "'[Space]'" : m))
+            .join(", ");
+        displayParts.push(discreteDisplay);
+    }
+
+
+    return displayParts.join(", ");
 }
 
 export function formatValueLabelsDisplay(variable: Variable): string {

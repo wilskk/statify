@@ -4,3 +4,5 @@ export interface Cell {
     row: number;
     value: string | number;
 }
+
+export type DataRow = (string | number)[];

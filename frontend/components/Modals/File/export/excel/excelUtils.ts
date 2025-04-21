@@ -1,5 +1,5 @@
 // lib/utils/excelUtils.ts
-import { Variable, ValueLabel } from "@/types/Variable";
+import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
 import { DataRow } from "@/stores/useDataStore";
 import { Meta } from "@/stores/useMetaStore";
 import * as XLSX from 'xlsx';
@@ -26,6 +26,38 @@ const applyHeaderStyle = (ws: XLSX.WorkSheet, range: XLSX.Range) => {
 
 const getValueLabelMap = (values: ValueLabel[]): Map<string | number, string> => {
     return new Map(values.map(vl => [vl.value, vl.label]));
+};
+
+// Helper function to format MissingValuesSpec into a string for export
+const formatMissingSpecToString = (spec: MissingValuesSpec | null): string => {
+    if (!spec) {
+        return "";
+    }
+    const parts: string[] = [];
+    if (spec.range) {
+        const { min, max } = spec.range;
+        if (min !== undefined && max !== undefined) {
+            parts.push(`RANGE(${min} THRU ${max})`);
+        } else if (min !== undefined) {
+            parts.push(`RANGE(${min} THRU HIGHEST)`);
+        } else if (max !== undefined) {
+            parts.push(`RANGE(LOWEST THRU ${max})`);
+        }
+    }
+    if (spec.discrete && spec.discrete.length > 0) {
+        // Quote strings if they contain spaces or look like numbers, handle spaces specially
+        const discreteFormatted = spec.discrete.map(v => {
+            if (typeof v === 'string') {
+                 if (v === " ") return "'[SPACE]'"; // Explicit marker for space
+                 if (v.includes(';') || v.includes(' ') || !isNaN(Number(v))) {
+                    return JSON.stringify(v); // Use JSON stringify for proper quoting/escaping
+                 }
+            }
+            return String(v);
+        });
+        parts.push(discreteFormatted.join('; '));
+    }
+    return parts.join('; '); // Join range and discrete parts with semicolon too
 };
 
 export const generateExcelWorkbook = (
@@ -90,7 +122,7 @@ export const generateExcelWorkbook = (
 
         variables.forEach(v => {
             const valueLabelsString = v.values.map(vl => `${vl.value}=${JSON.stringify(vl.label)}`).join('; ');
-            const missingString = v.missing.join('; ');
+            const missingString = formatMissingSpecToString(v.missing);
             varSheetData.push([
                 v.columnIndex, v.name, v.type, v.label || "", v.width, v.decimals,
                 v.measure, v.align, v.role, missingString, valueLabelsString

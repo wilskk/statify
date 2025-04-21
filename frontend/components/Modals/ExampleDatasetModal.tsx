@@ -8,7 +8,7 @@ import { FileText, Database, Loader2 } from 'lucide-react';
 import { useDataStore, DataRow } from '@/stores/useDataStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import { Variable, ValueLabel, MissingValuesSpec, MissingRange } from '@/types/Variable';
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -37,6 +37,40 @@ const mapSPSSTypeToInterface = (formatType: string): string => {
         "CCC": "CCC", "CCD": "CCD", "CCE": "CCE"
     };
     return typeMap[formatType] || "NUMERIC";
+};
+
+// Helper function to convert SAV missing info to MissingValuesSpec
+const convertSavMissingToSpec = (savMissing: any): MissingValuesSpec | null => {
+    if (savMissing === null || savMissing === undefined) {
+        return null;
+    }
+
+    // Case 1: Already an array (assume discrete)
+    if (Array.isArray(savMissing)) {
+        return savMissing.length > 0 ? { discrete: savMissing } : null;
+    }
+
+    // Case 2: Object that looks like a range {min?, max?}
+    if (typeof savMissing === 'object' && (savMissing.hasOwnProperty('min') || savMissing.hasOwnProperty('max'))) {
+        const range: MissingRange = {};
+        if (savMissing.min !== undefined && typeof savMissing.min === 'number') {
+            range.min = savMissing.min;
+        }
+        if (savMissing.max !== undefined && typeof savMissing.max === 'number') {
+            range.max = savMissing.max;
+        }
+        // Only return range if at least one bound is valid
+        return range.min !== undefined || range.max !== undefined ? { range } : null;
+    }
+
+    // Case 3: Single discrete value (string or number)
+    if (typeof savMissing === 'string' || typeof savMissing === 'number') {
+        return { discrete: [savMissing] };
+    }
+
+    // Fallback: Unknown format, treat as no missing values
+    console.warn("Unknown SAV missing value format:", savMissing);
+    return null;
 };
 
 export const ExampleDatasetModal = () => {
@@ -112,7 +146,7 @@ export const ExampleDatasetModal = () => {
                 decimals: 2,
                 label: "",
                 values: [],
-                missing: [],
+                missing: null,
                 columns: 8,
                 align: "right",
                 measure: "unknown",
@@ -200,6 +234,8 @@ export const ExampleDatasetModal = () => {
                             label: entry.label
                         })) : [];
 
+                    const missingSpec = convertSavMissingToSpec(varInfo.missing);
+
                     return {
                         columnIndex: colIndex,
                         name: variableName,
@@ -208,7 +244,7 @@ export const ExampleDatasetModal = () => {
                         decimals: varInfo.printFormat?.nbdec, // Use optional chaining
                         label: varInfo.label || "",
                         values: valueLabels,
-                        missing: varInfo.missing ? [varInfo.missing] : [],
+                        missing: missingSpec, // Gunakan spec yang sudah dikonversi
                         columns: 200, // Match OpenData default
                         align: isString ? "left" : "right",
                         measure: isString ? "nominal" : "scale", // Match OpenData logic

@@ -1,5 +1,5 @@
 // lib/utils/csvUtils.ts
-import { Variable } from "@/types/Variable";
+import { Variable, MissingValuesSpec } from "@/types/Variable";
 import { DataRow } from "@/stores/useDataStore";
 
 export interface CsvExportOptions {
@@ -31,6 +31,38 @@ const escapeCsvCell = (cellValue: string | number | undefined | null, delimiter:
     return stringValue;
 };
 
+// Helper function to format MissingValuesSpec into a string for export
+// (Same as in excelUtils, consider moving to a shared util file later)
+const formatMissingSpecToString = (spec: MissingValuesSpec | null): string => {
+    if (!spec) {
+        return "";
+    }
+    const parts: string[] = [];
+    if (spec.range) {
+        const { min, max } = spec.range;
+        if (min !== undefined && max !== undefined) {
+            parts.push(`RANGE(${min} THRU ${max})`);
+        } else if (min !== undefined) {
+            parts.push(`RANGE(${min} THRU HIGHEST)`);
+        } else if (max !== undefined) {
+            parts.push(`RANGE(LOWEST THRU ${max})`);
+        }
+    }
+    if (spec.discrete && spec.discrete.length > 0) {
+        const discreteFormatted = spec.discrete.map(v => {
+            if (typeof v === 'string') {
+                 if (v === " ") return "'[SPACE]'";
+                 if (v.includes(';') || v.includes(' ') || !isNaN(Number(v))) {
+                    return JSON.stringify(v); // Use JSON stringify for quoting
+                 }
+            }
+            return String(v);
+        });
+        parts.push(discreteFormatted.join('; '));
+    }
+    return parts.join('; ');
+};
+
 export const generateCsvContent = (
     data: DataRow[],
     variables: Variable[],
@@ -49,7 +81,7 @@ export const generateCsvContent = (
 
         variables.forEach(v => {
             const valueLabelsString = v.values.map(vl => `${vl.value}=${vl.label}`).join('; ');
-            const missingString = v.missing.join('; ');
+            const missingString = formatMissingSpecToString(v.missing);
             const properties = [
                 v.columnIndex, v.name, v.type, v.width, v.decimals,
                 v.label || "", v.measure, v.align, v.role, missingString, valueLabelsString
