@@ -44,7 +44,8 @@ export const useTableUpdates = ({
         addVariable,
         deleteVariable,
         updateVariable,
-        addMultipleVariables
+        addMultipleVariables,
+        ensureCompleteVariables
     } = useVariableStore();
 
     // --- Core Update Logic ---
@@ -57,6 +58,7 @@ export const useTableUpdates = ({
         const { changes, targetStateRows, targetStateCols } = updatePayload;
 
         const cellUpdates: { row: number; col: number; value: any }[] = [];
+        let maxColIndex = -1;
 
         for (const change of changes) {
             if (!change) continue;
@@ -109,17 +111,24 @@ export const useTableUpdates = ({
             // --- End Value processing ---
 
             cellUpdates.push({ row: rowIndex, col: columnIndex, value: processedValue });
+            maxColIndex = Math.max(maxColIndex, columnIndex);
         }
 
         if (cellUpdates.length > 0) {
             try {
                 await updateBulkCells(cellUpdates);
+
+                if (maxColIndex > -1) {
+                    console.log(`[processCellUpdates] Calling ensureCompleteVariables up to index: ${maxColIndex}`);
+                    await ensureCompleteVariables(maxColIndex);
+                }
+
             } catch (error) {
-                console.error('Failed to update bulk cells:', error);
+                console.error('Failed to update bulk cells or ensure variables:', error);
                 // TODO: Add user feedback
             }
         }
-    }, [variables, updateBulkCells]); // Dependencies: variables for type checking, store actions
+    }, [variables, updateBulkCells, ensureCompleteVariables]); // Dependencies: variables for type checking, store actions
 
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;

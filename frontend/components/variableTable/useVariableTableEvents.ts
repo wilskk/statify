@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
 import Handsontable from 'handsontable';
 import { HotTableClass } from '@handsontable/react';
-import { Variable } from "@/types/Variable";
+import { Variable, VariableType } from "@/types/Variable";
 import {
     COLUMN_INDEX_TO_FIELD_MAP,
-    DIALOG_TRIGGER_COLUMNS
+    DIALOG_TRIGGER_COLUMNS,
+    COLUMN_INDEX
 } from './constants';
 import { PendingOperation, OperationType } from './useVariableTableUpdates'; // Assuming types are exported from here
 
@@ -86,21 +87,39 @@ export function useVariableTableEvents({
             const rowChanges = changesByRow[row];
             const existingVariable = variables.find(v => v.columnIndex === row);
 
+            // --- Constraint Check ---
+            let finalType = rowChanges.type ?? existingVariable?.type;
+            let finalMeasure = rowChanges.measure ?? existingVariable?.measure;
+
+            if (finalType === 'STRING' && finalMeasure === 'scale') {
+                console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'. Setting measure to 'nominal' for row ${row}.`);
+                rowChanges.measure = 'nominal'; // Force measure back to nominal
+            }
+            // --- End Constraint Check ---
+
             if (existingVariable) {
                 enqueueOperation({
                     type: 'UPDATE_VARIABLE', // Ensure this matches OperationType
                     payload: { row, changes: rowChanges }
                 });
             } else {
+                // Apply constraint check also for new variables if type/measure are set
+                 let createChanges = { ...rowChanges };
+                 let createType = createChanges.type;
+                 let createMeasure = createChanges.measure;
+                 if (createType === 'STRING' && createMeasure === 'scale') {
+                     console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'. Setting measure to 'nominal' for new row ${row}.`);
+                     createChanges.measure = 'nominal';
+                 }
                 enqueueOperation({
                     type: 'CREATE_VARIABLE', // Ensure this matches OperationType
-                    payload: { row, variableData: rowChanges }
+                    payload: { row, variableData: createChanges }
                 });
             }
         });
 
         return true; // Allow Handsontable to proceed if no dialog was triggered
-    }, [variables, enqueueOperation, openDialogForCell, hotTableRef]); // Added hotTableRef dependency
+    }, [variables, enqueueOperation, openDialogForCell, hotTableRef, setSelectedCell]); // Added setSelectedCell dependency
 
     const handleAfterSelectionEnd = useCallback((
         row: number, column: number, row2: number, column2: number

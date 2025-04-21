@@ -45,28 +45,28 @@ export function useVariableTableDialogs() {
     // --- Dialog Update Handlers (Placeholders - Implement actual logic based on dialog components) ---
 
     const handleTypeChange = useCallback(async (payload: TypeChangePayload) => {
-        if (!selectedVariable || !selectedVariable.id) return;
-        // Update type, width, and potentially decimals
-        await updateMultipleFields(selectedVariable.id, {
+        if (!selectedVariable) return; // No need to check id anymore
+        // Update using columnIndex
+        await updateMultipleFields(selectedVariable.columnIndex, {
              type: payload.type,
-             width: payload.width, // Add width to the update
+             width: payload.width,
              ...(payload.decimals !== undefined && { decimals: payload.decimals })
             });
-        setShowTypeDialog(false); // Close dialog on update
+        setShowTypeDialog(false);
     }, [selectedVariable, updateMultipleFields]);
 
     const handleValuesChange = useCallback(async (newValueLabels: ValuesChangePayload) => {
-        if (!selectedVariable || !selectedVariable.id) return;
-        // Example: Update value labels
-        await updateMultipleFields(selectedVariable.id, { values: newValueLabels });
-        setShowValuesDialog(false); // Close dialog on update
+        if (!selectedVariable) return; // No need to check id anymore
+        // Update using columnIndex
+        await updateMultipleFields(selectedVariable.columnIndex, { values: newValueLabels });
+        setShowValuesDialog(false);
     }, [selectedVariable, updateMultipleFields]);
 
     const handleMissingChange = useCallback(async (newMissingSpec: MissingChangePayload) => {
-        if (!selectedVariable || !selectedVariable.id) return;
-        // Example: Update missing values specification
-        await updateMultipleFields(selectedVariable.id, { missing: newMissingSpec });
-        setShowMissingDialog(false); // Close dialog on update
+        if (!selectedVariable) return; // No need to check id anymore
+        // Update using columnIndex
+        await updateMultipleFields(selectedVariable.columnIndex, { missing: newMissingSpec });
+        setShowMissingDialog(false);
     }, [selectedVariable, updateMultipleFields]);
 
     // --- End Dialog Update Handlers ---

@@ -4,6 +4,7 @@
 import React, { useCallback } from "react"; // Import useCallback
 import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
+import Handsontable from 'handsontable'; // Import Handsontable namespace
 import "handsontable/dist/handsontable.full.min.css";
 
 import { VariableTypeDialog } from "./dialog/VariableTypeDialog";
@@ -15,7 +16,8 @@ import { useVariableTableLogic } from './useVariableTableLogic';
 import {
     DEFAULT_VARIABLE_TYPE,
     DEFAULT_VARIABLE_WIDTH,
-    DEFAULT_VARIABLE_DECIMALS
+    DEFAULT_VARIABLE_DECIMALS,
+    COLUMN_INDEX // Import COLUMN_INDEX
 } from './constants'; // Asumsi path ini benar
 import { VariableType } from "@/types/Variable"; // Import VariableType
 import './VariableTable.css'; // Import CSS
@@ -98,6 +100,37 @@ export default function VariableTable() {
         variableType: selectedVariableType, // This is already derived in the hook
     };
 
+    // --- Dynamic Cell Configuration ---
+    const dynamicCellsConfig = useCallback((row: number, col: number, prop: string | number) => {
+        // Check if it's the Measure column
+        if (col === COLUMN_INDEX.MEASURE) {
+            const currentVar = variables.find(v => v.columnIndex === row);
+            const currentType = currentVar?.type;
+            const currentMeasure = currentVar?.measure;
+
+            let allowedMeasures: string[] = [];
+            if (currentType === 'STRING') {
+                allowedMeasures = ['nominal', 'ordinal'];
+            } else {
+                allowedMeasures = ['nominal', 'ordinal', 'scale'];
+            }
+            if (currentMeasure === 'unknown') {
+                allowedMeasures.unshift('unknown');
+            }
+
+            return {
+                type: 'dropdown',
+                source: allowedMeasures,
+                strict: true,
+                allowInvalid: false,
+            } as Handsontable.CellProperties;
+        }
+
+        // For other columns, return an empty object to use default settings
+        return {};
+    }, [variables]);
+    // --- End Dynamic Cell Configuration ---
+
     return (
         <div className="h-full w-full relative">
             <div className="h-full w-full relative z-0">
@@ -106,6 +139,7 @@ export default function VariableTable() {
                     data={tableData}
                     colHeaders={colHeaders}
                     columns={columns}
+                    cells={dynamicCellsConfig}
                     rowHeaders={true}
                     width="100%"
                     height="100%"

@@ -95,9 +95,22 @@ export const useContextMenuLogic = ({
             const { col } = getSelectedCell();
             if (col !== -1) {
                 const targetIndex = left ? col : col + 1;
-                // MUST add variable first to shift indices before adding data column
-                variableStore.addVariable({ columnIndex: targetIndex }); 
-                dataStore.addColumn(targetIndex);
+                console.log(`[handleInsertColumn] Attempting insert at targetIndex: ${targetIndex} (left: ${left})`); // Log target
+
+                try {
+                    console.log(`[handleInsertColumn] Calling variableStore.addVariable with columnIndex: ${targetIndex}`);
+                    // MUST add variable first to shift indices before adding data column
+                    variableStore.addVariable({ columnIndex: targetIndex });
+                    console.log(`[handleInsertColumn] variableStore.addVariable completed for index: ${targetIndex}`);
+
+                    console.log(`[handleInsertColumn] Calling dataStore.addColumn with targetIndex: ${targetIndex}`);
+                    dataStore.addColumn(targetIndex);
+                    console.log(`[handleInsertColumn] dataStore.addColumn completed for index: ${targetIndex}`);
+
+                    console.log(`[handleInsertColumn] Insert column operation completed successfully for index: ${targetIndex}`);
+                } catch (error) {
+                     console.error(`[handleInsertColumn] Error during insert column operation for index: ${targetIndex}`, error);
+                }
             }
         };
 
