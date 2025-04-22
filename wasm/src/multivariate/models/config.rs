@@ -122,7 +122,7 @@ pub struct ContrastConfig {
     #[serde(rename = "FactorList")]
     pub factor_list: Option<Vec<String>>,
     #[serde(rename = "ContrastMethod")]
-    pub contrast_method: Option<ContrastMethod>,
+    pub contrast_method: ContrastMethod,
     #[serde(rename = "Last")]
     pub last: bool,
     #[serde(rename = "First")]

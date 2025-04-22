@@ -2,7 +2,7 @@ use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UnivariateResult {
+pub struct MultivariateResult {
     pub between_subjects_factors: Option<HashMap<String, BetweenSubjectFactors>>,
     pub descriptive_statistics: Option<HashMap<String, DescriptiveStatistics>>,
     pub levene_test: Option<Vec<LeveneTest>>,
@@ -14,7 +14,6 @@ pub struct UnivariateResult {
     pub spread_vs_level_plots: Option<HashMap<String, SpreadVsLevelPlots>>,
     pub posthoc_tests: Option<HashMap<String, Vec<PostHocTest>>>,
     pub emmeans: Option<HashMap<String, Vec<EstimatedMarginalMean>>>,
-    pub robust_parameter_estimates: Option<ParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
     pub executed_functions: Vec<String>,
@@ -358,4 +357,21 @@ pub struct HomogeneousSubsetGroup {
     pub n: usize,
     pub subsets: HashMap<usize, f64>,
     pub significance: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MauchlyTest {
+    pub tests: HashMap<String, MauchlyTestEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MauchlyTestEntry {
+    pub effect: String,
+    pub mauchly_w: f64,
+    pub chi_square: f64,
+    pub df: usize,
+    pub significance: f64,
+    pub greenhouse_geisser_epsilon: f64,
+    pub huynh_feldt_epsilon: f64,
+    pub lower_bound_epsilon: f64,
 }
