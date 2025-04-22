@@ -75,14 +75,32 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     });
 
     useEffect(() => {
-        setStoreVariables(variables.filter(v => v.name !== ""));
-    }, [variables]);
+        const assignedIndexes = [
+            numeratorVariable?.columnIndex,
+            denominatorVariable?.columnIndex,
+            groupVariable?.columnIndex
+        ].filter(index => index !== undefined);
+
+        const initialStoreVars = variables
+            .filter(v => v.name !== "")
+            .filter(v => !assignedIndexes.includes(v.columnIndex))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        setStoreVariables(initialStoreVars);
+    }, [variables, numeratorVariable, denominatorVariable, groupVariable]);
+
+    const addVariableBackToStore = (variable: Variable | null) => {
+        if (!variable) return;
+        setStoreVariables(prev => [...prev, variable].sort((a, b) => a.name.localeCompare(b.name)));
+    };
 
     const setAsNumerator = () => {
         if (!highlightedVariable) return;
         const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
         if (variable) {
+            addVariableBackToStore(numeratorVariable);
             setNumeratorVariable(variable);
+            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setHighlightedVariable(null);
         }
     };
 
@@ -90,7 +108,10 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         if (!highlightedVariable) return;
         const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
         if (variable) {
+            addVariableBackToStore(denominatorVariable);
             setDenominatorVariable(variable);
+            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setHighlightedVariable(null);
         }
     };
 
@@ -98,17 +119,33 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         if (!highlightedVariable) return;
         const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
         if (variable) {
+            addVariableBackToStore(groupVariable);
             setGroupVariable(variable);
+            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setHighlightedVariable(null);
         }
     };
 
+    const removeFromNumerator = () => {
+        addVariableBackToStore(numeratorVariable);
+        setNumeratorVariable(null);
+    };
+
+    const removeFromDenominator = () => {
+        addVariableBackToStore(denominatorVariable);
+        setDenominatorVariable(null);
+    };
+
+    const removeFromGroupVariable = () => {
+        addVariableBackToStore(groupVariable);
+        setGroupVariable(null);
+    };
+
     const handleFileBrowse = () => {
-        // File browse logic would go here
         console.log("Browse for file");
     };
 
     const handleStatistics = () => {
-        // Switch to statistics tab
         setActiveTab("statistics");
     };
 
@@ -119,16 +156,12 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         }
 
         try {
-            // Logic for performing ratio statistics analysis would go here
-
-            // Create a log entry
             const logEntry = {
                 log: `Ratio Statistics Analysis: ${new Date().toLocaleString()}`
             };
 
             const logId = await addLog(logEntry);
 
-            // Create an analytic entry
             const analyticEntry = {
                 title: "Ratio Statistics",
                 note: `Analysis performed with numerator: ${numeratorVariable.name}, denominator: ${denominatorVariable.name}${groupVariable ? `, grouped by: ${groupVariable.name}` : ''}.`
@@ -136,9 +169,6 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
 
             const analyticId = await addAnalytic(logId, analyticEntry);
 
-            // Save results - implementation would depend on actual analysis
-
-            // Close the modal
             closeModal();
         } catch (error) {
             console.error("Error performing ratio statistics analysis:", error);
@@ -150,6 +180,8 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         setNumeratorVariable(null);
         setDenominatorVariable(null);
         setGroupVariable(null);
+        setStoreVariables(variables.filter(v => v.name !== "").sort((a, b) => a.name.localeCompare(b.name)));
+        setHighlightedVariable(null);
         setSortByGroup(true);
         setSortOrder("ascending");
         setDisplayResults(true);
@@ -216,6 +248,9 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
                         setAsNumerator={setAsNumerator}
                         setAsDenominator={setAsDenominator}
                         setAsGroupVariable={setAsGroupVariable}
+                        removeFromNumerator={removeFromNumerator}
+                        removeFromDenominator={removeFromDenominator}
+                        removeFromGroupVariable={removeFromGroupVariable}
                     />
                 </TabsContent>
 

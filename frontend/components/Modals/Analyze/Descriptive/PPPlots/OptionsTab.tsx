@@ -132,30 +132,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <Label htmlFor="location" className="w-20 flex-shrink-0 text-sm">
-                                    Location:
-                                </Label>
-                                <Input
-                                    id="location"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                    className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
-                                    disabled={estimateFromData}
-                                />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Label htmlFor="scale" className="w-20 flex-shrink-0 text-sm">
-                                    Scale:
-                                </Label>
-                                <Input
-                                    id="scale"
-                                    value={scale}
-                                    onChange={(e) => setScale(e.target.value)}
-                                    className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
-                                    disabled={estimateFromData}
-                                />
-                            </div>
-                            <div className="flex items-center space-x-2">
                                 <Label htmlFor="threshold" className="w-20 flex-shrink-0 text-sm">
                                     Threshold:
                                 </Label>

@@ -315,12 +315,12 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 <div className="text-sm font-medium mb-3 text-[#666666]">Concentration Index</div>
 
                 <div className="grid grid-cols-2 gap-6">
-                    {/* Between Proportions Subsection */}
-                    <div className="border border-[#E6E6E6] rounded-md p-3 bg-white">
-                        <div className="text-sm font-medium mb-2">Between Proportions</div>
+                    {/* Between Proportions Subsection - Updated Layout */}
+                    <div className="border border-[#E6E6E6] rounded-md p-3 bg-white space-y-3">
+                        <div className="text-sm font-medium">Between Proportions</div>
 
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                            <Label htmlFor="lowProportion" className="text-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                            <Label htmlFor="lowProportion" className="text-sm self-center">
                                 Low Proportion:
                             </Label>
                             <Input
@@ -329,8 +329,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 onChange={(e) => setLowProportion(e.target.value)}
                                 className="h-8 text-sm border-[#CCCCCC]"
                             />
-
-                            <Label htmlFor="highProportion" className="text-sm">
+                            <Label htmlFor="highProportion" className="text-sm self-center">
                                 High Proportion:
                             </Label>
                             <Input
@@ -341,43 +340,43 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             />
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="col-span-1">
-                                <Label className="text-sm mb-1 block">Pairs:</Label>
-                                <div className="space-y-1">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleAddPair}
-                                        disabled={!lowProportion || !highProportion}
-                                    >
-                                        Add
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleChangePair}
-                                        disabled={selectedPairIndex === null || !lowProportion || !highProportion}
-                                    >
-                                        Change
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleRemovePair}
-                                        disabled={selectedPairIndex === null}
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
+                        <div className="flex items-start gap-2">
+                            <div className="w-20 flex-shrink-0 space-y-1">
+                                <Label className="text-sm mb-1 block invisible">Actions</Label>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleAddPair}
+                                    disabled={!lowProportion || !highProportion}
+                                >
+                                    Add
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleChangePair}
+                                    disabled={selectedPairIndex === null || !lowProportion || !highProportion}
+                                >
+                                    Change
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleRemovePair}
+                                    disabled={selectedPairIndex === null}
+                                >
+                                    Remove
+                                </Button>
                             </div>
 
-                            <div className="col-span-3">
-                                <div className="border border-[#CCCCCC] h-[100px] overflow-y-auto bg-white">
+                            <div className="flex-grow">
+                                <Label className="text-sm mb-1 block">Pairs:</Label>
+                                <div className="border border-[#CCCCCC] h-[100px] overflow-y-auto bg-white rounded-md">
+                                    {pairs.length === 0 && <p className="p-2 text-xs text-gray-400 italic">No pairs added</p>}
                                     {pairs.map((pair, index) => (
                                         <div
                                             key={index}
-                                            className={`p-1 text-sm cursor-pointer ${selectedPairIndex === index ? 'bg-[#E6E6E6]' : ''}`}
+                                            className={`p-1 text-sm cursor-pointer ${selectedPairIndex === index ? 'bg-blue-100' : 'hover:bg-gray-50'}`}
                                             onClick={() => setSelectedPairIndex(index)}
                                         >
                                             {pair}
@@ -388,12 +387,12 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         </div>
                     </div>
 
-                    {/* Within Percentage of Median Subsection */}
-                    <div className="border border-[#E6E6E6] rounded-md p-3 bg-white">
-                        <div className="text-sm font-medium mb-2">Within Percentage of Median</div>
+                    {/* Within Percentage of Median Subsection - Updated Layout */}
+                    <div className="border border-[#E6E6E6] rounded-md p-3 bg-white space-y-3">
+                        <div className="text-sm font-medium">Within Percentage of Median</div>
 
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                            <Label htmlFor="percentageOfMedian" className="text-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                            <Label htmlFor="percentageOfMedian" className="text-sm self-center">
                                 Percentage of median:
                             </Label>
                             <Input
@@ -404,43 +403,43 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             />
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2">
-                            <div className="col-span-1">
-                                <Label className="text-sm mb-1 block">Percentages:</Label>
-                                <div className="space-y-1">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleAddPercentage}
-                                        disabled={!percentageOfMedian}
-                                    >
-                                        Add
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleChangePercentage}
-                                        disabled={selectedPercentageIndex === null || !percentageOfMedian}
-                                    >
-                                        Change
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
-                                        onClick={handleRemovePercentage}
-                                        disabled={selectedPercentageIndex === null}
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
+                        <div className="flex items-start gap-2">
+                            <div className="w-20 flex-shrink-0 space-y-1">
+                                <Label className="text-sm mb-1 block invisible">Actions</Label>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleAddPercentage}
+                                    disabled={!percentageOfMedian}
+                                >
+                                    Add
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleChangePercentage}
+                                    disabled={selectedPercentageIndex === null || !percentageOfMedian}
+                                >
+                                    Change
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-8 text-sm border-[#CCCCCC] bg-[#F7F7F7]"
+                                    onClick={handleRemovePercentage}
+                                    disabled={selectedPercentageIndex === null}
+                                >
+                                    Remove
+                                </Button>
                             </div>
 
-                            <div className="col-span-3">
-                                <div className="border border-[#CCCCCC] h-[100px] overflow-y-auto bg-white">
+                            <div className="flex-grow">
+                                <Label className="text-sm mb-1 block">Percentages:</Label>
+                                <div className="border border-[#CCCCCC] h-[100px] overflow-y-auto bg-white rounded-md">
+                                    {percentages.length === 0 && <p className="p-2 text-xs text-gray-400 italic">No percentages added</p>}
                                     {percentages.map((percentage, index) => (
                                         <div
                                             key={index}
-                                            className={`p-1 text-sm cursor-pointer ${selectedPercentageIndex === index ? 'bg-[#E6E6E6]' : ''}`}
+                                            className={`p-1 text-sm cursor-pointer ${selectedPercentageIndex === index ? 'bg-blue-100' : 'hover:bg-gray-50'}`}
                                             onClick={() => setSelectedPercentageIndex(index)}
                                         >
                                             {percentage}

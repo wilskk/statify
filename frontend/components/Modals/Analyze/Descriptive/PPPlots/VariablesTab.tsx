@@ -1,5 +1,4 @@
 import React, { FC, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal } from "lucide-react";
 import type { Variable } from "@/types/Variable";
@@ -11,10 +10,18 @@ interface VariablesTabProps {
     setHighlightedVariable: React.Dispatch<React.SetStateAction<{ columnIndex: number, source: 'available' | 'selected' } | null>>;
     moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
     moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
+    reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
 }
 
-const VariablesTab: FC<VariablesTabProps> = (props) => {
+const VariablesTab: FC<VariablesTabProps> = ({
+    availableVariables,
+    selectedVariables,
+    highlightedVariable,
+    setHighlightedVariable,
+    moveToSelectedVariables,
+    moveToAvailableVariables,
+    reorderVariables = () => {},
+}) => {
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, source: 'available' | 'selected' } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'selected' | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -42,18 +49,18 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
     };
 
     const handleVariableSelect = (variable: Variable, source: 'available' | 'selected') => {
-        if (props.highlightedVariable?.columnIndex === variable.columnIndex && props.highlightedVariable.source === source) {
-            props.setHighlightedVariable(null);
+        if (highlightedVariable?.columnIndex === variable.columnIndex && highlightedVariable.source === source) {
+            setHighlightedVariable(null);
         } else {
-            props.setHighlightedVariable({ columnIndex: variable.columnIndex, source });
+            setHighlightedVariable({ columnIndex: variable.columnIndex, source });
         }
     };
 
     const handleVariableDoubleClick = (variable: Variable, source: 'available' | 'selected') => {
         if (source === 'available') {
-            props.moveToSelectedVariables(variable);
+            moveToSelectedVariables(variable);
         } else {
-            props.moveToAvailableVariables(variable);
+            moveToAvailableVariables(variable);
         }
     };
 
@@ -64,7 +71,6 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
         }));
         e.dataTransfer.effectAllowed = 'move';
         setDraggedItem({ variable, source });
-        props.setHighlightedVariable(null);
     };
 
     const handleDragEnd = () => {
@@ -95,51 +101,57 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
         }
     };
 
-    const handleDragLeave = () => {
-        setIsDraggingOver(null);
-        setDragOverIndex(null);
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsDraggingOver(null);
+            setDragOverIndex(null);
+        }
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetSource: 'available' | 'selected', targetIndex?: number) => {
         e.preventDefault();
+        if (targetIndex !== undefined) {
+            e.stopPropagation();
+        }
+
         try {
-            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+            const dataString = e.dataTransfer.getData('application/json');
+            if (!dataString) return;
+            const data = JSON.parse(dataString);
             const { columnIndex, source } = data;
 
-            const sourceList = source === 'available' ? props.availableVariables : props.selectedVariables;
+            const sourceList = source === 'available' ? availableVariables : selectedVariables;
             const variable = sourceList.find(v => v.columnIndex === columnIndex);
 
             if (!variable) return;
 
-            if (source === targetSource && targetIndex !== undefined) {
+            if (source === targetSource) {
+                const finalTargetIndex = targetIndex !== undefined ? targetIndex : sourceList.length;
+
                 const currentList = [...sourceList];
                 const sourceIndex = currentList.findIndex(v => v.columnIndex === columnIndex);
 
-                if (sourceIndex === targetIndex || sourceIndex === targetIndex - 1) {
-                    setIsDraggingOver(null);
-                    setDraggedItem(null);
-                    setDragOverIndex(null);
-                    return;
-                }
-
-                const [movedVariable] = currentList.splice(sourceIndex, 1);
-                const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-                currentList.splice(adjustedTargetIndex, 0, movedVariable);
-                props.reorderVariables(targetSource, currentList);
-            } else if (source !== targetSource) {
-                if (targetSource === 'selected') {
-                    props.moveToSelectedVariables(variable, targetIndex);
+                if (sourceIndex === finalTargetIndex || sourceIndex === finalTargetIndex - 1) {
                 } else {
-                    props.moveToAvailableVariables(variable, targetIndex);
+                    const [movedVariable] = currentList.splice(sourceIndex, 1);
+                    const adjustedTargetIndex = sourceIndex < finalTargetIndex ? finalTargetIndex -1 : finalTargetIndex;
+                    currentList.splice(adjustedTargetIndex, 0, movedVariable);
+                    reorderVariables(targetSource, currentList);
+                }
+            } else {
+                if (targetSource === 'selected') {
+                    moveToSelectedVariables(variable, targetIndex);
+                } else {
+                    moveToAvailableVariables(variable, targetIndex);
                 }
             }
         } catch (error) {
             console.error('[handleDrop] Error processing drop:', error);
+        } finally {
+            setIsDraggingOver(null);
+            setDraggedItem(null);
+            setDragOverIndex(null);
         }
-
-        setIsDraggingOver(null);
-        setDraggedItem(null);
-        setDragOverIndex(null);
     };
 
     const getAnimationClass = (source: 'available' | 'selected'): string => {
@@ -164,7 +176,7 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
                     </p>
                 </div>
             )}
-            <div className={`space-y-0.5 ${getAnimationClass(source)}`}>
+            <div className={`space-y-0.5 p-1 ${getAnimationClass(source)}`}>
                 {variables.map((variable, index) => {
                     const isSameListDrag = draggedItem?.source === source;
                     const isDraggingThis = draggedItem?.variable.columnIndex === variable.columnIndex && isSameListDrag;
@@ -180,7 +192,7 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
                                         className={`flex items-center p-1 cursor-grab border rounded-md group relative
                                             ${isDraggingThis ? "opacity-40 bg-[#FAFAFA]" : "hover:bg-[#F5F5F5]"}
                                             ${isDropTarget ? "border-t-[3px] border-t-[#888888] pt-0.5" : ""}
-                                            ${props.highlightedVariable?.columnIndex === variable.columnIndex && props.highlightedVariable.source === source
+                                            ${highlightedVariable?.columnIndex === variable.columnIndex && highlightedVariable.source === source
                                                 ? "bg-[#E6E6E6] border-[#888888]"
                                                 : "border-[#CCCCCC]"
                                             }`}
@@ -190,19 +202,19 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
                                         onDragStart={(e) => handleDragStart(e, variable, source)}
                                         onDragEnd={handleDragEnd}
                                         onDragOver={(e) => handleItemDragOver(e, index, source)}
-                                        onDragLeave={() => { setDragOverIndex(null); }}
-                                        onDrop={(e) => { e.stopPropagation(); handleDrop(e, source, index); }}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={(e) => handleDrop(e, source, index)}
                                     >
                                         <div className="flex items-center w-full">
                                             <GripVertical size={14} className="text-[#AAAAAA] mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
                                             {getVariableIcon(variable)}
-                                            <span className="text-xs truncate">{getDisplayName(variable)}</span>
+                                            <span className="text-sm truncate">{getDisplayName(variable)}</span>
                                         </div>
                                         {showBottomLine && (<div className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-[#888888] z-10"></div>)}
                                     </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
-                                    <p className="text-xs">{getDisplayName(variable)}</p>
+                                    <p className="text-sm">{getDisplayName(variable)}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -212,21 +224,21 @@ const VariablesTab: FC<VariablesTabProps> = (props) => {
         </div>
     );
 
-    const { availableVariables, selectedVariables } = props;
-
     return (
         <div className="grid grid-cols-2 gap-6">
             <div className="col-span-1">
                 <div className="text-sm mb-2 font-medium">Available Variables:</div>
                 {renderVariableList(availableVariables, 'available', '300px')}
-                <div className="text-xs mt-2 text-[#888888] flex items-center">
-                    <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                    <span>Drag or double-click variables to move them.</span>
-                </div>
             </div>
             <div className="col-span-1">
                 <div className="text-sm mb-2 font-medium">Selected Variables:</div>
                 {renderVariableList(selectedVariables, 'selected', '300px')}
+                <div className="text-sm mt-2 text-[#888888] flex items-center p-1 rounded bg-[#F7F7F7] border border-[#E6E6E6]">
+                    <InfoIcon size={14} className="mr-1.5 flex-shrink-0" />
+                    <span>
+                        Drag to reorder or move between lists. Double-click to move.
+                    </span>
+                </div>
             </div>
         </div>
     );

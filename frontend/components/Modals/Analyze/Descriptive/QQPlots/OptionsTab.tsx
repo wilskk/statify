@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-// Interface OptionsTabProps (tidak berubah)
+// Interface OptionsTabProps - Removed location and scale
 interface OptionsTabProps {
     testDistribution: string;
     setTestDistribution: React.Dispatch<React.SetStateAction<string>>;
@@ -20,10 +20,10 @@ interface OptionsTabProps {
     setDegreesOfFreedom: React.Dispatch<React.SetStateAction<string>>;
     estimateFromData: boolean;
     setEstimateFromData: React.Dispatch<React.SetStateAction<boolean>>;
-    location: string;
-    setLocation: React.Dispatch<React.SetStateAction<string>>;
-    scale: string;
-    setScale: React.Dispatch<React.SetStateAction<string>>;
+    threshold: string;
+    setThreshold: React.Dispatch<React.SetStateAction<string>>;
+    shape: string;
+    setShape: React.Dispatch<React.SetStateAction<string>>;
     naturalLogTransform: boolean;
     setNaturalLogTransform: React.Dispatch<React.SetStateAction<boolean>>;
     standardizeValues: boolean;
@@ -50,10 +50,10 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                              setDegreesOfFreedom,
                                              estimateFromData,
                                              setEstimateFromData,
-                                             location,
-                                             setLocation,
-                                             scale,
-                                             setScale,
+                                             threshold,
+                                             setThreshold,
+                                             shape,
+                                             setShape,
                                              naturalLogTransform,
                                              setNaturalLogTransform,
                                              standardizeValues,
@@ -74,63 +74,53 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                          }) => {
     const distributionNeedsDf = ["t", "Chi-square", "F"];
 
-    // Corrected: Escaped apostrophes in labels
-    const proportionOptions = [
-        { value: "Blom's", label: "Blom&apos;s", id: "bloms" },
-        { value: "Rankit", label: "Rankit", id: "rankit" },
-        { value: "Tukey's", label: "Tukey&apos;s", id: "tukeys" },
-        { value: "Van der Waerden's", label: "Van der Waerden&apos;s", id: "vanderwaerdens" },
-    ];
-
-    const tiesOptions = [
-        { value: "Mean", label: "Mean", id: "mean" },
-        { value: "High", label: "High", id: "high" },
-        { value: "Low", label: "Low", id: "low" },
-        { value: "Break ties arbitrarily", label: "Break ties arbitrarily", id: "breaktiesarbitrarily" },
-    ];
-
+    // Match layout and structure of PPPlots/OptionsTab.tsx
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
 
-            {/* Column 1: Distribution Section */}
-            <div className="flex flex-col">
-                <div className="flex-1 rounded-md border border-[#E6E6E6] p-6">
-                    <div className="mb-4 text-sm font-medium">Test Distribution</div>
-                    <div className="space-y-5">
-                        <Select
-                            value={testDistribution}
-                            onValueChange={setTestDistribution}
-                        >
-                            <SelectTrigger className="h-9 border-[#CCCCCC] text-sm focus:border-black focus:ring-black">
-                                <SelectValue placeholder="Select a distribution" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Normal">Normal</SelectItem>
-                                <SelectItem value="Uniform">Uniform</SelectItem>
-                                <SelectItem value="Exponential">Exponential</SelectItem>
-                                {/* Corrected: Escaped apostrophe */}
-                                <SelectItem value="t">Student&apos;s t</SelectItem>
-                                <SelectItem value="Chi-square">Chi-square</SelectItem>
-                                <SelectItem value="F">F</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex items-center space-x-2">
-                            <Label htmlFor="degreesOfFreedom" className="w-20 flex-shrink-0 text-sm">
-                                df:
-                            </Label>
-                            <Input
-                                id="degreesOfFreedom"
-                                value={degreesOfFreedom}
-                                onChange={(e) => setDegreesOfFreedom(e.target.value)}
-                                className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
-                                disabled={!distributionNeedsDf.includes(testDistribution)}
-                            />
+            {/* === Column 1 === */}
+            <div className="flex flex-col space-y-6">
+                {/* Distribution Section Card */}
+                <div className="rounded-md border border-[#E6E6E6] p-6">
+                    {/* Test Distribution Sub-section */}
+                    <div>
+                        <div className="mb-4 text-sm font-medium">Test Distribution</div>
+                        <div className="space-y-4">
+                            <Select
+                                value={testDistribution}
+                                onValueChange={setTestDistribution}
+                            >
+                                <SelectTrigger className="h-9 border-[#CCCCCC] text-sm focus:border-black focus:ring-black">
+                                    <SelectValue placeholder="Select a distribution" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Normal">Normal</SelectItem>
+                                    <SelectItem value="Uniform">Uniform</SelectItem>
+                                    <SelectItem value="Exponential">Exponential</SelectItem>
+                                    <SelectItem value="t">Student&apos;s t</SelectItem>
+                                    <SelectItem value="Chi-square">Chi-square</SelectItem>
+                                    <SelectItem value="F">F</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center space-x-2">
+                                <Label htmlFor="degreesOfFreedom" className="w-20 flex-shrink-0 text-sm">
+                                    df:
+                                </Label>
+                                <Input
+                                    id="degreesOfFreedom"
+                                    value={degreesOfFreedom}
+                                    onChange={(e) => setDegreesOfFreedom(e.target.value)}
+                                    className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
+                                    disabled={!distributionNeedsDf.includes(testDistribution)}
+                                />
+                            </div>
                         </div>
                     </div>
 
+                    {/* Distribution Parameters Sub-section - Removed Location and Scale inputs */}
                     <div className="mt-6 border-t border-[#E6E6E6] pt-4">
                         <div className="mb-4 text-sm font-medium">Distribution Parameters</div>
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="estimateFromData"
@@ -143,25 +133,25 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <Label htmlFor="location" className="w-20 flex-shrink-0 text-sm">
-                                    Location:
+                                <Label htmlFor="threshold" className="w-20 flex-shrink-0 text-sm">
+                                    Threshold:
                                 </Label>
                                 <Input
-                                    id="location"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
+                                    id="threshold"
+                                    value={threshold}
+                                    onChange={(e) => setThreshold(e.target.value)}
                                     className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
                                     disabled={estimateFromData}
                                 />
                             </div>
                             <div className="flex items-center space-x-2">
-                                <Label htmlFor="scale" className="w-20 flex-shrink-0 text-sm">
-                                    Scale:
+                                <Label htmlFor="shape" className="w-20 flex-shrink-0 text-sm">
+                                    Shape:
                                 </Label>
                                 <Input
-                                    id="scale"
-                                    value={scale}
-                                    onChange={(e) => setScale(e.target.value)}
+                                    id="shape"
+                                    value={shape}
+                                    onChange={(e) => setShape(e.target.value)}
                                     className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
                                     disabled={estimateFromData}
                                 />
@@ -169,15 +159,67 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Proportion Estimation Formula Section */}
+                <div className="rounded-md border border-[#E6E6E6] p-6">
+                    <div className="mb-4 text-sm font-medium">Proportion Estimation Formula</div>
+                    <RadioGroup
+                        value={proportionEstimation}
+                        onValueChange={setProportionEstimation}
+                        className="space-y-3"
+                    >
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Blom's"
+                                    id="bloms"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="bloms" className="cursor-pointer text-sm">
+                                    Blom&apos;s
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Rankit"
+                                    id="rankit"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="rankit" className="cursor-pointer text-sm">
+                                    Rankit
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Tukey's"
+                                    id="tukeys"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="tukeys" className="cursor-pointer text-sm">
+                                    Tukey&apos;s
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Van der Waerden's"
+                                    id="vanderwaerdens"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="vanderwaerdens" className="cursor-pointer text-sm">
+                                    Van der Waerden&apos;s
+                                </Label>
+                            </div>
+                        </div>
+                    </RadioGroup>
+                </div>
             </div>
 
-            {/* Column 2: Transform & Estimation Sections */}
+            {/* === Column 2 === */}
             <div className="flex flex-col space-y-6">
-
-                {/* Card: Transform */}
-                <div className="flex-1 rounded-md border border-[#E6E6E6] p-6">
+                {/* Transform Section Card */}
+                <div className="rounded-md border border-[#E6E6E6] p-6">
                     <div className="mb-4 text-sm font-medium">Transform</div>
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="naturalLogTransform"
@@ -224,7 +266,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 checked={seasonallyDifference}
                                 onCheckedChange={(checked) => setSeasonallyDifference(!!checked)}
                                 className="border-[#CCCCCC] flex-shrink-0"
-                                disabled={true} // Assuming this remains intentionally disabled
+                                disabled={true}
                             />
                             <Label htmlFor="seasonallyDifference" className="cursor-pointer text-sm text-gray-400">
                                 Seasonally difference:
@@ -234,44 +276,19 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 value={seasonallyDifferenceValue}
                                 onChange={(e) => setSeasonallyDifferenceValue(e.target.value)}
                                 className="ml-auto h-9 w-16 flex-shrink-0 border-[#CCCCCC] bg-gray-100 text-sm focus:border-black focus:ring-black"
-                                disabled={true} // Assuming this remains intentionally disabled
+                                disabled={true}
                             />
                         </div>
                         <div className="flex items-center space-x-2 pt-1">
                             <Label className="text-sm">
                                 Current Periodicity:
                             </Label>
-                            {/* This 'None' is a JS string, not JSX text, so it's fine */}
                             <span className="text-sm">{currentPeriodicity || 'None'}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Card: Proportion Estimation Formula */}
-                <div className="rounded-md border border-[#E6E6E6] p-6">
-                    <div className="mb-4 text-sm font-medium">Proportion Estimation Formula</div>
-                    <RadioGroup
-                        value={proportionEstimation}
-                        onValueChange={setProportionEstimation}
-                        className="space-y-3"
-                    >
-                        {proportionOptions.map(option => (
-                            <div key={option.id} className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={option.value}
-                                    id={option.id}
-                                    className="border-[#CCCCCC] data-[state=checked]:border-black data-[state=checked]:bg-black"
-                                />
-                                <Label htmlFor={option.id} className="cursor-pointer text-sm">
-                                    {/* The label now uses the escaped value */}
-                                    {option.label}
-                                </Label>
-                            </div>
-                        ))}
-                    </RadioGroup>
-                </div>
-
-                {/* Card: Rank Assigned to Ties */}
+                {/* Rank Assigned to Ties Section */}
                 <div className="rounded-md border border-[#E6E6E6] p-6">
                     <div className="mb-4 text-sm font-medium">Rank Assigned to Ties</div>
                     <RadioGroup
@@ -279,24 +296,52 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         onValueChange={setRankAssignedToTies}
                         className="space-y-3"
                     >
-                        {tiesOptions.map(option => (
-                            <div key={option.id} className="flex items-center space-x-2">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
                                 <RadioGroupItem
-                                    value={option.value}
-                                    id={option.id}
-                                    className="border-[#CCCCCC] data-[state=checked]:border-black data-[state=checked]:bg-black"
+                                    value="Mean"
+                                    id="mean"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                                 />
-                                <Label htmlFor={option.id} className="cursor-pointer text-sm">
-                                    {option.label}
+                                <Label htmlFor="mean" className="cursor-pointer text-sm">
+                                    Mean
                                 </Label>
                             </div>
-                        ))}
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="High"
+                                    id="high"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="high" className="cursor-pointer text-sm">
+                                    High
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Low"
+                                    id="low"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="low" className="cursor-pointer text-sm">
+                                    Low
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Break ties arbitrarily"
+                                    id="breaktiesarbitrarily"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="breaktiesarbitrarily" className="cursor-pointer text-sm">
+                                    Break ties arbitrarily
+                                </Label>
+                            </div>
+                        </div>
                     </RadioGroup>
                 </div>
-
-            </div> {/* End of Column 2 */}
-
-        </div> // End of Main Grid
+            </div>
+        </div>
     );
 };
 

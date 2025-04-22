@@ -15,13 +15,19 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
 
-// Import the VariablesTab component
+// Import the Tab components
 import VariablesTab from "./VariablesTab";
+import StatisticsTab from "./StatisticsTab";
+import PlotsTab from "./PlotsTab";
 
 interface ExploreModalProps {
     onClose: () => void;
@@ -38,19 +44,16 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
 
-    const [showDescriptives, setShowDescriptives] = useState(true);
-    const [showMeasuresOfCentralTendency, setShowMeasuresOfCentralTendency] = useState(true);
-    const [showDispersion, setShowDispersion] = useState(true);
-    const [showOutliers, setShowOutliers] = useState(false);
-    const [showPercentiles, setShowPercentiles] = useState(false);
+    const [confidenceInterval, setConfidenceInterval] = useState<string>("95");
+    const [showDescriptives, setShowDescriptives] = useState<boolean>(true);
+    const [showMEstimators, setShowMEstimators] = useState<boolean>(false);
+    const [showOutliers, setShowOutliers] = useState<boolean>(false);
+    const [showPercentiles, setShowPercentiles] = useState<boolean>(false);
 
-    const [showHistograms, setShowHistograms] = useState(true);
-    const [showBoxplots, setShowBoxplots] = useState(true);
-    const [showScatterplots, setShowScatterplots] = useState(false);
-    const [showNormalProbabilityPlots, setShowNormalProbabilityPlots] = useState(false);
-
-    const [bootstrapSamples, setBootstrapSamples] = useState("1000");
-    const [confidenceLevel, setConfidenceLevel] = useState("95");
+    const [boxplotOption, setBoxplotOption] = useState<string>("factorLevels");
+    const [showStemAndLeaf, setShowStemAndLeaf] = useState<boolean>(true);
+    const [showHistogram, setShowHistogram] = useState<boolean>(false);
+    const [showNormalityPlots, setShowNormalityPlots] = useState<boolean>(false);
 
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -128,11 +131,30 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const handleExplore = async () => {
         if (dependentVariables.length === 0) {
             setErrorMsg("Please select at least one dependent variable.");
+            setActiveTab("variables");
             return;
         }
 
         setErrorMsg(null);
         setIsCalculating(true);
+
+        const exploreOptions = {
+            dependent: dependentVariables.map(v => v.name),
+            factors: factorVariables.map(v => v.name),
+            label: labelVariable ? labelVariable.name : null,
+            display: displayOption,
+            confidenceInterval,
+            showDescriptives,
+            showMEstimators,
+            showOutliers,
+            showPercentiles,
+            boxplotOption,
+            showStemAndLeaf,
+            showHistogram,
+            showNormalityPlots,
+        };
+
+        console.log("Submitting Explore Options:", exploreOptions);
 
         try {
             setTimeout(() => {
@@ -140,231 +162,193 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                 const factorNames = factorVariables.map(v => v.name).join(" ");
                 const labelName = labelVariable ? labelVariable.name : "";
 
-                const logMsg = `EXPLORE VARIABLES=${dependentNames} BY ${factorNames} ${labelName ? `ID=${labelName}` : ""}`;
+                const logMsg = `EXPLORE VARIABLES=${dependentNames}${factorNames ? ` BY ${factorNames}` : ''}${labelName ? ` ID=${labelName}` : ""} /STATISTICS=DEFAULT /PLOT=DEFAULT`;
 
                 addLog({ log: logMsg }).then(logId => {
                     addAnalytic(logId, {
-                        title: "Explore",
-                        note: ""
+                        title: "Explore Analysis",
+                        note: `Explore analysis for ${dependentNames}`
                     }).then(analyticId => {
                         addStatistic(analyticId, {
-                            title: "Descriptive Statistics",
+                            title: "Explore Results",
                             output_data: JSON.stringify({
                                 type: "explore",
-                                dependent: dependentVariables.map(v => v.name),
-                                factors: factorVariables.map(v => v.name),
-                                label: labelVariable ? labelVariable.name : null,
-                                display: displayOption
+                                options: exploreOptions
                             }),
-                            components: "Explore Analysis",
-                            description: ""
+                            components: "ExploreOutput",
+                            description: `Descriptive statistics and plots for ${dependentNames}.`
                         }).then(() => {
                             setIsCalculating(false);
                             onClose();
+                        }).catch(err => {
+                            console.error("Error adding statistic:", err);
+                            setErrorMsg("Failed to save results.");
+                            setIsCalculating(false);
                         });
+                    }).catch(err => {
+                        console.error("Error adding analytic:", err);
+                        setErrorMsg("Failed to create analysis entry.");
+                        setIsCalculating(false);
                     });
+                }).catch(err => {
+                    console.error("Error adding log:", err);
+                    setErrorMsg("Failed to log the operation.");
+                    setIsCalculating(false);
                 });
             }, 1500);
 
         } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
+            console.error("Explore Error:", ex);
+            setErrorMsg("An unexpected error occurred during the explore analysis.");
             setIsCalculating(false);
         }
     };
 
+    const handleReset = () => {
+        setDependentVariables([]);
+        setFactorVariables([]);
+        setLabelVariable(null);
+        setAvailableVariables(variables.filter(v => v.name !== ""));
+        setHighlightedVariable(null);
+        setShowDescriptives(true);
+        setConfidenceInterval("95");
+        setShowMEstimators(false);
+        setShowOutliers(false);
+        setShowPercentiles(false);
+        setBoxplotOption("factorLevels");
+        setShowStemAndLeaf(true);
+        setShowHistogram(false);
+        setShowNormalityPlots(false);
+        setErrorMsg(null);
+        setActiveTab("variables");
+    };
+
+    // Placeholder for Paste functionality
+    const handlePaste = () => {
+        console.log("Paste action triggered");
+        // TODO: Implement paste logic if needed
+    };
+
     return (
-        <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Explore</DialogTitle>
-            </DialogHeader>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Explore</DialogTitle>
+                </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="plots"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'plots' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Plots
-                        </TabsTrigger>
-
-                    </TabsList>
-                </div>
-
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <VariablesTab
-                        availableVariables={availableVariables}
-                        dependentVariables={dependentVariables}
-                        factorVariables={factorVariables}
-                        labelVariable={labelVariable}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        moveToDependentVariables={moveToDependentVariables}
-                        moveToFactorVariables={moveToFactorVariables}
-                        moveToLabelVariable={moveToLabelVariable}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        reorderVariables={reorderVariables}
-                        errorMsg={errorMsg}
-                    />
-                </TabsContent>
-
-                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] p-4 rounded-md">
-                        <div className="text-sm font-medium mb-4">Descriptive Statistics</div>
-                        <div className="space-y-3">
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="descStats"
-                                    checked={showDescriptives}
-                                    onChange={(e) => setShowDescriptives(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="descStats" className="text-sm">Descriptives</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="centralTendency"
-                                    checked={showMeasuresOfCentralTendency}
-                                    onChange={(e) => setShowMeasuresOfCentralTendency(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="centralTendency" className="text-sm">Measures of Central Tendency</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="dispersion"
-                                    checked={showDispersion}
-                                    onChange={(e) => setShowDispersion(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="dispersion" className="text-sm">Dispersion</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="outliers"
-                                    checked={showOutliers}
-                                    onChange={(e) => setShowOutliers(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="outliers" className="text-sm">Outliers</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="percentiles"
-                                    checked={showPercentiles}
-                                    onChange={(e) => setShowPercentiles(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="percentiles" className="text-sm">Percentiles</Label>
-                            </div>
-                        </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
+                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                            <TabsTrigger
+                                value="variables"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Variables
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="statistics"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Statistics
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="plots"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'plots' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Plots
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                </TabsContent>
 
-                <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
-                    <div className="border border-[#E6E6E6] p-4 rounded-md">
-                        <div className="text-sm font-medium mb-4">Plot Types</div>
-                        <div className="space-y-3">
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="histograms"
-                                    checked={showHistograms}
-                                    onChange={(e) => setShowHistograms(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="histograms" className="text-sm">Histograms</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="boxplots"
-                                    checked={showBoxplots}
-                                    onChange={(e) => setShowBoxplots(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="boxplots" className="text-sm">Boxplots</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="scatterplots"
-                                    checked={showScatterplots}
-                                    onChange={(e) => setShowScatterplots(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="scatterplots" className="text-sm">Scatterplots</Label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="normalPlots"
-                                    checked={showNormalProbabilityPlots}
-                                    onChange={(e) => setShowNormalProbabilityPlots(e.target.checked)}
-                                    className="mr-2 border-[#CCCCCC]"
-                                />
-                                <Label htmlFor="normalPlots" className="text-sm">Normal Probability Plots</Label>
-                            </div>
-                        </div>
+                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <VariablesTab
+                            availableVariables={availableVariables}
+                            dependentVariables={dependentVariables}
+                            factorVariables={factorVariables}
+                            labelVariable={labelVariable}
+                            highlightedVariable={highlightedVariable}
+                            setHighlightedVariable={setHighlightedVariable}
+                            moveToDependentVariables={moveToDependentVariables}
+                            moveToFactorVariables={moveToFactorVariables}
+                            moveToLabelVariable={moveToLabelVariable}
+                            moveToAvailableVariables={moveToAvailableVariables}
+                            reorderVariables={reorderVariables}
+                            errorMsg={errorMsg}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <StatisticsTab
+                            showDescriptives={showDescriptives}
+                            setShowDescriptives={setShowDescriptives}
+                            confidenceInterval={confidenceInterval}
+                            setConfidenceInterval={setConfidenceInterval}
+                            showMEstimators={showMEstimators}
+                            setShowMEstimators={setShowMEstimators}
+                            showOutliers={showOutliers}
+                            setShowOutliers={setShowOutliers}
+                            showPercentiles={showPercentiles}
+                            setShowPercentiles={setShowPercentiles}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <PlotsTab
+                            boxplotOption={boxplotOption}
+                            setBoxplotOption={setBoxplotOption}
+                            showStemAndLeaf={showStemAndLeaf}
+                            setShowStemAndLeaf={setShowStemAndLeaf}
+                            showHistogram={showHistogram}
+                            setShowHistogram={setShowHistogram}
+                            showNormalityPlots={showNormalityPlots}
+                            setShowNormalityPlots={setShowNormalityPlots}
+                        />
+                    </TabsContent>
+                </Tabs>
+
+                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                    <div className="flex justify-end space-x-3">
+                        <Button
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4 text-sm"
+                            onClick={handleExplore}
+                            disabled={isCalculating}
+                        >
+                            {isCalculating ? "Running..." : "OK"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                            onClick={handlePaste}
+                            disabled={isCalculating}
+                        >
+                            Paste
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                            onClick={handleReset}
+                            disabled={isCalculating}
+                        >
+                            Reset
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                            onClick={onClose}
+                            disabled={isCalculating}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                        >
+                            Help
+                        </Button>
                     </div>
-                </TabsContent>
-            </Tabs>
-
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleExplore}
-                        disabled={isCalculating}
-                    >
-                        {isCalculating ? "Processing..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Help
-                    </Button>
-                </div>
-            </DialogFooter>
-        </DialogContent>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 

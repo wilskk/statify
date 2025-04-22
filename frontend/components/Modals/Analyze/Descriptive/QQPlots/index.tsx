@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
+import React, { useState, useEffect, FC, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -25,11 +25,11 @@ interface QQPlotsModalProps {
     onClose: () => void;
 }
 
-const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
+const QQPlots: FC<QQPlotsModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -37,8 +37,8 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
     const [testDistribution, setTestDistribution] = useState<string>("Normal");
     const [degreesOfFreedom, setDegreesOfFreedom] = useState<string>("");
     const [estimateFromData, setEstimateFromData] = useState<boolean>(true);
-    const [location, setLocation] = useState<string>("0");
-    const [scale, setScale] = useState<string>("1");
+    const [threshold, setThreshold] = useState<string>("1");
+    const [shape, setShape] = useState<string>("1");
 
     // Transform section state
     const [naturalLogTransform, setNaturalLogTransform] = useState<boolean>(false);
@@ -59,24 +59,61 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
     // Initialize available variables on component mount
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "");
-        setAvailableVariables(validVars);
+        const currentSelectedIds = new Set(selectedVariables.map(v => v.columnIndex));
+        setAvailableVariables(validVars.filter(v => !currentSelectedIds.has(v.columnIndex)).sort((a, b) => a.columnIndex - b.columnIndex));
+    }, [variables, selectedVariables]);
+
+    const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
+        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setSelectedVariables(prev => {
+            const newSelected = [...prev];
+            if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newSelected.length) {
+                 newSelected.splice(targetIndex, 0, variable);
+             } else {
+                 newSelected.push(variable);
+             }
+            return newSelected;
+        });
+        setHighlightedVariable(null);
+    }, []);
+
+    const moveToAvailableVariables = useCallback((variable: Variable, targetIndex?: number) => {
+        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => {
+             const newAvailable = [...prev];
+            // Find original position to maintain order
+            const originalIndex = variables.findIndex(v => v.columnIndex === variable.columnIndex);
+            let insertPos = newAvailable.findIndex(v => variables.findIndex(av => av.columnIndex === v.columnIndex) > originalIndex);
+            if (insertPos === -1) insertPos = newAvailable.length; // Append if it belongs at the end
+
+             // Use targetIndex if provided for drop, otherwise calculated insertPos
+             if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newAvailable.length) {
+                 newAvailable.splice(targetIndex, 0, variable);
+             } else {
+                 newAvailable.splice(insertPos, 0, variable);
+             }
+            // Sort available list based on original variable order
+            return newAvailable.sort((a, b) =>
+                variables.findIndex(v => v.columnIndex === a.columnIndex) -
+                variables.findIndex(v => v.columnIndex === b.columnIndex)
+            );
+        });
+        setHighlightedVariable(null);
     }, [variables]);
 
-    const moveToSelectedVariables = (variable: Variable) => {
-        setSelectedVariables(prev => [...prev, variable]);
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    const reorderVariables = useCallback((source: 'available' | 'selected', reorderedList: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables(reorderedList);
+        } else {
+            setSelectedVariables(reorderedList);
+        }
         setHighlightedVariable(null);
-    };
-
-    const moveToAvailableVariables = (variable: Variable) => {
-        setAvailableVariables(prev => [...prev, variable]);
-        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
+    }, []);
 
     const handleAnalyze = async () => {
         if (selectedVariables.length === 0) {
             setErrorMsg("Please select at least one variable.");
+            setActiveTab("variables");
             return;
         }
 
@@ -97,13 +134,13 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                             title: "Quantile-Quantile Plot",
                             output_data: JSON.stringify({
                                 type: "qqplot",
-                                variables: selectedVariables.map(v => v.name),
+                                variables: selectedVariables.map(v => ({ name: v.name, columnIndex: v.columnIndex })),
                                 options: {
                                     testDistribution,
                                     degreesOfFreedom,
                                     estimateFromData,
-                                    location,
-                                    scale,
+                                    threshold,
+                                    shape,
                                     transform: {
                                         naturalLogTransform,
                                         standardizeValues,
@@ -118,20 +155,59 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                                 }
                             }),
                             components: "Q-Q Plot",
-                            description: ""
+                            description: `Q-Q Plot for ${variableNames}`
                         }).then(() => {
                             setIsCalculating(false);
                             onClose();
+                        }).catch(err => {
+                           console.error("Error adding statistic:", err);
+                           setErrorMsg("Failed to save analysis results.");
+                           setIsCalculating(false);
                         });
+                    }).catch(err => {
+                        console.error("Error adding analytic:", err);
+                        setErrorMsg("Failed to create analysis entry.");
+                        setIsCalculating(false);
                     });
+                }).catch(err => {
+                    console.error("Error adding log:", err);
+                    setErrorMsg("Failed to log analysis action.");
+                    setIsCalculating(false);
                 });
-            }, 1500);
+            }, 500);
 
         } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
+            console.error("Error in handleAnalyze:", ex);
+            setErrorMsg("An unexpected error occurred during analysis setup.");
             setIsCalculating(false);
         }
+    };
+
+    const handleReset = () => {
+        setActiveTab("variables");
+        const allVars = variables.filter(v => v.name !== "");
+        setAvailableVariables(allVars.sort((a, b) => a.columnIndex - b.columnIndex));
+        setSelectedVariables([]);
+        setHighlightedVariable(null);
+        setTestDistribution("Normal");
+        setDegreesOfFreedom("");
+        setEstimateFromData(true);
+        setThreshold("1");
+        setShape("1");
+        setNaturalLogTransform(false);
+        setStandardizeValues(false);
+        setDifference(false);
+        setDifferenceValue("1");
+        setSeasonallyDifference(false);
+        setSeasonallyDifferenceValue("1");
+        setCurrentPeriodicity("None");
+        setProportionEstimation("Blom's");
+        setRankAssignedToTies("Mean");
+        setErrorMsg(null);
+    };
+
+    const handlePaste = () => {
+        console.log("Paste action triggered - QQPlots");
     };
 
     return (
@@ -145,20 +221,20 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                     <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
                         <TabsTrigger
                             value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm data-[state=active]:bg-white data-[state=active]:border-t data-[state=active]:border-l data-[state=active]:border-r data-[state=active]:border-[#E6E6E6] data-[state=inactive]:bg-[#F7F7F7]`}
                         >
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
                             value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm data-[state=active]:bg-white data-[state=active]:border-t data-[state=active]:border-l data-[state=active]:border-r data-[state=active]:border-[#E6E6E6] data-[state=inactive]:bg-[#F7F7F7]`}
                         >
                             Options
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
                     <VariablesTab
                         availableVariables={availableVariables}
                         selectedVariables={selectedVariables}
@@ -166,10 +242,11 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                         setHighlightedVariable={setHighlightedVariable}
                         moveToSelectedVariables={moveToSelectedVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
                     />
                 </TabsContent>
 
-                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
                     <OptionsTab
                         testDistribution={testDistribution}
                         setTestDistribution={setTestDistribution}
@@ -177,10 +254,10 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                         setDegreesOfFreedom={setDegreesOfFreedom}
                         estimateFromData={estimateFromData}
                         setEstimateFromData={setEstimateFromData}
-                        location={location}
-                        setLocation={setLocation}
-                        scale={scale}
-                        setScale={setScale}
+                        threshold={threshold}
+                        setThreshold={setThreshold}
+                        shape={shape}
+                        setShape={setShape}
                         naturalLogTransform={naturalLogTransform}
                         setNaturalLogTransform={setNaturalLogTransform}
                         standardizeValues={standardizeValues}
@@ -202,12 +279,12 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                 </TabsContent>
             </Tabs>
 
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
+            {errorMsg && <div className="px-6 py-2 text-red-600 text-sm">{errorMsg}</div>}
 
             <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        className="bg-black text-white hover:bg-[#444444] h-8 px-4 text-sm"
                         onClick={handleAnalyze}
                         disabled={isCalculating}
                     >
@@ -215,21 +292,23 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                        onClick={handlePaste}
                         disabled={isCalculating}
                     >
                         Paste
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
+                        onClick={handleReset}
                         disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
                         onClick={onClose}
                         disabled={isCalculating}
                     >
@@ -237,7 +316,7 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
                         disabled={isCalculating}
                     >
                         Help
@@ -248,4 +327,4 @@ const Index: FC<QQPlotsModalProps> = ({ onClose }) => {
     );
 };
 
-export default Index;
+export default QQPlots;
