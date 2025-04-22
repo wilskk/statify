@@ -222,14 +222,12 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
     // 5. Pooled Within-Groups Matrices
     if (data.pooled_matrices) {
-        const variableCount = data.pooled_matrices.variables.length;
-
         const table: Table = {
             key: "pooled_within_groups_matrices",
             title: "Pooled Within-Groups Matrices",
             columnHeaders: [
                 { header: "", key: "matrix_type" },
-                { header: "Variable", key: "var" },
+                { header: "", key: "var" },
                 ...data.pooled_matrices.variables.map(
                     (variable: string, index: number) => ({
                         header: variable,
@@ -243,10 +241,13 @@ export function transformDiscriminantResult(data: any): ResultJson {
         // Covariance matrix
         table.rows.push({ rowHeader: ["Covariance"] });
 
-        for (let i = 0; i < variableCount; i++) {
+        for (let i = 0; i < data.pooled_matrices.variables.length; i++) {
             const entry = data.pooled_matrices.covariance[i];
 
-            const rowData: any = {};
+            // Create rowData with properly defined rowHeader
+            const rowData: any = {
+                rowHeader: ["", entry.variable], // Add variable name to rowHeader
+            };
 
             for (let j = 0; j < entry.values.length; j++) {
                 rowData[`var_${j}`] = formatDisplayNumber(
@@ -260,10 +261,13 @@ export function transformDiscriminantResult(data: any): ResultJson {
         // Correlation matrix
         table.rows.push({ rowHeader: ["Correlation"] });
 
-        for (let i = 0; i < variableCount; i++) {
+        for (let i = 0; i < data.pooled_matrices.variables.length; i++) {
             const entry = data.pooled_matrices.correlation[i];
 
-            const rowData: any = {};
+            // Create rowData with properly defined rowHeader
+            const rowData: any = {
+                rowHeader: ["", entry.variable], // Add variable name to rowHeader
+            };
 
             for (let j = 0; j < entry.values.length; j++) {
                 rowData[`var_${j}`] = formatDisplayNumber(
@@ -273,11 +277,6 @@ export function transformDiscriminantResult(data: any): ResultJson {
 
             table.rows.push(rowData);
         }
-
-        // Add footnote
-        table.rows.push({
-            rowHeader: ["a. The covariance matrix has 7 degrees of freedom."],
-        });
 
         resultJson.tables.push(table);
     }
