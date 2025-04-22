@@ -119,7 +119,7 @@ export function useVariableTableEvents({
         });
 
         return true; // Allow Handsontable to proceed if no dialog was triggered
-    }, [variables, enqueueOperation, openDialogForCell, hotTableRef, setSelectedCell]); // Added setSelectedCell dependency
+    }, [variables, enqueueOperation, openDialogForCell, hotTableRef]);
 
     const handleAfterSelectionEnd = useCallback((
         row: number, column: number, row2: number, column2: number

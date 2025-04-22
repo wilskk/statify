@@ -1,5 +1,5 @@
 // app/dashboard/variables/loading.tsx
-import { VariableTableSkeleton } from "@/components/Skeletons";
+import { VariableTableSkeleton } from "@/components/ui/Skeletons";
 
 export default function VariablesLoading() {
     return (

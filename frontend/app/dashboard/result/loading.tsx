@@ -1,5 +1,5 @@
 // app/dashboard/results/loading.tsx
-import { ResultsSkeleton, SidebarSkeleton } from "@/components/Skeletons";
+import { ResultsSkeleton, SidebarSkeleton } from "@/components/ui/Skeletons";
 
 export default function ResultsLoading() {
     return (

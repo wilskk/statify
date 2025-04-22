@@ -126,6 +126,8 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                     align: isNumeric ? "right" : "left",
                     measure: "nominal",
                     role: "input",
+                    values: [],
+                    missing: null,
                 };
 
                 await addVariable(variable);

@@ -4,8 +4,8 @@ import Header from "@/components/layout/dashboard/Header";
 import Footer from "@/components/layout/dashboard/Footer";
 import React from "react";
 import ModalContainer from "@/components/Modals/ModalContainer";
-import DataLoader from "@/components/DataLoader";
-import LoadingOverlay from "@/components/LoadingOverlay";
+import DataLoader from "@/components/ui/DataLoader";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 
 export default function DashboardLayout({
                                             children,

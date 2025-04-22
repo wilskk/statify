@@ -176,7 +176,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Adds variable names as the first row in the 'Data' sheet.</p>
+                                        <p>Adds variable names as the first row in the &apos;Data&apos; sheet.</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </Label>
@@ -189,7 +189,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 onCheckedChange={(checked) => handleChange("includeVariableProperties", Boolean(checked))}
                             />
                             <Label htmlFor="includeVariableProperties" className="text-sm font-normal cursor-pointer flex items-center">
-                                Include 'Variable Definitions' sheet
+                                Include &apos;Variable Definitions&apos; sheet
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
@@ -214,7 +214,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-xs">
-                                        <p>Replaces raw values with their defined labels (e.g., 1 becomes 'Yes') in the 'Data' sheet. Affects data cells only.</p>
+                                        <p>Replaces raw values with their defined labels (e.g., 1 becomes &apos;Yes&apos;) in the &apos;Data&apos; sheet. Affects data cells only.</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </Label>
@@ -227,7 +227,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 onCheckedChange={(checked) => handleChange("includeMetadataSheet", Boolean(checked))}
                             />
                             <Label htmlFor="includeMetadataSheet" className="text-sm font-normal cursor-pointer flex items-center">
-                                Include 'Metadata' sheet
+                                Include &apos;Metadata&apos; sheet
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />

@@ -4,7 +4,7 @@
 import React, {Suspense} from 'react';
 import Sidebar from '@/components/Output/Sidebar';
 import ResultOutput from "@/components/Output/ResultOutput";
-import {ResultsSkeleton, SidebarSkeleton} from "@/components/Skeletons";
+import { ResultsSkeleton, SidebarSkeleton } from '@/components/ui/Skeletons';
 
 export default function ResultPage() {
     return (

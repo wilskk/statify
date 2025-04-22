@@ -1,5 +1,5 @@
 // app/dashboard/data/loading.tsx
-import { DataTableSkeleton } from "@/components/Skeletons";
+import { DataTableSkeleton } from "@/components/ui/Skeletons";
 
 export default function DataLoading() {
     return (

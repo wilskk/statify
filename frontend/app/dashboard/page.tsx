@@ -10,7 +10,7 @@ import { useMetaStore } from '@/stores/useMetaStore';
 import { useModal, ModalType } from '@/hooks/useModal';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { DashboardLandingSkeleton } from '@/components/Skeletons';
+import { DashboardLandingSkeleton } from '@/components/ui/Skeletons';
 import { ExampleDatasetModal } from '@/components/Modals/ExampleDatasetModal';
 
 export default function DashboardPage() {
