@@ -22,7 +22,6 @@ import type { Variable } from "@/types/Variable";
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import ChartsTab from "./ChartsTab";
-import FormatTab from "./FormatTab";
 
 interface FrequenciesModalProps {
     onClose: () => void;
@@ -32,11 +31,10 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-    // Display options
     const [showFrequencyTables, setShowFrequencyTables] = useState(true);
     const [showCharts, setShowCharts] = useState(false);
     const [showStatistics, setShowStatistics] = useState(true);
@@ -44,22 +42,51 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    // Initialize available variables on component mount
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "");
         setAvailableVariables(validVars);
     }, [variables]);
 
-    const moveToSelectedVariables = (variable: Variable) => {
-        setSelectedVariables(prev => [...prev, variable]);
+    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setSelectedVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
         setHighlightedVariable(null);
     };
 
-    const moveToAvailableVariables = (variable: Variable) => {
-        setAvailableVariables(prev => [...prev, variable]);
+    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
         setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
         setHighlightedVariable(null);
+    };
+
+    const reorderVariables = (source: 'available' | 'selected', variables: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables([...variables]);
+        } else {
+            setSelectedVariables([...variables]);
+        }
     };
 
     const handleAnalyze = async () => {
@@ -71,22 +98,19 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setIsCalculating(true);
 
         try {
-            // 1. Prepare variable data using useDataStore's getVariableData
             const variableDataPromises = [];
             for (const varDef of selectedVariables) {
                 variableDataPromises.push(useDataStore.getState().getVariableData(varDef));
             }
             const variableData = await Promise.all(variableDataPromises);
 
-            // 2. Create worker and set up handlers
             const worker = new Worker("/workers/Frequencies/index.js");
 
-            // Set a timeout to prevent worker hanging
             const timeoutId = setTimeout(() => {
                 worker.terminate();
                 setErrorMsg("Analysis timed out. Please try again with fewer variables.");
                 setIsCalculating(false);
-            }, 60000); // 60 second timeout
+            }, 60000);
 
             worker.onmessage = async (e) => {
                 clearTimeout(timeoutId);
@@ -94,7 +118,6 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
 
                 if (wData.success) {
                     try {
-                        // Save results to database
                         const variableNames = selectedVariables.map(v => v.name);
                         const logMsg = `FREQUENCIES VARIABLES=${variableNames.join(", ")}`;
                         const logId = await addLog({ log: logMsg });
@@ -148,9 +171,8 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                 worker.terminate();
             };
 
-            // 3. Send data to worker - using the new format with variableData
             worker.postMessage({
-                action: "FULL_ANALYSIS",  // Get both descriptive and frequency results
+                action: "FULL_ANALYSIS",
                 variableData: variableData
             });
 
@@ -188,12 +210,6 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         >
                             Charts
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="format"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'format' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Format
-                        </TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -205,13 +221,14 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         setHighlightedVariable={setHighlightedVariable}
                         moveToSelectedVariables={moveToSelectedVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                        showFrequencyTables={showFrequencyTables}
+                        setShowFrequencyTables={setShowFrequencyTables}
                     />
                 </TabsContent>
 
                 <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
                     <StatisticsTab
-                        showFrequencyTables={showFrequencyTables}
-                        setShowFrequencyTables={setShowFrequencyTables}
                         showStatistics={showStatistics}
                         setShowStatistics={setShowStatistics}
                     />
@@ -222,10 +239,6 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         showCharts={showCharts}
                         setShowCharts={setShowCharts}
                     />
-                </TabsContent>
-
-                <TabsContent value="format" className="p-6 overflow-y-auto flex-grow">
-                    <FormatTab />
                 </TabsContent>
             </Tabs>
 
