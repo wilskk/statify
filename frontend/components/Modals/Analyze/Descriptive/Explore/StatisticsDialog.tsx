@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface StatisticsDialogProps {
     initialOptions: {
@@ -24,11 +25,11 @@ interface StatisticsDialogProps {
 }
 
 const StatisticsDialog: FC<StatisticsDialogProps> = ({ initialOptions, onClose, onSubmit }) => {
-    const [confidenceInterval, setConfidenceInterval] = useState(initialOptions.confidenceInterval);
-    const [showDescriptives, setShowDescriptives] = useState(initialOptions.showDescriptives);
-    const [showMEstimators, setShowMEstimators] = useState(initialOptions.showMEstimators);
-    const [showOutliers, setShowOutliers] = useState(initialOptions.showOutliers);
-    const [showPercentiles, setShowPercentiles] = useState(initialOptions.showPercentiles);
+    const [confidenceInterval, setConfidenceInterval] = useState<string>(initialOptions.confidenceInterval || "95");
+    const [showDescriptives, setShowDescriptives] = useState<boolean>(initialOptions.showDescriptives === undefined ? true : initialOptions.showDescriptives);
+    const [showMEstimators, setShowMEstimators] = useState<boolean>(initialOptions.showMEstimators || false);
+    const [showOutliers, setShowOutliers] = useState<boolean>(initialOptions.showOutliers || false);
+    const [showPercentiles, setShowPercentiles] = useState<boolean>(initialOptions.showPercentiles || false);
 
     const handleSubmit = () => {
         onSubmit({
@@ -42,88 +43,95 @@ const StatisticsDialog: FC<StatisticsDialogProps> = ({ initialOptions, onClose, 
 
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[400px] p-0 bg-[#EBF2F8] border border-[#000000] shadow-md">
-                <DialogHeader className="px-4 py-2 border-b border-[#000000] flex-shrink-0 bg-[#EBF2F8]">
-                    <DialogTitle className="text-[16px] font-medium">Explore: Statistics</DialogTitle>
+            <DialogContent className="max-w-[400px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md">
+                <DialogHeader className="px-4 py-3 border-b border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                    <DialogTitle className="text-lg font-semibold">Explore: Statistics</DialogTitle>
                 </DialogHeader>
 
-                <div className="p-4 space-y-4">
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
+                <div className="p-6 space-y-4">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
                             id="descriptives"
                             checked={showDescriptives}
-                            onChange={(e) => setShowDescriptives(e.target.checked)}
-                            className="mr-2 border-[#000000]"
+                            onCheckedChange={(checked) => setShowDescriptives(checked as boolean)}
+                            className="border-[#CCCCCC] h-4 w-4"
                         />
-                        <Label htmlFor="descriptives" className="text-sm underline cursor-pointer">Descriptives</Label>
+                        <Label htmlFor="descriptives" className="text-sm font-medium cursor-pointer underline">
+                            Descriptives
+                        </Label>
                     </div>
 
-                    <div className="flex items-center pl-6">
-                        <Label htmlFor="confidenceInterval" className="text-sm underline mr-2">
+                    {/* Confidence Interval section - indented under Descriptives */}
+                    <div className="flex items-center ml-8 space-x-2">
+                        <Label htmlFor="confidenceInterval" className="text-sm">
                             Confidence Interval for Mean:
                         </Label>
-                        <Input
-                            id="confidenceInterval"
-                            value={confidenceInterval}
-                            onChange={(e) => setConfidenceInterval(e.target.value)}
-                            className="h-8 text-sm w-16 border-[#000000]"
-                        />
-                        <span className="ml-1 text-sm">%</span>
+                        <div className="flex items-center">
+                            <Input
+                                id="confidenceInterval"
+                                value={confidenceInterval}
+                                onChange={(e) => setConfidenceInterval(e.target.value)}
+                                className="h-8 text-sm w-16 border-[#CCCCCC]"
+                            />
+                            <span className="ml-1 text-sm">%</span>
+                        </div>
                     </div>
 
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
                             id="mEstimators"
                             checked={showMEstimators}
-                            onChange={(e) => setShowMEstimators(e.target.checked)}
-                            className="mr-2 border-[#000000]"
+                            onCheckedChange={(checked) => setShowMEstimators(checked as boolean)}
+                            className="border-[#CCCCCC] h-4 w-4"
                         />
-                        <Label htmlFor="mEstimators" className="text-sm underline cursor-pointer">M-estimators</Label>
+                        <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer underline">
+                            M-estimators
+                        </Label>
                     </div>
 
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
                             id="outliers"
                             checked={showOutliers}
-                            onChange={(e) => setShowOutliers(e.target.checked)}
-                            className="mr-2 border-[#000000]"
+                            onCheckedChange={(checked) => setShowOutliers(checked as boolean)}
+                            className="border-[#CCCCCC] h-4 w-4"
                         />
-                        <Label htmlFor="outliers" className="text-sm underline cursor-pointer">Outliers</Label>
+                        <Label htmlFor="outliers" className="text-sm font-medium cursor-pointer underline">
+                            Outliers
+                        </Label>
                     </div>
 
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
                             id="percentiles"
                             checked={showPercentiles}
-                            onChange={(e) => setShowPercentiles(e.target.checked)}
-                            className="mr-2 border-[#000000]"
+                            onCheckedChange={(checked) => setShowPercentiles(checked as boolean)}
+                            className="border-[#CCCCCC] h-4 w-4"
                         />
-                        <Label htmlFor="percentiles" className="text-sm underline cursor-pointer">Percentiles</Label>
+                        <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer underline">
+                            Percentiles
+                        </Label>
                     </div>
                 </div>
 
-                <DialogFooter className="px-4 py-2 border-t border-[#000000] bg-[#EBF2F8] flex-shrink-0">
+                <DialogFooter className="px-4 py-3 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                     <div className="flex justify-end space-x-2">
                         <Button
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                             onClick={handleSubmit}
                         >
                             Continue
                         </Button>
                         <Button
                             variant="outline"
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="outline"
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         >
                             Help
                         </Button>

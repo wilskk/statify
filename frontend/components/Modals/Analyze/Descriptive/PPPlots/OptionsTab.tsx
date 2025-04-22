@@ -20,10 +20,10 @@ interface OptionsTabProps {
     setDegreesOfFreedom: React.Dispatch<React.SetStateAction<string>>;
     estimateFromData: boolean;
     setEstimateFromData: React.Dispatch<React.SetStateAction<boolean>>;
-    location: string;
-    setLocation: React.Dispatch<React.SetStateAction<string>>;
-    scale: string;
-    setScale: React.Dispatch<React.SetStateAction<string>>;
+    threshold: string;
+    setThreshold: React.Dispatch<React.SetStateAction<string>>;
+    shape: string;
+    setShape: React.Dispatch<React.SetStateAction<string>>;
     naturalLogTransform: boolean;
     setNaturalLogTransform: React.Dispatch<React.SetStateAction<boolean>>;
     standardizeValues: boolean;
@@ -43,7 +43,6 @@ interface OptionsTabProps {
     setRankAssignedToTies: React.Dispatch<React.SetStateAction<string>>;
 }
 
-
 const OptionsTab: FC<OptionsTabProps> = ({
                                              testDistribution,
                                              setTestDistribution,
@@ -51,10 +50,10 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                              setDegreesOfFreedom,
                                              estimateFromData,
                                              setEstimateFromData,
-                                             location,
-                                             setLocation,
-                                             scale,
-                                             setScale,
+                                             threshold,
+                                             setThreshold,
+                                             shape,
+                                             setShape,
                                              naturalLogTransform,
                                              setNaturalLogTransform,
                                              standardizeValues,
@@ -78,14 +77,14 @@ const OptionsTab: FC<OptionsTabProps> = ({
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
 
-            {/* === Kolom 1 === */}
-            <div className="flex flex-col">
+            {/* === Column 1 === */}
+            <div className="flex flex-col space-y-6">
                 {/* Distribution Section Card */}
-                <div className="flex-1 rounded-md border border-[#E6E6E6] p-6">
+                <div className="rounded-md border border-[#E6E6E6] p-6">
                     {/* Test Distribution Sub-section */}
                     <div>
                         <div className="mb-4 text-sm font-medium">Test Distribution</div>
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             <Select
                                 value={testDistribution}
                                 onValueChange={setTestDistribution}
@@ -97,7 +96,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                     <SelectItem value="Normal">Normal</SelectItem>
                                     <SelectItem value="Uniform">Uniform</SelectItem>
                                     <SelectItem value="Exponential">Exponential</SelectItem>
-                                    {/* Fixed: Escaped apostrophe */}
                                     <SelectItem value="t">Student&apos;s t</SelectItem>
                                     <SelectItem value="Chi-square">Chi-square</SelectItem>
                                     <SelectItem value="F">F</SelectItem>
@@ -121,7 +119,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                     {/* Distribution Parameters Sub-section */}
                     <div className="mt-6 border-t border-[#E6E6E6] pt-4">
                         <div className="mb-4 text-sm font-medium">Distribution Parameters</div>
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="estimateFromData"
@@ -157,18 +155,94 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                     disabled={estimateFromData}
                                 />
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <Label htmlFor="threshold" className="w-20 flex-shrink-0 text-sm">
+                                    Threshold:
+                                </Label>
+                                <Input
+                                    id="threshold"
+                                    value={threshold}
+                                    onChange={(e) => setThreshold(e.target.value)}
+                                    className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
+                                    disabled={estimateFromData}
+                                />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Label htmlFor="shape" className="w-20 flex-shrink-0 text-sm">
+                                    Shape:
+                                </Label>
+                                <Input
+                                    id="shape"
+                                    value={shape}
+                                    onChange={(e) => setShape(e.target.value)}
+                                    className="h-9 flex-1 border-[#CCCCCC] text-sm focus:border-black focus:ring-black"
+                                    disabled={estimateFromData}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Proportion Estimation Formula Section */}
+                <div className="rounded-md border border-[#E6E6E6] p-6">
+                    <div className="mb-4 text-sm font-medium">Proportion Estimation Formula</div>
+                    <RadioGroup
+                        value={proportionEstimation}
+                        onValueChange={setProportionEstimation}
+                        className="space-y-3"
+                    >
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Blom's"
+                                    id="bloms"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="bloms" className="cursor-pointer text-sm">
+                                    Blom&apos;s
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Rankit"
+                                    id="rankit"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="rankit" className="cursor-pointer text-sm">
+                                    Rankit
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Tukey's"
+                                    id="tukeys"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="tukeys" className="cursor-pointer text-sm">
+                                    Tukey&apos;s
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value="Van der Waerden's"
+                                    id="vanderwaerdens"
+                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
+                                />
+                                <Label htmlFor="vanderwaerdens" className="cursor-pointer text-sm">
+                                    Van der Waerden&apos;s
+                                </Label>
+                            </div>
+                        </div>
+                    </RadioGroup>
+                </div>
             </div>
 
-            {/* === Kolom 2 === */}
+            {/* === Column 2 === */}
             <div className="flex flex-col space-y-6">
-
                 {/* Transform Section Card */}
-                <div className="flex-1 rounded-md border border-[#E6E6E6] p-6">
+                <div className="rounded-md border border-[#E6E6E6] p-6">
                     <div className="mb-4 text-sm font-medium">Transform</div>
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="naturalLogTransform"
@@ -237,67 +311,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                     </div>
                 </div>
 
-                {/* Card: Proportion Estimation Formula */}
-                <div className="rounded-md border border-[#E6E6E6] p-6">
-                    <div className="mb-4 text-sm font-medium">Proportion Estimation Formula</div>
-                    <RadioGroup
-                        value={proportionEstimation}
-                        onValueChange={setProportionEstimation}
-                        className="space-y-3"
-                    >
-                        {/* Baris 1 Radio */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value="Blom's"
-                                    id="bloms"
-                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
-                                />
-                                {/* Fixed: Escaped apostrophe */}
-                                <Label htmlFor="bloms" className="cursor-pointer text-sm">
-                                    Blom&apos;s
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value="Rankit"
-                                    id="rankit"
-                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
-                                />
-                                <Label htmlFor="rankit" className="cursor-pointer text-sm">
-                                    Rankit
-                                </Label>
-                            </div>
-                        </div>
-                        {/* Baris 2 Radio */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value="Tukey's"
-                                    id="tukeys"
-                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
-                                />
-                                {/* Fixed: Escaped apostrophe */}
-                                <Label htmlFor="tukeys" className="cursor-pointer text-sm">
-                                    Tukey&apos;s
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value="Van der Waerden's"
-                                    id="vanderwaerdens"
-                                    className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
-                                />
-                                {/* Fixed: Escaped apostrophe */}
-                                <Label htmlFor="vanderwaerdens" className="cursor-pointer text-sm">
-                                    Van der Waerden&apos;s
-                                </Label>
-                            </div>
-                        </div>
-                    </RadioGroup>
-                </div>
-
-                {/* Card: Rank Assigned to Ties */}
+                {/* Rank Assigned to Ties Section */}
                 <div className="rounded-md border border-[#E6E6E6] p-6">
                     <div className="mb-4 text-sm font-medium">Rank Assigned to Ties</div>
                     <RadioGroup
@@ -305,8 +319,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         onValueChange={setRankAssignedToTies}
                         className="space-y-3"
                     >
-                        {/* Baris 1 Radio */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem
                                     value="Mean"
@@ -327,9 +340,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                     High
                                 </Label>
                             </div>
-                        </div>
-                        {/* Baris 2 Radio */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem
                                     value="Low"
@@ -353,9 +363,8 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         </div>
                     </RadioGroup>
                 </div>
-
-            </div> {/* Akhir Kolom 2 */}
-        </div> // Akhir Grid Utama
+            </div>
+        </div>
     );
 };
 

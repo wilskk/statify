@@ -23,7 +23,6 @@ import VariablesTab from "./VariablesTab";
 import ExactTestsTab from "./ExactTestsTab";
 import StatisticsTab from "./StatisticsTab";
 import CellsTab from "./CellsTab";
-import FormatTab from "./FormatTab";
 
 // Types
 import type { Variable } from "@/types/Variable";
@@ -89,8 +88,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
     const [adjustedStandardizedResiduals, setAdjustedStandardizedResiduals] = useState(false);
     const [nonintegerWeights, setNonintegerWeights] = useState<'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment'>('roundCell');
 
-    // Format state
-    const [rowOrder, setRowOrder] = useState<'ascending' | 'descending'>('ascending');
+
 
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -176,6 +174,22 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
         }
 
         setHighlightedVariable(null);
+    };
+
+    // Enhanced function to reorder variables in any list
+    const reorderVariables = (source: 'available' | 'row' | 'column' | 'layer', variables: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables([...variables]);
+        } else if (source === 'row') {
+            setRowVariables([...variables]);
+        } else if (source === 'column') {
+            setColumnVariables([...variables]);
+        } else if (source === 'layer') {
+            setLayerVariablesMap(prev => ({
+                ...prev,
+                [currentLayerIndex]: [...variables]
+            }));
+        }
     };
 
     // Set current layer with validation
@@ -286,9 +300,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
                                         },
                                         nonintegerWeights
                                     },
-                                    format: {
-                                        rowOrder
-                                    }
+                                    format: {}
                                 }
                             }),
                             components: "Cross Tabulation",
@@ -341,12 +353,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
                         >
                             Cells
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="format"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'format' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Format
-                        </TabsTrigger>
+
                     </TabsList>
                 </div>
 
@@ -369,6 +376,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
                         moveToColumnVariables={moveToColumnVariables}
                         moveToLayerVariables={moveToLayerVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
                         setDisplayClusteredBarCharts={setDisplayClusteredBarCharts}
                         setSuppressTables={setSuppressTables}
                         setDisplayLayerVariables={setDisplayLayerVariables}
@@ -458,12 +466,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
                     />
                 </TabsContent>
 
-                <TabsContent value="format" className="overflow-y-auto flex-grow">
-                    <FormatTab
-                        rowOrder={rowOrder}
-                        setRowOrder={setRowOrder}
-                    />
-                </TabsContent>
+
             </Tabs>
 
             {errorMsg && (

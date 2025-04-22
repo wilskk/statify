@@ -29,7 +29,7 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -37,8 +37,8 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
     const [testDistribution, setTestDistribution] = useState<string>("Normal");
     const [degreesOfFreedom, setDegreesOfFreedom] = useState<string>("");
     const [estimateFromData, setEstimateFromData] = useState<boolean>(true);
-    const [location, setLocation] = useState<string>("0");
-    const [scale, setScale] = useState<string>("1");
+    const [threshold, setThreshold] = useState<string>("1");
+    const [shape, setShape] = useState<string>("1");
 
     // Transform section state
     const [naturalLogTransform, setNaturalLogTransform] = useState<boolean>(false);
@@ -102,8 +102,8 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
                                     testDistribution,
                                     degreesOfFreedom,
                                     estimateFromData,
-                                    location,
-                                    scale,
+                                    threshold,
+                                    shape,
                                     transform: {
                                         naturalLogTransform,
                                         standardizeValues,
@@ -177,10 +177,10 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
                         setDegreesOfFreedom={setDegreesOfFreedom}
                         estimateFromData={estimateFromData}
                         setEstimateFromData={setEstimateFromData}
-                        location={location}
-                        setLocation={setLocation}
-                        scale={scale}
-                        setScale={setScale}
+                        threshold={threshold}
+                        setThreshold={setThreshold}
+                        shape={shape}
+                        setShape={setShape}
                         naturalLogTransform={naturalLogTransform}
                         setNaturalLogTransform={setNaturalLogTransform}
                         standardizeValues={standardizeValues}

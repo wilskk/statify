@@ -26,12 +26,12 @@ interface PlotsDialogProps {
 }
 
 const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }) => {
-    const [boxplotOption, setBoxplotOption] = useState(initialOptions.boxplotOption);
-    const [showStemAndLeaf, setShowStemAndLeaf] = useState(initialOptions.showStemAndLeaf);
-    const [showHistogram, setShowHistogram] = useState(initialOptions.showHistogram);
-    const [showNormalityPlots, setShowNormalityPlots] = useState(initialOptions.showNormalityPlots);
-    const [spreadVsLevelOption, setSpreadVsLevelOption] = useState(initialOptions.spreadVsLevelOption);
-    const [transformationPower, setTransformationPower] = useState(initialOptions.transformationPower);
+    const [boxplotOption, setBoxplotOption] = useState<string>(initialOptions.boxplotOption || "factorLevels");
+    const [showStemAndLeaf, setShowStemAndLeaf] = useState<boolean>(initialOptions.showStemAndLeaf === undefined ? true : initialOptions.showStemAndLeaf);
+    const [showHistogram, setShowHistogram] = useState<boolean>(initialOptions.showHistogram || false);
+    const [showNormalityPlots, setShowNormalityPlots] = useState<boolean>(initialOptions.showNormalityPlots || false);
+    const [spreadVsLevelOption, setSpreadVsLevelOption] = useState<string>(initialOptions.spreadVsLevelOption || "none");
+    const [transformationPower, setTransformationPower] = useState<string>(initialOptions.transformationPower || "natural");
 
     const handleSubmit = () => {
         onSubmit({
@@ -46,16 +46,15 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
 
     return (
         <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[500px] p-0 bg-[#EBF2F8] border border-[#000000] shadow-md">
-                <DialogHeader className="px-4 py-2 border-b border-[#000000] flex-shrink-0 bg-[#EBF2F8]">
-                    <DialogTitle className="text-[16px] font-medium">Explore: Plots</DialogTitle>
+            <DialogContent className="max-w-[550px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md">
+                <DialogHeader className="px-4 py-3 border-b border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                    <DialogTitle className="text-lg font-semibold">Explore: Plots</DialogTitle>
                 </DialogHeader>
 
-                <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Boxplots section */}
-                        <div className="border border-[#000000] p-3 bg-[#EBF2F8]">
-                            <div className="text-sm underline font-medium mb-2">Boxplots</div>
+                <div className="p-6">
+                    <div className="grid grid-cols-2 gap-6 mb-5">
+                        <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
+                            <h3 className="text-sm font-medium mb-3 text-[#333333] underline">Boxplots</h3>
                             <RadioGroup
                                 value={boxplotOption}
                                 onValueChange={setBoxplotOption}
@@ -65,7 +64,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                     <RadioGroupItem
                                         value="factorLevels"
                                         id="factorLevels"
-                                        className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                        className="mr-2 border-[#CCCCCC] h-4 w-4"
                                     />
                                     <Label htmlFor="factorLevels" className="text-sm cursor-pointer">Factor levels together</Label>
                                 </div>
@@ -73,7 +72,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                     <RadioGroupItem
                                         value="dependents"
                                         id="dependents"
-                                        className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                        className="mr-2 border-[#CCCCCC] h-4 w-4"
                                     />
                                     <Label htmlFor="dependents" className="text-sm cursor-pointer">Dependents together</Label>
                                 </div>
@@ -81,16 +80,15 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                     <RadioGroupItem
                                         value="none"
                                         id="noneBox"
-                                        className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                        className="mr-2 border-[#CCCCCC] h-4 w-4"
                                     />
                                     <Label htmlFor="noneBox" className="text-sm cursor-pointer">None</Label>
                                 </div>
                             </RadioGroup>
                         </div>
 
-                        {/* Descriptive section */}
-                        <div className="border border-[#000000] p-3 bg-[#EBF2F8]">
-                            <div className="text-sm underline font-medium mb-2">Descriptive</div>
+                        <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
+                            <h3 className="text-sm font-medium mb-3 text-[#333333] underline">Descriptive</h3>
                             <div className="space-y-2">
                                 <div className="flex items-center">
                                     <input
@@ -98,7 +96,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                         id="stemAndLeaf"
                                         checked={showStemAndLeaf}
                                         onChange={(e) => setShowStemAndLeaf(e.target.checked)}
-                                        className="mr-2 border-[#000000]"
+                                        className="mr-2 border-[#CCCCCC] h-4 w-4"
                                     />
                                     <Label htmlFor="stemAndLeaf" className="text-sm cursor-pointer">Stem-and-leaf</Label>
                                 </div>
@@ -108,7 +106,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                         id="histogram"
                                         checked={showHistogram}
                                         onChange={(e) => setShowHistogram(e.target.checked)}
-                                        className="mr-2 border-[#000000]"
+                                        className="mr-2 border-[#CCCCCC] h-4 w-4"
                                     />
                                     <Label htmlFor="histogram" className="text-sm cursor-pointer">Histogram</Label>
                                 </div>
@@ -116,23 +114,21 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                         </div>
                     </div>
 
-                    {/* Normality plots section */}
-                    <div className="mt-4 border border-[#000000] p-3 bg-[#EBF2F8]">
+                    <div className="border border-[#E6E6E6] rounded-md p-4 bg-white mb-5">
                         <div className="flex items-center">
                             <input
                                 type="checkbox"
                                 id="normalityPlots"
                                 checked={showNormalityPlots}
                                 onChange={(e) => setShowNormalityPlots(e.target.checked)}
-                                className="mr-2 border-[#000000]"
+                                className="mr-2 border-[#CCCCCC] h-4 w-4"
                             />
                             <Label htmlFor="normalityPlots" className="text-sm cursor-pointer underline">Normality plots with tests</Label>
                         </div>
                     </div>
 
-                    {/* Spread vs Level with Levene Test section */}
-                    <div className="mt-4 border border-[#000000] p-3 bg-[#EBF2F8]">
-                        <div className="text-sm underline font-medium mb-2">Spread vs Level with Levene Test</div>
+                    <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
+                        <h3 className="text-sm font-medium mb-3 text-[#333333] underline">Spread vs Level with Levene Test</h3>
                         <RadioGroup
                             value={spreadVsLevelOption}
                             onValueChange={setSpreadVsLevelOption}
@@ -142,7 +138,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                 <RadioGroupItem
                                     value="none"
                                     id="noneSpread"
-                                    className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                    className="mr-2 border-[#CCCCCC] h-4 w-4"
                                 />
                                 <Label htmlFor="noneSpread" className="text-sm cursor-pointer">None</Label>
                             </div>
@@ -150,7 +146,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                 <RadioGroupItem
                                     value="power"
                                     id="power"
-                                    className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                    className="mr-2 border-[#CCCCCC] h-4 w-4"
                                 />
                                 <Label htmlFor="power" className="text-sm cursor-pointer">Power estimation</Label>
                             </div>
@@ -158,16 +154,17 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                 <RadioGroupItem
                                     value="transformed"
                                     id="transformed"
-                                    className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                    className="mr-2 border-[#CCCCCC] h-4 w-4"
                                 />
                                 <Label htmlFor="transformed" className="text-sm cursor-pointer">Transformed</Label>
+                                <Label className="text-sm ml-2 mr-1">Power:</Label>
                                 <Select
                                     value={transformationPower}
                                     onValueChange={setTransformationPower}
                                     disabled={spreadVsLevelOption !== 'transformed'}
                                 >
-                                    <SelectTrigger className="ml-2 h-7 w-28 border-[#000000]">
-                                        <SelectValue placeholder="Power" />
+                                    <SelectTrigger className="h-7 w-28 border-[#CCCCCC] text-xs">
+                                        <SelectValue placeholder="Select power" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="natural">Natural log</SelectItem>
@@ -181,7 +178,7 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                                 <RadioGroupItem
                                     value="untransformed"
                                     id="untransformed"
-                                    className="mr-2 border-[#000000] data-[state=checked]:border-[#000000] data-[state=checked]:bg-[#000000]"
+                                    className="mr-2 border-[#CCCCCC] h-4 w-4"
                                 />
                                 <Label htmlFor="untransformed" className="text-sm cursor-pointer">Untransformed</Label>
                             </div>
@@ -189,24 +186,24 @@ const PlotsDialog: FC<PlotsDialogProps> = ({ initialOptions, onClose, onSubmit }
                     </div>
                 </div>
 
-                <DialogFooter className="px-4 py-2 border-t border-[#000000] bg-[#EBF2F8] flex-shrink-0">
+                <DialogFooter className="px-4 py-3 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                     <div className="flex justify-end space-x-2">
                         <Button
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                             onClick={handleSubmit}
                         >
                             Continue
                         </Button>
                         <Button
                             variant="outline"
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="outline"
-                            className="px-6 py-1 h-8 bg-[#ADD8E6] border border-[#000000] hover:bg-[#87CEEB] text-black"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         >
                             Help
                         </Button>

@@ -23,7 +23,7 @@ import { Variable } from "@/types/Variable";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
-import DisplayTab from "./DisplayTab";
+
 
 interface DescriptivesProps {
     onClose: () => void;
@@ -35,14 +35,11 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
     const { data } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
 
-    // Tab state
     const [activeTab, setActiveTab] = useState("variables");
-
-    // Options settings
     const [saveStandardized, setSaveStandardized] = useState(false);
     const [displayStatistics, setDisplayStatistics] = useState({
         mean: true,
@@ -58,61 +55,70 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
         standardError: false
     });
 
-    // Display settings
-    const [displayOrder, setDisplayOrder] = useState("analysis");
-    const [variableListFormat, setVariableListFormat] = useState("name");
+    const [displayOrder, setDisplayOrder] = useState("variableList");    const [isCalculating, setIsCalculating] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     useEffect(() => {
-        setStoreVariables(variables.filter(v => v.name !== ""));
+        setAvailableVariables(variables.filter(v => v.name !== ""));
     }, [variables]);
 
-    const moveToSelectedVariables = (variable: Variable) => {
-        setSelectedVariables(prev => [...prev, variable]);
-        setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
+        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setSelectedVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
         setHighlightedVariable(null);
     };
 
-    const moveFromSelectedVariables = (variable: Variable) => {
-        setStoreVariables(prev => [...prev, variable]);
+    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
         setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
         setHighlightedVariable(null);
     };
 
-    const handleTransferClick = () => {
-        if (!highlightedVariable) return;
-
-        if (highlightedVariable.source === "available") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = storeVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToSelectedVariables(variable);
-            }
-        } else if (highlightedVariable.source === "selected") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = selectedVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromSelectedVariables(variable);
-            }
+    const reorderVariables = (source: 'available' | 'selected', variables: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables([...variables]);
+        } else {
+            setSelectedVariables([...variables]);
         }
     };
 
     const handleConfirm = async () => {
         if (selectedVariables.length === 0) {
-            alert("Please select at least one variable.");
+            setErrorMsg("Please select at least one variable.");
             return;
         }
+        setErrorMsg(null);
+        setIsCalculating(true);
 
         try {
-            // Logic for performing descriptive analysis would go here
-
-            // Create a log entry
             const logEntry = {
-                log: `Descriptives Analysis: ${new Date().toLocaleString()}`
+                log: `DESCRIPTIVES VARIABLES=${selectedVariables.map(v => v.name).join(" ")}`
             };
 
             const logId = await addLog(logEntry);
 
-            // Create an analytic entry
             const analyticEntry = {
                 title: "Descriptives",
                 note: `Analysis performed with ${selectedVariables.length} variables.`
@@ -120,13 +126,12 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
 
             const analyticId = await addAnalytic(logId, analyticEntry);
 
-            // Save results - implementation would depend on actual analysis
-
-            // Close the modal
+            setIsCalculating(false);
             closeModal();
         } catch (error) {
             console.error("Error performing descriptives analysis:", error);
-            alert("An error occurred while performing the analysis. Please try again.");
+            setErrorMsg("An error occurred while performing the analysis. Please try again.");
+            setIsCalculating(false);
         }
     };
 
@@ -151,24 +156,19 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                         >
                             Statistics
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="display"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'display' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Display
-                        </TabsTrigger>
+
                     </TabsList>
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
-                        storeVariables={storeVariables}
+                        availableVariables={availableVariables}
                         selectedVariables={selectedVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         moveToSelectedVariables={moveToSelectedVariables}
-                        moveFromSelectedVariables={moveFromSelectedVariables}
-                        handleTransferClick={handleTransferClick}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
                         saveStandardized={saveStandardized}
                         setSaveStandardized={setSaveStandardized}
                     />
@@ -178,36 +178,36 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                     <StatisticsTab
                         displayStatistics={displayStatistics}
                         setDisplayStatistics={setDisplayStatistics}
+                        displayOrder={displayOrder}
+                        setDisplayOrder={setDisplayOrder}
                     />
                 </TabsContent>
 
-                <TabsContent value="display" className="p-6 overflow-y-auto flex-grow">
-                    <DisplayTab
-                        displayOrder={displayOrder}
-                        setDisplayOrder={setDisplayOrder}
-                        variableListFormat={variableListFormat}
-                        setVariableListFormat={setVariableListFormat}
-                    />
-                </TabsContent>
+
             </Tabs>
+
+            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
 
             <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                         onClick={handleConfirm}
+                        disabled={isCalculating}
                     >
-                        OK
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        disabled={isCalculating}
                     >
                         Paste
                     </Button>
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        disabled={isCalculating}
                     >
                         Reset
                     </Button>
@@ -215,12 +215,14 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={onClose}
+                        disabled={isCalculating}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        disabled={isCalculating}
                     >
                         Help
                     </Button>
