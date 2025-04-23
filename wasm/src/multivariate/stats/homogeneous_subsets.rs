@@ -17,153 +17,208 @@ use super::core::{
     calculate_t_critical,
 };
 
-/// Calculate homogeneous subsets for post-hoc tests
 pub fn calculate_homogeneous_subsets(
     data: &AnalysisData,
-    config: &MultivariateConfig,
-    dependent_var: &str,
-    factor: &str
-) -> Result<HashMap<String, HomogeneousSubsets>, String> {
+    config: &MultivariateConfig
+) -> Result<HashMap<String, HashMap<String, HomogeneousSubsets>>, String> {
     let mut result = HashMap::new();
 
-    // Calculate necessary statistics
-    let (mse, df_error) = calculate_mean_square_error(data, config, dependent_var)?;
+    // Extract dependent variables from config
+    let dependent_vars = match &config.main.dep_var {
+        Some(vars) if !vars.is_empty() => vars,
+        _ => {
+            return Err("No dependent variables defined in the model".to_string());
+        }
+    };
 
-    // Calculate factor levels and their means
-    let factor_levels = get_factor_levels(data, factor)?;
-    let mut level_means: Vec<(String, f64, usize)> = Vec::new();
+    // Extract factors from config
+    let factors = match &config.main.fix_factor {
+        Some(factors) if !factors.is_empty() => factors,
+        _ => {
+            return Err("No factors defined in the model".to_string());
+        }
+    };
 
-    for level in &factor_levels {
-        let values = get_level_values(data, factor, level, dependent_var)?;
-        let n = values.len();
-        if n > 0 {
-            let mean = calculate_mean(&values);
-            level_means.push((level.clone(), mean, n));
+    // Process each combination of dependent variable and factor
+    for dependent_var in dependent_vars {
+        let mut factor_results = HashMap::new();
+
+        for factor in factors {
+            // Calculate necessary statistics
+            let (mse, df_error) = match calculate_mean_square_error(data, config, dependent_var) {
+                Ok(result) => result,
+                Err(_) => {
+                    continue;
+                } // Skip this combination if error occurs
+            };
+
+            // Calculate factor levels and their means
+            let factor_levels = match get_factor_levels(data, factor) {
+                Ok(levels) => levels,
+                Err(_) => {
+                    continue;
+                } // Skip this combination if error occurs
+            };
+
+            let mut level_means: Vec<(String, f64, usize)> = Vec::new();
+            for level in &factor_levels {
+                let values = match get_level_values(data, factor, level, dependent_var) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        continue;
+                    } // Skip this level if error occurs
+                };
+
+                let n = values.len();
+                if n > 0 {
+                    let mean = calculate_mean(&values);
+                    level_means.push((level.clone(), mean, n));
+                }
+            }
+
+            // Sort level means from smallest to largest
+            level_means.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            // Calculate harmonic mean of sample sizes (needed for some tests)
+            let harmonic_mean = calculate_harmonic_mean(&level_means);
+            let alpha = config.options.sig_level.unwrap_or(0.05);
+
+            // Generate homogeneous subsets for each requested test
+            if config.posthoc.tu {
+                // Tukey HSD
+                if
+                    let Ok(subsets) = calculate_tukey_hsd_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    // Use the combination of dependent variable and factor as the key
+                    let key = format!("{}_{}", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.snk {
+                // Student-Newman-Keuls
+                if
+                    let Ok(subsets) = calculate_snk_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_SNK", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.dun {
+                // Duncan
+                if
+                    let Ok(subsets) = calculate_duncan_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_Duncan", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.regwf {
+                // Ryan-Einot-Gabriel-Welsch F
+                if
+                    let Ok(subsets) = calculate_regwf_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_R-E-G-W F", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.regwq {
+                // Ryan-Einot-Gabriel-Welsch Q
+                if
+                    let Ok(subsets) = calculate_regwq_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_R-E-G-W Q", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.tub {
+                // Tukey b
+                if
+                    let Ok(subsets) = calculate_tukey_b_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_Tukey b", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+
+            if config.posthoc.waller {
+                // Waller-Duncan
+                let error_ratio = config.posthoc.error_ratio.unwrap_or(100) as f64;
+                if
+                    let Ok(subsets) = calculate_waller_duncan_subsets(
+                        factor,
+                        &level_means,
+                        mse,
+                        df_error,
+                        harmonic_mean,
+                        error_ratio,
+                        alpha
+                    )
+                {
+                    let key = format!("{}_{}_Waller-Duncan", dependent_var, factor);
+                    factor_results.insert(key, subsets);
+                }
+            }
+        }
+
+        if !factor_results.is_empty() {
+            result.insert(dependent_var.clone(), factor_results);
         }
     }
 
-    // Sort level means from smallest to largest
-    level_means.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Calculate harmonic mean of sample sizes (needed for some tests)
-    let harmonic_mean = calculate_harmonic_mean(&level_means);
-
-    // Generate homogeneous subsets for each requested test
-    if config.posthoc.tu {
-        // Tukey HSD
-        if
-            let Ok(subsets) = calculate_tukey_hsd_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("Tukey HSD".to_string(), subsets);
-        }
+    if result.is_empty() {
+        Err(
+            "Failed to calculate homogeneous subsets for any variable-factor combination".to_string()
+        )
+    } else {
+        Ok(result)
     }
-
-    if config.posthoc.snk {
-        // Student-Newman-Keuls
-        if
-            let Ok(subsets) = calculate_snk_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("Student-Newman-Keuls".to_string(), subsets);
-        }
-    }
-
-    if config.posthoc.dun {
-        // Duncan
-        if
-            let Ok(subsets) = calculate_duncan_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("Duncan".to_string(), subsets);
-        }
-    }
-
-    if config.posthoc.regwf {
-        // Ryan-Einot-Gabriel-Welsch F
-        if
-            let Ok(subsets) = calculate_regwf_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("R-E-G-W F".to_string(), subsets);
-        }
-    }
-
-    if config.posthoc.regwq {
-        // Ryan-Einot-Gabriel-Welsch Q
-        if
-            let Ok(subsets) = calculate_regwq_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("R-E-G-W Q".to_string(), subsets);
-        }
-    }
-
-    if config.posthoc.tub {
-        // Tukey b
-        if
-            let Ok(subsets) = calculate_tukey_b_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("Tukey's b".to_string(), subsets);
-        }
-    }
-
-    if config.posthoc.waller {
-        // Waller-Duncan
-        let error_ratio = config.posthoc.error_ratio.unwrap_or(100) as f64;
-        if
-            let Ok(subsets) = calculate_waller_duncan_subsets(
-                factor,
-                &level_means,
-                mse,
-                df_error,
-                harmonic_mean,
-                error_ratio,
-                config.options.sig_level.unwrap_or(0.05)
-            )
-        {
-            result.insert("Waller-Duncan".to_string(), subsets);
-        }
-    }
-
-    Ok(result)
 }
 
 /// Calculate the mean square error from the data
@@ -798,7 +853,7 @@ fn f_critical_value(alpha: f64, df1: usize, df2: usize) -> f64 {
             for _ in 0..50 {
                 let mid = (low + high) / 2.0;
                 match dist.cdf(mid) {
-                    Ok(cdf) => {
+                    cdf => {
                         if (cdf - p).abs() < tol {
                             return mid;
                         }
@@ -809,7 +864,7 @@ fn f_critical_value(alpha: f64, df1: usize, df2: usize) -> f64 {
                             high = mid;
                         }
                     }
-                    Err(_) => {
+                    _ => {
                         break;
                     }
                 }
@@ -855,7 +910,7 @@ fn chi2_critical_value(alpha: f64, df: usize) -> f64 {
             for _ in 0..50 {
                 let mid = (low + high) / 2.0;
                 match dist.cdf(mid) {
-                    Ok(cdf) => {
+                    cdf => {
                         if (cdf - p).abs() < tol {
                             return mid;
                         }
@@ -866,7 +921,7 @@ fn chi2_critical_value(alpha: f64, df: usize) -> f64 {
                             high = mid;
                         }
                     }
-                    Err(_) => {
+                    _ => {
                         break;
                     }
                 }

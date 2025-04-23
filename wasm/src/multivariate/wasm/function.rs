@@ -190,21 +190,6 @@ pub fn run_analysis(
         }
     }
 
-    // Step 6: Lack of Fit Tests if requested
-    let mut lack_of_fit_tests = None;
-    if config.options.lack_of_fit {
-        executed_functions.push("calculate_lack_of_fit_tests".to_string());
-        match core::calculate_lack_of_fit_tests(data, config) {
-            Ok(tests) => {
-                lack_of_fit_tests = Some(tests);
-            }
-            Err(e) => {
-                error_collector.add_error("calculate_lack_of_fit_tests", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        }
-    }
-
     // Step 7: Spread-vs-Level Plots if requested
     let mut spread_vs_level_plots = None;
     if config.options.spr_vs_level {
@@ -339,18 +324,6 @@ pub fn run_analysis(
         }
     }
 
-    // Step 17: Calculate estimated effect size if requested
-    if config.options.est_effect_size {
-        executed_functions.push("calculate_effect_size".to_string());
-        match core::calculate_effect_size(data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("calculate_effect_size", &e);
-                // Continue execution despite errors
-            }
-        }
-    }
-
     // Step 19: Calculate residual plots if requested
     if config.options.res_plot {
         executed_functions.push("calculate_residual_plots".to_string());
@@ -373,7 +346,6 @@ pub fn run_analysis(
         general_estimable_function,
         between_subjects_sscp,
         contrast_coefficients,
-        lack_of_fit_tests,
         spread_vs_level_plots,
         posthoc_tests,
         emmeans,
@@ -386,7 +358,7 @@ pub fn run_analysis(
         residual_matrix,
         sscp_matrix,
         univariate_tests,
-        homogeneous_subsets: None,
+        homogeneous_subsets,
         scatter_plot_matrices: None,
         profile_plots: None,
     };

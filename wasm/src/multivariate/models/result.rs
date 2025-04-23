@@ -10,7 +10,6 @@ pub struct MultivariateResult {
     pub parameter_estimates: Option<ParameterEstimates>,
     pub general_estimable_function: Option<GeneralEstimableFunction>,
     pub contrast_coefficients: Option<ContrastCoefficients>,
-    pub lack_of_fit_tests: Option<LackOfFitTests>,
     pub spread_vs_level_plots: Option<HashMap<String, SpreadVsLevelPlots>>,
     pub posthoc_tests: Option<HashMap<String, Vec<PostHocTest>>>,
     pub emmeans: Option<HashMap<String, Vec<EstimatedMarginalMean>>>,
@@ -24,7 +23,7 @@ pub struct MultivariateResult {
     pub residual_matrix: Option<ResidualMatrix>,
     pub sscp_matrix: Option<SSCPMatrix>,
     pub univariate_tests: Option<UnivariateTests>,
-    pub homogeneous_subsets: Option<HashMap<String, HomogeneousSubsets>>,
+    pub homogeneous_subsets: Option<HashMap<String, HashMap<String, HomogeneousSubsets>>>,
     pub scatter_plot_matrices: Option<HashMap<String, ScatterPlotMatrix>>,
     pub profile_plots: Option<HashMap<String, PlotData>>,
 }
@@ -126,18 +125,6 @@ pub struct GeneralEstimableFunction {
 pub struct ContrastCoefficients {
     pub parameter: Vec<String>,
     pub coefficients: Vec<f64>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LackOfFitTests {
-    pub sum_of_squares: f64,
-    pub df: usize,
-    pub mean_square: f64,
-    pub f_value: f64,
-    pub significance: f64,
-    pub partial_eta_squared: f64,
-    pub noncent_parameter: f64,
-    pub observed_power: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

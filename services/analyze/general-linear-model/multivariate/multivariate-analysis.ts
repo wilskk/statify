@@ -50,23 +50,23 @@ export async function analyzeMultivariate({
 
     console.log(configData);
 
-    const multivariate = new MultivariateAnalysis(
-        slicedDataForDependent,
-        slicedDataForFixFactor,
-        slicedDataForCovariate,
-        slicedDataForWlsWeight,
-        varDefsForDependent,
-        varDefsForFixFactor,
-        varDefsForCovariate,
-        varDefsForWlsWeight,
-        configData
-    );
+    // const multivariate = new MultivariateAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
 
-    const results = multivariate.get_formatted_results();
-    const error = multivariate.get_all_errors();
+    // const results = multivariate.get_formatted_results();
+    // const error = multivariate.get_all_errors();
 
-    console.log("Results", results);
-    console.log(error);
+    // console.log("Results", results);
+    // console.log(error);
 
     // const formattedResults = transformMultivariateResult(results);
     // console.log("formattedResults", formattedResults);
