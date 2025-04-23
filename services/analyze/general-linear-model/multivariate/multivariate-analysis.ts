@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { MultivariateAnalysisType } from "@/models/general-linear-model/multivariate/multivariate-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { MultivariateAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeMultivariate({
     configData,
@@ -62,11 +62,11 @@ export async function analyzeMultivariate({
         configData
     );
 
-    // const results = multivariate.get_formatted_results();
-    // const error = multivariate.get_all_errors();
+    const results = multivariate.get_formatted_results();
+    const error = multivariate.get_all_errors();
 
-    // console.log("Results", results);
-    // console.log(error);
+    console.log("Results", results);
+    console.log(error);
 
     // const formattedResults = transformMultivariateResult(results);
     // console.log("formattedResults", formattedResults);

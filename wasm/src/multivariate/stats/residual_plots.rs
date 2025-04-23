@@ -32,7 +32,7 @@ pub fn calculate_residual_plots(
         let x_transpose_y = &x_mat.transpose() * &y_vec;
 
         // Get parameter estimates
-        let beta = match x_transpose_x.try_inverse() {
+        let beta = match x_transpose_x.clone().try_inverse() {
             Some(inv) => inv * x_transpose_y,
             None => {
                 return Err(
@@ -90,19 +90,25 @@ pub fn calculate_residual_plots(
         // Add spread vs level plot data
 
         // Group by predicted values (rounded to nearest 0.5 for binning)
-        let mut level_groups: HashMap<f64, Vec<f64>> = HashMap::new();
+        // Use i64 as the key instead of f64 to avoid HashMap key trait bound issues
+        let mut level_groups: HashMap<i64, Vec<f64>> = HashMap::new();
 
         for i in 0..n {
             let level = (y_hat[i] * 2.0).round() / 2.0; // Round to nearest 0.5
             let spread = residuals[i].abs();
 
-            level_groups.entry(level).or_insert_with(Vec::new).push(spread);
+            // Convert the f64 level to an i64 with a scaling factor to maintain precision
+            let level_key = (level * 1000.0).round() as i64;
+
+            level_groups.entry(level_key).or_insert_with(Vec::new).push(spread);
         }
 
         // Calculate mean spread for each level
         let mut spread_level_points = Vec::new();
 
-        for (level, spreads) in level_groups {
+        for (level_key, spreads) in level_groups {
+            // Convert the i64 key back to f64
+            let level = (level_key as f64) / 1000.0;
             let mean_spread = calculate_mean(&spreads);
 
             spread_level_points.push((level, mean_spread));

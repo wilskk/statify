@@ -12,7 +12,7 @@ use super::core::{ build_design_matrix_and_response, to_dmatrix, to_dvector };
 pub fn save_variables(
     data: &AnalysisData,
     config: &MultivariateConfig
-) -> Result<Option<SavedVariables>, String> {
+) -> Result<SavedVariables, String> {
     let mut variable_values = HashMap::new();
 
     // Get dependent variables
@@ -155,8 +155,8 @@ pub fn save_variables(
     }
 
     if variable_values.is_empty() {
-        Ok(None)
+        Err("No variables to save".to_string())
     } else {
-        Ok(Some(SavedVariables { variable_values }))
+        Ok(SavedVariables { variable_values })
     }
 }

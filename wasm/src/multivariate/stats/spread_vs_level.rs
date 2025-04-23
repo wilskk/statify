@@ -12,7 +12,7 @@ use super::core::{ build_design_matrix_and_response, calculate_mean, to_dmatrix,
 pub fn calculate_spread_vs_level_plots(
     data: &AnalysisData,
     config: &MultivariateConfig
-) -> Result<Option<HashMap<String, SpreadVsLevelPlots>>, String> {
+) -> Result<HashMap<String, SpreadVsLevelPlots>, String> {
     let mut result = HashMap::new();
 
     // Get dependent variables
@@ -95,5 +95,5 @@ pub fn calculate_spread_vs_level_plots(
         result.insert(dep_var.clone(), SpreadVsLevelPlots { points });
     }
 
-    Ok(Some(result))
+    Ok(result)
 }

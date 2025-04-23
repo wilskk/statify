@@ -175,11 +175,7 @@ pub fn calculate_tests_between_subjects_effects(
 
                 if factor_df > 0 {
                     // Calculate factor SS based on the SS type
-                    let factor_ss = match
-                        config.model.sum_of_square_method
-                            .as_ref()
-                            .unwrap_or(&SumOfSquaresMethod::TypeIII)
-                    {
+                    let factor_ss = match config.model.sum_of_square_method {
                         SumOfSquaresMethod::TypeI => {
                             // Type I SS (sequential)
                             calculate_type_i_ss(&x_matrix, &y_vector, &factor_cols, data, config)?
@@ -255,11 +251,7 @@ pub fn calculate_tests_between_subjects_effects(
 
                     if interaction_df > 0 {
                         // Calculate interaction SS based on the SS type
-                        let interaction_ss = match
-                            config.model.sum_of_square_method
-                                .as_ref()
-                                .unwrap_or(&SumOfSquaresMethod::TypeIII)
-                        {
+                        let interaction_ss = match config.model.sum_of_square_method {
                             SumOfSquaresMethod::TypeI => {
                                 // Type I SS (sequential)
                                 calculate_type_i_ss(

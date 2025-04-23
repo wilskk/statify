@@ -162,15 +162,6 @@ impl MultivariateAnalysis {
             }
         }
 
-        // Validate plots configuration
-        if config.plots.line_chart_type || config.plots.bar_chart_type {
-            if config.plots.axis_list.is_none() {
-                let msg = "Horizontal axis must be specified for plots".to_string();
-                error_collector.add_error("config.validation.plots.axis", &msg);
-                return Err(string_to_js_error(msg));
-            }
-        }
-
         // Store data
         let data = AnalysisData {
             dependent_data,

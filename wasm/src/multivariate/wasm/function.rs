@@ -53,6 +53,34 @@ pub fn run_analysis(
         }
     }
 
+    let mut box_test = None;
+    if config.options.homogen_test {
+        executed_functions.push("calculate_box_test".to_string());
+        match core::calculate_box_test(data, config) {
+            Ok(test) => {
+                box_test = Some(test);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_box_test", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    let mut bartlett_test = None;
+    if config.options.homogen_test {
+        executed_functions.push("calculate_bartlett_test".to_string());
+        match core::calculate_bartlett_test(data, config) {
+            Ok(test) => {
+                bartlett_test = Some(test);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_bartlett_test", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
     // Step 3: Levene's Test for Homogeneity of Variances if requested
     let mut levene_test = None;
     if config.options.homogen_test {
@@ -90,6 +118,73 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_parameter_estimates", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    let mut between_subjects_sscp = None;
+    if config.options.sscp_mat {
+        executed_functions.push("calculate_between_subjects_sscp".to_string());
+        match core::calculate_between_subjects_sscp(data, config) {
+            Ok(sscp) => {
+                // Store the SSCP matrix in the result
+                between_subjects_sscp = Some(sscp);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_between_subjects_sscp", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    let mut residual_matrix = None;
+    if config.options.res_sscp_mat {
+        executed_functions.push("calculate_residual_matrix".to_string());
+        match core::calculate_residual_matrix(data, config) {
+            Ok(matrix) => {
+                residual_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_residual_matrix", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
+    let mut multivariate_tests = None;
+    executed_functions.push("calculate_multivariate_tests".to_string());
+    match core::calculate_multivariate_tests(data, config) {
+        Ok(tests) => {
+            multivariate_tests = Some(tests);
+        }
+        Err(e) => {
+            error_collector.add_error("calculate_multivariate_tests", &e);
+            // Continue execution despite errors for non-critical functions
+        }
+    }
+
+    let mut univariate_tests = None;
+    executed_functions.push("calculate_univariate_tests".to_string());
+    match core::calculate_univariate_tests(data, config) {
+        Ok(tests) => {
+            univariate_tests = Some(tests);
+        }
+        Err(e) => {
+            error_collector.add_error("calculate_univariate_tests", &e);
+            // Continue execution despite errors for non-critical functions
+        }
+    }
+
+    let mut sscp_matrix = None;
+    if config.options.sscp_mat {
+        executed_functions.push("calculate_sscp_matrix".to_string());
+        match core::calculate_sscp_matrix(data, config) {
+            Ok(matrix) => {
+                sscp_matrix = Some(matrix);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_sscp_matrix", &e);
                 // Continue execution despite errors for non-critical functions
             }
         }
@@ -149,6 +244,18 @@ pub fn run_analysis(
                 error_collector.add_error("calculate_posthoc_tests", &e);
                 // Continue execution despite errors
             }
+        }
+    }
+
+    let mut homogeneous_subsets = None;
+    executed_functions.push("calculate_homogeneous_subsets".to_string());
+    match core::calculate_homogeneous_subsets(data, config) {
+        Ok(subsets) => {
+            homogeneous_subsets = Some(subsets);
+        }
+        Err(e) => {
+            error_collector.add_error("calculate_homogeneous_subsets", &e);
+            // Continue execution
         }
     }
 
@@ -264,6 +371,7 @@ pub fn run_analysis(
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
+        between_subjects_sscp,
         contrast_coefficients,
         lack_of_fit_tests,
         spread_vs_level_plots,
@@ -272,18 +380,15 @@ pub fn run_analysis(
         plots,
         saved_variables,
         executed_functions,
-        box_test: None,
-        bartlett_test: None,
-        multivariate_tests: None,
-        residual_matrix: None,
-        sscp_matrix: None,
-        univariate_tests: None,
+        box_test,
+        bartlett_test,
+        multivariate_tests,
+        residual_matrix,
+        sscp_matrix,
+        univariate_tests,
         homogeneous_subsets: None,
         scatter_plot_matrices: None,
         profile_plots: None,
-        factor_variables: None,
-        dependent_variables: None,
-        model_formula: None,
     };
 
     Ok(Some(result))
@@ -297,7 +402,13 @@ pub fn get_results(result: &Option<MultivariateResult>) -> Result<JsValue, JsVal
 }
 
 pub fn get_formatted_results(result: &Option<MultivariateResult>) -> Result<JsValue, JsValue> {
-    // format_result(result)
+    match result {
+        Some(result) => {
+            let formatted_results = serde_wasm_bindgen::to_value(result).unwrap();
+            Ok(formatted_results)
+        }
+        None => Err(string_to_js_error("No analysis results available".to_string())),
+    }
 }
 
 pub fn get_executed_functions(result: &Option<MultivariateResult>) -> Result<JsValue, JsValue> {

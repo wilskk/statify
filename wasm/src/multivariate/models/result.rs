@@ -20,15 +20,13 @@ pub struct MultivariateResult {
     pub box_test: Option<BoxTest>,
     pub bartlett_test: Option<BartlettTest>,
     pub multivariate_tests: Option<MultivariateTests>,
+    pub between_subjects_sscp: Option<BetweenSubjectsSSCP>,
     pub residual_matrix: Option<ResidualMatrix>,
     pub sscp_matrix: Option<SSCPMatrix>,
     pub univariate_tests: Option<UnivariateTests>,
     pub homogeneous_subsets: Option<HashMap<String, HomogeneousSubsets>>,
     pub scatter_plot_matrices: Option<HashMap<String, ScatterPlotMatrix>>,
     pub profile_plots: Option<HashMap<String, PlotData>>,
-    pub factor_variables: Option<Vec<String>>,
-    pub dependent_variables: Option<Vec<String>>,
-    pub model_formula: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -61,6 +59,11 @@ pub struct StatsEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LeveneTest {
     pub dependent_variable: String,
+    pub levene: Vec<LeveneResult>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LeveneResult {
     pub levene_statistic: f64,
     pub df1: usize,
     pub df2: usize,
@@ -146,35 +149,6 @@ pub struct SpreadVsLevelPlots {
 pub struct SpreadVsLevelPoint {
     pub level_mean: f64,
     pub spread_standard_deviation: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HeteroscedasticityTests {
-    pub breusch_pagan: Option<BPTest>,
-    pub white: Option<WhiteTest>,
-    pub modified_breusch_pagan: Option<ModifiedBPTest>,
-    pub f_test: Option<FTest>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BPTest {
-    pub statistic: f64,
-    pub df: usize,
-    pub p_value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct WhiteTest {
-    pub statistic: f64,
-    pub df: usize,
-    pub p_value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ModifiedBPTest {
-    pub statistic: f64,
-    pub df: usize,
-    pub p_value: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -281,6 +255,17 @@ pub struct MultivariateTestEntry {
     pub noncent_parameter: f64,
     pub observed_power: f64,
     pub is_exact_statistic: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BetweenSubjectsSSCP {
+    pub matrices: HashMap<String, BetweenSSCPMatrix>,
+    pub based_on: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BetweenSSCPMatrix {
+    pub values: HashMap<String, HashMap<String, f64>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

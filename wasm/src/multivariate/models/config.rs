@@ -112,7 +112,7 @@ pub struct ModelDetails {
     #[serde(rename = "TermText")]
     pub term_text: Option<String>,
     #[serde(rename = "SumOfSquareMethod")]
-    pub sum_of_square_method: Option<SumOfSquaresMethod>,
+    pub sum_of_square_method: SumOfSquaresMethod,
     #[serde(rename = "Intercept")]
     pub intercept: bool,
 }
