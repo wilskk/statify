@@ -19,20 +19,23 @@ pub fn run_analysis(
 
     // Step 1: Basic processing summary (always executed)
     executed_functions.push("processing_summary".to_string());
-    let processing_summary = match core::processing_summary(data, config) {
-        Ok(summary) => summary,
+    let mut processing_summary = None;
+    match core::processing_summary(data, config) {
+        Ok(summary) => {
+            processing_summary = Some(summary);
+        }
         Err(e) => {
             error_collector.add_error("processing_summary", &e);
-            return Err(string_to_js_error(e));
         }
-    };
+    }
 
     // Filter Data
-    let filtered_data = match core::filter_valid_cases(data, config) {
+    let mut filtered_data = match core::filter_valid_cases(data, config) {
         Ok(filtered) => filtered,
         Err(e) => {
             error_collector.add_error("filter_valid_cases", &e);
-            return Err(string_to_js_error(e));
+            // Continue execution despite errors for filtering
+            data.clone() // Use original data if filtering fails
         }
     };
 
@@ -45,7 +48,10 @@ pub fn run_analysis(
     {
         executed_functions.push("apply_discretization".to_string());
         match core::apply_discretization(&filtered_data, config) {
-            Ok(_) => {}
+            Ok(clean_data) => {
+                // Update filtered_data with clean_data if needed
+                filtered_data = clean_data;
+            }
             Err(e) => {
                 error_collector.add_error("apply_discretization", &e);
                 // Continue execution despite errors for discretization
@@ -61,7 +67,10 @@ pub fn run_analysis(
     {
         executed_functions.push("handle_missing_values".to_string());
         match core::handle_missing_values(&filtered_data, config) {
-            Ok(_) => {}
+            Ok(clean_data) => {
+                // Update filtered_data with clean_data if needed
+                filtered_data = clean_data;
+            }
             Err(e) => {
                 error_collector.add_error("handle_missing_values", &e);
                 // Continue execution despite errors for missing values
@@ -134,6 +143,21 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_object_scores", &e);
+                // Continue execution despite errors
+            }
+        };
+    }
+
+    // Step 8.1: Calculate object contributions if requested
+    let mut object_contributions = None;
+    if config.output.object_scores {
+        executed_functions.push("calculate_object_contributions".to_string());
+        match core::calculate_object_contributions(&filtered_data, config) {
+            Ok(contributions) => {
+                object_contributions = Some(contributions);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_object_contributions", &e);
                 // Continue execution despite errors
             }
         };
@@ -223,6 +247,7 @@ pub fn run_analysis(
         original_correlations,
         transformed_correlations,
         object_scores,
+        object_contributions,
         discrimination_measures,
         category_points,
         object_points_labeled,
