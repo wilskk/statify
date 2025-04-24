@@ -39,8 +39,8 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
 
     // Variables tab state
-    const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'numerator' | 'denominator' | 'group'} | null>(null);
     const [numeratorVariable, setNumeratorVariable] = useState<Variable | null>(null);
     const [denominatorVariable, setDenominatorVariable] = useState<Variable | null>(null);
     const [groupVariable, setGroupVariable] = useState<Variable | null>(null);
@@ -75,71 +75,74 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     });
 
     useEffect(() => {
-        const assignedIndexes = [
-            numeratorVariable?.columnIndex,
-            denominatorVariable?.columnIndex,
-            groupVariable?.columnIndex
-        ].filter(index => index !== undefined);
+        const assignedTempIds = [
+            numeratorVariable?.tempId,
+            denominatorVariable?.tempId,
+            groupVariable?.tempId
+        ].filter(tempId => tempId !== undefined);
 
-        const initialStoreVars = variables
-            .filter(v => v.name !== "")
-            .filter(v => !assignedIndexes.includes(v.columnIndex))
-            .sort((a, b) => a.name.localeCompare(b.name));
-        setStoreVariables(initialStoreVars);
+        const initialAvailableVars = variables
+            .filter(v => v.name !== "" && v.tempId)
+            .filter(v => v.tempId && !assignedTempIds.includes(v.tempId))
+            .sort((a, b) => a.columnIndex - b.columnIndex);
+        setAvailableVariables(initialAvailableVars);
     }, [variables, numeratorVariable, denominatorVariable, groupVariable]);
 
-    const addVariableBackToStore = (variable: Variable | null) => {
-        if (!variable) return;
-        setStoreVariables(prev => [...prev, variable].sort((a, b) => a.name.localeCompare(b.name)));
+    const addVariableBackToAvailable = (variable: Variable | null) => {
+        if (!variable || !variable.tempId) return;
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                return prev;
+            }
+            const newList = [...prev, variable];
+            newList.sort((a, b) => a.columnIndex - b.columnIndex);
+            return newList;
+        });
     };
 
-    const setAsNumerator = () => {
-        if (!highlightedVariable) return;
-        const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-        if (variable) {
-            addVariableBackToStore(numeratorVariable);
-            setNumeratorVariable(variable);
-            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+    const setVariableForRole = (role: 'numerator' | 'denominator' | 'group') => {
+        if (!highlightedVariable || highlightedVariable.source !== 'available') return;
+
+        const variableToMove = availableVariables.find(v => v.tempId === highlightedVariable?.tempId);
+        if (!variableToMove || !variableToMove.tempId) return;
+
+        if (role === 'numerator' && numeratorVariable) addVariableBackToAvailable(numeratorVariable);
+        if (role === 'denominator' && denominatorVariable) addVariableBackToAvailable(denominatorVariable);
+        if (role === 'group' && groupVariable) addVariableBackToAvailable(groupVariable);
+
+        if (role === 'numerator') setNumeratorVariable(variableToMove);
+        if (role === 'denominator') setDenominatorVariable(variableToMove);
+        if (role === 'group') setGroupVariable(variableToMove);
+
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variableToMove.tempId));
+        setHighlightedVariable(null);
+    };
+
+    const removeVariableFromRole = (role: 'numerator' | 'denominator' | 'group') => {
+        let variableToRemove: Variable | null = null;
+        if (role === 'numerator') {
+            variableToRemove = numeratorVariable;
+            setNumeratorVariable(null);
+        } else if (role === 'denominator') {
+            variableToRemove = denominatorVariable;
+            setDenominatorVariable(null);
+        } else if (role === 'group') {
+            variableToRemove = groupVariable;
+            setGroupVariable(null);
+        }
+        addVariableBackToAvailable(variableToRemove);
+        if (highlightedVariable && highlightedVariable.tempId === variableToRemove?.tempId) {
             setHighlightedVariable(null);
         }
     };
 
-    const setAsDenominator = () => {
-        if (!highlightedVariable) return;
-        const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-        if (variable) {
-            addVariableBackToStore(denominatorVariable);
-            setDenominatorVariable(variable);
-            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-            setHighlightedVariable(null);
-        }
-    };
+    const handleSetNumerator = () => setVariableForRole('numerator');
+    const handleSetDenominator = () => setVariableForRole('denominator');
+    const handleSetGroup = () => setVariableForRole('group');
 
-    const setAsGroupVariable = () => {
-        if (!highlightedVariable) return;
-        const variable = storeVariables.find(v => v.columnIndex.toString() === highlightedVariable);
-        if (variable) {
-            addVariableBackToStore(groupVariable);
-            setGroupVariable(variable);
-            setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-            setHighlightedVariable(null);
-        }
-    };
-
-    const removeFromNumerator = () => {
-        addVariableBackToStore(numeratorVariable);
-        setNumeratorVariable(null);
-    };
-
-    const removeFromDenominator = () => {
-        addVariableBackToStore(denominatorVariable);
-        setDenominatorVariable(null);
-    };
-
-    const removeFromGroupVariable = () => {
-        addVariableBackToStore(groupVariable);
-        setGroupVariable(null);
-    };
+    const handleRemoveNumerator = () => removeVariableFromRole('numerator');
+    const handleRemoveDenominator = () => removeVariableFromRole('denominator');
+    const handleRemoveGroup = () => removeVariableFromRole('group');
 
     const handleFileBrowse = () => {
         console.log("Browse for file");
@@ -180,7 +183,7 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         setNumeratorVariable(null);
         setDenominatorVariable(null);
         setGroupVariable(null);
-        setStoreVariables(variables.filter(v => v.name !== "").sort((a, b) => a.name.localeCompare(b.name)));
+        setAvailableVariables(variables.filter(v => v.name !== "" && v.tempId).sort((a, b) => a.columnIndex - b.columnIndex));
         setHighlightedVariable(null);
         setSortByGroup(true);
         setSortOrder("ascending");
@@ -237,24 +240,26 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
                     </TabsList>
                 </div>
 
-                <TabsContent value="variables" className="overflow-y-auto flex-grow">
+                <TabsContent value="variables" className="overflow-y-auto flex-grow p-0">
                     <VariablesTab
-                        storeVariables={storeVariables}
+                        availableVariables={availableVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         numeratorVariable={numeratorVariable}
                         denominatorVariable={denominatorVariable}
                         groupVariable={groupVariable}
-                        setAsNumerator={setAsNumerator}
-                        setAsDenominator={setAsDenominator}
-                        setAsGroupVariable={setAsGroupVariable}
-                        removeFromNumerator={removeFromNumerator}
-                        removeFromDenominator={removeFromDenominator}
-                        removeFromGroupVariable={removeFromGroupVariable}
+                        setAsNumerator={handleSetNumerator}
+                        setAsDenominator={handleSetDenominator}
+                        setAsGroupVariable={handleSetGroup}
+                        removeFromNumerator={handleRemoveNumerator}
+                        removeFromDenominator={handleRemoveDenominator}
+                        removeFromGroupVariable={handleRemoveGroup}
+                        addVariableBackToAvailable={addVariableBackToAvailable}
+                        setVariableForRole={setVariableForRole}
                     />
                 </TabsContent>
 
-                <TabsContent value="options" className="overflow-y-auto flex-grow">
+                <TabsContent value="options" className="overflow-y-auto flex-grow p-6">
                     <OptionsTab
                         groupVariable={groupVariable}
                         sortByGroup={sortByGroup}

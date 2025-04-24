@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal } from "lucide-react";
@@ -7,8 +7,8 @@ import type { Variable } from "@/types/Variable";
 interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    highlightedVariable: { columnIndex: number, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ columnIndex: number, source: 'available' | 'selected' } | null>>;
+    highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
+    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'selected' } | null>>;
     moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
     moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
     reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
@@ -50,10 +50,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleVariableSelect = (variable: Variable, source: 'available' | 'selected') => {
-        if (highlightedVariable?.columnIndex === variable.columnIndex && highlightedVariable.source === source) {
+        if (highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source) {
             setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ columnIndex: variable.columnIndex, source });
+        } else if (variable.tempId) {
+            setHighlightedVariable({ tempId: variable.tempId, source });
         }
     };
 
@@ -66,8 +66,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, variable: Variable, source: 'available' | 'selected') => {
+        if (!variable.tempId) {
+            e.preventDefault();
+            return;
+        }
         e.dataTransfer.setData('application/json', JSON.stringify({
-            columnIndex: variable.columnIndex,
+            tempId: variable.tempId,
             source
         }));
         e.dataTransfer.effectAllowed = 'move';
@@ -93,13 +97,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
-        if (draggedItem && draggedItem.source === listSource) {
-            setDragOverIndex(targetIndex);
-        } else {
-            if (dragOverIndex !== null) {
-                setDragOverIndex(null);
-            }
-        }
+        setDragOverIndex(targetIndex);
     };
 
     const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
@@ -114,45 +112,69 @@ const VariablesTab: FC<VariablesTabProps> = ({
         if (targetIndex !== undefined) {
             e.stopPropagation();
         }
+        setIsDraggingOver(null);
+        setDragOverIndex(null);
 
         try {
             const dataString = e.dataTransfer.getData('application/json');
-            if (!dataString) return;
+            if (!dataString) {
+                console.error("[handleDrop] No drag data found");
+                setDraggedItem(null);
+                return;
+            }
             const data = JSON.parse(dataString);
-            const { columnIndex, source } = data;
+            const { tempId, source: dragSource } = data;
 
-            const sourceList = source === 'available' ? availableVariables : selectedVariables;
-            const variable = sourceList.find(v => v.columnIndex === columnIndex);
+            if (!tempId) {
+                console.error("[handleDrop] tempId missing from drag data");
+                setDraggedItem(null);
+                return;
+            }
 
-            if (!variable) return;
+            const sourceList = dragSource === 'available' ? availableVariables : selectedVariables;
+            const variableToMove = sourceList.find(v => v.tempId === tempId);
 
-            if (source === targetSource) {
-                const finalTargetIndex = targetIndex !== undefined ? targetIndex : sourceList.length;
+            if (!variableToMove) {
+                console.error(`[handleDrop] Variable with tempId ${tempId} not found in source list (${dragSource})`);
+                setDraggedItem(null);
+                return;
+            }
 
+            if (dragSource === targetSource && typeof targetIndex === 'number') {
                 const currentList = [...sourceList];
-                const sourceIndex = currentList.findIndex(v => v.columnIndex === columnIndex);
+                const sourceIndex = currentList.findIndex(v => v.tempId === tempId);
 
-                if (sourceIndex === finalTargetIndex || sourceIndex === finalTargetIndex - 1) {
-                    // Do nothing, effectively cancelling the drop
-                } else {
-                    const [movedVariable] = currentList.splice(sourceIndex, 1);
-                    const adjustedTargetIndex = sourceIndex < finalTargetIndex ? finalTargetIndex -1 : finalTargetIndex;
-                    currentList.splice(adjustedTargetIndex, 0, movedVariable);
+                if (sourceIndex === -1) {
+                    console.error("[handleDrop] Dragged item not found in current list for reorder.");
+                    setDraggedItem(null);
+                    return;
+                }
+
+                if (sourceIndex === targetIndex || sourceIndex === targetIndex - 1) {
+                    setDraggedItem(null);
+                    return;
+                }
+
+                const [movedVariable] = currentList.splice(sourceIndex, 1);
+                const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                currentList.splice(adjustedTargetIndex, 0, movedVariable);
+
+                if (reorderVariables) {
                     reorderVariables(targetSource, currentList);
+                } else {
+                    console.warn("reorderVariables function is not provided");
                 }
             } else {
                 if (targetSource === 'selected') {
-                    moveToSelectedVariables(variable, targetIndex);
+                    moveToSelectedVariables(variableToMove, targetIndex);
                 } else {
-                    moveToAvailableVariables(variable, targetIndex);
+                    moveToAvailableVariables(variableToMove, targetIndex);
                 }
             }
         } catch (error) {
             console.error('[handleDrop] Error processing drop:', error);
         } finally {
-            setIsDraggingOver(null);
             setDraggedItem(null);
-            setDragOverIndex(null);
         }
     };
 
@@ -178,33 +200,49 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     </p>
                 </div>
             )}
-            <div className={`space-y-0.5 p-1 ${getAnimationClass(source)}`}>
+            <div className={`space-y-0.5 p-2 ${getAnimationClass(source)}`}>
                 {variables.map((variable, index) => {
                     const isSameListDrag = draggedItem?.source === source;
-                    const isDraggingThis = draggedItem?.variable.columnIndex === variable.columnIndex && isSameListDrag;
+                    const isDraggingThis = isSameListDrag && draggedItem?.variable.tempId === variable.tempId;
                     const currentDragOverIndex = dragOverIndex;
-                    const isDropTarget = isSameListDrag && currentDragOverIndex === index && draggedItem;
-                    const showBottomLine = isSameListDrag && currentDragOverIndex === index + 1 && draggedItem;
+                    const isDropTarget = (isDraggingOver === source) && (currentDragOverIndex === index) && draggedItem;
+                    const showTopLine = isDropTarget && !(isSameListDrag && isDraggingThis);
 
                     return (
-                        <TooltipProvider key={variable.columnIndex}>
+                        <TooltipProvider key={variable.tempId || variable.columnIndex}>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <div
-                                        className={`flex items-center p-1 cursor-grab border rounded-md group relative
+                                        className={`flex items-center p-1 cursor-grab border rounded-md group relative transition-all duration-150 ease-in-out
                                             ${isDraggingThis ? "opacity-40 bg-[#FAFAFA]" : "hover:bg-[#F5F5F5]"}
-                                            ${isDropTarget ? "border-t-[3px] border-t-[#888888] pt-0.5" : ""}
-                                            ${highlightedVariable?.columnIndex === variable.columnIndex && highlightedVariable.source === source
+                                            ${showTopLine ? "border-t-[3px] border-t-blue-500 pt-[1px]" : "pt-1"}
+                                            ${highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source
                                                 ? "bg-[#E6E6E6] border-[#888888]"
                                                 : "border-[#CCCCCC]"
                                             }`}
+                                        style={{
+                                            borderTopStyle: showTopLine ? 'solid' : 'solid',
+                                            borderTopWidth: showTopLine ? '3px' : '1px',
+                                            borderTopColor: showTopLine ? '#3B82F6'
+                                                : (highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source ? '#888888' : '#CCCCCC'),
+                                            paddingTop: showTopLine ? '1px' : '4px',
+                                            paddingBottom: '4px',
+                                            borderLeftWidth: '1px', borderRightWidth: '1px', borderBottomWidth: '1px',
+                                            borderLeftColor: highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source ? '#888888' : '#CCCCCC',
+                                            borderRightColor: highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source ? '#888888' : '#CCCCCC',
+                                            borderBottomColor: highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source ? '#888888' : '#CCCCCC',
+                                        }}
                                         onClick={() => handleVariableSelect(variable, source)}
                                         onDoubleClick={() => handleVariableDoubleClick(variable, source)}
-                                        draggable={true}
+                                        draggable={!!variable.tempId}
                                         onDragStart={(e) => handleDragStart(e, variable, source)}
                                         onDragEnd={handleDragEnd}
                                         onDragOver={(e) => handleItemDragOver(e, index, source)}
-                                        onDragLeave={handleDragLeave}
+                                        onDragLeave={() => {
+                                            if (dragOverIndex === index) {
+                                                setDragOverIndex(null);
+                                            }
+                                        }}
                                         onDrop={(e) => handleDrop(e, source, index)}
                                     >
                                         <div className="flex items-center w-full">
@@ -212,7 +250,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                             {getVariableIcon(variable)}
                                             <span className="text-sm truncate">{getDisplayName(variable)}</span>
                                         </div>
-                                        {showBottomLine && (<div className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-[#888888] z-10"></div>)}
                                     </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">

@@ -19,12 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 
-interface ToolbarProps {
-    selectedValue: string;
-    onSelectedValueChange?: (value: string) => void;
-}
-
-export default function Toolbar({ selectedValue, onSelectedValueChange }: ToolbarProps) {
+export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
 
     const fileTools = [
@@ -45,12 +40,6 @@ export default function Toolbar({ selectedValue, onSelectedValueChange }: Toolba
         { name: 'Search', icon: <Search size={16} /> },
         { name: 'Split File', icon: <TableRowsSplit size={16} /> },
     ];
-
-    const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (onSelectedValueChange) {
-            onSelectedValueChange(e.target.value);
-        }
-    };
 
     const ToolGroup = ({ tools }: { tools: { name: string; icon: React.ReactNode }[] }) => (
         <div className="flex">
@@ -85,20 +74,6 @@ export default function Toolbar({ selectedValue, onSelectedValueChange }: Toolba
                 <ToolGroup tools={historyTools} />
                 <Separator orientation="vertical" className="h-6 my-auto" />
                 <ToolGroup tools={dataTools} />
-            </div>
-
-            <div className="flex items-center">
-                <div className="relative">
-                    <Input
-                        type="text"
-                        value={selectedValue}
-                        onChange={handleValueChange}
-                        className="w-64 h-8 border-[#E6E6E6] focus:border-black focus:ring-0 text-sm"
-                    />
-                    <button className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                        <ChevronDown size={16} />
-                    </button>
-                </div>
             </div>
         </div>
     );

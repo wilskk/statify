@@ -104,13 +104,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
 
-        if (draggedItem && draggedItem.source === listSource) {
-            setDragOverIndex(targetIndex);
-        } else {
-            if (dragOverIndex !== null) {
-                setDragOverIndex(null);
-            }
-        }
+        // Always set the drag over index when dragging over an item,
+        // regardless of whether it's the same list or not.
+        setDragOverIndex(targetIndex);
     };
 
     const handleDragLeave = () => {
@@ -213,8 +209,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     const isSameListDrag = draggedItem?.source === source;
                     const isDraggingThis = isSameListDrag && draggedItem?.variable.tempId === variable.tempId;
                     const currentDragOverIndex = dragOverIndex;
-                    const isDropTarget = isSameListDrag && currentDragOverIndex === index && draggedItem;
-                    const showTopLine = isDropTarget;
+
+                    // Determine if the current item is the drop target
+                    const isDropTarget = (isDraggingOver === source) && (currentDragOverIndex === index) && draggedItem;
+
+                    // Show the top line if it's a drop target, but not if it's the item currently being dragged within the same list
+                    const showTopLine = isDropTarget && !(isSameListDrag && isDraggingThis);
 
                     return (
                         <TooltipProvider key={variable.tempId || variable.columnIndex}>

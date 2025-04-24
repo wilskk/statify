@@ -29,7 +29,7 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -58,14 +58,21 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
 
     // Initialize available variables on component mount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        const currentSelectedIds = new Set(selectedVariables.map(v => v.columnIndex));
-        setAvailableVariables(validVars.filter(v => !currentSelectedIds.has(v.columnIndex)));
+        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const currentSelectedIds = new Set(selectedVariables.map(v => v.tempId));
+        setAvailableVariables(validVars.filter(v => v.tempId && !currentSelectedIds.has(v.tempId)));
     }, [variables, selectedVariables]);
 
     const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        if (!variable.tempId) {
+             console.error("Cannot move variable without tempId:", variable);
+             return;
+        }
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setSelectedVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                 return prev;
+            }
             const newSelected = [...prev];
             if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newSelected.length) {
                  newSelected.splice(targetIndex, 0, variable);
@@ -78,33 +85,32 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
     }, []);
 
     const moveToAvailableVariables = useCallback((variable: Variable, targetIndex?: number) => {
-        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        if (!variable.tempId) {
+             console.error("Cannot move variable without tempId:", variable);
+             return;
+        }
+        setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setAvailableVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                 return prev;
+            }
              const newAvailable = [...prev];
-            const originalIndex = variables.findIndex(v => v.columnIndex === variable.columnIndex);
-            let insertPos = newAvailable.findIndex(v => variables.findIndex(av => av.columnIndex === v.columnIndex) > originalIndex);
-            if (insertPos === -1) insertPos = newAvailable.length;
-
              if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newAvailable.length) {
                  newAvailable.splice(targetIndex, 0, variable);
              } else {
-                 newAvailable.splice(insertPos, 0, variable);
+                 newAvailable.push(variable);
              }
-            return newAvailable.sort((a, b) =>
-                variables.findIndex(v => v.columnIndex === a.columnIndex) -
-                variables.findIndex(v => v.columnIndex === b.columnIndex)
-            );
+             return newAvailable.sort((a, b) => a.columnIndex - b.columnIndex);
         });
         setHighlightedVariable(null);
-    }, [variables]);
+    }, []);
 
     const reorderVariables = useCallback((source: 'available' | 'selected', reorderedList: Variable[]) => {
         if (source === 'available') {
-            setAvailableVariables(reorderedList);
+            setAvailableVariables([...reorderedList]);
         } else {
-            setSelectedVariables(reorderedList);
+            setSelectedVariables([...reorderedList]);
         }
-        setHighlightedVariable(null);
     }, []);
 
     const handleAnalyze = async () => {
@@ -130,7 +136,7 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
                             title: "Probability-Probability Plot",
                             output_data: JSON.stringify({
                                 type: "ppplot",
-                                variables: selectedVariables.map(v => ({ name: v.name, columnIndex: v.columnIndex })),
+                                variables: selectedVariables.map(v => ({ name: v.name, tempId: v.tempId })),
                                 options: {
                                     testDistribution,
                                     degreesOfFreedom,
@@ -181,7 +187,7 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
 
     const handleReset = () => {
         setActiveTab("variables");
-        const allVars = variables.filter(v => v.name !== "");
+        const allVars = variables.filter(v => v.name !== "" && v.tempId);
         setAvailableVariables(allVars.sort((a, b) => a.columnIndex - b.columnIndex));
         setSelectedVariables([]);
         setHighlightedVariable(null);

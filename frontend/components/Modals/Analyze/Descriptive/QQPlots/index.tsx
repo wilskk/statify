@@ -29,7 +29,7 @@ const QQPlots: FC<QQPlotsModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 

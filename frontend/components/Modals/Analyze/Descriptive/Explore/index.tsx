@@ -38,7 +38,7 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
     const [factorVariables, setFactorVariables] = useState<Variable[]>([]);
     const [labelVariable, setLabelVariable] = useState<Variable | null>(null);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'dependent' | 'factor' | 'label'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'dependent' | 'factor' | 'label'} | null>(null);
     const [displayOption, setDisplayOption] = useState<'both' | 'statistics' | 'plots'>('both');
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -59,73 +59,124 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        setAvailableVariables(validVars);
-    }, [variables]);
+        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const dependentTempIds = new Set(dependentVariables.map(v => v.tempId));
+        const factorTempIds = new Set(factorVariables.map(v => v.tempId));
+        const labelTempId = labelVariable?.tempId;
+
+        const finalAvailable = validVars.filter(v =>
+            v.tempId &&
+            !dependentTempIds.has(v.tempId) &&
+            !factorTempIds.has(v.tempId) &&
+            (!labelTempId || v.tempId !== labelTempId)
+        );
+        setAvailableVariables(finalAvailable);
+    }, [variables, dependentVariables, factorVariables, labelVariable]);
 
     const moveToDependentVariables = (variable: Variable, targetIndex?: number) => {
+        if (!variable.tempId) {
+             console.error("Cannot move variable without tempId:", variable);
+             return;
+        }
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setDependentVariables(prev => {
-            const updated = [...prev];
-            if (targetIndex !== undefined) {
-                updated.splice(targetIndex, 0, variable);
-            } else {
-                updated.push(variable);
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                return prev; // Avoid duplicates
             }
-            return updated;
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
         });
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setHighlightedVariable(null); // Clear highlight after move
     };
 
     const moveToFactorVariables = (variable: Variable, targetIndex?: number) => {
-        setFactorVariables(prev => {
-            const updated = [...prev];
-            if (targetIndex !== undefined) {
-                updated.splice(targetIndex, 0, variable);
-            } else {
-                updated.push(variable);
-            }
-            return updated;
-        });
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+         if (!variable.tempId) {
+             console.error("Cannot move variable without tempId:", variable);
+             return;
+         }
+         setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+         setFactorVariables(prev => {
+             if (prev.some(v => v.tempId === variable.tempId)) {
+                 return prev; // Avoid duplicates
+             }
+             const newList = [...prev];
+             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                 newList.splice(targetIndex, 0, variable);
+             } else {
+                 newList.push(variable);
+             }
+             return newList;
+         });
+         setHighlightedVariable(null); // Clear highlight after move
     };
 
     const moveToLabelVariable = (variable: Variable) => {
-        if (labelVariable) {
-            setAvailableVariables(prev => [...prev, labelVariable]);
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
+        }
+        // Move current label back to available if it exists
+        if (labelVariable && labelVariable.tempId) {
+            setAvailableVariables(prev => {
+                 if (!prev.some(v => v.tempId === labelVariable.tempId)) { // Avoid duplicates
+                     const newList = [...prev, labelVariable];
+                     newList.sort((a, b) => a.columnIndex - b.columnIndex); // Keep available sorted
+                     return newList;
+                 }
+                 return prev;
+            });
         }
 
         setLabelVariable(variable);
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setHighlightedVariable(null); // Clear highlight after move
     };
 
     const moveToAvailableVariables = (variable: Variable, source: 'dependent' | 'factor' | 'label', targetIndex?: number) => {
-        setAvailableVariables(prev => {
-            const updated = [...prev];
-            if (targetIndex !== undefined) {
-                updated.splice(targetIndex, 0, variable);
-            } else {
-                updated.push(variable);
-            }
-            return updated;
-        });
-
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
+        }
+        // Remove from the source list
         if (source === 'dependent') {
-            setDependentVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setDependentVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         } else if (source === 'factor') {
-            setFactorVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setFactorVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         } else if (source === 'label') {
             setLabelVariable(null);
         }
+
+        // Add to available list if not already there
+        setAvailableVariables(prev => {
+             if (prev.some(v => v.tempId === variable.tempId)) {
+                 return prev; // Avoid duplicates
+             }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                 newList.splice(targetIndex, 0, variable);
+            } else {
+                 newList.push(variable);
+            }
+            newList.sort((a, b) => a.columnIndex - b.columnIndex); // Keep available sorted
+            return newList;
+        });
+        setHighlightedVariable(null); // Clear highlight after move
     };
 
-    const reorderVariables = (source: 'available' | 'dependent' | 'factor' | 'label', variables: Variable[]) => {
+    const reorderVariables = (source: 'available' | 'dependent' | 'factor', reorderedList: Variable[]) => {
+        // Reordering 'label' is not applicable as it's a single item
         if (source === 'available') {
-            setAvailableVariables(variables);
+            setAvailableVariables([...reorderedList]);
         } else if (source === 'dependent') {
-            setDependentVariables(variables);
+            setDependentVariables([...reorderedList]);
         } else if (source === 'factor') {
-            setFactorVariables(variables);
-        } // Label variable list cannot be reordered as it only holds one item
+            setFactorVariables([...reorderedList]);
+        }
     };
 
     const handleExplore = async () => {
@@ -208,7 +259,7 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
         setDependentVariables([]);
         setFactorVariables([]);
         setLabelVariable(null);
-        setAvailableVariables(variables.filter(v => v.name !== ""));
+        setAvailableVariables(variables.filter(v => v.name !== "" && v.tempId).sort((a, b) => a.columnIndex - b.columnIndex));
         setHighlightedVariable(null);
         setShowDescriptives(true);
         setConfidenceInterval("95");
