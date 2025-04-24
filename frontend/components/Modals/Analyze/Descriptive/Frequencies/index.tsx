@@ -31,7 +31,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -43,14 +43,22 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        setAvailableVariables(validVars);
-    }, [variables]);
+        // Filter out variables without a name (and ensure they have tempId)
+        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        // Ensure initial availableVariables don't include any already selected ones (by tempId)
+        const selectedTempIds = new Set(selectedVariables.map(v => v.tempId));
+        const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId)); // Added tempId check again for safety
+        setAvailableVariables(finalAvailable);
+    }, [variables, selectedVariables]); // Add selectedVariables dependency
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
+        }
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setSelectedVariables(prev => {
-            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+            if (prev.some(v => v.tempId === variable.tempId)) {
                 return prev;
             }
             const newList = [...prev];
@@ -65,9 +73,13 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     };
 
     const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
-        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
+        }
+        setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setAvailableVariables(prev => {
-            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+            if (prev.some(v => v.tempId === variable.tempId)) {
                 return prev;
             }
             const newList = [...prev];
@@ -76,16 +88,17 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
             } else {
                 newList.push(variable);
             }
+            newList.sort((a, b) => a.columnIndex - b.columnIndex);
             return newList;
         });
         setHighlightedVariable(null);
     };
 
-    const reorderVariables = (source: 'available' | 'selected', variables: Variable[]) => {
+    const reorderVariables = (source: 'available' | 'selected', reorderedList: Variable[]) => {
         if (source === 'available') {
-            setAvailableVariables([...variables]);
+            setAvailableVariables([...reorderedList]);
         } else {
-            setSelectedVariables([...variables]);
+            setSelectedVariables([...reorderedList]);
         }
     };
 

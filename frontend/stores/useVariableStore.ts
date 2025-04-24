@@ -3,6 +3,7 @@ import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import db from "@/lib/db";
 import { Variable, ValueLabel } from "@/types/Variable";
+import { v4 as uuidv4 } from 'uuid';
 
 export type VariableStoreError = {
     message: string;
@@ -56,9 +57,16 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
     const baseName = `var${maxNum + 1}`;
     const nameResult = processVariableName(baseName, existingVariables);
     return {
+        tempId: uuidv4(),
         columnIndex: index, name: nameResult.processedName || baseName, type: "NUMERIC", width: 8, decimals: 2,
         label: "", values: [], missing: null, columns: 64, align: "right", measure: "unknown", role: "input"
     };
+};
+
+// Helper function to omit tempId
+const omitTempId = <T extends { tempId?: string }>(obj: T): Omit<T, 'tempId'> => {
+    const { tempId, ...rest } = obj;
+    return rest;
 };
 
 interface VariableStoreState {
@@ -163,8 +171,11 @@ export const useVariableStore = create<VariableStoreState>()(
 
                         if (newVariablesToCreate.length > 0) {
                             console.log(`[ensureCompleteVariables] Adding ${newVariablesToCreate.length} default variables up to index ${maxIndexToCheck}.`);
-                            await db.variables.bulkAdd(newVariablesToCreate);
+                            // Omit tempId before adding to DB
+                            const variablesForDb = newVariablesToCreate.map(omitTempId);
+                            await db.variables.bulkAdd(variablesForDb);
                             set((draft) => {
+                                // Keep tempId in state
                                 draft.variables = [...draft.variables, ...newVariablesToCreate]
                                     .sort((a, b) => a.columnIndex - b.columnIndex);
                                 draft.lastUpdated = new Date();
@@ -305,11 +316,20 @@ export const useVariableStore = create<VariableStoreState>()(
                         // Create the base new variable details first
                         const defaultVar = createDefaultVariable(intendedIndex, allCurrentVariables);
                         const inferredValues = variableData?.type ? inferDefaultValues(variableData.type) : {};
-                        const newVariableBase: Variable = { ...defaultVar, ...inferredValues, ...variableData, columnIndex: intendedIndex }; // Set index early
+                        const newVariableBase: Variable = {
+                            ...defaultVar,
+                            ...inferredValues,
+                            ...variableData,
+                            columnIndex: intendedIndex,
+                            tempId: variableData?.tempId ?? defaultVar.tempId
+                        };
                         const nameResult = processVariableName(newVariableBase.name, allCurrentVariables);
                         const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
                         let finalNewVariable = { ...newVariableBase, name: finalName };
                         finalNewVariable = { ...finalNewVariable, ...enforceMeasureConstraint(finalNewVariable, null) };
+
+                        // Variable for Database (omit tempId)
+                        const variableForDb = omitTempId(finalNewVariable);
 
                         if (variableExistsAtIndex) {
                             // --- Insertion Logic --- 
@@ -323,15 +343,16 @@ export const useVariableStore = create<VariableStoreState>()(
                             const shiftedVars = varsToShift.map(v => ({ ...v, columnIndex: v.columnIndex + 1 }));
 
                             // 3. Combine all parts: before + new + shifted
-                            const finalVariableList = [...varsBefore, finalNewVariable, ...shiftedVars];
+                            const finalVariableListState = [...varsBefore, finalNewVariable, ...shiftedVars];
+                            // Omit tempId for DB operation
+                            const finalVariableListDb = finalVariableListState.map(omitTempId);
 
-                            // 4. Overwrite DB with the new complete list
                             await db.variables.clear();
-                            await db.variables.bulkPut(finalVariableList);
+                            await db.variables.bulkPut(finalVariableListDb);
 
-                            // 5. Update state
+                            // 5. Update state with tempId included
                             set((draft) => {
-                                draft.variables = finalVariableList;
+                                draft.variables = finalVariableListState;
                                 draft.lastUpdated = new Date();
                                 draft.error = null;
                             });
@@ -341,7 +362,7 @@ export const useVariableStore = create<VariableStoreState>()(
                             console.log(`[addVariable] Append/GapFill case for index: ${intendedIndex}`);
                             
                             // 1. Add the single new variable to the database
-                            await db.variables.add(finalNewVariable);
+                            await db.variables.add(variableForDb);
 
                             // 2. Update state: add the new variable and sort 
                             set((draft) => {
@@ -369,50 +390,56 @@ export const useVariableStore = create<VariableStoreState>()(
             },
 
             addMultipleVariables: async (variablesData) => {
-                 // This one is trickier to handle insertions robustly with shifting.
-                 // For now, let's assume addMultipleVariables is primarily for appending or initial setup.
-                 // If insertion is needed here, it would require more complex logic similar to the single addVariable.
-                 // Current logic adds all then calls ensureCompleteVariables.
-                const addedVariables: Variable[] = [];
-                try {
-                    await db.transaction('rw', db.variables, async () => {
+                 const addedVariablesState: Variable[] = []; // Keep track of variables added to state (with tempId)
+                 try {
+                     await db.transaction('rw', db.variables, async () => {
                          const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
                          let tempIndexCounter = 1;
-                         const variablesToAdd: Variable[] = [];
+                         const variablesToAddState: Variable[] = []; // Temp list with tempId
+                         const variablesToAddDb: Omit<Variable, 'tempId'>[] = []; // Temp list without tempId
 
                          for (const data of variablesData) {
                              // Simplified logic: Assume append or explicit non-colliding index for now
-                             const maxCurrentIndex = [...allCurrentVariables, ...variablesToAdd].reduce((max, v) => Math.max(max, v.columnIndex), -1);
+                             const maxCurrentIndex = [...allCurrentVariables, ...variablesToAddState].reduce((max, v) => Math.max(max, v.columnIndex), -1);
                              const intendedIndex = data.columnIndex ?? (maxCurrentIndex + tempIndexCounter++);
 
-                             const collision = [...allCurrentVariables, ...variablesToAdd].some(v => v.columnIndex === intendedIndex);
+                             const collision = [...allCurrentVariables, ...variablesToAddState].some(v => v.columnIndex === intendedIndex);
                              if (collision) {
                                  // Simple error handling for now
                                   throw new Error(`Cannot add multiple variables: Column index ${intendedIndex} collision detected.`);
                              }
 
-                             const currentAndPrepared = [...allCurrentVariables, ...variablesToAdd];
+                             const currentAndPrepared = [...allCurrentVariables, ...variablesToAddState];
                              const defaultVar = createDefaultVariable(intendedIndex, currentAndPrepared);
                              const inferredValues = data.type ? inferDefaultValues(data.type) : {};
-                             const newVariableBase: Variable = { ...defaultVar, ...inferredValues, ...data, columnIndex: intendedIndex };
+                             const newVariableBase: Variable = {
+                                 ...defaultVar,
+                                 ...inferredValues,
+                                 ...data,
+                                 columnIndex: intendedIndex,
+                                 tempId: data.tempId ?? defaultVar.tempId
+                             };
                              const nameResult = processVariableName(newVariableBase.name, currentAndPrepared);
                              const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
                              let finalVariable = { ...newVariableBase, name: finalName };
                              finalVariable = { ...finalVariable, ...enforceMeasureConstraint(finalVariable, null) };
-                             variablesToAdd.push(finalVariable);
-                             addedVariables.push(finalVariable);
+
+                             variablesToAddState.push(finalVariable); // Add to state list (with tempId)
+                             variablesToAddDb.push(omitTempId(finalVariable)); // Add to DB list (without tempId)
+                             addedVariablesState.push(finalVariable); // Track for ensureCompleteVariables later
                          }
 
-                         await db.variables.bulkAdd(variablesToAdd);
+                         await db.variables.bulkAdd(variablesToAddDb); // Add to DB without tempId
 
                          set(draft => {
-                             draft.variables = [...allCurrentVariables, ...variablesToAdd]
+                             // Update state with tempId included
+                             draft.variables = [...allCurrentVariables, ...variablesToAddState]
                                  .sort((a, b) => a.columnIndex - b.columnIndex);
                              draft.lastUpdated = new Date();
                              draft.error = null;
                          });
                      });
-                    if (addedVariables.length > 0) {
+                    if (addedVariablesState.length > 0) {
                          await get().ensureCompleteVariables();
                      }
                  } catch (error: any) {
@@ -432,15 +459,25 @@ export const useVariableStore = create<VariableStoreState>()(
             loadVariables: async () => {
                 set((draft) => { draft.isLoading = true; draft.error = null; });
                 try {
+                    let loadedVariables: Variable[] = [];
                     await db.transaction('r', db.variables, async () => {
                         const variablesFromDb = await db.variables.toArray();
-                        const sortedVariables = variablesFromDb.sort((a, b) => a.columnIndex - b.columnIndex);
-                        set((draft) => {
-                            draft.variables = sortedVariables;
-                            draft.lastUpdated = new Date();
-                            draft.isLoading = false;
-                        });
+                        // Add tempId to each variable loaded from DB for state management
+                        loadedVariables = variablesFromDb.map(v => ({
+                            ...v,
+                            tempId: v.tempId || uuidv4() // Assign new tempId if missing (should always be missing from DB)
+                        }));
                     });
+
+                    const sortedVariables = loadedVariables.sort((a, b) => a.columnIndex - b.columnIndex);
+
+                    set((draft) => {
+                        draft.variables = sortedVariables;
+                        draft.lastUpdated = new Date();
+                        draft.isLoading = false;
+                    });
+
+                    // Ensure completeness potentially adds more variables, which will get tempId via createDefaultVariable
                     await get().ensureCompleteVariables();
                 } catch (error: any) {
                     console.error("Error loading variables:", error);
@@ -477,14 +514,25 @@ export const useVariableStore = create<VariableStoreState>()(
                             return;
                         }
                         const remainingVariables = await db.variables.orderBy('columnIndex').toArray();
-                        const finalVariables = remainingVariables.map((variable, index) => ({
-                            ...variable,
-                            columnIndex: index
-                        }));
+                        const finalVariablesState = remainingVariables.map((variableFromDb, index) => {
+                             // Find the corresponding tempId from the state using the database id
+                             const tempId = get().variables.find(v => v.id === variableFromDb.id)?.tempId;
+                             return {
+                                 ...variableFromDb,
+                                 columnIndex: index, // Re-index
+                                 tempId: tempId // Re-attach tempId if found
+                             };
+                         });
+
+                         // Prepare for DB (omit tempId)
+                         const finalVariablesDb = finalVariablesState.map(omitTempId);
+
                         await db.variables.clear();
-                        if (finalVariables.length > 0) await db.variables.bulkPut(finalVariables);
+                        if (finalVariablesDb.length > 0) await db.variables.bulkPut(finalVariablesDb);
+
+                        // Update state (with tempId)
                         set((draft) => {
-                            draft.variables = finalVariables;
+                            draft.variables = finalVariablesState;
                             draft.lastUpdated = new Date();
                             draft.error = null;
                         });
@@ -498,17 +546,28 @@ export const useVariableStore = create<VariableStoreState>()(
             overwriteVariables: async (variables) => {
                 try {
                     await db.transaction('rw', db.variables, async () => {
-                        const normalizedVariables = variables
-                            .sort((a, b) => (a.columnIndex ?? Infinity) - (b.columnIndex ?? Infinity))
-                            .map((variable, index) => {
-                                const constrainedChanges = enforceMeasureConstraint(variable, null);
-                                return { ...variable, ...constrainedChanges, columnIndex: index };
-                            });
+                        // Generate tempId if missing and normalize
+                         const normalizedVariablesState = variables
+                             .sort((a, b) => (a.columnIndex ?? Infinity) - (b.columnIndex ?? Infinity))
+                             .map((variable, index) => {
+                                 const constrainedChanges = enforceMeasureConstraint(variable, null);
+                                 return {
+                                     ...variable, // Keep original fields
+                                     ...constrainedChanges, // Apply constraints
+                                     columnIndex: index, // Normalize index
+                                     tempId: variable.tempId ?? uuidv4() // Ensure tempId exists
+                                 };
+                             });
+
+                        // Prepare for DB (omit tempId)
+                        const normalizedVariablesDb = normalizedVariablesState.map(omitTempId);
 
                         await db.variables.clear();
-                        await db.variables.bulkPut(normalizedVariables);
+                        await db.variables.bulkPut(normalizedVariablesDb);
+
+                        // Update state (with tempId)
                         set((draft) => {
-                            draft.variables = normalizedVariables;
+                            draft.variables = normalizedVariablesState;
                             draft.lastUpdated = new Date();
                             draft.error = null;
                         });
@@ -522,6 +581,7 @@ export const useVariableStore = create<VariableStoreState>()(
             sortVariables: async (direction, columnIndex) => {
                 try {
                     await db.transaction('rw', db.variables, async () => {
+                        // Sort variables from state (which include tempId)
                         const variablesToSort = [...get().variables];
                         const field = getFieldNameByColumnIndex(columnIndex);
                         if (!field) {
@@ -538,11 +598,20 @@ export const useVariableStore = create<VariableStoreState>()(
                             const aStr = String(aValue).toLowerCase(); const bStr = String(bValue).toLowerCase();
                             return direction === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
                         });
-                        const updatedVariables = variablesToSort.map((variable, index) => ({ ...variable, columnIndex: index }));
+                        const updatedVariablesState = variablesToSort.map((variable, index) => ({
+                            ...variable, // Keep tempId
+                            columnIndex: index
+                        }));
+
+                        // Prepare for DB (omit tempId)
+                        const updatedVariablesDb = updatedVariablesState.map(omitTempId);
+
                         await db.variables.clear();
-                        await db.variables.bulkPut(updatedVariables);
+                        await db.variables.bulkPut(updatedVariablesDb);
+
+                        // Update state (with tempId)
                         set((draft) => {
-                            draft.variables = updatedVariables;
+                            draft.variables = updatedVariablesState;
                             draft.lastUpdated = new Date();
                         });
                     });
@@ -553,12 +622,14 @@ export const useVariableStore = create<VariableStoreState>()(
             },
 
             saveVariables: async () => {
-                const currentVariables = get().variables;
+                const currentVariablesState = get().variables; // Includes tempId
                 try {
                     await db.transaction('rw', db.variables, async () => {
+                        // Prepare for DB (omit tempId)
+                        const variablesForDb = currentVariablesState.map(omitTempId);
                         await db.variables.clear();
-                        if (currentVariables.length > 0) {
-                            await db.variables.bulkPut(currentVariables);
+                        if (variablesForDb.length > 0) {
+                            await db.variables.bulkPut(variablesForDb);
                         }
                     });
                     set((draft) => { draft.error = null; draft.lastUpdated = new Date(); });

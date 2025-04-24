@@ -52,6 +52,7 @@ export interface MissingValuesSpec {
 
 export interface Variable {
     id?: number;
+    tempId?: string;
     columnIndex: number;
     name: string;
     type: VariableType;
