@@ -75,7 +75,7 @@ pub struct ModelConfig {
     #[serde(rename = "BuildTermMethod")]
     pub build_term_method: Option<BuildTermMethod>,
     #[serde(rename = "SumOfSquareMethod")]
-    pub sum_of_square_method: Option<SumOfSquaresMethod>,
+    pub sum_of_square_method: SumOfSquaresMethod,
     #[serde(rename = "TermText")]
     pub term_text: Option<String>,
 }
@@ -103,7 +103,7 @@ pub struct ContrastConfig {
     #[serde(rename = "FactorList")]
     pub factor_list: Option<Vec<String>>,
     #[serde(rename = "ContrastMethod")]
-    pub contrast_method: Option<ContrastMethod>,
+    pub contrast_method: ContrastMethod,
     #[serde(rename = "Last")]
     pub last: bool,
     #[serde(rename = "First")]

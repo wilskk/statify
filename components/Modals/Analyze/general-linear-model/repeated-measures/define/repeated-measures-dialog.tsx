@@ -376,8 +376,6 @@ export const RepeatedMeasureDefineDialog = ({
             updateFormData(key as keyof RepeatedMeasureDefineData, value);
         });
 
-        onContinue(dialogState);
-
         // Generate all combinations of factor levels and measures
         const combinations = generateCombinations(
             dialogState.factors,
@@ -396,6 +394,8 @@ export const RepeatedMeasureDefineDialog = ({
             combinationVars: formattedCombinations,
             factorVars: dialogState.factors.map((factor) => factor.name || ""),
         });
+
+        onContinue(dialogState);
     };
 
     const handleReset = () => {
