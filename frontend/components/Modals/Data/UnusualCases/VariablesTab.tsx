@@ -1,118 +1,137 @@
-import React, { JSX } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { InfoIcon, CornerDownRight, CornerDownLeft } from "lucide-react";
-import { Variable } from "@/types/Variable";
+import React, { FC, useCallback } from "react";
+import { InfoIcon } from "lucide-react";
+import type { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+
+// Possible sources within this specific modal's variable lists
+type UnusualCasesSource = 'available' | 'analysis' | 'identifier';
 
 interface VariablesTabProps {
-    storeVariables: Variable[];
+    availableVariables: Variable[];
     analysisVariables: Variable[];
-    caseIdentifierVariables: Variable[];
-    highlightedVariable: {id: string, source: 'available' | 'analysis' | 'identifier'} | null;
-    handleVariableSelect: (columnIndex: number, source: 'available' | 'analysis' | 'identifier') => void;
-    handleVariableDoubleClick: (columnIndex: number, source: 'available' | 'analysis' | 'identifier') => void;
-    getVariableIcon: (variable: Variable) => JSX.Element;
-    getDisplayName: (variable: Variable) => string;
-    handleTopTransferClick: () => void;
-    handleBottomTransferClick: () => void;
+    caseIdentifierVariable: Variable | null; // Single variable
+
+    // Use the original highlight state type (tempId) from the parent
+    highlightedVariable: { tempId: string, source: UnusualCasesSource } | null;
+    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: UnusualCasesSource } | null>>;
+
+    // Movement functions passed from parent
+    moveToAvailableVariables: (variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => void;
+    moveToAnalysisVariables: (variable: Variable, targetIndex?: number) => void;
+    moveToCaseIdentifierVariable: (variable: Variable) => void; // No targetIndex needed
+    reorderVariables: (source: 'analysis', variables: Variable[]) => void; // Only analysis reorderable
+
+    errorMsg: string | null;
 }
 
-const VariablesTab: React.FC<VariablesTabProps> = ({
-                                                       storeVariables,
-                                                       analysisVariables,
-                                                       caseIdentifierVariables,
-                                                       highlightedVariable,
-                                                       handleVariableSelect,
-                                                       handleVariableDoubleClick,
-                                                       getVariableIcon,
-                                                       getDisplayName,
-                                                       handleTopTransferClick,
-                                                       handleBottomTransferClick
-                                                   }) => {
-    const renderVariableList = (variables: Variable[], source: 'available' | 'analysis' | 'identifier', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-            <div className="space-y-1">
-                {variables.map((variable) => (
-                    <TooltipProvider key={variable.columnIndex}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                    }`}
-                                    onClick={() => handleVariableSelect(variable.columnIndex, source)}
-                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
-                                >
-                                    <div className="flex items-center w-full">
-                                        {getVariableIcon(variable)}
-                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                    </div>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p className="text-xs">{getDisplayName(variable)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
-        </div>
-    );
+const VariablesTab: FC<VariablesTabProps> = ({
+    availableVariables,
+    analysisVariables,
+    caseIdentifierVariable,
+    highlightedVariable,
+    setHighlightedVariable,
+    moveToAvailableVariables,
+    moveToAnalysisVariables,
+    moveToCaseIdentifierVariable,
+    reorderVariables,
+    errorMsg
+}) => {
 
+    // --- Adapt props for VariableListManager ---
+    const variableIdKeyToUse: keyof Variable = 'tempId'; // Manager uses tempId internally
+
+    // 1. Configure the target lists
+    const targetLists: TargetListConfig[] = [
+        {
+            id: 'analysis',
+            title: 'Analysis Variables',
+            variables: analysisVariables,
+            height: '150px',
+            draggableItems: true,
+            droppable: true,
+        },
+        {
+            id: 'identifier',
+            title: 'Case Identifier Variable',
+            variables: caseIdentifierVariable ? [caseIdentifierVariable] : [],
+            height: '60px',
+            maxItems: 1,
+            draggableItems: false, // Cannot drag *from* or reorder within identifier list
+            droppable: true,      // Can drop *into* identifier list
+        }
+    ];
+
+    // 2. Adapt highlightedVariable state for the manager (tempId -> id)
+    const managerHighlightedVariable = highlightedVariable
+        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        : null;
+
+    // Adapt the setter function to convert back (id -> tempId)
+    const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
+        // Ensure the source is one of the expected types for this component
+        if (value && ['available', 'analysis', 'identifier'].includes(value.source)) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as UnusualCasesSource });
+        } else {
+            setHighlightedVariable(null);
+        }
+    }, [setHighlightedVariable]);
+
+    // 3. Create onMoveVariable callback
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        const source = fromListId as UnusualCasesSource;
+
+        switch (toListId) {
+            case 'available':
+                // Only allow moving back from 'analysis' or 'identifier'
+                if (source === 'analysis' || source === 'identifier') {
+                    moveToAvailableVariables(variable, source, targetIndex);
+                }
+                break;
+            case 'analysis':
+                // Can only move *to* analysis from available
+                if (source === 'available') {
+                    moveToAnalysisVariables(variable, targetIndex);
+                }
+                break;
+            case 'identifier':
+                // Can only move *to* identifier from available
+                if (source === 'available') {
+                     // moveToCaseIdentifierVariable doesn't take targetIndex
+                    moveToCaseIdentifierVariable(variable);
+                }
+                break;
+        }
+    }, [moveToAvailableVariables, moveToAnalysisVariables, moveToCaseIdentifierVariable]);
+
+    // 4. Create onReorderVariable callback
+    const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
+        if (listId === 'analysis') {
+            reorderVariables(listId, variables);
+        }
+        // Cannot reorder 'identifier' or 'available'
+    }, [reorderVariables]);
+
+    // --- Render the manager component and error message ---
     return (
-        <div className="grid grid-cols-8 gap-6">
-            <div className="col-span-3">
-                <div className="text-sm mb-2 font-medium">Variables:</div>
-                {renderVariableList(storeVariables, 'available', '300px')}
-                <div className="text-xs mt-2 text-[#888888] flex items-center">
-                    <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                    <span>To change a variable&apos;s measurement level, right click on it in the Variables list.</span>
+        <div>
+            <VariableListManager
+                availableVariables={availableVariables}
+                targetLists={targetLists}
+                variableIdKey={variableIdKeyToUse}
+                highlightedVariable={managerHighlightedVariable}
+                setHighlightedVariable={setManagerHighlightedVariable}
+                onMoveVariable={handleMoveVariable}
+                onReorderVariable={handleReorderVariables}
+            />
+             <div className="text-xs mt-3 text-[#888888] flex items-center">
+                 <InfoIcon size={14} className="mr-1 flex-shrink-0" />
+                 <span>To change a variable&apos;s measurement level, right click on it in the Variables list.</span>
+             </div>
+            {errorMsg && (
+                <div className="col-span-2 text-red-600 text-sm mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                    {errorMsg}
                 </div>
-            </div>
-
-            <div className="col-span-1 flex flex-col items-center justify-center">
-                <div className="flex flex-col space-y-32">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                        onClick={handleTopTransferClick}
-                        disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'analysis')}
-                    >
-                        {highlightedVariable?.source === 'analysis' ?
-                            <CornerDownLeft size={16} /> :
-                            <CornerDownRight size={16} />
-                        }
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                        onClick={handleBottomTransferClick}
-                        disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'identifier')}
-                    >
-                        {highlightedVariable?.source === 'identifier' ?
-                            <CornerDownLeft size={16} /> :
-                            <CornerDownRight size={16} />
-                        }
-                    </Button>
-                </div>
-            </div>
-
-            <div className="col-span-4 space-y-6">
-                <div>
-                    <div className="text-sm mb-2 font-medium">Analysis Variables:</div>
-                    {renderVariableList(analysisVariables, 'analysis', '150px')}
-                </div>
-
-                <div>
-                    <div className="text-sm mb-2 font-medium">Case Identifier Variable:</div>
-                    {renderVariableList(caseIdentifierVariables, 'identifier', '60px')}
-                </div>
-            </div>
+            )}
         </div>
     );
 };

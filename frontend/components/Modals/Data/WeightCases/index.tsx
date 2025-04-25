@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -9,20 +9,12 @@ import {
     Dialog,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-    AlertCircle,
-    Ruler,
-    Shapes,
-    BarChartHorizontal,
-    CornerDownRight
-} from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertCircle, InfoIcon } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 
 interface WeightCasesModalProps {
     onClose: () => void;
@@ -30,161 +22,136 @@ interface WeightCasesModalProps {
 
 const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
     const { variables } = useVariableStore();
-    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
-
     const meta = useMetaStore((state) => state.meta);
     const setMeta = useMetaStore((state) => state.setMeta);
 
-    const [weightMethod, setWeightMethod] = useState<"none" | "byVariable">("none");
-    const [frequencyVariable, setFrequencyVariable] = useState<string>("");
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string} | null>(null);
+    // States for variable lists
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    const [frequencyVariables, setFrequencyVariables] = useState<Variable[]>([]);
 
+    // Track the highlighted variable
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
+    } | null>(null);
+
+    // Error handling
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [errorDialogOpen, setErrorDialogOpen] = useState<boolean>(false);
 
-    useEffect(() => {
-        const numericVariables = variables.filter(v => v.name !== "" && v.type !== "STRING");
-        setAvailableVariables(numericVariables);
+    // Compute the weight method based on frequency variables
+    const weightMethod = frequencyVariables.length > 0 ? "byVariable" : "none";
 
+    // Initialize lists from store
+    useEffect(() => {
+        // Filter to only numeric variables
+        const numericVariables = variables.filter(v => v.name !== "" && v.type !== "STRING");
+
+        // If we have a weight variable set in meta, move it to the frequency list
         if (meta.weight && meta.weight !== "") {
-            const weightVar = variables.find(v => v.name === meta.weight && v.type !== "STRING");
+            const weightVar = numericVariables.find(v => v.name === meta.weight);
+
             if (weightVar) {
-                setHighlightedVariable({ id: weightVar.columnIndex.toString() });
-                setFrequencyVariable(meta.weight);
-                setWeightMethod("byVariable");
+                setFrequencyVariables([weightVar]);
+                setAvailableVariables(numericVariables.filter(v => v.name !== meta.weight));
+            } else {
+                setAvailableVariables(numericVariables);
+                setFrequencyVariables([]);
             }
+        } else {
+            setAvailableVariables(numericVariables);
+            setFrequencyVariables([]);
         }
     }, [variables, meta.weight]);
 
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
-            return `${variable.label} [${variable.name}]`;
-        }
-        return variable.name;
-    };
-
-    const getVariableIcon = (variable: Variable) => {
-        if (!variable) return null;
-
-        switch (variable.measure) {
-            case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            default:
-                return variable.type === "STRING"
-                    ? <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-        }
-    };
-
-    const handleVariableSelect = (columnIndex: number) => {
-        if (highlightedVariable?.id === columnIndex.toString()) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: columnIndex.toString() });
-        }
-    };
-
-    const handleSelectFrequencyVariable = (variable: Variable) => {
-        if (variable.type === "STRING") {
+    // Handler for moving variables between lists
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string) => {
+        // Validate variable type for frequency list
+        if (toListId === 'frequency' && variable.type === "STRING") {
             setErrorMessage("Weight variable must be numeric");
             setErrorDialogOpen(true);
             return;
         }
 
-        setFrequencyVariable(variable.name);
-        setWeightMethod("byVariable");
-        setHighlightedVariable({ id: variable.columnIndex.toString() });
-    };
+        // Remove from source list
+        if (fromListId === 'available') {
+            setAvailableVariables(prev => prev.filter(v =>
+                // Use tempId if available, otherwise use columnIndex
+                (v.tempId !== undefined ? v.tempId !== variable.tempId : v.columnIndex !== variable.columnIndex)
+            ));
+        } else if (fromListId === 'frequency') {
+            setFrequencyVariables([]);
+        }
 
-    const handleVariableDoubleClick = (variable: Variable) => {
-        handleSelectFrequencyVariable(variable);
-    };
+        // Add to target list
+        if (toListId === 'available') {
+            setAvailableVariables(prev => [...prev, variable].sort((a, b) => a.columnIndex - b.columnIndex));
+        } else if (toListId === 'frequency') {
+            // Replace any existing variable in the frequency list (single selection)
+            setFrequencyVariables([variable]);
+        }
 
-    const currentStatus =
-        weightMethod === "none"
-            ? "Do not weight cases"
-            : `Weight cases by: ${frequencyVariable || "(not selected)"}`;
+        // Clear highlight
+        setHighlightedVariable(null);
+    }, []);
 
-    const handleOk = () => {
-        if (weightMethod === "none") {
+    // Handler for reordering variables within a list (not needed for this modal, but required by VariableListManager)
+    const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
+        if (listId === 'available') {
+            setAvailableVariables(reorderedVariables);
+        } else if (listId === 'frequency') {
+            setFrequencyVariables(reorderedVariables);
+        }
+    }, []);
+
+    const handleSave = () => {
+        if (frequencyVariables.length > 0) {
+            setMeta({ weight: frequencyVariables[0].name });
+        } else {
             setMeta({ weight: "" });
-        } else if (weightMethod === "byVariable" && frequencyVariable) {
-            setMeta({ weight: frequencyVariable });
         }
         onClose();
     };
 
     const handleReset = () => {
-        setWeightMethod("none");
-        setFrequencyVariable("");
+        // Move any frequency variables back to available
+        if (frequencyVariables.length > 0) {
+            setAvailableVariables(prev =>
+                [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
+            );
+            setFrequencyVariables([]);
+        }
         setHighlightedVariable(null);
     };
 
+    // Configure target lists for VariableListManager
+    const targetLists: TargetListConfig[] = [
+        {
+            id: 'frequency',
+            title: 'Weight cases by:',
+            variables: frequencyVariables,
+            height: '80px',
+            maxItems: 1, // Only allow one frequency variable
+            draggableItems: false // No reordering needed
+        }
+    ];
+
+    // Current status message
+    const currentStatus = weightMethod === "none"
+        ? "Do not weight cases"
+        : `Weight cases by: ${frequencyVariables[0]?.name || "(not selected)"}`;
+
     return (
         <>
-            <DialogContent className="max-w-[450px] p-3">
+            <DialogContent className="max-w-[550px] p-3">
                 <DialogHeader className="p-0 mb-2">
                     <DialogTitle>Weight Cases</DialogTitle>
                 </DialogHeader>
                 <Separator className="my-0" />
 
-                <div className="grid grid-cols-7 gap-2 py-2">
-                    <div className="col-span-3 flex flex-col">
-                        <Label className="text-xs font-semibold mb-1">Variables:</Label>
-                        <div className="border p-2 rounded-md h-[200px] overflow-y-auto overflow-x-hidden">
-                            <div className="space-y-1">
-                                {availableVariables.map((variable) => (
-                                    <TooltipProvider key={variable.columnIndex}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div
-                                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-gray-100 ${
-                                                        highlightedVariable?.id === variable.columnIndex.toString()
-                                                            ? "bg-gray-200 border-gray-500"
-                                                            : "border-gray-300"
-                                                    }`}
-                                                    onClick={() => handleVariableSelect(variable.columnIndex)}
-                                                    onDoubleClick={() => handleVariableDoubleClick(variable)}
-                                                >
-                                                    <div className="flex items-center w-full">
-                                                        {getVariableIcon(variable)}
-                                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                                    </div>
-                                                </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right">
-                                                <p className="text-xs">{getDisplayName(variable)}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="col-span-1 flex flex-col items-center justify-center">
-                        <Button
-                            variant="link"
-                            onClick={() => {
-                                if (highlightedVariable) {
-                                    const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-                                    if (variable) {
-                                        handleSelectFrequencyVariable(variable);
-                                    }
-                                }
-                            }}
-                            disabled={!highlightedVariable}
-                        >
-                            <CornerDownRight size={20} />
-                        </Button>
-                    </div>
-
-                    <div className="col-span-3 space-y-2">
-                        <div className="space-y-2">
+                <div className="py-2">
+                    <div className="flex items-start space-x-4 mb-4">
+                        <div className="space-y-2 flex-1">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="radio"
@@ -192,8 +159,13 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                                     className="w-3 h-3"
                                     checked={weightMethod === "none"}
                                     onChange={() => {
-                                        setWeightMethod("none");
-                                        setFrequencyVariable("");
+                                        // Move any frequency variables back to available
+                                        if (frequencyVariables.length > 0) {
+                                            setAvailableVariables(prev =>
+                                                [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
+                                            );
+                                            setFrequencyVariables([]);
+                                        }
                                     }}
                                 />
                                 <span className="text-xs">Do not weight cases</span>
@@ -205,33 +177,42 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                                     name="weightMethod"
                                     className="w-3 h-3"
                                     checked={weightMethod === "byVariable"}
-                                    onChange={() => setWeightMethod("byVariable")}
+                                    onChange={() => {
+                                        // If no variable is selected yet, encourage selection
+                                        if (frequencyVariables.length === 0) {
+                                            // We don't need to do anything here, as the user will select a variable
+                                            // which will automatically set the weight method to "byVariable"
+                                        }
+                                    }}
                                 />
-                                <span className="text-xs">Weight cases by</span>
+                                <span className="text-xs">Weight cases by variable</span>
                             </label>
+                        </div>
+                    </div>
 
-                            <div className="pl-5 space-y-1">
-                                <div className="text-xs text-gray-600">Frequency Variable:</div>
-                                <Input
-                                    type="text"
-                                    value={frequencyVariable}
-                                    onChange={(e) => setFrequencyVariable(e.target.value)}
-                                    disabled={weightMethod === "none"}
-                                    className="h-6 text-xs w-full"
-                                />
-                            </div>
+                    {/* Use VariableListManager for drag & drop functionality */}
+                    <VariableListManager
+                        availableVariables={availableVariables}
+                        targetLists={targetLists}
+                        variableIdKey="columnIndex"
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        onMoveVariable={handleMoveVariable}
+                        onReorderVariable={handleReorderVariable}
+                        showArrowButtons={true}
+                        availableListHeight={"200px"}
+                    />
 
-                            <div className="border p-2 rounded-md bg-gray-50 mt-4">
-                                <div className="text-xs text-gray-700">
-                                    <span className="font-semibold">Current Status:</span> {currentStatus}
-                                </div>
-                            </div>
+                    <div className="border p-2 rounded-md bg-gray-50 mt-4 flex items-center">
+                        <InfoIcon className="text-gray-500 h-4 w-4 flex-shrink-0 mr-2" />
+                        <div className="text-xs text-gray-700">
+                            <span className="font-semibold">Current Status:</span> {currentStatus}
                         </div>
                     </div>
                 </div>
 
                 <DialogFooter className="flex justify-center space-x-2 mt-4 p-0">
-                    <Button size="sm" className="text-xs h-7" onClick={handleOk}>
+                    <Button size="sm" className="text-xs h-7" onClick={handleSave}>
                         OK
                     </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => alert("Paste syntax here")}>

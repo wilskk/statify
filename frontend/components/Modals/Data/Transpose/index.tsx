@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -9,16 +9,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-    CornerDownRight,
-    CornerDownLeft,
     Shapes,
     Ruler,
-    BarChartHorizontal
+    BarChartHorizontal,
+    InfoIcon
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 
 interface TransposeModalProps {
     onClose: () => void;
@@ -29,24 +28,35 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
     const { variables, overwriteVariables } = useVariableStore();
     const { data, setDataAndSync } = useDataStore();
 
+    // Prepare variables with tempId
+    const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
+        return vars.map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        }));
+    }, []);
+
     // Filter variables to handle in UI
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [nameVariables, setNameVariables] = useState<Variable[]>([]);
 
-    // Selected variable for highlight
+    // Selected variable for highlight - updated to match VariableListManager format
     const [highlightedVariable, setHighlightedVariable] = useState<{
         id: string;
-        source: "available" | "selected" | "name";
+        source: string;
     } | null>(null);
 
     // Initialize variables from store
     useEffect(() => {
         if (variables.length > 0) {
+            // Add tempId to variables
+            const varsWithTempId = prepareVariablesWithTempId(variables);
+
             // Initialize with variables from the store
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = variables.filter((v, idx) => {
+            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
                 // First variable as name variable by default
                 if (idx === 0) {
                     initialName.push(v);
@@ -64,7 +74,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
             setSelectedVariables(initialSelected);
             setNameVariables(initialName);
         }
-    }, [variables]);
+    }, [variables, prepareVariablesWithTempId]);
 
     // Get variable icon based on measure
     const getVariableIcon = (variable: Variable) => {
@@ -76,113 +86,54 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
             case "ordinal":
                 return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
             default:
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return variable.type === "STRING"
+                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
         }
     };
 
-    // Function to move a variable from left to right
-    const moveToSelected = (variable: Variable) => {
-        setAvailableVariables((prev) => prev.filter((v) => v.columnIndex !== variable.columnIndex));
-        setSelectedVariables((prev) => [...prev, variable]);
+    // Get variable display name
+    const getDisplayName = (variable: Variable): string => {
+        if (variable.label) {
+            return `${variable.label} [${variable.name}]`;
+        }
+        return variable.name;
+    };
+
+    // Handler for moving variables between lists - compatible with VariableListManager
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        // Remove from source list
+        if (fromListId === 'available') {
+            setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        } else if (fromListId === 'selected') {
+            setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        } else if (fromListId === 'name') {
+            setNameVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        }
+
+        // Add to target list
+        if (toListId === 'available') {
+            setAvailableVariables(prev => [...prev, variable]);
+        } else if (toListId === 'selected') {
+            setSelectedVariables(prev => [...prev, variable]);
+        } else if (toListId === 'name') {
+            // Name variable can only have one variable, so replace it
+            setNameVariables([variable]);
+        }
+
+        // Clear highlight
         setHighlightedVariable(null);
-    };
+    }, []);
 
-    // Function to move a variable from right to left
-    const moveToAvailable = (variable: Variable) => {
-        setSelectedVariables((prev) => prev.filter((v) => v.columnIndex !== variable.columnIndex));
-        setAvailableVariables((prev) => [...prev, variable]);
-        setHighlightedVariable(null);
-    };
-
-    // Function to move a variable to name variable field
-    const moveToNameVariable = (variable: Variable) => {
-        setAvailableVariables((prev) => prev.filter((v) => v.columnIndex !== variable.columnIndex));
-        // Replace existing name variable (only allow one)
-        setNameVariables([variable]);
-        setHighlightedVariable(null);
-    };
-
-    // Function to move name variable back to available
-    const moveNameToAvailable = (variable: Variable) => {
-        setNameVariables([]);
-        setAvailableVariables((prev) => [...prev, variable]);
-        setHighlightedVariable(null);
-    };
-
-    // Handle variable selection for highlighting
-    const handleVariableSelect = (columnIndex: number, source: "available" | "selected" | "name") => {
-        const variableId = columnIndex.toString();
-
-        if (
-            highlightedVariable?.id === variableId &&
-            highlightedVariable?.source === source
-        ) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({
-                id: variableId,
-                source,
-            });
+    // Handler for reordering variables within a list - compatible with VariableListManager
+    const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
+        if (listId === 'available') {
+            setAvailableVariables(reorderedVariables);
+        } else if (listId === 'selected') {
+            setSelectedVariables(reorderedVariables);
         }
-    };
-
-    // Handle variable double click
-    const handleVariableDoubleClick = (columnIndex: number, source: "available" | "selected" | "name") => {
-        if (source === "available") {
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToSelected(variable);
-            }
-        } else if (source === "selected") {
-            const variable = selectedVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToAvailable(variable);
-            }
-        } else if (source === "name") {
-            const variable = nameVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveNameToAvailable(variable);
-            }
-        }
-    };
-
-    // Handle transfer button click for variables list
-    const handleVariableTransferClick = () => {
-        if (!highlightedVariable) return;
-
-        const columnIndex = parseInt(highlightedVariable.id);
-
-        if (highlightedVariable.source === "available") {
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToSelected(variable);
-            }
-        } else if (highlightedVariable.source === "selected") {
-            const variable = selectedVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToAvailable(variable);
-            }
-        }
-    };
-
-    // Handle transfer button click for name variable
-    const handleNameVariableTransferClick = () => {
-        if (!highlightedVariable) return;
-
-        const columnIndex = parseInt(highlightedVariable.id);
-
-        if (highlightedVariable.source === "available") {
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToNameVariable(variable);
-            }
-        } else if (highlightedVariable.source === "name") {
-            const variable = nameVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveNameToAvailable(variable);
-            }
-        }
-    };
+        // Reordering is not applicable for name list as it only has one item
+    }, []);
 
     // Process variable name to ensure it's valid and unique
     const processVariableName = (name: string, existingVariables: Variable[]): string => {
@@ -339,9 +290,11 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
     const handleReset = () => {
         // Reset to initial state - use first variable as name and second as selected
         if (variables.length > 0) {
+            const varsWithTempId = prepareVariablesWithTempId(variables);
+
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = variables.filter((v, idx) => {
+            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
                 if (idx === 0) {
                     initialName.push(v);
                     return false;
@@ -361,38 +314,25 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         setHighlightedVariable(null);
     };
 
-    // Render variable list
-    const renderVariableList = (variables: Variable[], source: 'available' | 'selected' | 'name', height?: string) => (
-        <div className={`border border-[#E6E6E6] p-2 rounded-md ${height ? 'overflow-y-auto overflow-x-hidden' : ''}`} style={height ? { height } : {}}>
-            <div className="space-y-1">
-                {variables.map((variable) => (
-                    <TooltipProvider key={variable.columnIndex}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                    }`}
-                                    onClick={() => handleVariableSelect(variable.columnIndex, source)}
-                                    onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
-                                >
-                                    <div className="flex items-center w-full">
-                                        {getVariableIcon(variable)}
-                                        <span className="text-xs truncate">{variable.name}</span>
-                                    </div>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p className="text-xs">{variable.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
-        </div>
-    );
+    // Configure target lists for VariableListManager
+    const selectedListConfig: TargetListConfig = {
+        id: 'selected',
+        title: 'Variable(s):',
+        variables: selectedVariables,
+        height: '150px',
+        droppable: true,
+        draggableItems: true
+    };
+
+    const nameListConfig: TargetListConfig = {
+        id: 'name',
+        title: 'Name Variable:',
+        variables: nameVariables,
+        height: '40px',
+        maxItems: 1, // Only allow one item
+        droppable: true,
+        draggableItems: false // No need to reorder since it's just one item
+    };
 
     return (
         <DialogContent className="max-w-[550px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
@@ -401,60 +341,26 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
             </DialogHeader>
 
             <div className="p-6 overflow-y-auto flex-grow">
-                <div className="grid grid-cols-12 gap-4">
-                    {/* Left column with available variables */}
-                    <div className="col-span-5">
-                        <div className="text-sm mb-2 font-medium">Variables:</div>
-                        {renderVariableList(availableVariables, 'available', '220px')}
-                    </div>
+                <div className="space-y-6">
+                    {/* Variable List Manager */}
+                    <VariableListManager
+                        availableVariables={availableVariables}
+                        targetLists={[selectedListConfig, nameListConfig]}
+                        variableIdKey="tempId"
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        onMoveVariable={handleMoveVariable}
+                        onReorderVariable={handleReorderVariable}
+                        getVariableIcon={getVariableIcon}
+                        getDisplayName={getDisplayName}
+                        showArrowButtons={true}
+                        availableListHeight="220px"
+                    />
 
-                    {/* Middle column with transfer buttons */}
-                    <div className="col-span-2 flex flex-col items-center justify-center">
-                        <div className="flex flex-col items-center space-y-4">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="p-0 w-10 h-10 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                onClick={handleVariableTransferClick}
-                                disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'selected')}
-                            >
-                                {highlightedVariable?.source === 'selected' ?
-                                    <CornerDownLeft size={20} /> :
-                                    <CornerDownRight size={20} />
-                                }
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Right column with selected variables and name variable */}
-                    <div className="col-span-5 space-y-5">
-                        <div>
-                            <div className="text-sm mb-2 font-medium">Variable(s):</div>
-                            {renderVariableList(selectedVariables, 'selected', '150px')}
-                        </div>
-
-                        <div>
-                            <div className="flex items-center mb-2">
-                                <div className="text-sm font-medium">Name Variable:</div>
-                            </div>
-                            <div className="flex gap-2 items-start">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] mt-1"
-                                    onClick={handleNameVariableTransferClick}
-                                    disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'name')}
-                                >
-                                    {highlightedVariable?.source === 'name' ?
-                                        <CornerDownLeft size={16} /> :
-                                        <CornerDownRight size={16} />
-                                    }
-                                </Button>
-                                <div className="flex-grow">
-                                    {renderVariableList(nameVariables, 'name', '40px')}
-                                </div>
-                            </div>
-                        </div>
+                    {/* Info Text */}
+                    <div className="text-xs text-[#888888] flex items-center">
+                        <InfoIcon size={14} className="mr-1 flex-shrink-0" />
+                        <span>Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.</span>
                     </div>
                 </div>
             </div>

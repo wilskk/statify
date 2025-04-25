@@ -32,9 +32,9 @@ const DataMenu: React.FC = () => {
                     Define Date and Time...
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.Validate)}>
-                    Validation...
-                </MenubarItem>
+                {/*<MenubarItem onClick={() => openModal(ModalType.Validate)}>*/}
+                {/*    Validation...*/}
+                {/*</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.DuplicateCases)}>
                     Identify Duplicate Cases...
                 </MenubarItem>
@@ -51,16 +51,16 @@ const DataMenu: React.FC = () => {
                 <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
                     Transpose...
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Restructure)}>
-                    Restructure...
-                </MenubarItem>
+                {/*<MenubarItem onClick={() => openModal(ModalType.Restructure)}>*/}
+                {/*    Restructure...*/}
+                {/*</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.Aggregate)}>
                     Aggregate...
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.SelectCases)}>
-                    Select Cases...
-                </MenubarItem>
+                {/*<MenubarItem onClick={() => openModal(ModalType.SelectCases)}>*/}
+                {/*    Select Cases...*/}
+                {/*</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.WeightCases)}>
                     Weight Cases...
                 </MenubarItem>

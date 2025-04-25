@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -10,11 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CornerDownRight, CornerDownLeft, InfoIcon, Ruler, Shapes, BarChartHorizontal, ChevronUp, ChevronDown } from "lucide-react";
+import { InfoIcon, Ruler, Shapes, BarChartHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 
 interface SortVariableConfig {
     variable: Variable;
@@ -29,12 +29,22 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
     const { sortData } = useDataStore();
     const { variables } = useVariableStore();
 
+    // Prepare variables with tempId
+    const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
+        return vars.map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        }));
+    }, []);
+
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [sortByConfigs, setSortByConfigs] = useState<SortVariableConfig[]>([]);
     const [defaultSortOrder, setDefaultSortOrder] = useState<"asc" | "desc">("asc");
-    const [highlightedItem, setHighlightedItem] = useState<{
-        columnIndex: number;
-        source: 'available' | 'sortBy';
+
+    // Updated to match VariableListManager's expected format
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
     } | null>(null);
 
     const [saveSortedData, setSaveSortedData] = useState<boolean>(false);
@@ -43,70 +53,80 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
 
     // Initialize available variables from the store
     useEffect(() => {
-        const sortByColumnIndices = sortByConfigs.map(config => config.variable.columnIndex);
-        const filtered = variables.filter(v => !sortByColumnIndices.includes(v.columnIndex));
-        setAvailableVariables(filtered);
-    }, [variables, sortByConfigs]);
+        const sortByVarIds = sortByConfigs.map(config => config.variable.columnIndex);
+        const filtered = variables.filter(v => !sortByVarIds.includes(v.columnIndex));
+        setAvailableVariables(prepareVariablesWithTempId(filtered));
+    }, [variables, sortByConfigs, prepareVariablesWithTempId]);
 
-    const handleVariableSelect = (columnIndex: number, source: 'available' | 'sortBy') => {
-        if (highlightedItem?.columnIndex === columnIndex && highlightedItem.source === source) {
-            setHighlightedItem(null);
-        } else {
-            setHighlightedItem({ columnIndex, source });
+    // Function to get sortBy variables as an array (for VariableListManager)
+    const getSortByVariables = useCallback(() => {
+        return sortByConfigs.map(config => config.variable);
+    }, [sortByConfigs]);
+
+    // Handler for moving variables between lists - compatible with VariableListManager
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        if (fromListId === 'available' && toListId === 'sortBy') {
+            // Moving from available to sortBy
+            const newConfig: SortVariableConfig = {
+                variable,
+                direction: defaultSortOrder
+            };
+
+            if (typeof targetIndex === 'number') {
+                // Insert at specific position
+                const newConfigs = [...sortByConfigs];
+                newConfigs.splice(targetIndex, 0, newConfig);
+                setSortByConfigs(newConfigs);
+            } else {
+                // Add to end
+                setSortByConfigs(prev => [...prev, newConfig]);
+            }
+
+            setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         }
-    };
-
-    const handleVariableDoubleClick = (columnIndex: number, source: 'available' | 'sortBy') => {
-        if (source === "available") {
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) moveToSortByVariables(variable);
-        } else if (source === "sortBy") {
-            const config = sortByConfigs.find(c => c.variable.columnIndex === columnIndex);
-            if (config) moveFromSortByVariables(config.variable);
+        else if (fromListId === 'sortBy' && toListId === 'available') {
+            // Moving from sortBy to available
+            setSortByConfigs(prev => prev.filter(c => c.variable.tempId !== variable.tempId));
+            setAvailableVariables(prev => [...prev, variable]);
         }
-    };
 
-    const moveToSortByVariables = (variable: Variable) => {
-        const newConfig: SortVariableConfig = {
-            variable,
-            direction: defaultSortOrder
-        };
+        // Clear highlight
+        setHighlightedVariable(null);
+    }, [defaultSortOrder]);
 
-        setSortByConfigs(prev => [...prev, newConfig]);
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedItem(null);
-    };
-
-    const moveFromSortByVariables = (variable: Variable) => {
-        setSortByConfigs(prev => prev.filter(c => c.variable.columnIndex !== variable.columnIndex));
-        setAvailableVariables(prev => [...prev, variable]);
-        setHighlightedItem(null);
-    };
-
-    const handleTransferClick = () => {
-        if (!highlightedItem) return;
-
-        if (highlightedItem.source === "available") {
-            const variable = availableVariables.find(v => v.columnIndex === highlightedItem.columnIndex);
-            if (variable) moveToSortByVariables(variable);
-        } else if (highlightedItem.source === "sortBy") {
-            const config = sortByConfigs.find(c => c.variable.columnIndex === highlightedItem.columnIndex);
-            if (config) moveFromSortByVariables(config.variable);
+    // Handler for reordering variables within a list - compatible with VariableListManager
+    const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
+        if (listId === 'available') {
+            setAvailableVariables(reorderedVariables);
         }
-    };
+        else if (listId === 'sortBy') {
+            // We need to preserve the direction settings when reordering
+            const newConfigs: SortVariableConfig[] = reorderedVariables.map(variable => {
+                // Find existing config for this variable to keep the direction
+                const existingConfig = sortByConfigs.find(c => c.variable.tempId === variable.tempId);
+                return {
+                    variable,
+                    direction: existingConfig?.direction || defaultSortOrder
+                };
+            });
+            setSortByConfigs(newConfigs);
+        }
+    }, [sortByConfigs, defaultSortOrder]);
 
-    const changeSortDirection = (columnIndex: number, direction: 'asc' | 'desc') => {
+    // Change sort direction for a variable
+    const changeSortDirection = (tempId: string, direction: 'asc' | 'desc') => {
         setSortByConfigs(prev =>
             prev.map(config =>
-                config.variable.columnIndex === columnIndex
+                config.variable.tempId === tempId
                     ? { ...config, direction }
                     : config
             )
         );
     };
 
-    const moveVariableUp = (columnIndex: number) => {
-        const index = sortByConfigs.findIndex(c => c.variable.columnIndex === columnIndex);
+    // Move variables up and down in sortBy list
+    const moveVariableUp = (tempId: string) => {
+        const index = sortByConfigs.findIndex(c => c.variable.tempId === tempId);
         if (index <= 0) return;
 
         const newConfigs = [...sortByConfigs];
@@ -115,8 +135,8 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
         setSortByConfigs(newConfigs);
     };
 
-    const moveVariableDown = (columnIndex: number) => {
-        const index = sortByConfigs.findIndex(c => c.variable.columnIndex === columnIndex);
+    const moveVariableDown = (tempId: string) => {
+        const index = sortByConfigs.findIndex(c => c.variable.tempId === tempId);
         if (index === -1 || index >= sortByConfigs.length - 1) return;
 
         const newConfigs = [...sortByConfigs];
@@ -138,6 +158,115 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                     ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
                     : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
         }
+    };
+
+    const getDisplayName = (variable: Variable): string => {
+        if (variable.label) {
+            return `${variable.label} [${variable.name}]`;
+        }
+        return variable.name;
+    };
+
+    // Custom display name for sortBy list to include sort direction
+    const getSortByDisplayName = (variable: Variable): string => {
+        const direction = sortByConfigs.find(c => c.variable.tempId === variable.tempId)?.direction;
+        const directionSymbol = direction === 'asc' ? '▲' : '▼';
+        return `${getDisplayName(variable)} ${directionSymbol}`;
+    };
+
+    // Custom render for sortBy list to show sort direction controls
+    const renderSortByListFooter = () => {
+        if (!highlightedVariable || highlightedVariable.source !== 'sortBy') return null;
+
+        const selectedTempId = highlightedVariable.id;
+        const selectedConfig = sortByConfigs.find(c => c.variable.tempId === selectedTempId);
+        if (!selectedConfig) return null;
+
+        return (
+            <div className="mt-2 space-y-4">
+                <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm font-medium">Sort Order:</div>
+                        <div className="flex space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                onClick={() => moveVariableUp(selectedTempId)}
+                                disabled={sortByConfigs.indexOf(selectedConfig) === 0}
+                            >
+                                <ChevronUp size={14} className="mr-1" /> Move Up
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                onClick={() => moveVariableDown(selectedTempId)}
+                                disabled={sortByConfigs.indexOf(selectedConfig) === sortByConfigs.length - 1}
+                            >
+                                <ChevronDown size={14} className="mr-1" /> Move Down
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                checked={selectedConfig.direction === "asc"}
+                                onChange={() => changeSortDirection(selectedTempId, 'asc')}
+                                className="border-[#CCCCCC]"
+                            />
+                            <span className="text-sm">Ascending</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                checked={selectedConfig.direction === "desc"}
+                                onChange={() => changeSortDirection(selectedTempId, 'desc')}
+                                className="border-[#CCCCCC]"
+                            />
+                            <span className="text-sm">Descending</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Default sort order controls (when no variable is selected)
+    const renderDefaultSortOrderControls = () => {
+        if (highlightedVariable?.source === 'sortBy') return null;
+
+        return (
+            <div className="mt-4">
+                <div className="text-sm mb-2 font-medium">Default Sort Order:</div>
+                <div className="flex flex-col space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="defaultSortOrder"
+                            checked={defaultSortOrder === "asc"}
+                            onChange={() => setDefaultSortOrder("asc")}
+                            className="border-[#CCCCCC]"
+                        />
+                        <span className="text-sm">Ascending</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="defaultSortOrder"
+                            checked={defaultSortOrder === "desc"}
+                            onChange={() => setDefaultSortOrder("desc")}
+                            className="border-[#CCCCCC]"
+                        />
+                        <span className="text-sm">Descending</span>
+                    </label>
+                </div>
+            </div>
+        );
     };
 
     const performSort = async () => {
@@ -175,66 +304,23 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
 
     const handleReset = () => {
         const sortedVariables = sortByConfigs.map(config => config.variable);
-        setAvailableVariables([...availableVariables, ...sortedVariables].sort((a, b) => a.columnIndex - b.columnIndex));
+        setAvailableVariables(prepareVariablesWithTempId([...availableVariables, ...sortedVariables].sort((a, b) => a.columnIndex - b.columnIndex)));
         setSortByConfigs([]);
         setDefaultSortOrder("asc");
         setSaveSortedData(false);
         setFileName("");
         setCreateIndex(false);
-        setHighlightedItem(null);
+        setHighlightedVariable(null);
     };
 
-    const renderVariableList = (vars: Variable[], source: 'available' | 'sortBy', height: string) => {
-        const variablesToRender = source === 'available'
-            ? vars
-            : sortByConfigs.map(config => config.variable);
-
-        return (
-            <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-                <div className="space-y-1">
-                    {variablesToRender.map((variable) => {
-                        const config = source === 'sortBy'
-                            ? sortByConfigs.find(c => c.variable.columnIndex === variable.columnIndex)
-                            : null;
-
-                        return (
-                            <TooltipProvider key={variable.columnIndex}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div
-                                            className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                                highlightedItem?.columnIndex === variable.columnIndex && highlightedItem.source === source
-                                                    ? "bg-[#E6E6E6] border-[#888888]"
-                                                    : "border-[#CCCCCC]"
-                                            }`}
-                                            onClick={() => handleVariableSelect(variable.columnIndex, source)}
-                                            onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
-                                        >
-                                            <div className="flex items-center w-full">
-                                                {getVariableIcon(variable)}
-                                                <span className="text-xs truncate">{variable.name}</span>
-                                                {source === 'sortBy' && config && (
-                                                    <span className="ml-auto text-xs text-gray-500">
-                                                        {config.direction === 'asc' ? '▲' : '▼'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p className="text-xs">
-                                            {variable.name}
-                                            {variable.label ? ` - ${variable.label}` : ''}
-                                            {source === 'sortBy' && config && ` (${config.direction})`}
-                                        </p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        );
-                    })}
-                </div>
-            </div>
-        );
+    // Configure target list for VariableListManager
+    const sortByListConfig: TargetListConfig = {
+        id: 'sortBy',
+        title: 'Sort By:',
+        variables: getSortByVariables(),
+        height: '200px',
+        droppable: true,
+        draggableItems: true
     };
 
     return (
@@ -244,170 +330,77 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
             </DialogHeader>
 
             <div className="p-6 overflow-y-auto flex-grow">
-                <div className="grid grid-cols-7 gap-6">
-                    {/* Left column: Available variables */}
-                    <div className="col-span-3">
-                        <div className="text-sm mb-2 font-medium">Variables:</div>
-                        {renderVariableList(availableVariables, 'available', '250px')}
-                        <div className="text-xs mt-2 text-[#888888] flex items-center">
-                            <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                            <span>Double-click a variable to add it to Sort By</span>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-1 gap-6">
+                    {/* Variable List Manager */}
+                    <VariableListManager
+                        availableVariables={availableVariables}
+                        targetLists={[sortByListConfig]}
+                        variableIdKey="tempId"
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        onMoveVariable={handleMoveVariable}
+                        onReorderVariable={handleReorderVariable}
+                        getVariableIcon={getVariableIcon}
+                        getDisplayName={sortByConfigs.length > 0 ? getSortByDisplayName : getDisplayName}
+                        renderListFooter={renderSortByListFooter}
+                        showArrowButtons={true}
+                        availableListHeight="250px"
+                    />
 
-                    {/* Middle column: Transfer buttons */}
-                    <div className="col-span-1 flex flex-col items-center justify-center">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                            onClick={handleTransferClick}
-                            disabled={!highlightedItem}
-                        >
-                            {highlightedItem?.source === 'sortBy' ?
-                                <CornerDownLeft size={16} /> :
-                                <CornerDownRight size={16} />
-                            }
-                        </Button>
-                    </div>
+                    {/* Default sort order controls (when no variable is selected) */}
+                    {renderDefaultSortOrderControls()}
 
-                    {/* Right column: Sort By variables and sort options */}
-                    <div className="col-span-3">
-                        <div className="space-y-6">
-                            <div>
-                                <div className="text-sm mb-2 font-medium">Sort By:</div>
-                                {renderVariableList([], 'sortBy', '180px')}
-                                {sortByConfigs.length > 0 && (
-                                    <div className="flex justify-end mt-2 space-x-2">
+                    {/* Save Options Section */}
+                    <div className="mt-2 border border-[#E6E6E6] p-4 rounded-md">
+                        <div className="space-y-4">
+                            <div className="flex items-center">
+                                <Checkbox
+                                    id="saveSortedData"
+                                    checked={saveSortedData}
+                                    onCheckedChange={(checked) => setSaveSortedData(!!checked)}
+                                    className="mr-2 border-[#CCCCCC]"
+                                />
+                                <Label htmlFor="saveSortedData" className="text-sm cursor-pointer">
+                                    Save file with sorted data
+                                </Label>
+                            </div>
+
+                            {saveSortedData && (
+                                <div className="ml-6 space-y-4">
+                                    <div className="flex items-center gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                            className="h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
                                             onClick={() => {
-                                                if (highlightedItem?.source === 'sortBy') {
-                                                    moveVariableUp(highlightedItem.columnIndex);
-                                                }
+                                                // In a real implementation, this would open a file picker
+                                                const fakeFile = "sorted_data.csv";
+                                                setFileName(fakeFile);
                                             }}
-                                            disabled={!highlightedItem || highlightedItem.source !== 'sortBy'}
                                         >
-                                            <ChevronUp size={14} className="mr-1" /> Move Up
+                                            File...
                                         </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                            onClick={() => {
-                                                if (highlightedItem?.source === 'sortBy') {
-                                                    moveVariableDown(highlightedItem.columnIndex);
-                                                }
-                                            }}
-                                            disabled={!highlightedItem || highlightedItem.source !== 'sortBy'}
-                                        >
-                                            <ChevronDown size={14} className="mr-1" /> Move Down
-                                        </Button>
+                                        {fileName && (
+                                            <span className="text-xs text-[#444444]">
+                                                Selected File: {fileName}
+                                            </span>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            <div>
-                                <div className="text-sm mb-2 font-medium">Sort Order:</div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="sortOrder"
-                                            checked={
-                                                !highlightedItem || highlightedItem.source !== 'sortBy'
-                                                    ? defaultSortOrder === "asc"
-                                                    : sortByConfigs.find(c => c.variable.columnIndex === highlightedItem.columnIndex)?.direction === "asc"
-                                            }
-                                            onChange={() => {
-                                                if (!highlightedItem || highlightedItem.source !== 'sortBy') {
-                                                    setDefaultSortOrder("asc");
-                                                } else {
-                                                    changeSortDirection(highlightedItem.columnIndex, 'asc');
-                                                }
-                                            }}
-                                            className="border-[#CCCCCC]"
+                                    <div className="flex items-center">
+                                        <Checkbox
+                                            id="createIndex"
+                                            checked={createIndex}
+                                            onCheckedChange={(checked) => setCreateIndex(!!checked)}
+                                            className="mr-2 border-[#CCCCCC]"
                                         />
-                                        <span className="text-sm">Ascending</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="sortOrder"
-                                            checked={
-                                                !highlightedItem || highlightedItem.source !== 'sortBy'
-                                                    ? defaultSortOrder === "desc"
-                                                    : sortByConfigs.find(c => c.variable.columnIndex === highlightedItem.columnIndex)?.direction === "desc"
-                                            }
-                                            onChange={() => {
-                                                if (!highlightedItem || highlightedItem.source !== 'sortBy') {
-                                                    setDefaultSortOrder("desc");
-                                                } else {
-                                                    changeSortDirection(highlightedItem.columnIndex, 'desc');
-                                                }
-                                            }}
-                                            className="border-[#CCCCCC]"
-                                        />
-                                        <span className="text-sm">Descending</span>
-                                    </label>
+                                        <Label htmlFor="createIndex" className="text-sm cursor-pointer">
+                                            Create an index
+                                        </Label>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    </div>
-                </div>
-
-                {/* Save Options Section */}
-                <div className="mt-6 border border-[#E6E6E6] p-4 rounded-md">
-                    <div className="space-y-4">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="saveSortedData"
-                                checked={saveSortedData}
-                                onCheckedChange={(checked) => setSaveSortedData(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
-                            />
-                            <Label htmlFor="saveSortedData" className="text-sm cursor-pointer">
-                                Save file with sorted data
-                            </Label>
-                        </div>
-
-                        {saveSortedData && (
-                            <div className="ml-6 space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                        onClick={() => {
-                                            // In a real implementation, this would open a file picker
-                                            const fakeFile = "sorted_data.csv";
-                                            setFileName(fakeFile);
-                                        }}
-                                    >
-                                        File...
-                                    </Button>
-                                    {fileName && (
-                                        <span className="text-xs text-[#444444]">
-                                            Selected File: {fileName}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Checkbox
-                                        id="createIndex"
-                                        checked={createIndex}
-                                        onCheckedChange={(checked) => setCreateIndex(!!checked)}
-                                        className="mr-2 border-[#CCCCCC]"
-                                    />
-                                    <Label htmlFor="createIndex" className="text-sm cursor-pointer">
-                                        Create an index
-                                    </Label>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

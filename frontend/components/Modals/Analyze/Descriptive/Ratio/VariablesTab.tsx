@@ -61,7 +61,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // Update click handler to use tempId and set source
     const handleVariableClick = (variable: Variable, source: VariableListType) => {
-        if (highlightedVariable?.tempId === variable.tempId && highlightedVariable.source === source) {
+        if (highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source) {
             setHighlightedVariable(null); // Deselect if clicking the same highlighted variable
         } else if (variable.tempId) {
             setHighlightedVariable({ tempId: variable.tempId, source });

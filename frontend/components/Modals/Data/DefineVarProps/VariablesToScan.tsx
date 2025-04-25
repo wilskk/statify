@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -12,19 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import {
-    Shapes,
-    Ruler,
-    BarChartHorizontal,
-    CornerDownLeft,
-    CornerDownRight,
-    AlertCircle,
-    InfoIcon
-} from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon, AlertCircle } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
 interface VariablesToScanProps {
     onClose: () => void;
@@ -42,13 +33,20 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
     // Update available variables when store variables are loaded
     useEffect(() => {
         if (variables && variables.length > 0) {
-            // Filter out empty variables if needed
-            setAvailableVariables(variables.filter(v => v.name !== ""));
+            // Filter out empty variables and ensure each has a tempId
+            const validVars = variables.filter(v => v.name !== "").map(v => ({
+                ...v,
+                tempId: v.tempId || `temp_${v.columnIndex}`
+            }));
+            setAvailableVariables(validVars);
         }
     }, [variables]);
 
     // Currently selected variable for highlighting
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'toScan'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'toScan'} | null>(null);
+
+    // Setup for the VariableListManager
+    const [managerHighlightedVariable, setManagerHighlightedVariable] = useState<{id: string, source: string} | null>(null);
 
     // Error dialog state
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,83 +58,113 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
     const [caseLimit, setCaseLimit] = useState<string>("50");
     const [valueLimit, setValueLimit] = useState<string>("200");
 
-    // Handle variable selection
-    const handleVariableSelect = (columnIndex: number, source: 'available' | 'toScan') => {
-        if (highlightedVariable?.id === columnIndex.toString() && highlightedVariable.source === source) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: columnIndex.toString(), source });
-        }
-    };
-
-    // Handle variable double-click
-    const handleVariableDoubleClick = (columnIndex: number, source: 'available' | 'toScan') => {
-        if (source === 'available') {
-            moveToScan(columnIndex);
-        } else {
-            moveToAvailable(columnIndex);
-        }
-    };
-
     // Move a variable from available to scan
-    const moveToScan = (columnIndex: number) => {
-        const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-        if (variable) {
-            setVariablesToScan(prev => [...prev, variable]);
-            setAvailableVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-            setHighlightedVariable(null);
+    const moveToScan = (variable: Variable, targetIndex?: number) => {
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
         }
+
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setVariablesToScan(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
+        setHighlightedVariable(null);
     };
 
     // Move a variable from scan to available
-    const moveToAvailable = (columnIndex: number) => {
-        const variable = variablesToScan.find(v => v.columnIndex === columnIndex);
-        if (variable) {
-            setAvailableVariables(prev => [...prev, variable]);
-            setVariablesToScan(prev => prev.filter(v => v.columnIndex !== columnIndex));
+    const moveToAvailable = (variable: Variable, targetIndex?: number) => {
+        if (!variable.tempId) {
+            console.error("Cannot move variable without tempId:", variable);
+            return;
+        }
+
+        setVariablesToScan(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            // Sort by column index
+            newList.sort((a, b) => a.columnIndex - b.columnIndex);
+            return newList;
+        });
+        setHighlightedVariable(null);
+    };
+
+    // Reorder variables within a list
+    const reorderVariables = (source: 'available' | 'toScan', reorderedList: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables([...reorderedList]);
+        } else if (source === 'toScan') {
+            setVariablesToScan([...reorderedList]);
+        }
+    };
+
+    // Setup target list configuration for the VariableListManager
+    const targetLists: TargetListConfig[] = [
+        {
+            id: 'toScan',
+            title: 'Variables to Scan:',
+            variables: variablesToScan,
+            height: '300px',
+            draggableItems: true,
+            droppable: true
+        }
+    ];
+
+    // Synchronize the two highlight states
+    useEffect(() => {
+        if (highlightedVariable) {
+            setManagerHighlightedVariable({
+                id: highlightedVariable.tempId,
+                source: highlightedVariable.source
+            });
+        } else {
+            setManagerHighlightedVariable(null);
+        }
+    }, [highlightedVariable]);
+
+    // Handle highlight changes from the VariableListManager
+    const handleHighlightChange = useCallback((value: { id: string, source: string } | null) => {
+        if (value && (value.source === 'available' || value.source === 'toScan')) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'toScan' });
+        } else {
             setHighlightedVariable(null);
         }
-    };
+    }, []);
 
-    // Handle arrow click (right)
-    const handleMoveToScan = () => {
-        if (highlightedVariable && highlightedVariable.source === 'available') {
-            const columnIndex = parseInt(highlightedVariable.id);
-            moveToScan(columnIndex);
+    // Handle moving variables between lists
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        if (toListId === 'toScan') {
+            moveToScan(variable, targetIndex);
+        } else if (toListId === 'available') {
+            moveToAvailable(variable, targetIndex);
         }
-    };
+    }, []);
 
-    // Handle arrow click (left)
-    const handleMoveFromScan = () => {
-        if (highlightedVariable && highlightedVariable.source === 'toScan') {
-            const columnIndex = parseInt(highlightedVariable.id);
-            moveToAvailable(columnIndex);
+    // Handle reordering variables within a list
+    const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
+        if (listId === 'toScan') {
+            reorderVariables('toScan', variables);
+        } else if (listId === 'available') {
+            reorderVariables('available', variables);
         }
-    };
-
-    // Get variable icon based on measure
-    const getVariableIcon = (variable: Variable) => {
-        switch (variable.measure) {
-            case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-            default:
-                return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
-        }
-    };
-
-    // Get display name for variable
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
-            return `${variable.label} [${variable.name}]`;
-        }
-        return variable.name;
-    };
+    }, []);
 
     // Button handlers
     const handleContinue = () => {
@@ -154,43 +182,6 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
         );
     };
 
-    // Render variable list
-    const renderVariableList = (variables: Variable[], source: 'available' | 'toScan', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-            <div className="space-y-1">
-                {variables.length === 0 ? (
-                    <div className="px-2 py-1 text-xs text-[#888888] italic">No variables</div>
-                ) : (
-                    variables.map((variable) => (
-                        <TooltipProvider key={variable.columnIndex}>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div
-                                        className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                            highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                                ? "bg-[#E6E6E6] border-[#888888]"
-                                                : "border-[#CCCCCC]"
-                                        }`}
-                                        onClick={() => handleVariableSelect(variable.columnIndex, source)}
-                                        onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, source)}
-                                    >
-                                        <div className="flex items-center w-full">
-                                            {getVariableIcon(variable)}
-                                            <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                        </div>
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                    <p className="text-xs">{getDisplayName(variable)}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    ))
-                )}
-            </div>
-        </div>
-    );
-
     return (
         <>
             <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
@@ -200,54 +191,24 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
 
                 <div className="p-6 overflow-y-auto flex-grow">
                     {/* Information text */}
-                    <div className="mb-6 p-4 border-l-2 border-black bg-[#F7F7F7] rounded-sm">
-                        <div className="space-y-2">
-                            <p className="text-sm">
-                                Use this facility to label variable values and set other properties
-                                after scanning the data.
-                            </p>
-                            <p className="text-sm">
-                                Select the variables to scan. They should be categorical
-                                (nominal or ordinal) for best results. You can change the
-                                measurement level setting in the next panel.
-                            </p>
-                        </div>
+                    <div className="mb-4 p-3 border-l-2 border-black bg-[#F7F7F7] rounded-sm">
+                        <p className="text-sm">
+                            Select variables to scan. Categorical variables (nominal/ordinal) work best.
+                            You can change measurement level in the next panel.
+                        </p>
                     </div>
 
-                    <div className="grid grid-cols-8 gap-6">
-                        {/* Left Column - Available Variables */}
-                        <div className="col-span-3">
-                            <div className="text-sm mb-2 font-medium">Variables:</div>
-                            {renderVariableList(availableVariables, 'available', '250px')}
-                            <div className="text-xs mt-2 text-[#888888] flex items-center">
-                                <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                                <span>Double-click variables to move them between lists</span>
-                            </div>
-                        </div>
-
-                        {/* Middle Column - Arrow Controls */}
-                        <div className="col-span-1 flex flex-col items-center justify-center">
-                            <div className="flex flex-col space-y-32">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                                    onClick={highlightedVariable?.source === 'toScan' ? handleMoveFromScan : handleMoveToScan}
-                                    disabled={!highlightedVariable || (highlightedVariable.source !== 'available' && highlightedVariable.source !== 'toScan')}
-                                >
-                                    {highlightedVariable?.source === 'toScan' ?
-                                        <CornerDownLeft size={16} /> :
-                                        <CornerDownRight size={16} />
-                                    }
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Right Column - Variables to Scan */}
-                        <div className="col-span-4">
-                            <div className="text-sm mb-2 font-medium">Variables to Scan:</div>
-                            {renderVariableList(variablesToScan, 'toScan', '250px')}
-                        </div>
+                    {/* Variable List Manager */}
+                    <div className="mb-6">
+                        <VariableListManager
+                            availableVariables={availableVariables}
+                            targetLists={targetLists}
+                            variableIdKey="tempId"
+                            highlightedVariable={managerHighlightedVariable}
+                            setHighlightedVariable={setManagerHighlightedVariable}
+                            onMoveVariable={handleMoveVariable}
+                            onReorderVariable={handleReorderVariables}
+                        />
                     </div>
 
                     {/* Limit options */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -39,10 +39,20 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
     const { data, updateBulkCells, setDataAndSync } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
+    // Prepare variables with tempId if they don't have it
+    const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
+        return vars.map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        }));
+    }, []);
+
     const [sourceVariables, setSourceVariables] = useState<Variable[]>([]);
     const [matchingVariables, setMatchingVariables] = useState<Variable[]>([]);
     const [sortingVariables, setSortingVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'source' | 'matching' | 'sorting'} | null>(null);
+
+    // Update highlightedVariable to match VariableListManager format
+    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: string} | null>(null);
 
     const [activeTab, setActiveTab] = useState("variables");
 
@@ -60,8 +70,44 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
     useEffect(() => {
-        setSourceVariables(variables.filter(v => v.name !== ""));
-    }, [variables]);
+        // Add tempId to each variable during initialization
+        setSourceVariables(prepareVariablesWithTempId(variables.filter(v => v.name !== "")));
+    }, [variables, prepareVariablesWithTempId]);
+
+    // Handler for moving variables between lists - compatible with VariableListManager
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        // Remove from source list
+        if (fromListId === 'available') {
+            setSourceVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        } else if (fromListId === 'matching') {
+            setMatchingVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        } else if (fromListId === 'sorting') {
+            setSortingVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        }
+
+        // Add to target list
+        if (toListId === 'available') {
+            setSourceVariables(prev => [...prev, variable]);
+        } else if (toListId === 'matching') {
+            setMatchingVariables(prev => [...prev, variable]);
+        } else if (toListId === 'sorting') {
+            setSortingVariables(prev => [...prev, variable]);
+        }
+
+        // Clear highlight
+        setHighlightedVariable(null);
+    }, []);
+
+    // Handler for reordering variables within a list - compatible with VariableListManager
+    const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
+        if (listId === 'available') {
+            setSourceVariables(reorderedVariables);
+        } else if (listId === 'matching') {
+            setMatchingVariables(reorderedVariables);
+        } else if (listId === 'sorting') {
+            setSortingVariables(reorderedVariables);
+        }
+    }, []);
 
     const processWithWorker = async () => {
         return new Promise((resolve, reject) => {
@@ -172,86 +218,9 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
         }
     };
 
-    const handleVariableSelect = (columnIndex: number, source: 'source' | 'matching' | 'sorting') => {
-        if (highlightedVariable?.id === columnIndex.toString() && highlightedVariable.source === source) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: columnIndex.toString(), source });
-        }
-    };
-
-    const handleVariableDoubleClick = (columnIndex: number, source: 'source' | 'matching' | 'sorting') => {
-        if (source === 'source') {
-            const variable = sourceVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                setMatchingVariables(prev => [...prev, variable]);
-                setSourceVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-            }
-        } else if (source === 'matching') {
-            const variable = matchingVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                setSourceVariables(prev => [...prev, variable]);
-                setMatchingVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-            }
-        } else if (source === 'sorting') {
-            const variable = sortingVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                setSourceVariables(prev => [...prev, variable]);
-                setSortingVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-            }
-        }
-    };
-
-    const handleTransferToMatching = () => {
-        if (!highlightedVariable || highlightedVariable.source !== 'source') return;
-
-        const sourceId = parseInt(highlightedVariable.id);
-        const variable = sourceVariables.find(v => v.columnIndex === sourceId);
-        if (variable) {
-            setMatchingVariables(prev => [...prev, variable]);
-            setSourceVariables(prev => prev.filter(v => v.columnIndex !== sourceId));
-            setHighlightedVariable(null);
-        }
-    };
-
-    const handleMoveFromMatching = () => {
-        if (!highlightedVariable || highlightedVariable.source !== 'matching') return;
-
-        const sourceId = parseInt(highlightedVariable.id);
-        const variable = matchingVariables.find(v => v.columnIndex === sourceId);
-        if (variable) {
-            setSourceVariables(prev => [...prev, variable]);
-            setMatchingVariables(prev => prev.filter(v => v.columnIndex !== sourceId));
-            setHighlightedVariable(null);
-        }
-    };
-
-    const handleTransferToSorting = () => {
-        if (!highlightedVariable || highlightedVariable.source !== 'source') return;
-
-        const sourceId = parseInt(highlightedVariable.id);
-        const variable = sourceVariables.find(v => v.columnIndex === sourceId);
-        if (variable) {
-            setSortingVariables(prev => [...prev, variable]);
-            setSourceVariables(prev => prev.filter(v => v.columnIndex !== sourceId));
-            setHighlightedVariable(null);
-        }
-    };
-
-    const handleMoveFromSorting = () => {
-        if (!highlightedVariable || highlightedVariable.source !== 'sorting') return;
-
-        const sourceId = parseInt(highlightedVariable.id);
-        const variable = sortingVariables.find(v => v.columnIndex === sourceId);
-        if (variable) {
-            setSourceVariables(prev => [...prev, variable]);
-            setSortingVariables(prev => prev.filter(v => v.columnIndex !== sourceId));
-            setHighlightedVariable(null);
-        }
-    };
-
     const handleReset = () => {
-        setSourceVariables(variables || []);
+        // Reset all variables and add tempId to source variables
+        setSourceVariables(prepareVariablesWithTempId(variables.filter(v => v.name !== "")));
         setMatchingVariables([]);
         setSortingVariables([]);
         setHighlightedVariable(null);
@@ -358,14 +327,11 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                             matchingVariables={matchingVariables}
                             sortingVariables={sortingVariables}
                             highlightedVariable={highlightedVariable}
+                            setHighlightedVariable={setHighlightedVariable}
                             sortOrder={sortOrder}
                             setSortOrder={setSortOrder}
-                            handleVariableSelect={handleVariableSelect}
-                            handleVariableDoubleClick={handleVariableDoubleClick}
-                            handleTransferToMatching={handleTransferToMatching}
-                            handleMoveFromMatching={handleMoveFromMatching}
-                            handleTransferToSorting={handleTransferToSorting}
-                            handleMoveFromSorting={handleMoveFromSorting}
+                            handleMoveVariable={handleMoveVariable}
+                            handleReorderVariable={handleReorderVariable}
                             getVariableIcon={getVariableIcon}
                             getDisplayName={getDisplayName}
                         />

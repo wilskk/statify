@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -25,6 +25,7 @@ import {
     Ruler,
     BarChartHorizontal
 } from "lucide-react";
+import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
@@ -43,12 +44,14 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
     const { data, updateBulkCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
+    // --- State for Variables ---
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [analysisVariables, setAnalysisVariables] = useState<Variable[]>([]);
-    const [caseIdentifierVariables, setCaseIdentifierVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'analysis' | 'identifier'} | null>(null);
+    const [caseIdentifierVariable, setCaseIdentifierVariable] = useState<Variable | null>(null); // Single variable
+    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'analysis' | 'identifier'} | null>(null);
 
     const [activeTab, setActiveTab] = useState("variables");
+    const [errorMsg, setErrorMsg] = useState<string | null>(null); // State untuk pesan error
 
     // Output tab state
     const [showUnusualCasesList, setShowUnusualCasesList] = useState(true);
@@ -81,98 +84,93 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
     const [maxPeerGroups, setMaxPeerGroups] = useState("15");
     const [maxReasons, setMaxReasons] = useState("1");
 
+    // --- Update Available Variables ---
     useEffect(() => {
-        setStoreVariables(variables.filter(v => v.name !== ""));
-    }, [variables]);
+        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const analysisTempIds = new Set(analysisVariables.map(v => v.tempId));
+        const identifierTempId = caseIdentifierVariable?.tempId;
 
-    const handleVariableSelect = (columnIndex: number, source: 'available' | 'analysis' | 'identifier') => {
-        if (highlightedVariable?.id === columnIndex.toString() && highlightedVariable.source === source) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: columnIndex.toString(), source });
-        }
-    };
+        const finalAvailable = validVars.filter(v =>
+            v.tempId &&
+            !analysisTempIds.has(v.tempId) &&
+            (!identifierTempId || v.tempId !== identifierTempId)
+        ).sort((a, b) => a.columnIndex - b.columnIndex); // Sort available
+        setAvailableVariables(finalAvailable);
+    }, [variables, analysisVariables, caseIdentifierVariable]);
 
-    const handleVariableDoubleClick = (columnIndex: number, source: 'available' | 'analysis' | 'identifier') => {
-        if (source === "available") {
-            const variable = storeVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToAnalysisVariables(variable);
+    // --- Variable Movement Logic ---
+    const moveToAnalysisVariables = useCallback((variable: Variable, targetIndex?: number) => {
+        if (!variable.tempId) return;
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setAnalysisVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
             }
-        } else if (source === "analysis") {
-            const variable = analysisVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromAnalysisVariables(variable);
-            }
-        } else if (source === "identifier") {
-            const variable = caseIdentifierVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromCaseIdentifierVariables(variable);
-            }
-        }
-    };
-
-    const moveToAnalysisVariables = (variable: Variable) => {
-        setAnalysisVariables(prev => [...prev, variable]);
-        setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            return newList;
+        });
         setHighlightedVariable(null);
-    };
+    }, []);
 
-    const moveFromAnalysisVariables = (variable: Variable) => {
-        setStoreVariables(prev => [...prev, variable]);
-        setAnalysisVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
-
-    const moveToCaseIdentifierVariables = (variable: Variable) => {
-        setCaseIdentifierVariables([variable]);
-        setStoreVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
-
-    const moveFromCaseIdentifierVariables = (variable: Variable) => {
-        setStoreVariables(prev => [...prev, variable]);
-        setCaseIdentifierVariables([]);
-        setHighlightedVariable(null);
-    };
-
-    const handleTopTransferClick = () => {
-        if (!highlightedVariable) return;
-
-        if (highlightedVariable.source === "available") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = storeVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToAnalysisVariables(variable);
-            }
-        } else if (highlightedVariable.source === "analysis") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = analysisVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromAnalysisVariables(variable);
-            }
+    const moveToCaseIdentifierVariable = useCallback((variable: Variable) => {
+        if (!variable.tempId) return;
+        // Move current identifier back to available if it exists
+        if (caseIdentifierVariable && caseIdentifierVariable.tempId) {
+            setAvailableVariables(prev => {
+                 if (!prev.some(v => v.tempId === caseIdentifierVariable.tempId)) {
+                     const newList = [...prev, caseIdentifierVariable];
+                     newList.sort((a, b) => a.columnIndex - b.columnIndex);
+                     return newList;
+                 }
+                 return prev;
+            });
         }
-    };
+        setCaseIdentifierVariable(variable);
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setHighlightedVariable(null);
+    }, [caseIdentifierVariable]); // Depend on caseIdentifierVariable to correctly move the old one
 
-    const handleBottomTransferClick = () => {
-        if (!highlightedVariable) return;
-
-        if (highlightedVariable.source === "available") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = storeVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveToCaseIdentifierVariables(variable);
-            }
-        } else if (highlightedVariable.source === "identifier") {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = caseIdentifierVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromCaseIdentifierVariables(variable);
-            }
+    const moveToAvailableVariables = useCallback((variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => {
+        if (!variable.tempId) return;
+        if (source === 'analysis') {
+            setAnalysisVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        } else if (source === 'identifier') {
+            setCaseIdentifierVariable(null);
         }
-    };
 
-    const getVariableIcon = (variable: Variable) => {
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            const newList = [...prev];
+             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                 newList.splice(targetIndex, 0, variable);
+             } else {
+                 newList.push(variable);
+             }
+             newList.sort((a, b) => a.columnIndex - b.columnIndex);
+             return newList;
+        });
+        setHighlightedVariable(null);
+    }, []);
+
+    const reorderVariables = useCallback((source: 'analysis', reorderedList: Variable[]) => {
+         if (source === 'analysis') {
+             setAnalysisVariables([...reorderedList]);
+         }
+         // 'identifier' cannot be reordered
+    }, []);
+
+    // --- Handlers for Analysis ---
+     const getDisplayName = (variable: Variable): string => {
+         if (variable.label) {
+             return `${variable.label} [${variable.name}]`;
+         }
+         return variable.name;
+     };
+
+     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
                 return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
@@ -185,13 +183,6 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                     ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
                     : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
         }
-    };
-
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
-            return `${variable.label} [${variable.name}]`;
-        }
-        return variable.name;
     };
 
     const processDataForAnalysis = () => {
@@ -730,9 +721,11 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
 
     const handleConfirm = async () => {
         if (analysisVariables.length === 0) {
-            alert("Please select at least one analysis variable.");
+            setErrorMsg("Please select at least one analysis variable.");
+            setActiveTab("variables"); // Switch to variables tab on error
             return;
         }
+        setErrorMsg(null); // Clear error on successful start
 
         try {
             // Set up a promise for the worker
@@ -746,24 +739,28 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                             await saveResultsToStore(e.data.result);
                             resolve();
                         } else {
+                            setErrorMsg(e.data.error || "Worker processing failed");
                             reject(new Error(e.data.error || "Worker processing failed"));
                         }
                     } catch (error) {
-                        reject(error);
+                         setErrorMsg("Failed to process worker results.");
+                         reject(error);
                     } finally {
                         worker.terminate();
                     }
                 };
 
                 worker.onerror = (error) => {
-                    reject(error);
+                     setErrorMsg("Worker error occurred.");
+                     reject(error);
+                     worker.terminate(); // Ensure termination on error
                 };
 
-                // Send data to worker
+                // Send data to worker - pass the Variable objects
                 worker.postMessage({
                     data,
-                    analysisVariables,
-                    caseIdentifierVariable: caseIdentifierVariables[0],
+                    analysisVariables, // Pass full objects
+                    caseIdentifierVariable: caseIdentifierVariable, // Pass full object or null
                     options: {
                         percentageValue,
                         fixedNumber,
@@ -779,202 +776,253 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
             });
 
             // Use existing logic for dataset updates
+            // NOTE: generateResults needs to be aware of potential changes if it relied on variable list order matching data columns directly.
+            // However, it seems to correctly use variable.columnIndex from the selected variables.
             const result = await generateResults();
-            if (!result) return;
+            if (!result) {
+                 setErrorMsg("Failed to generate results for saving.");
+                 return; // Stop if result generation failed
+            }
 
             const { newColumns, dataUpdates } = result;
 
+            // Handle variable replacement logic
             if (replaceExisting) {
                 const varNames = newColumns.map(v => v.name);
-                const existingVars = variables.filter(v => varNames.includes(v.name));
+                const existingVars = variables.filter(v => v.tempId && varNames.includes(v.name)); // Use tempId for filtering
 
                 for (const existingVar of existingVars) {
-                    await useVariableStore.getState().deleteVariable(existingVar.columnIndex);
+                    // Assuming deleteVariable uses tempId or columnIndex internally
+                    await useVariableStore.getState().deleteVariable(existingVar.columnIndex); // Check if delete needs tempId
                 }
             }
 
-            for (const variable of newColumns) {
-                await useVariableStore.getState().addVariable(variable);
-            }
+            // Add new variables
+             for (const variable of newColumns) {
+                 // Ensure addVariable handles potential collisions or updates based on its internal logic
+                 await useVariableStore.getState().addVariable(variable);
+             }
 
-            await updateBulkCells(dataUpdates);
+             // Update cell data
+             await updateBulkCells(dataUpdates);
 
-            // Wait for worker to complete
-            await workerPromise;
+             // Wait for worker to complete *after* dataset updates are done
+             await workerPromise;
 
-            // Close the modal
-            closeModal();
+             // Close the modal only if everything succeeded
+             closeModal();
+
         } catch (error) {
             console.error("Error performing unusual cases analysis:", error);
-            alert("An error occurred while performing the analysis. Please try again.");
+            // Error message might already be set by worker or generateResults
+            if (!errorMsg) {
+                setErrorMsg("An unexpected error occurred during the analysis.");
+            }
+            // Do not close modal on error
         }
     };
 
-    // Pass shared props to render variable lists in tabs
-    const renderVariableListProps = {
-        storeVariables,
-        analysisVariables,
-        caseIdentifierVariables,
-        highlightedVariable,
-        handleVariableSelect,
-        handleVariableDoubleClick,
-        getVariableIcon,
-        getDisplayName
-    };
+    // Reset Function
+     const handleReset = () => {
+         setAnalysisVariables([]);
+         setCaseIdentifierVariable(null);
+         // Reset available variables based on current `variables` store state
+         const validVars = variables.filter(v => v.name !== "" && v.tempId)
+                                   .sort((a, b) => a.columnIndex - b.columnIndex);
+         setAvailableVariables(validVars);
+         setHighlightedVariable(null);
+         setErrorMsg(null);
+         setActiveTab("variables");
+
+         // Reset other tabs' state
+         setShowUnusualCasesList(true);
+         setPeerGroupNorms(false);
+         setAnomalyIndices(false);
+         setReasonOccurrence(false);
+         setCaseProcessed(false);
+         setSaveAnomalyIndex(false);
+         setAnomalyIndexName("AnomalyIndex");
+         setSavePeerGroups(false);
+         setPeerGroupsRootName("Peer");
+         setSaveReasons(false);
+         setReasonsRootName("Reason");
+         setReplaceExisting(false);
+         setExportFilePath("");
+         setMissingValuesOption("exclude");
+         setUseProportionMissing(true);
+         setIdentificationCriteria("percentage");
+         setPercentageValue("5");
+         setFixedNumber("");
+         setUseMinimumValue(true);
+         setCutoffValue("2");
+         setMinPeerGroups("1");
+         setMaxPeerGroups("15");
+         setMaxReasons("1");
+     };
 
     return (
-        <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Identify Unusual Cases</DialogTitle>
-            </DialogHeader>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Identify Unusual Cases</DialogTitle>
+                </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
+                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                            <TabsTrigger
+                                value="variables"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Variables
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="output"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Output
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="save"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Save
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="missingValues"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Missing Values
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="options"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Options
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
+
+                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                        <VariablesTab
+                            availableVariables={availableVariables}
+                            analysisVariables={analysisVariables}
+                            caseIdentifierVariable={caseIdentifierVariable}
+                            highlightedVariable={highlightedVariable}
+                            setHighlightedVariable={setHighlightedVariable}
+                            moveToAvailableVariables={moveToAvailableVariables}
+                            moveToAnalysisVariables={moveToAnalysisVariables}
+                            moveToCaseIdentifierVariable={moveToCaseIdentifierVariable}
+                            reorderVariables={reorderVariables}
+                            errorMsg={errorMsg}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
+                        <OutputTab
+                            showUnusualCasesList={showUnusualCasesList}
+                            setShowUnusualCasesList={setShowUnusualCasesList}
+                            peerGroupNorms={peerGroupNorms}
+                            setPeerGroupNorms={setPeerGroupNorms}
+                            anomalyIndices={anomalyIndices}
+                            setAnomalyIndices={setAnomalyIndices}
+                            reasonOccurrence={reasonOccurrence}
+                            setReasonOccurrence={setReasonOccurrence}
+                            caseProcessed={caseProcessed}
+                            setCaseProcessed={setCaseProcessed}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
+                        <SaveTab
+                            saveAnomalyIndex={saveAnomalyIndex}
+                            setSaveAnomalyIndex={setSaveAnomalyIndex}
+                            anomalyIndexName={anomalyIndexName}
+                            setAnomalyIndexName={setAnomalyIndexName}
+                            savePeerGroups={savePeerGroups}
+                            setSavePeerGroups={setSavePeerGroups}
+                            peerGroupsRootName={peerGroupsRootName}
+                            setPeerGroupsRootName={setPeerGroupsRootName}
+                            saveReasons={saveReasons}
+                            setSaveReasons={setSaveReasons}
+                            reasonsRootName={reasonsRootName}
+                            setReasonsRootName={setReasonsRootName}
+                            replaceExisting={replaceExisting}
+                            setReplaceExisting={setReplaceExisting}
+                            exportFilePath={exportFilePath}
+                            setExportFilePath={setExportFilePath}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
+                        <MissingValuesTab
+                            missingValuesOption={missingValuesOption}
+                            setMissingValuesOption={setMissingValuesOption}
+                            useProportionMissing={useProportionMissing}
+                            setUseProportionMissing={setUseProportionMissing}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                        <OptionsTab
+                            identificationCriteria={identificationCriteria}
+                            setIdentificationCriteria={setIdentificationCriteria}
+                            percentageValue={percentageValue}
+                            setPercentageValue={setPercentageValue}
+                            fixedNumber={fixedNumber}
+                            setFixedNumber={setFixedNumber}
+                            useMinimumValue={useMinimumValue}
+                            setUseMinimumValue={setUseMinimumValue}
+                            cutoffValue={cutoffValue}
+                            setCutoffValue={setCutoffValue}
+                            minPeerGroups={minPeerGroups}
+                            setMinPeerGroups={setMinPeerGroups}
+                            maxPeerGroups={maxPeerGroups}
+                            setMaxPeerGroups={setMaxPeerGroups}
+                            maxReasons={maxReasons}
+                            setMaxReasons={setMaxReasons}
+                        />
+                    </TabsContent>
+                </Tabs>
+
+                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                    <div className="flex justify-end space-x-3">
+                        <Button
+                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            onClick={handleConfirm}
                         >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="output"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            OK
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         >
-                            Output
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="save"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            Paste
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            onClick={handleReset}
                         >
-                            Save
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="missingValues"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            Reset
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            onClick={onClose}
                         >
-                            Missing Values
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         >
-                            Options
-                        </TabsTrigger>
-                    </TabsList>
-                </div>
-
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <VariablesTab
-                        {...renderVariableListProps}
-                        handleTopTransferClick={handleTopTransferClick}
-                        handleBottomTransferClick={handleBottomTransferClick}
-                    />
-                </TabsContent>
-
-                <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
-                    <OutputTab
-                        showUnusualCasesList={showUnusualCasesList}
-                        setShowUnusualCasesList={setShowUnusualCasesList}
-                        peerGroupNorms={peerGroupNorms}
-                        setPeerGroupNorms={setPeerGroupNorms}
-                        anomalyIndices={anomalyIndices}
-                        setAnomalyIndices={setAnomalyIndices}
-                        reasonOccurrence={reasonOccurrence}
-                        setReasonOccurrence={setReasonOccurrence}
-                        caseProcessed={caseProcessed}
-                        setCaseProcessed={setCaseProcessed}
-                    />
-                </TabsContent>
-
-                <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
-                    <SaveTab
-                        saveAnomalyIndex={saveAnomalyIndex}
-                        setSaveAnomalyIndex={setSaveAnomalyIndex}
-                        anomalyIndexName={anomalyIndexName}
-                        setAnomalyIndexName={setAnomalyIndexName}
-                        savePeerGroups={savePeerGroups}
-                        setSavePeerGroups={setSavePeerGroups}
-                        peerGroupsRootName={peerGroupsRootName}
-                        setPeerGroupsRootName={setPeerGroupsRootName}
-                        saveReasons={saveReasons}
-                        setSaveReasons={setSaveReasons}
-                        reasonsRootName={reasonsRootName}
-                        setReasonsRootName={setReasonsRootName}
-                        replaceExisting={replaceExisting}
-                        setReplaceExisting={setReplaceExisting}
-                        exportFilePath={exportFilePath}
-                        setExportFilePath={setExportFilePath}
-                    />
-                </TabsContent>
-
-                <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
-                    <MissingValuesTab
-                        missingValuesOption={missingValuesOption}
-                        setMissingValuesOption={setMissingValuesOption}
-                        useProportionMissing={useProportionMissing}
-                        setUseProportionMissing={setUseProportionMissing}
-                    />
-                </TabsContent>
-
-                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                    <OptionsTab
-                        identificationCriteria={identificationCriteria}
-                        setIdentificationCriteria={setIdentificationCriteria}
-                        percentageValue={percentageValue}
-                        setPercentageValue={setPercentageValue}
-                        fixedNumber={fixedNumber}
-                        setFixedNumber={setFixedNumber}
-                        useMinimumValue={useMinimumValue}
-                        setUseMinimumValue={setUseMinimumValue}
-                        cutoffValue={cutoffValue}
-                        setCutoffValue={setCutoffValue}
-                        minPeerGroups={minPeerGroups}
-                        setMinPeerGroups={setMinPeerGroups}
-                        maxPeerGroups={maxPeerGroups}
-                        setMaxPeerGroups={setMaxPeerGroups}
-                        maxReasons={maxReasons}
-                        setMaxReasons={setMaxReasons}
-                    />
-                </TabsContent>
-            </Tabs>
-
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleConfirm}
-                    >
-                        OK
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Help
-                    </Button>
-                </div>
-            </DialogFooter>
-        </DialogContent>
+                            Help
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
