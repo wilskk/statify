@@ -1,3 +1,5 @@
+// Memodifikasi ModalLinear dengan menggunakan handleAnalyze dari versi lama
+// Bagian import sesuai dengan modal baru
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,7 +25,7 @@ interface ModalLinearProps {
   onClose: () => void;
 }
 
-// --- Default Parameter States ---
+// Default parameter states - sama seperti modal baru
 const defaultStatsParams: StatisticsParams = {
   estimates: true,
   confidenceIntervals: false,
@@ -39,7 +41,6 @@ const defaultStatsParams: StatisticsParams = {
   outlierThreshold: '3'
 };
 
-// Use exported PlotsLinearParams type
 const defaultPlotParams: PlotsLinearParams = {
     selectedY: null,
     selectedX: null,
@@ -48,7 +49,6 @@ const defaultPlotParams: PlotsLinearParams = {
     producePartialChecked: false
 };
 
-// Use exported SaveLinearParams type
 const defaultSaveParams: SaveLinearParams = {
   predictedUnstandardized: false,
   predictedStandardized: false,
@@ -77,7 +77,6 @@ const defaultSaveParams: SaveLinearParams = {
   includeCovarianceMatrixXml: false,
 };
 
-// Use exported OptionsLinearParams type
 const defaultOptionsParams: OptionsLinearParams = {
   steppingMethod: 'probability',
   probEntry: '0.05',
@@ -89,7 +88,7 @@ const defaultOptionsParams: OptionsLinearParams = {
 };
 
 const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
-  // --- State Variables ---
+  // State variables - menggunakan struktur versi baru
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
   const [selectedIndependentVariables, setSelectedIndependentVariables] = useState<Variable[]>([]);
@@ -99,7 +98,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
   const [method, setMethod] = useState<string>('Enter');
 
-  // State for parameters from other tabs - use correct types
+  // State untuk parameter dari tab lain
   const [statsParams, setStatsParams] = useState<StatisticsParams>(defaultStatsParams);
   const [plotParams, setPlotParams] = useState<PlotsLinearParams>(defaultPlotParams);
   const [saveParams, setSaveParams] = useState<SaveLinearParams>(defaultSaveParams);
@@ -110,6 +109,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   const { calculateLinearRegression } = useLinear();
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
+  // Side effect - mengambil dari versi baru yang lebih terstruktur
   useEffect(() => {
     // Update available variables for the Variables tab
     const allSelectedIndices = [
@@ -140,9 +140,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     setAvailableVariables(availableVars);
   }, [variablesFromStore, selectedDependentVariable, selectedIndependentVariables, selectedSelectionVariable, selectedCaseLabelsVariable, selectedWLSWeightVariable]);
 
-  // --- Prepare variables for the Plots tab --- 
+  // Prepare variables for the Plots tab - dari versi baru
   const availablePlotVariables = React.useMemo(() => {
-    // Define standard plot variables (adjust names as needed)
     const standardPlotVars = [
         { name: "*ZPRED" },
         { name: "*ZRESID" },
@@ -151,19 +150,17 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         { name: "*SRESID" },
         { name: "*SDRESID" },
     ];
-    // Combine selected variables (dependent + independents) with standard plot vars
     const selectedVarsForPlot = [
         ...(selectedDependentVariable ? [{ name: selectedDependentVariable.name }] : []),
         ...selectedIndependentVariables.map(v => ({ name: v.name }))
     ];
-    // Deduplicate and combine
     const combined = [...selectedVarsForPlot, ...standardPlotVars];
     return combined.filter((v, index, self) =>
         index === self.findIndex((t) => t.name === v.name)
     );
   }, [selectedDependentVariable, selectedIndependentVariables]);
 
-  // --- Handler Functions for Variable Tab (Keep existing handlers) ---
+  // Handler functions for variable tab - menggunakan yang dari versi baru
   const handleSelectAvailableVariable = (variable: Variable | null) => {
     setHighlightedVariable(variable);
   };
@@ -260,7 +257,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     }
   };
 
-  // --- Handlers for Parameter Tabs ---
+  // Handlers for parameter tabs - dari versi baru
   const handleStatsChange = (newParams: Partial<StatisticsParams>) => {
     setStatsParams(prev => ({ ...prev, ...newParams }));
   };
@@ -277,7 +274,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     setOptionsParams(prev => ({ ...prev, ...newParams }));
   };
 
-  // --- Main Action Handlers ---
+  // handleReset - menggunakan versi baru
   const handleReset = () => {
     // Get all currently selected variables across all fields
      const allSelectedVars = [
@@ -313,337 +310,260 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     onClose();
   };
 
+  // FUNGSI HANDLE ANALYZE DARI VERSI LAMA - diterapkan untuk versi baru
   const handleAnalyze = async () => {
-    // Validate necessary inputs
-    if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
-      alert("Please select a dependent variable and at least one independent variable on the Variables tab.");
-      return;
-    }
-
-    // Use state directly instead of localStorage
-    const currentStatsParams = statsParams;
-    const currentOptionsParams = optionsParams; // Use options state
-
-    // Add checks for plotParams, saveParams if needed by workers/logic below
-
-    console.log("[Analyze] Using parameters:", {
-        stats: currentStatsParams,
-        options: currentOptionsParams,
-        plots: plotParams,
-        save: saveParams
-    });
-
     try {
+      // Validasi input
+      if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
+        alert('Please select a dependent variable and at least one independent variable.');
+        return;
+      }
+      
+      // Gunakan statsParams langsung dari state (tidak perlu localStorage)
+      const currentStatsParams = statsParams;
+      console.log("[Analyze] Using statistics parameters:", currentStatsParams);
+  
       const dependentVarName = selectedDependentVariable.name;
       const independentVarNames = selectedIndependentVariables.map(v => v.name);
-
-      // Construct log message (adapt as needed based on final required format)
+  
+      // Buat log message
       const logMessage = `REGRESSION 
-      /MISSING ${currentOptionsParams.missingValue === 'listwise' ? 'LISTWISE' : currentOptionsParams.missingValue === 'pairwise' ? 'PAIRWISE' : 'MEANSUBSTITUTION'} 
-      /STATISTICS COEFF OUTS R ANOVA ${currentStatsParams.confidenceIntervals ? 'CI(95)' : ''} ${currentStatsParams.covarianceMatrix ? 'COV' : ''} ${currentStatsParams.rSquaredChange ? 'CHANGE' : ''} ${currentStatsParams.descriptives ? 'DESCRIPTIVES' : ''} ${currentStatsParams.partAndPartial ? 'ZPP' : ''} ${currentStatsParams.collinearityDiagnostics ? 'COLLIN' : ''} ${currentStatsParams.durbinWatson ? 'DW' : ''}
-      /CRITERIA=PIN(${currentOptionsParams.steppingMethod === 'probability' ? currentOptionsParams.probEntry : '.05'}) POUT(${currentOptionsParams.steppingMethod === 'probability' ? currentOptionsParams.probRemoval : '.10'}) ${currentOptionsParams.steppingMethod === 'fvalue' ? `FIN(${currentOptionsParams.fvalueEntry}) FOUT(${currentOptionsParams.fvalueRemoval})` : ''}
-      ${currentOptionsParams.includeConstant ? '/NOORIGIN' : '/ORIGIN'}
+      /MISSING LISTWISE 
+      /STATISTICS COEFF OUTS R ANOVA 
+      /CRITERIA=PIN(.05) POUT(.10) 
+      /NOORIGIN 
       /DEPENDENT ${dependentVarName} 
-      /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`; // Assuming method state holds 'Enter', 'Stepwise' etc.
-
+      /METHOD=${method.toUpperCase()} ${independentVarNames.join(' ')}.`;
+      
       console.log("[Analyze] Log message:", logMessage);
       const log = { log: logMessage };
       const logId = await addLog(log);
-      console.log("[Analyze] Log ID:", logId);
-
+  
       const analytic = {
         title: "Linear Regression",
-        note: `Dependent: ${dependentVarName}, Method: ${method}`, // Example note
+        note: "",
       };
       const analyticId = await addAnalytic(logId, analytic);
       console.log("[Analyze] Analytic ID:", analyticId);
-
-      // Use variables from store directly
+  
+      // Persiapkan data dan variabel
       const allVariables = variablesFromStore;
       const dataRows = data;
-
-      const dependentVar = selectedDependentVariable; // Already have the object
-      const independentVars = selectedIndependentVariables; // Already have the objects
-
+  
+      const dependentVar = selectedDependentVariable;
+      const independentVars = selectedIndependentVariables;
+  
       const dependentVarIndex = dependentVar?.columnIndex;
       const independentVarIndices = independentVars.map(v => v.columnIndex);
-
+  
       if (dependentVarIndex === undefined || independentVarIndices.some(index => index === undefined)) {
         throw new Error('Variable indices not found.');
       }
-
+  
       const depVarIndex = dependentVarIndex;
       const indepVarIndices = independentVarIndices as number[];
+  
+      // Persiapkan data untuk analisis
+      const dependentData = dataRows.map(row => parseFloat(String(row[depVarIndex])));
+      const independentData = indepVarIndices.map(index => dataRows.map(row => parseFloat(String(row[index]))));
+      console.log("[Analyze] Data awal - Dependent:", dependentData);
+      console.log("[Analyze] Data awal - Independent (per variable):", independentData);
+  
+      // Filter data yang valid (listwise deletion)
+      const validIndices = dependentData.map((value, idx) => {
+        if (isNaN(value) || independentData.some(indepData => isNaN(indepData[idx]))) {
+          return false;
+        }
+        return true;
+      });
+  
+      const filteredDependentData = dependentData.filter((_, idx) => validIndices[idx]);
+      const filteredIndependentData = independentData.map(indepData => indepData.filter((_, idx) => validIndices[idx]));
+      console.log("[Analyze] Data valid - Dependent:", filteredDependentData);
+      console.log("[Analyze] Data valid - Independent (per variable):", filteredIndependentData);
+  
+      // Transpose data untuk perhitungan regresi
+      const independentDataTransposed = filteredIndependentData[0].map((_, idx) =>
+        filteredIndependentData.map(indepData => indepData[idx])
+      );
+  
+      // Hitung regresi (core calculation)
+      const regressionResults = calculateLinearRegression(filteredDependentData, independentDataTransposed);
+      console.log("[Analyze] Hasil regresi (calculateLinearRegression):", regressionResults);
 
-      // Declare variables for core results needed by subsequent workers
-      let calculatedCoefficients: number[] | null = null; // Or appropriate type
-      let calculatedResiduals: number[] | null = null;
-      let calculatedPredicted: number[] | null = null;
+      // --- WORKERS DARI VERSI LAMA (SEMUA WORKER DIJALANKAN TERPISAH) ---
 
-      // --- Data Filtering (Listwise Deletion based on selected Dep/Indep) ---
-      let filteredDependentData: number[] = [];
-      let filteredIndependentData: number[][] = Array(indepVarIndices.length).fill(0).map(() => []);
-      let originalIndices: number[] = []; // Keep track of original row index for Case Labels/Save
-
-      for (let i = 0; i < dataRows.length; i++) {
-          const row = dataRows[i];
-          const depValue = parseFloat(String(row[depVarIndex]));
-          const indepValues = indepVarIndices.map(idx => parseFloat(String(row[idx])));
-
-          // Check if any value is NaN
-          if (!isNaN(depValue) && indepValues.every(val => !isNaN(val))) {
-              filteredDependentData.push(depValue);
-              indepVarIndices.forEach((_, k) => {
-                  filteredIndependentData[k].push(indepValues[k]);
-              });
-              originalIndices.push(i); // Store the original index of the valid row
-          }
-      }
-      // --- End Data Filtering ---
-
-      if (filteredDependentData.length === 0) {
-          alert("No valid data remaining after handling missing values. Cannot perform analysis.");
-          return; // Stop analysis
-      }
-
-      console.log(`[Analyze] Data valid (after ${currentOptionsParams.missingValue}) - Dependent: ${filteredDependentData.length} cases`);
-      // console.log("[Analyze] Data valid - Independent (per variable):", filteredIndependentData);
-
-      // Transpose independent data for libraries/workers expecting rows as inner arrays
-       const independentDataTransposed = filteredDependentData.length > 0
-        ? filteredIndependentData[0].map((_, colIndex) =>
-            filteredIndependentData.map(row => row[colIndex]))
-        : [];
-
-      // --- Worker Calls based on selected Statistics --- 
-
-      // Example: Pass data to the main regression calculation hook/function (if it exists)
-      // This function might internally call workers or perform calculations directly
-      // Replace this placeholder as needed
-      // const regressionResults = calculateLinearRegression(filteredDependentData, independentDataTransposed);
-      // console.log("[Analyze] Hasil regresi (calculateLinearRegression):", regressionResults);
-
-      // Variables Entered/Removed (usually part of method output)
+      // 1. Variables Entered/Removed Worker
       const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
       console.log("[Analyze] Mengirim data ke Worker untuk Variables Entered/Removed...");
       variablesEnteredRemovedWorker.postMessage({
         dependent: filteredDependentData,
-        // Ensure worker expects independent data per variable (array of arrays)
         independent: filteredIndependentData,
         dependentName: dependentVarName,
         independentNames: independentVarNames
-        // Pass method if needed by worker: method: method
       });
 
       variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
         const variablesEnteredRemovedResults = e.data;
         console.log("[Analyze] Hasil dari Worker Variables Entered/Removed:", variablesEnteredRemovedResults);
-        if (variablesEnteredRemovedResults && !variablesEnteredRemovedResults.error) {
-            const variablesEnteredRemovedStat = {
-              title: "Variables Entered/Removed",
-              output_data: JSON.stringify(variablesEnteredRemovedResults), // Adjust based on worker output structure
-              components: "VariablesEnteredRemoved",
-              description: "Variables entered/removed based on the selected method"
-            };
-            await addStatistic(analyticId, variablesEnteredRemovedStat);
-            console.log("[Analyze] Statistik Variables Entered/Removed disimpan.");
-        } else {
-            console.error("[Analyze] Worker Variables Entered/Removed error:", variablesEnteredRemovedResults?.error);
-        }
+
+        const variablesEnteredRemovedStat = {
+          title: "Variables Entered/Removed",
+          output_data: JSON.stringify(variablesEnteredRemovedResults),
+          components: "VariablesEnteredRemoved",
+          description: "Variables entered/removed in the regression analysis"
+        };
+
+        await addStatistic(analyticId, variablesEnteredRemovedStat);
+        console.log("[Analyze] Statistik Variables Entered/Removed disimpan.");
         variablesEnteredRemovedWorker.terminate();
       };
+
       variablesEnteredRemovedWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] Worker Variables Entered/Removed error:", error);
         variablesEnteredRemovedWorker.terminate();
       };
 
-      // ANOVA (Always calculated? Or depends on Model Fit? Check SPSS behavior)
-      // Assuming always calculated if model is generated
+      // 2. ANOVA Worker
       const anovaWorker = new Worker('/workers/Regression/anovaWorker.js');
       console.log("[Analyze] Sending data to ANOVA Worker...");
       anovaWorker.postMessage({
         dependentData: filteredDependentData,
-        independentData: filteredIndependentData // Check worker input reqs
+        independentData: filteredIndependentData
       });
+
       anovaWorker.onmessage = async (e: MessageEvent) => {
         const anovaStat = e.data;
         if (anovaStat.error) {
           console.error("[Analyze] ANOVA Worker Error:", anovaStat.error);
-          // Optionally show error to user
+          alert(`ANOVA Worker Error: ${anovaStat.error}`);
         } else {
-          console.log("[Analyze] Hasil ANOVA Worker:", anovaStat);
           const completeStats = {
-            title: anovaStat.title || "ANOVA", // Use title from worker or default
-            output_data: anovaStat.output_data, // Expecting JSON string or object
-            components: anovaStat.components || "AnovaTable", // Expecting component name
-            description: "ANOVA table for the regression model"
+            title: anovaStat.title,
+            output_data: anovaStat.output_data,
+            components: anovaStat.components,
+            description: "ANOVA analysis results"
           };
           await addStatistic(analyticId, completeStats);
           console.log("[Analyze] ANOVA statistics saved.");
         }
         anovaWorker.terminate();
       };
+
       anovaWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] ANOVA Worker error:", error, error.message);
         alert("An error occurred in the ANOVA Worker: " + (error.message || "Unknown error"));
         anovaWorker.terminate();
       };
 
-      // Coefficients (Always calculated)
+      // 3. Coefficients Worker
       const coefficientsWorker = new Worker('/workers/Regression/coefficients.js');
       console.log("[Analyze] Sending data to Coefficients Worker...");
+
       coefficientsWorker.postMessage({
         dependentData: filteredDependentData,
         independentData: filteredIndependentData,
-        independentVarNames: independentVarNames,
-        calculateCI: currentStatsParams.confidenceIntervals,
-        calculateCorrelations: currentStatsParams.partAndPartial,
-        calculateCollinearity: currentStatsParams.collinearityDiagnostics
+        independentVarNames: independentVarNames
       });
+
       coefficientsWorker.onmessage = async (e: MessageEvent) => {
         const { success, result, error } = e.data;
+
         if (success) {
-          console.log("[Analyze] Hasil Coefficients Worker:", result);
-          const coefficientsTable = result; // Adjust based on worker output structure
-
-          // *** ASSIGN CORE RESULTS HERE ***
-          // Example: Assuming worker result includes these keys
-          calculatedCoefficients = result.coefficients || null;
-          calculatedResiduals = result.residuals || null;
-          calculatedPredicted = result.predicted || null;
-          // *******************************
-
+          const coefficientsTable = result;
           const coefficientsStat = {
             title: "Coefficients",
-            output_data: JSON.stringify(coefficientsTable), // May need to adjust what part of result is stringified
+            output_data: JSON.stringify(coefficientsTable),
             components: "Coefficients",
             description: "Coefficients of the regression model"
           };
+
           await addStatistic(analyticId, coefficientsStat);
           console.log("[Analyze] Coefficients statistics saved.");
         } else {
           console.error("[Analyze] Coefficients Worker error:", error);
           alert(`Coefficients Worker Error: ${error}`);
         }
+
         coefficientsWorker.terminate();
       };
+
       coefficientsWorker.onerror = (error: ErrorEvent) => {
         console.error("[Analyze] Coefficients Worker error:", error, error.message);
         alert("An error occurred in the Coefficients Worker: " + (error.message || "Unknown error"));
         coefficientsWorker.terminate();
       };
 
-      // Model Summary (R Square) - Calculated if Model Fit or Descriptives selected?
-      if (currentStatsParams.modelFit || currentStatsParams.descriptives) {
-        const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Model Summary...");
-        modelSummaryWorker.postMessage({
+      // 4. R-Square Change (Conditional)
+      if (currentStatsParams.rSquaredChange) {
+        const worker = new Worker('/workers/Regression/rsquare.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk perhitungan regresi (squared changes)...");
+        worker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData, // Check worker input reqs
-          // Pass flags for specific calculations if needed
-          calculateRSquareChange: currentStatsParams.rSquaredChange,
-          calculateDurbinWatson: currentStatsParams.durbinWatson
+          independent: filteredIndependentData
         });
-        modelSummaryWorker.onmessage = async (e: MessageEvent) => {
-          const modelSummaryResults = e.data;
-          if(modelSummaryResults && !modelSummaryResults.error) {
-              console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
-              const modelSummaryStat = {
-                title: "Model Summary",
-                output_data: JSON.stringify(modelSummaryResults), // Adjust based on worker output
-                components: "ModelSummary", // May need variations (e.g., ModelSummaryWithDW)
-                description: "Summary statistics of the regression model"
-              };
-              await addStatistic(analyticId, modelSummaryStat);
-              console.log("[Analyze] Statistik Model Summary disimpan.");
-          } else {
-              console.error("[Analyze] Worker Model Summary error:", modelSummaryResults?.error);
-          }
-          modelSummaryWorker.terminate();
+  
+        worker.onmessage = async (e: MessageEvent) => {
+          const workerResults = e.data;
+          console.log("[Analyze] Hasil dari Worker:", workerResults);
+          const rSquareStat = {
+            title: "Model Summary (R Square Change)",
+            output_data: JSON.stringify(workerResults),
+            components: "RSquareChange",
+            description: "R square change statistics"
+          };
+          await addStatistic(analyticId, rSquareStat);
+          console.log("[Analyze] Statistik R Square Change disimpan.");
+          
+          worker.terminate();
         };
-        modelSummaryWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Model Summary error:", error);
-          modelSummaryWorker.terminate();
+  
+        worker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker error:", error);
+          worker.terminate();
         };
       } else {
-        console.log("[Analyze] Skipping Model Summary (Model Fit / Descriptives not selected).");
+        console.log("[Analyze] Skipping R Square Change calculation (not selected).");
       }
-
-     // --- Conditional Worker Calls based on Stats Params --- 
-
-      // Descriptive Statistics
-      if (currentStatsParams.descriptives) {
-        const descriptiveWorker = new Worker('/workers/Regression/descriptive_statistics.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Descriptive Statistics...");
-        descriptiveWorker.postMessage({
+  
+      // 5. Confidence Intervals (Conditional)
+      if (currentStatsParams.confidenceIntervals) {
+        const confidenceWorker = new Worker('/workers/Regression/confidence_interval.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Confidence Interval...");
+        confidenceWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData, // Check worker input
-          dependentName: dependentVarName,      // Pass names if needed by worker
-          independentNames: independentVarNames
+          independent: filteredIndependentData
         });
-        descriptiveWorker.onmessage = async (e: MessageEvent) => {
-          const descriptiveResults = e.data;
-          if (descriptiveResults && !descriptiveResults.error) {
-              console.log("[Analyze] Hasil Descriptive Statistics dari Worker:", descriptiveResults);
-              const descriptiveStat = {
-                title: "Descriptive Statistics",
-                output_data: JSON.stringify(descriptiveResults), // Adjust based on worker output
-                components: "DescriptiveStatistics",
-                description: "Descriptive statistics for the variables"
-              };
-              await addStatistic(analyticId, descriptiveStat);
-              console.log("[Analyze] Statistik Descriptive Statistics disimpan.");
-          } else {
-               console.error("[Analyze] Worker Descriptive Statistics error:", descriptiveResults?.error);
-          }
-          descriptiveWorker.terminate();
+  
+        confidenceWorker.onmessage = async (e: MessageEvent) => {
+          const confidenceResults = e.data;
+          console.log("[Analyze] Hasil Confidence Interval dari Worker:", confidenceResults);
+          const confidenceStat = {
+            title: "Confidence Interval",
+            output_data: JSON.stringify(confidenceResults),
+            components: "ConfidenceInterval",
+            description: "Confidence interval for regression coefficients"
+          };
+          await addStatistic(analyticId, confidenceStat);
+          console.log("[Analyze] Statistik Confidence Interval disimpan.");
+          confidenceWorker.terminate();
         };
-        descriptiveWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Descriptive Statistics error:", error);
-          descriptiveWorker.terminate();
-        };
-
-        const correlationsWorker = new Worker('/workers/Regression/correlations.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Correlations...");
-        correlationsWorker.postMessage({
-          dependent: filteredDependentData,
-          independent: filteredIndependentData, // Check worker input
-          dependentName: dependentVarName,
-          independentNames: independentVarNames
-        });
-        correlationsWorker.onmessage = async (e: MessageEvent) => {
-          const correlationsResults = e.data;
-           if (correlationsResults && !correlationsResults.error) {
-              console.log("[Analyze] Hasil dari Worker Correlations:", correlationsResults);
-              const correlationsStat = {
-                title: "Correlations",
-                output_data: JSON.stringify(correlationsResults), // Adjust based on worker output
-                components: "Correlations",
-                description: "Correlation matrix between variables"
-              };
-              await addStatistic(analyticId, correlationsStat);
-              console.log("[Analyze] Statistik Correlations disimpan.");
-           } else {
-               console.error("[Analyze] Worker Correlations error:", correlationsResults?.error);
-           }
-          correlationsWorker.terminate();
-        };
-        correlationsWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Correlations error:", error);
-          correlationsWorker.terminate();
+  
+        confidenceWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Confidence Interval error:", error);
+          confidenceWorker.terminate();
         };
       } else {
-        console.log("[Analyze] Skipping Descriptive Statistics & Correlations (not selected).");
+        console.log("[Analyze] Skipping Confidence Interval calculation (not selected).");
       }
-      
-      // Part and Partial Correlations (if calculated separately from Coefficients)
-      /* // This seems to be handled IN the coefficients worker now based on its params
+  
+      // 6. Part and Partial Correlations (Conditional)
       if (currentStatsParams.partAndPartial) {
         const partAndPartialWorker = new Worker('/workers/Regression/coefficients_partandpartial.js');
         console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Part & Partial Correlations...");
         partAndPartialWorker.postMessage({
           dependent: filteredDependentData,
-          independents: filteredIndependentData // Check worker expects this structure
+          independents: filteredIndependentData
         });
   
         partAndPartialWorker.onmessage = async (e: MessageEvent) => {
@@ -667,154 +587,292 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       } else {
         console.log("[Analyze] Skipping Part & Partial Correlations (not selected).");
       }
-      */
-
-      // Collinearity Diagnostics (if calculated separately from Coefficients)
-      /* // This seems to be handled IN the coefficients worker now based on its params
+  
+      // 7. Collinearity Diagnostics (Conditional)
       if (currentStatsParams.collinearityDiagnostics) {
-        const collinearityWorker = new Worker('/workers/Regression/coefficients_collinearity.js'); 
-        // ... post message ... 
-        // ... on message ...
-        // ... on error ...
+        // 7a. Coefficients Collinearity
+        const collinearityWorker = new Worker('/workers/Regression/coefficients_collinearity.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Collinearity...");
+        collinearityWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        collinearityWorker.onmessage = async (e: MessageEvent) => {
+          const collinearityResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Coefficients Collinearity:", collinearityResults);
+          const collinearityStat = {
+            title: "Collinearity Diagnostics",
+            output_data: JSON.stringify(collinearityResults),
+            components: "CollinearityStatistics",
+            description: "Collinearity statistics for regression variables"
+          };
+          await addStatistic(analyticId, collinearityStat);
+          console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
+          collinearityWorker.terminate();
+        };
+  
+        collinearityWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Coefficients Collinearity error:", error);
+          collinearityWorker.terminate();
+        };
+        
+        // 7b. Collinearity Diagnostics (Detailed)
         const collinearityDiagnosticsWorker = new Worker('/workers/Regression/collinearity_diagnostics.js');
-        // ... post message ... 
-        // ... on message ...
-        // ... on error ...
+        console.log("[Analyze] Mengirim data ke Worker untuk Collinearity Diagnostics...");
+        collinearityDiagnosticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        collinearityDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
+          const collinearityDiagnosticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Collinearity Diagnostics:", collinearityDiagnosticsResults);
+          const collinearityDiagnosticsStat = {
+            title: "Collinearity Diagnostics",
+            output_data: JSON.stringify(collinearityDiagnosticsResults),
+            components: "CollinearityDiagnostics",
+            description: "Detailed collinearity diagnostics"
+          };
+          await addStatistic(analyticId, collinearityDiagnosticsStat);
+          console.log("[Analyze] Statistik Collinearity Diagnostics disimpan.");
+          collinearityDiagnosticsWorker.terminate();
+        };
+  
+        collinearityDiagnosticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Collinearity Diagnostics error:", error);
+          collinearityDiagnosticsWorker.terminate();
+        };
       } else {
         console.log("[Analyze] Skipping Collinearity Diagnostics (not selected).");
       }
-      */
-
-      // Durbin-Watson (If calculated separately from Model Summary)
-      /* // This seems to be handled IN the model summary worker now based on its params
+  
+      // 8. Durbin-Watson (Conditional)
       if (currentStatsParams.durbinWatson) {
-          const modelDurbinWorker = new Worker('/workers/Regression/model_durbin.js');
-          // ... post message ...
-          // ... on message ...
-          // ... on error ...
+        const modelDurbinWorker = new Worker('/workers/Regression/model_durbin.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Model Durbin...");
+        modelDurbinWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        modelDurbinWorker.onmessage = async (e: MessageEvent) => {
+          const modelDurbinResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Model Durbin:", modelDurbinResults);
+          const modelDurbinStat = {
+            title: "Model Summary (Durbin-Watson)",
+            output_data: JSON.stringify(modelDurbinResults),
+            components: "ModelDurbin",
+            description: "Durbin-Watson test statistics"
+          };
+          await addStatistic(analyticId, modelDurbinStat);
+          console.log("[Analyze] Statistik Model Durbin disimpan.");
+          modelDurbinWorker.terminate();
+        };
+  
+        modelDurbinWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Model Durbin error:", error);
+          modelDurbinWorker.terminate();
+        };
       } else {
-          console.log("[Analyze] Skipping Durbin-Watson test (not selected).");
+        console.log("[Analyze] Skipping Durbin-Watson test (not selected).");
       }
-      */
-
-      // Residuals Statistics
+  
+      // 9. Residuals Statistics (Conditional - Durbin-Watson or Casewise Diagnostics)
       if (currentStatsParams.durbinWatson || currentStatsParams.casewiseDiagnostics) {
-        if(calculatedPredicted && calculatedResiduals) { 
-            const residualsStatisticsWorker = new Worker('/workers/Regression/residuals_statistics.js');
-            console.log("[Analyze] Mengirim data ke Worker untuk Residuals Statistics...");
-            residualsStatisticsWorker.postMessage({
-              predicted: calculatedPredicted,
-              residuals: calculatedResiduals
-            });
-            residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
-                const results = e.data;
-                if (results && !results.error) {
-                    await addStatistic(analyticId, {
-                    title: "Residuals Statistics",
-                    output_data: JSON.stringify(results),
-                    components: "ResidualsStatistics",
-                    description: "Statistics of regression residuals"
-                    });
-                    console.log("[Analyze] Statistik Residuals Statistics disimpan.");
-                } else { console.error("[Analyze] Worker Residuals Statistics error:", results?.error); }
-                residualsStatisticsWorker.terminate();
-            };
-            residualsStatisticsWorker.onerror = (e) => { console.error("[Analyze] Worker Residuals Statistics error:", e); residualsStatisticsWorker.terminate(); };
-        } else {
-             console.warn("[Analyze] Skipping Residuals Statistics: Core regression results not available when needed.");
-        }
+        const residualsStatisticsWorker = new Worker('/workers/Regression/residuals_statistics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Residuals Statistics...");
+        residualsStatisticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData[0]
+        });
+  
+        residualsStatisticsWorker.onmessage = async (e: MessageEvent) => {
+          const residualsStatisticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Residuals Statistics:", residualsStatisticsResults);
+          const residualsStatisticsStat = {
+            title: "Residuals Statistics",
+            output_data: JSON.stringify(residualsStatisticsResults),
+            components: "ResidualsStatistics",
+            description: "Statistics of regression residuals"
+          };
+          await addStatistic(analyticId, residualsStatisticsStat);
+          console.log("[Analyze] Statistik Residuals Statistics disimpan.");
+          residualsStatisticsWorker.terminate();
+        };
+  
+        residualsStatisticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Residuals Statistics error:", error);
+          residualsStatisticsWorker.terminate();
+        };
       } else {
-        console.log("[Analyze] Skipping Residuals Statistics (no relevant option selected).");
+        console.log("[Analyze] Skipping Residuals Statistics (no residual option selected).");
       }
-
-      // Casewise Diagnostics
+  
+      // 10. Casewise Diagnostics (Conditional)
       if (currentStatsParams.casewiseDiagnostics) {
-        if (calculatedResiduals) { 
-            const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
-            const filteredCaseLabels = selectedCaseLabelsVariable
-                ? dataRows
-                    .filter((_, index) => originalIndices.includes(index))
-                    .map(row => row[selectedCaseLabelsVariable!.columnIndex])
-                : null;
-            console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics...");
-            casewiseDiagnosticsWorker.postMessage({
-              residuals: calculatedResiduals, 
-              caseLabels: filteredCaseLabels, 
-              originalIndices: originalIndices, 
-              threshold: parseFloat(currentStatsParams.outlierThreshold) || 3,
-              option: currentStatsParams.selectedResidualOption
-            });
-            casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
-                const results = e.data;
-                if (results && !results.error) {
-                    await addStatistic(analyticId, {
-                    title: "Casewise Diagnostics",
-                    output_data: JSON.stringify(results),
-                    components: "CasewiseDiagnostics",
-                    description: "Casewise diagnostics for outlier detection"
-                    });
-                    console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
-                } else { console.error("[Analyze] Worker Casewise Diagnostics error:", results?.error); }
-                casewiseDiagnosticsWorker.terminate();
-            };
-            casewiseDiagnosticsWorker.onerror = (e) => { console.error("[Analyze] Worker Casewise Diagnostics error:", e); casewiseDiagnosticsWorker.terminate(); };
-        } else {
-             console.warn("[Analyze] Skipping Casewise Diagnostics: Residuals not available when needed.");
-        }
+        const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics...");
+        casewiseDiagnosticsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData[0],
+          threshold: parseFloat(currentStatsParams.outlierThreshold) || 3
+        });
+  
+        casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
+          const casewiseDiagnosticsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Casewise Diagnostics:", casewiseDiagnosticsResults);
+          const casewiseDiagnosticsStat = {
+            title: "Casewise Diagnostics",
+            output_data: JSON.stringify(casewiseDiagnosticsResults),
+            components: "CasewiseDiagnostics",
+            description: "Casewise diagnostics for outlier detection"
+          };
+          await addStatistic(analyticId, casewiseDiagnosticsStat);
+          console.log("[Analyze] Statistik Casewise Diagnostics disimpan.");
+          casewiseDiagnosticsWorker.terminate();
+        };
+  
+        casewiseDiagnosticsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Casewise Diagnostics error:", error);
+          casewiseDiagnosticsWorker.terminate();
+        };
       } else {
         console.log("[Analyze] Skipping Casewise Diagnostics (not selected).");
       }
-
-      // Covariance/Correlation Matrix
+  
+      // 11. Covariance Matrix (Conditional)
       if (currentStatsParams.covarianceMatrix) {
         const coefficientCorrelationsWorker = new Worker('/workers/Regression/coefficient_correlations.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations/Covariance...");
+        console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations...");
         coefficientCorrelationsWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData, // Check worker input
-          calculateCovariance: currentStatsParams.covarianceMatrix
-          // Worker needs to handle calculation based on flag
+          independent: filteredIndependentData
         });
+  
         coefficientCorrelationsWorker.onmessage = async (e: MessageEvent) => {
           const correlationsResults = e.data;
-           if (correlationsResults && !correlationsResults.error) {
-              console.log("[Analyze] Hasil dari Worker Coefficient Correlations/Covariance:", correlationsResults);
-              const correlationsStat = {
-                // Title might differ based on whether cov or corr was calculated
-                title: currentStatsParams.covarianceMatrix ? "Covariance Matrix" : "Coefficient Correlations",
-                output_data: JSON.stringify(correlationsResults), // Adjust based on worker output
-                components: currentStatsParams.covarianceMatrix ? "CovarianceMatrix" : "CoefficientCorrelations",
-                description: currentStatsParams.covarianceMatrix ? "Covariance matrix of coefficients" : "Correlations between regression coefficients"
-              };
-              await addStatistic(analyticId, correlationsStat);
-              console.log("[Analyze] Statistik Coefficient Correlations/Covariance disimpan.");
-           } else {
-               console.error("[Analyze] Worker Coefficient Correlations/Covariance error:", correlationsResults?.error);
-           }
+          console.log("[Analyze] Hasil dari Worker Coefficient Correlations:", correlationsResults);
+          const correlationsStat = {
+            title: "Coefficient Correlations",
+            output_data: JSON.stringify(correlationsResults),
+            components: "CoefficientCorrelations",
+            description: "Correlations between regression coefficients"
+          };
+          await addStatistic(analyticId, correlationsStat);
+          console.log("[Analyze] Statistik Coefficient Correlations disimpan.");
           coefficientCorrelationsWorker.terminate();
         };
+  
         coefficientCorrelationsWorker.onerror = (error: ErrorEvent) => {
-          console.error("[Analyze] Worker Coefficient Correlations/Covariance error:", error);
+          console.error("[Analyze] Worker Coefficient Correlations error:", error);
           coefficientCorrelationsWorker.terminate();
         };
       } else {
-        console.log("[Analyze] Skipping Coefficient Covariance/Correlation calculations (not selected).");
+        console.log("[Analyze] Skipping Correlation calculations (covariance matrix not selected).");
+      }
+  
+      // 12. Descriptive Statistics (Conditional)
+      if (currentStatsParams.descriptives) {
+        // 12a. Descriptive Statistics
+        const descriptiveWorker = new Worker('/workers/Regression/descriptive_statistics.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Descriptive Statistics...");
+        descriptiveWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        descriptiveWorker.onmessage = async (e: MessageEvent) => {
+          const descriptiveResults = e.data;
+          console.log("[Analyze] Hasil Descriptive Statistics dari Worker:", descriptiveResults);
+          const descriptiveStat = {
+            title: "Descriptive Statistics",
+            output_data: JSON.stringify(descriptiveResults),
+            components: "DescriptiveStatistics",
+            description: "Descriptive statistics for the variables"
+          };
+          await addStatistic(analyticId, descriptiveStat);
+          console.log("[Analyze] Statistik Descriptive Statistics disimpan.");
+          descriptiveWorker.terminate();
+        };
+  
+        descriptiveWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Descriptive Statistics error:", error);
+          descriptiveWorker.terminate();
+        };
+        
+        // 12b. Correlations
+        const correlationsWorker = new Worker('/workers/Regression/correlations.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Correlations...");
+        correlationsWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        correlationsWorker.onmessage = async (e: MessageEvent) => {
+          const correlationsResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Correlations:", correlationsResults);
+          const correlationsStat = {
+            title: "Correlations",
+            output_data: JSON.stringify(correlationsResults),
+            components: "Correlations",
+            description: "Correlation matrix between variables"
+          };
+          await addStatistic(analyticId, correlationsStat);
+          console.log("[Analyze] Statistik Correlations disimpan.");
+          correlationsWorker.terminate();
+        };
+  
+        correlationsWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Correlations error:", error);
+          correlationsWorker.terminate();
+        };
+  
+      } else {
+        console.log("[Analyze] Skipping Descriptive Statistics (not selected).");
+      }
+  
+      // 13. Model Fit / Model Summary (Conditional)
+      if (currentStatsParams.modelFit || currentStatsParams.descriptives) {
+        const modelSummaryWorker = new Worker('/workers/Regression/model_summary.js');
+        console.log("[Analyze] Mengirim data ke Worker untuk Model Summary...");
+        modelSummaryWorker.postMessage({
+          dependent: filteredDependentData,
+          independent: filteredIndependentData
+        });
+  
+        modelSummaryWorker.onmessage = async (e: MessageEvent) => {
+          const modelSummaryResults = e.data;
+          console.log("[Analyze] Hasil dari Worker Model Summary:", modelSummaryResults);
+          const modelSummaryStat = {
+            title: "Model Summary",
+            output_data: JSON.stringify(modelSummaryResults),
+            components: "ModelSummary",
+            description: "Summary of the regression model"
+          };
+          await addStatistic(analyticId, modelSummaryStat);
+          console.log("[Analyze] Statistik Model Summary disimpan.");
+          modelSummaryWorker.terminate();
+        };
+  
+        modelSummaryWorker.onerror = (error: ErrorEvent) => {
+          console.error("[Analyze] Worker Model Summary error:", error);
+          modelSummaryWorker.terminate();
+        };
+      } else {
+        console.log("[Analyze] Skipping Model Summary (model fit not selected).");
       }
 
-      // TODO: Add calls for Plots tab options
-      // TODO: Add calls for Save tab options (saving new variables to data store)
-
-      // Close modal after initiating analysis (workers run in background)
-      handleClose(); 
-
+      // Tutup modal setelah memulai analisis
+      onClose();
+  
     } catch (error: unknown) {
       console.error('[Analyze] Failed to perform linear regression:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to perform linear regression: ${errorMessage}`);
-      // Optionally set an error state to display in the modal
     }
   };
-
+  
   return (
     <DialogContent className="sm:max-w-[900px]">
       <DialogHeader>
@@ -858,12 +916,12 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           />
         </TabsContent>
 
-        {/* Statistics Tab - Uncommented */}
+        {/* Statistics Tab */}
         <TabsContent value="statistics">
           <Statistics params={statsParams} onChange={handleStatsChange} />
         </TabsContent>
 
-        {/* Plots Tab - Uncommented */}
+        {/* Plots Tab */}
         <TabsContent value="plots">
           <PlotsLinear
             params={plotParams}
@@ -871,12 +929,12 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
             availablePlotVariables={availablePlotVariables} />
         </TabsContent>
 
-        {/* Save Tab - Uncommented */}
+        {/* Save Tab */}
         <TabsContent value="save">
            <SaveLinear params={saveParams} onChange={handleSaveChange} />
         </TabsContent>
 
-        {/* Options Tab - Uncommented */}
+        {/* Options Tab */}
         <TabsContent value="options">
            <OptionsLinear params={optionsParams} onChange={handleOptionsChange} />
         </TabsContent>
