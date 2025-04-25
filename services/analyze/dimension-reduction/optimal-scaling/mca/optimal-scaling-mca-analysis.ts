@@ -39,4 +39,35 @@ export async function analyzeOptScaMCA({
     const varDefsForLabeling = getVarDefs(variables, LabelingVariables);
 
     console.log(configData);
+
+    // const mca = new MultipleCorrespondenceAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
+
+    // const results = mca.get_formatted_results();
+    // const error = mca.get_all_errors();
+
+    // console.log("Results", results);
+    // console.log(error);
+
+    // const formattedResults = transformMCAResult(results);
+    // console.log("formattedResults", formattedResults);
+
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    // await resultMCAAnalysis({
+    //     addLog,
+    //     addAnalytic,
+    //     addStatistic,
+    //     formattedResult: formattedResults ?? [],
+    // });
 }
