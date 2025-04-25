@@ -303,7 +303,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
                         </div>
                         <div className="flex flex-col mt-2 gap-2">
                             <label className="w-full text-sm font-semibold">note:</label>
-                            <label className="w-full text-sm font-semibold">winter`&apos`s method need time spesification with periodicity</label>
+                            <label className="w-full text-sm font-semibold">winters method need time spesification with periodicity</label>
                         </div>
                     </div>
                 );
