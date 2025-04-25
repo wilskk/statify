@@ -1,12 +1,5 @@
 // components/SaveLinear.tsx
-import React, { useState } from 'react';
-import {
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -40,69 +33,105 @@ export interface SaveLinearParams {
 }
 
 interface SaveLinearProps {
-  onClose: () => void;
-  onSave: (params: SaveLinearParams) => void;
+  params: SaveLinearParams;
+  onChange: (newParams: Partial<SaveLinearParams>) => void;
 }
 
-const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
-  /* --- State untuk grup Predicted Values --- */
-  const [predictedUnstandardized, setPredictedUnstandardized] = useState(false);
-  const [predictedStandardized, setPredictedStandardized] = useState(false);
-  const [predictedAdjusted, setPredictedAdjusted] = useState(false);
-  const [predictedSE, setPredictedSE] = useState(false);
+const SaveLinear: React.FC<SaveLinearProps> = ({ params, onChange }) => {
+  const [predictedUnstandardized, setPredictedUnstandardized] = useState(params.predictedUnstandardized);
+  const [predictedStandardized, setPredictedStandardized] = useState(params.predictedStandardized);
+  const [predictedAdjusted, setPredictedAdjusted] = useState(params.predictedAdjusted);
+  const [predictedSE, setPredictedSE] = useState(params.predictedSE);
+  const [residualUnstandardized, setResidualUnstandardized] = useState(params.residualUnstandardized);
+  const [residualStandardized, setResidualStandardized] = useState(params.residualStandardized);
+  const [residualStudentized, setResidualStudentized] = useState(params.residualStudentized);
+  const [residualDeleted, setResidualDeleted] = useState(params.residualDeleted);
+  const [residualStudentizedDeleted, setResidualStudentizedDeleted] = useState(params.residualStudentizedDeleted);
+  const [distanceMahalanobis, setDistanceMahalanobis] = useState(params.distanceMahalanobis);
+  const [distanceCooks, setDistanceCooks] = useState(params.distanceCooks);
+  const [distanceLeverage, setDistanceLeverage] = useState(params.distanceLeverage);
+  const [influenceDfBetas, setInfluenceDfBetas] = useState(params.influenceDfBetas);
+  const [influenceStandardizedDfBetas, setInfluenceStandardizedDfBetas] = useState(params.influenceStandardizedDfBetas);
+  const [influenceDfFits, setInfluenceDfFits] = useState(params.influenceDfFits);
+  const [influenceStandardizedDfFits, setInfluenceStandardizedDfFits] = useState(params.influenceStandardizedDfFits);
+  const [influenceCovarianceRatios, setInfluenceCovarianceRatios] = useState(params.influenceCovarianceRatios);
+  const [predictionMean, setPredictionMean] = useState(params.predictionMean);
+  const [predictionIndividual, setPredictionIndividual] = useState(params.predictionIndividual);
+  const [confidenceInterval, setConfidenceInterval] = useState(params.confidenceInterval);
+  const [createCoefficientStats, setCreateCoefficientStats] = useState(params.createCoefficientStats);
+  const [coefficientOption, setCoefficientOption] = useState<'newDataset' | 'newDataFile'>(params.coefficientOption);
+  const [datasetName, setDatasetName] = useState(params.datasetName);
+  const [xmlFilePath, setXmlFilePath] = useState(params.xmlFilePath);
+  const [includeCovarianceMatrixXml, setIncludeCovarianceMatrixXml] = useState(params.includeCovarianceMatrixXml);
 
-  /* --- State untuk grup Residuals --- */
-  const [residualUnstandardized, setResidualUnstandardized] = useState(false);
-  const [residualStandardized, setResidualStandardized] = useState(false);
-  const [residualStudentized, setResidualStudentized] = useState(false);
-  const [residualDeleted, setResidualDeleted] = useState(false);
-  const [residualStudentizedDeleted, setResidualStudentizedDeleted] = useState(false);
+  useEffect(() => {
+    setPredictedUnstandardized(params.predictedUnstandardized);
+    setPredictedStandardized(params.predictedStandardized);
+    setPredictedAdjusted(params.predictedAdjusted);
+    setPredictedSE(params.predictedSE);
+    setResidualUnstandardized(params.residualUnstandardized);
+    setResidualStandardized(params.residualStandardized);
+    setResidualStudentized(params.residualStudentized);
+    setResidualDeleted(params.residualDeleted);
+    setResidualStudentizedDeleted(params.residualStudentizedDeleted);
+    setDistanceMahalanobis(params.distanceMahalanobis);
+    setDistanceCooks(params.distanceCooks);
+    setDistanceLeverage(params.distanceLeverage);
+    setInfluenceDfBetas(params.influenceDfBetas);
+    setInfluenceStandardizedDfBetas(params.influenceStandardizedDfBetas);
+    setInfluenceDfFits(params.influenceDfFits);
+    setInfluenceStandardizedDfFits(params.influenceStandardizedDfFits);
+    setInfluenceCovarianceRatios(params.influenceCovarianceRatios);
+    setPredictionMean(params.predictionMean);
+    setPredictionIndividual(params.predictionIndividual);
+    setConfidenceInterval(params.confidenceInterval);
+    setCreateCoefficientStats(params.createCoefficientStats);
+    setCoefficientOption(params.coefficientOption);
+    setDatasetName(params.datasetName);
+    setXmlFilePath(params.xmlFilePath);
+    setIncludeCovarianceMatrixXml(params.includeCovarianceMatrixXml);
+  }, [params]);
 
-  /* --- State untuk grup Distances --- */
-  const [distanceMahalanobis, setDistanceMahalanobis] = useState(false);
-  const [distanceCooks, setDistanceCooks] = useState(false);
-  const [distanceLeverage, setDistanceLeverage] = useState(false);
-
-  /* --- State untuk grup Influence Statistics --- */
-  const [influenceDfBetas, setInfluenceDfBetas] = useState(false);
-  const [influenceStandardizedDfBetas, setInfluenceStandardizedDfBetas] = useState(false);
-  const [influenceDfFits, setInfluenceDfFits] = useState(false);
-  const [influenceStandardizedDfFits, setInfluenceStandardizedDfFits] = useState(false);
-  const [influenceCovarianceRatios, setInfluenceCovarianceRatios] = useState(false);
-
-  /* --- State untuk grup Prediction Intervals --- */
-  const [predictionMean, setPredictionMean] = useState(false);
-  const [predictionIndividual, setPredictionIndividual] = useState(false);
-  const [confidenceInterval, setConfidenceInterval] = useState('95');
-
-  /* --- State untuk grup Coefficient statistics --- */
-  const [createCoefficientStats, setCreateCoefficientStats] = useState(false);
-  const [coefficientOption, setCoefficientOption] = useState<'newDataset' | 'newDataFile'>('newDataset');
-  const [datasetName, setDatasetName] = useState('');
-
-  /* --- State untuk grup Export model information to XML file --- */
-  const [xmlFilePath, setXmlFilePath] = useState('');
-  const [includeCovarianceMatrixXml, setIncludeCovarianceMatrixXml] = useState(false);
+  const handleChange = (field: keyof SaveLinearParams, value: any) => {
+    switch(field) {
+      case 'predictedUnstandardized': setPredictedUnstandardized(value); break;
+      case 'predictedStandardized': setPredictedStandardized(value); break;
+      case 'predictedAdjusted': setPredictedAdjusted(value); break;
+      case 'predictedSE': setPredictedSE(value); break;
+      case 'residualUnstandardized': setResidualUnstandardized(value); break;
+      case 'residualStandardized': setResidualStandardized(value); break;
+      case 'residualStudentized': setResidualStudentized(value); break;
+      case 'residualDeleted': setResidualDeleted(value); break;
+      case 'residualStudentizedDeleted': setResidualStudentizedDeleted(value); break;
+      case 'distanceMahalanobis': setDistanceMahalanobis(value); break;
+      case 'distanceCooks': setDistanceCooks(value); break;
+      case 'distanceLeverage': setDistanceLeverage(value); break;
+      case 'influenceDfBetas': setInfluenceDfBetas(value); break;
+      case 'influenceStandardizedDfBetas': setInfluenceStandardizedDfBetas(value); break;
+      case 'influenceDfFits': setInfluenceDfFits(value); break;
+      case 'influenceStandardizedDfFits': setInfluenceStandardizedDfFits(value); break;
+      case 'influenceCovarianceRatios': setInfluenceCovarianceRatios(value); break;
+      case 'predictionMean': setPredictionMean(value); break;
+      case 'predictionIndividual': setPredictionIndividual(value); break;
+      case 'confidenceInterval': setConfidenceInterval(value); break;
+      case 'createCoefficientStats': setCreateCoefficientStats(value); break;
+      case 'coefficientOption': setCoefficientOption(value); break;
+      case 'datasetName': setDatasetName(value); break;
+      case 'xmlFilePath': setXmlFilePath(value); break;
+      case 'includeCovarianceMatrixXml': setIncludeCovarianceMatrixXml(value); break;
+    }
+    onChange({ [field]: value });
+  };
 
   return (
-    // Perbaikan: Menghilangkan properti positioning fixed dan transform,
-    // sehingga modal anak akan muncul secara normal (terpusat) seperti modal Statistics.
-    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle className="text-lg">Linear Regression: Save</DialogTitle>
-      </DialogHeader>
-
-      <Separator className="my-2" />
-
-      {/* --- Baris 1: Predicted Values (kiri) & Residuals (kanan) --- */}
+    <div className="p-4 max-h-[70vh] overflow-y-auto">
       <div className="grid grid-cols-2 gap-4">
-        {/* Predicted Values */}
         <div className="border rounded p-4">
           <h3 className="font-semibold mb-2">Predicted Values</h3>
           <div className="flex items-center mb-2">
             <Checkbox
               checked={predictedUnstandardized}
-              onCheckedChange={(checked) => setPredictedUnstandardized(!!checked)}
+              onCheckedChange={(checked) => handleChange('predictedUnstandardized', !!checked)}
               id="predictedUnstandardized"
             />
             <label htmlFor="predictedUnstandardized" className="ml-2 text-sm">
@@ -112,7 +141,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={predictedStandardized}
-              onCheckedChange={(checked) => setPredictedStandardized(!!checked)}
+              onCheckedChange={(checked) => handleChange('predictedStandardized', !!checked)}
               id="predictedStandardized"
             />
             <label htmlFor="predictedStandardized" className="ml-2 text-sm">
@@ -122,7 +151,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={predictedAdjusted}
-              onCheckedChange={(checked) => setPredictedAdjusted(!!checked)}
+              onCheckedChange={(checked) => handleChange('predictedAdjusted', !!checked)}
               id="predictedAdjusted"
             />
             <label htmlFor="predictedAdjusted" className="ml-2 text-sm">
@@ -132,7 +161,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center">
             <Checkbox
               checked={predictedSE}
-              onCheckedChange={(checked) => setPredictedSE(!!checked)}
+              onCheckedChange={(checked) => handleChange('predictedSE', !!checked)}
               id="predictedSE"
             />
             <label htmlFor="predictedSE" className="ml-2 text-sm">
@@ -141,13 +170,12 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           </div>
         </div>
 
-        {/* Residuals */}
         <div className="border rounded p-4">
           <h3 className="font-semibold mb-2">Residuals</h3>
           <div className="flex items-center mb-2">
             <Checkbox
               checked={residualUnstandardized}
-              onCheckedChange={(checked) => setResidualUnstandardized(!!checked)}
+              onCheckedChange={(checked) => handleChange('residualUnstandardized', !!checked)}
               id="residualUnstandardized"
             />
             <label htmlFor="residualUnstandardized" className="ml-2 text-sm">
@@ -157,7 +185,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={residualStandardized}
-              onCheckedChange={(checked) => setResidualStandardized(!!checked)}
+              onCheckedChange={(checked) => handleChange('residualStandardized', !!checked)}
               id="residualStandardized"
             />
             <label htmlFor="residualStandardized" className="ml-2 text-sm">
@@ -167,7 +195,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={residualStudentized}
-              onCheckedChange={(checked) => setResidualStudentized(!!checked)}
+              onCheckedChange={(checked) => handleChange('residualStudentized', !!checked)}
               id="residualStudentized"
             />
             <label htmlFor="residualStudentized" className="ml-2 text-sm">
@@ -177,7 +205,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={residualDeleted}
-              onCheckedChange={(checked) => setResidualDeleted(!!checked)}
+              onCheckedChange={(checked) => handleChange('residualDeleted', !!checked)}
               id="residualDeleted"
             />
             <label htmlFor="residualDeleted" className="ml-2 text-sm">
@@ -187,7 +215,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center">
             <Checkbox
               checked={residualStudentizedDeleted}
-              onCheckedChange={(checked) => setResidualStudentizedDeleted(!!checked)}
+              onCheckedChange={(checked) => handleChange('residualStudentizedDeleted', !!checked)}
               id="residualStudentizedDeleted"
             />
             <label htmlFor="residualStudentizedDeleted" className="ml-2 text-sm">
@@ -199,15 +227,13 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
 
       <Separator className="my-4" />
 
-      {/* --- Baris 2: Distances (kiri) & Influence Statistics (kanan) --- */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Distances */}
         <div className="border rounded p-4">
           <h3 className="font-semibold mb-2">Distances</h3>
           <div className="flex items-center mb-2">
             <Checkbox
               checked={distanceMahalanobis}
-              onCheckedChange={(checked) => setDistanceMahalanobis(!!checked)}
+              onCheckedChange={(checked) => handleChange('distanceMahalanobis', !!checked)}
               id="distanceMahalanobis"
             />
             <label htmlFor="distanceMahalanobis" className="ml-2 text-sm">
@@ -217,7 +243,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center mb-2">
             <Checkbox
               checked={distanceCooks}
-              onCheckedChange={(checked) => setDistanceCooks(!!checked)}
+              onCheckedChange={(checked) => handleChange('distanceCooks', !!checked)}
               id="distanceCooks"
             />
             <label htmlFor="distanceCooks" className="ml-2 text-sm">
@@ -227,7 +253,7 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           <div className="flex items-center">
             <Checkbox
               checked={distanceLeverage}
-              onCheckedChange={(checked) => setDistanceLeverage(!!checked)}
+              onCheckedChange={(checked) => handleChange('distanceLeverage', !!checked)}
               id="distanceLeverage"
             />
             <label htmlFor="distanceLeverage" className="ml-2 text-sm">
@@ -236,7 +262,6 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
           </div>
         </div>
 
-        {/* Influence Statistics */}
         <div className="border rounded p-4">
           <h3 className="font-semibold mb-2">Influence Statistics</h3>
           <div className="grid grid-cols-2 gap-x-4">
@@ -244,53 +269,62 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
               <div className="flex items-center">
                 <Checkbox
                   checked={influenceDfBetas}
-                  onCheckedChange={(checked) => setInfluenceDfBetas(!!checked)}
+                  onCheckedChange={(checked) => handleChange('influenceDfBetas', !!checked)}
                   id="influenceDfBetas"
                 />
                 <label htmlFor="influenceDfBetas" className="ml-2 text-sm">
-                  DfBetas
+                  DfBeta(s)
                 </label>
               </div>
               <div className="flex items-center">
                 <Checkbox
-                  checked={influenceDfFits}
-                  onCheckedChange={(checked) => setInfluenceDfFits(!!checked)}
-                  id="influenceDfFits"
+                  checked={influenceStandardizedDfBetas}
+                  onCheckedChange={(checked) => handleChange('influenceStandardizedDfBetas', !!checked)}
+                  id="influenceStandardizedDfBetas"
                 />
-                <label htmlFor="influenceDfFits" className="ml-2 text-sm">
-                  DfFits
-                </label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox
-                  checked={influenceCovarianceRatios}
-                  onCheckedChange={(checked) => setInfluenceCovarianceRatios(!!checked)}
-                  id="influenceCovarianceRatios"
-                />
-                <label htmlFor="influenceCovarianceRatios" className="ml-2 text-sm">
-                  Covariance ratios
+                <label
+                  htmlFor="influenceStandardizedDfBetas"
+                  className="ml-2 text-sm"
+                >
+                  Standardized DfBeta(s)
                 </label>
               </div>
             </div>
             <div className="flex flex-col space-y-2">
               <div className="flex items-center">
                 <Checkbox
-                  checked={influenceStandardizedDfBetas}
-                  onCheckedChange={(checked) => setInfluenceStandardizedDfBetas(!!checked)}
-                  id="influenceStandardizedDfBetas"
+                  checked={influenceDfFits}
+                  onCheckedChange={(checked) => handleChange('influenceDfFits', !!checked)}
+                  id="influenceDfFits"
                 />
-                <label htmlFor="influenceStandardizedDfBetas" className="ml-2 text-sm">
-                  Standardized DfBetas
+                <label htmlFor="influenceDfFits" className="ml-2 text-sm">
+                  DfFit
                 </label>
               </div>
               <div className="flex items-center">
                 <Checkbox
                   checked={influenceStandardizedDfFits}
-                  onCheckedChange={(checked) => setInfluenceStandardizedDfFits(!!checked)}
+                  onCheckedChange={(checked) => handleChange('influenceStandardizedDfFits', !!checked)}
                   id="influenceStandardizedDfFits"
                 />
-                <label htmlFor="influenceStandardizedDfFits" className="ml-2 text-sm">
-                  Standardized DfFits
+                <label
+                  htmlFor="influenceStandardizedDfFits"
+                  className="ml-2 text-sm"
+                >
+                  Standardized DfFit
+                </label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox
+                  checked={influenceCovarianceRatios}
+                  onCheckedChange={(checked) => handleChange('influenceCovarianceRatios', !!checked)}
+                  id="influenceCovarianceRatios"
+                />
+                <label
+                  htmlFor="influenceCovarianceRatios"
+                  className="ml-2 text-sm"
+                >
+                  Covariance ratio
                 </label>
               </div>
             </div>
@@ -300,187 +334,126 @@ const SaveLinear: React.FC<SaveLinearProps> = ({ onClose, onSave }) => {
 
       <Separator className="my-4" />
 
-      {/* --- Baris 3: Prediction Intervals --- */}
-      <div className="border rounded p-4 max-w-md">
-        <h3 className="font-semibold mb-2">Prediction Intervals</h3>
-        <div className="flex items-center mb-2">
-          <Checkbox
-            checked={predictionMean}
-            onCheckedChange={(checked) => setPredictionMean(!!checked)}
-            id="predictionMean"
-          />
-          <label htmlFor="predictionMean" className="ml-2 text-sm">
-            Mean
-          </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="border rounded p-4">
+          <h3 className="font-semibold mb-2">Prediction Intervals</h3>
+          <div className="flex items-center mb-2">
+            <Checkbox
+              checked={predictionMean}
+              onCheckedChange={(checked) => handleChange('predictionMean', !!checked)}
+              id="predictionMean"
+            />
+            <label htmlFor="predictionMean" className="ml-2 text-sm">
+              Mean
+            </label>
+          </div>
+          <div className="flex items-center mb-2">
+            <Checkbox
+              checked={predictionIndividual}
+              onCheckedChange={(checked) => handleChange('predictionIndividual', !!checked)}
+              id="predictionIndividual"
+            />
+            <label htmlFor="predictionIndividual" className="ml-2 text-sm">
+              Individual
+            </label>
+          </div>
+          <div className="flex items-center">
+            <label htmlFor="confidenceInterval" className="mr-2 text-sm">
+              Confidence interval:
+            </label>
+            <Input
+              type="text"
+              id="confidenceInterval"
+              value={confidenceInterval}
+              onChange={(e) => handleChange('confidenceInterval', e.target.value)}
+              className="w-20 p-1 text-sm"
+              disabled={!predictionMean && !predictionIndividual}
+            />
+            <span className="ml-2 text-sm">%</span>
+          </div>
         </div>
-        <div className="flex items-center mb-2">
-          <Checkbox
-            checked={predictionIndividual}
-            onCheckedChange={(checked) => setPredictionIndividual(!!checked)}
-            id="predictionIndividual"
-          />
-          <label htmlFor="predictionIndividual" className="ml-2 text-sm">
-            Individual
-          </label>
-        </div>
-        <div className="flex items-center">
-          <span className="text-sm mr-2">Confidence Interval:</span>
-          <Input
-            type="number"
-            value={confidenceInterval}
-            onChange={(e) => setConfidenceInterval(e.target.value)}
-            className="w-16 p-1 text-sm"
-          />
-          <span className="ml-2 text-sm">%</span>
-        </div>
-      </div>
 
-      <Separator className="my-4" />
-
-      {/* --- Baris 4: Coefficient statistics --- */}
-      <div className="border rounded p-4">
-        <h3 className="font-semibold mb-2">Coefficient statistics</h3>
-        <div className="flex items-center mb-2">
-          <Checkbox
-            checked={createCoefficientStats}
-            onCheckedChange={(checked) => setCreateCoefficientStats(!!checked)}
-            id="createCoefficientStats"
-          />
-          <label htmlFor="createCoefficientStats" className="ml-2 text-sm">
-            Create coefficient statistics
-          </label>
-        </div>
-        {createCoefficientStats && (
+        <div className="border rounded p-4">
+          <h3 className="font-semibold mb-2">Coefficient statistics</h3>
+          <div className="flex items-center mb-2">
+            <Checkbox
+              checked={createCoefficientStats}
+              onCheckedChange={(checked) => handleChange('createCoefficientStats', !!checked)}
+              id="createCoefficientStats"
+            />
+            <label htmlFor="createCoefficientStats" className="ml-2 text-sm">
+              Create coefficient statistics
+            </label>
+          </div>
           <div className="ml-6 space-y-2">
             <div className="flex items-center">
               <input
                 type="radio"
                 name="coefficientOption"
-                id="newDataset"
+                id="coefficientNewDataset"
                 value="newDataset"
                 checked={coefficientOption === 'newDataset'}
-                onChange={() => setCoefficientOption('newDataset')}
+                onChange={(e) => handleChange('coefficientOption', e.target.value as 'newDataset' | 'newDataFile')}
+                disabled={!createCoefficientStats}
                 className="accent-gray-500"
               />
-              <label htmlFor="newDataset" className="ml-2 text-sm">
-                Create a new dataset
+              <label htmlFor="coefficientNewDataset" className="ml-2 text-sm">
+                Write a new data set
               </label>
-              {coefficientOption === 'newDataset' && (
-                <div className="ml-4 flex items-center">
-                  <label htmlFor="datasetName" className="text-xs">
-                    Dataset name:
-                  </label>
-                  <Input
-                    id="datasetName"
-                    type="text"
-                    value={datasetName}
-                    onChange={(e) => setDatasetName(e.target.value)}
-                    className="ml-2 p-1 text-sm"
-                  />
-                </div>
-              )}
+              <Input
+                type="text"
+                value={datasetName}
+                onChange={(e) => handleChange('datasetName', e.target.value)}
+                placeholder="Dataset name"
+                className="ml-2 w-32 p-1 text-sm"
+                disabled={!createCoefficientStats || coefficientOption !== 'newDataset'}
+              />
             </div>
             <div className="flex items-center">
               <input
                 type="radio"
                 name="coefficientOption"
-                id="newDataFile"
+                id="coefficientNewDataFile"
                 value="newDataFile"
                 checked={coefficientOption === 'newDataFile'}
-                onChange={() => setCoefficientOption('newDataFile')}
+                onChange={(e) => handleChange('coefficientOption', e.target.value as 'newDataset' | 'newDataFile')}
+                disabled={!createCoefficientStats}
                 className="accent-gray-500"
               />
-              <label htmlFor="newDataFile" className="ml-2 text-sm">
+              <label htmlFor="coefficientNewDataFile" className="ml-2 text-sm">
                 Write a new data file
               </label>
-              <Button
-                variant="outline"
-                className="ml-4"
-                disabled={coefficientOption !== 'newDataFile'}
-              >
-                File...
-              </Button>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       <Separator className="my-4" />
 
-      {/* --- Baris 5: Export model information to XML file --- */}
       <div className="border rounded p-4">
         <h3 className="font-semibold mb-2">Export model information to XML file</h3>
         <div className="flex items-center mb-2">
           <Input
             type="text"
-            placeholder="File path..."
             value={xmlFilePath}
-            onChange={(e) => setXmlFilePath(e.target.value)}
-            className="flex-1 p-1 text-sm"
+            onChange={(e) => handleChange('xmlFilePath', e.target.value)}
+            placeholder="Specify XML file path"
+            className="flex-grow p-1 text-sm mr-2"
           />
-          <Button variant="outline" className="ml-2">
-            Browse...
-          </Button>
         </div>
         <div className="flex items-center">
           <Checkbox
             checked={includeCovarianceMatrixXml}
-            onCheckedChange={(checked) => setIncludeCovarianceMatrixXml(!!checked)}
+            onCheckedChange={(checked) => handleChange('includeCovarianceMatrixXml', !!checked)}
             id="includeCovarianceMatrixXml"
+            disabled={!xmlFilePath}
           />
           <label htmlFor="includeCovarianceMatrixXml" className="ml-2 text-sm">
             Include the covariance matrix
           </label>
         </div>
       </div>
-
-      {/* --- Tombol Aksi --- */}
-      <DialogFooter className="flex justify-end space-x-3 mt-4">
-        <Button
-            variant="default"
-            className="bg-blue-500 text-white hover:bg-blue-600"
-            onClick={() => {
-              const params: SaveLinearParams = {
-                predictedUnstandardized,
-                predictedStandardized,
-                predictedAdjusted,
-                predictedSE,
-                residualUnstandardized,
-                residualStandardized,
-                residualStudentized,
-                residualDeleted,
-                residualStudentizedDeleted,
-                distanceMahalanobis,
-                distanceCooks,
-                distanceLeverage,
-                influenceDfBetas,
-                influenceStandardizedDfBetas,
-                influenceDfFits,
-                influenceStandardizedDfFits,
-                influenceCovarianceRatios,
-                predictionMean,
-                predictionIndividual,
-                confidenceInterval,
-                createCoefficientStats,
-                coefficientOption,
-                datasetName,
-                xmlFilePath,
-                includeCovarianceMatrixXml,
-              };
-              onSave(params);
-              onClose();
-            }}
-        >
-          Continue
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="outline" onClick={() => alert('Help')}>
-          Help
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+    </div>
   );
 };
 
