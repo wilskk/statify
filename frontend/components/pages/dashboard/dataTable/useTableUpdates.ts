@@ -282,10 +282,8 @@ export const useTableUpdates = ({
                     columnIndex: i,
                     width: characterLimit, // Character limit
                     columns: visualWidth, // Visual cell width (default)
-                    decimals: (inferredType === 'NUMERIC' ? 2 : 0), 
-                    values: [], missing: null, 
-                    align: (inferredType === 'STRING' ? 'left' : 'right'), 
-                    measure: 'nominal', role: 'input'
+                    decimals: (inferredType === 'NUMERIC' ? 2 : 0),
+                    align: (inferredType === 'STRING' ? 'left' : 'right'),
                 };
                 newVariables.push(tempVar);
             }
@@ -327,10 +325,8 @@ export const useTableUpdates = ({
                     columnIndex: i,
                     width: characterLimit, // Character limit
                     columns: visualWidth, // Visual cell width (default)
-                    decimals: (inferredType === 'NUMERIC' ? 2 : 0), 
-                    values: [], missing: null, 
-                    align: (inferredType === 'STRING' ? 'left' : 'right'), 
-                    measure: 'nominal', role: 'input'
+                    decimals: (inferredType === 'NUMERIC' ? 2 : 0),
+                    align: (inferredType === 'STRING' ? 'left' : 'right'),
                 };
                 newVariables.push(tempVar);
             }
@@ -368,10 +364,8 @@ export const useTableUpdates = ({
                          columnIndex: i,
                          width: characterLimit, // Character limit
                          columns: visualWidth, // Visual cell width (default)
-                        decimals: (inferredType === 'NUMERIC' ? 2 : 0), 
-                        values: [], missing: null, 
-                        align: (inferredType === 'STRING' ? 'left' : 'right'), 
-                        measure: 'nominal', role: 'input'
+                        decimals: (inferredType === 'NUMERIC' ? 2 : 0),
+                        align: (inferredType === 'STRING' ? 'left' : 'right'),
                      };
                      newVariables.push(tempVar);
                  }

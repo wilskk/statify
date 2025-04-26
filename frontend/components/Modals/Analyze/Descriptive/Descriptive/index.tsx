@@ -17,9 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useModalStore } from "@/stores/useModalStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { Variable } from "@/types/Variable";
+import { useDescriptivesAnalysis } from "@/hooks/useDescriptivesAnalysis";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -30,10 +29,7 @@ interface DescriptivesProps {
 }
 
 const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
-    const { closeModal } = useModalStore();
     const { variables } = useVariableStore();
-    const { data } = useDataStore();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
@@ -55,8 +51,14 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
         standardError: false
     });
 
-    const [displayOrder, setDisplayOrder] = useState("variableList");    const [isCalculating, setIsCalculating] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [displayOrder, setDisplayOrder] = useState("variableList");
+
+    const { isCalculating, errorMsg, runAnalysis } = useDescriptivesAnalysis({
+        selectedVariables,
+        displayStatistics,
+        saveStandardized,
+        onClose
+    });
 
     useEffect(() => {
         setAvailableVariables(variables.filter(v => v.name !== ""));
@@ -96,42 +98,11 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
         setHighlightedVariable(null);
     };
 
-    const reorderVariables = (source: 'available' | 'selected', variables: Variable[]) => {
+    const reorderVariables = (source: 'available' | 'selected', variablesToReorder: Variable[]) => {
         if (source === 'available') {
-            setAvailableVariables([...variables]);
+            setAvailableVariables([...variablesToReorder]);
         } else {
-            setSelectedVariables([...variables]);
-        }
-    };
-
-    const handleConfirm = async () => {
-        if (selectedVariables.length === 0) {
-            setErrorMsg("Please select at least one variable.");
-            return;
-        }
-        setErrorMsg(null);
-        setIsCalculating(true);
-
-        try {
-            const logEntry = {
-                log: `DESCRIPTIVES VARIABLES=${selectedVariables.map(v => v.name).join(" ")}`
-            };
-
-            const logId = await addLog(logEntry);
-
-            const analyticEntry = {
-                title: "Descriptives",
-                note: `Analysis performed with ${selectedVariables.length} variables.`
-            };
-
-            const analyticId = await addAnalytic(logId, analyticEntry);
-
-            setIsCalculating(false);
-            closeModal();
-        } catch (error) {
-            console.error("Error performing descriptives analysis:", error);
-            setErrorMsg("An error occurred while performing the analysis. Please try again.");
-            setIsCalculating(false);
+            setSelectedVariables([...variablesToReorder]);
         }
     };
 
@@ -192,7 +163,7 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleConfirm}
+                        onClick={runAnalysis}
                         disabled={isCalculating}
                     >
                         {isCalculating ? "Processing..." : "OK"}

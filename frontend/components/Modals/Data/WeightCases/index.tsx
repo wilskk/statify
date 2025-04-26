@@ -194,7 +194,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                     <VariableListManager
                         availableVariables={availableVariables}
                         targetLists={targetLists}
-                        variableIdKey="columnIndex"
+                        variableIdKey="tempId"
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         onMoveVariable={handleMoveVariable}

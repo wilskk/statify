@@ -1,3 +1,4 @@
+// index.tsx
 "use client";
 import React, { useState, useEffect, FC } from "react";
 import { Button } from "@/components/ui/button";
@@ -88,8 +89,6 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
     const [adjustedStandardizedResiduals, setAdjustedStandardizedResiduals] = useState(false);
     const [nonintegerWeights, setNonintegerWeights] = useState<'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment'>('roundCell');
 
-
-
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
@@ -131,13 +130,13 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
     // Variable list management functions
     const moveToRowVariables = (variable: Variable) => {
         setRowVariables(prev => [...prev, variable]);
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setHighlightedVariable(null);
     };
 
     const moveToColumnVariables = (variable: Variable) => {
         setColumnVariables(prev => [...prev, variable]);
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setHighlightedVariable(null);
     };
 
@@ -149,7 +148,7 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
             return newMap;
         });
 
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setHighlightedVariable(null);
     };
 
@@ -157,15 +156,15 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
         setAvailableVariables(prev => [...prev, variable]);
 
         if (source === 'row') {
-            setRowVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setRowVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         } else if (source === 'column') {
-            setColumnVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+            setColumnVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         } else if (source === 'layer') {
             // Remove from current layer
             setLayerVariablesMap(prev => {
                 const newMap = { ...prev };
                 newMap[currentLayerIndex] = (newMap[currentLayerIndex] || [])
-                    .filter(v => v.columnIndex !== variable.columnIndex);
+                    .filter(v => v.tempId !== variable.tempId);
                 return newMap;
             });
 

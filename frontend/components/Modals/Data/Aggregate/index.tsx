@@ -19,7 +19,7 @@ import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
-import { Variable } from "@/types/Variable";
+import { Variable, VariableType, VariableMeasure } from "@/types/Variable";
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { FunctionDialog } from "./dialogs/FunctionDialog";
 import { NameLabelDialog } from "./dialogs/NameLabelDialog";
@@ -33,14 +33,14 @@ import {
     calculateAggregateValue
 } from "./Utils";
 
-interface AggregatedVariable {
-    id: string;
+export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'values' | 'missing' | 'align' | 'role' | 'width' | 'decimals' | 'columns' | 'columnIndex'> {
+    aggregateId: string;
     baseVarColumnIndex: number;
     baseVarName: string;
     name: string;
     displayName: string;
-    type: string;
-    measure?: "scale" | "ordinal" | "nominal" | "unknown";
+    type: VariableType;
+    measure: VariableMeasure;
     label?: string;
     function: string;
     functionCategory: "summary" | "specific" | "cases" | "percentages";
@@ -98,8 +98,8 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
     const [sortBeforeAggregating, setSortBeforeAggregating] = useState<boolean>(false);
     const [breakName, setBreakName] = useState<string>("N_BREAK");
 
-    const getDisplayName = (variable: Variable): string => {
-        if (variable.label) {
+    const getDisplayName = (variable: Variable | AggregatedVariable): string => {
+        if ('label' in variable && variable.label) {
             return `${variable.label} [${variable.name}]`;
         }
         return variable.name;
@@ -113,11 +113,11 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
         }
     };
 
-    const handleAggregatedVariableSelect = (id: string) => {
-        if (highlightedVariable?.id === id && highlightedVariable.source === 'aggregated') {
+    const handleAggregatedVariableSelect = (aggId: string) => {
+        if (highlightedVariable?.id === aggId && highlightedVariable.source === 'aggregated') {
             setHighlightedVariable(null);
         } else {
-            setHighlightedVariable({ id, source: 'aggregated' });
+            setHighlightedVariable({ id: aggId, source: 'aggregated' });
         }
     };
 
@@ -125,16 +125,15 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
         if (source === 'break') {
             const variable = breakVariables.find(v => v.columnIndex === columnIndex);
             if (variable) {
-                setAvailableVariables(prev => [...prev, variable]);
-                setBreakVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
+                moveFromBreak(variable);
             }
         } else if (source === 'available') {
-            handleMoveToBreak();
+            moveToBreak(availableVariables.find(v => v.columnIndex === columnIndex)!);
         }
     };
 
-    const handleAggregatedDoubleClick = (id: string) => {
-        setAggregatedVariables(prev => prev.filter(v => v.id !== id));
+    const handleAggregatedDoubleClick = (aggId: string) => {
+        moveFromAggregated(aggregatedVariables.find(v => v.aggregateId === aggId)!);
     };
 
     const getDefaultFunction = (variable: Variable): { functionCategory: "summary" | "specific" | "cases" | "percentages", function: string } => {
@@ -149,95 +148,85 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
         return aggregatedVariables.some(v => v.baseVarColumnIndex === columnIndex);
     };
 
-    const handleMoveToBreak = () => {
-        if (!highlightedVariable) return;
+    // Functions for DnD and variable management
+    const moveToBreak = (variable: Variable) => {
+        if (!variable) return;
 
-        if (highlightedVariable.source === 'available') {
-            const columnIndex = parseInt(highlightedVariable.id);
-
-            if (isVariableInAggregated(columnIndex)) {
-                setErrorMessage("The target list accepts only variables that do not appear in another target list.");
-                setErrorDialogOpen(true);
-                return;
-            }
-
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                setBreakVariables(prev => [...prev, variable]);
-                setAvailableVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-                setHighlightedVariable(null);
-            }
-        } else if (highlightedVariable.source === 'aggregated') {
+        if (isVariableInAggregated(variable.columnIndex)) {
             setErrorMessage("The target list accepts only variables that do not appear in another target list.");
             setErrorDialogOpen(true);
+            return;
         }
+
+        setBreakVariables(prev => [...prev, variable]);
+        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setHighlightedVariable(null);
     };
 
-    const handleMoveFromBreak = () => {
-        if (highlightedVariable && highlightedVariable.source === 'break') {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = breakVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                setAvailableVariables(prev => [...prev, variable]);
-                setBreakVariables(prev => prev.filter(v => v.columnIndex !== columnIndex));
-                setHighlightedVariable(null);
-            }
-        }
+    const moveFromBreak = (variable: Variable) => {
+        if (!variable) return;
+
+        setAvailableVariables(prev => [...prev, variable]);
+        setBreakVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setHighlightedVariable(null);
     };
 
-    const handleMoveToAggregated = () => {
-        if (!highlightedVariable) return;
+    const moveToAggregated = (variable: Variable) => {
+        if (!variable) return;
 
-        if (highlightedVariable.source === 'available') {
-            const columnIndex = parseInt(highlightedVariable.id);
-            const variable = availableVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                const { functionCategory, function: uiFunc } = getDefaultFunction(variable);
-                const calculationFunction = mapUIFunctionToCalculationFunction(uiFunc, "above");
-                const existingNames = aggregatedVariables.map(v => v.name);
-                const newName = createVariableName(variable.name, calculationFunction, existingNames);
-                const displayFormula = getFunctionDisplay(calculationFunction, variable.name);
+        const { functionCategory, function: uiFunc } = getDefaultFunction(variable);
+        const calculationFunction = mapUIFunctionToCalculationFunction(uiFunc, "above");
+        const existingNames = aggregatedVariables.map(v => v.name);
+        const newName = createVariableName(variable.name, calculationFunction, existingNames);
+        const displayFormula = getFunctionDisplay(calculationFunction, variable.name);
 
-                const newAggregatedVar: AggregatedVariable = {
-                    id: `agg_${columnIndex}_${Date.now()}`,
-                    baseVarColumnIndex: columnIndex,
-                    baseVarName: variable.name,
-                    name: newName,
-                    displayName: `${newName} = ${displayFormula}`,
-                    type: variable.type,
-                    measure: variable.measure,
-                    function: uiFunc,
-                    calculationFunction,
-                    functionCategory
-                };
+        const newAggregatedVar: AggregatedVariable = {
+            aggregateId: `agg_${variable.columnIndex}_${Date.now()}`,
+            baseVarColumnIndex: variable.columnIndex,
+            baseVarName: variable.name,
+            name: newName,
+            displayName: `${newName} = ${displayFormula}`,
+            type: variable.type as VariableType,
+            measure: variable.measure,
+            label: variable.label,
+            function: uiFunc,
+            calculationFunction,
+            functionCategory
+        };
 
-                setAggregatedVariables(prev => [...prev, newAggregatedVar]);
-                setHighlightedVariable(null);
-            }
-        } else if (highlightedVariable.source === 'break') {
-            setErrorMessage("The target list accepts only variables that do not appear in another target list.");
-            setErrorDialogOpen(true);
-        }
+        setAggregatedVariables(prev => [...prev, newAggregatedVar]);
+        setHighlightedVariable(null);
     };
 
-    const handleMoveFromAggregated = () => {
-        if (highlightedVariable && highlightedVariable.source === 'aggregated') {
-            setAggregatedVariables(prev =>
-                prev.filter(v => v.id !== highlightedVariable.id)
-            );
-            setHighlightedVariable(null);
-        }
+    const moveFromAggregated = (variable: AggregatedVariable) => {
+        if (!variable) return;
+
+        setAggregatedVariables(prev => prev.filter(v => v.aggregateId !== variable.aggregateId));
+        setHighlightedVariable(null);
+    };
+
+    // Reordering functions for DnD
+    const reorderBreakVariables = (variables: Variable[]) => {
+        setBreakVariables([...variables]);
+    };
+
+    const reorderAggregatedVariables = (variables: AggregatedVariable[]) => {
+        setAggregatedVariables([...variables]);
     };
 
     const handleTopArrowClick = () => {
         if (!highlightedVariable) return;
 
         if (highlightedVariable.source === 'available') {
-            handleMoveToBreak();
+            const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
+            if (variable) {
+                moveToBreak(variable);
+            }
         } else if (highlightedVariable.source === 'break') {
-            handleMoveFromBreak();
-        } else if (highlightedVariable.source === 'aggregated') {
-            handleMoveToBreak();
+            const variable = breakVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
+            if (variable) {
+                moveFromBreak(variable);
+            }
         }
     };
 
@@ -245,33 +234,40 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
         if (!highlightedVariable) return;
 
         if (highlightedVariable.source === 'available') {
-            handleMoveToAggregated();
-        } else if (highlightedVariable.source === 'break') {
-            handleMoveToAggregated();
+            const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
+            if (variable) {
+                moveToAggregated(variable);
+            }
         } else if (highlightedVariable.source === 'aggregated') {
-            handleMoveFromAggregated();
+            const variable = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
+            if (variable) {
+                moveFromAggregated(variable);
+            }
         }
     };
 
     const handleFunctionClick = () => {
-        if (highlightedVariable && highlightedVariable.source === 'aggregated') {
-            const variable = aggregatedVariables.find(v => v.id === highlightedVariable.id);
-            if (variable) {
-                setFunctionCategory(variable.functionCategory);
-                setSelectedFunction(variable.function);
-                setPercentageType(variable.percentageType || "above");
-                setPercentageValue(variable.percentageValue || "");
-                setPercentageLow(variable.percentageLow || "");
-                setPercentageHigh(variable.percentageHigh || "");
-                setCurrentEditingVariable(variable);
-                setFunctionDialogOpen(true);
-            }
+        if (!highlightedVariable || highlightedVariable.source !== 'aggregated') {
+            setErrorMessage("Please select an aggregated variable to change its function.");
+            setErrorDialogOpen(true);
+            return;
+        }
+        const variableToEdit = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
+        if (variableToEdit) {
+            setCurrentEditingVariable(variableToEdit);
+            setFunctionCategory(variableToEdit.functionCategory);
+            setSelectedFunction(variableToEdit.function);
+            setPercentageType(variableToEdit.percentageType || "above");
+            setPercentageValue(variableToEdit.percentageValue || "");
+            setPercentageLow(variableToEdit.percentageLow || "");
+            setPercentageHigh(variableToEdit.percentageHigh || "");
+            setFunctionDialogOpen(true);
         }
     };
 
     const handleNameLabelClick = () => {
         if (highlightedVariable && highlightedVariable.source === 'aggregated') {
-            const variable = aggregatedVariables.find(v => v.id === highlightedVariable.id);
+            const variable = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
             if (variable) {
                 setNewVariableName(variable.name);
                 setNewVariableLabel(variable.label || "");
@@ -294,7 +290,7 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
             let newName = currentEditingVariable.name;
             if (functionChanged) {
                 const existingNames = aggregatedVariables
-                    .filter(v => v.id !== currentEditingVariable.id)
+                    .filter(v => v.aggregateId !== currentEditingVariable.aggregateId)
                     .map(v => v.name);
                 newName = createVariableName(baseName, calculationFunction, existingNames);
             }
@@ -341,7 +337,7 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
             }
 
             setAggregatedVariables(prev =>
-                prev.map(v => v.id === currentEditingVariable.id ? updatedVar : v)
+                prev.map(v => v.aggregateId === currentEditingVariable.aggregateId ? updatedVar : v)
             );
 
             setFunctionDialogOpen(false);
@@ -351,6 +347,15 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
 
     const applyNameLabel = () => {
         if (currentEditingVariable) {
+            const isNameDuplicate = aggregatedVariables.some(
+                v => v.name === newVariableName && v.aggregateId !== currentEditingVariable.aggregateId
+            );
+            if (isNameDuplicate) {
+                setErrorMessage("A variable with this name already exists.");
+                setErrorDialogOpen(true);
+                return;
+            }
+
             let displayFormula;
             const func = currentEditingVariable.calculationFunction || currentEditingVariable.function;
 
@@ -382,7 +387,7 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
             };
 
             setAggregatedVariables(prev =>
-                prev.map(v => v.id === currentEditingVariable.id ? updatedVar : v)
+                prev.map(v => v.aggregateId === currentEditingVariable.aggregateId ? updatedVar : v)
             );
 
             setNameDialogOpen(false);
@@ -533,6 +538,13 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
                             handleFunctionClick={handleFunctionClick}
                             handleNameLabelClick={handleNameLabelClick}
                             getDisplayName={getDisplayName}
+                            // Props for DnD functionality
+                            moveToBreak={moveToBreak}
+                            moveFromBreak={moveFromBreak}
+                            moveToAggregated={moveToAggregated}
+                            moveFromAggregated={moveFromAggregated}
+                            reorderBreakVariables={reorderBreakVariables}
+                            reorderAggregatedVariables={reorderAggregatedVariables}
                         />
                     </TabsContent>
 

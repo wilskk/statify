@@ -48,7 +48,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'dependent',
             title: 'Dependent List',
             variables: dependentVariables,
-            height: '140px',
+            height: '110px',
             draggableItems: true,
             droppable: true,
         },
@@ -56,7 +56,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'factor',
             title: 'Factor List',
             variables: factorVariables,
-            height: '90px',
+            height: '80px',
             draggableItems: true,
             droppable: true,
         },
@@ -127,6 +127,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 setHighlightedVariable={setManagerHighlightedVariable}
                 onMoveVariable={handleMoveVariable}
                 onReorderVariable={handleReorderVariables}
+                availableListHeight={'320px'}
                 // Using default icons and display names
                 // No specific footers needed here
             />

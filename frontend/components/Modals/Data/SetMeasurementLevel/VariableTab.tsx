@@ -83,7 +83,7 @@ const VariableTab: FC<VariableTabProps> = ({
                 <VariableListManager
                     availableVariables={unknownVariables}
                     targetLists={targetLists}
-                    variableIdKey="columnIndex"
+                    variableIdKey="tempId"
                     highlightedVariable={highlightedVariable}
                     setHighlightedVariable={setHighlightedVariable}
                     onMoveVariable={handleMoveVariable}

@@ -46,7 +46,7 @@ const VariableTab: FC<VariableTabProps> = ({
         id: 'sorting',
         title: 'Sort within matching groups by:',
         variables: sortingVariables,
-        height: '60px',
+        height: '100px',
         droppable: true,
         draggableItems: true
     };

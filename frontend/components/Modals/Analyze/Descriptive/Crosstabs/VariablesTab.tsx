@@ -13,9 +13,8 @@ import {
     MoveHorizontal,
     ChevronLeft,
     ChevronRight,
-    Layers,
-    Columns3,
-    Rows3
+    ArrowBigDown,
+    ArrowBigLeft
 } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 
@@ -111,6 +110,71 @@ const VariablesTab: FC<VariablesTabProps> = ({
         } else if (source === 'layer') {
             moveToAvailableVariables(variable, 'layer');
         }
+    };
+
+    // Function to handle arrow button click
+    const handleArrowButtonClick = (targetListId: 'row' | 'column' | 'layer') => {
+        if (!highlightedVariable) return;
+
+        const { id, source } = highlightedVariable;
+
+        // From available to target list
+        if (source === 'available') {
+            const variable = availableVariables.find(v => v.columnIndex.toString() === id);
+            if (variable) {
+                if (targetListId === 'row') {
+                    moveToRowVariables(variable);
+                } else if (targetListId === 'column') {
+                    moveToColumnVariables(variable);
+                } else if (targetListId === 'layer') {
+                    moveToLayerVariables(variable);
+                }
+            }
+        }
+        // From target list to available
+        else if (source === targetListId) {
+            let variable;
+            if (targetListId === 'row') {
+                variable = rowVariables.find(v => v.columnIndex.toString() === id);
+            } else if (targetListId === 'column') {
+                variable = columnVariables.find(v => v.columnIndex.toString() === id);
+            } else if (targetListId === 'layer') {
+                variable = (layerVariablesMap[currentLayerIndex] || []).find(v => v.columnIndex.toString() === id);
+            }
+
+            if (variable) {
+                moveToAvailableVariables(variable, targetListId);
+            }
+        }
+    };
+
+    // Function to render arrow button
+    const renderArrowButton = (targetListId: 'row' | 'column' | 'layer') => {
+        const isTargetHighlighted = highlightedVariable?.source === targetListId;
+        const isAvailableHighlighted = highlightedVariable?.source === 'available';
+        const isDisabled = !highlightedVariable ||
+            (highlightedVariable.source !== 'available' && highlightedVariable.source !== targetListId);
+
+        // Direction: if target is highlighted, show left arrow (to available)
+        // otherwise show right arrow (from available to target)
+        const direction = isTargetHighlighted ? 'left' : 'right';
+
+        return (
+            <button
+                className={`
+                    flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
+                    ${isDisabled
+                    ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'}
+                `}
+                onClick={() => !isDisabled && handleArrowButtonClick(targetListId)}
+                disabled={isDisabled}
+            >
+                {direction === 'left'
+                    ? <ArrowBigLeft size={14} />
+                    : <ArrowBigDown size={14} />}
+            </button>
+        );
     };
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, variable: Variable, source: 'available' | 'row' | 'column' | 'layer') => {
@@ -364,7 +428,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     <div className="flex items-center mb-2">
                         <span className="text-sm font-medium">Available Variables</span>
                     </div>
-                    {renderVariableList(availableVariables, 'available', '330px')}
+                    {renderVariableList(availableVariables, 'available', '340px')}
                     <div className="text-xs mt-2 text-[#888888] flex items-center">
                         <InfoIcon size={14} className="mr-1 flex-shrink-0" />
                         <span>Drag or double-click variables to move them.</span>
@@ -377,11 +441,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     <div className="flex flex-col">
                         <div className="flex-1">
                             <div className="flex items-center mb-2">
-                                <Rows3 size={16} className="mr-2 text-[#444444]" />
+                                {renderArrowButton('row')}
                                 <span className="text-sm font-medium">Row(s)</span>
                             </div>
                             {renderVariableList(rowVariables, 'row', '80px')}
-
                         </div>
                     </div>
 
@@ -389,11 +452,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     <div className="flex flex-col">
                         <div className="flex-1">
                             <div className="flex items-center mb-2">
-                                <Columns3 size={16} className="mr-2 text-[#444444]" />
+                                {renderArrowButton('column')}
                                 <span className="text-sm font-medium">Column(s)</span>
                             </div>
                             {renderVariableList(columnVariables, 'column', '80px')}
-
                         </div>
                     </div>
 
@@ -402,7 +464,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center">
-                                    <Layers size={16} className="mr-2 text-[#444444]" />
+                                    {renderArrowButton('layer')}
                                     <span className="text-sm font-medium">Layer</span>
                                 </div>
                                 <div className="flex items-center bg-[#F7F7F7] border border-[#E6E6E6] rounded px-2 py-1">

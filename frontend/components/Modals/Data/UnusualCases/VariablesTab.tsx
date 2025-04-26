@@ -46,7 +46,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'analysis',
             title: 'Analysis Variables',
             variables: analysisVariables,
-            height: '150px',
+            height: '205px',
             draggableItems: true,
             droppable: true,
         },
@@ -54,7 +54,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'identifier',
             title: 'Case Identifier Variable',
             variables: caseIdentifierVariable ? [caseIdentifierVariable] : [],
-            height: '60px',
+            height: '70px',
             maxItems: 1,
             draggableItems: false, // Cannot drag *from* or reorder within identifier list
             droppable: true,      // Can drop *into* identifier list
@@ -123,10 +123,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 onMoveVariable={handleMoveVariable}
                 onReorderVariable={handleReorderVariables}
             />
-             <div className="text-xs mt-3 text-[#888888] flex items-center">
-                 <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                 <span>To change a variable&apos;s measurement level, right click on it in the Variables list.</span>
-             </div>
             {errorMsg && (
                 <div className="col-span-2 text-red-600 text-sm mt-3 p-2 bg-red-50 border border-red-200 rounded">
                     {errorMsg}

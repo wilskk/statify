@@ -60,11 +60,9 @@ const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell'
 
 // Fungsi helper yang disederhanakan dan diperbaiki, diganti nama menjadi internal
 const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, maxRow: number, maxCol: number, minColCount?: number): boolean => {
-    console.log(`[_ensureMatrixDimensionsInternal] Called with: maxRow=${maxRow}, maxCol=${maxCol}, minColCount=${minColCount}`);
     const effectiveMaxCol = minColCount !== undefined ? Math.max(maxCol, minColCount - 1) : maxCol;
     const currentRows = state.data?.length || 0;
     const initialCols = currentRows > 0 ? (state.data[0]?.length || 0) : 0;
-    console.log(`  -> Before: currentRows=${currentRows}, currentCols=${initialCols}, effectiveMaxCol=${effectiveMaxCol}`);
 
     let structureChanged = false;
     const targetRows = maxRow + 1; // Need rows up to index maxRow
@@ -72,14 +70,13 @@ const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, m
 
     // Check if expansion is needed at all
     if (targetRows <= currentRows && targetCols <= initialCols) {
-        console.log("  -> No dimension change needed based on targetRows/targetCols.");
         return false; // No change needed
     }
 
     // 1. Add rows if needed
     if (targetRows > currentRows) {
         const rowsToAdd = targetRows - currentRows;
-        console.log(`  -> Adding ${rowsToAdd} rows (from ${currentRows} to ${targetRows - 1})`);
+
         for (let i = 0; i < rowsToAdd; i++) {
             // Add new rows with the *target* width directly
             state.data.push(Array(targetCols).fill(""));
@@ -97,7 +94,6 @@ const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, m
             const colsToAdd = targetCols - currentRowWidth;
             if (colsToAdd > 0) {
                  // If row doesn't exist or is too short, create/extend it
-                 console.log(`  -> Padding row ${i}: CurrentWidth=${currentRowWidth}, TargetWidth=${targetCols}, Adding=${colsToAdd}`);
                  state.data[i] = [...existingRowContent, ...Array(colsToAdd).fill("")];
                  columnWidthChanged = true;
             }
@@ -115,14 +111,11 @@ const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, m
 
     if (structureChanged) {
         state.lastUpdated = new Date();
-        console.log(`  -> Structure changed. New dimensions: ${state.data.length}x${state.data[0]?.length || 0}`);
     } else {
-        console.log("  -> No structure change detected within _ensureMatrixDimensionsInternal logic.");
     }
 
     // Log final state of specific row if error involves it (example)
     if (maxRow >= 3 && state.data && state.data.length > 3) {
-        console.log(`  -> Final state.data[3] length: ${state.data[3]?.length}, exists: ${!!state.data[3]}`);
     }
 
     return structureChanged;
@@ -186,34 +179,27 @@ export const useDataStore = create<DataStoreState>()(
                 const currentValue = currentData[row]?.[col];
                 const isNewCell = !(row < currentData.length && col < (currentData[0]?.length ?? 0));
                 if (currentValue === value && !isNewCell) {
-                     console.log(`[updateCell] No change needed for (${row}, ${col})`);
                      return; // Tidak ada perubahan
                  }
                  if ((value === "" || value === null || value === undefined) && isNewCell) {
-                     console.log(`[updateCell] Ignoring empty value for new cell (${row}, ${col})`);
                     return; // Jangan buat sel baru untuk nilai kosong
                  }
-
 
                 const oldData = get().data.map(r => [...r]); // Deep copy untuk rollback
                 let dataChangedInState = false;
                 let structureActuallyChanged = false;
 
                 set((state) => {
-                    console.log(`[updateCell] Before ensure: R=${row}, C=${col}, Val="${value}"`);
                     const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
                     // Use the renamed internal helper
                     structureActuallyChanged = _ensureMatrixDimensionsInternal(state, row, col, minCols);
-                    console.log(`[updateCell] State after ensure: Rows=${state.data.length}, Cols=${state.data[0]?.length || 0}, StructureChanged=${structureActuallyChanged}`);
 
                     // Periksa lagi *setelah* _ensureMatrixDimensionsInternal
                     if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
                          if (state.data[row][col] !== value) {
-                             console.log(`[updateCell] Applying update: (${row}, ${col}) = "${value}"`);
                             state.data[row][col] = value;
                             dataChangedInState = true;
                         } else {
-                            console.log(`[updateCell] Skipping update (value same): (${row}, ${col})`);
                         }
                     } else {
                          // Ini seharusnya tidak terjadi jika _ensureMatrixDimensionsInternal benar
@@ -222,27 +208,23 @@ export const useDataStore = create<DataStoreState>()(
 
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
-                        console.log(`[updateCell] State updated flag set: DataChanged=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
                     } else {
-                         console.log(`[updateCell] No state changes detected within set.`);
                     }
                 });
 
                  // Hanya lakukan operasi DB jika nilai data benar-benar berubah
                  if (!dataChangedInState) {
-                      console.log("[updateCell] Skipping DB update as only data state might have changed.");
                       return;
                   }
 
                 try {
-                     console.log(`[updateCell] DB op: ${value === "" || value === null || value === undefined ? 'delete' : 'put'} for cell (${row}, ${col})`);
                     if (value === "" || value === null || value === undefined) {
                          // Correct key order for delete
                         await db.cells.delete([col, row]); // Use primary key [col, row]
                     } else {
                         await db.cells.put({ row, col, value });
                     }
-                    console.log(`[updateCell] DB op successful for cell (${row}, ${col})`);
+
                     // Clear related error on success
                     set(state => { if(state.error?.source === 'updateCell') state.error = null; });
                 } catch (error: any) {
@@ -251,15 +233,12 @@ export const useDataStore = create<DataStoreState>()(
                     set((state) => {
                         state.data = oldData;
                         state.error = { message: "Failed to update cell in database", source: "updateCell", originalError: error };
-                        console.log("[updateCell] State rolled back due to DB error.");
                     });
                 }
             },
 
             updateBulkCells: async (updates) => {
-                 console.log('[updateBulkCells] Received updates:', JSON.stringify(updates)); // Log input
                 if (!updates || updates.length === 0) {
-                     console.log('[updateBulkCells] Received no updates. Skipping.');
                      return;
                 }
 
@@ -268,7 +247,6 @@ export const useDataStore = create<DataStoreState>()(
                 // Calculate max dimensions based on ALL incoming updates *before* filtering
                 let maxRow = -1; let maxCol = -1;
                 updates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
-                 console.log(`[updateBulkCells] Max dimensions from incoming updates: R=${maxRow}, C=${maxCol}`);
 
                 // Filter updates *before* expansion (based on oldData) to determine if DB op needed later
                 // And to potentially avoid unnecessary state expansion if all updates are identical or empty new cells
@@ -282,7 +260,6 @@ export const useDataStore = create<DataStoreState>()(
                     return needsUpdate;
                 });
 
-                 console.log(`[updateBulkCells] Received ${updates.length} updates, ${validUpdatesForPotentialChange.length} are potentially meaningful changes.`);
                 // Early exit if no meaningful changes are detected *before* state manipulation
                 // Note: This might skip expansion if only structure would change, which might be desired or not.
                 // If expansion MUST happen even for empty cells, remove this early exit.
@@ -297,11 +274,9 @@ export const useDataStore = create<DataStoreState>()(
                 let structureActuallyChanged = false;
 
                 set((state) => {
-                    console.log(`[updateBulkCells] Entering set function.`);
                     const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
                     // Use the renamed internal helper, ensure dimensions based on maxRow/maxCol from *all* updates
                     structureActuallyChanged = _ensureMatrixDimensionsInternal(state, maxRow, maxCol, minCols);
-                    console.log(`[updateBulkCells] State after ensure: Rows=${state.data.length}, Cols=${state.data[0]?.length || 0}, StructureChanged=${structureActuallyChanged}`);
 
                     // Iterate through the *original* updates again, but apply based on the *current* (potentially expanded) state
                     updates.forEach(({ row, col, value }) => {
@@ -309,11 +284,9 @@ export const useDataStore = create<DataStoreState>()(
                         if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
                             // Apply if value is different in the *current* state
                              if(state.data[row][col] !== value) {
-                                console.log(`[updateBulkCells] Applying update: (${row}, ${col}) = "${value}"`);
                                 state.data[row][col] = value;
                                 dataChangedInState = true; // Mark that data *in the state* definitely changed
                             } else {
-                                 console.log(`[updateBulkCells] Skipping update (value same in current state): (${row}, ${col})`);
                             }
                         } else {
                             // This error check is still valid, should not happen if ensure is correct
@@ -323,16 +296,13 @@ export const useDataStore = create<DataStoreState>()(
 
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
-                        console.log(`[updateBulkCells] State updated flag set: DataChanged=${dataChangedInState}, StructureChanged=${structureActuallyChanged}`);
                     } else {
-                         console.log(`[updateBulkCells] No state changes detected within set.`);
                     }
                 });
 
                  // Perform DB operations based on the `validUpdatesForPotentialChange` list determined *before* the `set` call.
                  // This ensures we only write to DB if there was an actual intended change from the original state.
                 if (validUpdatesForPotentialChange.length === 0) {
-                     console.log("[updateBulkCells] Skipping DB operations as no meaningful changes were initially detected.");
                      return;
                  }
 
@@ -346,8 +316,6 @@ export const useDataStore = create<DataStoreState>()(
                      // Ensure the mapping result conforms to CellPrimaryKey [number, number]
                     .map(({ row, col }): CellPrimaryKey => [col, row]);
 
-                console.log(`[updateBulkCells] DB ops based on initial check: Putting ${cellsToPut.length} cells, Deleting ${keysToDelete.length} keys.`);
-
                 if (cellsToPut.length > 0 || keysToDelete.length > 0) {
                     try {
                         await db.transaction('rw', db.cells, async () => {
@@ -355,7 +323,7 @@ export const useDataStore = create<DataStoreState>()(
                             if (keysToDelete.length > 0) await db.cells.bulkDelete(keysToDelete);
                             if (cellsToPut.length > 0) await db.cells.bulkPut(cellsToPut);
                         });
-                        console.log("[updateBulkCells] DB transaction successful.");
+
                         // Clear related error on success
                         set(state => { if(state.error?.source === 'updateBulkCells') state.error = null; });
                     } catch (error: any) {
@@ -365,11 +333,9 @@ export const useDataStore = create<DataStoreState>()(
                             state.data = oldDataCopy;
                             state.lastUpdated = new Date(); // Reflect rollback time? Or keep original lastUpdated? This resets it.
                             state.error = { message: "Bulk update failed, state rolled back", source: "updateBulkCells", originalError: error };
-                            console.log("[updateBulkCells] State rolled back due to DB error.");
                         });
                     }
                 } else {
-                     console.log("[updateBulkCells] No DB operations needed based on filtered updates.");
                 }
             },
 

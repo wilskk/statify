@@ -68,7 +68,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                                                                getDisplayName = defaultGetDisplayName,
                                                                renderListFooter,
                                                                onVariableDoubleClick,
-                                                               showArrowButtons = false,
+                                                               showArrowButtons = true,
                                                                availableListHeight = '300px', // Default height of 300px if not provided
                                                            }) => {
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, sourceListId: string } | null>(null);
@@ -85,7 +85,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, variable: Variable, sourceListId: string) => {
         console.log(`[VariableListManager] handleDragStart - variableId: ${variable?.[variableIdKey]}, sourceListId: ${sourceListId}`);
         const varId = variable[variableIdKey];
-        if (!varId) {
+        if (varId === undefined || varId === null) {
             console.error("Variable is missing the unique key:", variableIdKey);
             e.preventDefault();
             return;
@@ -267,7 +267,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // --- Selection and Double Click Handlers ---
     const handleVariableSelect = useCallback((variable: Variable, sourceListId: string) => {
         const varId = variable[variableIdKey]?.toString();
-        if (!varId) return;
+        if (varId === undefined || varId === null) return;
         if (highlightedVariable?.id === varId && highlightedVariable.source === sourceListId) {
             setHighlightedVariable(null);
         } else {
@@ -345,7 +345,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // --- Rendering Logic ---
     const renderVariableItem = (variable: Variable, listId: string, index: number) => {
         const varId = variable[variableIdKey]?.toString();
-        if (!varId) {
+        if (varId === undefined || varId === null) {
             console.warn("Variable missing ID for rendering:", variable);
             return null; // Don't render item if it lacks a unique ID
         }
@@ -448,7 +448,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             return (
                 <button
                     className={`
-                        flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border ml-2
+                        flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
                         ${isDisabled
                         ? 'border-slate-200 text-slate-300 cursor-not-allowed'
                         : 'border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'}
@@ -467,8 +467,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             <div key={id} className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}>
                 {title && (
                     <div className="text-sm font-medium text-slate-700 mb-1.5 px-1 flex items-center">
+                        {id !== 'available' && renderArrowButton()}
                         <span className="flex-1">{title}</span>
-                        {renderArrowButton()}
                     </div>
                 )}
                 <div

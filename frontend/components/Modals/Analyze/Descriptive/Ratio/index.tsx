@@ -25,6 +25,9 @@ import VariablesTab from "./VariablesTab";
 import OptionsTab from "./OptionsTab";
 import StatisticsTab from "./StatisticsTab";
 
+// Extend Variable type to include tempId
+type VariableWithTempId = Variable & { tempId?: string };
+
 interface RatioStatisticsProps {
     onClose: () => void;
 }
@@ -38,12 +41,12 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
     // Tab state
     const [activeTab, setActiveTab] = useState("variables");
 
-    // Variables tab state
-    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    // Variables tab state - updated to use tempId
+    const [availableVariables, setAvailableVariables] = useState<VariableWithTempId[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'numerator' | 'denominator' | 'group'} | null>(null);
-    const [numeratorVariable, setNumeratorVariable] = useState<Variable | null>(null);
-    const [denominatorVariable, setDenominatorVariable] = useState<Variable | null>(null);
-    const [groupVariable, setGroupVariable] = useState<Variable | null>(null);
+    const [numeratorVariable, setNumeratorVariable] = useState<VariableWithTempId | null>(null);
+    const [denominatorVariable, setDenominatorVariable] = useState<VariableWithTempId | null>(null);
+    const [groupVariable, setGroupVariable] = useState<VariableWithTempId | null>(null);
 
     // Options tab state
     const [sortByGroup, setSortByGroup] = useState(true);
@@ -74,22 +77,35 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         maximum: false
     });
 
+    // Ensure all variables have tempId for unique identification
     useEffect(() => {
+        // Generate tempId for variables that don't have one
+        const variablesWithTempId = variables.map(v => {
+            if (!('tempId' in v)) {
+                return {...v, tempId: `var_${v.columnIndex}_${Date.now()}`};
+            }
+            return v;
+        });
+
+        // Menampung tempId dari variabel yang sudah diassign (tanpa nilai undefined)
         const assignedTempIds = [
             numeratorVariable?.tempId,
             denominatorVariable?.tempId,
             groupVariable?.tempId
-        ].filter(tempId => tempId !== undefined);
+        ].filter((tempId): tempId is string => tempId !== undefined);
 
-        const initialAvailableVars = variables
-            .filter(v => v.name !== "" && v.tempId)
-            .filter(v => v.tempId && !assignedTempIds.includes(v.tempId))
+        // Filter variabel yang tersedia (memastikan tempId tidak ada di variabel yang sudah diassign)
+        const initialAvailableVars = variablesWithTempId
+            .filter(v => v.name !== "")
+            .filter(v => v.tempId !== undefined && !assignedTempIds.includes(v.tempId))
             .sort((a, b) => a.columnIndex - b.columnIndex);
+
         setAvailableVariables(initialAvailableVars);
     }, [variables, numeratorVariable, denominatorVariable, groupVariable]);
 
-    const addVariableBackToAvailable = (variable: Variable | null) => {
+    const addVariableBackToAvailable = (variable: VariableWithTempId | null) => {
         if (!variable || !variable.tempId) return;
+
         setAvailableVariables(prev => {
             if (prev.some(v => v.tempId === variable.tempId)) {
                 return prev;
@@ -106,20 +122,24 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         const variableToMove = availableVariables.find(v => v.tempId === highlightedVariable?.tempId);
         if (!variableToMove || !variableToMove.tempId) return;
 
+        // Release current variable if one exists
         if (role === 'numerator' && numeratorVariable) addVariableBackToAvailable(numeratorVariable);
         if (role === 'denominator' && denominatorVariable) addVariableBackToAvailable(denominatorVariable);
         if (role === 'group' && groupVariable) addVariableBackToAvailable(groupVariable);
 
+        // Set new variable for role
         if (role === 'numerator') setNumeratorVariable(variableToMove);
         if (role === 'denominator') setDenominatorVariable(variableToMove);
         if (role === 'group') setGroupVariable(variableToMove);
 
+        // Remove from available variables
         setAvailableVariables(prev => prev.filter(v => v.tempId !== variableToMove.tempId));
         setHighlightedVariable(null);
     };
 
     const removeVariableFromRole = (role: 'numerator' | 'denominator' | 'group') => {
-        let variableToRemove: Variable | null = null;
+        let variableToRemove: VariableWithTempId | null = null;
+
         if (role === 'numerator') {
             variableToRemove = numeratorVariable;
             setNumeratorVariable(null);
@@ -130,12 +150,15 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
             variableToRemove = groupVariable;
             setGroupVariable(null);
         }
+
         addVariableBackToAvailable(variableToRemove);
+
         if (highlightedVariable && highlightedVariable.tempId === variableToRemove?.tempId) {
             setHighlightedVariable(null);
         }
     };
 
+    // Simple handlers for moving variables
     const handleSetNumerator = () => setVariableForRole('numerator');
     const handleSetDenominator = () => setVariableForRole('denominator');
     const handleSetGroup = () => setVariableForRole('group');
@@ -183,8 +206,22 @@ const RatioStatistics: FC<RatioStatisticsProps> = ({ onClose }) => {
         setNumeratorVariable(null);
         setDenominatorVariable(null);
         setGroupVariable(null);
-        setAvailableVariables(variables.filter(v => v.name !== "" && v.tempId).sort((a, b) => a.columnIndex - b.columnIndex));
+
+        // Reset available variables, ensuring they all have tempId
+        const variablesWithTempId = variables
+            .filter(v => v.name !== "")
+            .map(v => {
+                if (!('tempId' in v)) {
+                    return {...v, tempId: `var_${v.columnIndex}_${Date.now()}`};
+                }
+                return v;
+            })
+            .sort((a, b) => a.columnIndex - b.columnIndex);
+
+        setAvailableVariables(variablesWithTempId);
         setHighlightedVariable(null);
+
+        // Reset other options
         setSortByGroup(true);
         setSortOrder("ascending");
         setDisplayResults(true);

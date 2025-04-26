@@ -319,7 +319,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         id: 'selected',
         title: 'Variable(s):',
         variables: selectedVariables,
-        height: '150px',
+        height: '127px',
         droppable: true,
         draggableItems: true
     };
@@ -328,7 +328,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         id: 'name',
         title: 'Name Variable:',
         variables: nameVariables,
-        height: '40px',
+        height: '50px',
         maxItems: 1, // Only allow one item
         droppable: true,
         draggableItems: false // No need to reorder since it's just one item

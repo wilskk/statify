@@ -318,7 +318,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
         id: 'sortBy',
         title: 'Sort By:',
         variables: getSortByVariables(),
-        height: '200px',
+        height: '245px',
         droppable: true,
         draggableItems: true
     };
