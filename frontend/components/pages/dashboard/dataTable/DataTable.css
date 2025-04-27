@@ -5,3 +5,10 @@
     background-color: #f8f9fa;
     font-weight: normal;
 } 
+
+/* Ensure single line height and hide overflow for all data cells */
+.handsontable td {
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden; /* Hide overflowing text */
+    text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
+} 

@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,15 +12,20 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
+import type { StatisticsOptions } from "@/types/Analysis";
 
 interface StatisticsTabProps {
     showStatistics: boolean;
     setShowStatistics: React.Dispatch<React.SetStateAction<boolean>>;
+    resetCounter: number;
+    onOptionsChange: (options: StatisticsOptions) => void;
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
                                                    showStatistics,
-                                                   setShowStatistics
+                                                   setShowStatistics,
+                                                   resetCounter,
+                                                   onOptionsChange
                                                }) => {
     const [percentileValues, setPercentileValues] = useState<string[]>([]);
     const [currentPercentile, setCurrentPercentile] = useState("");
@@ -29,6 +34,89 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     const [enablePercentiles, setEnablePercentiles] = useState(false);
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
+
+    // State for individual checkboxes
+    const [quartilesChecked, setQuartilesChecked] = useState(false);
+    const [cutPointsChecked, setCutPointsChecked] = useState(false);
+    const [meanChecked, setMeanChecked] = useState(false);
+    const [medianChecked, setMedianChecked] = useState(false);
+    const [modeChecked, setModeChecked] = useState(false);
+    const [sumChecked, setSumChecked] = useState(false);
+    const [stdDevChecked, setStdDevChecked] = useState(false);
+    const [varianceChecked, setVarianceChecked] = useState(false);
+    const [rangeChecked, setRangeChecked] = useState(false);
+    const [minChecked, setMinChecked] = useState(false);
+    const [maxChecked, setMaxChecked] = useState(false);
+    const [seMeanChecked, setSeMeanChecked] = useState(false);
+    const [kurtosisChecked, setKurtosisChecked] = useState(false);
+    const [skewnessChecked, setSkewnessChecked] = useState(false);
+
+    // Effect to report options change
+    useEffect(() => {
+        const options: StatisticsOptions = {
+            percentileValues: {
+                quartiles: quartilesChecked,
+                cutPoints: cutPointsChecked,
+                cutPointsN: parseInt(cutPointsValue, 10) || 10,
+                enablePercentiles: enablePercentiles,
+                percentilesList: percentileValues,
+            },
+            centralTendency: {
+                mean: meanChecked,
+                median: medianChecked,
+                mode: modeChecked,
+                sum: sumChecked,
+            },
+            dispersion: {
+                stddev: stdDevChecked,
+                variance: varianceChecked,
+                range: rangeChecked,
+                minimum: minChecked,
+                maximum: maxChecked,
+                stdErrorMean: seMeanChecked,
+            },
+            distribution: {
+                skewness: skewnessChecked,
+                stdErrorSkewness: skewnessChecked,
+                kurtosis: kurtosisChecked,
+                stdErrorKurtosis: kurtosisChecked,
+            },
+        };
+        onOptionsChange(options);
+    }, [
+        quartilesChecked, cutPointsChecked, cutPointsValue, enablePercentiles, percentileValues,
+        meanChecked, medianChecked, modeChecked, sumChecked,
+        stdDevChecked, varianceChecked, rangeChecked, minChecked, maxChecked, seMeanChecked,
+        kurtosisChecked, skewnessChecked,
+    ]);
+
+    // Reset Effect
+    useEffect(() => {
+        if (resetCounter > 0) {
+            // Reset percentile states
+            setPercentileValues([]);
+            setCurrentPercentile("");
+            setSelectedPercentile(null);
+            setCutPointsValue("10");
+            setEnablePercentiles(false);
+
+            // Reset checkbox states
+            setQuartilesChecked(false);
+            setCutPointsChecked(false);
+            setMeanChecked(false);
+            setMedianChecked(false);
+            setModeChecked(false);
+            setSumChecked(false);
+            setStdDevChecked(false);
+            setVarianceChecked(false);
+            setRangeChecked(false);
+            setMinChecked(false);
+            setMaxChecked(false);
+            setSeMeanChecked(false);
+            setKurtosisChecked(false);
+            setSkewnessChecked(false);
+        }
+    }, [resetCounter]);
 
     // Helper function to validate percentile value
     const validatePercentileValue = (value: string): boolean => {
@@ -134,6 +222,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="quartiles"
                             className="mr-2 border-[#CCCCCC]"
                             disabled={!showStatistics}
+                            checked={quartilesChecked}
+                            onCheckedChange={(checked) => setQuartilesChecked(!!checked)}
                         />
                         <Label htmlFor="quartiles" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Quartiles
@@ -146,6 +236,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="cutPoints"
                                 className="mr-2 border-[#CCCCCC] mt-1"
                                 disabled={!showStatistics}
+                                checked={cutPointsChecked}
+                                onCheckedChange={(checked) => setCutPointsChecked(!!checked)}
                             />
                             <div className="flex flex-wrap items-center">
                                 <Label htmlFor="cutPoints" className={`text-sm cursor-pointer mr-2 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
@@ -258,8 +350,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="mean"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={meanChecked}
+                            onCheckedChange={(checked) => setMeanChecked(!!checked)}
                         />
                         <Label htmlFor="mean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Mean
@@ -270,8 +363,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="median"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={medianChecked}
+                            onCheckedChange={(checked) => setMedianChecked(!!checked)}
                         />
                         <Label htmlFor="median" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Median
@@ -282,8 +376,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="mode"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={modeChecked}
+                            onCheckedChange={(checked) => setModeChecked(!!checked)}
                         />
                         <Label htmlFor="mode" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Mode
@@ -295,6 +390,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="sum"
                             className="mr-2 border-[#CCCCCC]"
                             disabled={!showStatistics}
+                            checked={sumChecked}
+                            onCheckedChange={(checked) => setSumChecked(!!checked)}
                         />
                         <Label htmlFor="sum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Sum
@@ -324,8 +421,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="stdDeviation"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={stdDevChecked}
+                            onCheckedChange={(checked) => setStdDevChecked(!!checked)}
                         />
                         <Label htmlFor="stdDeviation" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Std. deviation
@@ -336,8 +434,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="minimum"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={minChecked}
+                            onCheckedChange={(checked) => setMinChecked(!!checked)}
                         />
                         <Label htmlFor="minimum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Minimum
@@ -348,8 +447,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="variance"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={varianceChecked}
+                            onCheckedChange={(checked) => setVarianceChecked(!!checked)}
                         />
                         <Label htmlFor="variance" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Variance
@@ -360,8 +460,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="maximum"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={maxChecked}
+                            onCheckedChange={(checked) => setMaxChecked(!!checked)}
                         />
                         <Label htmlFor="maximum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Maximum
@@ -373,6 +474,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="range"
                             className="mr-2 border-[#CCCCCC]"
                             disabled={!showStatistics}
+                            checked={rangeChecked}
+                            onCheckedChange={(checked) => setRangeChecked(!!checked)}
                         />
                         <Label htmlFor="range" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Range
@@ -383,8 +486,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="seMean"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={seMeanChecked}
+                            onCheckedChange={(checked) => setSeMeanChecked(!!checked)}
                         />
                         <Label htmlFor="seMean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             S.E. mean
@@ -394,14 +498,15 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div className="border border-[#E6E6E6] rounded-md p-4">
-                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Characterize Posterior Distribution</div>
+                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Distribution</div>
                 <div className="space-y-2">
                     <div className="flex items-center">
                         <Checkbox
                             id="skewness"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={skewnessChecked}
+                            onCheckedChange={(checked) => setSkewnessChecked(!!checked)}
                         />
                         <Label htmlFor="skewness" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Skewness
@@ -412,8 +517,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="kurtosis"
                             className="mr-2 border-[#CCCCCC]"
-                            defaultChecked
                             disabled={!showStatistics}
+                            checked={kurtosisChecked}
+                            onCheckedChange={(checked) => setKurtosisChecked(!!checked)}
                         />
                         <Label htmlFor="kurtosis" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
                             Kurtosis

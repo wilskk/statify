@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
+import React, { useState, useEffect, FC, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -15,9 +15,9 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
+import { useFrequenciesAnalysis } from "@/hooks/useFrequenciesAnalysis";
+import type { StatisticsOptions } from "@/types/Analysis";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -32,24 +32,33 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
-    const [isCalculating, setIsCalculating] = useState<boolean>(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const [resetStatisticsCounter, setResetStatisticsCounter] = useState(0);
+    const [resetChartsCounter, setResetChartsCounter] = useState(0);
 
     const [showFrequencyTables, setShowFrequencyTables] = useState(true);
     const [showCharts, setShowCharts] = useState(false);
     const [showStatistics, setShowStatistics] = useState(true);
 
+    const [statisticsOptions, setStatisticsOptions] = useState<StatisticsOptions | null>(null);
+
     const variables = useVariableStore.getState().variables;
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    const { isCalculating, errorMsg, runAnalysis } = useFrequenciesAnalysis({
+        selectedVariables,
+        showFrequencyTables,
+        showStatistics,
+        showCharts,
+        statisticsOptions: showStatistics ? statisticsOptions : null,
+        onClose
+    });
 
     useEffect(() => {
-        // Filter out variables without a name (and ensure they have tempId)
         const validVars = variables.filter(v => v.name !== "" && v.tempId);
-        // Ensure initial availableVariables don't include any already selected ones (by tempId)
         const selectedTempIds = new Set(selectedVariables.map(v => v.tempId));
-        const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId)); // Added tempId check again for safety
+        const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId));
         setAvailableVariables(finalAvailable);
-    }, [variables, selectedVariables]); // Add selectedVariables dependency
+    }, [variables, selectedVariables]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (!variable.tempId) {
@@ -102,98 +111,34 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         }
     };
 
-    const handleAnalyze = async () => {
-        if (!selectedVariables.length) {
-            setErrorMsg("Please select at least one variable.");
-            return;
-        }
-        setErrorMsg(null);
-        setIsCalculating(true);
+    const handleStatisticsOptionsChange = useCallback((options: StatisticsOptions) => {
+        setStatisticsOptions(options);
+    }, []);
 
-        try {
-            const variableDataPromises = [];
-            for (const varDef of selectedVariables) {
-                variableDataPromises.push(useDataStore.getState().getVariableData(varDef));
-            }
-            const variableData = await Promise.all(variableDataPromises);
+    const defaultStatisticsOptions: StatisticsOptions = {
+        percentileValues: { quartiles: false, cutPoints: false, cutPointsN: 10, enablePercentiles: false, percentilesList: [] },
+        centralTendency: { mean: false, median: false, mode: false, sum: false },
+        dispersion: { stddev: false, variance: false, range: false, minimum: false, maximum: false, stdErrorMean: false },
+        distribution: { skewness: false, stdErrorSkewness: false, kurtosis: false, stdErrorKurtosis: false },
+    };
 
-            const worker = new Worker("/workers/Frequencies/index.js");
+    const handleReset = () => {
+        const allVars = [...availableVariables, ...selectedVariables].sort((a, b) => a.columnIndex - b.columnIndex);
+        setAvailableVariables(allVars);
+        setSelectedVariables([]);
 
-            const timeoutId = setTimeout(() => {
-                worker.terminate();
-                setErrorMsg("Analysis timed out. Please try again with fewer variables.");
-                setIsCalculating(false);
-            }, 60000);
+        setShowFrequencyTables(true);
+        setShowStatistics(true);
+        setShowCharts(false);
 
-            worker.onmessage = async (e) => {
-                clearTimeout(timeoutId);
-                const wData = e.data;
+        setResetStatisticsCounter(prev => prev + 1);
+        setResetChartsCounter(prev => prev + 1);
 
-                if (wData.success) {
-                    try {
-                        const variableNames = selectedVariables.map(v => v.name);
-                        const logMsg = `FREQUENCIES VARIABLES=${variableNames.join(", ")}`;
-                        const logId = await addLog({ log: logMsg });
+        setStatisticsOptions(defaultStatisticsOptions);
 
-                        const analyticId = await addAnalytic(logId, {
-                            title: "Frequencies",
-                            note: ""
-                        });
+        setHighlightedVariable(null);
 
-                        if (wData.descriptive) {
-                            await addStatistic(analyticId, {
-                                title: "Statistics",
-                                output_data: wData.descriptive,
-                                components: "Descriptive Statistics",
-                                description: ""
-                            });
-                        }
-
-                        if (wData.frequencies) {
-                            for (let i = 0; i < wData.frequencies.length; i++) {
-                                await addStatistic(analyticId, {
-                                    title: `${variableNames[i]}`,
-                                    output_data: wData.frequencies[i],
-                                    components: "Frequency Table",
-                                    description: ""
-                                });
-                            }
-                        }
-
-                        setIsCalculating(false);
-                        worker.terminate();
-                        onClose();
-                    } catch (err) {
-                        console.error(err);
-                        setErrorMsg("Error saving results.");
-                        setIsCalculating(false);
-                        worker.terminate();
-                    }
-                } else {
-                    setErrorMsg(wData.error || "Worker returned an error.");
-                    setIsCalculating(false);
-                    worker.terminate();
-                }
-            };
-
-            worker.onerror = (event) => {
-                clearTimeout(timeoutId);
-                console.error("Worker error:", event);
-                setIsCalculating(false);
-                setErrorMsg("Worker error occurred. Check console for details.");
-                worker.terminate();
-            };
-
-            worker.postMessage({
-                action: "FULL_ANALYSIS",
-                variableData: variableData
-            });
-
-        } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
-            setIsCalculating(false);
-        }
+        setActiveTab("variables");
     };
 
     return (
@@ -244,6 +189,8 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <StatisticsTab
                         showStatistics={showStatistics}
                         setShowStatistics={setShowStatistics}
+                        resetCounter={resetStatisticsCounter}
+                        onOptionsChange={handleStatisticsOptionsChange}
                     />
                 </TabsContent>
 
@@ -251,6 +198,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <ChartsTab
                         showCharts={showCharts}
                         setShowCharts={setShowCharts}
+                        resetCounter={resetChartsCounter}
                     />
                 </TabsContent>
             </Tabs>
@@ -261,7 +209,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleAnalyze}
+                        onClick={runAnalysis}
                         disabled={isCalculating}
                     >
                         {isCalculating ? "Calculating..." : "OK"}
@@ -277,6 +225,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
+                        onClick={handleReset}
                     >
                         Reset
                     </Button>

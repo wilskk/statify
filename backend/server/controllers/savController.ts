@@ -78,8 +78,8 @@ export const createSavFile = (req: Request, res: Response) => {
                 }
                 return true;
             } else if (variable.type === "DATETIME") {
-                if (variable.width !== 20) {
-                    console.warn(`Variabel ${variable.name} dengan tipe DATETIME diabaikan: width harus 20 (format: dd-mmm-yyyy hh:mm:ss).`);
+                if (variable.width !== 19) {
+                    console.warn(`Variabel ${variable.name} dengan tipe DATETIME diabaikan: width harus 20 (format: yy-mm-dd hh:mm:ss).`);
                     return false;
                 }
                 return true;

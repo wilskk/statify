@@ -99,3 +99,15 @@
     scroll-margin-top: 5rem;
   }
 }
+
+/* Utility to hide horizontal scrollbar while keeping functionality */
+.hide-scrollbar-x {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  overflow-x: auto; /* Ensure horizontal scrolling is enabled */
+}
+
+.hide-scrollbar-x::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  height: 0; /* Ensure no space is taken */
+}

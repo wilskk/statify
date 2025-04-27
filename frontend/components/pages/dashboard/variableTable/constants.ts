@@ -1,6 +1,6 @@
 import { Variable } from "@/types/Variable";
 
-export const DEFAULT_MIN_ROWS = 45;
+export const DEFAULT_MIN_ROWS = 50;
 export const DEFAULT_VARIABLE_TYPE = "NUMERIC";
 export const DEFAULT_VARIABLE_WIDTH = 8;
 export const DEFAULT_VARIABLE_DECIMALS = 2;

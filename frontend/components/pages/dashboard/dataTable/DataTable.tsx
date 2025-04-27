@@ -75,7 +75,7 @@ export default function DataTable() {
     }, [columns]);
 
     return (
-        <div className="h-full w-full z-0 relative hot-container">
+        <div className="h-full w-full z-0 relative hot-container overflow-hidden">
             <HotTable
                 ref={hotTableRef}
                 data={displayMatrix}

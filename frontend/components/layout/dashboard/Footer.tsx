@@ -118,7 +118,7 @@ export default function Footer() {
                         </span>
                     )}
 
-                    <span className="text-[#888888]">Current dataset: <span className="font-medium">sample_data</span></span>
+                    <span className="text-[#888888] hidden md:inline">Current dataset: <span className="font-medium">sample_data</span></span>
 
                     <Tooltip>
                         <TooltipTrigger asChild>

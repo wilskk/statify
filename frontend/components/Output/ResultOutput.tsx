@@ -9,7 +9,7 @@ const ResultOutput: React.FC = () => {
   const { logs } = useResultStore();
 
   return (
-      <div className="p-6 space-y-8">
+      <div className="p-6 space-y-8 w-max">
         {logs.map((log) => (
             <div key={log.id} className="space-y-6">
               <div id="log" className="text-sm text-gray-600">

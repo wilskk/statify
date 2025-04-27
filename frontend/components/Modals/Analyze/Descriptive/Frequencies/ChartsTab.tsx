@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -6,15 +6,27 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface ChartsTabProps {
     showCharts: boolean;
     setShowCharts: React.Dispatch<React.SetStateAction<boolean>>;
+    resetCounter: number;
 }
 
 const ChartsTab: FC<ChartsTabProps> = ({
                                            showCharts,
-                                           setShowCharts
+                                           setShowCharts,
+                                           resetCounter
                                        }) => {
     const [chartType, setChartType] = useState("none");
     const [chartValues, setChartValues] = useState("frequencies");
     const [showNormalCurve, setShowNormalCurve] = useState(false);
+
+    // Reset Effect
+    useEffect(() => {
+        if (resetCounter > 0) {
+            setChartType("none");
+            setChartValues("frequencies");
+            setShowNormalCurve(false);
+            setShowCharts(false);
+        }
+    }, [resetCounter, setShowCharts]);
 
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {

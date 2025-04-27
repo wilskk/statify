@@ -133,7 +133,7 @@ export default function VariableTable() {
 
     return (
         <div className="h-full w-full relative">
-            <div className="h-full w-full relative z-0">
+            <div className="h-full w-full relative z-0 overflow-hidden">
                 <HotTable
                     ref={hotTableRef}
                     data={tableData}
