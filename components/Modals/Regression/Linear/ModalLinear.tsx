@@ -425,7 +425,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       };
 
       // 2. ANOVA Worker
-      const anovaWorker = new Worker('/workers/Regression/anovaWorker.js');
+      const anovaWorker = new Worker('/workers/Regression/anova.js');
       console.log("[Analyze] Sending data to ANOVA Worker...");
       anovaWorker.postMessage({
         dependentData: filteredDependentData,
