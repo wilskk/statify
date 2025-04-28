@@ -855,12 +855,6 @@ const ValidateData: FC<ValidateDataProps> = ({ isOpen, onClose }) => {
                             variant="outline"
                             className="h-7 px-6 bg-[#7CB9FF] text-black border border-[#1A72C9] hover:bg-[#5A9FE2] text-xs"
                         >
-                            Paste
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-7 px-6 bg-[#7CB9FF] text-black border border-[#1A72C9] hover:bg-[#5A9FE2] text-xs"
-                        >
                             Reset
                         </Button>
                         <Button

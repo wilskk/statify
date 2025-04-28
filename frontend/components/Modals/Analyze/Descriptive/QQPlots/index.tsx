@@ -58,7 +58,10 @@ const QQPlots: FC<QQPlotsModalProps> = ({ onClose }) => {
 
     // Initialize available variables on component mount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
         const currentSelectedIds = new Set(selectedVariables.map(v => v.columnIndex));
         setAvailableVariables(validVars.filter(v => !currentSelectedIds.has(v.columnIndex)).sort((a, b) => a.columnIndex - b.columnIndex));
     }, [variables, selectedVariables]);
@@ -289,14 +292,6 @@ const QQPlots: FC<QQPlotsModalProps> = ({ onClose }) => {
                         disabled={isCalculating}
                     >
                         {isCalculating ? "Calculating..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                        onClick={handlePaste}
-                        disabled={isCalculating}
-                    >
-                        Paste
                     </Button>
                     <Button
                         variant="outline"

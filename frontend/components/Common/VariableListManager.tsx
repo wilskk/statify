@@ -2,6 +2,7 @@ import React, { FC, useState, useCallback } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from "lucide-react";
 import type { Variable } from "@/types/Variable";
+import { useMobile } from "@/hooks/useMobile";
 
 // Define the structure for configuring target lists
 export interface TargetListConfig {
@@ -74,6 +75,9 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, sourceListId: string } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null); // Store the ID of the list being dragged over
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+    // Use the mobile hook to detect mobile devices and orientation
+    const { isMobile, isPortrait } = useMobile();
 
     const allLists = [
         { id: 'available', title: 'Available Variables', variables: availableVariables, height: availableListHeight }, // Use the provided height
@@ -507,21 +511,26 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     };
 
-    // --- Main Return ---
+    // --- Main Return with Responsive Layout ---
+    // Only use flex column layout if mobile AND portrait orientation
+    const useVerticalLayout = isMobile && isPortrait;
+
     return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`${useVerticalLayout ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}`}>
             {/* Available Variables Column */}
-            <div className="col-span-1 flex flex-col">
+            <div className={`${useVerticalLayout ? 'w-full' : 'col-span-1'} flex flex-col`}>
                 {renderList(allLists.find(l => l.id === 'available')!)}
-                {/* General Helper Text - Could be a prop */}
-                <div className="text-xs mt-2 text-slate-500 flex items-center p-1.5 rounded bg-slate-50 border border-slate-200">
-                    <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-slate-400" />
-                    <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
-                </div>
+                {/* General Helper Text - Hidden in mobile portrait mode */}
+                {(!isMobile || !isPortrait) && (
+                    <div className="text-xs mt-2 text-slate-500 flex items-center p-1.5 rounded bg-slate-50 border border-slate-200">
+                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-slate-400" />
+                        <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
+                    </div>
+                )}
             </div>
 
             {/* Target Variables Column */}
-            <div className="col-span-1 flex flex-col space-y-2">
+            <div className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}>
                 {targetLists.map(listConfig => renderList(listConfig))}
             </div>
         </div>

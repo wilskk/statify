@@ -16,7 +16,8 @@ export const useActions = () => {
     const handleAction = ({ actionType }: ActionPayload) => {
         if (actionType === "Save" ||
             actionType === "New"  ||
-            actionType === "Exit"
+            actionType === "Exit" ||
+            actionType === "SaveAs"
         ) {
             return handleFileAction({ actionType: actionType as FileActionType });
         }

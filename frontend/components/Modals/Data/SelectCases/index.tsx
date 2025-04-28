@@ -674,14 +674,6 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
                         variant="outline"
                         size="sm"
                         className="text-xs h-7"
-                        onClick={handlePaste}
-                    >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
                         onClick={handleReset}
                     >
                         Reset

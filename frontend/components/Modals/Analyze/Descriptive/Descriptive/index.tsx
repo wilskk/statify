@@ -173,13 +173,6 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         disabled={isCalculating}
                     >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        disabled={isCalculating}
-                    >
                         Reset
                     </Button>
                     <Button

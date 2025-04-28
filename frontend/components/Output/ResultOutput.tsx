@@ -55,6 +55,9 @@ const ResultOutput: React.FC = () => {
                                   if (parsedData.tables) {
                                     return (
                                         <DataTableRenderer data={stat.output_data} />
+                                        // <DataTableRenderer data={
+                                        //     ""
+                                        // } />
                                     );
                                   } else if (parsedData.charts) {
                                     return (

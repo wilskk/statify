@@ -93,7 +93,7 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
                 <div className="w-10 flex-shrink-0 text-right pr-2 text-gray-500 py-1 border-r border-gray-200">
                     {index + 1}
                 </div>
-                <div className="py-1 pl-3 whitespace-pre overflow-x-auto">
+                <div className="py-1 pl-3 whitespace-pre">
                     {line}
                 </div>
             </div>
@@ -240,9 +240,8 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
                 <div>
                     <div className="mb-5">
                         <h3 className="text-sm font-medium mb-2">Preview</h3>
-                        <div className="border rounded h-48 bg-gray-50 font-mono text-xs overflow-hidden">
-                            {/* Container with fixed line numbers and horizontally scrollable content */}
-                            <div className="h-full overflow-auto">
+                        <div className="mt-4 border border-gray-200 rounded overflow-hidden">
+                            <div className="overflow-x-auto max-h-[200px] overflow-y-auto">
                                 {previewContent}
                             </div>
                         </div>

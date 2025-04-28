@@ -28,9 +28,9 @@ const DescriptiveMenu: React.FC = () => {
                     Frequencies...
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
+                {/* <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
                     Crosstabs...
-                </MenubarItem>
+                </MenubarItem> */}
                 <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.Ratio)}>
                     Ratio...

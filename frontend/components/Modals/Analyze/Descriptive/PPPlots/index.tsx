@@ -58,7 +58,10 @@ const PPPlots: FC<PPPlotsModalProps> = ({ onClose }) => {
 
     // Initialize available variables on component mount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
         const currentSelectedIds = new Set(selectedVariables.map(v => v.tempId));
         setAvailableVariables(validVars.filter(v => v.tempId && !currentSelectedIds.has(v.tempId)));
     }, [variables, selectedVariables]);

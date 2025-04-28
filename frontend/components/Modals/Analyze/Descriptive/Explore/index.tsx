@@ -59,7 +59,10 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
         const dependentTempIds = new Set(dependentVariables.map(v => v.tempId));
         const factorTempIds = new Set(factorVariables.map(v => v.tempId));
         const labelTempId = labelVariable?.tempId;
@@ -366,14 +369,14 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                         >
                             {isCalculating ? "Running..." : "OK"}
                         </Button>
-                        <Button
+                        {/* <Button
                             variant="outline"
                             className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
                             onClick={handlePaste}
                             disabled={isCalculating}
                         >
                             Paste
-                        </Button>
+                        </Button> */}
                         <Button
                             variant="outline"
                             className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"

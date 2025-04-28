@@ -827,15 +827,14 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
 
     return (
         <>
-            <DialogContent className="max-w-[880px] max-h-[90vh] p-1 bg-gray-100">
-                <DialogHeader className="p-0 mb-1">
-                    <DialogTitle className="flex items-center text-sm">
-                        <span className="text-gray-800">Define Variable Properties</span>
+            <DialogContent className="max-w-[880px] max-h-[90vh] p-0 bg-gray-100">
+                <DialogHeader className="px-4 py-3 border-b border-gray-200">
+                    <DialogTitle className="flex items-center text-sm font-semibold">
+                        Define Variable Properties
                     </DialogTitle>
                 </DialogHeader>
-                <Separator className="my-0" />
 
-                <div className="grid grid-cols-12 gap-1 py-1">
+                <div className="grid grid-cols-12 gap-4 p-4">
                     {/* Left Column - Scanned Variable List */}
                     <div className="col-span-4 flex flex-col">
                         <div className="text-xs font-semibold mb-1 text-gray-800">Scanned Variable List</div>
@@ -860,7 +859,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 {modifiedVariables.map((variable, index) => (
                                     <div
                                         key={variable.columnIndex}
-                                        className={`grid grid-cols-12 text-xs cursor-pointer border-b border-gray-200 hover:bg-gray-50 ${selectedVariableIndex === index ? 'bg-gray-200' : ''}`}
+                                        className={`grid grid-cols-12 text-xs cursor-pointer border-b border-gray-200 hover:bg-gray-50 ${selectedVariableIndex === index ? 'bg-blue-100' : ''}`}
                                         onClick={() => handleVariableChange(index)}
                                     >
                                         <div className="col-span-2 p-1 text-center border-r border-gray-200">
@@ -869,6 +868,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 className="w-3 h-3"
                                                 checked={variable.values.length > 0}
                                                 onChange={(e) => setLabeledVariables({...labeledVariables, [index]: e.target.checked})}
+                                                readOnly
                                             />
                                         </div>
                                         <div className="col-span-4 p-1 text-center border-r border-gray-200 flex items-center justify-center"
@@ -888,9 +888,9 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 ))}
                             </div>
                         </div>
-                        <div className="flex justify-between mt-1 text-xs">
-                            <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1" readOnly /></div>
-                            <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1" readOnly /></div>
+                        <div className="flex justify-between mt-1 text-xs text-gray-600">
+                            <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50" readOnly /></div>
+                            <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50" readOnly /></div>
                         </div>
                     </div>
 
@@ -898,16 +898,16 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                     <div className="col-span-8 flex flex-col">
                         {currentVariable ? (
                             <>
-                                <div className="grid grid-cols-12 gap-1">
+                                <div className="grid grid-cols-12 gap-2">
                                     {/* Left Column of Form */}
-                                    <div className="col-span-6 space-y-1">
+                                    <div className="col-span-6 space-y-2">
                                         <div className="grid grid-cols-12 items-center">
                                             <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Current Variable:</div>
                                             <div className="col-span-7">
                                                 <input
                                                     value={currentVariable.name}
                                                     onChange={(e) => handleVariableFieldChange('name', e.target.value)}
-                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1"
+                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1 focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
                                                 />
                                             </div>
                                         </div>
@@ -917,7 +917,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 <input
                                                     value={currentVariable.label || ''}
                                                     onChange={(e) => handleVariableFieldChange('label', e.target.value)}
-                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1"
+                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1 focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
                                                 />
                                             </div>
                                         </div>
@@ -926,13 +926,13 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                             <div className="col-span-7 flex">
                                                 <div className="relative flex-grow">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-blue-100 px-1 w-full cursor-pointer"
+                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
                                                         onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}
                                                         title={formatDropdownText(currentVariable.measure)}
                                                     >
                                                         {getVariableIcon(currentVariable)}
                                                         <span className="capitalize truncate">{formatDropdownText(currentVariable.measure)}</span>
-                                                        <ChevronDown size={12} className="ml-1 text-gray-700 flex-shrink-0" />
+                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
                                                     </div>
                                                     {showMeasureDropdown && renderDropdown(
                                                         MEASURE_OPTIONS,
@@ -942,7 +942,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                     )}
                                                 </div>
                                                 <button
-                                                    className="text-xs h-5 px-1 ml-1 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded whitespace-nowrap"
+                                                    className="text-xs h-5 px-2 ml-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded whitespace-nowrap"
                                                     onClick={handleSuggestMeasurement}
                                                 >
                                                     Suggest
@@ -954,12 +954,12 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                             <div className="col-span-7">
                                                 <div className="relative w-full">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-blue-100 px-1 w-full cursor-pointer"
+                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
                                                         onClick={() => setShowRoleDropdown(!showRoleDropdown)}
                                                         title={formatDropdownText(currentVariable.role)}
                                                     >
                                                         <span className="capitalize truncate">{formatDropdownText(currentVariable.role)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-700 flex-shrink-0" />
+                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
                                                     </div>
                                                     {showRoleDropdown && renderDropdown(
                                                         ROLE_OPTIONS,
@@ -975,7 +975,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                             <div className="col-span-7">
                                                 <input
                                                     value={unlabeledValuesCount}
-                                                    className="w-full h-5 text-xs border border-gray-300 rounded px-1"
+                                                    className="w-full h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50"
                                                     readOnly
                                                 />
                                             </div>
@@ -983,18 +983,18 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                     </div>
 
                                     {/* Right Column of Form */}
-                                    <div className="col-span-6 space-y-1">
+                                    <div className="col-span-6 space-y-2">
                                         <div className="grid grid-cols-12 items-center">
                                             <div className="col-span-3 text-xs font-semibold text-gray-800 pr-1 pl-2">Type:</div>
                                             <div className="col-span-9 flex">
                                                 <div className="relative flex-1">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-blue-100 px-1 w-full cursor-pointer"
+                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
                                                         onClick={() => setShowTypeDropdown(!showTypeDropdown)}
                                                         title={getFormattedTypeName(currentVariable.type)}
                                                     >
                                                         <span className="capitalize truncate">{getFormattedTypeName(currentVariable.type)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-700 flex-shrink-0" />
+                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
                                                     </div>
                                                     {showTypeDropdown && renderDropdown(
                                                         TYPE_OPTIONS,
@@ -1007,14 +1007,14 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                     <div
                                                         className={`flex items-center h-5 text-xs border border-gray-300 rounded px-1 w-full ${
                                                             isDateType(currentVariable.type)
-                                                                ? 'bg-blue-100 cursor-pointer'
+                                                                ? 'bg-white cursor-pointer hover:border-gray-400'
                                                                 : 'bg-gray-100 cursor-not-allowed text-gray-500'
                                                         }`}
                                                         onClick={() => isDateType(currentVariable.type) && setShowDateFormatDropdown(!showDateFormatDropdown)}
                                                         title={isDateType(currentVariable.type) ? "Select date format" : "Format (only available for date types)"}
                                                     >
                                                         <span className="capitalize truncate">Format</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-700 flex-shrink-0" />
+                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
                                                     </div>
                                                     {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown()}
                                                 </div>
@@ -1026,7 +1026,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 <input
                                                     value={currentVariable.width}
                                                     onChange={(e) => handleVariableFieldChange('width', parseInt(e.target.value) || 0)}
-                                                    className="w-full h-5 text-xs border border-gray-300 rounded px-1"
+                                                    className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
                                                     disabled={isDateType(currentVariable.type)}
                                                 />
                                             </div>
@@ -1035,7 +1035,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 <input
                                                     value={currentVariable.decimals}
                                                     onChange={(e) => handleVariableFieldChange('decimals', parseInt(e.target.value) || 0)}
-                                                    className="w-full h-5 text-xs border border-gray-300 rounded px-1"
+                                                    className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
                                                     disabled={isDateType(currentVariable.type)}
                                                 />
                                             </div>
@@ -1043,7 +1043,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                         <div className="grid grid-cols-12 items-center">
                                             <div className="col-span-3"></div>
                                             <div className="col-span-9">
-                                                <button className="text-xs h-5 w-full px-2 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded">
+                                                <button className="text-xs h-5 w-full px-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded">
                                                     Attributes...
                                                 </button>
                                             </div>
@@ -1051,11 +1051,11 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="flex items-center mt-1 mb-1">
+                                <div className="flex items-center mt-3 mb-1">
                                     <div className="text-xs font-semibold mr-1 text-gray-800">Value Label grid:</div>
                                     <div className="flex items-center">
                                         <Info size={12} className="text-gray-500 mr-1" />
-                                        <span className="text-xs text-gray-700 truncate">Enter or edit labels in the grid. You can enter additional values at the bottom.</span>
+                                        <span className="text-xs text-gray-600 truncate">Enter or edit labels in the grid. You can enter additional values at the bottom.</span>
                                     </div>
                                 </div>
 
@@ -1071,10 +1071,10 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                             data={gridData}
                                             colHeaders={['#', 'Changed', 'Missing', 'Count', 'Value', 'Label']}
                                             columns={[
-                                                { data: 0, type: 'text', readOnly: true, className: 'htCenter', width: 24 },
-                                                { data: 1, type: 'checkbox', renderer: checkboxRenderer, width: 56 },
-                                                { data: 2, type: 'checkbox', renderer: checkboxRenderer, width: 56 },
-                                                { data: 3, type: 'numeric', readOnly: true, className: 'htCenter', width: 46 },
+                                                { data: 0, type: 'text', readOnly: true, className: 'htCenter htDimmed', width: 24 },
+                                                { data: 1, type: 'checkbox', renderer: checkboxRenderer, width: 56, readOnly: true, className: 'htCenter' },
+                                                { data: 2, type: 'checkbox', renderer: checkboxRenderer, width: 56, className: 'htCenter' },
+                                                { data: 3, type: 'numeric', readOnly: true, className: 'htCenter htDimmed', width: 46 },
                                                 { data: 4, type: 'text', width: 70 },
                                                 { data: 5, type: 'text' }
                                             ]}
@@ -1094,18 +1094,18 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 </div>
 
                                 {/* Bottom Action Buttons */}
-                                <div className="grid grid-cols-2 gap-2 mt-1">
-                                    <div className="border border-gray-300 rounded p-1 bg-blue-50">
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <div className="border border-gray-300 rounded p-2 bg-gray-50">
                                         <div className="text-xs font-semibold mb-1 text-gray-800">Copy Properties</div>
                                         <div className="grid grid-cols-1 gap-1">
                                             <button
-                                                className="text-xs w-full h-5 px-1 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded truncate"
+                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded truncate"
                                                 onClick={handleCopyFromVariable}
                                             >
                                                 From Another Variable...
                                             </button>
                                             <button
-                                                className="text-xs w-full h-5 px-1 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded truncate"
+                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded truncate"
                                                 onClick={handleCopyToVariables}
                                             >
                                                 To Other Variables...
@@ -1113,11 +1113,11 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="border border-gray-300 rounded p-1 bg-blue-50">
+                                    <div className="border border-gray-300 rounded p-2 bg-gray-50">
                                         <div className="text-xs font-semibold mb-1 text-gray-800">Unlabeled Values</div>
                                         <div className="flex justify-center">
                                             <button
-                                                className="text-xs w-full h-5 px-1 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded"
                                                 onClick={handleAutoLabel}
                                             >
                                                 Automatic Labels
@@ -1134,26 +1134,26 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                     </div>
                 </div>
 
-                <DialogFooter className="flex justify-center space-x-1 mt-1 p-0">
+                <DialogFooter className="flex justify-end space-x-2 p-4 bg-gray-50 border-t border-gray-200">
                     <button
-                        className="text-xs h-6 px-4 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                        className="text-sm h-8 px-4 bg-black text-white hover:bg-gray-800 rounded"
                         onClick={handleSave}
                     >
                         OK
                     </button>
-                    <button className="text-xs h-6 px-2 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded">
+                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
                         Paste
                     </button>
-                    <button className="text-xs h-6 px-2 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded">
+                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
                         Reset
                     </button>
                     <button
-                        className="text-xs h-6 px-2 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                        className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded"
                         onClick={onClose}
                     >
                         Cancel
                     </button>
-                    <button className="text-xs h-6 px-2 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded">
+                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
                         Help
                     </button>
                 </DialogFooter>
@@ -1182,9 +1182,9 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 }
                 .spss-hot-table .handsontable th {
                     background-color: #f3f4f6;
-                    color: #333;
+                    color: #374151;
                     text-align: center;
-                    font-weight: bold;
+                    font-weight: 600;
                     border-color: #d1d5db;
                     padding: 1px 2px;
                     height: 18px;
@@ -1200,36 +1200,44 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 .spss-hot-table .handsontable .htCenter {
                     text-align: center;
                 }
-                .spss-hot-table .handsontable .current {
-                    background-color: #e5e7eb !important;
+                .spss-hot-table .handsontable td.current {
+                    background-color: #dbeafe !important;
+                }
+                .spss-hot-table .handsontable td.area {
+                   background-color: rgba(59, 130, 246, 0.1) !important;
                 }
                 .spss-hot-table .handsontable .htCheckboxRendererInput {
                     margin: 1px;
+                    cursor: pointer;
+                }
+                .spss-hot-table .handsontable .htCheckboxRendererInput.htBadValue {
+                    cursor: default;
+                    opacity: 0.6;
                 }
                 .spss-hot-table .handsontable .wtBorder {
-                    background-color: #6b7280 !important;
+                    background-color: #3b82f6 !important;
                 }
                 .spss-hot-table .handsontable .htDimmed {
                     color: #6b7280;
+                    font-style: italic;
                 }
             `}</style>
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[400px] p-2 bg-blue-50">
-                    <DialogHeader className="p-0 mb-1">
-                        <DialogTitle className="text-sm">IBM SPSS Statistics 25</DialogTitle>
+                <DialogContent className="max-w-[400px] p-0 bg-white">
+                    <DialogHeader className="px-4 py-3 border-b border-gray-200">
+                        <DialogTitle className="text-sm font-semibold">IBM SPSS Statistics</DialogTitle>
                     </DialogHeader>
-                    <div className="flex gap-3">
-                        <AlertCircle className="h-8 w-8 text-gray-500" />
+                    <div className="p-4 flex gap-3 items-start">
+                        <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
                         <div>
-                            <p className="text-sm mt-1">{errorMessage}</p>
+                            <p className="text-sm">{errorMessage}</p>
                         </div>
                     </div>
-
-                    <DialogFooter className="flex justify-center mt-2">
+                    <DialogFooter className="flex justify-center p-3 bg-gray-50 border-t border-gray-200">
                         <button
-                            className="text-xs h-6 px-3 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                            className="text-sm h-8 px-4 bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded"
                             onClick={() => setErrorDialogOpen(false)}
                         >
                             OK
@@ -1240,42 +1248,44 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
 
             {/* Measurement Level Suggestion Dialog */}
             <Dialog open={suggestDialogOpen} onOpenChange={setSuggestDialogOpen}>
-                <DialogContent className="max-w-[450px] p-2 bg-blue-50">
-                    <DialogHeader className="p-0 mb-1">
-                        <DialogTitle className="text-sm">Suggest Measurement Level</DialogTitle>
+                <DialogContent className="max-w-[450px] p-0 bg-white">
+                    <DialogHeader className="px-4 py-3 border-b border-gray-200">
+                        <DialogTitle className="text-sm font-semibold">Suggest Measurement Level</DialogTitle>
                     </DialogHeader>
 
-                    <div className="mb-3">
-                        <div className="flex items-center mb-2">
-                            <div className="mr-2">
-                                {suggestedMeasure === "scale" && <Ruler size={16} className="text-gray-700" />}
-                                {suggestedMeasure === "nominal" && <Shapes size={16} className="text-gray-700" />}
-                                {suggestedMeasure === "ordinal" && <BarChartHorizontal size={16} className="text-gray-700" />}
+                    <div className="p-4">
+                        <div className="mb-3">
+                            <div className="flex items-center mb-2">
+                                <div className="mr-2">
+                                    {suggestedMeasure === "scale" && <Ruler size={16} className="text-gray-700" />}
+                                    {suggestedMeasure === "nominal" && <Shapes size={16} className="text-gray-700" />}
+                                    {suggestedMeasure === "ordinal" && <BarChartHorizontal size={16} className="text-gray-700" />}
+                                </div>
+                                <p className="text-sm font-semibold">
+                                    Suggested measurement level: <span className="capitalize">{formatDropdownText(suggestedMeasure)}</span>
+                                </p>
                             </div>
-                            <p className="text-sm font-semibold">
-                                Suggested measurement level: <span className="capitalize">{formatDropdownText(suggestedMeasure)}</span>
-                            </p>
                         </div>
 
-                        <div className="bg-white border border-gray-300 rounded p-2 mb-2">
-                            <p className="text-xs mb-1 font-semibold">Explanation:</p>
-                            <p className="text-xs">{measurementExplanation}</p>
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2 mb-2">
+                            <p className="text-xs mb-1 font-semibold text-gray-800">Explanation:</p>
+                            <p className="text-xs text-gray-700">{measurementExplanation}</p>
                         </div>
 
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-500">
                             Note: Values defined as representing missing values were not included in this evaluation.
                         </p>
                     </div>
 
-                    <DialogFooter className="flex justify-center space-x-2">
+                    <DialogFooter className="flex justify-end space-x-2 p-3 bg-gray-50 border-t border-gray-200">
                         <button
-                            className="text-xs h-6 px-3 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                            className="text-sm h-8 px-4 bg-black text-white hover:bg-gray-800 rounded"
                             onClick={handleAcceptSuggestion}
                         >
                             Continue
                         </button>
                         <button
-                            className="text-xs h-6 px-3 bg-blue-100 hover:bg-blue-200 border border-gray-300 rounded"
+                            className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded"
                             onClick={() => setSuggestDialogOpen(false)}
                         >
                             Cancel

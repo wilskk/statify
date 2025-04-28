@@ -86,7 +86,10 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
 
     // --- Update Available Variables ---
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "" && v.tempId);
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
         const analysisTempIds = new Set(analysisVariables.map(v => v.tempId));
         const identifierTempId = caseIdentifierVariable?.tempId;
 
@@ -827,8 +830,10 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
          setAnalysisVariables([]);
          setCaseIdentifierVariable(null);
          // Reset available variables based on current `variables` store state
-         const validVars = variables.filter(v => v.name !== "" && v.tempId)
-                                   .sort((a, b) => a.columnIndex - b.columnIndex);
+         const validVars = variables.filter(v => v.name !== "").map(v => ({
+             ...v,
+             tempId: v.tempId || `temp_${v.columnIndex}`
+         }));
          setAvailableVariables(validVars);
          setHighlightedVariable(null);
          setErrorMsg(null);
@@ -993,12 +998,12 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                         >
                             OK
                         </Button>
-                        <Button
+                        {/* <Button
                             variant="outline"
                             className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         >
                             Paste
-                        </Button>
+                        </Button> */}
                         <Button
                             variant="outline"
                             className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"

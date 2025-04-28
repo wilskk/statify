@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, FileUp, Loader2 } from "lucide-react";
+import { useMobile } from "@/hooks/useMobile";
 
 interface ImportCSVProps {
     onClose: () => void;
@@ -27,6 +28,8 @@ const ImportCSV: FC<ImportCSVProps> = ({
                                            error,
                                            selectedFile
                                        }) => {
+    const { isMobile, isPortrait } = useMobile();
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files?.[0] || null;
         if (selected) {
@@ -63,18 +66,18 @@ const ImportCSV: FC<ImportCSVProps> = ({
 
             <div className="px-6 py-6">
                 <div
-                    className={`border-2 border-dashed rounded p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                    className={`border-2 border-dashed rounded p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${isMobile && isPortrait ? 'p-4' : 'p-8'} ${
                         error ? "border-red-400 bg-red-50" : "border-[#CCCCCC] hover:border-black"
                     }`}
                     onClick={() => document.getElementById("csv-file-input")?.click()}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                 >
-                    <FileUp size={24} className="mb-4" />
+                    <FileUp size={24} className={`mb-4 ${isMobile && isPortrait ? 'mb-2' : 'mb-4'}`} />
                     <p className="text-center font-medium mb-1">
                         {selectedFile ? selectedFile.name : "Click to select a CSV file"}
                     </p>
-                    <p className="text-[14px] text-[#888888]">
+                    <p className={`text-[14px] text-[#888888] ${isMobile && isPortrait ? 'text-[12px]' : 'text-[14px]'}`}>
                         {selectedFile
                             ? `${(selectedFile.size / 1024).toFixed(2)} KB`
                             : "or drag and drop here"}
@@ -96,7 +99,7 @@ const ImportCSV: FC<ImportCSVProps> = ({
                 )}
             </div>
 
-            <DialogFooter className="gap-3 bg-[#F7F7F7] px-6 py-5 border-t border-[#E6E6E6]">
+            <DialogFooter className={`gap-3 bg-[#F7F7F7] px-6 py-5 border-t border-[#E6E6E6] ${isMobile && isPortrait ? 'flex-col' : ''}`}>
                 <Button
                     variant="outline"
                     onClick={onClose}
@@ -107,7 +110,7 @@ const ImportCSV: FC<ImportCSVProps> = ({
                 <Button
                     onClick={onContinue}
                     disabled={isLoading || !selectedFile}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[80px]"
+                    className={`bg-black text-white hover:bg-[#444444] min-w-[80px] ${isMobile && isPortrait ? 'w-full' : ''}`}
                 >
                     {isLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -215,9 +215,6 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                     <Button size="sm" className="text-xs h-7" onClick={handleSave}>
                         OK
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => alert("Paste syntax here")}>
-                        Paste
-                    </Button>
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleReset}>
                         Reset
                     </Button>

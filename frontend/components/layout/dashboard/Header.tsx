@@ -1,19 +1,21 @@
 "use client";
 
-import React, { useState } from 'react';
-import Navbar from './Navbar';
+import React from 'react';
+import Navbar from './Navbar'; // Desktop Menubar
 import Toolbar from './Toolbar';
+import HamburgerMenu from './HamburgerMenu'; // Mobile Drawer Menu
+import { useMobile } from "@/hooks/useMobile"; // Import the hook
 
 export default function Header() {
+    const { isMobile } = useMobile(); // Use the hook
 
     return (
-        <header className="w-full bg-white border-b border-[#E6E6E6] flex flex-col flex-shrink-0">
-            {/* Wrapper untuk Navbar agar bisa scroll horizontal */}
-            <div className="w-full overflow-x-auto hide-scrollbar-x">
-                <Navbar />
-            </div>
-            {/* Wrapper untuk Toolbar agar bisa scroll horizontal */}
-            <div className="w-full overflow-x-auto hide-scrollbar-x border-t border-[#E6E6E6]">
+        <header className="w-full bg-white flex flex-col flex-shrink-0">
+            {/* Conditionally render Navbar or HamburgerMenu */}
+            {isMobile ? <HamburgerMenu /> : <Navbar />}
+            
+            {/* Remove outer overflow wrappers - Toolbar handles its own scroll */}
+            <div className="border-t border-[#E6E6E6]">
                  <Toolbar/>
             </div>
         </header>

@@ -18,9 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { useMobile } from "@/hooks/useMobile";
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+    const { isMobile } = useMobile();
 
     const fileTools = [
         { name: 'Open Data', icon: <FolderOpen size={16} /> },
@@ -67,13 +69,15 @@ export default function Toolbar() {
     );
 
     return (
-        <div className="bg-white px-4 py-1 border-b border-[#E6E6E6] flex justify-between items-center">
-            <div className="flex space-x-2">
-                <ToolGroup tools={fileTools} />
-                <Separator orientation="vertical" className="h-6 my-auto" />
-                <ToolGroup tools={historyTools} />
-                <Separator orientation="vertical" className="h-6 my-auto" />
-                <ToolGroup tools={dataTools} />
+        <div className="bg-white px-4 py-1 border-b border-[#E6E6E6] flex justify-between items-center overflow-hidden">
+            <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
+                <div className="flex space-x-2 min-w-max">
+                    <ToolGroup tools={fileTools} />
+                    <Separator orientation="vertical" className="h-6 my-auto" />
+                    <ToolGroup tools={historyTools} />
+                    <Separator orientation="vertical" className="h-6 my-auto" />
+                    <ToolGroup tools={dataTools} />
+                </div>
             </div>
         </div>
     );

@@ -94,7 +94,10 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
 
     // Initialize available variables on component mount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
         setAvailableVariables(validVars);
     }, [variables]);
 

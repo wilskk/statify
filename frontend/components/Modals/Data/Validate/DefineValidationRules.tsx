@@ -757,12 +757,12 @@ const DefineValidationRules: FC<DefineValidationRulesProps> = ({ isOpen, onClose
                     >
                         OK
                     </Button>
-                    <Button
+                    {/* <Button
                         variant="outline"
                         className="h-7 px-2 text-[#000000] border-[#CCCCCC] text-xs"
                     >
                         Paste
-                    </Button>
+                    </Button> */}
                     <Button
                         variant="outline"
                         className="h-7 px-2 text-[#000000] border-[#CCCCCC] text-xs"

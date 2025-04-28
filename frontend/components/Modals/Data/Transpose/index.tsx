@@ -373,12 +373,12 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                     >
                         OK
                     </Button>
-                    <Button
+                    {/* <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                     >
                         Paste
-                    </Button>
+                    </Button> */}
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"

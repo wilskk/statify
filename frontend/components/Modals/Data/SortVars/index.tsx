@@ -237,9 +237,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 <Button variant="outline" onClick={handleOk}>
                     OK
                 </Button>
-                <Button variant="outline" onClick={() => alert("Paste syntax here")}>
-                    Paste
-                </Button>
                 <Button variant="outline" onClick={handleReset}>
                     Reset
                 </Button>

@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,110 +13,117 @@ import {
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import type { StatisticsOptions } from "@/types/Analysis";
+import { useMobile } from '@/hooks/useMobile';
 
 interface StatisticsTabProps {
     showStatistics: boolean;
-    setShowStatistics: React.Dispatch<React.SetStateAction<boolean>>;
-    resetCounter: number;
-    onOptionsChange: (options: StatisticsOptions) => void;
+    setShowStatistics: Dispatch<SetStateAction<boolean>>;
+
+    // Percentiles
+    quartilesChecked: boolean;
+    setQuartilesChecked: Dispatch<SetStateAction<boolean>>;
+    cutPointsChecked: boolean;
+    setCutPointsChecked: Dispatch<SetStateAction<boolean>>;
+    cutPointsValue: string;
+    setCutPointsValue: Dispatch<SetStateAction<string>>;
+    enablePercentiles: boolean;
+    setEnablePercentiles: Dispatch<SetStateAction<boolean>>;
+    percentileValues: string[];
+    setPercentileValues: Dispatch<SetStateAction<string[]>>;
+    currentPercentileInput: string;
+    setCurrentPercentileInput: Dispatch<SetStateAction<string>>;
+    selectedPercentileItem: string | null;
+    setSelectedPercentileItem: Dispatch<SetStateAction<string | null>>;
+
+    // Central Tendency
+    meanChecked: boolean;
+    setMeanChecked: Dispatch<SetStateAction<boolean>>;
+    medianChecked: boolean;
+    setMedianChecked: Dispatch<SetStateAction<boolean>>;
+    modeChecked: boolean;
+    setModeChecked: Dispatch<SetStateAction<boolean>>;
+    sumChecked: boolean;
+    setSumChecked: Dispatch<SetStateAction<boolean>>;
+
+    // Dispersion
+    stdDevChecked: boolean;
+    setStdDevChecked: Dispatch<SetStateAction<boolean>>;
+    varianceChecked: boolean;
+    setVarianceChecked: Dispatch<SetStateAction<boolean>>;
+    rangeChecked: boolean;
+    setRangeChecked: Dispatch<SetStateAction<boolean>>;
+    minChecked: boolean;
+    setMinChecked: Dispatch<SetStateAction<boolean>>;
+    maxChecked: boolean;
+    setMaxChecked: Dispatch<SetStateAction<boolean>>;
+    seMeanChecked: boolean;
+    setSeMeanChecked: Dispatch<SetStateAction<boolean>>;
+
+    // Distribution
+    skewnessChecked: boolean;
+    setSkewnessChecked: Dispatch<SetStateAction<boolean>>;
+    kurtosisChecked: boolean;
+    setKurtosisChecked: Dispatch<SetStateAction<boolean>>;
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
-                                                   showStatistics,
-                                                   setShowStatistics,
-                                                   resetCounter,
-                                                   onOptionsChange
-                                               }) => {
-    const [percentileValues, setPercentileValues] = useState<string[]>([]);
-    const [currentPercentile, setCurrentPercentile] = useState("");
-    const [selectedPercentile, setSelectedPercentile] = useState<string | null>(null);
-    const [cutPointsValue, setCutPointsValue] = useState("10");
-    const [enablePercentiles, setEnablePercentiles] = useState(false);
+    showStatistics,
+    setShowStatistics,
+    // Destructure all new props
+    quartilesChecked, setQuartilesChecked,
+    cutPointsChecked, setCutPointsChecked,
+    cutPointsValue, setCutPointsValue,
+    enablePercentiles, setEnablePercentiles,
+    percentileValues, setPercentileValues,
+    currentPercentileInput, setCurrentPercentileInput,
+    selectedPercentileItem, setSelectedPercentileItem,
+    meanChecked, setMeanChecked,
+    medianChecked, setMedianChecked,
+    modeChecked, setModeChecked,
+    sumChecked, setSumChecked,
+    stdDevChecked, setStdDevChecked,
+    varianceChecked, setVarianceChecked,
+    rangeChecked, setRangeChecked,
+    minChecked, setMinChecked,
+    maxChecked, setMaxChecked,
+    seMeanChecked, setSeMeanChecked,
+    skewnessChecked, setSkewnessChecked,
+    kurtosisChecked, setKurtosisChecked
+}) => {
+    // Remove internal state for statistics options
+    // const [percentileValues, setPercentileValues] = useState<string[]>([]);
+    // const [currentPercentile, setCurrentPercentile] = useState(""); // Renamed to currentPercentileInput
+    // const [selectedPercentile, setSelectedPercentile] = useState<string | null>(null); // Renamed to selectedPercentileItem
+    // const [cutPointsValue, setCutPointsValue] = useState("10");
+    // const [enablePercentiles, setEnablePercentiles] = useState(false);
+
+    // Keep alert state internal to this component
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
 
-    // State for individual checkboxes
-    const [quartilesChecked, setQuartilesChecked] = useState(false);
-    const [cutPointsChecked, setCutPointsChecked] = useState(false);
-    const [meanChecked, setMeanChecked] = useState(false);
-    const [medianChecked, setMedianChecked] = useState(false);
-    const [modeChecked, setModeChecked] = useState(false);
-    const [sumChecked, setSumChecked] = useState(false);
-    const [stdDevChecked, setStdDevChecked] = useState(false);
-    const [varianceChecked, setVarianceChecked] = useState(false);
-    const [rangeChecked, setRangeChecked] = useState(false);
-    const [minChecked, setMinChecked] = useState(false);
-    const [maxChecked, setMaxChecked] = useState(false);
-    const [seMeanChecked, setSeMeanChecked] = useState(false);
-    const [kurtosisChecked, setKurtosisChecked] = useState(false);
-    const [skewnessChecked, setSkewnessChecked] = useState(false);
+    // Remove internal state for individual checkboxes
+    // const [quartilesChecked, setQuartilesChecked] = useState(false);
+    // const [cutPointsChecked, setCutPointsChecked] = useState(false);
+    // const [meanChecked, setMeanChecked] = useState(false);
+    // const [medianChecked, setMedianChecked] = useState(false);
+    // const [modeChecked, setModeChecked] = useState(false);
+    // const [sumChecked, setSumChecked] = useState(false);
+    // const [stdDevChecked, setStdDevChecked] = useState(false);
+    // const [varianceChecked, setVarianceChecked] = useState(false);
+    // const [rangeChecked, setRangeChecked] = useState(false);
+    // const [minChecked, setMinChecked] = useState(false);
+    // const [maxChecked, setMaxChecked] = useState(false);
+    // const [seMeanChecked, setSeMeanChecked] = useState(false);
+    // const [kurtosisChecked, setKurtosisChecked] = useState(false);
+    // const [skewnessChecked, setSkewnessChecked] = useState(false);
 
-    // Effect to report options change
-    useEffect(() => {
-        const options: StatisticsOptions = {
-            percentileValues: {
-                quartiles: quartilesChecked,
-                cutPoints: cutPointsChecked,
-                cutPointsN: parseInt(cutPointsValue, 10) || 10,
-                enablePercentiles: enablePercentiles,
-                percentilesList: percentileValues,
-            },
-            centralTendency: {
-                mean: meanChecked,
-                median: medianChecked,
-                mode: modeChecked,
-                sum: sumChecked,
-            },
-            dispersion: {
-                stddev: stdDevChecked,
-                variance: varianceChecked,
-                range: rangeChecked,
-                minimum: minChecked,
-                maximum: maxChecked,
-                stdErrorMean: seMeanChecked,
-            },
-            distribution: {
-                skewness: skewnessChecked,
-                stdErrorSkewness: skewnessChecked,
-                kurtosis: kurtosisChecked,
-                stdErrorKurtosis: kurtosisChecked,
-            },
-        };
-        onOptionsChange(options);
-    }, [
-        quartilesChecked, cutPointsChecked, cutPointsValue, enablePercentiles, percentileValues,
-        meanChecked, medianChecked, modeChecked, sumChecked,
-        stdDevChecked, varianceChecked, rangeChecked, minChecked, maxChecked, seMeanChecked,
-        kurtosisChecked, skewnessChecked,
-    ]);
+    const { isMobile, isPortrait } = useMobile();
 
-    // Reset Effect
-    useEffect(() => {
-        if (resetCounter > 0) {
-            // Reset percentile states
-            setPercentileValues([]);
-            setCurrentPercentile("");
-            setSelectedPercentile(null);
-            setCutPointsValue("10");
-            setEnablePercentiles(false);
+    // Remove useEffect that reported changes via onOptionsChange
+    // useEffect(() => { ... onOptionsChange(options); }, [...dependencies]);
 
-            // Reset checkbox states
-            setQuartilesChecked(false);
-            setCutPointsChecked(false);
-            setMeanChecked(false);
-            setMedianChecked(false);
-            setModeChecked(false);
-            setSumChecked(false);
-            setStdDevChecked(false);
-            setVarianceChecked(false);
-            setRangeChecked(false);
-            setMinChecked(false);
-            setMaxChecked(false);
-            setSeMeanChecked(false);
-            setKurtosisChecked(false);
-            setSkewnessChecked(false);
-        }
-    }, [resetCounter]);
+    // Remove Reset Effect (reset is handled in index.tsx now)
+    // useEffect(() => { if (resetCounter > 0) { ... } }, [resetCounter]);
 
     // Helper function to validate percentile value
     const validatePercentileValue = (value: string): boolean => {
@@ -126,11 +133,12 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         return true;
     };
 
+    // Update percentile handlers to use props
     const handleAddPercentile = () => {
-        if (!currentPercentile) return;
+        if (!currentPercentileInput) return; // Use prop state
 
         // Validate the percentile value is between 0-100
-        if (!validatePercentileValue(currentPercentile)) {
+        if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
             setAlertMessage({
                 title: "Invalid percentile",
                 description: "Percentile must be a number between 0 and 100"
@@ -140,7 +148,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         }
 
         // Check for duplicates
-        if (percentileValues.includes(currentPercentile)) {
+        if (percentileValues.includes(currentPercentileInput)) { // Use prop state
             setAlertMessage({
                 title: "Duplicate percentile",
                 description: "This percentile value already exists"
@@ -149,22 +157,22 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             return;
         }
 
-        setPercentileValues([...percentileValues, currentPercentile]);
-        setCurrentPercentile("");
+        setPercentileValues([...percentileValues, currentPercentileInput]); // Use prop setter & state
+        setCurrentPercentileInput(""); // Use prop setter
     };
 
     const handleChangePercentile = () => {
-        if (!selectedPercentile || !currentPercentile) return;
+        if (!selectedPercentileItem || !currentPercentileInput) return; // Use prop states
 
         // Skip if no actual change
-        if (selectedPercentile === currentPercentile) {
-            setSelectedPercentile(null);
-            setCurrentPercentile("");
+        if (selectedPercentileItem === currentPercentileInput) { // Use prop states
+            setSelectedPercentileItem(null); // Use prop setter
+            setCurrentPercentileInput(""); // Use prop setter
             return;
         }
 
         // Validate the percentile value is between 0-100
-        if (!validatePercentileValue(currentPercentile)) {
+        if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
             setAlertMessage({
                 title: "Invalid percentile",
                 description: "Percentile must be a number between 0 and 100"
@@ -174,7 +182,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         }
 
         // Check if the new value would create a duplicate
-        if (percentileValues.includes(currentPercentile)) {
+        if (percentileValues.includes(currentPercentileInput)) { // Use prop state
             setAlertMessage({
                 title: "Duplicate percentile",
                 description: "This percentile value already exists"
@@ -184,24 +192,24 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         }
 
         const newValues = percentileValues.map(p =>
-            p === selectedPercentile ? currentPercentile : p
+            p === selectedPercentileItem ? currentPercentileInput : p // Use prop states
         );
 
-        setPercentileValues(newValues);
-        setSelectedPercentile(null);
-        setCurrentPercentile("");
+        setPercentileValues(newValues); // Use prop setter
+        setSelectedPercentileItem(null); // Use prop setter
+        setCurrentPercentileInput(""); // Use prop setter
     };
 
     const handleRemovePercentile = () => {
-        if (selectedPercentile) {
-            setPercentileValues(percentileValues.filter(p => p !== selectedPercentile));
-            setSelectedPercentile(null);
-            setCurrentPercentile("");
+        if (selectedPercentileItem) { // Use prop state
+            setPercentileValues(percentileValues.filter(p => p !== selectedPercentileItem)); // Use prop setter & state
+            setSelectedPercentileItem(null); // Use prop setter
+            setCurrentPercentileInput(""); // Use prop setter
         }
     };
 
     return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${isMobile && isPortrait ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
             <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -245,97 +253,91 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 </Label>
                                 <div className="flex items-center">
                                     <Input
-                                        className="w-16 h-7 text-sm border-[#CCCCCC]"
+                                        type="number"
+                                        className="h-7 w-16 border-[#CCCCCC] text-sm px-2"
+                                        disabled={!showStatistics || !cutPointsChecked}
                                         value={cutPointsValue}
                                         onChange={(e) => setCutPointsValue(e.target.value)}
-                                        disabled={!showStatistics}
                                     />
-                                    <span className={`text-sm ml-2 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>equal groups</span>
+                                    <span className={`text-sm ml-2 ${!showStatistics || !cutPointsChecked ? 'text-[#AAAAAA]' : ''}`}>equal groups</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-4">
+                    <div>
                         <div className="flex items-center mb-2">
                             <Checkbox
                                 id="enablePercentiles"
                                 className="mr-2 border-[#CCCCCC]"
+                                disabled={!showStatistics}
                                 checked={enablePercentiles}
                                 onCheckedChange={(checked) => setEnablePercentiles(!!checked)}
-                                disabled={!showStatistics}
                             />
-                            <Label htmlFor="enablePercentiles" className={`text-sm font-medium cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                                Percentile(s):
+                            <Label htmlFor="enablePercentiles" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
+                                Percentiles
                             </Label>
                         </div>
-
-                        <div className="flex">
-                            <div className="flex flex-col gap-1.5 mr-3">
+                        <div className={`pl-6 space-y-2 ${!enablePercentiles ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <div className="flex items-center space-x-2">
+                                <Input
+                                    type="number"
+                                    placeholder="0-100"
+                                    className="h-7 w-20 border-[#CCCCCC] text-sm px-2"
+                                    value={currentPercentileInput}
+                                    onChange={(e) => setCurrentPercentileInput(e.target.value)}
+                                    disabled={!enablePercentiles || !showStatistics}
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                />
                                 <Button
-                                    variant="outline"
                                     size="sm"
-                                    className="h-7 px-3 border-[#CCCCCC] text-xs font-medium hover:bg-[#F5F5F5]"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs border-[#CCCCCC]"
                                     onClick={handleAddPercentile}
-                                    disabled={!showStatistics || !enablePercentiles || !currentPercentile}
+                                    disabled={!enablePercentiles || !showStatistics || !currentPercentileInput}
                                 >
                                     Add
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-3 border-[#CCCCCC] text-xs font-medium hover:bg-[#F5F5F5]"
-                                    onClick={handleChangePercentile}
-                                    disabled={!showStatistics || !enablePercentiles || !selectedPercentile || !currentPercentile}
-                                >
-                                    Change
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-3 border-[#CCCCCC] text-xs font-medium hover:bg-[#F5F5F5]"
-                                    onClick={handleRemovePercentile}
-                                    disabled={!showStatistics || !enablePercentiles || !selectedPercentile}
-                                >
-                                    Remove
-                                </Button>
                             </div>
-
-                            <div className="flex-1">
-                                <Input
-                                    id="percentiles"
-                                    className="h-8 text-sm border-[#CCCCCC] mb-2"
-                                    value={currentPercentile}
-                                    onChange={(e) => setCurrentPercentile(e.target.value)}
-                                    disabled={!showStatistics || !enablePercentiles}
-                                    placeholder="Enter value (0-100)"
-                                />
-
-                                <div
-                                    className={`border border-[#CCCCCC] bg-white rounded-sm h-[110px] overflow-y-auto ${(!showStatistics || !enablePercentiles) ? 'bg-[#F5F5F5]' : ''}`}
-                                    onClick={() => setSelectedPercentile(null)}
+                            <div className="flex items-center space-x-2">
+                                <select
+                                    size={5}
+                                    className="h-auto w-20 border border-[#CCCCCC] text-sm px-1 py-1"
+                                    value={selectedPercentileItem ?? ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value || null;
+                                        setSelectedPercentileItem(value);
+                                        setCurrentPercentileInput(value ?? "");
+                                    }}
+                                    disabled={!enablePercentiles || !showStatistics || percentileValues.length === 0}
                                 >
-                                    {percentileValues.length === 0 && (
-                                        <div className="h-full flex items-center justify-center text-[#AAAAAA] text-xs italic">
-                                            {(!showStatistics || !enablePercentiles) ? "Percentiles disabled" : "No percentiles added"}
-                                        </div>
-                                    )}
-                                    {percentileValues.map((value, index) => (
-                                        <div
-                                            key={index}
-                                            className={`text-sm py-1.5 px-2 cursor-pointer border-b border-[#F0F0F0] last:border-b-0 ${
-                                                selectedPercentile === value ? 'bg-[#E6E6E6]' : 'hover:bg-[#F8F8F8]'
-                                            } ${(!showStatistics || !enablePercentiles) ? 'text-[#AAAAAA]' : ''}`}
-                                            onClick={(e) => {
-                                                if (!showStatistics || !enablePercentiles) return;
-                                                e.stopPropagation();
-                                                setSelectedPercentile(value);
-                                                setCurrentPercentile(value);
-                                            }}
-                                        >
-                                            {value}
-                                        </div>
+                                    {percentileValues.map((p) => (
+                                        <option key={p} value={p}>
+                                            {p}
+                                        </option>
                                     ))}
+                                </select>
+                                <div className="flex flex-col space-y-1">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 px-2 text-xs border-[#CCCCCC]"
+                                        onClick={handleChangePercentile}
+                                        disabled={!enablePercentiles || !showStatistics || !selectedPercentileItem || !currentPercentileInput}
+                                    >
+                                        Change
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 px-2 text-xs border-[#CCCCCC]"
+                                        onClick={handleRemovePercentile}
+                                        disabled={!enablePercentiles || !showStatistics || !selectedPercentileItem}
+                                    >
+                                        Remove
+                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -345,185 +347,66 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
             <div className="border border-[#E6E6E6] rounded-md p-4">
                 <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Central Tendency</div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                     <div className="flex items-center">
-                        <Checkbox
-                            id="mean"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={meanChecked}
-                            onCheckedChange={(checked) => setMeanChecked(!!checked)}
-                        />
-                        <Label htmlFor="mean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Mean
-                        </Label>
+                        <Checkbox id="mean" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={meanChecked} onCheckedChange={(checked) => setMeanChecked(!!checked)} />
+                        <Label htmlFor="mean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Mean</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="median"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={medianChecked}
-                            onCheckedChange={(checked) => setMedianChecked(!!checked)}
-                        />
-                        <Label htmlFor="median" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Median
-                        </Label>
+                        <Checkbox id="median" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={medianChecked} onCheckedChange={(checked) => setMedianChecked(!!checked)} />
+                        <Label htmlFor="median" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Median</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="mode"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={modeChecked}
-                            onCheckedChange={(checked) => setModeChecked(!!checked)}
-                        />
-                        <Label htmlFor="mode" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Mode
-                        </Label>
+                        <Checkbox id="mode" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={modeChecked} onCheckedChange={(checked) => setModeChecked(!!checked)} />
+                        <Label htmlFor="mode" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Mode</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="sum"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={sumChecked}
-                            onCheckedChange={(checked) => setSumChecked(!!checked)}
-                        />
-                        <Label htmlFor="sum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Sum
-                        </Label>
-                    </div>
-
-                    {/* Values are group midpoints moved here, with separator */}
-                    <div className="pt-3 mt-2 border-t border-[#F0F0F0]">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="groupMidpoints"
-                                className="mr-2 border-[#CCCCCC]"
-                                disabled={!showStatistics}
-                            />
-                            <Label htmlFor="groupMidpoints" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                                Values are group midpoints
-                            </Label>
-                        </div>
+                        <Checkbox id="sum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={sumChecked} onCheckedChange={(checked) => setSumChecked(!!checked)} />
+                        <Label htmlFor="sum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Sum</Label>
                     </div>
                 </div>
             </div>
 
             <div className="border border-[#E6E6E6] rounded-md p-4">
                 <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Dispersion</div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div className="space-y-3">
                     <div className="flex items-center">
-                        <Checkbox
-                            id="stdDeviation"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={stdDevChecked}
-                            onCheckedChange={(checked) => setStdDevChecked(!!checked)}
-                        />
-                        <Label htmlFor="stdDeviation" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Std. deviation
-                        </Label>
+                        <Checkbox id="stddev" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={stdDevChecked} onCheckedChange={(checked) => setStdDevChecked(!!checked)} />
+                        <Label htmlFor="stddev" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Std. deviation</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="minimum"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={minChecked}
-                            onCheckedChange={(checked) => setMinChecked(!!checked)}
-                        />
-                        <Label htmlFor="minimum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Minimum
-                        </Label>
+                        <Checkbox id="variance" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={varianceChecked} onCheckedChange={(checked) => setVarianceChecked(!!checked)} />
+                        <Label htmlFor="variance" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Variance</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="variance"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={varianceChecked}
-                            onCheckedChange={(checked) => setVarianceChecked(!!checked)}
-                        />
-                        <Label htmlFor="variance" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Variance
-                        </Label>
+                        <Checkbox id="range" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={rangeChecked} onCheckedChange={(checked) => setRangeChecked(!!checked)} />
+                        <Label htmlFor="range" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Range</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="maximum"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={maxChecked}
-                            onCheckedChange={(checked) => setMaxChecked(!!checked)}
-                        />
-                        <Label htmlFor="maximum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Maximum
-                        </Label>
+                        <Checkbox id="minimum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={minChecked} onCheckedChange={(checked) => setMinChecked(!!checked)} />
+                        <Label htmlFor="minimum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Minimum</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="range"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={rangeChecked}
-                            onCheckedChange={(checked) => setRangeChecked(!!checked)}
-                        />
-                        <Label htmlFor="range" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Range
-                        </Label>
+                        <Checkbox id="maximum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={maxChecked} onCheckedChange={(checked) => setMaxChecked(!!checked)} />
+                        <Label htmlFor="maximum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Maximum</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="seMean"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={seMeanChecked}
-                            onCheckedChange={(checked) => setSeMeanChecked(!!checked)}
-                        />
-                        <Label htmlFor="seMean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            S.E. mean
-                        </Label>
+                        <Checkbox id="semean" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={seMeanChecked} onCheckedChange={(checked) => setSeMeanChecked(!!checked)} />
+                        <Label htmlFor="semean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>S.E. Mean</Label>
                     </div>
                 </div>
             </div>
 
             <div className="border border-[#E6E6E6] rounded-md p-4">
                 <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Distribution</div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                     <div className="flex items-center">
-                        <Checkbox
-                            id="skewness"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={skewnessChecked}
-                            onCheckedChange={(checked) => setSkewnessChecked(!!checked)}
-                        />
-                        <Label htmlFor="skewness" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Skewness
-                        </Label>
+                        <Checkbox id="skewness" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={skewnessChecked} onCheckedChange={(checked) => setSkewnessChecked(!!checked)} />
+                        <Label htmlFor="skewness" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Skewness</Label>
                     </div>
-
                     <div className="flex items-center">
-                        <Checkbox
-                            id="kurtosis"
-                            className="mr-2 border-[#CCCCCC]"
-                            disabled={!showStatistics}
-                            checked={kurtosisChecked}
-                            onCheckedChange={(checked) => setKurtosisChecked(!!checked)}
-                        />
-                        <Label htmlFor="kurtosis" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Kurtosis
-                        </Label>
+                        <Checkbox id="kurtosis" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={kurtosisChecked} onCheckedChange={(checked) => setKurtosisChecked(!!checked)} />
+                        <Label htmlFor="kurtosis" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Kurtosis</Label>
                     </div>
                 </div>
             </div>
