@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use js_sys::{Object, Reflect};
 use crate::Smoothing;
-use crate::time_series::evaluation::basic_evaluation::*;
+use crate::basic_evaluation;
 
 #[wasm_bindgen]
 impl Smoothing {
@@ -23,11 +23,11 @@ impl Smoothing {
             forecast_copy.remove(0);
         }
         // forecast_copy.remove(forecast_copy.len()-1);
-        let mse = mse(data_copy.clone(), forecast_copy.clone()) as f64;
-        let rmse = rmse(data_copy.clone(), forecast_copy.clone()) as f64;
-        let mae = mae(data_copy.clone(), forecast_copy.clone()) as f64;
-        let mpe = mpe(data_copy.clone(), forecast_copy.clone()) as f64;
-        let mape = mape(data_copy.clone(), forecast_copy.clone()) as f64;
+        let mse = basic_evaluation::mse(data_copy.clone(), forecast_copy.clone()) as f64;
+        let rmse = basic_evaluation::rmse(data_copy.clone(), forecast_copy.clone()) as f64;
+        let mae = basic_evaluation::mae(data_copy.clone(), forecast_copy.clone()) as f64;
+        let mpe = basic_evaluation::mpe(data_copy.clone(), forecast_copy.clone()) as f64;
+        let mape = basic_evaluation::mape(data_copy.clone(), forecast_copy.clone()) as f64;
         
         let results = Object::new();
         Reflect::set(&results, &"MSE".into(), &mse.into()).unwrap();

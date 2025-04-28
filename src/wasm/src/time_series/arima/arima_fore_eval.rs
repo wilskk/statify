@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use js_sys::{Object, Reflect};
 use crate::Arima;
-use crate::time_series::evaluation::basic_evaluation::*;
+use crate::basic_evaluation;
 
 #[wasm_bindgen]
 impl Arima{
@@ -11,11 +11,11 @@ impl Arima{
         let forecast = self.forecast();
         assert_eq!(data.len(), forecast.len());
 
-        let mse = mse(data.clone(), forecast.clone()) as f64;
-        let rmse = rmse(data.clone(), forecast.clone()) as f64;
-        let mae = mae(data.clone(), forecast.clone()) as f64;
-        let mpe = mpe(data.clone(), forecast.clone()) as f64;
-        let mape = mape(data.clone(), forecast.clone()) as f64;
+        let mse = basic_evaluation::mse(data.clone(), forecast.clone()) as f64;
+        let rmse = basic_evaluation::rmse(data.clone(), forecast.clone()) as f64;
+        let mae = basic_evaluation::mae(data.clone(), forecast.clone()) as f64;
+        let mpe = basic_evaluation::mpe(data.clone(), forecast.clone()) as f64;
+        let mape = basic_evaluation::mape(data.clone(), forecast.clone()) as f64;
         
         let results = Object::new();
         Reflect::set(&results, &"MSE".into(), &mse.into()).unwrap();

@@ -1,19 +1,22 @@
-// Time Series Analysis
+//1. Time Series Analysis
 pub mod time_series;
 
-// Smoothing
+//1.1 Smoothing
 pub use time_series::smoothing::smoothing::Smoothing;
 
-// Decomposition
+//1.2 Decomposition
 pub use time_series::decomposition::decomposition::Decomposition;
 
-// Difference
+//1.3 Difference
 pub use time_series::difference::difference::*;
 
-// Autocorrelation
+//1.4 Evaluation
+pub use time_series::evaluation::basic_evaluation;
+
+//1.5 Autocorrelation
 pub use time_series::autocorrelation::autocorrelation::Autocorrelation;
 
-// Unit Root Test
+//1.6 Unit Root Test
 pub use time_series::unit_root_test::calculate_critical_values::*;
 pub use time_series::unit_root_test::calculate_pvalue::*;
 pub use time_series::unit_root_test::mackinnon_critical_values::MacKinnonCriticalValues;
@@ -23,7 +26,7 @@ pub use time_series::unit_root_test::read_pvalue::*;
 pub use time_series::unit_root_test::dickey_fuller::dickey_fuller::DickeyFuller;
 pub use time_series::unit_root_test::augmented_dickey_fuller::augmented_dickey_fuller::AugmentedDickeyFuller;
 
-// ARIMA
+//1.7 ARIMA
 pub use time_series::arima::arima::Arima;
 pub use time_series::arima::est_coef_process::autocov::*;
 pub use time_series::arima::est_coef_process::durb_lev_alg::durb_lev_alg;
@@ -31,10 +34,10 @@ pub use time_series::arima::est_coef_process::innov_alg::innov_alg;
 pub use time_series::arima::est_coef_process::css::css;
 pub use time_series::arima::est_coef_process::est_coef::est_coef;
 
-// Regression Analysis
+//2. Regression Analysis
 pub mod regression;
 
-// Regression Computing
+//2.1 Regression Computing
 pub use regression::simple_linear_regression::simple_linear_regression::SimpleLinearRegression;
 pub use regression::no_intercept_linear_regression::no_intercept_linear_regression::NoInterceptLinearRegression;
 pub use regression::simple_exponential_regression::simple_exponential_regression::SimpleExponentialRegression;
