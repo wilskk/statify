@@ -34,6 +34,11 @@ export type VariableType =
     | "STRING"
     | "RESTRICTED_NUMERIC";
 
+export const spssDateTypes: ReadonlySet<VariableType> = new Set<VariableType>([
+    "DATE", "ADATE", "EDATE", "SDATE", "JDATE", "QYR",
+    "MOYR", "WKYR", "DATETIME", "TIME", "DTIME"
+]);
+
 export type VariableAlign = "right" | "left" | "center";
 
 export type VariableMeasure = "scale" | "ordinal" | "nominal" | "unknown";

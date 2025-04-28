@@ -14,10 +14,11 @@ import { ModalType, useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
-import { Variable, VariableType, ValueLabel, MissingValuesSpec, MissingRange } from "@/types/Variable";
+import { Variable, VariableType, ValueLabel, MissingValuesSpec, MissingRange, spssDateTypes } from "@/types/Variable";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, X, AlertCircle } from "lucide-react";
+import { spssSecondsToDateString } from "@/lib/spssDateConverter";
 
 interface OpenDataProps {
     onClose: () => void;
@@ -171,7 +172,22 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                     const rowData = dataRowsRaw[rowIndex] || {};
                     return Array(numVars).fill("").map((_, colIndex) => {
                         const colName = sysvars[colIndex]?.name;
-                        return (colName && rowData[colName] !== undefined) ? rowData[colName] : "";
+                        const rawDataValue = (colName && rowData[colName] !== undefined) ? rowData[colName] : "";
+                        const variableInfo = sysvars[colIndex];
+
+                        if (variableInfo) {
+                            const formatType = variableInfo.printFormat?.typestr || (variableInfo.type === 1 ? "A" : "F");
+                            const variableType = mapSPSSTypeToInterface(formatType);
+
+                            if (spssDateTypes.has(variableType) && typeof rawDataValue === 'number') {
+                                const convertedDate = spssSecondsToDateString(rawDataValue);
+                                // Use converted date if valid, otherwise keep the original number
+                                // (or consider converting to empty string if needed)
+                                return convertedDate !== null ? convertedDate : rawDataValue;
+                            }
+                        }
+                        // Return original value for non-dates, non-numbers, or if conversion failed
+                        return rawDataValue;
                     });
                 });
 

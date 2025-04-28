@@ -3,8 +3,18 @@ import Handsontable from 'handsontable';
 import { HotTableClass } from '@handsontable/react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { Variable } from '@/types/Variable';
+import { Variable, VariableAlign } from '@/types/Variable';
 import { areValuesEqual } from './utils';
+
+// Define our own specific column configuration type
+interface ColumnConfig {
+    data: number;
+    type: string;
+    readOnly: boolean;
+    className: string;
+    width: number;
+    validator?: (value: any, callback: (isValid: boolean) => void) => void; // Make validator optional
+}
 
 interface PendingOperation {
     type: string;
@@ -15,7 +25,7 @@ interface UseTableUpdatesProps {
     hotTableRef: React.RefObject<HotTableClass | null>;
     actualNumRows: number;
     actualNumCols: number;
-    // No need for visual/display dims here, only actual for state updates
+    columns: ReadonlyArray<ColumnConfig>; // Use our defined interface
 }
 
 /**
@@ -24,7 +34,8 @@ interface UseTableUpdatesProps {
 export const useTableUpdates = ({
     hotTableRef,
     actualNumRows,
-    actualNumCols
+    actualNumCols,
+    columns
 }: UseTableUpdatesProps) => {
     const pendingOperations = useRef<PendingOperation[]>([]);
     const isProcessing = useRef(false);
@@ -206,8 +217,67 @@ export const useTableUpdates = ({
         source: Handsontable.ChangeSource
     ): boolean | void => {
         if (source === 'loadData' || !changes) {
-            return true; // Allow initial load
+            return; // Allow initial load or if no changes
         }
+
+        // --- Date Validation Logic ---
+        for (const change of changes) {
+            if (!change) continue;
+
+            const [row, prop, oldValue, newValue] = change;
+            // Since data is array of arrays, prop should always be the column index (number)
+            const colIndex = prop as number;
+
+            if (typeof colIndex !== 'number' || colIndex < 0) continue; // Still good practice to check
+
+            const columnConfig = columns[colIndex];
+
+            // Check if it's the special date column (identified by the validator function)
+            if (columnConfig && typeof columnConfig.validator === 'function') {
+                const dateString = String(newValue);
+                // Perform format validation first
+                if (newValue !== null && newValue !== '' && !/^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-\\d{4}$/.test(dateString)) {
+                    console.warn(`Rejected invalid date format: ${newValue} in column ${colIndex}`);
+                    hotTableRef.current?.hotInstance?.setCellMeta(row as number, colIndex, 'valid', false);
+                    return false; // Reject due to format
+                }
+
+                // If format is valid (and not empty/null), check against SPSS epoch
+                if (newValue !== null && newValue !== '') {
+                    const parts = dateString.split('-');
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10); // 1-indexed month
+                    const year = parseInt(parts[2], 10);
+
+                    // Ensure parsed components are valid before creating Date
+                    if (!isNaN(day) && !isNaN(month) && !isNaN(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                         // Use Date.UTC for consistent comparison (month is 0-indexed for Date.UTC)
+                        const inputDateTimestamp = Date.UTC(year, month - 1, day);
+                        const spssEpochTimestamp = Date.UTC(1582, 9, 15); // October is month 9 (0-indexed)
+
+                        // Validate the constructed date itself (e.g., reject 31 Feb)
+                        const checkDate = new Date(inputDateTimestamp);
+                        const isValidDate = !isNaN(checkDate.getTime()) &&
+                                            checkDate.getUTCFullYear() === year &&
+                                            checkDate.getUTCMonth() === month - 1 &&
+                                            checkDate.getUTCDate() === day;
+
+
+                        if (!isValidDate || inputDateTimestamp < spssEpochTimestamp) {
+                             console.warn(`Rejected date before SPSS epoch (14 Oct 1582) or invalid date components: ${dateString} in column ${colIndex}`);
+                             hotTableRef.current?.hotInstance?.setCellMeta(row as number, colIndex, 'valid', false);
+                             return false; // Reject due to being before epoch or invalid date components
+                        }
+                    } else {
+                         // This case should ideally not be reached if regex passed, but as a safeguard
+                         console.warn(`Rejected date due to invalid components after parsing: ${dateString} in column ${colIndex}`);
+                         hotTableRef.current?.hotInstance?.setCellMeta(row as number, colIndex, 'valid', false);
+                         return false;
+                    }
+                }
+            }
+        }
+        // --- End Date Validation ---
 
         // Filter out null changes and changes that don't actually modify the value
         // or are just clearing spare cells (which shouldn't trigger add row/col)
@@ -394,7 +464,7 @@ export const useTableUpdates = ({
         // We handle all state updates asynchronously via the queue
         return false;
 
-    }, [actualNumRows, actualNumCols, processPendingOperations]); // Dependencies: dimensions, process function
+    }, [actualNumRows, actualNumCols, processPendingOperations, columns]); // Dependencies: dimensions, process function
 
     // Placeholder handlers for other events if needed later
     const handleAfterCreateRow = useCallback((index: number, amount: number, source?: Handsontable.ChangeSource) => {

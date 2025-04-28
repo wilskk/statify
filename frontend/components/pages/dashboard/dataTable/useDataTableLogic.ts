@@ -49,6 +49,7 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         hotTableRef,
         actualNumRows,
         actualNumCols,
+        columns,
     });
 
     // 4. Setup Context Menu
