@@ -5,11 +5,13 @@ use std::collections::HashMap;
 pub struct OVERALSAnalysisResult {
     pub case_processing_summary: CaseProcessingSummary,
     pub variables: Vec<VariableInfo>,
-    pub centroids: CentroidsResult,
-    pub object_scores: ObjectScores,
-    pub component_loadings: ComponentLoadings,
+    pub centroids: Vec<CentroidsResult>,
+    pub iteration_history: IterationHistory,
+    pub summary_analysis: SummaryAnalysis,
     pub weights: Weights,
+    pub component_loadings: ComponentLoadings,
     pub fit_measures: FitMeasures,
+    pub object_scores: ObjectScores,
     pub transformation_plots: TransformationPlots,
 }
 
@@ -21,9 +23,10 @@ pub struct CaseProcessingSummary {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VariableInfo {
-    pub name: String,
-    pub number_of_categories: usize,
-    pub optimal_scaling_level: ScalingLevel,
+    pub set: String,
+    pub variable_name: Vec<String>,
+    pub num_categories: Vec<usize>,
+    pub optimal_scaling_level: Vec<ScalingLevel>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -32,10 +35,13 @@ pub enum ScalingLevel {
     Nominal,
     Single,
     Multiple,
+    Discrete,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CentroidsResult {
+    pub set: String,
+    pub variable_name: String,
     pub centroids: HashMap<String, Vec<CentroidCategory>>,
 }
 
@@ -48,49 +54,47 @@ pub struct CentroidCategory {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Coordinates {
-    pub dimension1: f64,
-    pub dimension2: f64,
+    pub dimension: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ObjectScores {
-    pub scores: Vec<ObjectScore>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ObjectScore {
-    pub dimension1: f64,
-    pub dimension2: f64,
+    pub scores: HashMap<String, Dimensions>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComponentLoadings {
+    pub set: HashMap<String, Variable>,
     pub loadings: HashMap<String, Dimensions>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Dimensions {
-    pub dimension1: f64,
-    pub dimension2: f64,
+    pub dimensions: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Weights {
+    pub set: HashMap<String, Variable>,
     pub weights: HashMap<String, Dimensions>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Variable {
+    pub variable_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FitMeasures {
-    pub loss: HashMap<String, f64>,
-    pub multiple_fit: FitDimensions,
-    pub single_fit: FitDimensions,
-    pub single_loss: FitDimensions,
+    pub set: HashMap<String, Variable>,
+    pub multiple_fit: HashMap<String, FitDimensions>,
+    pub single_fit: HashMap<String, FitDimensions>,
+    pub single_loss: HashMap<String, FitDimensions>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FitDimensions {
-    pub dimension1: f64,
-    pub dimension2: f64,
+    pub dimension: Vec<f64>,
     pub sum: f64,
 }
 
@@ -115,4 +119,11 @@ pub struct IterationStep {
     pub loss: f64,
     pub fit: f64,
     pub difference_from_previous: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SummaryAnalysis {
+    pub loss: HashMap<String, f64>,
+    pub eigenvalue: HashMap<String, f64>,
+    pub fit: HashMap<String, f64>,
 }

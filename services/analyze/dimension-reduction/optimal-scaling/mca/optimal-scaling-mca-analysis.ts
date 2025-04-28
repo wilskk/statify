@@ -41,18 +41,16 @@ export async function analyzeOptScaMCA({
     console.log(configData);
 
     // const mca = new MultipleCorrespondenceAnalysis(
-    //     slicedDataForDependent,
-    //     slicedDataForFixFactor,
-    //     slicedDataForCovariate,
-    //     slicedDataForWlsWeight,
-    //     varDefsForDependent,
-    //     varDefsForFixFactor,
-    //     varDefsForCovariate,
-    //     varDefsForWlsWeight,
+    //     slicedDataForAnalysis,
+    //     slicedDataForSupplement,
+    //     slicedDataForLabeling,
+    //     varDefsForAnalysis,
+    //     varDefsForSupplement,
+    //     varDefsForLabeling,
     //     configData
     // );
 
-    // const results = mca.get_formatted_results();
+    // const results = mca.get_results();
     // const error = mca.get_all_errors();
 
     // console.log("Results", results);

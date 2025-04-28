@@ -24,6 +24,7 @@ pub struct MainConfig {
     pub supple_vars: Option<Vec<String>>,
     #[serde(rename = "LabelingVars")]
     pub labeling_vars: Option<Vec<String>>,
+    #[serde(rename = "Dimensions")]
     pub dimensions: u8,
 }
 
@@ -95,6 +96,7 @@ pub struct OptionsConfig {
     pub normalization_method: NormalizationMethod,
     #[serde(rename = "NormCustomValue")]
     pub norm_custom_value: Option<f64>,
+    #[serde(rename = "Convergence")]
     pub convergence: f64,
     #[serde(rename = "MaximumIterations")]
     pub maximum_iterations: u32,

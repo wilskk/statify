@@ -5,9 +5,9 @@
 // pub mod hierarchical;
 // pub mod kmeans;
 // pub mod knn;
-pub mod mca;
+// pub mod mca;
 // pub mod multivariate;
-// pub mod overals;
+pub mod overals;
 // pub mod repeated_measure;
 // pub mod roc_analysis;
 // pub mod roc_curve;

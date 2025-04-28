@@ -23,10 +23,10 @@ impl MultipleCorrespondenceAnalysis {
         analysis_data: JsValue,
         supplement_data: JsValue,
         labeling_data: JsValue,
-        config_data: JsValue,
         analysis_data_defs: JsValue,
         supplement_data_defs: JsValue,
-        labeling_data_defs: JsValue
+        labeling_data_defs: JsValue,
+        config_data: JsValue
     ) -> Result<MultipleCorrespondenceAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();

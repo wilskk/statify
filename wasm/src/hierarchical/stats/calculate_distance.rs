@@ -179,7 +179,6 @@ fn compute_binary_distance(
     // Build the 2x2 contingency table (a, b, c, d)
     let (a, b, c, d) = compute_contingency_table(values1, values2, config.method.present as f64);
 
-    // Apply the appropriate formula based on the method
     match method {
         BinaryMethod::BSEUCLID => b + c,
         BinaryMethod::SIZE => (b - c).powi(2) / (a + b + c + d).powi(2),
