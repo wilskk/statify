@@ -192,31 +192,34 @@ pub fn correlation_distance(v1: &[f64], v2: &[f64]) -> f64 {
     }
 }
 
-// Binary distance functions
 pub fn compute_contingency_table(
     values1: &[f64],
     values2: &[f64],
-    present_val: f64
+    config: &ClusterConfig
 ) -> (f64, f64, f64, f64) {
     let mut a = 0.0; // Both present
     let mut b = 0.0; // Present in values1, absent in values2
     let mut c = 0.0; // Absent in values1, present in values2
     let mut d = 0.0; // Both absent
 
+    let present_val = config.method.present as f64;
+    let absent_val = config.method.absent as f64;
+
     for (&val1, &val2) in values1.iter().zip(values2.iter()) {
-        match (val1 == present_val, val2 == present_val) {
-            (true, true) => {
-                a += 1.0;
-            }
-            (true, false) => {
-                b += 1.0;
-            }
-            (false, true) => {
-                c += 1.0;
-            }
-            (false, false) => {
-                d += 1.0;
-            }
+        if val1 == present_val && val2 == present_val {
+            // Both present
+            a += 1.0;
+        } else if val1 == present_val && val2 == absent_val {
+            // Present in values1, absent in values2
+            b += 1.0;
+        } else if val1 == absent_val && val2 == present_val {
+            // Absent in values1, present in values2
+            c += 1.0;
+        } else if val1 == absent_val && val2 == absent_val {
+            // Both absent
+            d += 1.0;
+        } else {
+            d += 1.0; // Default to both absent if values are not recognized
         }
     }
 

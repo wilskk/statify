@@ -176,8 +176,8 @@ fn compute_binary_distance(
     method: &BinaryMethod,
     config: &ClusterConfig
 ) -> f64 {
-    // Build the 2x2 contingency table (a, b, c, d)
-    let (a, b, c, d) = compute_contingency_table(values1, values2, config.method.present as f64);
+    // Buat tabel kontingensi (a, b, c, d)
+    let (a, b, c, d) = compute_contingency_table(values1, values2, &config);
 
     match method {
         BinaryMethod::BSEUCLID => b + c,

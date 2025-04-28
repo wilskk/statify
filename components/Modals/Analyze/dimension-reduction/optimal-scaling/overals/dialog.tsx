@@ -102,26 +102,149 @@ export const OptScaOveralsDialog = forwardRef<
             [key: string]: string;
         }>({});
 
+        // Store original variable names to prevent double formatting
+        const [originalVariables, setOriginalVariables] = useState<{
+            [key: string]: string;
+        }>({});
+
         // State for variable information
         const [variableInfo, setVariableInfo] = useState<VariableInfoType>({});
 
         const { closeModal } = useModal();
 
+        // Extract original variable name from formatted variable
+        const extractOriginalName = (variable: string): string => {
+            // If variable contains formatting like "name (details)", extract just the name
+            const match = variable.match(/^([^(]+)/);
+            return match ? match[1].trim() : variable;
+        };
+
+        // Extract measurement scale from formatted variable
+        const extractMeasScale = (variable: string): string | null => {
+            if (!isFormatted(variable)) return null;
+
+            // Try to match the full measurement scale
+            // For something like "age (Single Nominal 1 5)", this should extract "Single Nominal"
+            const match = variable.match(/\(([^0-9]+)(\d+)/);
+            return match ? match[1].trim() : null;
+        };
+
+        // Check if a variable is already formatted
+        const isFormatted = (variable: string): boolean => {
+            return variable.includes("(") && variable.includes(")");
+        };
+
+        // Initialize component state with data
         useEffect(() => {
-            setMainState(initialMainState());
+            const state = initialMainState();
+            setMainState(state);
+
+            // Extract original variable names and their formatting from state
+            const originals: { [key: string]: string } = {};
+            const currentFormatting: { [key: string]: string } = {};
+            const variablesInfo: VariableInfoType = {};
+
+            // Process SetTargetVariable (2D array)
+            if (state.SetTargetVariable) {
+                state.SetTargetVariable.forEach((pageVariables) => {
+                    pageVariables.forEach((variable) => {
+                        if (isFormatted(variable)) {
+                            const originalName = extractOriginalName(variable);
+                            originals[variable] = originalName;
+                            currentFormatting[originalName] = variable;
+
+                            // Extract measurement scale and range info
+                            const match = variable.match(/\(([^)]+)\)/);
+                            if (match) {
+                                // Split the format string and handle multi-word measurement scales
+                                const formatContent = match[1];
+
+                                // For variables like "age (Single Nominal 1 5)"
+                                if (
+                                    formatContent.includes("Nominal") ||
+                                    formatContent.includes("Ordinal") ||
+                                    formatContent.includes("Numeric")
+                                ) {
+                                    // Extract the last two numbers
+                                    const numbers =
+                                        formatContent.match(/(\d+)\s+(\d+)$/);
+                                    if (numbers) {
+                                        // Everything before the last two numbers is the measurement scale
+                                        const scaleEndIndex =
+                                            formatContent.lastIndexOf(
+                                                numbers[1]
+                                            );
+                                        const measScale = formatContent
+                                            .substring(0, scaleEndIndex)
+                                            .trim();
+
+                                        variablesInfo[originalName] = {
+                                            measScale: measScale,
+                                            minimum: Number(numbers[1]),
+                                            maximum: Number(numbers[2]),
+                                        };
+                                    }
+                                } else {
+                                    // Handle simple format like "(1-5)"
+                                    const parts = formatContent.split(" ");
+                                    if (parts.length >= 3) {
+                                        variablesInfo[originalName] = {
+                                            measScale: parts[0],
+                                            minimum: Number(parts[1]),
+                                            maximum: Number(parts[2]),
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Process PlotsTargetVariable
+            if (state.PlotsTargetVariable) {
+                state.PlotsTargetVariable.forEach((variable) => {
+                    if (isFormatted(variable)) {
+                        const originalName = extractOriginalName(variable);
+                        originals[variable] = originalName;
+                        currentFormatting[originalName] = variable;
+
+                        // Extract range info
+                        const match = variable.match(/\((\d+)-(\d+)\)/);
+                        if (match) {
+                            variablesInfo[originalName] = {
+                                minimum: Number(match[1]),
+                                maximum: Number(match[2]),
+                            };
+                        }
+                    }
+                });
+            }
+
+            setOriginalVariables(originals);
+            setFormattedVariables(currentFormatting);
+            setVariableInfo({ ...variableInfo, ...variablesInfo });
             setAvailableVariables(globalVariables);
-        }, [data, globalVariables]);
+        }, [isMainOpen, data, globalVariables]);
 
         // Update available variables when used variables change
         useEffect(() => {
             // Flatten the 2D array of SetTargetVariable
             const allSetTargetVariables = mainState.SetTargetVariable
-                ? mainState.SetTargetVariable.flat()
+                ? mainState.SetTargetVariable.flat().map((v) =>
+                      extractOriginalName(v)
+                  )
+                : [];
+
+            const plotsVariables = mainState.PlotsTargetVariable
+                ? mainState.PlotsTargetVariable.map((v) =>
+                      extractOriginalName(v)
+                  )
                 : [];
 
             const usedVariables = [
                 ...allSetTargetVariables,
-                ...(mainState.PlotsTargetVariable || []),
+                ...plotsVariables,
             ].filter(Boolean);
 
             const updatedVariables = globalVariables.filter(
@@ -132,15 +255,22 @@ export const OptScaOveralsDialog = forwardRef<
 
         // Update formatted variables when variableInfo or mainState changes
         useEffect(() => {
-            const newFormattedVariables: { [key: string]: string } = {};
+            const newFormattedVariables: { [key: string]: string } = {
+                ...formattedVariables,
+            };
 
             // First, process all variables in variableInfo
             Object.keys(variableInfo).forEach((variable) => {
                 const info = variableInfo[variable];
 
+                // Skip if already formatted (prevents double formatting)
+                if (formattedVariables[variable]) return;
+
                 // Check if variable is in any page of SetTargetVariable (flattened array)
                 const allSetTargetVariables = mainState.SetTargetVariable
-                    ? mainState.SetTargetVariable.flat()
+                    ? mainState.SetTargetVariable.flat().map((v) =>
+                          extractOriginalName(v)
+                      )
                     : [];
 
                 // Format variables based on their list membership
@@ -150,37 +280,15 @@ export const OptScaOveralsDialog = forwardRef<
                     } ${info.minimum || 1} ${info.maximum || 5})`;
                 } else if (
                     mainState.PlotsTargetVariable &&
-                    mainState.PlotsTargetVariable.includes(variable)
+                    mainState.PlotsTargetVariable.map((v) =>
+                        extractOriginalName(v)
+                    ).includes(variable)
                 ) {
                     newFormattedVariables[variable] = `${variable} (${
                         info.minimum || 1
                     }-${info.maximum || 5})`;
-                } else {
-                    newFormattedVariables[variable] = `${variable}`;
                 }
             });
-
-            // Next, ensure all variables in either list have a formatted version
-            // For SetTargetVariable (now a 2D array), we need to iterate through all pages
-            if (mainState.SetTargetVariable) {
-                mainState.SetTargetVariable.forEach((pageVariables) => {
-                    pageVariables.forEach((variable) => {
-                        if (!newFormattedVariables[variable]) {
-                            newFormattedVariables[
-                                variable
-                            ] = `${variable} (Ordinal 1 5)`;
-                        }
-                    });
-                });
-            }
-
-            if (mainState.PlotsTargetVariable) {
-                mainState.PlotsTargetVariable.forEach((variable) => {
-                    if (!newFormattedVariables[variable]) {
-                        newFormattedVariables[variable] = `${variable} (1-5)`;
-                    }
-                });
-            }
 
             setFormattedVariables(newFormattedVariables);
         }, [
@@ -206,7 +314,9 @@ export const OptScaOveralsDialog = forwardRef<
                 if (
                     mainState.SetTargetVariable &&
                     mainState.SetTargetVariable[activePage] &&
-                    mainState.SetTargetVariable[activePage].includes(variable)
+                    mainState.SetTargetVariable[activePage]
+                        .map((v) => extractOriginalName(v))
+                        .includes(variable)
                 ) {
                     // Variable already exists in this page, don't add it again
                     return;
@@ -215,7 +325,9 @@ export const OptScaOveralsDialog = forwardRef<
                 // Check if the variable already exists in PlotsTargetVariable
                 if (
                     mainState.PlotsTargetVariable &&
-                    mainState.PlotsTargetVariable.includes(variable)
+                    mainState.PlotsTargetVariable.map((v) =>
+                        extractOriginalName(v)
+                    ).includes(variable)
                 ) {
                     // Variable already exists, don't add it again
                     return;
@@ -267,7 +379,11 @@ export const OptScaOveralsDialog = forwardRef<
                     const existingVars =
                         updatedState.SetTargetVariable[activePage] || [];
                     // Only add the variable if it doesn't already exist
-                    if (!existingVars.includes(variable)) {
+                    if (
+                        !existingVars
+                            .map((v) => extractOriginalName(v))
+                            .includes(variable)
+                    ) {
                         updatedState.SetTargetVariable[activePage] = [
                             ...existingVars,
                             variable,
@@ -281,7 +397,11 @@ export const OptScaOveralsDialog = forwardRef<
                 } else if (target === "PlotsTargetVariable") {
                     const existingPlotVars =
                         updatedState.PlotsTargetVariable || [];
-                    if (!existingPlotVars.includes(variable)) {
+                    if (
+                        !existingPlotVars
+                            .map((v) => extractOriginalName(v))
+                            .includes(variable)
+                    ) {
                         updatedState.PlotsTargetVariable = [
                             ...existingPlotVars,
                             variable,
@@ -298,6 +418,11 @@ export const OptScaOveralsDialog = forwardRef<
         };
 
         const handleRemoveVariable = (target: string, variable?: string) => {
+            if (!variable) return;
+
+            // Get original name if it's a formatted variable
+            const originalName = extractOriginalName(variable);
+
             setMainState((prev) => {
                 const updatedState = { ...prev };
 
@@ -309,13 +434,16 @@ export const OptScaOveralsDialog = forwardRef<
                     ) {
                         updatedState.SetTargetVariable[activePage] =
                             updatedState.SetTargetVariable[activePage].filter(
-                                (item) => item !== variable
+                                (item) =>
+                                    extractOriginalName(item) !== originalName
                             );
                     }
                 } else if (target === "PlotsTargetVariable") {
                     updatedState.PlotsTargetVariable = (
                         updatedState.PlotsTargetVariable || []
-                    ).filter((item) => item !== variable);
+                    ).filter(
+                        (item) => extractOriginalName(item) !== originalName
+                    );
                 }
 
                 return updatedState;
@@ -324,12 +452,20 @@ export const OptScaOveralsDialog = forwardRef<
 
         // Handle variable click to select it
         const handleVariableClick = (target: string, variable: string) => {
-            setSelectedVariable(variable);
+            // Store the original name for selection
+            const originalName = extractOriginalName(variable);
+            setSelectedVariable(originalName);
             setSelectedTarget(target);
         };
 
         // Format variable for display
         const formatVariable = (variable: string) => {
+            // If the variable is already formatted, return as is
+            if (isFormatted(variable)) {
+                return variable;
+            }
+
+            // If we have a cached formatted version, use it
             if (formattedVariables[variable]) {
                 return formattedVariables[variable];
             }
@@ -343,7 +479,9 @@ export const OptScaOveralsDialog = forwardRef<
 
             // Check if variable is in any page of SetTargetVariable (flattened array)
             const allSetTargetVariables = mainState.SetTargetVariable
-                ? mainState.SetTargetVariable.flat()
+                ? mainState.SetTargetVariable.flat().map((v) =>
+                      extractOriginalName(v)
+                  )
                 : [];
 
             // Format based on the target list the variable belongs to
@@ -351,7 +489,9 @@ export const OptScaOveralsDialog = forwardRef<
                 return `${variable} (${info.measScale} ${info.minimum} ${info.maximum})`;
             } else if (
                 mainState.PlotsTargetVariable &&
-                mainState.PlotsTargetVariable.includes(variable)
+                mainState.PlotsTargetVariable.map((v) =>
+                    extractOriginalName(v)
+                ).includes(variable)
             ) {
                 return `${variable} (${info.minimum}-${info.maximum})`;
             } else {
@@ -384,7 +524,43 @@ export const OptScaOveralsDialog = forwardRef<
                     },
                 };
 
+                // The new formatted variable
+                const newFormattedVariable = `${selectedVariable} (${measScale} ${
+                    defineRangeScaleData.Minimum || 1
+                } ${defineRangeScaleData.Maximum || 5})`;
+
+                // Update variable info
                 setVariableInfo(newVariableInfo);
+
+                // Update formatted variables map
+                setFormattedVariables((prev) => ({
+                    ...prev,
+                    [selectedVariable]: newFormattedVariable,
+                }));
+
+                // Also update the mainState to immediately reflect the changes
+                setMainState((prev) => {
+                    const updatedState = { ...prev };
+
+                    if (
+                        updatedState.SetTargetVariable &&
+                        updatedState.SetTargetVariable[activePage]
+                    ) {
+                        // Find and update the variable in the current page
+                        updatedState.SetTargetVariable[activePage] =
+                            updatedState.SetTargetVariable[activePage].map(
+                                (variable) => {
+                                    const origName =
+                                        extractOriginalName(variable);
+                                    return origName === selectedVariable
+                                        ? newFormattedVariable
+                                        : variable;
+                                }
+                            );
+                    }
+
+                    return updatedState;
+                });
 
                 // Keep the variable selected
                 setSelectedVariable(selectedVariable);
@@ -519,7 +695,37 @@ export const OptScaOveralsDialog = forwardRef<
                     },
                 };
 
+                // The new formatted variable
+                const newFormattedVariable = `${selectedVariable} (${
+                    defineRangeData.Minimum || 1
+                }-${defineRangeData.Maximum || 5})`;
+
+                // Update variable info
                 setVariableInfo(newVariableInfo);
+
+                // Update formatted variable in our mapping
+                setFormattedVariables((prev) => ({
+                    ...prev,
+                    [selectedVariable]: newFormattedVariable,
+                }));
+
+                // Also update the mainState to immediately reflect the changes
+                setMainState((prev) => {
+                    const updatedState = { ...prev };
+
+                    if (updatedState.PlotsTargetVariable) {
+                        // Find and update the variable in PlotsTargetVariable
+                        updatedState.PlotsTargetVariable =
+                            updatedState.PlotsTargetVariable.map((variable) => {
+                                const origName = extractOriginalName(variable);
+                                return origName === selectedVariable
+                                    ? newFormattedVariable
+                                    : variable;
+                            });
+                    }
+
+                    return updatedState;
+                });
 
                 // Keep the variable selected
                 setSelectedVariable(selectedVariable);
@@ -527,7 +733,6 @@ export const OptScaOveralsDialog = forwardRef<
             }
         };
 
-        // Enhanced handleContinue that adds formatting
         // Enhanced handleContinue that adds formatting
         const handleContinue = () => {
             // Create a deep copy of mainState
@@ -547,6 +752,11 @@ export const OptScaOveralsDialog = forwardRef<
                 // Format each variable in each page while preserving 2D structure
                 const formattedPages = nonEmptyPages.map((page) =>
                     page.map((variable) => {
+                        // If already formatted, return as is
+                        if (isFormatted(variable)) {
+                            return variable;
+                        }
+
                         if (formattedVariables[variable]) {
                             return formattedVariables[variable];
                         } else {
@@ -571,6 +781,11 @@ export const OptScaOveralsDialog = forwardRef<
             ) {
                 enhancedMainState.PlotsTargetVariable =
                     enhancedMainState.PlotsTargetVariable.map((variable) => {
+                        // If already formatted, return as is
+                        if (isFormatted(variable)) {
+                            return variable;
+                        }
+
                         if (formattedVariables[variable]) {
                             return formattedVariables[variable];
                         } else {
@@ -766,7 +981,9 @@ export const OptScaOveralsDialog = forwardRef<
                                                                                                     className="text-start text-sm font-light p-2 cursor-pointer"
                                                                                                     variant={
                                                                                                         selectedVariable ===
-                                                                                                            variable &&
+                                                                                                            extractOriginalName(
+                                                                                                                variable
+                                                                                                            ) &&
                                                                                                         selectedTarget ===
                                                                                                             "SetTargetVariable"
                                                                                                             ? "default"
@@ -891,7 +1108,9 @@ export const OptScaOveralsDialog = forwardRef<
                                                                                                     className="text-start text-sm font-light p-2 cursor-pointer"
                                                                                                     variant={
                                                                                                         selectedVariable ===
-                                                                                                            variable &&
+                                                                                                            extractOriginalName(
+                                                                                                                variable
+                                                                                                            ) &&
                                                                                                         selectedTarget ===
                                                                                                             "PlotsTargetVariable"
                                                                                                             ? "default"

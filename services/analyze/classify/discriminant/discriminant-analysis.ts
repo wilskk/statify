@@ -43,6 +43,7 @@ export async function analyzeDiscriminant({
     const varDefsForGrouping = getVarDefs(variables, GroupingVariable);
     const varDefsForIndependent = getVarDefs(variables, IndependentVariables);
     const varDefsForSelection = getVarDefs(variables, SelectionVariable);
+    console.log(configData);
 
     // const da = new DiscriminantAnalysis(
     //     slicedDataForGrouping,

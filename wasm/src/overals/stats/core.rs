@@ -27,6 +27,83 @@ use crate::overals::models::{
     },
 };
 
+/// Prepare data for OVERALS analysis by filtering out invalid cases
+pub fn prepare_data(
+    data: &AnalysisData,
+    _config: &OVERALSAnalysisConfig
+) -> Result<AnalysisData, String> {
+    // Create a copy of the original data
+    let mut prepared_data = data.clone();
+
+    // Get the number of cases
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Keep track of valid cases for each set
+    let mut valid_cases_per_set = Vec::with_capacity(data.set_target_data.len());
+
+    // Process each set
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        let mut valid_cases = vec![true; num_cases];
+
+        // Check each variable in this set
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+            // Check each case for this variable
+            for (case_idx, record) in var_data.iter().enumerate() {
+                if let Some(value) = record.values.get(var_name) {
+                    match value {
+                        DataValue::Number(num) => {
+                            // OVERALS requires positive integers
+                            if *num <= 0.0 || (*num - num.floor()).abs() > 1e-10 {
+                                valid_cases[case_idx] = false;
+                            }
+                        }
+                        // Non-numeric values are considered invalid
+                        _ => {
+                            valid_cases[case_idx] = false;
+                        }
+                    }
+                } else {
+                    // Variable not found in record
+                    valid_cases[case_idx] = false;
+                }
+            }
+        }
+
+        valid_cases_per_set.push(valid_cases);
+    }
+
+    // Apply listwise deletion per set
+    for (set_idx, set_data) in prepared_data.set_target_data.iter_mut().enumerate() {
+        if let Some(valid_cases) = valid_cases_per_set.get(set_idx) {
+            for var_data in set_data.iter_mut() {
+                // Keep only valid cases
+                let filtered_var_data = var_data
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, record)| {
+                        if valid_cases[idx] { Some(record.clone()) } else { None }
+                    })
+                    .collect();
+
+                *var_data = filtered_var_data;
+            }
+        }
+    }
+
+    Ok(prepared_data)
+}
+
 /// Calculate the case processing summary for OVERALS analysis
 pub fn calculate_case_processing_summary(
     data: &AnalysisData,
@@ -108,6 +185,49 @@ pub fn calculate_case_processing_summary(
     })
 }
 
+/// Parse the scaling level and range from a variable name pattern
+/// Example pattern: "variable_name (ScalingLevel minimum maximum)"
+fn parse_variable_scaling_info(
+    var_pattern: &str
+) -> Result<(String, ScalingLevel, usize, usize), String> {
+    // Split the pattern into variable name and scaling info
+    let parts: Vec<&str> = var_pattern.split('(').collect();
+    if parts.len() != 2 {
+        return Err(format!("Invalid variable pattern: {}", var_pattern));
+    }
+
+    let var_name = parts[0].trim().to_string();
+    let scaling_info = parts[1].trim().trim_end_matches(')');
+
+    // Parse scaling info
+    let scaling_parts: Vec<&str> = scaling_info.split_whitespace().collect();
+    if scaling_parts.len() != 3 {
+        return Err(format!("Invalid scaling info format: {}", scaling_info));
+    }
+
+    // Parse scaling level
+    let scaling_level = match scaling_parts[0].to_lowercase().as_str() {
+        "ordinal" => ScalingLevel::Ordinal,
+        "nominal" => ScalingLevel::Nominal,
+        "single" => ScalingLevel::Single,
+        "multiple" => ScalingLevel::Multiple,
+        "numeric" => ScalingLevel::Discrete,
+        _ => {
+            return Err(format!("Unknown scaling level: {}", scaling_parts[0]));
+        }
+    };
+
+    // Parse min and max
+    let min = scaling_parts[1]
+        .parse::<usize>()
+        .map_err(|_| format!("Invalid minimum value: {}", scaling_parts[1]))?;
+    let max = scaling_parts[2]
+        .parse::<usize>()
+        .map_err(|_| format!("Invalid maximum value: {}", scaling_parts[2]))?;
+
+    Ok((var_name, scaling_level, min, max))
+}
+
 /// Process variables information for OVERALS analysis
 pub fn process_variables(
     data: &AnalysisData,
@@ -173,22 +293,27 @@ fn determine_scaling_level(
     var_def: &VariableDefinition,
     config: &OVERALSAnalysisConfig
 ) -> ScalingLevel {
-    // First, check if we have specific scaling defined in the config
-    if config.define_range_scale.multiple_nominal {
-        return ScalingLevel::Multiple;
-    } else if config.define_range_scale.single_nominal {
-        return ScalingLevel::Single;
-    } else if config.define_range_scale.ordinal {
-        return ScalingLevel::Ordinal;
-    } else if config.define_range_scale.discrete_numeric {
-        return ScalingLevel::Discrete;
+    // Look for the variable in the SetTargetVariable configuration
+    if let Some(sets) = &config.main.set_target_variable {
+        for set in sets {
+            for var_pattern in set {
+                if
+                    let Ok((var_name, scaling_level, _, _)) =
+                        parse_variable_scaling_info(var_pattern)
+                {
+                    if var_name == var_def.name {
+                        return scaling_level;
+                    }
+                }
+            }
+        }
     }
 
-    // Fall back to variable measure type
+    // Fallback to measure type if not found in config
     match var_def.measure {
         VariableMeasure::Nominal => ScalingLevel::Nominal,
         VariableMeasure::Ordinal => ScalingLevel::Ordinal,
-        VariableMeasure::Scale => ScalingLevel::Single,
+        VariableMeasure::Scale => ScalingLevel::Discrete,
         _ => ScalingLevel::Nominal, // Default
     }
 }
@@ -198,138 +323,10 @@ pub fn calculate_centroids(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<Vec<CentroidsResult>, String> {
-    // Prepare the dimensions from config or default
+    // Get dimensions from config
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
 
-    // Calculate object scores directly (simplified version of what was in run_overals_algorithm)
-    let (object_scores, category_quantifications, variable_weights) = calculate_overals_components(
-        data,
-        config,
-        dimensions
-    )?;
-
-    let mut results = Vec::new();
-
-    // Process each set
-    for (set_idx, set_defs) in data.set_target_data_defs.iter().enumerate() {
-        // Process each variable in the set
-        for (var_idx, var_def) in set_defs.iter().enumerate() {
-            let mut centroid_result = CentroidsResult {
-                set: format!("Set {}", set_idx + 1),
-                variable_name: var_def.name.clone(),
-                centroids: HashMap::new(),
-            };
-
-            // Get data for this variable
-            if let Some(set_data) = data.set_target_data.get(set_idx) {
-                if let Some(var_data) = set_data.get(var_idx) {
-                    // Count categories and track which objects belong to each category
-                    let mut category_objects: HashMap<String, Vec<usize>> = HashMap::new();
-                    let mut category_counts: HashMap<String, usize> = HashMap::new();
-
-                    for (obj_idx, record) in var_data.iter().enumerate() {
-                        if let Some(value) = record.values.get(&var_def.name) {
-                            if let DataValue::Number(num) = value {
-                                // OVERALS requires positive integers
-                                if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
-                                    let category = num.to_string();
-                                    category_objects
-                                        .entry(category.clone())
-                                        .or_default()
-                                        .push(obj_idx);
-                                    *category_counts.entry(category).or_default() += 1;
-                                }
-                            }
-                        }
-                    }
-
-                    // Calculate centroids for each category
-                    for (category, objects) in &category_objects {
-                        // Skip if no objects in this category
-                        if objects.is_empty() {
-                            continue;
-                        }
-
-                        let mut category_centroids = vec![0.0; dimensions];
-
-                        // Average object scores for this category
-                        for &obj_idx in objects {
-                            for dim in 0..dimensions {
-                                category_centroids[dim] += object_scores[obj_idx][dim];
-                            }
-                        }
-
-                        // Normalize
-                        let num_objects = objects.len() as f64;
-                        for dim in 0..dimensions {
-                            category_centroids[dim] /= num_objects;
-                        }
-
-                        // Calculate projected centroids
-                        // For single variables, this is a projection on the line defined by the variable weights
-                        let scaling_level = determine_scaling_level(var_def, config);
-                        let mut projected_centroids = vec![0.0; dimensions];
-
-                        match scaling_level {
-                            | ScalingLevel::Single
-                            | ScalingLevel::Ordinal
-                            | ScalingLevel::Discrete => {
-                                // For single variables, projected centroids are calculated using weights
-                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
-                                    let cat_val = category.parse::<usize>().unwrap_or(0);
-
-                                    if
-                                        let Some(quantification) = category_quantifications.get(
-                                            &(set_idx, var_idx, cat_val)
-                                        )
-                                    {
-                                        for dim in 0..dimensions {
-                                            projected_centroids[dim] =
-                                                quantification * weights[dim];
-                                        }
-                                    }
-                                }
-                            }
-                            ScalingLevel::Multiple => {
-                                // For multiple nominal, projected centroids equal category centroids
-                                projected_centroids = category_centroids.clone();
-                            }
-                            _ => {
-                                // Fallback
-                                projected_centroids = category_centroids.clone();
-                            }
-                        }
-
-                        centroid_result.centroids.insert(
-                            category.clone(),
-                            vec![CentroidCategory {
-                                marginal_frequency: *category_counts.get(category).unwrap_or(&0),
-                                projected_centroids: Coordinates { dimension: projected_centroids },
-                                category_centroids: Coordinates { dimension: category_centroids },
-                            }]
-                        );
-                    }
-                }
-            }
-
-            results.push(centroid_result);
-        }
-    }
-
-    Ok(results)
-}
-
-/// Helper function to calculate the key components for OVERALS
-/// Returns (object_scores, category_quantifications, variable_weights)
-fn calculate_overals_components(
-    data: &AnalysisData,
-    config: &OVERALSAnalysisConfig,
-    dimensions: usize
-) -> Result<
-    (Vec<Vec<f64>>, HashMap<(usize, usize, usize), f64>, HashMap<(usize, usize), Vec<f64>>),
-    String
-> {
-    // Prepare main parameters
+    // Run the OVERALS algorithm to get object scores and category quantifications
     let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
     let convergence_criterion = config.options.conv.unwrap_or(0.00001);
     let use_random_init = config.options.use_randconf;
@@ -402,7 +399,7 @@ fn calculate_overals_components(
                 }
             }
 
-            categories.clone().sort();
+            categories.sort();
             category_values.insert((set_idx, var_idx), categories.clone());
 
             // Initialize variable weights
@@ -428,7 +425,7 @@ fn calculate_overals_components(
     // Main iteration loop
     let mut current_loss = f64::MAX;
 
-    for iter in 0..max_iterations {
+    for _ in 0..max_iterations {
         // Step 2: Loop across sets and variables
         for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
             for (var_idx, var_data) in set_data.iter().enumerate() {
@@ -596,8 +593,8 @@ fn calculate_overals_components(
         );
 
         // Step 7: Convergence test
-        let diff = if iter == 0 { 0.0 } else { current_loss - new_loss };
-        if iter > 0 && diff < convergence_criterion {
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
             break;
         }
 
@@ -606,9 +603,119 @@ fn calculate_overals_components(
         current_loss = new_loss;
     }
 
-    // Step 8: Rotation (skipped for simplicity)
+    // Step 8: Rotation (skipped for simplicity in this implementation)
 
-    Ok((object_scores, category_quantifications, variable_weights))
+    // Now we have object_scores, category_quantifications, and variable_weights
+    // Let's calculate the centroids
+    let mut results = Vec::new();
+
+    // Process each set
+    for (set_idx, set_defs) in data.set_target_data_defs.iter().enumerate() {
+        // Process each variable in the set
+        for (var_idx, var_def) in set_defs.iter().enumerate() {
+            let mut centroid_result = CentroidsResult {
+                set: format!("Set {}", set_idx + 1),
+                variable_name: var_def.name.clone(),
+                centroids: HashMap::new(),
+            };
+
+            // Get data for this variable
+            if let Some(set_data) = data.set_target_data.get(set_idx) {
+                if let Some(var_data) = set_data.get(var_idx) {
+                    // Count categories and track which objects belong to each category
+                    let mut category_objects: HashMap<String, Vec<usize>> = HashMap::new();
+                    let mut category_counts: HashMap<String, usize> = HashMap::new();
+
+                    for (obj_idx, record) in var_data.iter().enumerate() {
+                        if let Some(value) = record.values.get(&var_def.name) {
+                            if let DataValue::Number(num) = value {
+                                // OVERALS requires positive integers
+                                if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                    let category = num.to_string();
+                                    category_objects
+                                        .entry(category.clone())
+                                        .or_default()
+                                        .push(obj_idx);
+                                    *category_counts.entry(category).or_default() += 1;
+                                }
+                            }
+                        }
+                    }
+
+                    // Calculate centroids for each category
+                    for (category, objects) in &category_objects {
+                        // Skip if no objects in this category
+                        if objects.is_empty() {
+                            continue;
+                        }
+
+                        let mut category_centroids = vec![0.0; dimensions];
+
+                        // Average object scores for this category
+                        for &obj_idx in objects {
+                            for dim in 0..dimensions {
+                                category_centroids[dim] += object_scores[obj_idx][dim];
+                            }
+                        }
+
+                        // Normalize
+                        let num_objects = objects.len() as f64;
+                        for dim in 0..dimensions {
+                            category_centroids[dim] /= num_objects;
+                        }
+
+                        // Calculate projected centroids
+                        // For single variables, this is a projection on the line defined by the variable weights
+                        let scaling_level = determine_scaling_level(var_def, config);
+                        let mut projected_centroids = vec![0.0; dimensions];
+
+                        match scaling_level {
+                            | ScalingLevel::Single
+                            | ScalingLevel::Ordinal
+                            | ScalingLevel::Discrete => {
+                                // For single variables, projected centroids are calculated using weights
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    let cat_val = category.parse::<usize>().unwrap_or(0);
+
+                                    if
+                                        let Some(quantification) = category_quantifications.get(
+                                            &(set_idx, var_idx, cat_val)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            projected_centroids[dim] =
+                                                quantification * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                            ScalingLevel::Multiple => {
+                                // For multiple nominal, projected centroids equal category centroids
+                                projected_centroids = category_centroids.clone();
+                            }
+                            _ => {
+                                // Fallback
+                                projected_centroids = category_centroids.clone();
+                            }
+                        }
+
+                        centroid_result.centroids.insert(
+                            category.clone(),
+                            vec![CentroidCategory {
+                                marginal_frequency: *category_counts.get(category).unwrap_or(&0),
+                                projected_centroids: Coordinates { dimension: projected_centroids },
+                                category_centroids: Coordinates { dimension: category_centroids },
+                            }]
+                        );
+                    }
+                }
+            }
+
+            results.push(centroid_result);
+        }
+    }
+
+    Ok(results)
 }
 
 /// Update quantifications for single nominal variables
@@ -1128,7 +1235,7 @@ pub fn calculate_iteration_history(
                 }
             }
 
-            categories.clone().sort();
+            categories.sort();
             category_values.insert((set_idx, var_idx), categories.clone());
 
             // Initialize variable weights
@@ -1369,20 +1476,290 @@ pub fn calculate_iteration_history(
     Ok(IterationHistory { iterations })
 }
 
-/// Calculate summary analysis for OVERALS
+/// Calculate summary analysis for OVERALS analysis
 pub fn calculate_summary_analysis(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<SummaryAnalysis, String> {
-    // Get dimensions from config
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get object scores, category quantifications, and variable weights
-    let (object_scores, category_quantifications, variable_weights) = calculate_overals_components(
-        data,
-        config,
-        dimensions
-    )?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
+
+    // Step 8: Rotation (skipped for simplicity in this implementation)
 
     // Number of sets
     let num_sets = data.set_target_data.len();
@@ -1519,11 +1896,285 @@ pub fn calculate_weights(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<Weights, String> {
-    // Get dimensions
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get variable weights from OVERALS components
-    let (_, _, variable_weights) = calculate_overals_components(data, config, dimensions)?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
+
+    // Step 8: Rotation (skipped for simplicity in this implementation)
 
     // Prepare result structure
     let mut set = HashMap::new();
@@ -1565,15 +2216,285 @@ pub fn calculate_component_loadings(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<ComponentLoadings, String> {
-    // Get dimensions
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get OVERALS components
-    let (object_scores, category_quantifications, variable_weights) = calculate_overals_components(
-        data,
-        config,
-        dimensions
-    )?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
+
+    // Step 8: Rotation (skipped for simplicity in this implementation)
 
     // Prepare result structure
     let mut set = HashMap::new();
@@ -1665,53 +2586,288 @@ pub fn calculate_component_loadings(
     })
 }
 
-/// Calculate Pearson correlation coefficient
-fn calculate_correlation(x: &[f64], y: &[f64]) -> f64 {
-    if x.len() != y.len() || x.is_empty() {
-        return 0.0;
-    }
-
-    let n = x.len() as f64;
-
-    // Calculate means
-    let mean_x = x.iter().sum::<f64>() / n;
-    let mean_y = y.iter().sum::<f64>() / n;
-
-    // Calculate covariance and variances
-    let mut cov = 0.0;
-    let mut var_x = 0.0;
-    let mut var_y = 0.0;
-
-    for i in 0..x.len() {
-        let dx = x[i] - mean_x;
-        let dy = y[i] - mean_y;
-        cov += dx * dy;
-        var_x += dx * dx;
-        var_y += dy * dy;
-    }
-
-    // Calculate correlation
-    if var_x > 0.0 && var_y > 0.0 {
-        cov / (var_x.sqrt() * var_y.sqrt())
-    } else {
-        0.0
-    }
-}
-
 /// Calculate fit measures for OVERALS analysis
 pub fn calculate_fit_measures(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<FitMeasures, String> {
-    // Get dimensions
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get OVERALS components
-    let (object_scores, category_quantifications, variable_weights) = calculate_overals_components(
-        data,
-        config,
-        dimensions
-    )?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
 
     // Prepare result structure
     let mut set = HashMap::new();
@@ -1867,11 +3023,283 @@ pub fn calculate_object_scores(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<ObjectScores, String> {
-    // Get dimensions
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get OVERALS components - we only need the object scores
-    let (object_scores, _, _) = calculate_overals_components(data, config, dimensions)?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
 
     // Prepare result structure
     let mut scores = HashMap::new();
@@ -1891,11 +3319,283 @@ pub fn generate_transformation_plots(
     data: &AnalysisData,
     config: &OVERALSAnalysisConfig
 ) -> Result<TransformationPlots, String> {
-    // Get dimensions
+    // Prepare main parameters
     let dimensions = config.main.dimensions.unwrap_or(2) as usize;
+    let max_iterations = config.options.max_iter.unwrap_or(100) as usize;
+    let convergence_criterion = config.options.conv.unwrap_or(0.00001);
+    let use_random_init = config.options.use_randconf;
 
-    // Get OVERALS components - we only need the category quantifications
-    let (_, category_quantifications, _) = calculate_overals_components(data, config, dimensions)?;
+    // Count number of cases and prepare data structures
+    let mut num_cases = 0;
+    if let Some(first_set) = data.set_target_data.first() {
+        if let Some(first_var) = first_set.first() {
+            num_cases = first_var.len();
+        }
+    }
+
+    if num_cases == 0 {
+        return Err("No cases found in data".to_string());
+    }
+
+    // Initialize object scores
+    let mut object_scores = if use_random_init {
+        // Random initialization
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let mut scores = Vec::with_capacity(num_cases);
+        for _ in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                row.push(rng.gen::<f64>() * 2.0 - 1.0); // Random between -1 and 1
+            }
+            scores.push(row);
+        }
+        scores
+    } else {
+        // Numerical initialization
+        let mut scores = Vec::with_capacity(num_cases);
+        for i in 0..num_cases {
+            let mut row = Vec::with_capacity(dimensions);
+            for d in 0..dimensions {
+                // Initialize with successive values
+                let value = (((i % 10) as f64) / 10.0) * (if d % 2 == 0 { 1.0 } else { -1.0 });
+                row.push(value);
+            }
+            scores.push(row);
+        }
+        scores
+    };
+
+    // Center and normalize object scores
+    center_and_normalize_scores(&mut object_scores);
+
+    // Initialize category quantifications and variable weights
+    let mut category_quantifications: HashMap<(usize, usize, usize), f64> = HashMap::new();
+    let mut variable_weights: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+
+    // Initialize category counts and category values
+    let mut category_values: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+
+    // Discover categories for each variable
+    for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+        for (var_idx, var_data) in set_data.iter().enumerate() {
+            let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+            let mut categories = Vec::new();
+
+            for record in var_data {
+                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                    if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                        let cat_val = *num as usize;
+                        if !categories.contains(&cat_val) {
+                            categories.push(cat_val);
+                        }
+                    }
+                }
+            }
+
+            categories.sort();
+            category_values.insert((set_idx, var_idx), categories.clone());
+
+            // Initialize variable weights
+            let mut weights = Vec::with_capacity(dimensions);
+            for _ in 0..dimensions {
+                weights.push(1.0 / (dimensions as f64));
+            }
+            variable_weights.insert((set_idx, var_idx), weights);
+
+            // Initialize category quantifications
+            for (i, &cat_val) in categories.iter().enumerate() {
+                // Initial quantification: scale from 0 to 1 based on category order
+                let init_quant = if categories.len() > 1 {
+                    (i as f64) / ((categories.len() - 1) as f64)
+                } else {
+                    0.5
+                };
+                category_quantifications.insert((set_idx, var_idx, cat_val), init_quant);
+            }
+        }
+    }
+
+    // Main iteration loop
+    let mut current_loss = f64::MAX;
+
+    for _ in 0..max_iterations {
+        // Step 2: Loop across sets and variables
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+                let scaling_level = determine_scaling_level(
+                    &data.set_target_data_defs[set_idx][var_idx],
+                    config
+                );
+
+                // Step 3: Eliminate contributions of other variables
+                // Calculate V_kj (sum of contributions of other variables in this set)
+                let mut v_kj = vec![vec![0.0; dimensions]; num_cases];
+
+                for (other_var_idx, other_var_data) in set_data.iter().enumerate() {
+                    if other_var_idx == var_idx {
+                        continue;
+                    }
+
+                    let other_var_name = &data.set_target_data_defs[set_idx][other_var_idx].name;
+
+                    // Add contribution of other variable
+                    for (case_idx, record) in other_var_data.iter().enumerate() {
+                        if let Some(DataValue::Number(num)) = record.values.get(other_var_name) {
+                            if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                                let cat_val = *num as usize;
+                                if
+                                    let Some(quant) = category_quantifications.get(
+                                        &(set_idx, other_var_idx, cat_val)
+                                    )
+                                {
+                                    if
+                                        let Some(weights) = variable_weights.get(
+                                            &(set_idx, other_var_idx)
+                                        )
+                                    {
+                                        for dim in 0..dimensions {
+                                            v_kj[case_idx][dim] += quant * weights[dim];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Step 4: Update category quantifications
+                match scaling_level {
+                    ScalingLevel::Multiple => {
+                        // For multiple nominal, calculate unconstrained quantifications
+                        let categories = category_values
+                            .get(&(set_idx, var_idx))
+                            .unwrap_or(&Vec::new())
+                            .clone();
+
+                        for &cat_val in &categories {
+                            // Count objects with this category
+                            let mut cat_objects = Vec::new();
+
+                            for (case_idx, record) in var_data.iter().enumerate() {
+                                if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                                    if (*num as usize) == cat_val {
+                                        cat_objects.push(case_idx);
+                                    }
+                                }
+                            }
+
+                            if cat_objects.is_empty() {
+                                continue;
+                            }
+
+                            // Calculate new quantification for each dimension
+                            let mut new_quant = 0.0;
+                            let n = cat_objects.len() as f64;
+
+                            for &case_idx in &cat_objects {
+                                for dim in 0..dimensions {
+                                    new_quant += object_scores[case_idx][dim] - v_kj[case_idx][dim];
+                                }
+                            }
+
+                            new_quant /= n;
+                            category_quantifications.insert((set_idx, var_idx, cat_val), new_quant);
+                        }
+                    }
+                    ScalingLevel::Single | ScalingLevel::Nominal => {
+                        // For single nominal, calculate rank-one approximation
+                        update_single_nominal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Ordinal => {
+                        // For ordinal, apply monotonic regression
+                        update_ordinal_quantifications(
+                            set_idx,
+                            var_idx,
+                            var_name,
+                            var_data,
+                            &object_scores,
+                            &v_kj,
+                            &mut category_quantifications,
+                            &mut variable_weights,
+                            &category_values
+                        );
+                    }
+                    ScalingLevel::Discrete => {
+                        // For numeric (discrete), enforce linear relationship
+                        update_numeric_quantifications(
+                            set_idx,
+                            var_idx,
+                            &category_values,
+                            &mut category_quantifications
+                        );
+                    }
+                }
+            }
+        }
+
+        // Step 5: Update object scores
+        let mut new_object_scores = vec![vec![0.0; dimensions]; num_cases];
+
+        for (set_idx, set_data) in data.set_target_data.iter().enumerate() {
+            for (var_idx, var_data) in set_data.iter().enumerate() {
+                let var_name = &data.set_target_data_defs[set_idx][var_idx].name;
+
+                for (case_idx, record) in var_data.iter().enumerate() {
+                    if let Some(DataValue::Number(num)) = record.values.get(var_name) {
+                        if *num > 0.0 && (*num - num.floor()).abs() < 1e-10 {
+                            let cat_val = *num as usize;
+                            if
+                                let Some(quant) = category_quantifications.get(
+                                    &(set_idx, var_idx, cat_val)
+                                )
+                            {
+                                if let Some(weights) = variable_weights.get(&(set_idx, var_idx)) {
+                                    for dim in 0..dimensions {
+                                        new_object_scores[case_idx][dim] += quant * weights[dim];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 6: Orthonormalization
+        center_and_normalize_scores(&mut new_object_scores);
+
+        // Calculate loss for this iteration
+        let new_loss = calculate_loss(
+            &object_scores,
+            &new_object_scores,
+            &category_quantifications,
+            &variable_weights,
+            data,
+            dimensions
+        );
+
+        // Step 7: Convergence test
+        let diff = if current_loss == f64::MAX { 0.0 } else { current_loss - new_loss };
+        if current_loss != f64::MAX && diff < convergence_criterion {
+            break;
+        }
+
+        // Update for next iteration
+        object_scores = new_object_scores;
+        current_loss = new_loss;
+    }
 
     // Prepare result structure
     let mut transformations = HashMap::new();
@@ -1948,4 +3648,37 @@ pub fn generate_transformation_plots(
     }
 
     Ok(TransformationPlots { transformations })
+}
+
+/// Calculate Pearson correlation coefficient
+fn calculate_correlation(x: &[f64], y: &[f64]) -> f64 {
+    if x.len() != y.len() || x.is_empty() {
+        return 0.0;
+    }
+
+    let n = x.len() as f64;
+
+    // Calculate means
+    let mean_x = x.iter().sum::<f64>() / n;
+    let mean_y = y.iter().sum::<f64>() / n;
+
+    // Calculate covariance and variances
+    let mut cov = 0.0;
+    let mut var_x = 0.0;
+    let mut var_y = 0.0;
+
+    for i in 0..x.len() {
+        let dx = x[i] - mean_x;
+        let dy = y[i] - mean_y;
+        cov += dx * dy;
+        var_x += dx * dx;
+        var_y += dy * dy;
+    }
+
+    // Calculate correlation
+    if var_x > 0.0 && var_y > 0.0 {
+        cov / (var_x.sqrt() * var_y.sqrt())
+    } else {
+        0.0
+    }
 }
