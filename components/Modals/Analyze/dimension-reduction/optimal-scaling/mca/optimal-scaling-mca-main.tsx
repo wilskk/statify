@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
     OptScaMCAContainerProps,
     OptScaMCAMainType,
@@ -27,7 +27,10 @@ import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<OptScaMCAType>({
         ...OptScaMCADefault,

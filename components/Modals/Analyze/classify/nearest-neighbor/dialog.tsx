@@ -49,8 +49,7 @@ export const KNNDialog = ({
 
     useEffect(() => {
         setMainState({ ...data });
-        setAvailableVariables(globalVariables);
-    }, [data, globalVariables]);
+    }, [data]);
 
     useEffect(() => {
         const usedVariables = [

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { HierClusDialog } from "@/components/Modals/Analyze/classify/hierarchical-cluster/dialog";
 import {
     HierClusContainerProps,
@@ -21,7 +21,10 @@ import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<HierClusType>({
         ...HierClusDefault,

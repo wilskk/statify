@@ -51,8 +51,7 @@ export const MultivariateDialog = ({
 
     useEffect(() => {
         setMainState({ ...data });
-        setAvailableVariables(globalVariables);
-    }, [data, globalVariables]);
+    }, [data]);
 
     useEffect(() => {
         const usedVariables = [

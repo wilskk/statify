@@ -54,8 +54,7 @@ export const RepeatedMeasuresDialog = ({
             ...data,
             SubVar: combinationVars || prevState.SubVar || [],
         }));
-        setAvailableVariables(globalVariables);
-    }, [data, globalVariables, combinationVars]);
+    }, [data, combinationVars]);
 
     // Replace the second useEffect with this:
     useEffect(() => {

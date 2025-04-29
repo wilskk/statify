@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     VarianceCompsContainerProps,
     VarianceCompsMainType,
@@ -22,7 +22,10 @@ export const VarianceCompsContainer = ({
 }: VarianceCompsContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<VarianceCompsType>({
         ...VarianceCompsDefault,

@@ -87,8 +87,7 @@ export const OptScaCatpcaDialog = forwardRef<
 
         useEffect(() => {
             setMainState({ ...data });
-            setAvailableVariables(globalVariables);
-        }, [data, globalVariables]);
+        }, [data]);
 
         useEffect(() => {
             const newFormattedVariables: { [key: string]: string } = {};

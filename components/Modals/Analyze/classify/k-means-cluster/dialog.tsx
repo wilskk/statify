@@ -55,8 +55,7 @@ export const KMeansClusterDialog = ({
 
     useEffect(() => {
         setMainState({ ...data });
-        setAvailableVariables(globalVariables);
-    }, [data, globalVariables]);
+    }, [data]);
 
     useEffect(() => {
         const usedVariables = [

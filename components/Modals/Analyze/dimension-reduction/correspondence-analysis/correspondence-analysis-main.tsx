@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     CorrespondenceContainerProps,
     CorrespondenceMainType,
@@ -25,7 +25,10 @@ export const CorrespondenceContainer = ({
 }: CorrespondenceContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
     const meta = useMetaStore((state) => state.meta);
 
     const [formData, setFormData] = useState<CorrespondenceType>({

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { KNNDialog } from "@/components/Modals/Analyze/classify/nearest-neighbor/dialog";
 import {
     KNNContainerProps,
@@ -23,7 +23,10 @@ import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<KNNType>({ ...KNNDefault });
     const [isMainOpen, setIsMainOpen] = useState(true);

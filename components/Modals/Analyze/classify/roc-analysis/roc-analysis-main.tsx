@@ -1,5 +1,5 @@
 // roc-analysis-main.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RocAnalysisDialog } from "@/components/Modals/Analyze/classify/roc-analysis/dialog";
 import {
     RocAnalysisContainerProps,
@@ -23,7 +23,10 @@ export const RocAnalysisContainer = ({
 }: RocAnalysisContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<RocAnalysisType>({
         ...RocAnalysisDefault,

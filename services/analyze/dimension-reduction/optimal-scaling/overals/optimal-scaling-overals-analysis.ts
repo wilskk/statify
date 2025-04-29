@@ -20,39 +20,58 @@ export async function analyzeOptScaOverals({
 
     // Keep the original nested structure from configData
     const SetTargetVariable = configData?.main?.SetTargetVariable || [];
-
-    // Extract just the variable names (flattened) for getSlicedData and getVarDefs
-    const flattenedVariableNames = SetTargetVariable.flat().map((variableStr) =>
-        extractVariableName(variableStr)
-    );
-
     const PlotsTargetVariable = configData.main.PlotsTargetVariable || [];
 
-    const slicedDataForSetTarget = getSlicedData({
-        dataVariables: dataVariables,
-        variables: variables,
-        selectedVariables: flattenedVariableNames,
-    });
+    // Process each set separately to maintain nested structure
+    const slicedDataSets = [];
+    const varDefsSets = [];
 
+    // For each set in the nested structure
+    for (const set of SetTargetVariable) {
+        // Extract just the variable names for this set
+        const setVariableNames = set.map(variableStr => extractVariableName(variableStr));
+        
+        // Get sliced data for this set
+        const setSlicedData = getSlicedData({
+            dataVariables: dataVariables,
+            variables: variables,
+            selectedVariables: setVariableNames,
+        });
+        
+        // Get variable definitions for this set
+        const setVarDefs = getVarDefs(variables, setVariableNames);
+        
+        // Add to our nested results
+        slicedDataSets.push(setSlicedData);
+        varDefsSets.push(setVarDefs);
+    }
+
+    // For plots target (keeping this as-is since it wasn't nested in the original)
     const slicedDataForPlotsTarget = getSlicedData({
         dataVariables: dataVariables,
         variables: variables,
         selectedVariables: PlotsTargetVariable,
     });
 
-    const varDefsForSetTarget = getVarDefs(variables, flattenedVariableNames);
     const varDefsForPlotsTarget = getVarDefs(variables, PlotsTargetVariable);
 
-    console.log(configData);
-    console.log(flattenedVariableNames);
-    console.log("slicedDataForSetTarget", slicedDataForSetTarget);
+    console.log("Original SetTargetVariable structure:", SetTargetVariable);
+    console.log("Maintained nested structure - slicedDataSets:", slicedDataSets);
+    console.log("Maintained nested structure - varDefsSets:", varDefsSets);
+    
+    // We also need a flattened version for certain operations
+    const flattenedVariableNames = SetTargetVariable.flat().map(variableStr => 
+        extractVariableName(variableStr)
+    );
 
+    // Now we can create the OVERALS analysis with our nested structures
+    // You'll need to modify the OVERALSAnalysis constructor to accept nested structures
     // const overals = new OVERALSAnalysis(
-    //     slicedDataForSetTarget,
+    //     slicedDataSets,           // Now a nested structure
     //     slicedDataForPlotsTarget,
-    //     varDefsForSetTarget,
+    //     varDefsSets,              // Now a nested structure
     //     varDefsForPlotsTarget,
-    //     configData // Pass the original configData with preserved nested structure
+    //     configData
     // );
 
     // const results = overals.get_results();
@@ -60,9 +79,6 @@ export async function analyzeOptScaOverals({
 
     // console.log("Results", results);
     // console.log(error);
-
-    // const formattedResults = transformOVERALSResult(results);
-    // console.log("formattedResults", formattedResults);
 
     /*
      * 🎉 Final Result Process 🎯

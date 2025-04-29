@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
     OptScaCatpcaContainerProps,
     OptScaCatpcaMainType,
@@ -33,7 +33,10 @@ export const OptScaCatpcaContainer = ({
 }: OptScaCatpcaContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<OptScaCatpcaType>({
         ...OptScaCatpcaDefault,

@@ -223,9 +223,8 @@ export const OptScaOveralsDialog = forwardRef<
 
             setOriginalVariables(originals);
             setFormattedVariables(currentFormatting);
-            setVariableInfo({ ...variableInfo, ...variablesInfo });
-            setAvailableVariables(globalVariables);
-        }, [isMainOpen, data, globalVariables, variableInfo, initialMainState]);
+            setVariableInfo(variablesInfo);
+        }, [isMainOpen, data, initialMainState]);
 
         // Update available variables when used variables change
         useEffect(() => {
@@ -255,16 +254,12 @@ export const OptScaOveralsDialog = forwardRef<
 
         // Update formatted variables when variableInfo or mainState changes
         useEffect(() => {
-            const newFormattedVariables: { [key: string]: string } = {
-                ...formattedVariables,
-            };
+            // Don't use existing formattedVariables, create a fresh object
+            const newFormattedVariables: { [key: string]: string } = {};
 
-            // First, process all variables in variableInfo
+            // Process all variables in variableInfo
             Object.keys(variableInfo).forEach((variable) => {
                 const info = variableInfo[variable];
-
-                // Skip if already formatted (prevents double formatting)
-                if (formattedVariables[variable]) return;
 
                 // Check if variable is in any page of SetTargetVariable (flattened array)
                 const allSetTargetVariables = mainState.SetTargetVariable
@@ -290,12 +285,22 @@ export const OptScaOveralsDialog = forwardRef<
                 }
             });
 
-            setFormattedVariables(newFormattedVariables);
+            // To avoid infinite loops, only update if there are actual changes
+            const hasChanges = Object.keys(newFormattedVariables).some(
+                (key) => newFormattedVariables[key] !== formattedVariables[key]
+            );
+
+            if (hasChanges) {
+                setFormattedVariables((prevFormatted) => ({
+                    ...prevFormatted,
+                    ...newFormattedVariables,
+                }));
+            }
         }, [
             variableInfo,
+            formattedVariables,
             mainState.SetTargetVariable,
             mainState.PlotsTargetVariable,
-            formattedVariables,
         ]);
 
         const handleChange = (

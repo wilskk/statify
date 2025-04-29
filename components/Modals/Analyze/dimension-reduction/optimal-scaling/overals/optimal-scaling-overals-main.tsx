@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { OptScaOveralsDefineRange } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/define-range";
 import { OptScaOveralsDefineRangeScale } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/define-range-scale";
 import { OptScaOveralsDialog } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialog";
@@ -25,7 +25,10 @@ export const OptScaOveralsContainer = ({
 }: OptScaOveralsContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<OptScaOveralsType>({
         ...OptScaOveralsDefault,

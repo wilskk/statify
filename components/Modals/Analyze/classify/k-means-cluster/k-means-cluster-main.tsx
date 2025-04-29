@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { KMeansClusterDefault } from "@/constants/classify/k-means-cluster/k-means-cluster-default";
 import {
     KMeansClusterContainerProps,
@@ -22,7 +22,10 @@ export const KMeansClusterContainer = ({
 }: KMeansClusterContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
-    const tempVariables = variables.map((variables) => variables.name);
+    const tempVariables = useMemo(
+        () => variables.map((variable) => variable.name),
+        [variables]
+    );
 
     const [formData, setFormData] = useState<KMeansClusterType>({
         ...KMeansClusterDefault,

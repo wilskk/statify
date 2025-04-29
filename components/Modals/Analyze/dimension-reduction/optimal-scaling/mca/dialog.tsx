@@ -73,8 +73,7 @@ export const OptScaMCADialog = forwardRef<DialogHandlers, OptScaMCADialogProps>(
 
         useEffect(() => {
             setMainState({ ...data });
-            setAvailableVariables(globalVariables);
-        }, [data, globalVariables]);
+        }, [data]);
 
         useEffect(() => {
             const newFormattedVariables: { [key: string]: string } = {};
