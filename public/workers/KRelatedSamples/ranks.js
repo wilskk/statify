@@ -27,7 +27,7 @@ export function resultRanks(data, variables) {
 }
 
 // Menghitung peringkat dengan penanganan ties
-function computeRanksForRow(values) {
+export function computeRanksForRow(values) {
     // Buat array index [0,1,2,3,...] agar kita tahu posisi aslinya
     const indices = values.map((v, i) => i);
     // Urutkan index berdasarkan nilai data
@@ -77,7 +77,7 @@ function computeRanks(arrays, variables, n, k) {
     let rows = [];
     for (let i = 0; i < k; i++) {
         rows.push({
-            rowHeader: [variables[i].name],
+            rowHeader: [variables[i].label || variables[i].name],
             "Mean Rank": +(sumRanks[i] / n).toFixed(2)
         });
     }

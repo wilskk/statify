@@ -96,7 +96,12 @@ export enum ModalType {
   ReadExcelFile = "ReadExcelFile",
 
   // Nonparametric Test
-  KRelatedSamplesTest = 'kRelatedSamplesTest',
+  ChiSquare = 'chiSquare',
+  Runs = 'runs',
+  TwoIndependentSamples = 'twoIndependentSamples',
+  KIndependentSamples = 'kIndependentSamples',
+  TwoRelatedSamples = 'twoRelatedSamples',
+  KRelatedSamples = 'kRelatedSamples',
 
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",

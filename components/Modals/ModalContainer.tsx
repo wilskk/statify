@@ -28,7 +28,7 @@ import BootstrapLinear from './Regression/Linear/BootstrapLinear';
 import PlotsLinear from './Regression/Linear/PlotsLinear';
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
-import KRelatedSamplesTestModal from "./Analyze/NonparametricTests/LegacyDialogs/KRelatedSamplesTestModal";
+import { LegacyDialogsModal, isLegacyDialogsModal } from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/LegacyDialogsModal";
 
 const ModalContainer: React.FC = () => {
     const { modals, closeModal } = useModal();
@@ -77,6 +77,18 @@ const ModalContainer: React.FC = () => {
         return (
             <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
                 <DescriptiveModal
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
+    if (isLegacyDialogsModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <LegacyDialogsModal
                     modalType={currentModal.type}
                     onClose={closeModal}
                     props={currentModal.props}
@@ -154,8 +166,6 @@ const ModalContainer: React.FC = () => {
                 return (
                     <ModalOptimalScaling onClose={closeModal} {...currentModal.props} />
                 );
-            case ModalType.KRelatedSamplesTest:
-                return <KRelatedSamplesTestModal onClose={closeModal} {...currentModal.props} />;
             case ModalType.ChartBuilderModal:
                 return (
                     <ChartBuilderModal onClose={closeModal} {...currentModal.props} />

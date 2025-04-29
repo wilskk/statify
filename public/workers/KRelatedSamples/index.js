@@ -1,28 +1,35 @@
-// Gunakan normal import untuk file lokal juga
 import { resultRanks } from './ranks.js';
 import { resultFriedman } from './testStatisticsFriedman.js';
-
-// Import stdlib/stats-base-dists-chisquare-cdf
+import { resultDescriptive } from './descriptives.js';
 
 self.onmessage = (e) => {
-    const { variableData, friedmanOption, kendallsWOption, cochransQOption } = e.data;
-    let result = { success: true, error: null };
+    const { variableData, testType, displayStatistics } = e.data;
+    let result = { success: true, error: null, testType, displayStatistics };
 
     try {
         // Convert variableData to formats expected by calculation functions
         const data = extractData(variableData);
         const variables = variableData.map(vd => ({
             name: vd.variable.name,
+            label: vd.variable.label,
             type: vd.variable.type
         }));
+
+        if (displayStatistics.descriptive || displayStatistics.quartile) {
+            const descriptives = resultDescriptive(data, variables, displayStatistics);
+            result.descriptives = JSON.stringify(descriptives);
+            console.log('Descriptives:', descriptives);
+        }
 
         // Handle different actions
         const ranks = resultRanks(data, variables);
         result.ranks = JSON.stringify(ranks);
+        console.log('Ranks:', ranks);
 
-        if (friedmanOption) {
+        if (testType.friedman) {
             const friedman = resultFriedman(data, variables);
             result.friedmanTest = JSON.stringify(friedman);
+            console.log('Friedman Test:', friedman);
         }
         // if (kendallsWOption) {
         //     const kendallsW = resultKendallsW(data, variables);
