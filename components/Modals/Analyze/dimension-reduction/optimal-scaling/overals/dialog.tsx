@@ -3,6 +3,7 @@ import React, {
     useState,
     forwardRef,
     useImperativeHandle,
+    useCallback,
 } from "react";
 import {
     Dialog,
@@ -64,12 +65,11 @@ export const OptScaOveralsDialog = forwardRef<
         ref
     ) => {
         // Initialize with data or default values, ensuring SetTargetVariable is a 2D array
-        const initialMainState = () => {
+        const initialMainState = useCallback(() => {
             const state = { ...data };
             // Convert single array to 2D array if necessary
             if (state.SetTargetVariable) {
                 if (!Array.isArray(state.SetTargetVariable[0])) {
-                    // If SetTargetVariable is a 1D array, convert to 2D array
                     state.SetTargetVariable = [
                         state.SetTargetVariable as unknown as string[],
                     ];
@@ -78,7 +78,7 @@ export const OptScaOveralsDialog = forwardRef<
                 state.SetTargetVariable = [[]];
             }
             return state;
-        };
+        }, [data]);
 
         const [mainState, setMainState] = useState<OptScaOveralsMainType>(
             initialMainState()
@@ -225,7 +225,7 @@ export const OptScaOveralsDialog = forwardRef<
             setFormattedVariables(currentFormatting);
             setVariableInfo({ ...variableInfo, ...variablesInfo });
             setAvailableVariables(globalVariables);
-        }, [isMainOpen, data, globalVariables]);
+        }, [isMainOpen, data, globalVariables, variableInfo, initialMainState]);
 
         // Update available variables when used variables change
         useEffect(() => {
@@ -295,6 +295,7 @@ export const OptScaOveralsDialog = forwardRef<
             variableInfo,
             mainState.SetTargetVariable,
             mainState.PlotsTargetVariable,
+            formattedVariables,
         ]);
 
         const handleChange = (
@@ -1258,3 +1259,5 @@ export const OptScaOveralsDialog = forwardRef<
         );
     }
 );
+
+OptScaOveralsDialog.displayName = "OptScaOveralsDialog";

@@ -55,7 +55,7 @@ export const UnivariateBootstrap = ({
 
             setAvailableVariables(updatedVariables);
         }
-    }, [bootstrapState]);
+    }, [bootstrapState, data.Variables]);
 
     const handleChange = (
         field: keyof UnivariateBootstrapType,

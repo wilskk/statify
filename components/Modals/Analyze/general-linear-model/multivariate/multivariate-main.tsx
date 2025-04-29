@@ -142,6 +142,7 @@ export const MultivariateContainer = ({
         formData.main.Covar,
         formData.main.WlsWeight,
         formData.plots.FixFactorVars,
+        tempVariables,
     ]);
 
     const updateFormData = <T extends keyof typeof formData>(

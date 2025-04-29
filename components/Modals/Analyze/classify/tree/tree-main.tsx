@@ -74,7 +74,7 @@ export const TreeContainer = ({ onClose }: TreeContainerProps) => {
                 },
             }));
         }
-    }, [formData.main]);
+    }, [formData.main, tempVariables]);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,

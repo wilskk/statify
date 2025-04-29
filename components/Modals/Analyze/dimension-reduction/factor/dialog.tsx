@@ -60,7 +60,7 @@ export const FactorDialog = ({
             (variable) => !usedVariables.includes(variable)
         );
         setAvailableVariables(updatedVariables);
-    }, [mainState]);
+    }, [mainState, globalVariables]);
 
     const handleChange = (
         field: keyof FactorMainType,

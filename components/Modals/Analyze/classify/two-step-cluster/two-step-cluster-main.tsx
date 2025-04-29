@@ -75,7 +75,7 @@ export const TwoStepClusterContainer = ({
                 },
             }));
         }
-    }, [formData.main]);
+    }, [formData.main, tempVariables]);
 
     const updateFormData = <T extends keyof typeof formData>(
         section: T,

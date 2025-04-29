@@ -55,7 +55,7 @@ export const MultivariateBootstrap = ({
 
             setAvailableVariables(updatedVariables);
         }
-    }, [bootstrapState]);
+    }, [bootstrapState, data.Variables]);
 
     const handleChange = (
         field: keyof MultivariateBootstrapType,

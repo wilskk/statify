@@ -1,4 +1,4 @@
-import React, {
+import {
     useEffect,
     useState,
     useRef,
@@ -878,3 +878,5 @@ export const OptScaCatpcaDialog = forwardRef<
         );
     }
 );
+
+OptScaCatpcaDialog.displayName = "OptScaCatpcaDialog";

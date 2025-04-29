@@ -59,7 +59,7 @@ export const TwoStepClusterDialog = ({
             (variable) => !usedVariables.includes(variable)
         );
         setAvailableVariables(updatedVariables);
-    }, [mainState]);
+    }, [mainState, globalVariables]);
 
     const handleChange = (
         field: keyof TwoStepClusterMainType,

@@ -92,6 +92,7 @@ export const DiscriminantContainer = ({
         formData.main.IndependentVariables,
         formData.main.GroupingVariable,
         formData.main.SelectionVariable,
+        tempVariables,
     ]);
 
     const updateFormData = <T extends keyof typeof formData>(

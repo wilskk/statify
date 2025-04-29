@@ -44,21 +44,22 @@ export async function analyzeOptScaOverals({
     const varDefsForPlotsTarget = getVarDefs(variables, PlotsTargetVariable);
 
     console.log(configData);
+    console.log(flattenedVariableNames);
     console.log("slicedDataForSetTarget", slicedDataForSetTarget);
 
-    const overals = new OVERALSAnalysis(
-        slicedDataForSetTarget,
-        slicedDataForPlotsTarget,
-        varDefsForSetTarget,
-        varDefsForPlotsTarget,
-        configData // Pass the original configData with preserved nested structure
-    );
+    // const overals = new OVERALSAnalysis(
+    //     slicedDataForSetTarget,
+    //     slicedDataForPlotsTarget,
+    //     varDefsForSetTarget,
+    //     varDefsForPlotsTarget,
+    //     configData // Pass the original configData with preserved nested structure
+    // );
 
-    const results = overals.get_results();
-    const error = overals.get_all_errors();
+    // const results = overals.get_results();
+    // const error = overals.get_all_errors();
 
-    console.log("Results", results);
-    console.log(error);
+    // console.log("Results", results);
+    // console.log(error);
 
     // const formattedResults = transformOVERALSResult(results);
     // console.log("formattedResults", formattedResults);

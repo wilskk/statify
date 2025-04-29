@@ -58,7 +58,7 @@ export const RocCurveDialog = ({
             (variable) => !usedVariables.includes(variable)
         );
         setAvailableVariables(updatedVariables);
-    }, [mainState]);
+    }, [mainState, globalVariables]);
 
     const handleChange = (
         field: keyof RocCurveMainType,

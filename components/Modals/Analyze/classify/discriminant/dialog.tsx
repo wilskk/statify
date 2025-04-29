@@ -63,7 +63,7 @@ export const DiscriminantDialog = ({
             (variable) => !usedVariables.includes(variable)
         );
         setAvailableVariables(updatedVariables);
-    }, [mainState]);
+    }, [mainState, globalVariables]);
 
     const handleDrop = (target: string, variable: string) => {
         setMainState((prev) => {

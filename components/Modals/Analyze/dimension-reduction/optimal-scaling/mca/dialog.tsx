@@ -1,9 +1,4 @@
-import React, {
-    useEffect,
-    useState,
-    useImperativeHandle,
-    forwardRef,
-} from "react";
+import { useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import {
     Dialog,
     DialogClose,
@@ -729,3 +724,5 @@ export const OptScaMCADialog = forwardRef<DialogHandlers, OptScaMCADialogProps>(
         );
     }
 );
+
+OptScaMCADialog.displayName = "OptScaMCADialog";

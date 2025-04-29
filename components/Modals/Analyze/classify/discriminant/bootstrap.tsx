@@ -55,7 +55,7 @@ export const DiscriminantBootstrap = ({
 
             setAvailableVariables(updatedVariables);
         }
-    }, [bootstrapState]);
+    }, [bootstrapState, data.Variables]);
 
     const handleChange = (
         field: keyof DiscriminantBootstrapType,
