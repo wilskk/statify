@@ -95,6 +95,11 @@ export enum ModalType {
   ReadCSVFile = "readCSVFile",
   ReadExcelFile = "ReadExcelFile",
 
+  // Compare Means
+  OneSampleTTest = "oneSampleTTest",
+  IndependentSamplesTTest = "independentSamplesTTest",
+  PairedSamplesTTest = "pairedSamplesTTest",
+
   // Nonparametric Test
   ChiSquare = 'chiSquare',
   Runs = 'runs',

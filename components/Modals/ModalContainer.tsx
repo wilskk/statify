@@ -28,6 +28,7 @@ import BootstrapLinear from './Regression/Linear/BootstrapLinear';
 import PlotsLinear from './Regression/Linear/PlotsLinear';
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
+import { CompareMeansModal, isCompareMeansModal } from "@/components/Modals/Analyze/CompareMeans/CompareMeansModal";
 import { LegacyDialogsModal, isLegacyDialogsModal } from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/LegacyDialogsModal";
 
 const ModalContainer: React.FC = () => {
@@ -97,6 +98,18 @@ const ModalContainer: React.FC = () => {
         );
     }
 
+    if (isCompareMeansModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <CompareMeansModal
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+    
     const renderModal = () => {
         switch (currentModal.type) {
             case ModalType.ComputeVariable:
