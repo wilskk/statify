@@ -52,7 +52,7 @@ impl OVERALSAnalysis {
             }
         };
 
-        let set_target_data_defs: Vec<Vec<VariableDefinition>> = match
+        let set_target_data_defs: Vec<Vec<Vec<VariableDefinition>>> = match
             serde_wasm_bindgen::from_value(set_target_data_defs)
         {
             Ok(data) => data,
@@ -63,7 +63,7 @@ impl OVERALSAnalysis {
             }
         };
 
-        let plots_target_data_defs: Vec<Vec<Vec<VariableDefinition>>> = match
+        let plots_target_data_defs: Vec<Vec<VariableDefinition>> = match
             serde_wasm_bindgen::from_value(plots_target_data_defs)
         {
             Ok(data) => data,

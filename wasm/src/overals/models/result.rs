@@ -3,16 +3,26 @@ use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OVERALSAnalysisResult {
-    pub case_processing_summary: CaseProcessingSummary,
-    pub variables: Vec<VariableInfo>,
-    pub centroids: Vec<CentroidsResult>,
-    pub iteration_history: IterationHistory,
-    pub summary_analysis: SummaryAnalysis,
-    pub weights: Weights,
-    pub component_loadings: ComponentLoadings,
-    pub fit_measures: FitMeasures,
-    pub object_scores: ObjectScores,
-    pub transformation_plots: TransformationPlots,
+    pub case_processing_summary: Option<CaseProcessingSummary>,
+    pub variables: Option<Vec<VariableInfo>>,
+    pub centroids: Option<Vec<CentroidsResult>>,
+    pub iteration_history: Option<IterationHistory>,
+    pub summary_analysis: Option<SummaryAnalysis>,
+    pub weights: Option<Weights>,
+    pub component_loadings: Option<ComponentLoadings>,
+    pub fit_measures: Option<FitMeasures>,
+    pub object_scores: Option<ObjectScores>,
+    pub transformation_plots: Option<TransformationPlots>,
+}
+
+pub struct OVERALSResult {
+    pub object_scores: Vec<Vec<f64>>,
+    pub category_quantifications: HashMap<(usize, usize, usize), f64>,
+    pub variable_weights: HashMap<(usize, usize), Vec<f64>>,
+    pub category_values: HashMap<(usize, usize), Vec<usize>>,
+    pub iteration_history: Vec<IterationStep>,
+    pub final_loss: f64,
+    pub dimensions: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -32,7 +42,6 @@ pub struct VariableInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ScalingLevel {
     Ordinal,
-    Nominal,
     Single,
     Multiple,
     Discrete,

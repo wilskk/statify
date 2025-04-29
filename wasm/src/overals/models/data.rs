@@ -108,6 +108,6 @@ pub struct VariableDefinition {
 pub struct AnalysisData {
     pub set_target_data: Vec<Vec<Vec<DataRecord>>>,
     pub plots_target_data: Vec<Vec<DataRecord>>,
-    pub set_target_data_defs: Vec<Vec<VariableDefinition>>,
-    pub plots_target_data_defs: Vec<Vec<Vec<VariableDefinition>>>,
+    pub set_target_data_defs: Vec<Vec<Vec<VariableDefinition>>>,
+    pub plots_target_data_defs: Vec<Vec<VariableDefinition>>,
 }
