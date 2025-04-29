@@ -279,6 +279,7 @@ export const useTableUpdates = ({
         }
         // --- End Date Validation ---
 
+        
         // Filter out null changes and changes that don't actually modify the value
         // or are just clearing spare cells (which shouldn't trigger add row/col)
         const validChanges = changes.filter((change): change is Handsontable.CellChange => {

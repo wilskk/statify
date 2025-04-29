@@ -1,68 +1,163 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useResultStore } from "@/stores/useResultStore";
 import { Log } from "@/types/Result";
 import { Analytic } from "@/types/Result";
 import { Statistic } from "@/types/Result";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface SidebarItem {
+    id?: number;
+    type?: 'log' | 'analytic' | 'statistic';
     title: string;
     url?: string;
     items?: SidebarItem[];
+    analyticId?: number;
 }
 
-const SidebarMenuItem: React.FC<{ item: SidebarItem; depth?: number; isOpen: boolean }> = ({ item, depth = 0, isOpen }) => {
+const SidebarMenuItem: React.FC<{
+    item: SidebarItem;
+    depth?: number;
+    isOpen: boolean;
+    deleteLog: (logId: number) => Promise<void>;
+    deleteAnalytic: (analyticId: number) => Promise<void>;
+    deleteStatistic: (statisticId: number) => Promise<void>;
+}> = ({ item, depth = 0, isOpen, deleteLog, deleteAnalytic, deleteStatistic }) => {
+    const { toast } = useToast();
     const [open, setOpen] = useState(false);
     const hasChildren = item.items && item.items.length > 0;
+    const isDeletable = item.type !== undefined && item.id !== undefined;
+
+    const handleDelete = async () => {
+        if (!item.id) return;
+        try {
+            if (item.type === 'log' && item.id) {
+                await deleteLog(item.id);
+            } else if (item.type === 'analytic' && item.id) {
+                await deleteAnalytic(item.id);
+            } else if (item.type === 'statistic' && item.id) {
+                await deleteStatistic(item.id);
+            }
+            toast({
+                title: "Item deleted",
+                description: `${item.type?.charAt(0).toUpperCase() + item.type!.slice(1)} "${item.title}" has been deleted.`,
+            });
+        } catch (error: any) {
+            console.error(`Failed to delete ${item.type}:`, error);
+            toast({
+                variant: "destructive",
+                title: "Error deleting item",
+                description: `Failed to delete ${item.type} "${item.title}". ${error.message || ''}`,
+            });
+        }
+    };
 
     const handleToggle = () => {
         if (hasChildren) setOpen(!open);
     };
 
-    // Define padding based on depth
     const paddingLeft = depth * 4;
 
+    const renderDeleteButton = () => (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-6 w-6 flex-shrink-0 text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <Trash2 size={14} />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="sm:max-w-[425px] bg-white text-black border border-black/10 rounded-lg p-4 shadow-lg">
+                <AlertDialogHeader className="pb-2">
+                    <AlertDialogTitle className="text-lg font-semibold text-black">Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-sm text-gray-600 pt-1">
+                        This action cannot be undone. This will permanently delete the {item.type} "{item.title}"
+                        {item.type === 'log' && ' and all its associated analytics and statistics.'}
+                        {item.type === 'analytic' && ' and all its associated statistics.'}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="pt-3 sm:justify-end">
+                    <AlertDialogCancel className="border border-gray-300 hover:bg-gray-100 text-black h-8 px-3 text-sm">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-black hover:bg-gray-800 text-white h-8 px-3 text-sm">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col group">
             {hasChildren ? (
-                <>
+                <div className={cn(
+                    "flex items-center text-sm text-gray-700 rounded group relative hover:bg-gray-100",
+                    { "pl-3 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
+                )}
+                    style={{ paddingLeft: `${paddingLeft}px` }}>
                     <button
                         onClick={handleToggle}
-                        className={cn(
-                            "flex items-center text-sm text-gray-700 rounded focus:outline-none transition-colors duration-200",
-                            "w-full text-left hover:bg-gray-100",
-                            { "pl-3 py-1": depth > 0, "py-2 px-3": depth === 0 }
-                        )}
-                        style={{ paddingLeft: `${paddingLeft}px` }}
+                        className="flex items-center grow focus:outline-none"
                     >
-                        <span className="truncate">{item.title}</span>
-                        <span className="ml-auto flex-shrink-0">
+                        <span className="truncate mr-1">{item.title}</span>
+                        <span className="ml-auto flex-shrink-0 pl-1">
                             {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         </span>
                     </button>
-                    {open && isOpen && (
-                        <div className="ml-2">
-                            {item.items!.map((child, idx) => (
-                                <SidebarMenuItem key={idx} item={child} depth={depth + 1} isOpen={isOpen} />
-                            ))}
+                    {isDeletable && isOpen && (
+                        <div className="flex-shrink-0 ml-1">
+                            {renderDeleteButton()}
                         </div>
                     )}
-                </>
+                </div>
             ) : (
-                <a
-                    href={item.url}
-                    className={cn(
-                        "flex items-center text-sm text-gray-700 rounded hover:bg-gray-100",
-                        "w-full truncate",
-                        { "pl-6 py-1": depth > 0, "py-2 px-3": depth === 0 }
+                <div className={cn(
+                    "flex items-center text-sm text-gray-700 rounded group relative hover:bg-gray-100",
+                    { "pl-6 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
+                )}
+                     style={{ paddingLeft: `${paddingLeft}px` }}>
+                    <a
+                        href={item.url}
+                        className="flex items-center grow truncate mr-1 focus:outline-none"
+                    >
+                        {item.title}
+                    </a>
+                    {isDeletable && isOpen && (
+                        <div className="flex-shrink-0 ml-1">
+                            {renderDeleteButton()}
+                        </div>
                     )}
-                    style={{ paddingLeft: `${paddingLeft}px` }}
-                >
-                    <span className="truncate">{item.title}</span>
-                </a>
+                </div>
+            )}
+            {/* Nested items rendered outside the clickable area */}
+            {open && isOpen && (
+                <div className="ml-2">
+                    {item.items!.map((child, idx) => (
+                        <SidebarMenuItem
+                            key={generateKey(child, idx)}
+                            item={child}
+                            depth={depth + 1}
+                            isOpen={isOpen}
+                            deleteLog={deleteLog}
+                            deleteAnalytic={deleteAnalytic}
+                            deleteStatistic={deleteStatistic}
+                        />
+                    ))}
+                </div>
             )}
         </div>
     );
@@ -71,48 +166,70 @@ const SidebarMenuItem: React.FC<{ item: SidebarItem; depth?: number; isOpen: boo
 function buildSidebarData(logs: Log[]): SidebarItem[] {
     const sidebarItems: SidebarItem[] = [];
 
-    logs.forEach(log => {
-        if (!log.analytics || log.analytics.length === 0) return;
+    logs.forEach((log) => {
+        if (!log.analytics || log.analytics.length === 0) {
+            return;
+        };
 
-        log.analytics.forEach(analytic => {
+        const logItem: SidebarItem = {
+            id: log.id,
+            title: `Log ${log.id}`,
+            type: 'log',
+            items: []
+        };
+
+        log.analytics.forEach((analytic) => {
             if (!analytic.statistics || analytic.statistics.length === 0) return;
 
+            const analyticItem: SidebarItem = {
+                id: analytic.id,
+                analyticId: analytic.id,
+                title: analytic.title,
+                type: 'analytic',
+                items: []
+            };
+
             const componentsMap = analytic.statistics.reduce((acc: Record<string, Statistic[]>, stat) => {
-                const component = stat.components || "General"; // Default component name if not provided
+                const component = stat.components || "General";
                 if (!acc[component]) acc[component] = [];
                 acc[component].push(stat);
                 return acc;
             }, {});
 
-            const analyticItems: SidebarItem[] = [];
-
-            Object.keys(componentsMap).forEach((component) => {
+            Object.keys(componentsMap).forEach((component, componentIndex) => {
                 const stats = componentsMap[component];
                 if (stats.length > 1) {
-                    // Component with more than one statistic
-                    analyticItems.push({
+                    const componentItem: SidebarItem = {
                         title: component,
                         items: stats.map((stat) => ({
+                            id: stat.id,
+                            analyticId: analytic.id,
+                            type: 'statistic',
                             title: stat.title,
                             url: `#output-${analytic.id}-${stat.id}`
                         }))
-                    });
+                    };
+                    analyticItem.items!.push(componentItem);
                 } else if (stats.length === 1) {
-                    // Component with only one statistic, add directly without component name
-                    analyticItems.push({
-                        title: stats[0].title,
-                        url: `#output-${analytic.id}-${stats[0].id}`
+                    const stat = stats[0];
+                    analyticItem.items!.push({
+                        id: stat.id,
+                        analyticId: analytic.id,
+                        type: 'statistic',
+                        title: stat.title,
+                        url: `#output-${analytic.id}-${stat.id}`
                     });
                 }
             });
 
-            if (analyticItems.length > 0) {
-                sidebarItems.push({
-                    title: analytic.title,
-                    items: analyticItems
-                });
+            if (analyticItem.items!.length > 0) {
+                logItem.items!.push(analyticItem);
             }
         });
+
+        if (logItem.items!.length > 0) {
+            sidebarItems.push(logItem);
+        }
     });
 
     return sidebarItems;
@@ -120,7 +237,7 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
 
 const Sidebar: React.FC = () => {
     const [isOpen, setIsOpen] = useState(true);
-    const { logs } = useResultStore();
+    const { logs, deleteLog, deleteAnalytic, deleteStatistic } = useResultStore();
     const [sidebarData, setSidebarData] = useState<SidebarItem[]>([]);
 
     useEffect(() => {
@@ -149,12 +266,26 @@ const Sidebar: React.FC = () => {
             <div className="overflow-y-auto flex-grow">
                 <nav className="p-2">
                     {sidebarData.map((item, index) => (
-                        <SidebarMenuItem key={index} item={item} isOpen={isOpen} />
+                        <SidebarMenuItem
+                            key={generateKey(item, index)}
+                            item={item}
+                            isOpen={isOpen}
+                            deleteLog={deleteLog}
+                            deleteAnalytic={deleteAnalytic}
+                            deleteStatistic={deleteStatistic}
+                        />
                     ))}
                 </nav>
             </div>
         </div>
     );
 };
+
+const generateKey = (item: SidebarItem, index: number): string => {
+    if (item.type === 'log' && item.id) return `log-${item.id}`;
+    if (item.type === 'analytic' && item.id) return `analytic-${item.id}`;
+    if (item.type === 'statistic' && item.id) return `stat-${item.id}`;
+    return `item-${item.title}-${index}`;
+}
 
 export default Sidebar;

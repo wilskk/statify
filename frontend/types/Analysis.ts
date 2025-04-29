@@ -1,3 +1,5 @@
+import type { Variable } from "./Variable";
+
 export interface PercentileOptions {
     quartiles: boolean;
     cutPoints: boolean;
@@ -35,4 +37,22 @@ export interface StatisticsOptions {
     centralTendency: CentralTendencyOptions;
     dispersion: DispersionOptions;
     distribution: DistributionOptions;
+}
+
+// Add ChartOptions definition
+export interface ChartOptions {
+    type: "barCharts" | "pieCharts" | "histograms" | null;
+    values: "frequencies" | "percentages";
+    showNormalCurveOnHistogram: boolean;
+}
+
+export interface FrequenciesAnalysisParams {
+    selectedVariables: Variable[];
+    showFrequencyTables: boolean;
+    showStatistics: boolean;
+    statisticsOptions: StatisticsOptions | null;
+    showCharts: boolean;
+    // Add chartOptions here?
+    chartOptions: ChartOptions | null; // Add chartOptions
+    onClose: () => void;
 } 

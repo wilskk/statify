@@ -5,7 +5,7 @@ import { useMetaStore } from '@/stores/useMetaStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import type { Variable, VariableData } from '@/types/Variable';
 import { Statistic } from '@/types/Result';
-import type { StatisticsOptions } from "@/types/Analysis";
+import type { StatisticsOptions, ChartOptions, FrequenciesAnalysisParams as FrequenciesAnalysisParamsType } from "@/types/Analysis";
 
 // Define types for worker messages (optional but good practice)
 interface FrequencyResult {
@@ -20,23 +20,15 @@ interface DescriptiveResult {
     error?: string;
 }
 
-interface FrequenciesAnalysisParams {
-    selectedVariables: Variable[];
-    showFrequencyTables: boolean;
-    showStatistics: boolean; // Assuming Statistics tab determines if descriptive stats are calculated
-    statisticsOptions: StatisticsOptions | null;
-    showCharts: boolean; // Assuming Charts tab options might influence worker call later
-    onClose: () => void;
-}
-
 export const useFrequenciesAnalysis = ({
     selectedVariables,
     showFrequencyTables,
     showStatistics,
     statisticsOptions,
     showCharts, // Keep for potential future use
+    chartOptions, // Add chartOptions here
     onClose,
-}: FrequenciesAnalysisParams) => {
+}: FrequenciesAnalysisParamsType) => {
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -103,14 +95,14 @@ export const useFrequenciesAnalysis = ({
 
                     const statisticsToAdd: Omit<Statistic, 'id' | 'analytic_id'>[] = [];
 
-                    // Add Descriptive Statistics (already formatted)
+                    // Add Descriptive Statistics (now returned in standard format by worker)
                     if (resultsRef.current.descriptive) {
-                        // The worker now returns the fully formatted object
                         statisticsToAdd.push({
-                            title: resultsRef.current.descriptive.title, // Use title from formatted object
-                            output_data: resultsRef.current.descriptive.output_data, // Use output_data from formatted object
-                            components: resultsRef.current.descriptive.components,
-                            description: resultsRef.current.descriptive.description
+                            title: resultsRef.current.descriptive.title, // Use title from worker response
+                            // Worker now returns output_data already in {"tables":[...]} format
+                            output_data: JSON.stringify(resultsRef.current.descriptive.output_data), // Stringify the received output_data directly
+                            components: resultsRef.current.descriptive.components, // Use components from worker response
+                            description: resultsRef.current.descriptive.description // Use description from worker response
                         });
                     }
 
@@ -120,7 +112,7 @@ export const useFrequenciesAnalysis = ({
                         resultsRef.current.frequencies.forEach((formattedFreqTable: any) => {
                             statisticsToAdd.push({
                                 title: formattedFreqTable.title, // Use title from formatted object
-                                output_data: formattedFreqTable, // Pass the formatted object directly
+                                output_data: JSON.stringify({ tables: [formattedFreqTable] }), // Nest in tables array and stringify
                                 components: formattedFreqTable.components,
                                 description: formattedFreqTable.description
                             });
@@ -153,6 +145,9 @@ export const useFrequenciesAnalysis = ({
         setIsCalculating(true);
         // Reset state for new analysis run
         cleanupWorkers();
+
+        // TODO: Pass chartOptions to workers if needed
+        // console.log("Chart Options:", chartOptions); // Removed
 
         // Determine actions and required workers
         const calculateFrequencies = showFrequencyTables;
@@ -214,7 +209,7 @@ export const useFrequenciesAnalysis = ({
 
                 freqWorkerRef.current.onmessage = (e: MessageEvent<FrequencyResult>) => {
                     const wData = e.data;
-                    console.log("Received data from frequency worker:", wData); // Log received data
+                    console.log("Received data from frequency worker:", wData); // Removed log
                     if (wData.success) {
                         resultsRef.current.frequencies = wData.frequencies;
                         handleWorkerCompletion();
@@ -228,7 +223,7 @@ export const useFrequenciesAnalysis = ({
                     handleWorkerCompletion("A critical error occurred in the Frequency worker.");
                 };
 
-                console.log("Sending data to frequency worker:", commonData); // Log sent data
+                console.log("Sending data to frequency worker:", commonData); // Added log
                 freqWorkerRef.current.postMessage(commonData); // Send common data
             }
 
@@ -238,7 +233,7 @@ export const useFrequenciesAnalysis = ({
 
                 descWorkerRef.current.onmessage = (e: MessageEvent<DescriptiveResult>) => {
                      const wData = e.data;
-                     console.log("Received data from descriptive worker:", wData); // Log received data
+                     console.log("Received data from descriptive worker:", wData); // Added log
                      if (wData.success) {
                          resultsRef.current.descriptive = wData.descriptive;
                          handleWorkerCompletion();
@@ -256,7 +251,7 @@ export const useFrequenciesAnalysis = ({
                      ...commonData,
                      options: statisticsOptions // Send options only to descriptive worker
                  };
-                 console.log("Sending data to descriptive worker:", dataToSend); // Log sent data
+                 console.log("Sending data to descriptive worker:", dataToSend); // Added log
                  descWorkerRef.current.postMessage(dataToSend);
             }
              // Clear timeout ONLY if all workers finish successfully before timeout
@@ -265,14 +260,14 @@ export const useFrequenciesAnalysis = ({
 
         } catch (ex) {
             console.error("Error preparing analysis:", ex);
-            console.log("Caught error during preparation:", ex); // Added for debugging
+            // console.log("Caught error during preparation:", ex); // Removed log
             setErrorMsg("An unexpected error occurred before starting the analysis.");
             setIsCalculating(false);
             cleanupWorkers(); // Ensure cleanup on preparation error
         }
     }, [
         selectedVariables, showFrequencyTables, showStatistics, statisticsOptions,
-        onClose, addLog, addAnalytic, addStatistic, cleanupWorkers, handleWorkerCompletion // Added cleanupWorkers & handleWorkerCompletion
+        onClose, addLog, addAnalytic, addStatistic, cleanupWorkers, handleWorkerCompletion, chartOptions
     ]);
 
     // Effect to clear timeout on unmount

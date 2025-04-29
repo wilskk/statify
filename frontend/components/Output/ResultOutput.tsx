@@ -34,7 +34,6 @@ const ResultOutput: React.FC = () => {
                         if (isFirstAppearance) {
                           renderedComponents.add(stat.components);
                         }
-                        console.log("Stat Output Data:", stat.output_data);
                         return (
                             <div key={stat.id} className="space-y-4">
                               {isFirstAppearance && (

@@ -18,6 +18,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import type { Variable } from "@/types/Variable";
 import { useFrequenciesAnalysis } from "@/hooks/useFrequenciesAnalysis";
 import type { StatisticsOptions } from "@/types/Analysis";
+import type { ChartOptions } from "@/types/Analysis";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -38,6 +39,10 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     const [showFrequencyTables, setShowFrequencyTables] = useState(true);
     const [showCharts, setShowCharts] = useState(false);
     const [showStatistics, setShowStatistics] = useState(true);
+
+    const [chartType, setChartType] = useState<"none" | "barCharts" | "pieCharts" | "histograms">("none");
+    const [chartValues, setChartValues] = useState<"frequencies" | "percentages">("frequencies");
+    const [showNormalCurve, setShowNormalCurve] = useState(false);
 
     const [quartilesChecked, setQuartilesChecked] = useState(false);
     const [cutPointsChecked, setCutPointsChecked] = useState(false);
@@ -103,12 +108,22 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         kurtosisChecked, skewnessChecked,
     ]);
 
+    const getCurrentChartOptions = useCallback((): ChartOptions | null => {
+        if (!showCharts) return null;
+        return {
+            type: chartType === "none" ? null : chartType,
+            values: chartValues,
+            showNormalCurveOnHistogram: chartType === "histograms" ? showNormalCurve : false,
+        };
+    }, [showCharts, chartType, chartValues, showNormalCurve]);
+
     const { isCalculating, errorMsg, runAnalysis } = useFrequenciesAnalysis({
         selectedVariables,
         showFrequencyTables,
         showStatistics,
         showCharts,
         statisticsOptions: getCurrentStatisticsOptions(),
+        chartOptions: getCurrentChartOptions(),
         onClose
     });
 
@@ -202,7 +217,9 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setKurtosisChecked(false);
         setSkewnessChecked(false);
 
-        setResetChartsCounter(prev => prev + 1);
+        setChartType("none");
+        setChartValues("frequencies");
+        setShowNormalCurve(false);
 
         setHighlightedVariable(null);
 
@@ -302,7 +319,12 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <ChartsTab
                         showCharts={showCharts}
                         setShowCharts={setShowCharts}
-                        resetCounter={resetChartsCounter}
+                        chartType={chartType}
+                        setChartType={setChartType}
+                        chartValues={chartValues}
+                        setChartValues={setChartValues}
+                        showNormalCurve={showNormalCurve}
+                        setShowNormalCurve={setShowNormalCurve}
                     />
                 </TabsContent>
             </Tabs>
@@ -314,21 +336,13 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                         onClick={runAnalysis}
-                        disabled={isCalculating}
+                        disabled={isCalculating || selectedVariables.length === 0}
                     >
                         {isCalculating ? "Calculating..." : "OK"}
                     </Button>
-                    {/* <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        disabled={isCalculating}
-                    >
-                        Paste
-                    </Button> */}
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        disabled={isCalculating}
                         onClick={handleReset}
                     >
                         Reset

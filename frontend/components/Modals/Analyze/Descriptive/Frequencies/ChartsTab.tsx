@@ -6,28 +6,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface ChartsTabProps {
     showCharts: boolean;
     setShowCharts: React.Dispatch<React.SetStateAction<boolean>>;
-    resetCounter: number;
+    chartType: "none" | "barCharts" | "pieCharts" | "histograms";
+    setChartType: React.Dispatch<React.SetStateAction<"none" | "barCharts" | "pieCharts" | "histograms">>;
+    chartValues: "frequencies" | "percentages";
+    setChartValues: React.Dispatch<React.SetStateAction<"frequencies" | "percentages">>;
+    showNormalCurve: boolean;
+    setShowNormalCurve: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ChartsTab: FC<ChartsTabProps> = ({
-                                           showCharts,
-                                           setShowCharts,
-                                           resetCounter
-                                       }) => {
-    const [chartType, setChartType] = useState("none");
-    const [chartValues, setChartValues] = useState("frequencies");
-    const [showNormalCurve, setShowNormalCurve] = useState(false);
-
-    // Reset Effect
-    useEffect(() => {
-        if (resetCounter > 0) {
-            setChartType("none");
-            setChartValues("frequencies");
-            setShowNormalCurve(false);
-            setShowCharts(false);
-        }
-    }, [resetCounter, setShowCharts]);
-
+    showCharts,
+    setShowCharts,
+    chartType,
+    setChartType,
+    chartValues,
+    setChartValues,
+    showNormalCurve,
+    setShowNormalCurve,
+}) => {
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {
         return disabled ? "text-[#AAAAAA]" : "";
@@ -53,7 +49,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                 <div className="text-sm font-medium mb-3">Chart Type</div>
                 <RadioGroup
                     value={chartType}
-                    onValueChange={setChartType}
+                    onValueChange={(value) => setChartType(value as typeof chartType)}
                     className="space-y-2"
                     disabled={!showCharts}
                 >
@@ -107,7 +103,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                 <div className={`text-sm font-medium mb-3 ${getTextClass(isChartValuesDisabled)}`}>Chart Values</div>
                 <RadioGroup
                     value={chartValues}
-                    onValueChange={setChartValues}
+                    onValueChange={(value) => setChartValues(value as typeof chartValues)}
                     className="space-y-2"
                     disabled={isChartValuesDisabled}
                 >
