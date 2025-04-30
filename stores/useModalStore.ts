@@ -95,8 +95,18 @@ export enum ModalType {
   ReadCSVFile = "readCSVFile",
   ReadExcelFile = "ReadExcelFile",
 
+  // Compare Means
+  OneSampleTTest = "oneSampleTTest",
+  IndependentSamplesTTest = "independentSamplesTTest",
+  PairedSamplesTTest = "pairedSamplesTTest",
+
   // Nonparametric Test
-  KRelatedSamplesTest = 'kRelatedSamplesTest',
+  ChiSquare = 'chiSquare',
+  Runs = 'runs',
+  TwoIndependentSamples = 'twoIndependentSamples',
+  KIndependentSamples = 'kIndependentSamples',
+  TwoRelatedSamples = 'twoRelatedSamples',
+  KRelatedSamples = 'kRelatedSamples',
 
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",
