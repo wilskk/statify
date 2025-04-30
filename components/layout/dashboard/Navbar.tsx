@@ -125,16 +125,16 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                   <MenubarSubTrigger>Regression</MenubarSubTrigger>
                   <MenubarSubContent>
-                    <MenubarItem onClick={() => openModal(ModalType.ModalAutomaticLinearModeling)}>
+                    {/* <MenubarItem onClick={() => openModal(ModalType.ModalAutomaticLinearModeling)}>
                       Automatic Linear Modeling...
-                    </MenubarItem>
+                    </MenubarItem> */}
                     <MenubarItem onClick={() => openModal(ModalType.ModalLinear)}>
                       Linear...
                     </MenubarItem>
                     <MenubarItem onClick={() => openModal(ModalType.ModalCurveEstimation)}>
                       Curve Estimation...
                     </MenubarItem>
-                    <MenubarItem onClick={() => openModal(ModalType.ModalPartialLeastSquares)}>
+                    {/* <MenubarItem onClick={() => openModal(ModalType.ModalPartialLeastSquares)}>
                       Partial Least Squares...
                     </MenubarItem>
                     <MenubarSeparator />
@@ -167,7 +167,7 @@ const Navbar: React.FC = () => {
                     <MenubarSeparator />
                     <MenubarItem onClick={() => openModal(ModalType.ModalOptimalScaling)}>
                       Optimal Scaling (Catreg)...
-                    </MenubarItem>
+                    </MenubarItem> */}
                   </MenubarSubContent>
                 </MenubarSub>
 

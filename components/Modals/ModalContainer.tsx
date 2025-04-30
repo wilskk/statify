@@ -24,7 +24,6 @@ import ModalOptimalScaling from './Regression/OptimalScaling/ModalOptimalScaling
 import Statistics from './Regression/Linear/Statistics';
 import SaveLinear from './Regression/Linear/SaveLinear';
 import OptionsLinear from './Regression/Linear/OptionsLinear';
-import BootstrapLinear from './Regression/Linear/BootstrapLinear';
 import PlotsLinear from './Regression/Linear/PlotsLinear';
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
