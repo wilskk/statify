@@ -51,89 +51,61 @@ self.onmessage = function(event) {
             const header = { header: title, key: key };
             columnHeaders.push(header);
 
-            let numericData = null;
-            const processedData = []; // Data asli (dengan null untuk invalid/missing awal)
-            const weightsForCalc = []; // Bobot yang sesuai dengan processedData
-
-            // Hitung N Valid & N Missing, siapkan data numerik menggunakan definisi missing yang diperbarui
-             const { validRawData, validWeights, totalW, validN } = getValidDataAndWeights(data, weightVariableData, varType, missingDef); // Pass type and missing def
+            // --- Persiapan Data Per Variabel ---
+            // 1. Dapatkan data mentah valid & bobot valid menggunakan definisi missing
+            const { validRawData, validWeights, totalW, validN } = getValidDataAndWeights(
+                data, // Data asli variabel ini
+                weightVariableData, // Bobot (atau null jika tidak ada)
+                varType, // Tipe variabel ('NUMERIC', 'STRING', 'DATE')
+                missingDef // Definisi missing
+            );
              validNMap.set(variable.name, validN);
              totalNMap.set(variable.name, data.length); // Total observasi awal
 
+            // 2. Siapkan data KHUSUS untuk kalkulasi statistik numerik
+            let numericDataForStats = [];
+            let weightsForStats = validWeights ? [] : null;
 
-             // Proses data untuk perhitungan statistik
-            if (variable.type === 'NUMERIC' || variable.type === 'DATE') {
-                numericData = [];
-                const originalValidData = []; // Untuk menyimpan data valid sebelum konversi
-
-                for (let i = 0; i < data.length; i++) {
-                    const rawValue = data[i];
-                     // Gunakan checkMissing dari frequency worker (jika tersedia) atau logika serupa
-                     // Untuk sederhana, kita gunakan getValidDataAndWeights saja
-                     // Check data validity for calculations (non-null, non-empty)
-                     const weight = weightVariableData ? (weightVariableData[i] ?? null) : 1;
-                     const isDataMissingOrInvalid = (rawValue === null || rawValue === undefined || rawValue === '');
-                     const isWeightInvalid = (weight === null || typeof weight !== 'number' || isNaN(weight) || weight <= 0);
-
-
-                     if (!isDataMissingOrInvalid && !isWeightInvalid) {
+            if (varType === 'NUMERIC' || varType === 'DATE') {
+                 for (let i = 0; i < validRawData.length; i++) {
+                    const rawValue = validRawData[i];
+                    const weight = validWeights ? validWeights[i] : 1;
                          let valueForCalc = null;
-                         if (variable.type === 'DATE') {
+
+                    if (varType === 'DATE') {
+                        // Konversi string tanggal valid ke detik SPSS
                              valueForCalc = dateStringToSpssSeconds(rawValue);
                          } else { // NUMERIC
+                        // Coba konversi ke angka jika string, pastikan valid
                              valueForCalc = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
                              if (isNaN(valueForCalc)) valueForCalc = null;
                          }
 
-                         if (valueForCalc !== null) {
-                             numericData.push(valueForCalc);
-                             originalValidData.push(rawValue); // Simpan data asli yg valid
-                             // Bobot sudah difilter oleh getValidDataAndWeights
+                    // Hanya tambahkan jika konversi berhasil (bukan null/NaN)
+                    if (valueForCalc !== null && !isNaN(valueForCalc)) {
+                        numericDataForStats.push(valueForCalc);
+                        if (weightsForStats) {
+                            weightsForStats.push(weight);
                          }
                      }
                 }
-                 // Pastikan validWeights dari getValidDataAndWeights sesuai dengan numericData
-                 // Ini asumsi getValidDataAndWeights hanya memfilter berdasarkan data dan bobot,
-                 // dan tipe DATE/NUMERIC akan valid jika tidak null/kosong.
-                 // Perlu penyesuaian jika getValidDataAndWeights lebih kompleks.
-                 // Untuk sekarang, kita kalkulasi ulang data valid numerik saja
-                  numericData = [];
-                  const numericValidWeights = validWeights ? [] : null;
-                  for (let i = 0; i < validRawData.length; i++) {
-                      const val = validRawData[i];
-                       let valueForCalc = null;
-                       if (variable.type === 'DATE') {
-                           valueForCalc = dateStringToSpssSeconds(val);
-                       } else if (typeof val === 'number' && !isNaN(val)) {
-                            valueForCalc = val;
-                       } else if (typeof val === 'string') { // Coba parse string angka
-                           const parsed = parseFloat(val);
-                           if (!isNaN(parsed)) valueForCalc = parsed;
-                       }
-
-                       if (valueForCalc !== null) {
-                           numericData.push(valueForCalc);
-                           if (numericValidWeights && validWeights) {
-                               numericValidWeights.push(validWeights[i]);
-                           }
-                       }
-                  }
-
-
-            } else {
-                 // Untuk STRING, kita hanya perlu data valid asli untuk Mode
-                 numericData = validRawData; // Mode function handles strings
+                // Catatan: totalW dari getValidDataAndWeights sudah menghitung bobot
+                // untuk nilai NUMERIC asli dan DATE yang *bisa* dikonversi.
             }
 
-
+            // 3. Simpan semua data yang relevan untuk variabel ini
             variableMap.set(variable.name, {
                 key: key,
-                type: variable.type,
-                missing: missingDef, // Store missing def for later use
+                type: varType,
+                missing: missingDef,
                 decimals: variable.decimals,
-                data: data, // Data asli lengkap
-                numericData: numericData, // Data numerik valid (atau string valid untuk mode)
-                validWeights: validWeights, // Bobot valid sesuai validRawData
+                data: data, // Data asli lengkap (untuk Mode jika perlu)
+                validRawData: validRawData, // Data mentah valid (untuk Mode)
+                validWeights: validWeights, // Bobot valid sesuai validRawData (untuk Mode)
+                numericDataForStats: numericDataForStats, // Data valid & terkonversi numerik
+                weightsForStats: weightsForStats,         // Bobot valid sesuai numericDataForStats
+                totalW: totalW,                           // Total bobot untuk data numerik/konvertibel
+                validN: validN                            // Jumlah total kasus valid
             });
         });
 
@@ -155,25 +127,65 @@ self.onmessage = function(event) {
              outputRows.push({ rowHeader: ["N", null], children: [validRow, missingRow] });
         }
 
+        // Cache hasil kalkulasi untuk digunakan kembali (misal, Mean dipakai Variance, dll)
+        const calculatedStatsCache = new Map(); // Map: variableName -> { statName: value, ... }
 
-        // Mapping opsi ke fungsi dan label baris
+        // Helper untuk mendapatkan atau mengkalkulasi stat
+        const getOrCalculateStat = (varName, statName, calculationFn, ...args) => {
+            if (!calculatedStatsCache.has(varName)) {
+                calculatedStatsCache.set(varName, {});
+            }
+            const varCache = calculatedStatsCache.get(varName);
+            if (varCache.hasOwnProperty(statName)) {
+                return varCache[statName];
+            }
+            const result = calculationFn(...args);
+            varCache[statName] = result;
+            return result;
+        };
+
+        // Definisikan statistik yang akan dijalankan
         const statsToRun = [
-            { option: options.centralTendency?.mean, func: 'calculateMean', label: "Mean", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, vd.decimals || 4) },
-            { option: options.dispersion?.stdErrorMean, func: 'calculateSEMean', label: "Std. Error of Mean", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 5) },
-            { option: options.centralTendency?.median, func: 'calculateMedian', label: "Median", requiresNumeric: true, formatResult: (v, vd) => vd.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vd.decimals || 4) },
-            { option: options.centralTendency?.mode, func: 'calculateMode', label: "Mode", requiresNumeric: false, formatResult: (v, vd) => vd.type === 'DATE' ? spssSecondsToDateString(v) : (typeof v === 'number' ? formatNumber(v, vd.decimals || 2) : v) },
-            { option: options.dispersion?.stddev, func: 'calculateStdDev', label: "Std. Deviation", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 5) },
-            { option: options.dispersion?.variance, func: 'calculateVariance', label: "Variance", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 3) },
-            { option: options.distribution?.skewness, func: 'calculateSkewness', label: "Skewness", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 3) },
-            { option: options.distribution?.stdErrorSkewness, func: 'calculateSESkewness', label: "Std. Error of Skewness", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 3) },
-            { option: options.distribution?.kurtosis, func: 'calculateKurtosis', label: "Kurtosis", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 3) },
-            { option: options.distribution?.stdErrorKurtosis, func: 'calculateSEKurtosis', label: "Std. Error of Kurtosis", requiresNumeric: true, formatResult: (v, vd) => formatNumber(v, 3) },
-            { option: options.dispersion?.range, func: 'calculateRange', label: "Range", requiresNumeric: true, formatResult: (v, vd) => vd.type === 'DATE' ? null : formatNumber(v, vd.decimals || 2) },
-            { option: options.dispersion?.minimum, func: 'calculateMin', label: "Minimum", requiresNumeric: true, formatResult: (v, vd) => vd.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vd.decimals || 2) },
-            { option: options.dispersion?.maximum, func: 'calculateMax', label: "Maximum", requiresNumeric: true, formatResult: (v, vd) => vd.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vd.decimals || 2) },
-            { option: options.centralTendency?.sum, func: 'calculateSum', label: "Sum", requiresNumeric: true, formatResult: (v, vd) => vd.type === 'DATE' ? null : formatNumber(v, vd.decimals || 2) },
+            { key: 'mean', option: options.centralTendency?.mean, label: "Mean", requiresNumeric: true, calc: (vm) => calculateMean(vm.numericDataForStats, vm.weightsForStats, vm.totalW), format: (v, vm) => vm.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vm.decimals || 4) },
+            { key: 'seMean', option: options.dispersion?.stdErrorMean, label: "Std. Error of Mean", requiresNumeric: true, calc: (vm) => {
+                const stdDev = getOrCalculateStat(vm.key, 'stdDev', calculateStdDev, getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW)));
+                return calculateSEMean(stdDev, vm.totalW);
+             }, format: (v, vm) => formatNumber(v, 5) },
+            { key: 'median', option: options.centralTendency?.median, label: "Median", requiresNumeric: true, calc: (vm) => calculateMedian(vm.numericDataForStats, vm.weightsForStats, vm.totalW), format: (v, vm) => vm.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vm.decimals || 4) },
+            // Mode uses original data, not numeric converted data
+            { key: 'mode', option: options.centralTendency?.mode, label: "Mode", requiresNumeric: false, calc: (vm) => calculateMode(vm.data, weightVariableData, vm.type, vm.missing), format: (v, vm) => vm.type === 'DATE' ? v : (typeof v === 'number' ? formatNumber(v, vm.decimals || 2) : v) }, // Mode returns original date string
+            { key: 'stdDev', option: options.dispersion?.stddev, label: "Std. Deviation", requiresNumeric: true, calc: (vm) => {
+                const mean = getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW);
+                const variance = getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean);
+                return calculateStdDev(variance);
+             }, format: (v, vm) => vm.type === 'DATE' ? secondsToDaysHoursMinutesString(v) : formatNumber(v, 5) },
+            { key: 'variance', option: options.dispersion?.variance, label: "Variance", requiresNumeric: true, calc: (vm) => {
+                const mean = getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW);
+                return calculateVariance(vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean);
+             }, format: (v, vm) => formatNumber(v, 3) },
+            { key: 'skewness', option: options.distribution?.skewness, label: "Skewness", requiresNumeric: true, calc: (vm) => {
+                const mean = getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW);
+                const stdDev = getOrCalculateStat(vm.key, 'stdDev', calculateStdDev, getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean));
+                return calculateSkewness(vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean, stdDev);
+            }, format: (v, vm) => formatNumber(v, 3) },
+            { key: 'seSkewness', option: options.distribution?.stdErrorSkewness, label: "Std. Error of Skewness", requiresNumeric: true, calc: (vm) => calculateSESkewness(vm.totalW), format: (v, vm) => formatNumber(v, 3) },
+            { key: 'kurtosis', option: options.distribution?.kurtosis, label: "Kurtosis", requiresNumeric: true, calc: (vm) => {
+                 const mean = getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW);
+                 const stdDev = getOrCalculateStat(vm.key, 'stdDev', calculateStdDev, getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean));
+                 return calculateKurtosis(vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean, stdDev);
+            }, format: (v, vm) => formatNumber(v, 3) },
+            { key: 'seKurtosis', option: options.distribution?.stdErrorKurtosis, label: "Std. Error of Kurtosis", requiresNumeric: true, calc: (vm) => calculateSEKurtosis(vm.totalW), format: (v, vm) => formatNumber(v, 3) },
+            { key: 'range', option: options.dispersion?.range, label: "Range", requiresNumeric: true, calc: (vm) => {
+                const min = getOrCalculateStat(vm.key, 'minimum', calculateMin, vm.numericDataForStats);
+                const max = getOrCalculateStat(vm.key, 'maximum', calculateMax, vm.numericDataForStats);
+                return calculateRange(min, max);
+             }, format: (v, vm) => vm.type === 'DATE' ? secondsToDaysHoursMinutesString(v) : formatNumber(v, vm.decimals || 2) }, // Range for DATE is duration in seconds
+            { key: 'minimum', option: options.dispersion?.minimum, label: "Minimum", requiresNumeric: true, calc: (vm) => calculateMin(vm.numericDataForStats), format: (v, vm) => vm.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vm.decimals || 2) },
+            { key: 'maximum', option: options.dispersion?.maximum, label: "Maximum", requiresNumeric: true, calc: (vm) => calculateMax(vm.numericDataForStats), format: (v, vm) => vm.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vm.decimals || 2) },
+            { key: 'sum', option: options.centralTendency?.sum, label: "Sum", requiresNumeric: true, calc: (vm) => calculateSum(vm.numericDataForStats, vm.weightsForStats), format: (v, vm) => vm.type === 'DATE' ? secondsToDaysHoursMinutesString(v) : formatNumber(v, vm.decimals || 2) },
         ];
 
+        // Jalankan kalkulasi yang dipilih
         statsToRun.forEach(statInfo => {
             if (statInfo.option) {
                 const row = { rowHeader: [statInfo.label, null] };
@@ -182,32 +194,24 @@ self.onmessage = function(event) {
                     const key = varMeta.key;
                     let result = null;
 
-                    if (statInfo.requiresNumeric && (varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericData && varMeta.numericData.length > 0) {
-                         // Gunakan numericData yang sudah valid dan terkonversi (untuk DATE)
-                         // dan bobot yang sesuai
-                         // Perlu memastikan bobot yang dikirim ke fungsi stat sinkron dengan numericData
-                         const dataForCalc = varMeta.numericData;
-                         const weightsForCalc = varMeta.validWeights; // Asumsi ini sesuai numericData
-                         const typeForCalc = varMeta.type;
-                         const missingForCalc = varMeta.missing;
+                    // Periksa tipe dan ketersediaan data yang diperlukan
+                    const canCalculate = (
+                        (!statInfo.requiresNumeric) || // Mode tidak perlu data numerik spesifik
+                        (statInfo.requiresNumeric && (varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericDataForStats && varMeta.numericDataForStats.length > 0)
+                    );
 
-                         // Panggil fungsi statistik (misal, calculateMean) langsung karena global
-                         // Periksa ketersediaan fungsi di scope global
-                         if (typeof self[statInfo.func] === 'function') {
-                            result = self[statInfo.func](varMeta.data, weightVariableData, typeForCalc, missingForCalc);
-                         }
-
-                    } else if (!statInfo.requiresNumeric && varMeta.data && varMeta.data.length > 0) { // Untuk Mode
-                        // Mode juga perlu type dan missing def untuk filter internalnya
-                        const typeForCalc = varMeta.type;
-                        const missingForCalc = varMeta.missing;
-                        if (typeof self[statInfo.func] === 'function') {
-                             result = self[statInfo.func](varMeta.data, weightVariableData, typeForCalc, missingForCalc); // Mode handles types internally
+                    if (canCalculate && typeof statInfo.calc === 'function') {
+                        try {
+                            // Gunakan helper cache untuk kalkulasi
+                            result = getOrCalculateStat(varMeta.key, statInfo.key, statInfo.calc, varMeta);
+                        } catch (calcError) {
+                            console.error(`Error calculating ${statInfo.label} for ${varMeta.key}:`, calcError);
+                            result = null; // Set hasil ke null jika ada error kalkulasi
                         }
                     }
 
-                    // Format hasil sesuai kebutuhan (angka atau tanggal)
-                    row[key] = statInfo.formatResult ? statInfo.formatResult(result, varMeta) : result;
+                    // Format hasil
+                    row[key] = statInfo.format ? statInfo.format(result, varMeta) : result;
                 });
                 outputRows.push(row);
             }
@@ -219,10 +223,12 @@ self.onmessage = function(event) {
             if (options.percentileValues.quartiles) {
                 percentileValues.push(25, 50, 75);
             }
-            if (options.percentileValues.cutPoints && options.percentileValues.cutPointsN > 0) {
-                const nCuts = options.percentileValues.cutPointsN;
-                for (let i = 1; i <= nCuts; i++) {
-                    percentileValues.push((100 * i) / (nCuts + 1));
+            if (options.percentileValues.cutPoints && options.percentileValues.cutPointsN > 1) { // Jika Cut points dicentang & N > 1 (perlu min 2 grup)
+                const N = options.percentileValues.cutPointsN; // Jumlah grup yang diinginkan
+                // Untuk membagi jadi N grup, kita perlu N-1 titik potong
+                for (let i = 1; i < N; i++) { // Loop dari 1 hingga N-1
+                    // Hitung persentil ke-(100*i / N)
+                    percentileValues.push((100 * i) / N);
                 }
             }
             if (options.percentileValues.percentilesList && Array.isArray(options.percentileValues.percentilesList)) {
@@ -248,13 +254,10 @@ self.onmessage = function(event) {
                         const key = varMeta.key;
                         let result = null;
 
-                        if ((varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericData && varMeta.numericData.length > 0) {
-                             const dataForCalc = varMeta.numericData;
-                             const weightsForCalc = varMeta.validWeights;
-                             const typeForCalc = varMeta.type;
-                             const missingForCalc = varMeta.missing;
+                        if ((varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericDataForStats && varMeta.numericDataForStats.length > 0) {
+                             // Panggil calculatePercentile dengan data numerik yang sudah disiapkan
                              if (typeof calculatePercentile === 'function') {
-                                result = calculatePercentile(varMeta.data, weightVariableData, p / 100, typeForCalc, missingForCalc);
+                                result = calculatePercentile(varMeta.numericDataForStats, varMeta.weightsForStats, p / 100, varMeta.totalW);
                              }
                         }
 

@@ -104,6 +104,34 @@ function dateStringToSpssSeconds(dateString) {
     return spssSeconds;
 }
 
+/**
+ * Mengonversi durasi dalam detik menjadi format string "X days HH:MM".
+ * @param {number | null | undefined} totalSeconds - Jumlah total detik.
+ * @returns {string | null} String durasi yang diformat atau null jika input tidak valid.
+ */
+function secondsToDaysHoursMinutesString(totalSeconds) {
+    if (totalSeconds === null || totalSeconds === undefined || typeof totalSeconds !== 'number' || !Number.isFinite(totalSeconds) || totalSeconds < 0) {
+        return null;
+    }
+
+    const secondsPerMinute = 60;
+    const secondsPerHour = 3600; // 60 * 60
+    const secondsPerDay = 86400; // 3600 * 24
+
+    const days = Math.floor(totalSeconds / secondsPerDay);
+    const remainingSecondsAfterDays = totalSeconds % secondsPerDay;
+    const hours = Math.floor(remainingSecondsAfterDays / secondsPerHour);
+    const remainingSecondsAfterHours = remainingSecondsAfterDays % secondsPerHour;
+    const minutes = Math.floor(remainingSecondsAfterHours / secondsPerMinute);
+    // Kita bisa abaikan sisa detik untuk format ini
+
+    const hoursString = String(hours).padStart(2, '0');
+    const minutesString = String(minutes).padStart(2, '0');
+
+    return `${days} days ${hoursString}:${minutesString}`;
+}
+
 // Make functions available globally in the worker scope
 self.spssSecondsToDateString = spssSecondsToDateString;
-self.dateStringToSpssSeconds = dateStringToSpssSeconds; 
+self.dateStringToSpssSeconds = dateStringToSpssSeconds;
+self.secondsToDaysHoursMinutesString = secondsToDaysHoursMinutesString; 
