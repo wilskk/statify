@@ -57,17 +57,12 @@ export async function analyzeOptScaOverals({
 
     const varDefsForPlotsTarget = getVarDefs(variables, PlotsTargetVariable);
 
-    console.log("Original SetTargetVariable structure:", SetTargetVariable);
-    console.log(
-        "Maintained nested structure - slicedDataSets:",
-        slicedDataSets
-    );
-    console.log("Maintained nested structure - varDefsSets:", varDefsSets);
+    console.log(configData);
 
     const overals = new OVERALSAnalysis(
-        slicedDataSets, // Now a nested structure
+        slicedDataSets,
         slicedDataForPlotsTarget,
-        varDefsSets, // Now a nested structure
+        varDefsSets,
         varDefsForPlotsTarget,
         configData
     );
