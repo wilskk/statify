@@ -18,7 +18,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { UserNav } from "@/components/user-nav"
 
 import Link from "next/link"
 

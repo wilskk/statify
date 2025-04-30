@@ -2,40 +2,44 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Removed pnpm install
-
-# Install dependencies using npm ci (expects package-lock.json)
+# Install dependencies using npm ci based on root lockfile
 COPY package.json package-lock.json* ./
+# Install all workspace dependencies including dev dependencies needed for build
 RUN npm ci
 
-# Copy source code and build
-# Copy tsconfig separately first
-COPY tsconfig.json ./
-# Copy server code (assuming it's in server/)
-COPY server ./server
-# Use npm run build
-RUN npm run build
+# --- Backend Build Stage ---
+# Copy backend specific files
+COPY backend/package.json backend/tsconfig.json ./backend/
+COPY backend/server ./backend/server
 
-# Production stage
+# Change WORKDIR to backend context
+WORKDIR /app/backend
+# Build the TypeScript project using tsc from root node_modules
+RUN /app/node_modules/.bin/tsc -p tsconfig.json
+# Change WORKDIR back to root
+WORKDIR /app
+
+# --- Production stage ---
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Removed pnpm install
-
-# Copy package.json and lockfile
+# Copy root dependency files for production install
 COPY package.json package-lock.json* ./
 
-# Install production dependencies only using npm
+# Install only production dependencies for all workspaces
 RUN npm install --omit=dev
 
-# Copy build artifacts from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy production necessary files from backend
+COPY backend/package.json ./backend/
 
-# Create temp directory
+# Copy build artifacts from builder stage
+COPY --from=builder /app/backend/dist ./backend/dist
+
+# Create temp directory for the backend app
 RUN mkdir -p /app/temp
 
 EXPOSE 5000
 
-# Run the server using npm start script
-CMD ["npm", "run", "start"]
+# Run the server using the start script from backend/package.json
+CMD ["npm", "run", "start", "--prefix", "backend"]

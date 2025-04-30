@@ -2,30 +2,47 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies using npm ci (expects package-lock.json)
+# Install dependencies using npm ci based on root lockfile
 COPY package.json package-lock.json* ./
+# Install all workspace dependencies including dev dependencies needed for build
 RUN npm ci
 
-# Copy source code
-COPY . .
-RUN npm run build
+# --- Frontend Build Stage ---
+# Copy frontend specific files
+COPY frontend/package.json frontend/package-lock.json* ./frontend/
+COPY frontend/ ./frontend/
 
-# Production stage
+# Change WORKDIR to frontend context
+WORKDIR /app/frontend
+
+# Ensure all frontend dependencies are available locally after root install
+RUN npm install
+
+# Build the Next.js application using npx
+RUN npx next build
+
+# Change WORKDIR back to root before production stage
+WORKDIR /app
+
+# --- Production stage ---
 FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy root dependency files again for production install
 COPY package.json package-lock.json* ./
 
-# Install production dependencies only using npm
+# Install only production dependencies for all workspaces
 RUN npm install --omit=dev
 
+# Copy production necessary files from frontend
+COPY frontend/package.json frontend/next.config.js ./frontend/
+
 # Copy build artifacts from builder stage
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/frontend/.next ./frontend/.next
+COPY --from=builder /app/frontend/public ./frontend/public
 
 EXPOSE 3001
 
-# Run Next.js using npm start script
-CMD ["npm", "run", "start"]
+# Run Next.js using the start script from frontend/package.json
+CMD ["npm", "run", "start", "--prefix", "frontend"]

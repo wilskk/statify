@@ -509,7 +509,7 @@ export const useTableUpdates = ({
                 sizeChanged: variable?.columns !== newSize
             });
         }
-    }, [variables, updateVariable]); // Keep dependencies
+    }, [variables, updateVariable, hotTableRef]); // Keep dependencies
 
      const handleAfterValidate = useCallback((isValid: boolean, value: any, row: number, prop: string | number, source: Handsontable.ChangeSource) => {
         // This can be used for fine-grained validation feedback if needed

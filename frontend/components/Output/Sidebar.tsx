@@ -88,7 +88,7 @@ const SidebarMenuItem: React.FC<{
                 <AlertDialogHeader className="pb-2">
                     <AlertDialogTitle className="text-lg font-semibold text-black">Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription className="text-sm text-gray-600 pt-1">
-                        This action cannot be undone. This will permanently delete the {item.type} "{item.title}"
+                        This action cannot be undone. This will permanently delete the {item.type} &quot;{item.title}&quot;
                         {item.type === 'log' && ' and all its associated analytics and statistics.'}
                         {item.type === 'analytic' && ' and all its associated statistics.'}
                     </AlertDialogDescription>

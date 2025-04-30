@@ -13,7 +13,12 @@
   },
   "devDependencies": {
     "@types/papaparse": "^5.3.15",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/formidable": "^3.4.5"
   },
   "workspaces": [
     "frontend",
