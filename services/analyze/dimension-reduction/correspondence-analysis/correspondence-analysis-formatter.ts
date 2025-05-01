@@ -35,7 +35,7 @@ export function transformCorrespondenceResult(
                 const rowData: any = {
                     rowHeader: [(i + 1).toString()],
                     ...Object.fromEntries(
-                        data.correspondence_table.data[i].map((val, j) => [
+                        data.correspondence_table.data[i].map((val: number, j: number) => [
                             `col_${j + 1}`,
                             formatDisplayNumber(val),
                         ])
@@ -53,7 +53,7 @@ export function transformCorrespondenceResult(
                     rowHeader: ["Active Margin"],
                     ...Object.fromEntries(
                         data.correspondence_table.active_margin_col.map(
-                            (val, j) => [
+                            (val: number, j: number) => [
                                 `col_${j + 1}`,
                                 formatDisplayNumber(val),
                             ]
@@ -61,7 +61,7 @@ export function transformCorrespondenceResult(
                     ),
                     active_margin: formatDisplayNumber(
                         data.correspondence_table.active_margin_col.reduce(
-                            (a, b) => a + b,
+                            (a: number, b: number) => a + b,
                             0
                         )
                     ),
@@ -97,7 +97,7 @@ export function transformCorrespondenceResult(
                 const rowData: any = {
                     rowHeader: [(i + 1).toString()],
                     ...Object.fromEntries(
-                        data.row_profiles.data[i].map((val, j) => [
+                        data.row_profiles.data[i].map((val: number, j: number) => [
                             `col_${j + 1}`,
                             formatDisplayNumber(val),
                         ])
@@ -112,13 +112,13 @@ export function transformCorrespondenceResult(
                 const massRow: any = {
                     rowHeader: ["Mass"],
                     ...Object.fromEntries(
-                        data.row_profiles.mass.map((val, j) => [
+                        data.row_profiles.mass.map((val: number, j: number) => [
                             `col_${j + 1}`,
                             formatDisplayNumber(val),
                         ])
                     ),
                     active_margin: formatDisplayNumber(
-                        data.row_profiles.mass.reduce((a, b) => a + b, 0)
+                        data.row_profiles.mass.reduce((a: number, b: number) => a + b, 0)
                     ),
                 };
                 table.rows.push(massRow);
@@ -152,7 +152,7 @@ export function transformCorrespondenceResult(
                 const rowData: any = {
                     rowHeader: [(i + 1).toString()],
                     ...Object.fromEntries(
-                        data.column_profiles.data[i].map((val, j) => [
+                        data.column_profiles.data[i].map((val: number, j: number) => [
                             `col_${j + 1}`,
                             formatDisplayNumber(val),
                         ])
@@ -176,7 +176,7 @@ export function transformCorrespondenceResult(
                     )
                 ),
                 mass: formatDisplayNumber(
-                    (data.column_profiles.mass || []).reduce((a, b) => a + b, 0)
+                    (data.column_profiles.mass || []).reduce((a: number, b: number) => a + b, 0)
                 ),
             };
             table.rows.push(marginRow);
@@ -258,7 +258,7 @@ export function transformCorrespondenceResult(
             const totalRow: any = {
                 rowHeader: ["Total"],
                 inertia: formatDisplayNumber(
-                    data.summary.inertia.reduce((a, b) => a + b, 0)
+                    data.summary.inertia.reduce((a: number, b: number) => a + b, 0)
                 ),
                 chi_square: formatDisplayNumber(data.summary.chi_square[0]),
                 sig: formatDisplayNumber(data.summary.significance[0]),
@@ -372,15 +372,15 @@ export function transformCorrespondenceResult(
         }
 
         // Add Active Total row
-        const totalInertia = data.row_points.inertia.reduce((a, b) => a + b, 0);
-        const totalRow: any = {
+        const totalInertiaRow = data.row_points.inertia.reduce((a: number, b: number) => a + b, 0);
+        const totalRowForRows: any = {
             rowHeader: ["Active Total"],
             mass: formatDisplayNumber(1.0),
-            inertia: formatDisplayNumber(totalInertia),
+            inertia: formatDisplayNumber(totalInertiaRow),
             point_to_dim1: formatDisplayNumber(1.0),
             point_to_dim2: formatDisplayNumber(1.0),
         };
-        table.rows.push(totalRow);
+        table.rows.push(totalRowForRows);
 
         resultJson.tables.push(table);
     }
@@ -483,18 +483,18 @@ export function transformCorrespondenceResult(
         }
 
         // Add Active Total row
-        const totalInertia = data.column_points.inertia.reduce(
-            (a, b) => a + b,
+        const totalInertiaCol = data.column_points.inertia.reduce(
+            (a: number, b: number) => a + b,
             0
         );
-        const totalRow: any = {
+        const totalRowForCols: any = {
             rowHeader: ["Active Total"],
             mass: formatDisplayNumber(1.0),
-            inertia: formatDisplayNumber(totalInertia),
+            inertia: formatDisplayNumber(totalInertiaCol),
             point_to_dim1: formatDisplayNumber(1.0),
             point_to_dim2: formatDisplayNumber(1.0),
         };
-        table.rows.push(totalRow);
+        table.rows.push(totalRowForCols);
 
         resultJson.tables.push(table);
     }
