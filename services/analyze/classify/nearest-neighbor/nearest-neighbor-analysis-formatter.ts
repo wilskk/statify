@@ -2,6 +2,13 @@
 import { formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table } from "@/types/Table";
 
+// Define an interface for the setting object
+interface SystemSetting {
+    keyword?: string;
+    description?: string;
+    setting?: string;
+}
+
 export function transformNearestNeighborResult(data: any): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
@@ -96,7 +103,9 @@ export function transformNearestNeighborResult(data: any): ResultJson {
         };
 
         // Process each system setting as a row
-        for (const [key, setting] of Object.entries(data.system_settings)) {
+        for (const [key, settingValue] of Object.entries(data.system_settings)) {
+            // Type assertion to ensure settingValue is treated as SystemSetting
+            const setting = settingValue as SystemSetting;
             if (setting && typeof setting === "object") {
                 table.rows.push({
                     rowHeader: [setting.keyword || key],

@@ -2,6 +2,69 @@
 import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table } from "@/types/Table";
 
+// Define interfaces for Centroid structure
+interface CentroidData {
+    mean: number;
+    std_deviation: number;
+}
+
+interface Centroid {
+    variable: string;
+    data: CentroidData;
+}
+
+// Interface for Auto-Clustering point
+interface AutoClusteringPoint {
+    number_of_clusters: number;
+    bayesian_criterion: number;
+    bic_change?: number; // Optional since it's null for the first row
+    ratio_of_bic_changes?: number; // Optional
+    ratio_of_distance_measures: number;
+}
+
+// Interface for Cluster Distribution cluster
+interface ClusterDistributionCluster {
+    n: number;
+    percent_of_combined: number;
+    percent_of_total: number;
+}
+
+// Interface for Cluster Input
+interface ClusterInput {
+    variable: string;
+    importance: number;
+    value: number;
+}
+
+// Interface for Cluster
+interface Cluster {
+    label?: string; // Optional
+    description?: string; // Optional
+    size: number;
+    inputs: ClusterInput[];
+}
+
+// Interface for Cluster Size Data
+interface ClusterSizeData {
+    cluster_number: number | string;
+    percent_values1: number;
+    // Add other properties if known from data structure
+}
+
+// Interface for Frequency Data Point in Cell Distribution
+interface FrequencyPoint {
+    x_value: number;
+    frequency: number;
+}
+
+// Interface for Cell Distribution
+interface CellDistribution {
+    variable: string;
+    distribution: {
+        frequency_data: FrequencyPoint[];
+    };
+}
+
 export function transformClusteringResult(data: any): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
@@ -42,7 +105,7 @@ export function transformClusteringResult(data: any): ResultJson {
         // Group centroids by base variable name (without _cluster suffix)
         const variableGroups = new Map<string, Array<any>>();
 
-        cp.centroids.forEach((centroid) => {
+        cp.centroids.forEach((centroid: Centroid) => {
             const variableName = centroid.variable;
             // Check if the variable has a _cluster suffix
             const match = variableName.match(/^([^_]+)(?:_cluster(\d+))?$/);
@@ -50,12 +113,14 @@ export function transformClusteringResult(data: any): ResultJson {
             if (match) {
                 const baseVariable = match[1]; // Base variable name
                 const clusterNum = match[2]; // Cluster number or undefined
+                const group = variableGroups.get(baseVariable);
 
-                if (!variableGroups.has(baseVariable)) {
+                if (!group) {
                     variableGroups.set(baseVariable, []);
                 }
 
-                variableGroups.get(baseVariable).push({
+                // Use push on the retrieved or newly created array
+                variableGroups.get(baseVariable)?.push({
                     variable: variableName,
                     clusterNum: clusterNum ? parseInt(clusterNum) : null,
                     data: centroid.data,
@@ -66,9 +131,8 @@ export function transformClusteringResult(data: any): ResultJson {
         // Filter out base variables that have actual data
         const baseVariables = Array.from(variableGroups.keys()).filter(
             (key) => {
-                return variableGroups
-                    .get(key)
-                    .some((item) => item.clusterNum === null);
+                const group = variableGroups.get(key);
+                return group?.some((item) => item.clusterNum === null);
             }
         );
 
@@ -100,9 +164,10 @@ export function transformClusteringResult(data: any): ResultJson {
 
             // Add data for each variable
             baseVariables.forEach((baseVariable) => {
-                const clusterData = variableGroups
-                    .get(baseVariable)
-                    .find((item) => item.clusterNum === clusterNum);
+                const group = variableGroups.get(baseVariable);
+                const clusterData = group?.find(
+                    (item) => item.clusterNum === clusterNum
+                );
 
                 if (clusterData) {
                     rowData[`${baseVariable}\nMean`] = formatDisplayNumber(
@@ -126,9 +191,8 @@ export function transformClusteringResult(data: any): ResultJson {
 
         baseVariables.forEach((baseVariable) => {
             // Get the combined data (without cluster suffix)
-            const combinedData = variableGroups
-                .get(baseVariable)
-                .find((item) => item.clusterNum === null);
+            const group = variableGroups.get(baseVariable);
+            const combinedData = group?.find((item) => item.clusterNum === null);
 
             if (combinedData) {
                 combinedRow[`${baseVariable}\nMean`] = formatDisplayNumber(
@@ -163,38 +227,40 @@ export function transformClusteringResult(data: any): ResultJson {
             rows: [],
         };
 
-        ac.cluster_analysis.forEach((point, index) => {
-            const row: any = {
-                rowHeader: [],
-                "Number of Clusters": point.number_of_clusters,
-                "Schwarz's Bayesian Criterion (BIC)": formatDisplayNumber(
-                    point.bayesian_criterion
-                ),
-            };
+        ac.cluster_analysis.forEach(
+            (point: AutoClusteringPoint, index: number) => {
+                const row: any = {
+                    rowHeader: [],
+                    "Number of Clusters": point.number_of_clusters,
+                    "Schwarz's Bayesian Criterion (BIC)": formatDisplayNumber(
+                        point.bayesian_criterion
+                    ),
+                };
 
-            // Add BIC Change (null for the first row)
-            if (index > 0) {
-                row["BIC Change"] = formatDisplayNumber(point.bic_change);
-            } else {
-                row["BIC Change"] = null;
-            }
+                // Add BIC Change (null for the first row)
+                if (index > 0 && point.bic_change !== undefined) {
+                    row["BIC Change"] = formatDisplayNumber(point.bic_change);
+                } else {
+                    row["BIC Change"] = null;
+                }
 
-            // Add Ratio of BIC Changes (null for the first row)
-            if (index > 0) {
-                row["Ratio of BIC Changes"] = formatDisplayNumber(
-                    point.ratio_of_bic_changes
+                // Add Ratio of BIC Changes (null for the first row)
+                if (index > 0 && point.ratio_of_bic_changes !== undefined) {
+                    row["Ratio of BIC Changes"] = formatDisplayNumber(
+                        point.ratio_of_bic_changes
+                    );
+                } else {
+                    row["Ratio of BIC Changes"] = null;
+                }
+
+                // Add Ratio of Distance Measures
+                row["Ratio of Distance Measures"] = formatDisplayNumber(
+                    point.ratio_of_distance_measures
                 );
-            } else {
-                row["Ratio of BIC Changes"] = null;
+
+                table.rows.push(row);
             }
-
-            // Add Ratio of Distance Measures
-            row["Ratio of Distance Measures"] = formatDisplayNumber(
-                point.ratio_of_distance_measures
-            );
-
-            table.rows.push(row);
-        });
+        );
 
         // Add footnotes
         table.rows.push({
@@ -249,9 +315,9 @@ export function transformClusteringResult(data: any): ResultJson {
         };
 
         // Add rows for each cluster
-        cd.clusters.forEach((cluster, index) => {
+        cd.clusters.forEach((cluster: ClusterDistributionCluster, index: number) => {
             table.rows.push({
-                rowHeader: [(index + 1).toString()],
+                rowHeader: [(index + 1).toString()], // Use index + 1 for cluster number
                 N: cluster.n,
                 "% of Combined": formatDisplayNumber(
                     cluster.percent_of_combined
@@ -281,12 +347,12 @@ export function transformClusteringResult(data: any): ResultJson {
 
     // 5. Clusters
     if (data.clusters) {
-        const clusters = data.clusters;
+        const clusters: Cluster[] = data.clusters;
 
         // Create input variables list
         const inputVariables =
             clusters.length > 0
-                ? clusters[0].inputs.map((input) => input.variable)
+                ? clusters[0].inputs.map((input: ClusterInput) => input.variable)
                 : [];
 
         const table: Table = {
@@ -306,7 +372,7 @@ export function transformClusteringResult(data: any): ResultJson {
         table.rows.push({
             rowHeader: ["Label"],
             ...Object.fromEntries(
-                clusters.map((cluster, i) => [
+                clusters.map((cluster: Cluster, i: number) => [
                     (i + 1).toString(),
                     cluster.label || null,
                 ])
@@ -317,7 +383,7 @@ export function transformClusteringResult(data: any): ResultJson {
         table.rows.push({
             rowHeader: ["Description"],
             ...Object.fromEntries(
-                clusters.map((cluster, i) => [
+                clusters.map((cluster: Cluster, i: number) => [
                     (i + 1).toString(),
                     cluster.description || null,
                 ])
@@ -328,7 +394,7 @@ export function transformClusteringResult(data: any): ResultJson {
         table.rows.push({
             rowHeader: ["Size"],
             ...Object.fromEntries(
-                clusters.map((cluster, i) => [
+                clusters.map((cluster: Cluster, i: number) => [
                     (i + 1).toString(),
                     `${formatDisplayNumber(cluster.size)}%`,
                 ])
@@ -342,12 +408,13 @@ export function transformClusteringResult(data: any): ResultJson {
             };
 
             // Add value for each cluster
-            clusters.forEach((cluster, i) => {
+            clusters.forEach((cluster: Cluster, i: number) => {
                 const input = cluster.inputs.find(
                     (input) => input.variable === variable
                 );
+                // Safely access value only if input is found
                 rowData[(i + 1).toString()] = input
-                    ? formatDisplayNumber(input.value)
+                    ? formatDisplayNumber(input.value) 
                     : null;
             });
 
@@ -369,11 +436,11 @@ export function transformClusteringResult(data: any): ResultJson {
 
         // Sort predictors by importance (descending)
         const sortedPredictors = [...pi.predictors].sort(
-            (a, b) => b.importance - a.importance
+            (a: ClusterInput, b: ClusterInput) => b.importance - a.importance // Assuming predictors are ClusterInput type
         );
 
         // Add rows for each predictor
-        sortedPredictors.forEach((predictor) => {
+        sortedPredictors.forEach((predictor: ClusterInput) => {
             table.rows.push({
                 rowHeader: [predictor.variable],
                 Importance: formatDisplayNumber(predictor.importance),
@@ -395,7 +462,7 @@ export function transformClusteringResult(data: any): ResultJson {
 
         // Add smallest cluster size
         const smallestCluster = cs.clusters.reduce(
-            (min, current) =>
+            (min: ClusterSizeData, current: ClusterSizeData) =>
                 current.percent_values1 < min.percent_values1 ? current : min,
             cs.clusters[0]
         );
@@ -409,7 +476,7 @@ export function transformClusteringResult(data: any): ResultJson {
 
         // Add largest cluster size
         const largestCluster = cs.clusters.reduce(
-            (max, current) =>
+            (max: ClusterSizeData, current: ClusterSizeData) =>
                 current.percent_values1 > max.percent_values1 ? current : max,
             cs.clusters[0]
         );
@@ -434,7 +501,7 @@ export function transformClusteringResult(data: any): ResultJson {
 
     // 8. Cell Distribution
     if (data.cell_distribution) {
-        data.cell_distribution.forEach((cellDist, index) => {
+        data.cell_distribution.forEach((cellDist: CellDistribution, index: number) => {
             const variable = cellDist.variable;
             const distribution = cellDist.distribution;
 
@@ -442,7 +509,7 @@ export function transformClusteringResult(data: any): ResultJson {
                 key: `cell_distribution_${index}`,
                 title: `Cell Distribution: ${variable}`,
                 columnHeaders: [{ header: "X Value" }, { header: "Frequency" }],
-                rows: distribution.frequency_data.map((point) => ({
+                rows: distribution.frequency_data.map((point: FrequencyPoint) => ({
                     rowHeader: [],
                     "X Value": formatDisplayNumber(point.x_value),
                     Frequency: formatDisplayNumber(point.frequency),

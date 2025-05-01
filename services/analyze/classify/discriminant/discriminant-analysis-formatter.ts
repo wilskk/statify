@@ -1243,7 +1243,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
     ) {
         // Get the groups from original classification
         const groups = data.classification_results.original_classification.map(
-            (item) => item.group
+            (item: { group: string; counts: number[] }) => item.group
         );
         const groupCount = groups.length;
 
@@ -1256,7 +1256,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 {
                     header: "Predicted Group Membership",
                     key: "predicted_groups",
-                    children: groups.map((group, i) => ({
+                    children: groups.map((group: string, i: number) => ({
                         header: group,
                         key: `group_${i}`,
                     })),
@@ -1280,7 +1280,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
             const rowData: any = {
                 rowHeader: ["", classification.group],
                 total: formatDisplayNumber(
-                    classification.counts.reduce((sum, count) => sum + count, 0)
+                    classification.counts.reduce((sum: number, count: number) => sum + count, 0)
                 ),
             };
 
@@ -1338,7 +1338,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                     rowHeader: ["", classification.group],
                     total: formatDisplayNumber(
                         classification.counts.reduce(
-                            (sum, count) => sum + count,
+                            (sum: number, count: number) => sum + count,
                             0
                         )
                     ),
@@ -1399,7 +1399,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                 classifiedCount +=
                     data.classification_results.original_classification[
                         i
-                    ].counts.reduce((sum, val) => sum + val, 0);
+                    ].counts.reduce((sum: number, val: number) => sum + val, 0);
             }
         }
 
@@ -1443,7 +1443,7 @@ export function transformDiscriminantResult(data: any): ResultJson {
                     crossValidatedCount +=
                         data.classification_results.cross_validated_classification[
                             i
-                        ].counts.reduce((sum, val) => sum + val, 0);
+                        ].counts.reduce((sum: number, val: number) => sum + val, 0);
                 }
             }
 

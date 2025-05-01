@@ -190,8 +190,6 @@ const ModalContainer: React.FC = () => {
                 return <SaveLinear onClose={closeModal} {...currentModal.props} />;
             case ModalType.OptionsLinear:
                 return <OptionsLinear onClose={closeModal} {...currentModal.props} />;
-            case ModalType.BootstrapLinear:
-                return <BootstrapLinear onClose={closeModal} {...currentModal.props} />;
             case ModalType.PlotsLinear:
                 return <PlotsLinear onClose={closeModal} {...currentModal.props} />;
                 return (
@@ -272,13 +270,14 @@ const ModalContainer: React.FC = () => {
                     />
                 );
 
-            case ModalType.KRelatedSamplesTest:
-                return (
-                    <KRelatedSamplesTestModal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+            // case ModalType.KRelatedSamplesTest:
+            //     return (
+            //         <KRelatedSamplesTestModal
+            //             onClose={closeModal}
+            //             {...currentModal.props}
+            //         />
+
+            //     );
 
             case ModalType.ChartBuilderModal:
                 return (
