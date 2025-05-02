@@ -18,6 +18,9 @@ import { ModalType, useModal } from "@/hooks/useModal";
 import FileMenu from "@/components/Modals/File/FileMenu";
 import EditMenu from "@/components/Modals/Edit/EditMenu";
 import DataMenu from "@/components/Modals/Data/DataMenu";
+import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
+import ClassifyMenu from "@/components/Modals/Analyze/classify/classify-menu";
+import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
@@ -86,14 +89,13 @@ const Navbar: React.FC = () => {
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
-                    <MenubarSubTrigger>General Linear Model</MenubarSubTrigger>
-                    <MenubarSubContent>
-                        <MenubarItem>Univariate...</MenubarItem>
-                        <MenubarItem>Multivariate...</MenubarItem>
-                        <MenubarItem>Repeated Measures...</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem>Variance Components...</MenubarItem>
-                    </MenubarSubContent>
+                    <GeneralLinearModelMenu />
+                </MenubarSub>
+                <MenubarSub>
+                    <ClassifyMenu />
+                </MenubarSub>
+                <MenubarSub>
+                    <DimensionReductionMenu />
                 </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Correlate</MenubarSubTrigger>
