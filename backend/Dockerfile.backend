@@ -2,50 +2,34 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies using npm ci based on root lockfile
 COPY package.json package-lock.json* ./
-# Install all workspace dependencies including dev dependencies needed for build
 RUN npm ci
 
 # --- Backend Build Stage ---
-# Copy backend specific files
 COPY backend/package.json backend/tsconfig.json ./backend/
 COPY backend/server ./backend/server
 
-# Change WORKDIR to backend context
 WORKDIR /app/backend
-# Build the TypeScript project using the build script in the current directory's package.json
 RUN npm run build
-# Change WORKDIR back to root
 WORKDIR /app
 
 # --- Production stage ---
 FROM node:18-alpine
 
-# Set WORKDIR to /app/backend for the final stage
 WORKDIR /app/backend
 
-# Copy root dependency files relative to new WORKDIR context might require adjustment if needed
-# For simplicity, keeping root install logic similar, assuming it works for workspaces
 WORKDIR /app # Temporarily switch back for root install
 COPY package.json package-lock.json* ./
-# Install only production dependencies for all workspaces
 RUN npm install --omit=dev
 
-# Switch back to backend WORKDIR
 WORKDIR /app/backend
 
-# Copy production necessary files from backend
 COPY backend/package.json ./
 
-# Copy build artifacts from builder stage relative to /app/backend
 COPY --from=builder /app/backend/dist ./dist
 
-# Create temp directory relative to /app/backend
-# RUN mkdir -p /app/temp # This might be better handled by the volume mount if needed inside backend
-RUN mkdir -p ./temp # Create temp inside /app/backend if needed locally
+RUN mkdir -p ./temp
 
 EXPOSE 5000
 
-# Run the server using the start script from backend/package.json, now from WORKDIR /app/backend
 CMD ["npm", "run", "start"]
