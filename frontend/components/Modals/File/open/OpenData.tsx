@@ -84,7 +84,7 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 await resetVariables();
 
                 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-                const response = await fetch(`${backendUrl}/sav/upload`, {
+                const response = await fetch(`${backendUrl}/api/sav/upload`, {
                     method: "POST",
                     body: formData,
                 });
