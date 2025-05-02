@@ -45,10 +45,12 @@ export interface DataStoreState {
         isValid: boolean;
         issues: Array<{ row: number; message: string }>
     }>;
+
+    ensureColumns: (targetColIndex: number) => Promise<void>;
 }
 
 // Define the initial state explicitly with the correct type
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addColumn' | 'deleteRow' | 'deleteColumn' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData'> = {
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addColumn' | 'deleteRow' | 'deleteColumn' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
     data: [],
     isLoading: false,
     error: null,
@@ -491,18 +493,64 @@ export const useDataStore = create<DataStoreState>()(
 
             deleteColumn: async (index: number) => {
                 const oldData = get().data;
-                if (oldData.length === 0 || index < 0 || index >= (oldData[0]?.length ?? 0)) { set(state => { state.error = { message: "Invalid column index", source: "deleteColumn" }; }); return; }
-                let finalData: DataRow[] = [];
-                set((state) => {
-                    state.data = state.data.map(row => {
-                        const newRow = [...row];
-                        newRow.splice(index, 1);
-                        return newRow;
+                if (oldData.length === 0 || index < 0 || index >= (oldData[0]?.length ?? 0)) { 
+                    set(state => { state.error = { message: "Invalid column index for deletion", source: "deleteColumn" }; }); 
+                    return; 
+                }
+                
+                // Explicitly collect keys for the column being deleted
+                const rowCount = oldData.length;
+                const keysToDelete: CellPrimaryKey[] = [];
+                for (let r = 0; r < rowCount; r++) {
+                    // Only add key if row exists and column index is valid for that row originally
+                    // Although check at start mostly covers this, belt and braces.
+                    if (oldData[r] && index < oldData[r].length) {
+                         // Primary key for db.cells is [col, row]
+                        keysToDelete.push([index, r]); 
+                    }
+                }
+                
+                try {
+                    // Explicitly delete all cells in the target column from the database first
+                    if (keysToDelete.length > 0) {
+                        await db.transaction('rw', db.cells, async () => {
+                            await db.cells.bulkDelete(keysToDelete);
+                        });
+                         console.log(`[deleteColumn] Explicitly deleted ${keysToDelete.length} keys for column index ${index} from DB.`);
+                    } else {
+                        console.log(`[deleteColumn] No keys needed explicit deletion for column index ${index}.`);
+                    }
+
+                    // Now, update the in-memory state
+                    set((state) => {
+                        state.data = state.data.map(row => {
+                            // Ensure the row exists and the index is valid before splicing
+                            if (row && index < row.length) {
+                                const newRow = [...row];
+                                newRow.splice(index, 1);
+                                return newRow;
+                            } 
+                            return row; // Return unmodified row if index is out of bounds for it
+                        });
+                        state.lastUpdated = new Date();
+                        state.error = null; // Clear previous errors on success
                     });
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+
+                    // DO NOT call applyDiffAndSync here. 
+                    // The state is updated, and the corresponding DB entries are explicitly removed.
+                    // Relying on React's re-render from the state change is sufficient.
+
+                } catch (error: any) {
+                     console.error(`[deleteColumn] Failed to delete column ${index} from DB or update state:`, error);
+                    set((state) => {
+                        // We cannot easily rollback the DB delete here, but we should report the error
+                        // and potentially try to reload or revert state if possible (reverting state might be complex)
+                        state.error = { message: `Failed to fully delete column ${index}`, source: "deleteColumn", originalError: error };
+                        // Avoid setting state.data = oldData as DB state is inconsistent now.
+                        // Maybe trigger a full reload?
+                        // get().loadData(); // Option: force reload on error
+                    });
+                }
             },
 
             sortData: async (columnIndex: number, direction: 'asc' | 'desc') => {
@@ -593,6 +641,27 @@ export const useDataStore = create<DataStoreState>()(
                 }
                 if (updates.length > 0) await get().updateBulkCells(updates);
                 return { isValid, issues };
+            },
+
+            ensureColumns: async (targetColIndex: number) => {
+                const currentMaxCol = get().data.length > 0 ? (get().data[0]?.length ?? 0) - 1 : -1;
+
+                // Only proceed if the target index requires expansion
+                if (targetColIndex > currentMaxCol) {
+                     console.log(`[ensureColumns] Expanding data columns up to index ${targetColIndex}. Current max: ${currentMaxCol}`);
+                    set((state) => {
+                        // Use the internal helper to expand columns efficiently
+                        // We pass state.data.length - 1 for maxRow to avoid adding new rows
+                        const maxRowIndex = state.data.length > 0 ? state.data.length - 1 : 0;
+                        _ensureMatrixDimensionsInternal(state, maxRowIndex, targetColIndex);
+                        // No explicit DB sync needed here as _ensureMatrixDimensionsInternal
+                        // only adds empty cells/columns which are not persisted until filled.
+                        // It updates lastUpdated internally.
+                    });
+                } else {
+                     console.log(`[ensureColumns] No expansion needed. Target: ${targetColIndex}, Current max: ${currentMaxCol}`);
+                }
+                // No async DB operation here, so the Promise resolves quickly.
             },
         }))
     )
