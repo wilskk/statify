@@ -307,7 +307,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
             type: "NUMERIC",
             label: `${dataVarDef.label || dataVarDef.name} ARIMA (${arOrder},${diffOrder},${maOrder})`,
             values: [],
-            missing: [],
+            missing: null,
             measure: "scale",
             width: 8,
             decimals: 3,

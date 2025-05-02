@@ -470,7 +470,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             type: "NUMERIC",
             label: newVarLabel,
             values: [],
-            missing: [],
+            missing: null,
             measure: "scale",
             width: 8,
             decimals: 2,

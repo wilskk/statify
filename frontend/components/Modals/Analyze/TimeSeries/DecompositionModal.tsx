@@ -276,7 +276,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
                 type: "NUMERIC",
                 label: `${dataVarDef.label || dataVarDef.name} (${componentType})`,
                 values: [],
-                missing: [],
+                missing: null,
                 measure: "scale",
                 width: 8,
                 decimals: 3,

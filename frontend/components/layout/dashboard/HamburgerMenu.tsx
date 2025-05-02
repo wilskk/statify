@@ -304,7 +304,7 @@ const HamburgerMenu: React.FC = () => {
                                                             <DrawerMenuItem disabled>2 Independent Samples...</DrawerMenuItem>
                                                             <DrawerMenuItem disabled>K Independent Samples...</DrawerMenuItem>
                                                             <DrawerMenuItem disabled>2 Related Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamplesTest)}>K Related Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</DrawerMenuItem>
                                                         </AccordionContent>
                                                     </AccordionItem>
                                                 </Accordion>

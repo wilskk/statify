@@ -13,9 +13,9 @@ export default function Footer() {
     const { isMobile } = useMobile();
     const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
 
-    const isDataActive = pathname.startsWith('/dashboard/data');
-    const isVariableActive = pathname.startsWith('/dashboard/variable');
-    const isResultActive = pathname.startsWith('/dashboard/result');
+    const isDataActive = pathname ? pathname.startsWith('/dashboard/data') : false;
+    const isVariableActive = pathname ? pathname.startsWith('/dashboard/variable') : false;
+    const isResultActive = pathname ? pathname.startsWith('/dashboard/result') : false;
 
     // Prefetch routes when component mounts
     useEffect(() => {
