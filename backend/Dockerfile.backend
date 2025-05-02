@@ -16,20 +16,23 @@ WORKDIR /app
 # --- Production stage ---
 FROM node:18-alpine
 
+# Set the final working directory
 WORKDIR /app/backend
 
-WORKDIR /app # Temporarily switch back for root install
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
-
-WORKDIR /app/backend
-
+# Copy only the backend's package.json (and potentially lockfile if needed/generated)
+# Assuming backend has its own lockfile is not standard for workspaces, so just package.json is safer
 COPY backend/package.json ./
 
+# Install ONLY the backend's production dependencies into /app/backend/node_modules
+RUN npm install --omit=dev
+
+# Copy build artifacts from builder stage
 COPY --from=builder /app/backend/dist ./dist
 
+# Create temp directory
 RUN mkdir -p ./temp
 
 EXPOSE 5000
 
+# Run the server using the start script from backend/package.json
 CMD ["npm", "run", "start"]
