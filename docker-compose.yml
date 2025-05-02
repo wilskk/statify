@@ -3,13 +3,14 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
     container_name: statify-frontend
     ports:
       - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - NEXT_PUBLIC_BACKEND_URL=http://api.statify-dev.student.stis.ac.id
     restart: unless-stopped
     depends_on:
       - backend
