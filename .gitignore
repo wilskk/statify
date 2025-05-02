@@ -46,13 +46,20 @@ yarn-error.log*
 *.tsbuildinfo
 # next-env.d.ts (Keep if not moved to frontend)
 
+# wasm
+**/wasm/target
+**/wasm/Cargo.lock
+
 # wasm-test
 /wasm-test/node_modules
 /wasm-test/.next
 /wasm-test
+
 # package-lock.json (Keep if maybe used elsewhere, or remove if definitely unused)
 
 # dist
 /dist
 backend/dist
 /_test/
+
+# node_modules

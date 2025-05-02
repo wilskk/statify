@@ -29,6 +29,32 @@ export enum ModalType {
   ModalQuantiles = "modalQuantiles",
   ModalOptimalScaling = "modalOptimalScaling",
 
+  // General Linear Model
+  Univariate = "univariate",
+  Multivariate = "multivariate",
+  RepeatedMeasures = "repeated-measures",
+  RepeatedMeasuresDialog = "repeated-measures-dialog",
+  VarianceComponents = "variance-components",
+
+  // Dimension Reduction
+  Factor = "factor",
+  CorrespondenceAnalysis = "correspondence-analysis",
+  OptimalScaling = "optimal-scaling",
+  OptimalScalingCATPCA = "optimal-scaling-catpca",
+  OptimalScalingMCA = "optimal-scaling-mca",
+  OptimalScalingOVERALS = "optimal-scaling-overals",
+
+  // Classify
+  TwoStepCluster = "two-step-cluster",
+  KMeansCluster = "k-means-cluster",
+  HierarchicalCluster = "hierarchical-cluster",
+  ClusterSilhouettes = "cluster-silhouettes",
+  Tree = "tree",
+  Discriminant = "discriminant",
+  NearestNeighbor = "nearest-neighbor",
+  ROCCurve = "roc-curve",
+  ROCAnalysis = "roc-analysis",
+
   // Time Series
   Smoothing = "smoothing", //Time Series Smoothing
   Decomposition = "decomposition", //Time Series Decomposition
@@ -95,8 +121,18 @@ export enum ModalType {
   ReadCSVFile = "readCSVFile",
   ReadExcelFile = "ReadExcelFile",
 
+  // Compare Means
+  OneSampleTTest = "oneSampleTTest",
+  IndependentSamplesTTest = "independentSamplesTTest",
+  PairedSamplesTTest = "pairedSamplesTTest",
+
   // Nonparametric Test
-  KRelatedSamplesTest = 'kRelatedSamplesTest',
+  ChiSquare = 'chiSquare',
+  Runs = 'runs',
+  TwoIndependentSamples = 'twoIndependentSamples',
+  KIndependentSamples = 'kIndependentSamples',
+  TwoRelatedSamples = 'twoRelatedSamples',
+  KRelatedSamples = 'kRelatedSamples',
 
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",

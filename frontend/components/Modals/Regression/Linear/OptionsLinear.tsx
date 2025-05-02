@@ -1,44 +1,76 @@
 // components/OptionsLinear.tsx
-import React, { useState } from 'react';
-import {
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+// Remove Dialog imports
+// import {
+//   DialogContent,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogFooter,
+// } from '@/components/ui/dialog';
+// import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
-interface OptionsLinearProps {
-  onClose: () => void;
+// Define and Export Params Type
+export interface OptionsLinearParams {
+  steppingMethod: 'probability' | 'fvalue';
+  probEntry: string;
+  probRemoval: string;
+  fvalueEntry: string;
+  fvalueRemoval: string;
+  includeConstant: boolean;
+  missingValue: 'listwise' | 'pairwise' | 'replace';
 }
 
-const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
-  // State untuk Stepping Method Criteria
-  const [steppingMethod, setSteppingMethod] = useState<'probability' | 'fvalue'>('probability');
-  const [probEntry, setProbEntry] = useState('0.05');
-  const [probRemoval, setProbRemoval] = useState('0.10');
-  const [fvalueEntry, setFvalueEntry] = useState('3.84');
-  const [fvalueRemoval, setFvalueRemoval] = useState('2.71');
+// Update Props interface
+interface OptionsLinearProps {
+  params: OptionsLinearParams;
+  onChange: (newParams: Partial<OptionsLinearParams>) => void;
+}
 
-  // State untuk Include constant in equation
-  const [includeConstant, setIncludeConstant] = useState(false);
+const OptionsLinear: React.FC<OptionsLinearProps> = ({ params, onChange }) => {
+  // Local state initialized from props
+  const [steppingMethod, setSteppingMethod] = useState<'probability' | 'fvalue'>(params.steppingMethod);
+  const [probEntry, setProbEntry] = useState(params.probEntry);
+  const [probRemoval, setProbRemoval] = useState(params.probRemoval);
+  const [fvalueEntry, setFvalueEntry] = useState(params.fvalueEntry);
+  const [fvalueRemoval, setFvalueRemoval] = useState(params.fvalueRemoval);
+  const [includeConstant, setIncludeConstant] = useState(params.includeConstant);
+  const [missingValue, setMissingValue] = useState<'listwise' | 'pairwise' | 'replace'>(params.missingValue);
 
-  // State untuk Missing Values
-  const [missingValue, setMissingValue] = useState<'listwise' | 'pairwise' | 'replace'>('listwise');
+  // Effect to sync local state with incoming params prop changes
+  useEffect(() => {
+    setSteppingMethod(params.steppingMethod);
+    setProbEntry(params.probEntry);
+    setProbRemoval(params.probRemoval);
+    setFvalueEntry(params.fvalueEntry);
+    setFvalueRemoval(params.fvalueRemoval);
+    setIncludeConstant(params.includeConstant);
+    setMissingValue(params.missingValue);
+  }, [params]);
+
+  // Generic handler to update local state and call onChange prop
+  const handleChange = (field: keyof OptionsLinearParams, value: any) => {
+    // Update local state
+    switch(field) {
+      case 'steppingMethod': setSteppingMethod(value); break;
+      case 'probEntry': setProbEntry(value); break;
+      case 'probRemoval': setProbRemoval(value); break;
+      case 'fvalueEntry': setFvalueEntry(value); break;
+      case 'fvalueRemoval': setFvalueRemoval(value); break;
+      case 'includeConstant': setIncludeConstant(value); break;
+      case 'missingValue': setMissingValue(value); break;
+    }
+    // Propagate change
+    onChange({ [field]: value });
+  };
 
   return (
-    // Perbaikan: Hapus properti positioning tambahan dan gunakan max-h serta overflow-y-auto agar modal OptionsLinear tampil
-    // secara terpusat seperti modal Statistics dan SaveLinear.
-    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-      {/* Header */}
-      <DialogHeader>
-        <DialogTitle className="text-lg">Linear Regression: Options</DialogTitle>
-      </DialogHeader>
-
-      <Separator className="my-2" />
+    // Return the JSX content directly, without Dialog wrappers
+    <div className="p-4 max-h-[70vh] overflow-y-auto"> {/* Adjust padding/height as needed */}
+      {/* Removed Header */}
+      {/* <Separator className="my-2" /> */}
 
       {/* Stepping Method Criteria */}
       <div className="border rounded p-4 mb-4">
@@ -53,7 +85,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                 id="steppingProbability"
                 value="probability"
                 checked={steppingMethod === 'probability'}
-                onChange={() => setSteppingMethod('probability')}
+                onChange={(e) => handleChange('steppingMethod', e.target.value as 'probability' | 'fvalue')}
                 className="accent-gray-500"
               />
               <label htmlFor="steppingProbability" className="ml-2 text-sm">
@@ -69,7 +101,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                   type="text"
                   id="probEntry"
                   value={probEntry}
-                  onChange={(e) => setProbEntry(e.target.value)}
+                  onChange={(e) => handleChange('probEntry', e.target.value)}
                   className="w-20 p-1 text-sm"
                   disabled={steppingMethod !== 'probability'}
                 />
@@ -82,7 +114,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                   type="text"
                   id="probRemoval"
                   value={probRemoval}
-                  onChange={(e) => setProbRemoval(e.target.value)}
+                  onChange={(e) => handleChange('probRemoval', e.target.value)}
                   className="w-20 p-1 text-sm"
                   disabled={steppingMethod !== 'probability'}
                 />
@@ -99,7 +131,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                 id="steppingFvalue"
                 value="fvalue"
                 checked={steppingMethod === 'fvalue'}
-                onChange={() => setSteppingMethod('fvalue')}
+                onChange={(e) => handleChange('steppingMethod', e.target.value as 'probability' | 'fvalue')}
                 className="accent-gray-500"
               />
               <label htmlFor="steppingFvalue" className="ml-2 text-sm">
@@ -115,7 +147,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                   type="text"
                   id="fvalueEntry"
                   value={fvalueEntry}
-                  onChange={(e) => setFvalueEntry(e.target.value)}
+                  onChange={(e) => handleChange('fvalueEntry', e.target.value)}
                   className="w-20 p-1 text-sm"
                   disabled={steppingMethod !== 'fvalue'}
                 />
@@ -128,7 +160,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
                   type="text"
                   id="fvalueRemoval"
                   value={fvalueRemoval}
-                  onChange={(e) => setFvalueRemoval(e.target.value)}
+                  onChange={(e) => handleChange('fvalueRemoval', e.target.value)}
                   className="w-20 p-1 text-sm"
                   disabled={steppingMethod !== 'fvalue'}
                 />
@@ -143,7 +175,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
         <div className="flex items-center">
           <Checkbox
             checked={includeConstant}
-            onCheckedChange={(checked) => setIncludeConstant(!!checked)}
+            onCheckedChange={(checked) => handleChange('includeConstant', !!checked)}
             id="includeConstant"
           />
           <label htmlFor="includeConstant" className="ml-2 text-sm">
@@ -163,7 +195,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
               id="excludeListwise"
               value="listwise"
               checked={missingValue === 'listwise'}
-              onChange={(e) => setMissingValue(e.target.value as 'listwise' | 'pairwise' | 'replace')}
+              onChange={(e) => handleChange('missingValue', e.target.value as 'listwise' | 'pairwise' | 'replace')}
               className="accent-gray-500"
             />
             <label htmlFor="excludeListwise" className="ml-2 text-sm">
@@ -177,7 +209,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
               id="excludePairwise"
               value="pairwise"
               checked={missingValue === 'pairwise'}
-              onChange={(e) => setMissingValue(e.target.value as 'listwise' | 'pairwise' | 'replace')}
+              onChange={(e) => handleChange('missingValue', e.target.value as 'listwise' | 'pairwise' | 'replace')}
               className="accent-gray-500"
             />
             <label htmlFor="excludePairwise" className="ml-2 text-sm">
@@ -191,7 +223,7 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
               id="replaceMean"
               value="replace"
               checked={missingValue === 'replace'}
-              onChange={(e) => setMissingValue(e.target.value as 'listwise' | 'pairwise' | 'replace')}
+              onChange={(e) => handleChange('missingValue', e.target.value as 'listwise' | 'pairwise' | 'replace')}
               className="accent-gray-500"
             />
             <label htmlFor="replaceMean" className="ml-2 text-sm">
@@ -200,24 +232,8 @@ const OptionsLinear: React.FC<OptionsLinearProps> = ({ onClose }) => {
           </div>
         </div>
       </div>
-
-      {/* Tombol Aksi */}
-      <DialogFooter className="flex justify-end space-x-3 mt-4">
-        <Button
-          variant="default"
-          className="bg-blue-500 text-white hover:bg-blue-600"
-          onClick={() => alert('Continue')}
-        >
-          Continue
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="outline" onClick={() => alert('Help')}>
-          Help
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+      {/* Removed Footer */}
+    </div>
   );
 };
 

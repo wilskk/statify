@@ -1,18 +1,13 @@
 // components/Statistics.tsx
-import React, { useState } from 'react';
-import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+// import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+// import { Button } from '@/components/ui/button'; // Remove Button if no longer used internally
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { TrendingUp } from 'lucide-react';
 
-interface StatisticsProps {
-  onClose: () => void;
-  onSubmit: (params: StatisticsParams) => void;
-}
-
-
+// Keep the Params interface export
 export interface StatisticsParams {
   estimates: boolean;
   confidenceIntervals: boolean;
@@ -28,57 +23,77 @@ export interface StatisticsParams {
   outlierThreshold: string;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
-  // State untuk Regression Coefficients
-  const [estimates, setEstimates] = useState<boolean>(true);
-  const [confidenceIntervals, setConfidenceIntervals] = useState<boolean>(false);
-  const [covarianceMatrix, setCovarianceMatrix] = useState<boolean>(false);
-  // State untuk Model fit
-  const [modelFit, setModelFit] = useState<boolean>(true);
-  const [rSquaredChange, setRSquaredChange] = useState<boolean>(false);
-  const [descriptives, setDescriptives] = useState<boolean>(false);
-  const [partAndPartial, setPartAndPartial] = useState<boolean>(false);
-  const [collinearityDiagnostics, setCollinearityDiagnostics] = useState<boolean>(false);
-  // State untuk Residuals
-  const [durbinWatson, setDurbinWatson] = useState<boolean>(false);
-  const [casewiseDiagnostics, setCasewiseDiagnostics] = useState<boolean>(false);
-  // State untuk radio button Residuals
-  const [selectedResidualOption, setSelectedResidualOption] = useState<string>('');
-  // State untuk threshold input (misal untuk nilai default 3)
-  const [outlierThreshold, setOutlierThreshold] = useState<string>('3');
+// Update Props interface
+interface StatisticsProps {
+  params: StatisticsParams;
+  onChange: (newParams: Partial<StatisticsParams>) => void;
+}
 
-  const params: StatisticsParams = {
-    estimates,
-    confidenceIntervals,
-    covarianceMatrix,
-    modelFit,
-    rSquaredChange,
-    descriptives,
-    partAndPartial,
-    collinearityDiagnostics,
-    durbinWatson,
-    casewiseDiagnostics,
-    selectedResidualOption,
-    outlierThreshold,
-  };
-  const handleContinue = () => {
-    // Store params in localStorage before closing
-    localStorage.setItem('temp_stats_params', JSON.stringify(params));
-    onSubmit(params);
-    onClose();
+
+const Statistics: React.FC<StatisticsProps> = ({ params, onChange }) => {
+  // Use passed params to initialize state
+  const [estimates, setEstimates] = useState<boolean>(params.estimates);
+  const [confidenceIntervals, setConfidenceIntervals] = useState<boolean>(params.confidenceIntervals);
+  const [covarianceMatrix, setCovarianceMatrix] = useState<boolean>(params.covarianceMatrix);
+  const [modelFit, setModelFit] = useState<boolean>(params.modelFit);
+  const [rSquaredChange, setRSquaredChange] = useState<boolean>(params.rSquaredChange);
+  const [descriptives, setDescriptives] = useState<boolean>(params.descriptives);
+  const [partAndPartial, setPartAndPartial] = useState<boolean>(params.partAndPartial);
+  const [collinearityDiagnostics, setCollinearityDiagnostics] = useState<boolean>(params.collinearityDiagnostics);
+  const [durbinWatson, setDurbinWatson] = useState<boolean>(params.durbinWatson);
+  const [casewiseDiagnostics, setCasewiseDiagnostics] = useState<boolean>(params.casewiseDiagnostics);
+  const [selectedResidualOption, setSelectedResidualOption] = useState<string>(params.selectedResidualOption);
+  const [outlierThreshold, setOutlierThreshold] = useState<string>(params.outlierThreshold);
+
+  // Effect to update local state if params prop changes from parent (e.g., on Reset)
+  useEffect(() => {
+    setEstimates(params.estimates);
+    setConfidenceIntervals(params.confidenceIntervals);
+    setCovarianceMatrix(params.covarianceMatrix);
+    setModelFit(params.modelFit);
+    setRSquaredChange(params.rSquaredChange);
+    setDescriptives(params.descriptives);
+    setPartAndPartial(params.partAndPartial);
+    setCollinearityDiagnostics(params.collinearityDiagnostics);
+    setDurbinWatson(params.durbinWatson);
+    setCasewiseDiagnostics(params.casewiseDiagnostics);
+    setSelectedResidualOption(params.selectedResidualOption);
+    setOutlierThreshold(params.outlierThreshold);
+  }, [params]);
+
+  // Helper to call onChange prop
+  const handleChange = (field: keyof StatisticsParams, value: any) => {
+    // Update local state immediately for responsiveness
+    switch(field) {
+      case 'estimates': setEstimates(value); break;
+      case 'confidenceIntervals': setConfidenceIntervals(value); break;
+      case 'covarianceMatrix': setCovarianceMatrix(value); break;
+      case 'modelFit': setModelFit(value); break;
+      case 'rSquaredChange': setRSquaredChange(value); break;
+      case 'descriptives': setDescriptives(value); break;
+      case 'partAndPartial': setPartAndPartial(value); break;
+      case 'collinearityDiagnostics': setCollinearityDiagnostics(value); break;
+      case 'durbinWatson': setDurbinWatson(value); break;
+      case 'casewiseDiagnostics':
+        setCasewiseDiagnostics(value);
+        if (!value) {
+            setSelectedResidualOption(''); // Also update dependent state locally
+            onChange({ casewiseDiagnostics: value, selectedResidualOption: '' }); // Propagate both changes
+            return; // Exit early as onChange was called
+        }
+        break;
+      case 'selectedResidualOption': setSelectedResidualOption(value); break;
+      case 'outlierThreshold': setOutlierThreshold(value); break;
+    }
+    // Propagate change to parent
+    onChange({ [field]: value });
   };
 
+  // Return the JSX content directly, without Dialog wrappers
   return (
-    <DialogContent className="sm:max-w-[800px]">
-      {/* Header dengan ikon dan judul */}
-      <DialogHeader>
-        <div className="flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5 text-gray-600" />
-          <DialogTitle className="text-lg">Linear Regression: Statistics</DialogTitle>
-        </div>
-      </DialogHeader>
-
-      <Separator className="my-2" />
+    <div className="p-4"> {/* Add padding or styling as needed */}
+      {/* Removed Header */}
+      {/* <Separator className="my-2" /> */}
 
       {/* Bagian Regression Coefficients & Model Fit */}
       <div className="grid grid-cols-2 gap-6">
@@ -88,7 +103,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
           <div className="flex items-center space-x-2 mb-2">
             <Checkbox
               checked={estimates}
-              onCheckedChange={(checked) => setEstimates(!!checked)}
+              onCheckedChange={(checked) => handleChange('estimates', !!checked)}
               id="estimates"
             />
             <label htmlFor="estimates" className="text-sm">Estimates</label>
@@ -97,7 +112,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={confidenceIntervals}
-                onCheckedChange={(checked) => setConfidenceIntervals(!!checked)}
+                onCheckedChange={(checked) => handleChange('confidenceIntervals', !!checked)}
                 id="confidenceIntervals"
               />
               <label htmlFor="confidenceIntervals" className="text-sm">Confidence intervals</label>
@@ -107,7 +122,9 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
               <Input
                 id="level"
                 type="number"
-                value="95"
+                defaultValue="95" // Keep default value display, but don't link to state/props directly
+                // value="95" // This input seems fixed at 95 currently
+                readOnly // Mark as readOnly if it's fixed
                 disabled={!confidenceIntervals}
                 className="w-20 ml-2 p-1 text-sm"
               />
@@ -116,7 +133,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
           <div className="flex items-center space-x-2 ml-6">
             <Checkbox
               checked={covarianceMatrix}
-              onCheckedChange={(checked) => setCovarianceMatrix(!!checked)}
+              onCheckedChange={(checked) => handleChange('covarianceMatrix', !!checked)}
               id="covarianceMatrix"
             />
             <label htmlFor="covarianceMatrix" className="text-sm">Covariance matrix</label>
@@ -129,7 +146,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
           <div className="flex items-center space-x-2 mb-2">
             <Checkbox
               checked={modelFit}
-              onCheckedChange={(checked) => setModelFit(!!checked)}
+              onCheckedChange={(checked) => handleChange('modelFit', !!checked)}
               id="modelFit"
             />
             <label htmlFor="modelFit" className="text-sm">Model fit</label>
@@ -138,7 +155,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={rSquaredChange}
-                onCheckedChange={(checked) => setRSquaredChange(!!checked)}
+                onCheckedChange={(checked) => handleChange('rSquaredChange', !!checked)}
                 id="rSquaredChange"
               />
               <label htmlFor="rSquaredChange" className="text-sm">R squared change</label>
@@ -146,7 +163,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={descriptives}
-                onCheckedChange={(checked) => setDescriptives(!!checked)}
+                onCheckedChange={(checked) => handleChange('descriptives', !!checked)}
                 id="descriptives"
               />
               <label htmlFor="descriptives" className="text-sm">Descriptives</label>
@@ -154,7 +171,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={partAndPartial}
-                onCheckedChange={(checked) => setPartAndPartial(!!checked)}
+                onCheckedChange={(checked) => handleChange('partAndPartial', !!checked)}
                 id="partAndPartial"
               />
               <label htmlFor="partAndPartial" className="text-sm">Part and partial correlations</label>
@@ -162,7 +179,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={collinearityDiagnostics}
-                onCheckedChange={(checked) => setCollinearityDiagnostics(!!checked)}
+                onCheckedChange={(checked) => handleChange('collinearityDiagnostics', !!checked)}
                 id="collinearityDiagnostics"
               />
               <label htmlFor="collinearityDiagnostics" className="text-sm">Collinearity diagnostics</label>
@@ -180,7 +197,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
           <div className="flex items-center space-x-2">
             <Checkbox
               checked={durbinWatson}
-              onCheckedChange={(checked) => setDurbinWatson(!!checked)}
+              onCheckedChange={(checked) => handleChange('durbinWatson', !!checked)}
               id="durbinWatson"
             />
             <label htmlFor="durbinWatson" className="text-sm">Durbin-Watson</label>
@@ -188,12 +205,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
           <div className="flex items-center space-x-2">
             <Checkbox
               checked={casewiseDiagnostics}
-              onCheckedChange={(checked) => {
-                setCasewiseDiagnostics(!!checked);
-                if (!checked) {
-                  setSelectedResidualOption('');
-                }
-              }}
+              onCheckedChange={(checked) => handleChange('casewiseDiagnostics', !!checked)}
               id="casewiseDiagnostics"
             />
             <label htmlFor="casewiseDiagnostics" className="text-sm">Casewise diagnostics</label>
@@ -208,14 +220,14 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
                 value="outliers"
                 disabled={!casewiseDiagnostics}
                 checked={selectedResidualOption === 'outliers'}
-                onChange={() => setSelectedResidualOption('outliers')}
+                onChange={() => handleChange('selectedResidualOption', 'outliers')}
                 className="accent-gray-500"
               />
               <label htmlFor="outliers" className="text-sm">Outliers outside:</label>
               <Input
                 type="number"
-                value={outlierThreshold}
-                onChange={(e) => setOutlierThreshold(e.target.value)}
+                value={outlierThreshold} // Controlled component
+                onChange={(e) => handleChange('outlierThreshold', e.target.value)}
                 disabled={!casewiseDiagnostics || selectedResidualOption !== 'outliers'}
                 className="w-16 p-1 text-sm"
               />
@@ -230,7 +242,7 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
                 value="allCases"
                 disabled={!casewiseDiagnostics}
                 checked={selectedResidualOption === 'allCases'}
-                onChange={() => setSelectedResidualOption('allCases')}
+                onChange={() => handleChange('selectedResidualOption', 'allCases')}
                 className="accent-gray-500"
               />
               <label htmlFor="allCases" className="text-sm">All cases</label>
@@ -239,20 +251,8 @@ const Statistics: React.FC<StatisticsProps> = ({ onClose, onSubmit }) => {
         </div>
       </div>
 
-      {/* Bagian Tombol Navigasi */}
-      <DialogFooter className="flex justify-start space-x-3 mt-4">
-      <Button
-          variant="default"
-          className="bg-blue-500 text-white hover:bg-blue-600"
-          onClick={handleContinue}
-        >
-          Continue
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+      {/* Removed Footer and Buttons */}
+    </div>
   );
 };
 
