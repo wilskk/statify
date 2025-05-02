@@ -30,11 +30,10 @@ services:
       - NEXT_PUBLIC_FRONTEND_URL=https://statify-dev.student.stis.ac.id
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/sav"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
 
 volumes:
   temp_data:
