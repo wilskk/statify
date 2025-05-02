@@ -8,26 +8,29 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # --- Frontend Build Stage ---
-# Copy frontend specific files
-COPY frontend/package.json frontend/package-lock.json* ./frontend/
+# Copy frontend specific files FIRST
+# Ini akan menyalin frontend/.env.production ke /app/frontend/.env.production
 COPY frontend/ ./frontend/
 
-# Change WORKDIR to frontend context
+# Change WORKDIR to frontend context AFTER copy
 WORKDIR /app/frontend
 
-# Ensure all frontend dependencies are available locally after root install
+# Explicitly set NODE_ENV for the build stage
+ENV NODE_ENV=production
+
+# Ensure frontend dependencies are ready (npm ci di root seharusnya cukup, tapi ini tidak masalah)
 RUN npm install
 
 # Build the Next.js application using npx
+# NODE_ENV=production sudah di-set, next build akan otomatis membaca .env.production
 RUN npx next build
-
-# Change WORKDIR back to root before production stage
-WORKDIR /app
 
 # --- Production stage ---
 FROM node:18-alpine
 
 WORKDIR /app
+
+ENV NODE_ENV=production
 
 # Copy root dependency files again for production install
 COPY package.json package-lock.json* ./
