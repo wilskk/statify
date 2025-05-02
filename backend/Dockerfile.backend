@@ -14,8 +14,8 @@ COPY backend/server ./backend/server
 
 # Change WORKDIR to backend context
 WORKDIR /app/backend
-# Build the TypeScript project using the build script in backend/package.json
-RUN npm run build --prefix backend
+# Build the TypeScript project using the build script in the current directory's package.json
+RUN npm run build
 # Change WORKDIR back to root
 WORKDIR /app
 
