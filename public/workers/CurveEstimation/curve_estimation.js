@@ -1,6 +1,21 @@
 // curve_estimation.js
 // This worker performs curve estimation calculations
 
+// Define the desired order for models
+const MODEL_ORDER = [
+  "Linear",
+  "Logarithmic",
+  "Inverse",
+  "Quadratic",
+  "Cubic",
+  "Compound",
+  "Power",
+  "S",
+  "Growth",
+  "Exponential",
+  "Logistic"
+];
+
 // Function to calculate mean
 const mean = (arr) => {
   return arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -368,7 +383,18 @@ const fCDF = (f, df1, df2) => {
 };
 
 const generateRegressionSummary = (models, X, Y, options = {}) => {
-  const rows = models.map(model => {
+  // Sort the models based on the defined MODEL_ORDER
+  const sortedModels = models.sort((a, b) => {
+    const indexA = MODEL_ORDER.indexOf(a);
+    const indexB = MODEL_ORDER.indexOf(b);
+    // Handle cases where a model might not be in MODEL_ORDER (though it should be)
+    if (indexA === -1 && indexB === -1) return 0; // Keep original order if both unknown
+    if (indexA === -1) return 1; // Put unknown models at the end
+    if (indexB === -1) return -1; // Put unknown models at the end
+    return indexA - indexB;
+  });
+
+  const rows = sortedModels.map(model => {
     let result = {};
     switch (model) {
       case 'Linear':
