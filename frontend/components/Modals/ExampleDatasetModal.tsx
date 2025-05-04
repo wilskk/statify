@@ -196,7 +196,7 @@ export const ExampleDatasetModal = () => {
                 await resetVariables();
                 // No meta reset here, will be set later
 
-                const parseResponse = await fetch(`${backendUrl}/api/sav/upload`, {
+                const parseResponse = await fetch(`${backendUrl}/sav/upload`, {
                     method: 'POST',
                     body: formData,
                 });
