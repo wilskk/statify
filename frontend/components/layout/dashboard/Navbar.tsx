@@ -40,26 +40,26 @@ const Navbar: React.FC = () => {
             <MenubarTrigger>Transform</MenubarTrigger>
             <MenubarContent>
                 <MenubarItem onClick={() => openModal(ModalType.ComputeVariable)}>Compute Variable...</MenubarItem>
-                <MenubarItem>Programmability Transformation...</MenubarItem>
-                <MenubarItem>Count Values within Cases...</MenubarItem>
-                <MenubarItem>Shift Values...</MenubarItem>
+                <MenubarItem disabled>Programmability Transformation...</MenubarItem>
+                <MenubarItem disabled>Count Values within Cases...</MenubarItem>
+                <MenubarItem disabled>Shift Values...</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem>Recode into Same Variables...</MenubarItem>
-                <MenubarItem>Recode into Different Variables...</MenubarItem>
-                <MenubarItem>Automatic Recode...</MenubarItem>
-                <MenubarItem>Create Dummy Variables...</MenubarItem>
-                <MenubarItem>Visual Binning...</MenubarItem>
-                <MenubarItem>Optimal Binning...</MenubarItem>
-                <MenubarItem>Prepare Data for Modeling</MenubarItem>
+                <MenubarItem disabled>Recode into Same Variables...</MenubarItem>
+                <MenubarItem disabled>Recode into Different Variables...</MenubarItem>
+                <MenubarItem disabled>Automatic Recode...</MenubarItem>
+                <MenubarItem disabled>Create Dummy Variables...</MenubarItem>
+                <MenubarItem disabled>Visual Binning...</MenubarItem>
+                <MenubarItem disabled>Optimal Binning...</MenubarItem>
+                <MenubarItem disabled>Prepare Data for Modeling</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem>Rank Cases...</MenubarItem>
+                <MenubarItem disabled>Rank Cases...</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem>Date and Time Wizard...</MenubarItem>
-                <MenubarItem>Create Time Series...</MenubarItem>
-                <MenubarItem>Replace Missing Values...</MenubarItem>
-                <MenubarItem>Random Number Generators...</MenubarItem>
+                <MenubarItem disabled>Date and Time Wizard...</MenubarItem>
+                <MenubarItem disabled>Create Time Series...</MenubarItem>
+                <MenubarItem disabled>Replace Missing Values...</MenubarItem>
+                <MenubarItem disabled>Random Number Generators...</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem>Run Pending Transforms</MenubarItem>
+                <MenubarItem disabled>Run Pending Transforms</MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
@@ -82,10 +82,10 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem>One-Sample T Test...</MenubarItem>
-                        <MenubarItem>Independent-Samples T Test...</MenubarItem>
-                        <MenubarItem>Paired-Samples T Test...</MenubarItem>
-                        <MenubarItem>One-Way ANOVA...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</MenubarItem>
+                        <MenubarItem disabled>One-Way ANOVA...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
@@ -100,10 +100,10 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Correlate</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem>Bivariate...</MenubarItem>
-                        <MenubarItem>Partial...</MenubarItem>
-                        <MenubarItem>Distances...</MenubarItem>
-                        <MenubarItem>Canonical Correlation...</MenubarItem>
+                        <MenubarItem disabled>Bivariate...</MenubarItem>
+                        <MenubarItem disabled>Partial...</MenubarItem>
+                        <MenubarItem disabled>Distances...</MenubarItem>
+                        <MenubarItem disabled>Canonical Correlation...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
@@ -131,17 +131,17 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Nonparametric Test</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem>One Sample...</MenubarItem>
-                        <MenubarItem>Independent Samples...</MenubarItem>
-                        <MenubarItem>Related Samples...</MenubarItem>
+                        <MenubarItem disabled>One Sample...</MenubarItem>
+                        <MenubarItem disabled>Independent Samples...</MenubarItem>
+                        <MenubarItem disabled>Related Samples...</MenubarItem>
                         <MenubarSub>
                             <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                             <MenubarSubContent>
-                                <MenubarItem>Chi-square...</MenubarItem>
-                                <MenubarItem>Runs...</MenubarItem>
-                                <MenubarItem>2 Independent Samples...</MenubarItem>
-                                <MenubarItem>K Independent Samples...</MenubarItem>
-                                <MenubarItem>2 Related Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.Runs)}>Runs...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</MenubarItem>
+                                <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</MenubarItem>
                                 <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</MenubarItem>
                             </MenubarSubContent>
                         </MenubarSub>
@@ -163,30 +163,30 @@ const Navbar: React.FC = () => {
             <MenubarTrigger>Graphs</MenubarTrigger>
             <MenubarContent>
                 <MenubarItem onClick={() => openModal(ModalType.ChartBuilderModal)}>Chart Builder...</MenubarItem>
-                <MenubarItem>Graphboard Template Chooser...</MenubarItem>
+                <MenubarItem disabled>Graphboard Template Chooser...</MenubarItem>
                 <MenubarSeparator />
                 <MenubarSub>
                     <MenubarSubTrigger>Legacy Dialogs</MenubarSubTrigger>
                     <MenubarSubContent>
                         <MenubarItem onClick={() => openModal(ModalType.SimpleBarModal)}>Bar...</MenubarItem>
-                        <MenubarItem>3-D Bar...</MenubarItem>
-                        <MenubarItem>Line</MenubarItem>
-                        <MenubarItem>Area</MenubarItem>
-                        <MenubarItem>Pie</MenubarItem>
-                        <MenubarItem>High-Low</MenubarItem>
+                        <MenubarItem disabled>3-D Bar...</MenubarItem>
+                        <MenubarItem disabled>Line</MenubarItem>
+                        <MenubarItem disabled>Area</MenubarItem>
+                        <MenubarItem disabled>Pie</MenubarItem>
+                        <MenubarItem disabled>High-Low</MenubarItem>
                         <MenubarSeparator />
-                        <MenubarItem>Box-Plot...</MenubarItem>
-                        <MenubarItem>Error Bar...</MenubarItem>
-                        <MenubarItem>Population Pyramid</MenubarItem>
+                        <MenubarItem disabled>Box-Plot...</MenubarItem>
+                        <MenubarItem disabled>Error Bar...</MenubarItem>
+                        <MenubarItem disabled>Population Pyramid</MenubarItem>
                         <MenubarSeparator />
-                        <MenubarItem>Scatter/Dot...</MenubarItem>
-                        <MenubarItem>Histogram...</MenubarItem>
+                        <MenubarItem disabled>Scatter/Dot...</MenubarItem>
+                        <MenubarItem disabled>Histogram...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger>Help</MenubarTrigger>
+            <MenubarTrigger disabled>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
         <div className="text-sm font-semibold text-zinc-900">Statify</div>

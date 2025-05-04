@@ -47,11 +47,8 @@ const DrawerMenuItem: React.FC<{onClick?: () => void, children: React.ReactNode,
 
 // Helper component for nested Accordion triggers
 const NestedAccordionTrigger: React.FC<{children: React.ReactNode}> = ({ children }) => (
-    <AccordionTrigger className="text-xs font-medium py-1.5 hover:no-underline text-zinc-800 hover:text-black bg-zinc-50 border-l-2 border-zinc-200">
-        <div className="flex items-center">
-            <div className="h-1.5 w-1.5 rounded-full bg-zinc-400 mr-1.5"></div>
-            {children}
-        </div>
+    <AccordionTrigger className="text-xs font-medium py-1.5 px-2 hover:no-underline text-zinc-800 hover:text-black bg-zinc-50 border-l-2 border-zinc-200">
+        {children}
     </AccordionTrigger>
 );
 
@@ -237,9 +234,9 @@ const HamburgerMenu: React.FC = () => {
                                         <AccordionItem value="compare-means" className="border-0">
                                             <NestedAccordionTrigger>Compare Means</NestedAccordionTrigger>
                                             <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
-                                                <DrawerMenuItem disabled>One-Sample T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem disabled>Independent-Samples T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem disabled>Paired-Samples T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</DrawerMenuItem>
                                                 <DrawerMenuItem disabled>One-Way ANOVA...</DrawerMenuItem>
                                             </AccordionContent>
                                         </AccordionItem>
@@ -299,11 +296,11 @@ const HamburgerMenu: React.FC = () => {
                                                     <AccordionItem value="nonparam-legacy" className="border-0">
                                                         <NestedAccordionTrigger>Legacy Dialogs</NestedAccordionTrigger>
                                                         <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
-                                                            <DrawerMenuItem disabled>Chi-square...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>Runs...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>2 Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>K Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>2 Related Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.Runs)}>Runs...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</DrawerMenuItem>
                                                             <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</DrawerMenuItem>
                                                         </AccordionContent>
                                                     </AccordionItem>
