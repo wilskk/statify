@@ -21,6 +21,9 @@ COPY frontend/ ./frontend/
 # Change WORKDIR to frontend context
 WORKDIR /app/frontend
 
+# Explicitly install dependencies within the frontend context to ensure they are linked correctly
+RUN npm install --legacy-peer-deps
+
 # Build the Next.js application using npx
 RUN npx next build
 
