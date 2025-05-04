@@ -21,11 +21,11 @@ COPY frontend/ ./frontend/
 # Change WORKDIR to frontend context
 WORKDIR /app/frontend
 
-# Ensure all frontend dependencies are available locally after root install
-RUN npm install
-
 # Build the Next.js application using npx
 RUN npx next build
+
+# Prune development dependencies to reduce final image size
+RUN npm prune --production --workspaces --if-present
 
 # Change WORKDIR back to root before production stage
 WORKDIR /app
@@ -35,11 +35,13 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy root dependency files again for production install
-COPY package.json package-lock.json* ./
+# Copy only necessary package files for runtime
+COPY package.json ./
+COPY frontend/package.json ./frontend/
 
-# Install only production dependencies for all workspaces
-RUN npm install --omit=dev
+# Copy production node_modules from the builder stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/frontend/node_modules ./frontend/node_modules
 
 # Copy production necessary files from frontend
 COPY frontend/package.json frontend/next.config.js ./frontend/
