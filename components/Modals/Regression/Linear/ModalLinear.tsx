@@ -602,7 +602,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           const collinearityResults = e.data;
           console.log("[Analyze] Hasil dari Worker Coefficients Collinearity:", collinearityResults);
           const collinearityStat = {
-            title: "Collinearity Diagnostics",
+            title: "Collinearity Statistics",
             output_data: JSON.stringify(collinearityResults),
             components: "CollinearityStatistics",
             description: "Collinearity statistics for regression variables"
