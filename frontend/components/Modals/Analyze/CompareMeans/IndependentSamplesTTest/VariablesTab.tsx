@@ -298,6 +298,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={estimateEffectSize}
                             onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                             className="mr-2 border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="estimate-effect-size">Estimate effect sizes</Label>
                     </div>

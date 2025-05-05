@@ -310,6 +310,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.mosesExtremeReactions}
                             onCheckedChange={(checked) => setTestType({ ...testType, mosesExtremeReactions: !!checked })}
                             className="border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="moses-extreme-reactions" className="text-sm">Moses extreme reactions</Label>
                     </div>
@@ -328,6 +329,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.waldWolfowitzRuns}
                             onCheckedChange={(checked) => setTestType({ ...testType, waldWolfowitzRuns: !!checked })}
                             className="border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="wald-wolfowitz-runs" className="text-sm">Wald-Wolfowitz runs</Label>
                     </div>

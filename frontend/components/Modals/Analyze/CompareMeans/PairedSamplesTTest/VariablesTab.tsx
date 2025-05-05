@@ -322,6 +322,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         checked={estimateEffectSize}
                         onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                         className="mr-2 border-[#CCCCCC]"
+                        disabled
                     />
                     <Label htmlFor="estimate-effect-size">Estimate effect sizes</Label>
                 </div>
@@ -385,6 +386,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     averageOfVariances: value === "averageOfVariances"
                                 });
                             }}
+                            disabled={!estimateEffectSize}
                             className="flex flex-col gap-4"
                         >
                             <div className="flex items-center">
@@ -393,7 +395,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="standard-deviation-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="standard-deviation-option">Standard deviation of the difference</Label>
+                                <Label htmlFor="standard-deviation-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Standard deviation of the difference</Label>
                             </div>
                             <div className="flex items-center">
                                 <RadioGroupItem
@@ -401,7 +403,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="corrected-standard-deviation-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="corrected-standard-deviation-option">Corrected standard deviation of the difference</Label>
+                                <Label htmlFor="corrected-standard-deviation-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Corrected standard deviation of the difference</Label>
                             </div>
                             <div className="flex items-center">
                                 <RadioGroupItem
@@ -409,7 +411,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="average-of-variances-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="average-of-variances-option">Average of variances</Label>
+                                <Label htmlFor="average-of-variances-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Average of variances</Label>
                             </div>
                         </RadioGroup>
                     </div>

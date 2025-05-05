@@ -47,7 +47,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                 </div>
             </div>
             
-            <div className="mb-4">
+            {/* <div className="mb-4">
                 <div className="text-sm font-medium mb-2">Missing Values</div>
                 <div className="border p-4 rounded-md">
                     <div className="flex items-center gap-2 mb-2">
@@ -73,7 +73,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         <Label htmlFor="exclude-listwise" className="text-sm">Exclude cases listwise</Label>
                     </div>
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 };

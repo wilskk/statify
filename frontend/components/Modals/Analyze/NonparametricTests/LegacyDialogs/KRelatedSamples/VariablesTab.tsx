@@ -176,6 +176,7 @@ const VariablesTab: FC<VariablesTabProps> = (
                             checked={testType.kendallsW}
                             onCheckedChange={(checked) => setTestType({ ...testType, kendallsW: !!checked })}
                             className="mr-2 border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="kendalls-w-option">Kendall&rsquo;s W</Label>
                     </div>
@@ -185,6 +186,7 @@ const VariablesTab: FC<VariablesTabProps> = (
                             checked={testType.cochransQ}
                             onCheckedChange={(checked) => setTestType({ ...testType, cochransQ: !!checked })}
                             className="mr-2 border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="cochrans-q-option">Cochran&rsquo;s Q</Label>
                     </div>

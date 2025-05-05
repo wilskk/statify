@@ -378,7 +378,7 @@ const Index: FC<IndependentSamplesTTestModalProps> = ({ onClose }) => {
                             <div className="grid grid-cols-9 gap-2 items-center justify-items-center" style={{ gridTemplateColumns: "20px 62.836px auto auto auto auto auto auto auto" }}>
                                 <RadioGroupItem id="use-specified-values" value="Use specified values"/>
                                 <Label htmlFor="use-specified-values" className="text-sm col-span-8 justify-self-start">Use specified values</Label>
-                                <label className="col-span-2 text-sm justify-self-end" htmlFor="group1">Group 1:</label>
+                                <label className={`col-span-2 text-sm justify-self-end ${!tempDefineGroups.useSpecifiedValues ? 'opacity-50' : ''}`} htmlFor="group1">Group 1:</label>
                                 <input
                                     id="group1"
                                     type="number"
@@ -398,9 +398,13 @@ const Index: FC<IndependentSamplesTTestModalProps> = ({ onClose }) => {
                                             setGroupRangeError(null);
                                         }
                                     }}
-                                    className="col-span-7 border rounded w-full px-2 ml-2"
+                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
+                                        tempDefineGroups.cutPoint 
+                                            ? 'text-[#888888]' 
+                                            : ''
+                                    }`}
                                 />
-                                <label className="col-span-2 text-sm justify-self-end" htmlFor="group2">Group 2:</label>
+                                <label className={`col-span-2 text-sm justify-self-end ${!tempDefineGroups.useSpecifiedValues ? 'opacity-50' : ''}`} htmlFor="group2">Group 2:</label>
                                 <input
                                     id="group2"
                                     type="number"
@@ -420,7 +424,11 @@ const Index: FC<IndependentSamplesTTestModalProps> = ({ onClose }) => {
                                             setGroupRangeError(null);
                                         }
                                     }}
-                                    className="col-span-7 border rounded w-full px-2 ml-2"
+                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
+                                        tempDefineGroups.cutPoint 
+                                            ? 'text-[#888888]' 
+                                            : ''
+                                    }`}
                                 />
                                 <RadioGroupItem id="cut-point" value="Cut point" />
                                 <Label htmlFor="cut-point" className="text-sm">Cut point:</Label>
@@ -441,7 +449,11 @@ const Index: FC<IndependentSamplesTTestModalProps> = ({ onClose }) => {
                                             setGroupRangeError(null);
                                         }
                                     }}
-                                    className="col-span-7 border rounded w-full px-2 ml-2"
+                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
+                                        tempDefineGroups.useSpecifiedValues 
+                                            ? 'text-[#888888]' 
+                                            : ''
+                                    }`}
                                 />
                             </div>
                         </RadioGroup>
