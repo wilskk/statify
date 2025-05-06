@@ -37,8 +37,6 @@ pub struct DiscriminantResult {
     pub classification_function_coefficients: Option<ClassificationFunctionCoefficients>,
     #[serde(rename = "discriminant_histograms")]
     pub discriminant_histograms: Option<DiscriminantHistograms>,
-    #[serde(rename = "executed_functions")]
-    pub executed_functions: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -38,7 +38,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("transform_data", &e);
-                return Err(string_to_js_error(e));
             }
         }
     }
@@ -70,7 +69,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("proximity_matrix", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }
@@ -86,7 +84,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("agglomeration_schedule", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }
@@ -102,7 +99,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("dendrogram", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }

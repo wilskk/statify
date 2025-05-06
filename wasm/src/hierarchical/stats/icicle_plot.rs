@@ -1,4 +1,3 @@
-// icicle_plot.rs
 use crate::hierarchical::models::{
     config::ClusterConfig,
     data::AnalysisData,
@@ -12,21 +11,21 @@ use super::core::{
     generate_cluster_membership,
 };
 
-// In-order traversal to get proper ordering of cases
+// Traversal in-order untuk mendapatkan urutan kasus yang benar
 fn get_case_ordering(node: &DendrogramTreeNode) -> Vec<usize> {
     let mut ordering = Vec::new();
 
-    // If this is a leaf node, return its case
+    // Jika ini adalah node daun, kembalikan kasusnya
     if node.left.is_none() && node.right.is_none() {
         return node.cases.clone();
     }
 
-    // Traverse left child
+    // Traverse anak kiri
     if let Some(left) = &node.left {
         ordering.extend(get_case_ordering(left));
     }
 
-    // Traverse right child
+    // Traverse anak kanan
     if let Some(right) = &node.right {
         ordering.extend(get_case_ordering(right));
     }
@@ -34,45 +33,46 @@ fn get_case_ordering(node: &DendrogramTreeNode) -> Vec<usize> {
     ordering
 }
 
+// Fungsi utama untuk menghasilkan icicle plot
 pub fn generate_icicle_plot(
     data: &AnalysisData,
     config: &ClusterConfig
 ) -> Result<IciclePlot, String> {
-    // Get number of cases
+    // Dapatkan jumlah kasus
     let num_cases = data.cluster_data
         .get(0)
         .map(|d| d.len())
         .unwrap_or(0) as i32;
 
-    // Determine plot parameters based on configuration
+    // Tentukan parameter plot berdasarkan konfigurasi
     let (start_cluster, stop_cluster, step_by) = if config.plots.all_clusters {
-        // Process all clusters from 1 to number of cases
+        // Proses semua cluster dari 1 hingga jumlah kasus
         (1, num_cases, 1)
     } else if config.plots.range_clusters {
-        // Use configured range
+        // Gunakan rentang yang dikonfigurasi
         let start = config.plots.start_cluster;
         let stop = config.plots.stop_cluster.unwrap_or_else(|| num_cases / 2);
         let step = config.plots.step_by_cluster;
         (start, stop, step)
     } else {
-        // Use single solution
+        // Gunakan solusi tunggal
         let cluster = config.plots.start_cluster;
         (cluster, cluster, 1)
     };
 
-    // Determine orientation
+    // Tentukan orientasi
     let orientation = if config.plots.vert_orien { "vertical" } else { "horizontal" };
 
-    // Get agglomeration schedule
+    // Dapatkan jadwal aglomerasi
     let agglomeration = generate_agglomeration_schedule_wrapper(data, config)?;
 
-    // Get case labels
+    // Dapatkan label kasus
     let case_labels = if config.main.cluster_cases {
         (0..num_cases as usize)
             .map(|idx| extract_case_label(data, config, idx))
             .collect::<Vec<String>>()
     } else {
-        // For variable clustering, use variable names as labels
+        // Untuk clustering variabel, gunakan nama variabel sebagai label
         config.main.variables
             .as_ref()
             .map(|vars| vars.clone())
@@ -81,40 +81,40 @@ pub fn generate_icicle_plot(
 
     let num_items = case_labels.len();
 
-    // Build the dendrogram tree to determine proper case ordering
+    // Bangun pohon dendrogram untuk menentukan urutan kasus yang tepat
     let dendrogram_tree = build_dendrogram_tree(&agglomeration, num_items, &case_labels);
 
-    // Get the proper ordering of cases based on the dendrogram
+    // Dapatkan urutan kasus yang tepat berdasarkan dendrogram
     let ordering = get_case_ordering(&dendrogram_tree);
 
-    // Create cluster count vector - this represents the number of clusters at each level
+    // Buat vektor jumlah cluster - ini mewakili jumlah cluster pada setiap level
     let num_clusters: Vec<usize> = (start_cluster..=stop_cluster)
         .step_by(step_by as usize)
         .map(|c| c as usize)
         .collect();
 
-    // Create a matrix to track when each case joins a cluster
-    // For each case, determine at which clustering level it merges with another case
+    // Buat matriks untuk melacak kapan setiap kasus bergabung dengan cluster
+    // Untuk setiap kasus, tentukan pada level clustering mana kasus tersebut bergabung dengan cluster lain
     let mut cluster_merge_matrix = vec![vec![0; num_items]; num_clusters.len()];
 
-    // Fill the matrix - for each number of clusters
+    // Isi matriks - untuk setiap jumlah cluster
     for (level_idx, &num_cluster_count) in num_clusters.iter().enumerate() {
-        // Ensure valid number of clusters
+        // Pastikan jumlah cluster valid
         let valid_num_clusters = num_cluster_count.max(1).min(num_items);
 
-        // Generate cluster assignments for this number of clusters
+        // Hasilkan penugasan cluster untuk jumlah cluster ini
         let assignments = generate_cluster_membership(
             &agglomeration.stages,
             num_items,
             valid_num_clusters
         )?;
 
-        // For each case in our ordering
+        // Untuk setiap kasus dalam urutan kita
         for (pos_idx, &case_idx) in ordering.iter().enumerate() {
             if case_idx < assignments.len() {
                 let cluster_id = assignments[case_idx];
 
-                // Find other cases in the same cluster
+                // Temukan kasus lain dalam cluster yang sama
                 let mut is_merged = false;
                 for other_case_idx in 0..num_items {
                     if
@@ -127,7 +127,7 @@ pub fn generate_icicle_plot(
                     }
                 }
 
-                // If this case is merged with others, track the level at which it merges
+                // Jika kasus ini digabungkan dengan yang lain, lacak level di mana kasus bergabung
                 if is_merged {
                     cluster_merge_matrix[level_idx][pos_idx] = 1;
                 }
@@ -135,15 +135,15 @@ pub fn generate_icicle_plot(
         }
     }
 
-    // Convert the matrix to a flat representation for the IciclePlot struct
-    // For each case, determine the first level at which it merges
+    // Konversi matriks ke representasi datar untuk struct IciclePlot
+    // Untuk setiap kasus, tentukan level pertama di mana kasus tersebut bergabung
     let mut clusters_flat = Vec::with_capacity(num_items);
 
     for (pos_idx, &case_idx) in ordering.iter().enumerate() {
         if case_idx < case_labels.len() {
             clusters_flat.push(case_labels[case_idx].clone());
 
-            // Find first level where this case merges with another
+            // Temukan level pertama di mana kasus ini bergabung dengan yang lain
             for level_idx in 0..num_clusters.len() {
                 if cluster_merge_matrix[level_idx][pos_idx] == 1 {
                     break;

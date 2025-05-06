@@ -1,9 +1,12 @@
 use wasm_bindgen::prelude::*;
 
-use crate::roc_analysis::models::{
-    config::RocConfig,
-    data::{ AnalysisData, DataRecord, VariableDefinition },
-    result::ROCAnalysisResult,
+use crate::roc_analysis::{
+    models::{
+        config::RocConfig,
+        data::{ AnalysisData, DataRecord, VariableDefinition },
+        result::ROCAnalysisResult,
+    },
+    utils::log::FunctionLogger,
 };
 use crate::roc_analysis::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::roc_analysis::wasm::function;
@@ -15,6 +18,7 @@ pub struct RocAnalysis {
     result: Option<ROCAnalysisResult>,
     error_collector: ErrorCollector,
     executed_functions: Vec<String>,
+    logger: FunctionLogger,
 }
 
 #[wasm_bindgen]
@@ -31,6 +35,8 @@ impl RocAnalysis {
     ) -> Result<RocAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
+
+        let mut logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let test_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(test_data) {
@@ -143,11 +149,17 @@ impl RocAnalysis {
             result: None,
             error_collector,
             executed_functions: Vec::new(),
+            logger,
         };
 
         // Run the analysis using the function from function.rs
         match
-            function::run_analysis(&analysis.data, &analysis.config, &mut analysis.error_collector)
+            function::run_analysis(
+                &analysis.data,
+                &analysis.config,
+                &mut analysis.error_collector,
+                &mut analysis.logger
+            )
         {
             Ok(result) => {
                 analysis.result = result;
@@ -166,15 +178,11 @@ impl RocAnalysis {
         function::get_formatted_results(&self.result)
     }
 
-    pub fn get_executed_functions(&self) -> Result<JsValue, JsValue> {
-        function::get_executed_functions(&Some(self.executed_functions.clone()))
-    }
-
     pub fn get_all_errors(&self) -> JsValue {
         function::get_all_errors(&self.error_collector)
     }
 
-    pub fn clear_errors(&mut self) -> JsValue {
-        function::clear_errors(&mut self.error_collector)
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> {
+        function::get_all_log(&self.logger)
     }
 }

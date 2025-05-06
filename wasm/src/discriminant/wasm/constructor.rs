@@ -5,7 +5,11 @@ use crate::discriminant::models::{
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::DiscriminantResult,
 };
-use crate::discriminant::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::discriminant::utils::{
+    converter::string_to_js_error,
+    error::ErrorCollector,
+    log::FunctionLogger,
+};
 use crate::discriminant::wasm::function;
 
 #[wasm_bindgen]
@@ -14,6 +18,7 @@ pub struct DiscriminantAnalysis {
     data: AnalysisData,
     result: Option<DiscriminantResult>,
     error_collector: ErrorCollector,
+    logger: FunctionLogger,
 }
 
 #[wasm_bindgen]
@@ -30,6 +35,8 @@ impl DiscriminantAnalysis {
     ) -> Result<DiscriminantAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
+
+        let mut logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let group_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(group_data) {
@@ -145,11 +152,17 @@ impl DiscriminantAnalysis {
             data,
             result: None,
             error_collector,
+            logger,
         };
 
         // Run the analysis using the function from function.rs
         match
-            function::run_analysis(&analysis.data, &analysis.config, &mut analysis.error_collector)
+            function::run_analysis(
+                &analysis.data,
+                &analysis.config,
+                &mut analysis.error_collector,
+                &mut analysis.logger
+            )
         {
             Ok(result) => {
                 analysis.result = result;
@@ -168,15 +181,11 @@ impl DiscriminantAnalysis {
         function::get_formatted_results(&self.result)
     }
 
-    pub fn get_executed_functions(&self) -> Result<JsValue, JsValue> {
-        function::get_executed_functions(&self.result)
-    }
-
     pub fn get_all_errors(&self) -> JsValue {
         function::get_all_errors(&self.error_collector)
     }
 
-    pub fn clear_errors(&mut self) -> JsValue {
-        function::clear_errors(&mut self.error_collector)
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> {
+        function::get_all_log(&self.logger)
     }
 }
