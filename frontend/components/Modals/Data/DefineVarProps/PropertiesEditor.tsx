@@ -92,7 +92,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     const { data, isLoading: dataIsLoading } = useDataStore();
 
     // Get variable store functions
-    const { addVariable } = useVariableStore();
+    const { addVariable, updateMultipleFields } = useVariableStore();
 
     // Track the original variables for reference during save
     const [originalVariables] = useState<Variable[]>(variables);
@@ -262,16 +262,6 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 ];
             });
 
-            // Add an empty row for new values
-            newGridData.push([
-                String(uniqueValuesData.length + 1),
-                false,
-                false,
-                0,
-                '',
-                ''
-            ]);
-
             setGridData(newGridData);
 
             // Save this grid data for future reference
@@ -303,8 +293,8 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     }, [currentVariable, data, getUniqueValuesWithCounts, calculateUnlabeledValues, variableGridData]);
 
     // Save current variable state before switching
-    const saveCurrentVariableState = () => {
-        if (!currentVariable || selectedVariableIndex === null) return;
+    const saveCurrentVariableState = (): Variable[] => {
+        if (!currentVariable || selectedVariableIndex === null) return modifiedVariables;
 
         // Extract values and labels from grid data, excluding the empty row at the end
         const valueLabels: ValueLabel[] = gridData
@@ -342,6 +332,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
             ...prev,
             [currentVariable.columnIndex]: [...gridData]
         }));
+        return updatedVariables; // Return the updated array
     };
 
     // Update current variable
@@ -460,19 +451,6 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                     newData[row][1] = true; // Set the "Changed" column to true
                 }
             });
-
-            // Check if we need to add a new empty row at the end
-            const lastRow = newData[newData.length - 1];
-            if (lastRow[4] !== '' || lastRow[5] !== '') {
-                newData.push([
-                    String(newData.length + 1), // New row number
-                    false, // Changed
-                    false, // Missing
-                    0,     // Count
-                    '',    // Value
-                    ''     // Label
-                ]);
-            }
 
             setGridData(newData);
 
@@ -713,11 +691,12 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     // Save changes
     const handleSave = async () => {
         // Make sure to save the current variable state before finalizing
-        saveCurrentVariableState();
+        // and get the most up-to-date version of modifiedVariables
+        const currentModifiedVariables = saveCurrentVariableState();
 
         try {
             // Only update the selected variables, not all variables
-            for (const modifiedVariable of modifiedVariables) {
+            for (const modifiedVariable of currentModifiedVariables) { // Use the returned array
                 // Find the matching original variable by columnIndex
                 const originalVariable = originalVariables.find(
                     v => v.columnIndex === modifiedVariable.columnIndex
@@ -726,14 +705,14 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 // If this is one of our selected variables (i.e., it was in the original set)
                 if (originalVariable) {
                     // Save the updated variable to the store
-                    await addVariable(modifiedVariable);
+                    await updateMultipleFields(modifiedVariable.columnIndex, modifiedVariable);
                 }
             }
 
             // Call the onSave callback if provided, passing only the modified versions
             // of the original variables that were selected for editing
             if (onSave) {
-                const updatedOriginalVariables = modifiedVariables.filter(
+                const updatedOriginalVariables = currentModifiedVariables.filter(
                     modVar => originalVariables.some(origVar => origVar.columnIndex === modVar.columnIndex)
                 );
                 onSave(updatedOriginalVariables);
@@ -1040,14 +1019,6 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 />
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-3"></div>
-                                            <div className="col-span-9">
-                                                <button className="text-xs h-5 w-full px-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded">
-                                                    Attributes...
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -1094,25 +1065,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 </div>
 
                                 {/* Bottom Action Buttons */}
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <div className="border border-gray-300 rounded p-2 bg-gray-50">
-                                        <div className="text-xs font-semibold mb-1 text-gray-800">Copy Properties</div>
-                                        <div className="grid grid-cols-1 gap-1">
-                                            <button
-                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded truncate"
-                                                onClick={handleCopyFromVariable}
-                                            >
-                                                From Another Variable...
-                                            </button>
-                                            <button
-                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded truncate"
-                                                onClick={handleCopyToVariables}
-                                            >
-                                                To Other Variables...
-                                            </button>
-                                        </div>
-                                    </div>
-
+                                <div className="grid grid-cols-1 gap-2 mt-2">
                                     <div className="border border-gray-300 rounded p-2 bg-gray-50">
                                         <div className="text-xs font-semibold mb-1 text-gray-800">Unlabeled Values</div>
                                         <div className="flex justify-center">

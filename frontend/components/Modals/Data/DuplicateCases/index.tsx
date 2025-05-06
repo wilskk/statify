@@ -159,7 +159,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                 { variableName: primaryName, value: 0, label: "Duplicate case" },
                 { variableName: primaryName, value: 1, label: "Primary case" }
             ],
-            columns: 8,
+            columns: 64,
             align: "right",
             measure: "nominal",
             role: "input"
@@ -181,7 +181,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                 width: 2,
                 decimals: 0,
                 label: `Sequential count of matching cases`,
-                columns: 8,
+                columns: 64,
                 align: "right",
                 measure: "ordinal",
                 role: "input"

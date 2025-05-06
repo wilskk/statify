@@ -73,9 +73,12 @@ const Navbar: React.FC = () => {
                         <MenubarItem onClick={() => openModal(ModalType.Explore)}>Explore...</MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</MenubarItem>
                         <MenubarSeparator />
+                        {/* Ratio: Opens a modal for ratio statistics */}
                         <MenubarItem onClick={() => openModal(ModalType.Ratio)}>Ratio...</MenubarItem>
                         <MenubarSeparator />
+                        {/* P-P Plots: Opens a modal for P-P plot generation */}
                         <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>P-P Plots...</MenubarItem>
+                        {/* Q-Q Plots: Opens a modal for Q-Q plot generation */}
                         <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>

@@ -47,11 +47,8 @@ const DrawerMenuItem: React.FC<{onClick?: () => void, children: React.ReactNode,
 
 // Helper component for nested Accordion triggers
 const NestedAccordionTrigger: React.FC<{children: React.ReactNode}> = ({ children }) => (
-    <AccordionTrigger className="text-xs font-medium py-1.5 hover:no-underline text-zinc-800 hover:text-black bg-zinc-50 border-l-2 border-zinc-200">
-        <div className="flex items-center">
-            <div className="h-1.5 w-1.5 rounded-full bg-zinc-400 mr-1.5"></div>
-            {children}
-        </div>
+    <AccordionTrigger className="text-xs font-medium py-1.5 px-2 hover:no-underline text-zinc-800 hover:text-black bg-zinc-50 border-l-2 border-zinc-200">
+        {children}
     </AccordionTrigger>
 );
 
@@ -91,27 +88,13 @@ const HamburgerMenu: React.FC = () => {
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'Save' })}>Save</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'SaveAs' })}>Save As...</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => openModal(ModalType.OpenData)}>Open Data</DrawerMenuItem>
-                                    {/* Import Data Sub-Accordion */}
-                                    <Accordion type="single" collapsible className="w-full">
-                                        <AccordionItem value="import-data" className="border-0">
-                                            <NestedAccordionTrigger>Import Data</NestedAccordionTrigger>
-                                            <AccordionContent className="flex flex-col space-y-0.5 pl-6 pr-0 pb-1 pt-0 bg-zinc-50">
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.ImportExcel)}>Excel...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.ImportCSV)}>CSV Data...</DrawerMenuItem>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
+                                    {/* Import Data Items */}
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.ImportExcel)}>Import Excel...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.ImportCSV)}>Import CSV Data...</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    {/* Export Sub-Accordion */}
-                                    <Accordion type="single" collapsible className="w-full">
-                                        <AccordionItem value="export-data" className="border-0">
-                                            <NestedAccordionTrigger>Export</NestedAccordionTrigger>
-                                            <AccordionContent className="flex flex-col space-y-0.5 pl-6 pr-0 pb-1 pt-0 bg-zinc-50">
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.ExportExcel)}>Excel...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.ExportCSV)}>CSV Data...</DrawerMenuItem>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
+                                    {/* Export Items */}
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.ExportExcel)}>Export Excel...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.ExportCSV)}>Export CSV Data...</DrawerMenuItem>
                                     <DrawerMenuSeparator />
                                     <DrawerMenuItem onClick={() => openModal(ModalType.Print)}>Print...</DrawerMenuItem>
                                     <DrawerMenuSeparator />
@@ -128,9 +111,6 @@ const HamburgerMenu: React.FC = () => {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col space-y-0.5 pl-4 pr-0 pb-1 pt-0 bg-white">
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Undo' })}>Undo</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Redo' })}>Redo</DrawerMenuItem>
-                                    <DrawerMenuSeparator />
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'Cut' })}>Cut</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'Copy' })}>Copy</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'CopyWithVariableNames' })} disabled={false}>Copy with Variable Names</DrawerMenuItem>
@@ -226,20 +206,23 @@ const HamburgerMenu: React.FC = () => {
                                                 <DrawerMenuItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies...</DrawerMenuItem>
                                                 <DrawerMenuItem onClick={() => openModal(ModalType.Descriptive)}>Descriptives...</DrawerMenuItem>
                                                 <DrawerMenuItem onClick={() => openModal(ModalType.Explore)}>Explore...</DrawerMenuItem>
-                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</DrawerMenuItem> */}
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</DrawerMenuItem>
                                                 <DrawerMenuSeparator />
+                                                {/* Ratio: Opens a modal for ratio statistics */}
                                                 <DrawerMenuItem onClick={() => openModal(ModalType.Ratio)}>Ratio...</DrawerMenuItem>
                                                 <DrawerMenuSeparator />
+                                                {/* P-P Plots: Opens a modal for P-P plot generation */}
                                                 <DrawerMenuItem onClick={() => openModal(ModalType.PPPlots)}>P-P Plots...</DrawerMenuItem>
-                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots...</DrawerMenuItem> */}
+                                                {/* Q-Q Plots: Opens a modal for Q-Q plot generation */}
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots...</DrawerMenuItem>
                                             </AccordionContent>
                                         </AccordionItem>
                                         <AccordionItem value="compare-means" className="border-0">
                                             <NestedAccordionTrigger>Compare Means</NestedAccordionTrigger>
                                             <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
-                                                <DrawerMenuItem disabled>One-Sample T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem disabled>Independent-Samples T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem disabled>Paired-Samples T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</DrawerMenuItem>
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</DrawerMenuItem>
                                                 <DrawerMenuItem disabled>One-Way ANOVA...</DrawerMenuItem>
                                             </AccordionContent>
                                         </AccordionItem>
@@ -251,6 +234,22 @@ const HamburgerMenu: React.FC = () => {
                                                 <DrawerMenuItem disabled>Repeated Measures...</DrawerMenuItem>
                                                 <DrawerMenuSeparator />
                                                 <DrawerMenuItem disabled>Variance Components...</DrawerMenuItem>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="classify" className="border-0">
+                                            <NestedAccordionTrigger>Classify</NestedAccordionTrigger>
+                                            <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
+                                                <DrawerMenuItem disabled>Discriminant...</DrawerMenuItem>
+                                                <DrawerMenuItem disabled>Cluster (Hierarchical)...</DrawerMenuItem>
+                                                <DrawerMenuItem disabled>Cluster (K-Means)...</DrawerMenuItem>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="dimension-reduction" className="border-0">
+                                            <NestedAccordionTrigger>Dimension Reduction</NestedAccordionTrigger>
+                                            <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
+                                                <DrawerMenuItem disabled>Factor...</DrawerMenuItem>
+                                                <DrawerMenuItem disabled>Correspondence Analysis...</DrawerMenuItem>
+                                                <DrawerMenuItem disabled>Optimal Scaling...</DrawerMenuItem>
                                             </AccordionContent>
                                         </AccordionItem>
                                         <AccordionItem value="correlate" className="border-0">
@@ -299,11 +298,11 @@ const HamburgerMenu: React.FC = () => {
                                                     <AccordionItem value="nonparam-legacy" className="border-0">
                                                         <NestedAccordionTrigger>Legacy Dialogs</NestedAccordionTrigger>
                                                         <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0">
-                                                            <DrawerMenuItem disabled>Chi-square...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>Runs...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>2 Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>K Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem disabled>2 Related Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.Runs)}>Runs...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</DrawerMenuItem>
+                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</DrawerMenuItem>
                                                             <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</DrawerMenuItem>
                                                         </AccordionContent>
                                                     </AccordionItem>

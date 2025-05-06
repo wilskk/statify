@@ -476,11 +476,14 @@ const PrintModal: FC<PrintModalProps> = ({ onClose }) => {
                         idx + 1,
                         variable.name,
                         variable.type,
+                        variable.label || "-",
+                        variable.measure || "unknown",
+                        variable.width || "-",
                         variable.columnIndex + 1
                     ]);
 
                 autoTable(doc, {
-                    head: [["No", "Nama", "Tipe", "Kolom"]],
+                    head: [["No", "Nama", "Tipe", "Label", "Measure", "Width", "Kolom"]],
                     body: variableData,
                     startY: currentY,
                     styles: { fontSize: 8, cellWidth: "wrap" },

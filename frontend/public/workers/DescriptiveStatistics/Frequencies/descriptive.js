@@ -150,10 +150,29 @@ self.onmessage = function(event) {
             { key: 'seMean', option: options.dispersion?.stdErrorMean, label: "Std. Error of Mean", requiresNumeric: true, calc: (vm) => {
                 const stdDev = getOrCalculateStat(vm.key, 'stdDev', calculateStdDev, getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW)));
                 return calculateSEMean(stdDev, vm.totalW);
-             }, format: (v, vm) => formatNumber(v, 5) },
+             }, format: (v, vm) => vm.type === 'DATE' ? secondsToDaysHoursMinutesString(v) : formatNumber(v, 5) },
             { key: 'median', option: options.centralTendency?.median, label: "Median", requiresNumeric: true, calc: (vm) => calculateMedian(vm.numericDataForStats, vm.weightsForStats, vm.totalW), format: (v, vm) => vm.type === 'DATE' ? spssSecondsToDateString(v) : formatNumber(v, vm.decimals || 4) },
             // Mode uses original data, not numeric converted data
-            { key: 'mode', option: options.centralTendency?.mode, label: "Mode", requiresNumeric: false, calc: (vm) => calculateMode(vm.data, weightVariableData, vm.type, vm.missing), format: (v, vm) => vm.type === 'DATE' ? v : (typeof v === 'number' ? formatNumber(v, vm.decimals || 2) : v) }, // Mode returns original date string
+            { 
+                key: 'mode', 
+                option: options.centralTendency?.mode, 
+                label: "Mode", 
+                requiresNumeric: false, // Kept as false as the check is now type-based, not numeric conversion based
+                calc: (vm) => {
+                    if (vm.type === 'STRING') {
+                        return null; // Do not calculate mode for string types
+                    }
+                    // For other types (NUMERIC, DATE), proceed with calculateMode
+                    return calculateMode(vm.data, weightVariableData, vm.type, vm.missing);
+                },
+                format: (v, vm) => {
+                    if (v === null && vm.type === 'STRING') {
+                        return ""; // Display empty string for STRING types if mode was intentionally set to null
+                    }
+                    if (vm.type === 'DATE') return v; // Mode for DATE returns original date string
+                    return typeof v === 'number' ? formatNumber(v, vm.decimals || 2) : v; // Handles numeric modes and potentially other direct values
+                } 
+            },
             { key: 'stdDev', option: options.dispersion?.stddev, label: "Std. Deviation", requiresNumeric: true, calc: (vm) => {
                 const mean = getOrCalculateStat(vm.key, 'mean', calculateMean, vm.numericDataForStats, vm.weightsForStats, vm.totalW);
                 const variance = getOrCalculateStat(vm.key, 'variance', calculateVariance, vm.numericDataForStats, vm.weightsForStats, vm.totalW, mean);
@@ -218,19 +237,23 @@ self.onmessage = function(event) {
         });
 
         // 3. Percentiles
+        const percentileValues = []; // Initialize list to store all requested percentile values
+
+        // Always check for Quartiles if the option is set
+        if (options.percentileValues?.quartiles) {
+            percentileValues.push(25, 50, 75);
+        }
+
+        // Always check for Cut Points if the option is set and N > 1
+        if (options.percentileValues?.cutPoints && options.percentileValues?.cutPointsN > 1) {
+            const N = options.percentileValues.cutPointsN;
+            for (let i = 1; i < N; i++) {
+                percentileValues.push((100 * i) / N);
+            }
+        }
+
+        // Only add manually entered percentiles if enablePercentiles is true
         if (options.percentileValues?.enablePercentiles) {
-            const percentileValues = [];
-            if (options.percentileValues.quartiles) {
-                percentileValues.push(25, 50, 75);
-            }
-            if (options.percentileValues.cutPoints && options.percentileValues.cutPointsN > 1) { // Jika Cut points dicentang & N > 1 (perlu min 2 grup)
-                const N = options.percentileValues.cutPointsN; // Jumlah grup yang diinginkan
-                // Untuk membagi jadi N grup, kita perlu N-1 titik potong
-                for (let i = 1; i < N; i++) { // Loop dari 1 hingga N-1
-                    // Hitung persentil ke-(100*i / N)
-                    percentileValues.push((100 * i) / N);
-                }
-            }
             if (options.percentileValues.percentilesList && Array.isArray(options.percentileValues.percentilesList)) {
                  options.percentileValues.percentilesList.forEach(pStr => {
                      const pNum = parseFloat(pStr);
@@ -239,37 +262,37 @@ self.onmessage = function(event) {
                      }
                  });
             }
+        }
 
-            // Unikkan dan urutkan persentil
+        // Unikkan dan urutkan persentil JIKA ada nilai yang terkumpul
+        if (percentileValues.length > 0) {
             const uniquePercentiles = [...new Set(percentileValues)].sort((a, b) => a - b);
 
-            if (uniquePercentiles.length > 0) {
-                const percentileRows = [];
-                uniquePercentiles.forEach(p => {
-                     // Format persentil agar lebih rapi jika desimal
-                     const pLabel = String(p % 1 === 0 ? p : p.toFixed(1)).replace('.0', '');
-                     const pRow = { rowHeader: [null, pLabel] };
-                     variablesToProcess.forEach(varItem => {
-                        const varMeta = variableMap.get(varItem.variable.name);
-                        const key = varMeta.key;
-                        let result = null;
+            const percentileRows = [];
+            uniquePercentiles.forEach(p => {
+                 // Format persentil agar lebih rapi jika desimal
+                 const pLabel = String(p % 1 === 0 ? p : p.toFixed(1)).replace('.0', '');
+                 const pRow = { rowHeader: [null, pLabel] };
+                 variablesToProcess.forEach(varItem => {
+                    const varMeta = variableMap.get(varItem.variable.name);
+                    const key = varMeta.key;
+                    let result = null;
 
-                        if ((varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericDataForStats && varMeta.numericDataForStats.length > 0) {
-                             // Panggil calculatePercentile dengan data numerik yang sudah disiapkan
-                             if (typeof calculatePercentile === 'function') {
-                                result = calculatePercentile(varMeta.numericDataForStats, varMeta.weightsForStats, p / 100, varMeta.totalW);
-                             }
-                        }
+                    if ((varMeta.type === 'NUMERIC' || varMeta.type === 'DATE') && varMeta.numericDataForStats && varMeta.numericDataForStats.length > 0) {
+                         // Panggil calculatePercentile dengan data numerik yang sudah disiapkan
+                         if (typeof calculatePercentile === 'function') {
+                            result = calculatePercentile(varMeta.numericDataForStats, varMeta.weightsForStats, p / 100, varMeta.totalW);
+                         }
+                    }
 
-                        // Format hasil (angka atau tanggal)
-                        pRow[key] = varMeta.type === 'DATE'
-                                        ? spssSecondsToDateString(result)
-                                        : formatNumber(result, varMeta.decimals || 4);
-                     });
-                     percentileRows.push(pRow);
-                });
-                 outputRows.push({ rowHeader: ["Percentiles", null], children: percentileRows });
-            }
+                    // Format hasil (angka atau tanggal)
+                    pRow[key] = varMeta.type === 'DATE'
+                                    ? spssSecondsToDateString(result)
+                                    : formatNumber(result, varMeta.decimals || 4);
+                 });
+                 percentileRows.push(pRow);
+            });
+             outputRows.push({ rowHeader: ["Percentiles", null], children: percentileRows });
         }
 
 

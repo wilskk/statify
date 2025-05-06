@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useModalStore, ModalType } from "@/stores/useModalStore";
 import { Button } from '@/components/ui/button';
-import { FileText, Database, Loader2 } from 'lucide-react';
+import { File, Database, Loader2 } from 'lucide-react';
 import { useDataStore, DataRow } from '@/stores/useDataStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import { useVariableStore } from '@/stores/useVariableStore';
@@ -14,15 +14,14 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 const exampleFiles = {
-    csv: [
-        { name: 'customers-100.csv', path: '/exampleData/csv/customers-100.csv' },
-    ],
     sav: [
-        { name: 'sleep.sav', path: '/exampleData/sav/sleep.sav' },
-    ],
-    xlsx: [
-        { name: 'file_example_XLSX_50.xlsx', path: '/exampleData/xlsx/file_example_XLSX_50.xlsx' },
-        { name: 'file_example_XLS_50.xls', path: '/exampleData/xlsx/file_example_XLS_50.xls' },
+        { name: 'sleep.sav', path: '/exampleData/sleep.sav' },
+        { name: 'DummyData.sav', path: '/exampleData/DummyData.sav' },
+        { name: 'Teach.sav', path: '/exampleData/Teach.sav' },
+        { name: 'titanic.sav', path: '/exampleData/titanic.sav' },
+        { name: 'well_being.sav', path: '/exampleData/well_being.sav' },
+        { name: 'health_control.sav', path: '/exampleData/health_control.sav' },
+        { name: 'anxiety.sav', path: '/exampleData/anxiety.sav' },
     ]
 };
 
@@ -147,7 +146,7 @@ export const ExampleDatasetModal = () => {
                 label: "",
                 values: [],
                 missing: null,
-                columns: 8,
+                columns: 64,
                 align: "right",
                 measure: "unknown",
                 role: "input"
@@ -311,8 +310,8 @@ export const ExampleDatasetModal = () => {
                         onClick={() => handleFileClick(file.path)}
                         disabled={isLoading}
                     >
-                        <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">{file.name}</span>
+                        <File className="h-4 w-4 mr-2 flex-shrink-0 text-blue-600" />
+                        <span className="truncate font-medium">{file.name}</span>
                     </Button>
                 </li>
             ))}
@@ -324,10 +323,10 @@ export const ExampleDatasetModal = () => {
             <DialogContent className="sm:max-w-[525px] bg-white text-black">
                 <DialogHeader>
                     <DialogTitle className="flex items-center">
-                        <Database className="h-5 w-5 mr-2"/> Dataset Contoh
+                        <Database className="h-5 w-5 mr-2 text-blue-700"/> Dataset Contoh
                     </DialogTitle>
                     <DialogDescription>
-                        Pilih dataset contoh untuk memulai analisis. Data akan dimuat ke dalam proyek baru.
+                        Pilih dataset contoh (.sav) untuk memulai analisis. Data akan dimuat ke dalam proyek baru.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -339,12 +338,10 @@ export const ExampleDatasetModal = () => {
                     {error && (
                         <p className="text-red-600 text-sm px-4 py-2 bg-red-100 rounded border border-red-300">{error}</p>
                     )}
-                    {Object.entries(exampleFiles).map(([type, files]) => (
-                        <div key={type}>
-                            <h4 className="font-semibold mb-2 text-sm">File {type.toUpperCase()}</h4>
-                            {renderFileList(files)}
-                        </div>
-                    ))}
+                    <div>
+                        <h4 className="font-semibold mb-3 text-base border-b pb-1">File SPSS (.sav)</h4>
+                        {renderFileList(exampleFiles.sav)}
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

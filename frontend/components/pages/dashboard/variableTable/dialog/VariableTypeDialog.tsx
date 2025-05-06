@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMobile } from '@/hooks/useMobile';
+import { cn } from '@/lib/utils';
 
 type VariableType =
     | "NUMERIC"
@@ -72,6 +74,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                                           initialWidth,
                                                                           initialDecimals
                                                                       }) => {
+    const { isMobile } = useMobile();
     const [selectedType, setSelectedType] = useState<string>(initialType);
     const [width, setWidth] = useState<number>(initialWidth);
     const [decimals, setDecimals] = useState<number>(initialDecimals);
@@ -246,45 +249,113 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md bg-white shadow-md">
-                <DialogHeader className="pb-2 border-b border-gray-100">
-                    <DialogTitle className="text-lg font-medium">Variable Type</DialogTitle>
+            <DialogContent className={cn(
+                "p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]",
+                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px]"
+            )}>
+                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Variable Type</DialogTitle>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                        <RadioGroup value={selectedType} onValueChange={setSelectedType}>
-                            {[
-                                { id: "NUMERIC", label: "Numeric" },
-                                { id: "COMMA", label: "Comma" },
-                                { id: "DOT", label: "Dot" },
-                                { id: "SCIENTIFIC", label: "Scientific notation" },
-                                { id: "DATE", label: "Date" },
-                                { id: "DOLLAR", label: "Dollar" },
-                                { id: "CUSTOM_CURRENCY", label: "Custom currency" },
-                                { id: "STRING", label: "String" },
-                                { id: "RESTRICTED_NUMERIC", label: "Restricted Numeric (integer with leading zeros)" }
-                            ].map((type) => (
-                                <div key={type.id} className="flex items-center space-x-2 py-1.5">
-                                    <RadioGroupItem value={type.id} id={type.id} className="border-gray-400 text-gray-800" />
-                                    <Label htmlFor={type.id} className="text-gray-800">
-                                        {type.label}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
+                <div className="flex-grow overflow-y-auto px-6 py-4">
+                    <div className={cn("gap-4", isMobile ? "grid grid-cols-1" : "grid grid-cols-2")}>
+                        <div className="space-y-1.5">
+                            <RadioGroup value={selectedType} onValueChange={setSelectedType}>
+                                {[
+                                    { id: "NUMERIC", label: "Numeric" },
+                                    { id: "COMMA", label: "Comma" },
+                                    { id: "DOT", label: "Dot" },
+                                    { id: "SCIENTIFIC", label: "Scientific notation" },
+                                    { id: "DATE", label: "Date" },
+                                    { id: "DOLLAR", label: "Dollar" },
+                                    { id: "CUSTOM_CURRENCY", label: "Custom currency" },
+                                    { id: "STRING", label: "String" },
+                                    { id: "RESTRICTED_NUMERIC", label: "Restricted Numeric (integer with leading zeros)" }
+                                ].map((type) => (
+                                    <div key={type.id} className="flex items-center space-x-2 py-1.5">
+                                        <RadioGroupItem value={type.id} id={type.id} className="border-gray-400 text-gray-800" />
+                                        <Label htmlFor={type.id} className="text-gray-800">
+                                            {type.label}
+                                        </Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        </div>
 
-                    <div className="h-72 overflow-y-auto border border-gray-200 rounded p-1.5">
-                        <div className="space-y-4">
-                            {isNumericType && (
-                                <div className="space-y-3">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="width" className="text-gray-700">
-                                            Width:
+                        <div className="h-72 overflow-y-auto border border-gray-200 rounded p-1.5">
+                            <div className="space-y-4">
+                                {isNumericType && (
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="width" className="text-gray-700">
+                                                Width:
+                                            </Label>
+                                            <Input
+                                                id="width"
+                                                type="number"
+                                                value={width}
+                                                onChange={(e) => setWidth(Number(e.target.value))}
+                                                min={1}
+                                                max={64}
+                                            />
+                                        </div>
+                                        {selectedType !== "RESTRICTED_NUMERIC" && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="decimals" className="text-gray-700">
+                                                    Decimal Places:
+                                                </Label>
+                                                <Input
+                                                    id="decimals"
+                                                    type="number"
+                                                    value={decimals}
+                                                    onChange={(e) => setDecimals(Number(e.target.value))}
+                                                    min={0}
+                                                    max={16}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {isDateType && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-700">Format:</Label>
+                                            <Select value={dateFormat} onValueChange={handleDateFormatChange}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select format" />
+                                                </SelectTrigger>
+                                                <SelectContent className="max-h-72">
+                                                    {dateFormats.map(format => (
+                                                        <SelectItem key={format.value} value={format.value}>
+                                                            {format.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dateWidth" className="text-gray-700">
+                                                Width:
+                                            </Label>
+                                            <Input
+                                                id="dateWidth"
+                                                type="number"
+                                                value={width}
+                                                readOnly
+                                                className="bg-gray-50"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedType === "STRING" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="characters" className="text-gray-700">
+                                            Characters:
                                         </Label>
                                         <Input
-                                            id="width"
+                                            id="characters"
                                             type="number"
                                             value={width}
                                             onChange={(e) => setWidth(Number(e.target.value))}
@@ -292,14 +363,50 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             max={64}
                                         />
                                     </div>
+                                )}
 
-                                    {selectedType !== "RESTRICTED_NUMERIC" && (
+                                {selectedType === "CUSTOM_CURRENCY" && (
+                                    <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="decimals" className="text-gray-700">
+                                            <Label className="text-gray-700">Currency Format:</Label>
+                                            <div className="border rounded h-20 overflow-y-auto">
+                                                {[
+                                                    { type: "CCA", label: "CCA" },
+                                                    { type: "CCB", label: "CCB" },
+                                                    { type: "CCC", label: "CCC" },
+                                                    { type: "CCD", label: "CCD" },
+                                                    { type: "CCE", label: "CCE" }
+                                                ].map((currency) => (
+                                                    <div
+                                                        key={currency.type}
+                                                        className={`p-1.5 cursor-pointer border-l-2 ${selectedCurrencyFormat === currency.type ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
+                                                        onClick={() => {
+                                                            setSelectedCurrencyFormat(currency.type);
+                                                        }}
+                                                    >
+                                                        {currency.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="currencyWidth" className="text-gray-700">
+                                                Width:
+                                            </Label>
+                                            <Input
+                                                id="currencyWidth"
+                                                type="number"
+                                                value={width}
+                                                onChange={(e) => setWidth(Number(e.target.value))}
+                                                min={1}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="currencyDecimals" className="text-gray-700">
                                                 Decimal Places:
                                             </Label>
                                             <Input
-                                                id="decimals"
+                                                id="currencyDecimals"
                                                 type="number"
                                                 value={decimals}
                                                 onChange={(e) => setDecimals(Number(e.target.value))}
@@ -307,202 +414,103 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 max={16}
                                             />
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            {isDateType && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-700">Format:</Label>
-                                        <Select value={dateFormat} onValueChange={handleDateFormatChange}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select format" />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-72">
-                                                {dateFormats.map(format => (
-                                                    <SelectItem key={format.value} value={format.value}>
+                                {selectedType === "DOLLAR" && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-700">Dollar Format:</Label>
+                                            <div className="border rounded h-24 overflow-y-auto">
+                                                {dollarFormats.map(format => (
+                                                    <div
+                                                        key={format.value}
+                                                        className={`p-1.5 cursor-pointer border-l-2 ${dollarFormat === format.value ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
+                                                        onClick={() => handleDollarFormatSelect(format.value)}
+                                                    >
                                                         {format.label}
-                                                    </SelectItem>
+                                                    </div>
                                                 ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dateWidth" className="text-gray-700">
-                                            Width:
-                                        </Label>
-                                        <Input
-                                            id="dateWidth"
-                                            type="number"
-                                            value={width}
-                                            readOnly
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedType === "STRING" && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="characters" className="text-gray-700">
-                                        Characters:
-                                    </Label>
-                                    <Input
-                                        id="characters"
-                                        type="number"
-                                        value={width}
-                                        onChange={(e) => setWidth(Number(e.target.value))}
-                                        min={1}
-                                        max={64}
-                                    />
-                                </div>
-                            )}
-
-                            {selectedType === "CUSTOM_CURRENCY" && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-700">Currency Format:</Label>
-                                        <div className="border rounded h-20 overflow-y-auto">
-                                            {[
-                                                { type: "CCA", label: "CCA" },
-                                                { type: "CCB", label: "CCB" },
-                                                { type: "CCC", label: "CCC" },
-                                                { type: "CCD", label: "CCD" },
-                                                { type: "CCE", label: "CCE" }
-                                            ].map(currency => (
-                                                <div
-                                                    key={currency.type}
-                                                    className={`p-1.5 cursor-pointer border-l-2 ${selectedCurrencyFormat === currency.type ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
-                                                    onClick={() => {
-                                                        setSelectedCurrencyFormat(currency.type);
-                                                    }}
-                                                >
-                                                    {currency.label}
-                                                </div>
-                                            ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dollarWidth" className="text-gray-700">
+                                                Width:
+                                            </Label>
+                                            <Input
+                                                id="dollarWidth"
+                                                type="number"
+                                                value={width}
+                                                readOnly
+                                                className="bg-gray-50"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dollarDecimals" className="text-gray-700">
+                                                Decimal Places:
+                                            </Label>
+                                            <Input
+                                                id="dollarDecimals"
+                                                type="number"
+                                                value={decimals}
+                                                readOnly
+                                                className="bg-gray-50"
+                                            />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="currencyWidth" className="text-gray-700">
-                                            Width:
-                                        </Label>
-                                        <Input
-                                            id="currencyWidth"
-                                            type="number"
-                                            value={width}
-                                            onChange={(e) => setWidth(Number(e.target.value))}
-                                            min={1}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="currencyDecimals" className="text-gray-700">
-                                            Decimal Places:
-                                        </Label>
-                                        <Input
-                                            id="currencyDecimals"
-                                            type="number"
-                                            value={decimals}
-                                            onChange={(e) => setDecimals(Number(e.target.value))}
-                                            min={0}
-                                            max={16}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                                )}
 
-                            {selectedType === "DOLLAR" && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-700">Dollar Format:</Label>
-                                        <div className="border rounded h-24 overflow-y-auto">
-                                            {dollarFormats.map(format => (
-                                                <div
-                                                    key={format.value}
-                                                    className={`p-1.5 cursor-pointer border-l-2 ${dollarFormat === format.value ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
-                                                    onClick={() => handleDollarFormatSelect(format.value)}
-                                                >
-                                                    {format.label}
-                                                </div>
-                                            ))}
+                                {["CCA", "CCB", "CCC", "CCD", "CCE"].includes(selectedType) && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-700">
+                                                {selectedType} Currency Format
+                                            </Label>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="customCurrencyWidth" className="text-gray-700">
+                                                Width:
+                                            </Label>
+                                            <Input
+                                                id="customCurrencyWidth"
+                                                type="number"
+                                                value={width}
+                                                onChange={(e) => setWidth(Number(e.target.value))}
+                                                min={1}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="customCurrencyDecimals" className="text-gray-700">
+                                                Decimal Places:
+                                            </Label>
+                                            <Input
+                                                id="customCurrencyDecimals"
+                                                type="number"
+                                                value={decimals}
+                                                onChange={(e) => setDecimals(Number(e.target.value))}
+                                                min={0}
+                                                max={16}
+                                            />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dollarWidth" className="text-gray-700">
-                                            Width:
-                                        </Label>
-                                        <Input
-                                            id="dollarWidth"
-                                            type="number"
-                                            value={width}
-                                            readOnly
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dollarDecimals" className="text-gray-700">
-                                            Decimal Places:
-                                        </Label>
-                                        <Input
-                                            id="dollarDecimals"
-                                            type="number"
-                                            value={decimals}
-                                            readOnly
-                                            className="bg-gray-50"
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
-                            {["CCA", "CCB", "CCC", "CCD", "CCE"].includes(selectedType) && (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-gray-700">
-                                            {selectedType} Currency Format
-                                        </Label>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="customCurrencyWidth" className="text-gray-700">
-                                            Width:
-                                        </Label>
-                                        <Input
-                                            id="customCurrencyWidth"
-                                            type="number"
-                                            value={width}
-                                            onChange={(e) => setWidth(Number(e.target.value))}
-                                            min={1}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="customCurrencyDecimals" className="text-gray-700">
-                                            Decimal Places:
-                                        </Label>
-                                        <Input
-                                            id="customCurrencyDecimals"
-                                            type="number"
-                                            value={decimals}
-                                            onChange={(e) => setDecimals(Number(e.target.value))}
-                                            min={0}
-                                            max={16}
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                    <div className="flex items-start mt-4 text-sm">
+                        <div className="text-blue-600 mr-2 text-2xl">ⓘ</div>
+                        <div>
+                            The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-start mt-4 text-sm">
-                    <div className="text-blue-600 mr-2 text-2xl">ⓘ</div>
-                    <div>
-                        The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
-                    </div>
-                </div>
-
-                <DialogFooter className="flex justify-center space-x-2 mt-3 pt-2 border-t border-gray-100">
-                    <Button onClick={handleSave} variant="secondary" className="bg-gray-800 hover:bg-gray-700 text-white">OK</Button>
-                    <Button onClick={() => onOpenChange(false)} variant="outline" className="border-gray-300 text-gray-800">Cancel</Button>
-                    <Button variant="secondary" className="bg-gray-800 hover:bg-gray-700 text-white">Help</Button>
+                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] flex-shrink-0">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave}>OK</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

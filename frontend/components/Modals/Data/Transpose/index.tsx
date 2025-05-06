@@ -242,7 +242,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                     width: 8,
                     decimals: 2,
                     label: "",
-                    columns: 8,
+                    columns: 64,
                     align: "right",
                     measure: "scale",
                     role: "input",

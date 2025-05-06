@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ValueLabel } from "@/types/Variable";
+import { useMobile } from '@/hooks/useMobile';
+import { cn } from '@/lib/utils';
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ValueLabelsDialogProps {
     open: boolean;
@@ -22,14 +26,15 @@ interface ValueLabelsDialogProps {
     variableType: string;
 }
 
-export const ValueLabelsDialog: React.FC<ValueLabelsDialogProps> = ({
-                                                                        open,
-                                                                        onOpenChange,
-                                                                        onSave,
-                                                                        initialValues,
-                                                                        variableName,
-                                                                        variableType = "NUMERIC" // Default to NUMERIC if not specified
-                                                                    }) => {
+export const ValueLabelsDialog = ({
+    open,
+    onOpenChange,
+    onSave,
+    initialValues,
+    variableName,
+    variableType = "NUMERIC" // Default to NUMERIC if not specified
+}: ValueLabelsDialogProps) => {
+    const { isMobile } = useMobile();
     const [values, setValues] = useState<ValueLabel[]>([]);
     const [currentValue, setCurrentValue] = useState("");
     const [currentLabel, setCurrentLabel] = useState("");
@@ -61,12 +66,19 @@ export const ValueLabelsDialog: React.FC<ValueLabelsDialogProps> = ({
         }
 
         // Check for duplicates (if not in editing mode or if editing with a different value)
+        const valueToCompare = isStringType ? value : Number(value); // Compare with correct type
         const isDuplicate = values.some((v, index) => {
             // Skip comparing with the value being edited
             if (selectedIndex !== null && index === selectedIndex) {
                 return false;
             }
-            return v.value.toString() === value;
+            // Handle comparison carefully for numbers and strings (including space)
+            if (isStringType) {
+                return v.value === valueToCompare;
+            } else {
+                // Ensure we compare numbers with numbers
+                return typeof v.value === 'number' && v.value === valueToCompare;
+            }
         });
 
         if (isDuplicate) {
@@ -180,27 +192,53 @@ export const ValueLabelsDialog: React.FC<ValueLabelsDialogProps> = ({
 
     const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
+        setError(null); // Clear error on change
 
-        // If not string type, only allow numeric input (except for space character)
-        if (!isStringType && newValue !== " " && newValue !== "" && isNaN(Number(newValue))) {
-            return;
+        // Allow space for string type always
+        if (isStringType) {
+             setCurrentValue(newValue);
+             return;
         }
 
-        setCurrentValue(newValue);
-        setError(null);
+        // For numeric type: allow empty, minus, decimal point, and numbers
+        if (newValue === '' || newValue === '-' || (!isNaN(Number(newValue)) || (newValue.endsWith('.') && !newValue.slice(0, -1).includes('.')))) {
+            setCurrentValue(newValue);
+        } else {
+            // Optionally provide feedback or prevent invalid input more strictly here
+            // For now, we just don't update the state for invalid numeric chars
+             setError("Invalid numeric input."); // Set error for invalid chars
+        }
+
+    };
+
+    const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newLabel = e.target.value;
+        setError(null); // Clear error on change
+
+        // Check byte length immediately
+        if (new TextEncoder().encode(newLabel).length > 120) {
+            setError("Label cannot exceed 120 bytes");
+            // Optionally truncate or prevent further input
+        } else {
+            setCurrentLabel(newLabel);
+        }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md bg-white shadow-md rounded-none p-0 overflow-hidden">
-                <DialogHeader className="bg-gray-200 p-2 border-b border-gray-300">
-                    <DialogTitle className="text-md font-medium text-gray-800">Value Labels</DialogTitle>
+            <DialogContent className={cn(
+                "bg-white flex flex-col",
+                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
+            )}>
+                <DialogHeader className="px-6 py-4 flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Value Labels</DialogTitle>
                 </DialogHeader>
+                <Separator />
 
-                <div className="p-4 space-y-3">
-                    <div className="space-y-3">
-                        <div className="flex items-center space-x-2">
-                            <Label htmlFor="value" className="text-gray-700 w-16">
+                <div className="flex-grow overflow-y-auto px-6 py-5">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
+                            <Label htmlFor="value" className="text-right">
                                 Value:
                             </Label>
                             <div className="flex-1 relative">
@@ -208,107 +246,95 @@ export const ValueLabelsDialog: React.FC<ValueLabelsDialogProps> = ({
                                     id="value"
                                     value={currentValue}
                                     onChange={handleValueChange}
-                                    className="h-8 w-full"
+                                    className="h-9 w-full"
                                     placeholder={isStringType ? "Any text or space" : "Numeric value"}
                                 />
                                 {currentValue === " " && (
-                                    <div className="absolute right-2 top-1 text-xs bg-blue-100 px-1 rounded text-blue-800">
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-blue-100 px-1.5 py-0.5 rounded text-blue-800">
                                         Space
                                     </div>
                                 )}
                             </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Label htmlFor="label" className="text-gray-700 w-16">
+
+                            <Label htmlFor="label" className="text-right">
                                 Label:
                             </Label>
-                            <div className="flex-1">
-                                <Input
-                                    id="label"
-                                    value={currentLabel}
-                                    onChange={(e) => {
-                                        setCurrentLabel(e.target.value);
-                                        setError(null);
-                                    }}
-                                    className="h-8 w-full"
-                                    maxLength={120}
-                                />
-                            </div>
+                            <Input
+                                id="label"
+                                value={currentLabel}
+                                onChange={handleLabelChange}
+                                className="h-9 w-full"
+                                placeholder="Enter label (max 120 bytes)"
+                            />
                         </div>
-                        <div className="flex justify-between">
-                            {error && <div className="text-xs text-red-500">{error}</div>}
-                            <div className="ml-auto">
-                                <Button
-                                    variant="outline"
-                                    className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-3 text-xs"
-                                >
-                                    Spelling...
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="border border-gray-300 rounded-none p-0 h-32 overflow-y-auto bg-white">
-                        {values.map((item, index) => (
-                            <div
-                                key={index}
-                                className={`p-1 cursor-pointer ${selectedIndex === index ? 'bg-yellow-100' : 'hover:bg-gray-100'}`}
-                                onClick={() => handleSelect(index)}
+                        <div className="flex justify-end items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={selectedIndex === null ? handleAdd : handleChange}
+                                disabled={!currentValue.trim() && currentValue !== " "}
                             >
-                                {item.value === " " ? "[Space]" : item.value} = &quot;{item.label}&quot;
-                            </div>
-                        ))}
-                    </div>
+                                {selectedIndex === null ? "Add" : (isValueChanged() ? "Change" : "Change")}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleRemove}
+                                disabled={selectedIndex === null}
+                            >
+                                Remove
+                            </Button>
+                        </div>
 
-                    <div className="flex space-x-2">
-                        <Button
-                            onClick={handleAdd}
-                            variant="outline"
-                            className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                            disabled={(currentValue === "" || currentValue === undefined) || selectedIndex !== null}
-                        >
-                            Add
-                        </Button>
-                        <Button
-                            onClick={handleChange}
-                            variant="outline"
-                            className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                            disabled={selectedIndex === null || !isValueChanged() || currentValue === ""}
-                        >
-                            Change
-                        </Button>
-                        <Button
-                            onClick={handleRemove}
-                            variant="outline"
-                            className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                            disabled={selectedIndex === null}
-                        >
-                            Remove
-                        </Button>
+                        {error && (
+                            <Alert variant="destructive" className="mt-2">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <Label className="block pt-2 pb-1 text-sm font-medium">Defined Labels:</Label>
+                        <div className={cn(
+                            "border rounded-md overflow-y-auto bg-background/50",
+                            isMobile ? "h-48" : "h-64"
+                        )}>
+                            {values.length === 0 && (
+                                <div className="p-4 text-center text-muted-foreground">
+                                    No value labels defined.
+                                </div>
+                            )}
+                            {values.map((item, index) => (
+                                <div
+                                    key={index}
+                                    className={cn(
+                                        "p-2 cursor-pointer border-b last:border-b-0 text-sm",
+                                        selectedIndex === index
+                                            ? 'bg-primary/10 text-primary-foreground'
+                                            : 'hover:bg-muted/50',
+                                        "flex justify-between items-center"
+                                    )}
+                                    onClick={() => handleSelect(index)}
+                                >
+                                    <span className="font-mono break-all pr-2">
+                                        {item.value === " " ? "[Space]" : item.value.toString()}
+                                    </span>
+                                    <span className="text-muted-foreground break-all text-right">
+                                        = "{item.label}"
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                <DialogFooter className="flex justify-center space-x-2 p-2 bg-gray-200 border-t border-gray-300">
-                    <Button
-                        onClick={handleSave}
-                        variant="secondary"
-                        className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                    >
-                        OK
-                    </Button>
-                    <Button
-                        onClick={() => onOpenChange(false)}
-                        variant="outline"
-                        className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        className="bg-gray-200 border-gray-300 text-gray-800 hover:bg-gray-300 rounded-sm h-7 px-4 text-xs"
-                    >
-                        Help
-                    </Button>
+                <Separator />
+                <DialogFooter className="px-6 py-4 flex-shrink-0 sm:justify-between">
+                    <div className="flex space-x-2 justify-end">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSave}>OK</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

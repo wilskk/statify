@@ -20,13 +20,13 @@ const EditMenu: React.FC = () => {
         <MenubarMenu>
             <MenubarTrigger>Edit</MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => handleAction({ actionType: "Undo" })}>
+                {/* <MenubarItem onClick={() => handleAction({ actionType: "Undo" })}>
                     Undo
                 </MenubarItem>
                 <MenubarItem onClick={() => handleAction({ actionType: "Redo" })}>
                     Redo
                 </MenubarItem>
-                <MenubarSeparator />
+                <MenubarSeparator /> */}
                 <MenubarItem onClick={() => handleAction({ actionType: "Cut" })}>
                     Cut
                 </MenubarItem>

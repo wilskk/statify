@@ -281,5 +281,9 @@ export const useFrequenciesAnalysis = ({
         };
     }, [cleanupWorkers]);
 
+    // chartOptions: This parameter carries the configuration for chart generation,
+    // such as chart type, values to display (frequencies/percentages),
+    // and specific options like showing a normal curve on histograms.
+    // It is currently passed to the hook but not yet fully integrated into the worker logic.
     return { isCalculating, errorMsg, runAnalysis };
 }; 

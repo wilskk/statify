@@ -247,12 +247,12 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         >
                             Statistics
                         </TabsTrigger>
-                        <TabsTrigger
+                        {/* <TabsTrigger
                             value="charts"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
                             Charts
-                        </TabsTrigger>
+                        </TabsTrigger> */}
                     </TabsList>
                 </div>
 

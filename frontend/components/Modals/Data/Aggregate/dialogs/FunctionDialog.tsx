@@ -9,11 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { AggregatedVariable } from "../index";
 
 interface FunctionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    currentEditingVariable: any;
+    currentEditingVariable: AggregatedVariable | null;
     functionCategory: "summary" | "specific" | "cases" | "percentages";
     setFunctionCategory: (category: "summary" | "specific" | "cases" | "percentages") => void;
     selectedFunction: string;
@@ -47,10 +48,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                                            setPercentageHigh,
                                                            onApply
                                                        }) => {
-    const isStringType = (currentEditingVariable: any | null) => {
-        if (!currentEditingVariable) return false;
-        return currentEditingVariable.type === "STRING";
-    };
+    const isBaseStringType = currentEditingVariable?.baseVarType === "STRING";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -75,11 +73,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("summary");
                                         setSelectedFunction("MEAN");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="mean"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Mean
                                 </Label>
@@ -96,11 +94,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("summary");
                                         setSelectedFunction("MEDIAN");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="median"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Median
                                 </Label>
@@ -117,11 +115,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("summary");
                                         setSelectedFunction("SUM");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="sum"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Sum
                                 </Label>
@@ -138,11 +136,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("summary");
                                         setSelectedFunction("STDDEV");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="stddev"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Standard Deviation
                                 </Label>
@@ -195,11 +193,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("specific");
                                         setSelectedFunction("MIN");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="min"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Minimum
                                 </Label>
@@ -216,11 +214,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("specific");
                                         setSelectedFunction("MAX");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="max"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Maximum
                                 </Label>
@@ -309,11 +307,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("percentages");
                                         setSelectedFunction("PERCENTAGE");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="percentages"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Percentages
                                 </Label>
@@ -330,11 +328,11 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setFunctionCategory("percentages");
                                         setSelectedFunction("FRACTION");
                                     }}
-                                    disabled={isStringType(currentEditingVariable)}
+                                    disabled={isBaseStringType}
                                 />
                                 <Label
                                     htmlFor="fractions"
-                                    className={`text-xs ${isStringType(currentEditingVariable) ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
                                 >
                                     Fractions
                                 </Label>

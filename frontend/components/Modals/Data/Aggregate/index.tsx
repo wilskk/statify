@@ -24,7 +24,6 @@ import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { FunctionDialog } from "./dialogs/FunctionDialog";
 import { NameLabelDialog } from "./dialogs/NameLabelDialog";
 import VariablesTab from "./VariablesTab";
-import SaveTab from "./SaveTab";
 import OptionsTab from "./OptionsTab";
 import {
     createVariableName,
@@ -37,6 +36,7 @@ export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'va
     aggregateId: string;
     baseVarColumnIndex: number;
     baseVarName: string;
+    baseVarType: VariableType;
     name: string;
     displayName: string;
     type: VariableType;
@@ -184,6 +184,7 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
             aggregateId: `agg_${variable.columnIndex}_${Date.now()}`,
             baseVarColumnIndex: variable.columnIndex,
             baseVarName: variable.name,
+            baseVarType: variable.type as VariableType,
             name: newName,
             displayName: `${newName} = ${displayFormula}`,
             type: variable.type as VariableType,
@@ -507,12 +508,6 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
-                                value="save"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                            >
-                                Save
-                            </TabsTrigger>
-                            <TabsTrigger
                                 value="options"
                                 className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                             >
@@ -545,17 +540,6 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
                             moveFromAggregated={moveFromAggregated}
                             reorderBreakVariables={reorderBreakVariables}
                             reorderAggregatedVariables={reorderAggregatedVariables}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
-                        <SaveTab
-                            saveOption={saveOption}
-                            setSaveOption={setSaveOption}
-                            datasetName={datasetName}
-                            setDatasetName={setDatasetName}
-                            filePath={filePath}
-                            setFilePath={setFilePath}
                         />
                     </TabsContent>
 

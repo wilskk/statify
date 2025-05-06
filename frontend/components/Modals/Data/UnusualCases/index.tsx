@@ -480,7 +480,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                 width: 8,
                 decimals: 2,
                 label: "Anomaly Index",
-                columns: 8,
+                columns: 64,
                 align: "right" as const,
                 measure: "scale" as const,
                 role: "input" as const
@@ -504,7 +504,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                 width: 8,
                 decimals: 0,
                 label: "Peer Group ID",
-                columns: 8,
+                columns: 64,
                 align: "right" as const,
                 measure: "nominal" as const,
                 role: "input" as const
@@ -518,7 +518,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                 width: 8,
                 decimals: 0,
                 label: "Peer Group Size",
-                columns: 8,
+                columns: 64,
                 align: "right" as const,
                 measure: "scale" as const,
                 role: "input" as const
@@ -532,7 +532,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                 width: 8,
                 decimals: 2,
                 label: "Peer Group Percentage Size",
-                columns: 8,
+                columns: 64,
                 align: "right" as const,
                 measure: "scale" as const,
                 role: "input" as const
@@ -585,7 +585,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                     width: 8,
                     decimals: 2,
                     label: `Reason Variable Impact Measure ${r + 1}`,
-                    columns: 8,
+                    columns: 64,
                     align: "right" as const,
                     measure: "scale" as const,
                     role: "input" as const
@@ -599,7 +599,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                     width: 8,
                     decimals: 2,
                     label: `Reason Variable Value ${r + 1}`,
-                    columns: 8,
+                    columns: 64,
                     align: "right" as const,
                     measure: "scale" as const,
                     role: "input" as const
@@ -613,7 +613,7 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                     width: 8,
                     decimals: 4,
                     label: `Reason Variable Norm ${r + 1}`,
-                    columns: 8,
+                    columns: 64,
                     align: "right" as const,
                     measure: "scale" as const,
                     role: "input" as const

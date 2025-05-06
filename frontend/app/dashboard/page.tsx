@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FolderOpen, FilePlus, Upload, Database, BookOpen } from 'lucide-react';
+import { FolderOpen, FilePlus, Database, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useMetaStore } from '@/stores/useMetaStore';
@@ -55,11 +55,11 @@ export default function DashboardPage() {
             primary: false
         },
         {
-            id: 'import',
-            icon: <Upload className="h-12 w-12 text-black" />,
-            title: 'Impor Data',
-            description: 'Impor data dari CSV, Excel, atau format lainnya',
-            action: () => openModal(ModalType.ImportCSV),
+            id: 'example',
+            icon: <Database className="h-12 w-12 text-black" />,
+            title: 'Dataset Contoh',
+            description: 'Akses berbagai dataset untuk latihan',
+            action: () => openModal(ModalType.ExampleDataset),
             primary: false
         }
     ];
@@ -74,18 +74,14 @@ export default function DashboardPage() {
     }
 
     const resources = [
-        {
-            icon: <Database className="h-6 w-6 text-black" />,
-            title: 'Dataset Contoh',
-            description: 'Akses berbagai dataset untuk latihan',
-            action: () => openModal(ModalType.ExampleDataset)
-        },
+        /*
         {
             icon: <BookOpen className="h-6 w-6 text-black" />,
             title: 'Tutorial Analisis',
             description: 'Panduan lengkap untuk berbagai metode statistik',
             link: '/resources/tutorials'
         }
+        */
     ];
 
     return (
@@ -131,6 +127,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-4">
                     {resources.map((resource, index) => {
+                        /*
                         if ('link' in resource && resource.link) {
                             return (
                                 <Link href={resource.link} key={index} className="block">
@@ -149,28 +146,9 @@ export default function DashboardPage() {
                                     </Card>
                                 </Link>
                             );
-                        } else if ('action' in resource && resource.action) {
-                            return (
-                                <Card
-                                    key={index}
-                                    onClick={resource.action}
-                                    className="bg-white border border-[#E6E6E6] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                                >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-center">
-                                            <div className="mr-4 p-2 bg-[#F7F7F7] rounded-full">
-                                                {resource.icon}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-medium text-black">{resource.title}</h3>
-                                                <p className="text-sm text-[#444444]">{resource.description}</p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
                         }
                         return null;
+                        */
                     })}
                 </div>
             </div>

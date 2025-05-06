@@ -13,6 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MissingValuesSpec, VariableType } from '@/types/Variable';
+import { useMobile } from '@/hooks/useMobile';
+import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 interface MissingValuesDialogProps {
     open: boolean;
@@ -29,17 +33,20 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                                                                             initialMissingValues,
                                                                             variableType = "NUMERIC"
                                                                         }) => {
+    const { isMobile } = useMobile();
     const [option, setOption] = useState<"none" | "discrete" | "range">("none");
     const [discreteValues, setDiscreteValues] = useState<string[]>(["", "", ""]);
     const [rangeMin, setRangeMin] = useState<string>("");
     const [rangeMax, setRangeMax] = useState<string>("");
     const [rangeDiscreteValue, setRangeDiscreteValue] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const isStringType = variableType === "STRING";
 
     useEffect(() => {
         setError(null);
+        setValidationError(null);
 
         if (!initialMissingValues) {
             setOption("none");
@@ -78,21 +85,21 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
 
     const handleDiscreteValueChange = (index: number, value: string) => {
         const rawValue = value;
+        setValidationError(null);
 
         if (isStringType && new TextEncoder().encode(rawValue).length > 8) {
-            setError("String missing values cannot exceed 8 bytes");
+            setValidationError("String missing values cannot exceed 8 bytes");
             return;
         }
 
         if (!isStringType && rawValue.trim() !== "" && isNaN(Number(rawValue))) {
-            setError(`Value "${rawValue}" is not a valid number.`);
+            setValidationError(`Value "${rawValue}" is not a valid number.`);
             return;
         }
 
         const newValues = [...discreteValues];
         newValues[index] = rawValue;
         setDiscreteValues(newValues);
-        setError(null);
     };
 
     const validateRangeOption = (): { valid: boolean; range?: { min?: number; max?: number }; discrete?: (number | string)[] } => {
@@ -152,7 +159,7 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
             }
         }
 
-        setError(errorMsg);
+        setValidationError(errorMsg);
         return { valid: isValid, range: Object.keys(rangeSpec).length > 0 ? rangeSpec : undefined, discrete: discreteSpec.length > 0 ? discreteSpec : undefined };
     };
 
@@ -203,12 +210,13 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
             }
         }
 
-        setError(errorMsg);
+        setValidationError(errorMsg);
         return { valid: isValid, discrete: finalDiscreteValues.length > 0 ? finalDiscreteValues : undefined };
     };
 
     const handleSave = () => {
         setError(null);
+        setValidationError(null);
         let finalMissingSpec: MissingValuesSpec | null = null;
 
         if (option === "none") {
@@ -230,40 +238,40 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                  return;
              }
             const validationResult = validateRangeOption();
-            if (validationResult.valid) {
-                 if (validationResult.range || (validationResult.discrete && validationResult.discrete.length > 0)) {
-                     finalMissingSpec = {};
-                     if(validationResult.range) {
-                         finalMissingSpec.range = validationResult.range;
-                     }
-                     if (validationResult.discrete && validationResult.discrete.length > 0) {
-                         finalMissingSpec.discrete = validationResult.discrete;
-                     }
-                     if (!finalMissingSpec.range && !finalMissingSpec.discrete) {
-                        finalMissingSpec = null;
-                     } else if (!finalMissingSpec.range && finalMissingSpec.discrete) {
-                         setOption("discrete");
-                         setDiscreteValues([finalMissingSpec.discrete[0].toString(), "", ""]);
-                         setRangeMin("");
-                         setRangeMax("");
-                         setRangeDiscreteValue("");
-                         const discreteValidation = validateDiscreteOption();
-                         if (discreteValidation.valid && discreteValidation.discrete) {
-                             finalMissingSpec = { discrete: discreteValidation.discrete };
-                         } else {
-                              finalMissingSpec = null;
-                              if (!discreteValidation.valid) return;
-                         }
-
-                     } else if (finalMissingSpec.range && !finalMissingSpec.discrete) {
-                         delete finalMissingSpec.discrete;
-                     }
-
-                 } else {
-                     finalMissingSpec = null;
-                 }
-            } else {
+            if (!validationResult.valid) {
                 return;
+            }
+
+            if (validationResult.range || (validationResult.discrete && validationResult.discrete.length > 0)) {
+                 finalMissingSpec = {};
+                 if(validationResult.range) {
+                     finalMissingSpec.range = validationResult.range;
+                 }
+                 if (validationResult.discrete && validationResult.discrete.length > 0) {
+                     finalMissingSpec.discrete = validationResult.discrete;
+                 }
+                 if (!finalMissingSpec.range && (!finalMissingSpec.discrete || finalMissingSpec.discrete.length === 0)) {
+                    finalMissingSpec = null;
+                 } else if (!finalMissingSpec.range && finalMissingSpec.discrete) {
+                     setOption("discrete");
+                     setDiscreteValues([finalMissingSpec.discrete[0].toString(), "", ""]);
+                     setRangeMin("");
+                     setRangeMax("");
+                     setRangeDiscreteValue("");
+                     const discreteValidation = validateDiscreteOption();
+                     if (discreteValidation.valid && discreteValidation.discrete) {
+                         finalMissingSpec = { discrete: discreteValidation.discrete };
+                     } else {
+                          finalMissingSpec = null;
+                          if (!discreteValidation.valid) return;
+                     }
+
+                 } else if (finalMissingSpec.range && !finalMissingSpec.discrete) {
+                     delete finalMissingSpec.discrete;
+                 }
+
+            } else {
+                finalMissingSpec = null;
             }
         }
 
@@ -271,158 +279,172 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
         onOpenChange(false);
     };
 
-    const handleRangeMinChange = (value: string) => {
-        setRangeMin(value);
-        setError(null);
-    };
-
-    const handleRangeMaxChange = (value: string) => {
-        setRangeMax(value);
-        setError(null);
-    };
-
-    const handleRangeDiscreteChange = (value: string) => {
-        if (!isStringType && value.trim() !== "" && isNaN(Number(value))) {
-            setError(`Discrete value "${value}" is not a valid number.`);
+    // Input handlers for range/discrete values (prevent non-numeric if applicable)
+    const handleNumericInputChange = (setter: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setValidationError(null);
+        // Allow empty string, minus sign, decimal point, and numbers
+        if (value === '' || value === '-' || (!isNaN(Number(value)) || (value.endsWith('.') && !value.slice(0, -1).includes('.')))) {
+            setter(value);
         } else {
-            setError(null);
+            setValidationError("Only numeric input allowed for this field.");
         }
-        setRangeDiscreteValue(value);
+    };
+
+    const handleStringInputChange = (setter: (value: string) => void, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setValidationError(null);
+        if (new TextEncoder().encode(value).length <= 8) {
+            if (index !== undefined) {
+                handleDiscreteValueChange(index, value);
+            } else {
+                setter(value);
+            }
+        } else {
+            setValidationError("String missing values cannot exceed 8 bytes.");
+        }
+    };
+
+    const handleRangeMinChange = isStringType ? handleStringInputChange(setRangeMin) : handleNumericInputChange(setRangeMin);
+    const handleRangeMaxChange = isStringType ? handleStringInputChange(setRangeMax) : handleNumericInputChange(setRangeMax);
+    const handleRangeDiscreteChange = isStringType ? handleStringInputChange(setRangeDiscreteValue) : handleNumericInputChange(setRangeDiscreteValue);
+
+    // Create a specific handler for the discrete input array
+    const getDiscreteInputHandler = (index: number) => {
+        return isStringType
+            ? handleStringInputChange((val) => handleDiscreteValueChange(index, val), index)
+            : (e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                setValidationError(null);
+                // Allow empty string, minus sign, decimal point, and numbers for discrete numeric
+                if (value === '' || value === '-' || (!isNaN(Number(value)) || (value.endsWith('.') && !value.slice(0, -1).includes('.')))) {
+                    handleDiscreteValueChange(index, value);
+                } else {
+                    setValidationError("Only numeric input allowed for this field.");
+                }
+              };
     };
 
     // Handler for RadioGroup to ensure type safety
     const handleOptionChange = (value: string) => {
         if (value === "none" || value === "discrete" || value === "range") {
             setOption(value);
-            setError(null); // Reset error when changing option type
+            setError(null);
+            setValidationError(null);
         } else {
             // Handle unexpected value if necessary, though UI should prevent this
             console.error("Invalid missing value option received:", value);
+            setError("An unexpected error occurred selecting an option.");
         }
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md bg-white shadow-md rounded-none p-0 overflow-hidden">
-                <DialogHeader className="bg-gray-200 p-2 border-b border-gray-300">
-                    <DialogTitle className="text-md font-medium text-gray-800">Missing Values</DialogTitle>
-                </DialogHeader>
+            <DialogContent className={cn(
+                "bg-white flex flex-col",
+                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
+            )}>
+                <DialogHeader className="px-6 py-4 flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Missing Values</DialogTitle>
+                 </DialogHeader>
+                <Separator />
 
-                <div className="p-4 space-y-4">
-                    {error && (
-                        <div className="text-xs text-red-500 font-medium border-l-2 border-red-500 pl-2 py-1 bg-red-50">
-                            {error}
-                        </div>
-                    )}
-
+                <div className="flex-grow overflow-y-auto px-6 py-5">
                     <RadioGroup value={option} onValueChange={handleOptionChange} className="space-y-4">
                         <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="none" id="none" className="border-gray-400 text-gray-800" />
-                            <Label htmlFor="none" className="text-gray-800 font-medium">
-                                No missing values
+                            <RadioGroupItem value="none" id="none" />
+                            <Label htmlFor="none">No missing values</Label>
+                        </div>
+
+                        <div className="flex items-start space-x-3">
+                            <RadioGroupItem value="discrete" id="discrete" className="mt-1 flex-shrink-0"/>
+                            <Label htmlFor="discrete" className="flex-1 space-y-2">
+                                Discrete missing values
+                                <div className={cn(
+                                    "gap-2",
+                                    isMobile ? "grid grid-cols-1" : "flex space-x-2",
+                                    option !== 'discrete' ? 'opacity-50' : ''
+                                )}>
+                                    {discreteValues.map((value, index) => (
+                                        <Input
+                                            key={index}
+                                            type={"text"}
+                                            value={value}
+                                            onChange={getDiscreteInputHandler(index)}
+                                            placeholder={`Value ${index + 1}`}
+                                            disabled={option !== 'discrete'}
+                                            className="h-9 flex-1"
+                                            maxLength={isStringType ? 8 : undefined}
+                                        />
+                                    ))}
+                                </div>
+                                {isStringType && option === 'discrete' && (
+                                    <p className="text-xs text-muted-foreground pt-0.5">Maximum 8 bytes per value.</p>
+                                )}
                             </Label>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="discrete" id="discrete" className="border-gray-400 text-gray-800" />
-                                <Label htmlFor="discrete" className="text-gray-800 font-medium">
-                                    Discrete missing values
-                                </Label>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 pl-6">
-                                {discreteValues.map((value, index) => (
+                        <div className="flex items-start space-x-3">
+                            <RadioGroupItem value="range" id="range" disabled={isStringType} className="mt-1 flex-shrink-0" />
+                            <Label
+                                htmlFor="range"
+                                className={cn(
+                                    "flex-1 space-y-2",
+                                    isStringType && 'text-muted-foreground cursor-not-allowed'
+                                )}
+                            >
+                                Range plus one optional discrete missing value
+                                {isStringType && <span className="text-xs text-muted-foreground ml-1">(Numeric only)</span>}
+                                <div className={cn(
+                                    "gap-2",
+                                    isMobile ? "grid grid-cols-1" : "flex space-x-2",
+                                    option !== 'range' || isStringType ? 'opacity-50' : ''
+                                )}>
                                     <Input
-                                        key={index}
-                                        type={isStringType ? "text" : "text"}
-                                        value={value}
-                                        onChange={(e) => handleDiscreteValueChange(index, e.target.value)}
-                                        className="h-8 text-xs border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                        disabled={option !== 'discrete'}
-                                        maxLength={isStringType ? 8 : undefined}
-                                        inputMode={isStringType ? "text" : "numeric"}
+                                        type="text"
+                                        value={rangeMin}
+                                        onChange={handleRangeMinChange}
+                                        placeholder="Low"
+                                        disabled={option !== 'range' || isStringType}
+                                        className="h-9 flex-1"
                                     />
-                                ))}
-                            </div>
-                            <p className="text-xs text-gray-500 pl-6">
-                                Specify up to three discrete values. {isStringType ? "Max 8 bytes per value." : "Values must be numeric."}
-                            </p>
-                        </div>
-
-                        {!isStringType && (
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="range" id="range" className="border-gray-400 text-gray-800" />
-                                    <Label htmlFor="range" className="text-gray-800 font-medium">
-                                        Range plus one optional discrete missing value
-                                    </Label>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 pl-6 items-center">
-                                    <div>
-                                        <Label htmlFor="range-low" className="text-xs text-gray-600">Low:</Label>
-                                        <Input
-                                            id="range-low"
-                                            type="text"
-                                            inputMode='numeric'
-                                            value={rangeMin}
-                                            onChange={(e) => handleRangeMinChange(e.target.value)}
-                                            className="h-8 text-xs border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                            disabled={option !== 'range'}
-                                            placeholder='e.g., 0'
-                                        />
-                                    </div>
-                                     <div>
-                                        <Label htmlFor="range-high" className="text-xs text-gray-600">High:</Label>
-                                        <Input
-                                            id="range-high"
-                                             type="text"
-                                             inputMode='numeric'
-                                            value={rangeMax}
-                                            onChange={(e) => handleRangeMaxChange(e.target.value)}
-                                            className="h-8 text-xs border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                            disabled={option !== 'range'}
-                                             placeholder='e.g., 99'
-                                        />
-                                    </div>
-                                </div>
-                                 <div className="pl-6 mt-2">
-                                    <Label htmlFor="range-discrete" className="text-xs text-gray-600">Optional Discrete Value:</Label>
                                     <Input
-                                        id="range-discrete"
-                                         type="text"
-                                         inputMode='numeric'
+                                        type="text"
+                                        value={rangeMax}
+                                        onChange={handleRangeMaxChange}
+                                        placeholder="High"
+                                        disabled={option !== 'range' || isStringType}
+                                        className="h-9 flex-1"
+                                    />
+                                    <Input
+                                        type="text"
                                         value={rangeDiscreteValue}
-                                        onChange={(e) => handleRangeDiscreteChange(e.target.value)}
-                                        className="h-8 text-xs border-gray-300 focus:ring-blue-500 focus:border-blue-500 w-1/2"
-                                        disabled={option !== 'range'}
-                                         placeholder='e.g., -1'
+                                        onChange={handleRangeDiscreteChange}
+                                        placeholder="Discrete value"
+                                        disabled={option !== 'range' || isStringType}
+                                        className="h-9 flex-1"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 pl-6">
-                                     Specify a range (Low/High) and/or a single discrete value. Values must be numeric.
-                                </p>
-                            </div>
-                        )}
+                            </Label>
+                        </div>
                     </RadioGroup>
+                    {(error || validationError) && (
+                        <Alert variant="destructive" className="mt-4">
+                            <AlertDescription>
+                                {error || validationError}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </div>
 
-                <DialogFooter className="bg-gray-100 p-2 border-t border-gray-300 flex justify-end space-x-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOpenChange(false)}
-                        className="text-xs px-3 py-1 border-gray-400 text-gray-700 hover:bg-gray-200"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={handleSave}
-                        className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                        OK
-                    </Button>
+                <Separator />
+                <DialogFooter className="px-6 py-4 flex-shrink-0 sm:justify-between">
+                    <div className="flex space-x-2 justify-end">
+                     <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                         Cancel
+                     </Button>
+                     <Button onClick={handleSave}>OK</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

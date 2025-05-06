@@ -5,45 +5,39 @@ import {
     FolderOpen,
     Save,
     Printer,
-    History,
     Undo,
     Redo,
     Locate,
     Variable,
     Search,
-    TableRowsSplit,
-    ChevronDown,
 } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { useMobile } from "@/hooks/useMobile";
+import { useActions } from '@/hooks/actions';
+import { ModalType, useModal } from '@/hooks/useModal';
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
     const { isMobile } = useMobile();
+    const { handleAction } = useActions();
+    const { openModal } = useModal();
 
     const fileTools = [
-        { name: 'Open Data', icon: <FolderOpen size={16} /> },
-        { name: 'Save Document', icon: <Save size={16} /> },
-        { name: 'Print', icon: <Printer size={16} /> },
-    ];
-
-    const historyTools = [
-        { name: 'History', icon: <History size={16} /> },
-        { name: 'Undo', icon: <Undo size={16} /> },
-        { name: 'Redo', icon: <Redo size={16} /> },
+        { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
+        { name: 'Save Document', icon: <Save size={16} />, onClick: () => handleAction({ actionType: 'Save' }) },
+        { name: 'Print', icon: <Printer size={16} />, onClick: () => openModal(ModalType.Print) },
     ];
 
     const dataTools = [
         { name: 'Locate', icon: <Locate size={16} /> },
         { name: 'Variable', icon: <Variable size={16} /> },
         { name: 'Search', icon: <Search size={16} /> },
-        { name: 'Split File', icon: <TableRowsSplit size={16} /> },
     ];
 
-    const ToolGroup = ({ tools }: { tools: { name: string; icon: React.ReactNode }[] }) => (
+    const ToolGroup = ({ tools }: { tools: { name: string; icon: React.ReactNode; onClick?: () => void }[] }) => (
         <div className="flex">
             {tools.map((tool) => (
                 <TooltipProvider key={tool.name} delayDuration={300}>
@@ -55,6 +49,7 @@ export default function Toolbar() {
                                 onMouseEnter={() => setHoveredTool(tool.name)}
                                 onMouseLeave={() => setHoveredTool(null)}
                                 aria-label={tool.name}
+                                onClick={tool.onClick}
                             >
                                 {tool.icon}
                             </button>
@@ -73,8 +68,6 @@ export default function Toolbar() {
             <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
                 <div className="flex space-x-2 min-w-max">
                     <ToolGroup tools={fileTools} />
-                    <Separator orientation="vertical" className="h-6 my-auto" />
-                    <ToolGroup tools={historyTools} />
                     <Separator orientation="vertical" className="h-6 my-auto" />
                     <ToolGroup tools={dataTools} />
                 </div>
