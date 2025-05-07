@@ -9,118 +9,96 @@ const round = (num, decimals) => {
   
   // Helper: Cek apakah nilai adalah missing (system atau user-defined).
   const checkMissing = (value, missingDefinition, type) => {
-    // System missing: string kosong untuk NUMERIC/DATE.
     if (value === "") {
       if (type === 'NUMERIC' || type === 'DATE') {
         return { isMissing: true, missingType: "System", originalMissingValue: "" };
       } else {
-        // String kosong valid untuk tipe STRING.
         return { isMissing: false, missingType: null, originalMissingValue: null };
       }
     }
-    // Null/undefined selalu system missing jika bukan string kosong yg sudah ditangani.
-    if (value === null || value === undefined) {
-        return { isMissing: true, missingType: "System", originalMissingValue: value };
-    }
-
-    // Tidak ada definisi missing, berarti bukan user-defined missing.
+    // Ensure missingDefinition is not null or undefined before trying to access its properties
     if (!missingDefinition) {
       return { isMissing: false, missingType: null, originalMissingValue: null };
     }
   
-    // User-defined discrete missing.
     if (missingDefinition.discrete && Array.isArray(missingDefinition.discrete)) {
+      // Standardize comparison for numeric types by converting string discrete values to numbers
       let valueToCompare = value;
-      // Konversi nilai ke number jika tipe NUMERIC untuk perbandingan.
       if (type === 'NUMERIC' && typeof value !== 'number') {
          const numVal = parseFloat(value);
          if (!isNaN(numVal)) {
-           valueToCompare = numVal;
+            valueToCompare = numVal; // Compare as number if possible
          }
-      }
+      } // For non-numeric types, or if conversion fails, valueToCompare remains original
   
       for (const missingVal of missingDefinition.discrete) {
          let discreteMissingToCompare = missingVal;
-         // Konversi definisi missing diskrit ke number jika tipe NUMERIC & missingVal adalah string.
          if (type === 'NUMERIC' && typeof missingVal === 'string'){
               const numMissing = parseFloat(missingVal);
               if(!isNaN(numMissing)){
                   discreteMissingToCompare = numMissing;
               }
          }
-         // Bandingkan nilai (setelah potensi konversi) dan juga sebagai string.
-        if (valueToCompare === discreteMissingToCompare || String(value) === String(missingVal)) {
+        // Check both typed and string comparison to be safe, especially for mixed types
+        if (valueToCompare === discreteMissingToCompare || String(valueToCompare) === String(missingVal)) {
              return { isMissing: true, missingType: "UserDefined", originalMissingValue: missingVal };
         }
       }
     }
   
-    // User-defined range missing (hanya untuk NUMERIC atau DATE).
-    // Untuk DATE, nilai dikonversi ke numerik (SPSS seconds) sebelum perbandingan range.
-    if ((type === 'NUMERIC' || type === 'DATE') && missingDefinition.range) {
-      let numValue;
-      if (type === 'DATE') {
-        // `dateStringToSpssSeconds` diimpor dari `spssDateConverter.js` via `importScripts` di `onmessage`.
-        // Jika tidak tersedia, atau konversi gagal, `numValue` akan null/NaN.
-        numValue = typeof self.dateStringToSpssSeconds === 'function' ? self.dateStringToSpssSeconds(String(value)) : null;
-      } else {
-        numValue = typeof value === 'number' ? value : parseFloat(value);
-      }
-
-      if (numValue !== null && !isNaN(numValue)) {
-        const min = typeof missingDefinition.range.min === 'number' ? missingDefinition.range.min : parseFloat(missingDefinition.range.min);
-        const max = typeof missingDefinition.range.max === 'number' ? missingDefinition.range.max : parseFloat(missingDefinition.range.max);
+    // Handle range missing, ensuring value is numeric for comparison
+    if (type === 'NUMERIC' && missingDefinition.range) {
+      const numValue = typeof value === 'number' ? value : parseFloat(value);
+      if (!isNaN(numValue)) {
+        const min = parseFloat(missingDefinition.range.min);
+        const max = parseFloat(missingDefinition.range.max);
         if (!isNaN(min) && !isNaN(max) && numValue >= min && numValue <= max) {
-          return { isMissing: true, missingType: "UserDefinedRange", originalMissingValue: value };
+          return { isMissing: true, missingType: "UserDefined", originalMissingValue: value }; // Store original value that triggered missing
         }
       }
     }
-    // Bukan missing jika lolos semua cek.
+  
     return { isMissing: false, missingType: null, originalMissingValue: null };
   };
   
   // Helper: Format nilai untuk tampilan di tabel frekuensi.
   // Terapkan value labels jika ada. Format khusus untuk DATE & STRING kosong.
-  const formatDisplayValue = (value, variableMeta, spssDateFormat = 'dd-MMM-yyyy') => {
-      // String kosong ditampilkan sebagai "".
+  const formatDisplayValue = (value, variableMeta) => {
+      // For STRING type, if the value is an empty string, display it as "".
       if (variableMeta.type === 'STRING' && value === "") {
-          return '""'; // Representasi string kosong.
+          return '""';
       }
       const { type, decimals, values: valueLabels } = variableMeta;
   
     if (type === 'NUMERIC') {
       const numValue = typeof value === 'number' ? value : parseFloat(value);
-       if (isNaN(numValue)) return String(value); // Kembalikan apa adanya jika NaN setelah parse.
+       if (isNaN(numValue)) return String(value); // If not a number, return as string
   
-      // Cek value label.
+      // Check for value labels first
       if (valueLabels && valueLabels.length > 0) {
         const foundLabel = valueLabels.find(vl => vl.value === numValue);
         if (foundLabel) return foundLabel.label;
       }
-      return numValue.toFixed(decimals); // Format angka.
+      // Otherwise, format as a number with specified decimals
+      return numValue.toFixed(decimals);
     } else if (type === 'DATE') {
-      // Asumsi `value` untuk DATE adalah string 'dd-mm-yyyy' dari data asli.
-      // Fungsi ini harusnya ada via importScripts jika worker dipanggil dengan benar.
-      if (typeof self.spssSecondsToDateString === 'function' && typeof self.dateStringToSpssSeconds === 'function') {
-          const spssSeconds = self.dateStringToSpssSeconds(String(value));
-          if (spssSeconds !== null) {
-              // Format ke dd-MMM-yyyy (e.g., 01-JAN-2023)
-              // Ini contoh, bisa disesuaikan jika format lain diperlukan.
-              const dateObj = new Date(self.SPSS_EPOCH_MILLIS + spssSeconds * 1000);
+      // Handle date formatting (example: DD-MMM-YYYY)
+      // This assumes date values are stored in a recognizable format or as Date objects
+      // For simplicity, assuming date strings are DD-MM-YYYY and need reformatting
+      if (typeof value === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(value)) {
+         const parts = value.split('-'); // DD, MM, YYYY
+         // Ensure it's a valid date before formatting to avoid errors
+         const dateObj = new Date(parts[2], parts[1] - 1, parts[0]); // Year, Month (0-indexed), Day
               if (!isNaN(dateObj.getTime())) {
-                  const day = String(dateObj.getUTCDate()).padStart(2, '0');
-                  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-                  const month = months[dateObj.getUTCMonth()];
-                  const year = dateObj.getUTCFullYear();
-                  if (spssDateFormat === 'dd-MMM-yyyy') {
-                    return `${day}-${month}-${year}`;
-                  } // Tambahkan format lain jika perlu
+           // Example: 01-JAN-2023
+           const options = { day: '2-digit', month: 'short', year: 'numeric' };
+           const formatted = dateObj.toLocaleDateString('en-GB', options).replace(/ /g, '-').toUpperCase();
+           return formatted;
               }
           }
+      return String(value); // Fallback for unparseable or non-standard date formats
       }
-      return String(value); // Fallback jika konversi gagal.
-    }
-    // Default: kembalikan sebagai string.
+    // For other types or if no specific formatting, return as string
     return String(value);
   };
   
@@ -130,296 +108,301 @@ const round = (num, decimals) => {
   const getSortKey = (value, type) => {
     if (type === 'NUMERIC') {
       const num = parseFloat(value);
-      // String kosong di NUMERIC (missing) diurutkan paling akhir.
-      if (value === "") return Infinity;
-      // NaN (dari string non-numerik) diurutkan setelah angka, sebelum string kosong.
-      return isNaN(num) ? String(value) : num;
+      if (value === "") return Infinity; // Sort empty strings (interpreted as system missing for numeric) last
+      return isNaN(num) ? String(value) : num; // Sort non-numeric strings alphabetically, numbers numerically
     } else if (type === 'DATE') {
-      // Untuk DATE, konversi ke timestamp untuk pengurutan.
-      // Fungsi ini harusnya ada.
-      if (typeof self.dateStringToSpssSeconds === 'function') {
-          const spssSeconds = self.dateStringToSpssSeconds(String(value));
-          if (spssSeconds !== null) return spssSeconds;
+      // Attempt to parse date for sorting, assumes DD-MM-YYYY format
+      if (typeof value === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(value)) {
+          const parts = value.split('-');
+          const dateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+          return isNaN(dateObj.getTime()) ? value : dateObj.getTime(); // Sort by timestamp or string if unparseable
       }
-      return String(value); // Fallback jika konversi gagal.
+      return value; // Fallback sort by original value if not in expected date format
     } else if (type === 'STRING' && value === ""){
-        // String kosong (valid) diurutkan paling awal untuk tipe STRING.
-        return "";
+        return ""; // Ensure empty strings are sorted appropriately, often first or as a distinct category
     }
-    return String(value);
+    return String(value); // Default to string sorting for other types or unhandled cases
   };
   
   // Kalkulasi tabel frekuensi untuk satu variabel.
-  const calculateFrequencyForVariable = (variableItem, weightData, globalOptions) => {
+  const calculateFrequencyForVariable = (variableItem) => {
+    // Note: Weighting is not implemented in this frequency calculation version
+    // If weighting is needed, logic to multiply frequencies by corresponding weights
+    // from inputData.weightVariableData would need to be added here and downstream.
     const { variable, data } = variableItem;
-    const { type, label, name, missing: missingDefinition, decimals, values: valueLabels } = variable;
+    const { type, label, name, missing: missingDefinition, decimals } = variable;
+  
     const displayTitle = (label && String(label).trim() !== '') ? label : name;
-    const sortOrder = globalOptions.display.order === 'descending' ? -1 : 1;
+    // console.log(`Processing variable: ${displayTitle} (Type: ${type})`);
+  
+    let totalN = 0; // Total observations including missing
+    let validN = 0;   // Total valid (non-missing) observations
+    const validCounts = new Map(); // Stores frequency of valid values
+    const missingCounts = new Map(); // Stores frequency of missing values, keyed by original missing value
+    let systemMissingN = 0; // Specifically count system missing (e.g., empty strings for numeric)
 
-    let totalN_weighted = 0;
-    let validN_weighted = 0;
-    const validCounts = new Map(); // Map: originalValue -> { frequency_unweighted, frequency_weighted }
-    const missingInfo = {
-        system: { frequency_unweighted: 0, frequency_weighted: 0, values: new Set() },
-        userDiscrete: new Map(), // Map: originalMissingValue -> { frequency_unweighted, frequency_weighted }
-        userRange: { frequency_unweighted: 0, frequency_weighted: 0, values: new Set() } 
-    };
-
-    for (let i = 0; i < data.length; i++) {
-      const rawValue = data[i];
-      const weight = weightData && weightData[i] !== null && !isNaN(weightData[i]) && weightData[i] > 0 ? weightData[i] : 1;
-      totalN_weighted += weight;
-
+    for (const rawValue of data) {
+      totalN++;
       const missingCheck = checkMissing(rawValue, missingDefinition, type);
   
       if (missingCheck.isMissing) {
         if (missingCheck.missingType === "System") {
-            missingInfo.system.frequency_unweighted++;
-            missingInfo.system.frequency_weighted += weight;
-            missingInfo.system.values.add(missingCheck.originalMissingValue);
-        } else if (missingCheck.missingType === "UserDefined"){
-            const key = String(missingCheck.originalMissingValue);
-            let current = missingInfo.userDiscrete.get(key);
-            if (!current) {
-                current = { frequency_unweighted: 0, frequency_weighted: 0 };
-                missingInfo.userDiscrete.set(key, current);
-            }
-            current.frequency_unweighted++;
-            current.frequency_weighted += weight;
-        } else if (missingCheck.missingType === "UserDefinedRange") {
-            missingInfo.userRange.frequency_unweighted++;
-            missingInfo.userRange.frequency_weighted += weight;
-            missingInfo.userRange.values.add(rawValue); // Simpan nilai asli yang masuk range.
+          systemMissingN++;
+          // Aggregate system missing under a generic "System" key or handle as per display needs
+          const current = missingCounts.get("System") || { frequency: 0, missingType: 'System' };
+          current.frequency++;
+          missingCounts.set("System", current);
+        } else {
+          // User-defined missing
+          const originalMissingValue = missingCheck.originalMissingValue;
+          const current = missingCounts.get(originalMissingValue) || { frequency: 0, missingType: 'UserDefined' };
+          current.frequency++;
+          missingCounts.set(originalMissingValue, current);
         }
       } else {
-        validN_weighted += weight;
-        let currentCounts = validCounts.get(rawValue);
-        if (!currentCounts) {
-            currentCounts = { frequency_unweighted: 0, frequency_weighted: 0 };
-            validCounts.set(rawValue, currentCounts);
-        }
-        currentCounts.frequency_unweighted++;
-        currentCounts.frequency_weighted += weight;
+        // Valid value
+        validN++;
+        const currentCount = validCounts.get(rawValue) || 0;
+        validCounts.set(rawValue, currentCount + 1);
       }
     }
   
-    // Proses dan urutkan nilai valid.
+    // Process and sort valid values
     let processedValid = [];
-    for (const [originalValue, counts] of validCounts.entries()) {
+    for (const [originalValue, frequency] of validCounts.entries()) {
       processedValid.push({
         originalValue,
-        frequency_unweighted: counts.frequency_unweighted,
-        frequency_weighted: counts.frequency_weighted,
+        frequency,
         sortKey: getSortKey(originalValue, type)
       });
     }
-    // Pengurutan utama berdasarkan sortKey, lalu originalValue sebagai fallback.
+    // Sort valid values based on their sort key, then by original value as a tie-breaker
     processedValid.sort((a, b) => {
-       if (a.sortKey < b.sortKey) return -1 * sortOrder;
-       if (a.sortKey > b.sortKey) return 1 * sortOrder;
-       // Fallback sort berdasarkan string dari originalValue jika sortKey sama.
-       const strA = String(a.originalValue);
-       const strB = String(b.originalValue);
-       if (strA < strB) return -1 * sortOrder;
-       if (strA > strB) return 1 * sortOrder;
+       if (a.sortKey < b.sortKey) return -1;
+       if (a.sortKey > b.sortKey) return 1;
+       // Tie-breaking for numerics that might have same string representation but different type (e.g. 5 vs "5")
+       // This primarily helps ensure consistent ordering for identical sortKeys.
+       if (String(a.originalValue) < String(b.originalValue)) return -1;
+       if (String(a.originalValue) > String(b.originalValue)) return 1;
        return 0;
      });
   
+    // Prepare rows for valid data including percentages
     const validRowsData = [];
-    let cumulativePercent_weighted = 0.0;
+    let cumulativePercent = 0.0;
     for (const item of processedValid) {
-      const percent_weighted = totalN_weighted > 0 ? (item.frequency_weighted / totalN_weighted) * 100 : 0;
-      const validPercent_weighted = validN_weighted > 0 ? (item.frequency_weighted / validN_weighted) * 100 : 0;
-      if(!isNaN(validPercent_weighted)) {
-          cumulativePercent_weighted += validPercent_weighted;
+      const frequency = item.frequency;
+      const percent = totalN > 0 ? (frequency / totalN) * 100 : 0;
+      const validPercent = validN > 0 ? (frequency / validN) * 100 : 0;
+      if(!isNaN(validPercent)) { // Ensure cumulativePercent only increases with valid numbers
+          cumulativePercent += validPercent;
       }
       validRowsData.push({
-        label: formatDisplayValue(item.originalValue, variable, globalOptions.display.dateFormat),
-        frequency: globalOptions.display.showWeightedCounts ? round(item.frequency_weighted, 1) : item.frequency_unweighted,
-        percent: round(percent_weighted, 1),
-        validPercent: round(validPercent_weighted, 1),
-        cumulativePercent: round(Math.min(cumulativePercent_weighted, 100), 1)
+        label: formatDisplayValue(item.originalValue, variable), // Use variable meta for formatting
+        frequency,
+        percent, // Percentage of total N
+        validPercent, // Percentage of valid N
+        cumulativePercent: Math.min(cumulativePercent, 100) // Cap at 100%
       });
     }
   
-    // Proses dan siapkan baris untuk missing values.
-    const missingRowsData = [];
-    // 1. User-defined discrete missing values.
-    let processedUserDiscreteMissing = [];
-    for (const [originalMissingValue, counts] of missingInfo.userDiscrete.entries()) {
-        processedUserDiscreteMissing.push({
+      // Process and sort user-defined missing values
+      let processedMissing = [];
+      for (const [originalMissingValue, data] of missingCounts.entries()) {
+          if (originalMissingValue === "System") continue; // Skip aggregated system missing for now
+          processedMissing.push({
             originalMissingValue,
-            frequency_unweighted: counts.frequency_unweighted,
-            frequency_weighted: counts.frequency_weighted,
-            sortKey: getSortKey(originalMissingValue, type) 
+              frequency: data.frequency,
+            sortKey: getSortKey(originalMissingValue, type) // Use original value for sorting missing
         });
     }
-    processedUserDiscreteMissing.sort((a, b) => {
+    // Sort missing values similar to valid values
+      processedMissing.sort((a, b) => {
         if (a.sortKey < b.sortKey) return -1;
         if (a.sortKey > b.sortKey) return 1;
-        const strA = String(a.originalMissingValue);
-        const strB = String(b.originalMissingValue);
-        if (strA < strB) return -1;
-        if (strA > strB) return 1;
+           if (String(a.originalMissingValue) < String(b.originalMissingValue)) return -1;
+           if (String(a.originalMissingValue) > String(b.originalMissingValue)) return 1;
         return 0;
     });
 
-    processedUserDiscreteMissing.forEach(item => {
-        const percent_weighted = totalN_weighted > 0 ? (item.frequency_weighted / totalN_weighted) * 100 : 0;
-        // Cari value label untuk missing value jika ada.
-        let displayLabel = formatDisplayValue(item.originalMissingValue, variable, globalOptions.display.dateFormat);
-        if (valueLabels) {
-            const numMissingVal = parseFloat(item.originalMissingValue);
-            const foundLabel = valueLabels.find(vl => vl.value === numMissingVal);
-            if (foundLabel) displayLabel = foundLabel.label;
+    // Prepare rows for missing data
+    const missingRowsData = [];
+      for (const item of processedMissing) {
+          const frequency = item.frequency;
+          const percent = totalN > 0 ? (frequency / totalN) * 100 : 0;
+          let displayLabel = item.originalMissingValue;
+          // Apply numeric formatting for missing values if they are numbers
+          if (type === 'NUMERIC') {
+              const numVal = parseFloat(item.originalMissingValue);
+              if (!isNaN(numVal)) {
+                  displayLabel = numVal.toFixed(decimals);
+              }
         }
-
         missingRowsData.push({
-            label: String(displayLabel),
-            frequency: globalOptions.display.showWeightedCounts ? round(item.frequency_weighted, 1) : item.frequency_unweighted,
-            percent: round(percent_weighted, 1),
-            isSystem: false
-        });
-    });
-
-    // 2. User-defined range missing values.
-    if (missingInfo.userRange.frequency_unweighted > 0) {
-        const percent_weighted = totalN_weighted > 0 ? (missingInfo.userRange.frequency_weighted / totalN_weighted) * 100 : 0;
-        // Label untuk range missing bisa lebih deskriptif, e.g., "Range (LOW-HIGH)"
-        // Untuk saat ini, gunakan label generik.
-        missingRowsData.push({
-            label: `User-defined Range Missing (${missingDefinition.range.min} - ${missingDefinition.range.max})`, 
-            frequency: globalOptions.display.showWeightedCounts ? round(missingInfo.userRange.frequency_weighted, 1) : missingInfo.userRange.frequency_unweighted,
-            percent: round(percent_weighted, 1),
-            isSystem: false
+            label: String(displayLabel), // Ensure label is string
+              frequency,
+              percent,
+            isSystem: false // Mark as not system missing
         });
     }
   
-    // 3. System missing values.
-    if (missingInfo.system.frequency_unweighted > 0) {
-      const percent_weighted = totalN_weighted > 0 ? (missingInfo.system.frequency_weighted / totalN_weighted) * 100 : 0;
+    // Add system missing row if any system missing values were counted
+    if (systemMissingN > 0) {
+      const frequency = systemMissingN;
+      const percent = totalN > 0 ? (frequency / totalN) * 100 : 0;
       missingRowsData.push({
-        label: "System Missing",
-        frequency: globalOptions.display.showWeightedCounts ? round(missingInfo.system.frequency_weighted, 1) : missingInfo.system.frequency_unweighted,
-        percent: round(percent_weighted, 1),
-        isSystem: true
+        label: "System", // Standard label for system missing
+        frequency,
+        percent,
+        isSystem: true // Mark as system missing
       });
     }
     
-    const totalValidN_unweighted = processedValid.reduce((sum, item) => sum + item.frequency_unweighted, 0);
-    const totalMissingN_weighted = totalN_weighted - validN_weighted;
-
     return {
       variableLabel: displayTitle,
       validRowsData,
       missingRowsData,
-      totalN_unweighted: data.length, // Total kasus asli sebelum bobot.
-      totalN_weighted: round(totalN_weighted,1),
-      validN_unweighted: totalValidN_unweighted,
-      validN_weighted: round(validN_weighted,1),
-      totalMissingN_weighted: round(totalMissingN_weighted,1)
+      totalN,
+      validN,
+      totalMissingN: totalN - validN
     };
   };
   
   // Format hasil analisis frekuensi menjadi struktur tabel output.
-  const formatOutput = (analysisResults, globalOptions) => {
+  const formatOutput = (analysisResults) => {
     const tables = [];
   
     if (!Array.isArray(analysisResults)) {
-        return { tables: [] };
+        // console.error("Internal error: Analysis results are not an array.");
+        return { tables: [] }; // Return empty structure to prevent further errors
     }
   
     for (const result of analysisResults) {
       if (!result || typeof result !== 'object' || !result.variableLabel) {
-          continue;
+          // console.warn("Skipping invalid analysis result:", result);
+          continue; // Skip if a result is malformed
       }
   
-      const tableRows = [];
-      result.validRowsData.forEach(row => tableRows.push(row));
-  
-      // Total untuk Valid.
-      if (result.validRowsData.length > 0) {
-        tableRows.push({
-          label: "Total Valid",
-          frequency: globalOptions.display.showWeightedCounts ? result.validN_weighted : result.validN_unweighted,
-          percent: round(result.validN_weighted / result.totalN_weighted * 100, 1) || 0,
-          validPercent: 100.0,
-          cumulativePercent: null // Tidak relevan untuk total.
-        });
-      }
-  
-      // Baris untuk Missing (jika ada).
-      let totalMissingPercent = 0;
-      result.missingRowsData.forEach(row => {
-        tableRows.push(row);
-        totalMissingPercent += row.percent;
-      });
-  
-      // Total untuk Missing.
-      if (result.missingRowsData.length > 0) {
-        tableRows.push({
-          label: "Total Missing",
-          frequency: result.totalMissingN_weighted, // Selalu weighted untuk total missing.
-          percent: round(totalMissingPercent, 1),
-          isSystem: false // Hanya penanda, tidak ada valid/cumulative percent.
-        });
-      }
-  
-      // Total Keseluruhan.
-      tableRows.push({
-        label: "Total",
-        frequency: globalOptions.display.showWeightedCounts ? result.totalN_weighted : result.totalN_unweighted,
-        percent: 100.0
-      });
-  
-      tables.push({
+      const tableObject = {
         title: result.variableLabel,
+        // Define structure needed by the consuming code (useFrequenciesAnalysis)
+        // Assuming it expects the full table structure including headers and rows
         columnHeaders: [
-          { header: "", key: "label" },
+          { header: "" },
+          { header: "" },
           { header: "Frequency", key: "frequency" },
           { header: "Percent", key: "percent" },
-          { header: "Valid Percent", key: "validPercent" },
-          { header: "Cumulative Percent", key: "cumulativePercent" }
+          { header: "Valid Percent", key: "valid_percent" },
+          { header: "Cumulative Percent", key: "cumulative_percent" }
         ],
-        rows: tableRows,
-        notes: globalOptions.display.showWeightedCounts && result.totalN_weighted !== result.totalN_unweighted ? "Frequencies are weighted." : ""
+        rows: [],
+        // Add components and description keys as expected by addStatistic
+        components: ['Frequency Table'], // Indicate a table component is the primary output
+        description: `Frequency table for ${result.variableLabel}`
+      };
+  
+      // Add rows for valid data
+      if(Array.isArray(result.validRowsData)){
+          result.validRowsData.forEach(validRow => {
+            tableObject.rows.push({
+              rowHeader: ["Valid", validRow.label],
+              frequency: validRow.frequency,
+              percent: round(validRow.percent, 1), // Round percentages
+              valid_percent: round(validRow.validPercent, 1),
+              cumulative_percent: round(validRow.cumulativePercent, 1)
+            });
+          });
+      }
+  
+      // Add total row for valid data if there are any valid entries
+      if (result.validN > 0) {
+        tableObject.rows.push({
+          rowHeader: ["Valid", "Total"],
+          frequency: result.validN,
+          percent: round((result.validN / result.totalN) * 100, 1),
+          valid_percent: 100.0, // Valid percent for total valid is always 100%
+          cumulative_percent: null // No cumulative percent for total row
+        });
+      }
+  
+      // Add rows for missing data
+      if (result.totalMissingN > 0 && Array.isArray(result.missingRowsData)) {
+        let numberOfMissingRowsAdded = 0;
+  
+        result.missingRowsData.forEach(missingRow => {
+          tableObject.rows.push({
+            rowHeader: ["Missing", missingRow.label],
+            frequency: missingRow.frequency,
+            percent: round(missingRow.percent, 1),
+            valid_percent: null, // No valid percent for missing values
+            cumulative_percent: null // No cumulative percent for missing values
+          });
+          numberOfMissingRowsAdded++;
       });
+  
+        // Add total row for missing data if there is more than one type of missing or multiple missing entries
+        if (numberOfMissingRowsAdded > 1) {
+           tableObject.rows.push({
+              rowHeader: ["Missing", "Total"],
+              frequency: result.totalMissingN,
+              percent: round((result.totalMissingN / result.totalN) * 100, 1),
+              valid_percent: null,
+              cumulative_percent: null
+        });
+      }
+      }
+  
+      // Add overall total row
+      tableObject.rows.push({
+        rowHeader: ["Total", null], // No sub-label for overall total
+        frequency: result.totalN,
+        percent: 100.0, // Percent for overall total is always 100%
+        valid_percent: null,
+        cumulative_percent: null
+      });
+  
+      // Push the fully structured table object
+      tables.push(tableObject);
     }
-    return { tables };
+  
+    // The worker should return an array of these table objects
+    return tables;
   };
   
   // Fungsi utama worker: analisis frekuensi.
   const analyzeFrequencies = (inputData) => {
-    const { variableItems, weightVariableData, options } = inputData;
-    if (!variableItems || !Array.isArray(variableItems)) {
-      throw new Error("Data variabel tidak valid.");
+    if (!inputData || !Array.isArray(inputData.variableData)) {
+        // console.error("Invalid input data structure received by worker.");
+        throw new Error("Invalid input data structure received by worker.");
     }
-    // Impor spssDateConverter jika belum ada (misalnya untuk checkMissing dan getSortKey tipe DATE)
-    // SPSS_EPOCH_MILLIS juga dibutuhkan oleh formatDisplayValue.
-    if (typeof self.spssSecondsToDateString !== 'function' || 
-        typeof self.dateStringToSpssSeconds !== 'function' || 
-        typeof self.SPSS_EPOCH_MILLIS === 'undefined') {
+  
+    const analysisResults = inputData.variableData
+      .map(variableItem => {
         try {
-            self.importScripts('../spssDateConverter.js');
-        } catch (e) {
-            console.error("Gagal impor spssDateConverter.js di analyzeFrequencies:", e);
-            // Mungkin throw error atau fallback jika fungsi sangat krusial dan tidak bisa jalan tanpanya
-        }
+              // Pass weight data if needed in the future
+              return calculateFrequencyForVariable(variableItem /*, inputData.weightVariableData */);
+          } catch (error) {
+              // console.error(`Error processing variable ${variableItem?.variable?.name || 'unknown'}:`, error);
+              // Rethrow or handle appropriately; returning null might hide errors
+               throw new Error(`Error processing variable ${variableItem?.variable?.name || 'unknown'}: ${error.message}`);
+             // return null; // Or handle error more gracefully
     }
+      })
+      .filter(result => result !== null); // Filter out any nulls from errored processing if not rethrowing
 
-    const results = [];
-    for (const varItem of variableItems) {
-      results.push(calculateFrequencyForVariable(varItem, weightVariableData, options));
-    }
-    return formatOutput(results, options);
+    // FormatOutput now returns the array of table objects directly
+    return formatOutput(analysisResults);
   };
   
+  // Web Worker message handler
   self.onmessage = function(event) {
     try {
-      const result = analyzeFrequencies(event.data);
-      self.postMessage({ success: true, frequencies: result });
+          const inputData = event.data;
+          // Note: Weighting data (inputData.weightVariableData) is received but not yet used.
+          const frequencyTables = analyzeFrequencies(inputData);
+          // Send back an array of formatted table objects
+          self.postMessage({ success: true, frequencies: frequencyTables });
     } catch (error) {
-      console.error("Error in Frequencies worker:", error);
-      self.postMessage({ success: false, error: error.message + (error.stack ? `\nStack: ${error.stack}` : '') });
+          self.postMessage({ success: false, error: error.message });
     }
   };
