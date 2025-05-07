@@ -13,16 +13,115 @@ import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
+const exampleSavFiles = [
+    { name: 'tcm_kpi_upd.sav', path: '/exampleData/tcm_kpi_upd.sav' },
+    { name: 'tcm_kpi.sav', path: '/exampleData/tcm_kpi.sav' },
+    { name: 'anorectic.sav', path: '/exampleData/anorectic.sav' },
+    { name: 'diabetes_costs.sav', path: '/exampleData/diabetes_costs.sav' },
+    { name: 'aflatoxin.sav', path: '/exampleData/aflatoxin.sav' },
+    { name: 'aflatoxin20.sav', path: '/exampleData/aflatoxin20.sav' },
+    { name: 'accidents.sav', path: '/exampleData/accidents.sav' },
+    { name: 'adl.sav', path: '/exampleData/adl.sav' },
+    { name: 'advert.sav', path: '/exampleData/advert.sav' },
+    { name: 'telco_extra.sav', path: '/exampleData/telco_extra.sav' },
+    { name: 'Employee data.sav', path: '/exampleData/Employee data.sav' },
+    { name: 'worldsales.sav', path: '/exampleData/worldsales.sav' },
+    { name: 'cable_survey.sav', path: '/exampleData/cable_survey.sav' },
+    { name: 'anticonvulsants.sav', path: '/exampleData/anticonvulsants.sav' },
+    { name: 'stocks.sav', path: '/exampleData/stocks.sav' },
+    { name: 'test_scores.sav', path: '/exampleData/test_scores.sav' },
+    { name: 'insurance_claims.sav', path: '/exampleData/insurance_claims.sav' },
+    { name: 'dmdata3.sav', path: '/exampleData/dmdata3.sav' },
+    { name: 'customer_subset.sav', path: '/exampleData/customer_subset.sav' },
+    { name: 'tv-survey.sav', path: '/exampleData/tv-survey.sav' },
+    { name: 'dvdplayer.sav', path: '/exampleData/dvdplayer.sav' },
+    { name: 'bankloan.sav', path: '/exampleData/bankloan.sav' },
+    { name: 'credit_card.sav', path: '/exampleData/credit_card.sav' },
+    { name: 'dmdata2.sav', path: '/exampleData/dmdata2.sav' },
+    { name: 'car_sales_unprepared.sav', path: '/exampleData/car_sales_unprepared.sav' },
+    { name: 'dmdata.sav', path: '/exampleData/dmdata.sav' },
+    { name: 'shampoo_ph.sav', path: '/exampleData/shampoo_ph.sav' },
+    { name: 'telco_missing.sav', path: '/exampleData/telco_missing.sav' },
+    { name: 'customer_information.sav', path: '/exampleData/customer_information.sav' },
+    { name: 'rfm_transactions.sav', path: '/exampleData/rfm_transactions.sav' },
+    { name: 'ozone.sav', path: '/exampleData/ozone.sav' },
+    { name: 'stroke_survival.sav', path: '/exampleData/stroke_survival.sav' },
+    { name: 'bankloan_binning.sav', path: '/exampleData/bankloan_binning.sav' },
+    { name: 'bankloan_cs.sav', path: '/exampleData/bankloan_cs.sav' },
+    { name: 'bankloan_cs_noweights.sav', path: '/exampleData/bankloan_cs_noweights.sav' },
+    { name: 'behavior.sav', path: '/exampleData/behavior.sav' },
+    { name: 'behavior_ini.sav', path: '/exampleData/behavior_ini.sav' },
+    { name: 'brakes.sav', path: '/exampleData/brakes.sav' },
+    { name: 'breakfast.sav', path: '/exampleData/breakfast.sav' },
+    { name: 'breakfast_overall.sav', path: '/exampleData/breakfast_overall.sav' },
+    { name: 'broadband_1.sav', path: '/exampleData/broadband_1.sav' },
+    { name: 'broadband_2.sav', path: '/exampleData/broadband_2.sav' },
+    { name: 'carpet.sav', path: '/exampleData/carpet.sav' },
+    { name: 'carpet_plan.sav', path: '/exampleData/carpet_plan.sav' },
+    { name: 'car_insurance_claims.sav', path: '/exampleData/car_insurance_claims.sav' },
+    { name: 'car_sales.sav', path: '/exampleData/car_sales.sav' },
+    { name: 'carpet_prefs.sav', path: '/exampleData/carpet_prefs.sav' },
+    { name: 'catalog.sav', path: '/exampleData/catalog.sav' },
+    { name: 'catalog_seasfac.sav', path: '/exampleData/catalog_seasfac.sav' },
+    { name: 'cellular.sav', path: '/exampleData/cellular.sav' },
+    { name: 'ceramics.sav', path: '/exampleData/ceramics.sav' },
+    { name: 'cereal.sav', path: '/exampleData/cereal.sav' },
+    { name: 'clothing_defects.sav', path: '/exampleData/clothing_defects.sav' },
+    { name: 'coffee.sav', path: '/exampleData/coffee.sav' },
+    { name: 'contacts.sav', path: '/exampleData/contacts.sav' },
+    { name: 'creditpromo.sav', path: '/exampleData/creditpromo.sav' },
+    { name: 'cross_sell.sav', path: '/exampleData/cross_sell.sav' },
+    { name: 'customer_dbase.sav', path: '/exampleData/customer_dbase.sav' },
+    { name: 'debate.sav', path: '/exampleData/debate.sav' },
+    { name: 'debate_aggregate.sav', path: '/exampleData/debate_aggregate.sav' },
+    { name: 'demo.sav', path: '/exampleData/demo.sav' },
+    { name: 'demo_cs.sav', path: '/exampleData/demo_cs.sav' },
+    { name: 'demo_cs_1.sav', path: '/exampleData/demo_cs_1.sav' },
+    { name: 'demo_cs_2.sav', path: '/exampleData/demo_cs_2.sav' },
+    { name: 'dietstudy.sav', path: '/exampleData/dietstudy.sav' },
+    { name: 'german_credit.sav', path: '/exampleData/german_credit.sav' },
+    { name: 'grocery.sav', path: '/exampleData/grocery.sav' },
+    { name: 'grocery_1month.sav', path: '/exampleData/grocery_1month.sav' },
+    { name: 'grocery_1month_sample.sav', path: '/exampleData/grocery_1month_sample.sav' },
+    { name: 'grocery_coupons.sav', path: '/exampleData/grocery_coupons.sav' },
+    { name: 'guttman.sav', path: '/exampleData/guttman.sav' },
+    { name: 'health_funding.sav', path: '/exampleData/health_funding.sav' },
+    { name: 'hivassay.sav', path: '/exampleData/hivassay.sav' },
+    { name: 'hourlywagedata.sav', path: '/exampleData/hourlywagedata.sav' },
+    { name: 'insure.sav', path: '/exampleData/insure.sav' },
+    { name: 'judges.sav', path: '/exampleData/judges.sav' },
+    { name: 'kinship_dat.sav', path: '/exampleData/kinship_dat.sav' },
+    { name: 'kinship_ini.sav', path: '/exampleData/kinship_ini.sav' },
+    { name: 'kinship_var.sav', path: '/exampleData/kinship_var.sav' },
+    { name: 'mallcost.sav', path: '/exampleData/mallcost.sav' },
+    { name: 'marketvalues.sav', path: '/exampleData/marketvalues.sav' },
+    { name: 'nhis2000_subset.sav', path: '/exampleData/nhis2000_subset.sav' },
+    { name: 'offer.sav', path: '/exampleData/offer.sav' },
+    { name: 'pain_medication.sav', path: '/exampleData/pain_medication.sav' },
+    { name: 'patient_los.sav', path: '/exampleData/patient_los.sav' },
+    { name: 'patlos_sample.sav', path: '/exampleData/patlos_sample.sav' },
+    { name: 'poll_cs.sav', path: '/exampleData/poll_cs.sav' },
+    { name: 'poll_cs_sample.sav', path: '/exampleData/poll_cs_sample.sav' },
+    { name: 'poll_jointprob.sav', path: '/exampleData/poll_jointprob.sav' },
+    { name: 'property_assess.sav', path: '/exampleData/property_assess.sav' },
+    { name: 'property_assess_cs.sav', path: '/exampleData/property_assess_cs.sav' },
+    { name: 'property_assess_cs_sample.sav', path: '/exampleData/property_assess_cs_sample.sav' },
+    { name: 'recidivism.sav', path: '/exampleData/recidivism.sav' },
+    { name: 'salesperformance.sav', path: '/exampleData/salesperformance.sav' },
+    { name: 'satisf.sav', path: '/exampleData/satisf.sav' },
+    { name: 'screws.sav', path: '/exampleData/screws.sav' },
+    { name: 'ships.sav', path: '/exampleData/ships.sav' },
+    { name: 'site.sav', path: '/exampleData/site.sav' },
+    { name: 'smalldemo.sav', path: '/exampleData/smalldemo.sav' },
+    { name: 'smokers.sav', path: '/exampleData/smokers.sav' },
+];
+
 const exampleFiles = {
-    sav: [
-        { name: 'sleep.sav', path: '/exampleData/sleep.sav' },
-        { name: 'DummyData.sav', path: '/exampleData/DummyData.sav' },
-        { name: 'Teach.sav', path: '/exampleData/Teach.sav' },
-        { name: 'titanic.sav', path: '/exampleData/titanic.sav' },
-        { name: 'well_being.sav', path: '/exampleData/well_being.sav' },
-        { name: 'health_control.sav', path: '/exampleData/health_control.sav' },
-        { name: 'anxiety.sav', path: '/exampleData/anxiety.sav' },
-    ]
+    sav: exampleSavFiles,
+    // Add other file types here if needed in the future e.g.
+    // csv: [
+    //     { name: 'example.csv', path: '/exampleData/example.csv' },
+    // ]
 };
 
 // Helper function to map SPSS format types to our interface types
@@ -284,11 +383,12 @@ export const ExampleDatasetModal = () => {
                 await setVariables(variables); // Use setVariables for others
             }
 
+            setIsLoading(false);
             closeModal();
             router.push('/dashboard/data');
 
         } catch (err: any) {
-            console.error("Error loading example data:", err);
+            console.error("Error opening or processing example file:", err);
             const errorToSet = err instanceof Error ? err.message : String(err);
             setError(errorToSet || "Failed to load data.");
         } finally {
@@ -298,25 +398,26 @@ export const ExampleDatasetModal = () => {
 
     const handleClose = () => {
         closeModal();
-    }
+    };
 
     const renderFileList = (files: { name: string; path: string }[]) => (
-        <ul className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2">
             {files.map((file) => (
-                <li key={file.path}>
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-start text-left h-auto py-2 px-3"
-                        onClick={() => handleFileClick(file.path)}
-                        disabled={isLoading}
-                    >
-                        <File className="h-4 w-4 mr-2 flex-shrink-0 text-blue-600" />
-                        <span className="truncate font-medium">{file.name}</span>
-                    </Button>
-                </li>
+                <Button
+                    key={file.path}
+                    variant="outline"
+                    className="w-full justify-start text-left h-auto py-3"
+                    onClick={() => handleFileClick(file.path)}
+                    disabled={isLoading}
+                >
+                    <File className="mr-3 h-5 w-5 flex-shrink-0" />
+                    <span className="truncate text-sm">{file.name}</span>
+                </Button>
             ))}
-        </ul>
+        </div>
     );
+
+    if (!isModalOpen) return null;
 
     return (
         <Dialog open={isModalOpen} onOpenChange={handleClose}>
@@ -338,8 +439,11 @@ export const ExampleDatasetModal = () => {
                     {error && (
                         <p className="text-red-600 text-sm px-4 py-2 bg-red-100 rounded border border-red-300">{error}</p>
                     )}
-                    <div>
-                        <h4 className="font-semibold mb-3 text-base border-b pb-1">File SPSS (.sav)</h4>
+                    <div className="mt-6">
+                        <DialogTitle className="text-lg font-medium text-gray-900">Dataset SPSS (.sav)</DialogTitle>
+                        <DialogDescription className="mt-1 text-sm text-gray-500 mb-4">
+                            Pilih salah satu dataset contoh untuk memulai analisis.
+                        </DialogDescription>
                         {renderFileList(exampleFiles.sav)}
                     </div>
                 </div>
