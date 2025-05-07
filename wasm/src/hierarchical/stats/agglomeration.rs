@@ -215,10 +215,6 @@ fn initialize_variable_cluster_state(
     })
 }
 
-// Menghasilkan jadwal aglomerasi untuk hierarchical clustering
-// File: fixed_agglomeration.rs
-// Complete and corrected implementation of agglomeration schedule generation
-
 pub fn generate_agglomeration_schedule(
     state: &mut ClusterState,
     config: &ClusterConfig
@@ -231,24 +227,22 @@ pub fn generate_agglomeration_schedule(
     let mut ward_coefficient = 0.0;
 
     // Menyimpan ID cluster aktif (1-indexed)
+    // Ini adalah mapping dari indeks cluster saat ini ke ID asli
     let mut active_clusters: Vec<usize> = (1..=original_count).collect();
 
     // Melacak kapan cluster pertama kali muncul dalam jadwal
     // Original clusters memiliki stage 0, merged clusters memiliki stage saat mereka dibentuk
     let mut first_appears: HashMap<usize, usize> = HashMap::new();
 
-    // Melacak cluster mana yang akan terbentuk di setiap stage
-    // Kita gunakan ini untuk menghitung next_stage
-    let mut formed_at_stage: HashMap<usize, usize> = HashMap::new();
+    // Melacak stage di mana tiap cluster terakhir muncul sebagai salah satu dari clusters_combined
+    // (digunakan untuk menghitung next_stage)
+    let mut last_stage_used: HashMap<usize, usize> = HashMap::new();
 
     // Simpan cluster sizes untuk perhitungan jarak
     let mut cluster_sizes: Vec<usize> = state.clusters
         .iter()
         .map(|c| c.len())
         .collect();
-
-    // Assign cluster baru - dimulai dari original_count + 1
-    let mut new_cluster_id = original_count + 1;
 
     // Memproses setiap tahap
     for stage_idx in 0..stages_count {
@@ -271,12 +265,13 @@ pub fn generate_agglomeration_schedule(
             };
 
             // Menghitung kapan cluster pertama kali muncul
-            // Jika belum pernah muncul (cluster original), default ke 0
+            // Jika belum pernah muncul (original cluster), default ke 0
             let cluster1_first_stage = *first_appears.get(&cluster1_id).unwrap_or(&0);
             let cluster2_first_stage = *first_appears.get(&cluster2_id).unwrap_or(&0);
 
-            // Catat ID cluster yang terbentuk di stage ini
-            formed_at_stage.insert(new_cluster_id, stage);
+            // Catat stage di mana cluster terakhir digunakan
+            last_stage_used.insert(cluster1_id, stage);
+            last_stage_used.insert(cluster2_id, stage);
 
             // Sementara set next_stage ke 0, akan diupdate nanti
             let next_stage = 0;
@@ -310,43 +305,36 @@ pub fn generate_agglomeration_schedule(
             // Hapus ukuran cluster yang sudah digabung
             cluster_sizes.remove(idx2);
 
-            // Hapus cluster yang sudah digabung
+            // Hapus cluster yang sudah digabung dari active_clusters
             active_clusters.remove(idx2);
 
-            // Ganti ID cluster yang disimpan dengan ID cluster baru
-            active_clusters[idx1] = new_cluster_id;
-
-            // Catat kapan cluster baru pertama kali muncul
-            first_appears.insert(new_cluster_id, stage);
-
-            // Increment untuk ID cluster berikutnya
-            new_cluster_id += 1;
+            // Catat kapan cluster hasil gabungan pertama kali muncul
+            // Kita gunakan cluster1_id sebagai ID untuk cluster gabungan
+            first_appears.insert(cluster1_id, stage);
         } else {
             return Err(format!("Failed to find closest clusters at stage {}", stage_idx));
         }
     }
 
     // Post-processing: Hitung next_stage
-    // Telusuri stages dari awal, untuk setiap cluster yang terbentuk,
-    // cari kapan cluster tersebut akan digabung selanjutnya
-    for i in 0..stages_count - 1 {
-        let (cluster1_id, cluster2_id) = stages[i].clusters_combined;
-        let new_cluster_id = original_count + i + 1; // ID cluster yang terbentuk di stage ini
+    // Untuk setiap stage, cari stage berikutnya di mana cluster yang terbentuk
+    // muncul dalam clusters_combined
+    for i in 0..stages_count {
+        let (cluster1_id, _) = stages[i].clusters_combined;
 
-        // Telusuri stages berikutnya untuk menemukan kapan cluster ini digabung lagi
+        // Cluster hasil gabungan direpresentasikan oleh cluster1_id
+        // Cari stage berikutnya di mana cluster ini muncul
+        let mut next_stage_idx = 0;
+
         for j in i + 1..stages_count {
             let (next_cluster1_id, next_cluster2_id) = stages[j].clusters_combined;
-            if next_cluster1_id == new_cluster_id || next_cluster2_id == new_cluster_id {
-                // Ditemukan! Perbarui next_stage
-                stages[i].next_stage = j + 1; // +1 karena stages di-index dari 1
+            if next_cluster1_id == cluster1_id || next_cluster2_id == cluster1_id {
+                next_stage_idx = j + 1; // +1 karena stages di-index dari 1
                 break;
             }
         }
-    }
 
-    // Stage terakhir selalu memiliki next_stage = 0
-    if !stages.is_empty() {
-        stages.last_mut().unwrap().next_stage = 0;
+        stages[i].next_stage = next_stage_idx;
     }
 
     Ok(AgglomerationSchedule { stages })

@@ -1,163 +1,174 @@
+use std::collections::HashMap;
 use crate::hierarchical::models::{
     config::ClusterConfig,
     data::AnalysisData,
-    result::{ DendrogramTreeNode, IciclePlot },
+    result::{ DendrogramNode, IciclePlot, Dendrogram },
 };
 
 use super::core::{
-    build_dendrogram_tree,
     extract_case_label,
     generate_agglomeration_schedule_wrapper,
     generate_cluster_membership,
+    generate_dendrogram,
 };
 
-// Traversal in-order untuk mendapatkan urutan kasus yang benar
-fn get_case_ordering(node: &DendrogramTreeNode) -> Vec<usize> {
-    let mut ordering = Vec::new();
-
-    // Jika ini adalah node daun, kembalikan kasusnya
-    if node.left.is_none() && node.right.is_none() {
-        return node.cases.clone();
-    }
-
-    // Traverse anak kiri
-    if let Some(left) = &node.left {
-        ordering.extend(get_case_ordering(left));
-    }
-
-    // Traverse anak kanan
-    if let Some(right) = &node.right {
-        ordering.extend(get_case_ordering(right));
-    }
-
-    ordering
-}
-
-// Fungsi utama untuk menghasilkan icicle plot
+// Main function to generate the icicle plot
 pub fn generate_icicle_plot(
     data: &AnalysisData,
     config: &ClusterConfig
 ) -> Result<IciclePlot, String> {
-    // Dapatkan jumlah kasus
+    // Get the number of cases
     let num_cases = data.cluster_data
         .get(0)
         .map(|d| d.len())
         .unwrap_or(0) as i32;
 
-    // Tentukan parameter plot berdasarkan konfigurasi
+    // Determine plot parameters based on configuration
     let (start_cluster, stop_cluster, step_by) = if config.plots.all_clusters {
-        // Proses semua cluster dari 1 hingga jumlah kasus
+        // Process all clusters from 1 to number of cases
         (1, num_cases, 1)
     } else if config.plots.range_clusters {
-        // Gunakan rentang yang dikonfigurasi
+        // Use configured range
         let start = config.plots.start_cluster;
         let stop = config.plots.stop_cluster.unwrap_or_else(|| num_cases / 2);
         let step = config.plots.step_by_cluster;
         (start, stop, step)
     } else {
-        // Gunakan solusi tunggal
+        // Use single solution
         let cluster = config.plots.start_cluster;
         (cluster, cluster, 1)
     };
 
-    // Tentukan orientasi
+    // Determine orientation
     let orientation = if config.plots.vert_orien { "vertical" } else { "horizontal" };
 
-    // Dapatkan jadwal aglomerasi
+    // First, generate the dendrogram to get the correct case ordering
+    let dendrogram = generate_dendrogram(data, config)?;
+
+    // Get the ordered cases from the dendrogram
+    let ordered_cases = dendrogram.ordered_cases.clone();
+    let num_items = dendrogram.num_items;
+    let case_labels = dendrogram.case_labels.clone();
+
+    // Get agglomeration schedule
     let agglomeration = generate_agglomeration_schedule_wrapper(data, config)?;
 
-    // Dapatkan label kasus
-    let case_labels = if config.main.cluster_cases {
-        (0..num_cases as usize)
-            .map(|idx| extract_case_label(data, config, idx))
-            .collect::<Vec<String>>()
-    } else {
-        // Untuk clustering variabel, gunakan nama variabel sebagai label
-        config.main.variables
-            .as_ref()
-            .map(|vars| vars.clone())
-            .unwrap_or_else(|| vec![])
-    };
-
-    let num_items = case_labels.len();
-
-    // Bangun pohon dendrogram untuk menentukan urutan kasus yang tepat
-    let dendrogram_tree = build_dendrogram_tree(&agglomeration, num_items, &case_labels);
-
-    // Dapatkan urutan kasus yang tepat berdasarkan dendrogram
-    let ordering = get_case_ordering(&dendrogram_tree);
-
-    // Buat vektor jumlah cluster - ini mewakili jumlah cluster pada setiap level
+    // Create vector of cluster numbers - this represents the number of clusters at each level
     let num_clusters: Vec<usize> = (start_cluster..=stop_cluster)
         .step_by(step_by as usize)
         .map(|c| c as usize)
         .collect();
 
-    // Buat matriks untuk melacak kapan setiap kasus bergabung dengan cluster
-    // Untuk setiap kasus, tentukan pada level clustering mana kasus tersebut bergabung dengan cluster lain
-    let mut cluster_merge_matrix = vec![vec![0; num_items]; num_clusters.len()];
+    // Create a matrix to track cluster assignments at each level
+    let mut cluster_assignments = Vec::with_capacity(num_clusters.len());
 
-    // Isi matriks - untuk setiap jumlah cluster
-    for (level_idx, &num_cluster_count) in num_clusters.iter().enumerate() {
-        // Pastikan jumlah cluster valid
+    // Fill the matrix - for each number of clusters level
+    for &num_cluster_count in &num_clusters {
+        // Ensure valid cluster count
         let valid_num_clusters = num_cluster_count.max(1).min(num_items);
 
-        // Hasilkan penugasan cluster untuk jumlah cluster ini
+        // Generate cluster assignments for this number of clusters
         let assignments = generate_cluster_membership(
             &agglomeration.stages,
             num_items,
             valid_num_clusters
         )?;
 
-        // Untuk setiap kasus dalam urutan kita
-        for (pos_idx, &case_idx) in ordering.iter().enumerate() {
-            if case_idx < assignments.len() {
-                let cluster_id = assignments[case_idx];
+        cluster_assignments.push(assignments);
+    }
 
-                // Temukan kasus lain dalam cluster yang sama
-                let mut is_merged = false;
-                for other_case_idx in 0..num_items {
-                    if
-                        other_case_idx != case_idx &&
-                        other_case_idx < assignments.len() &&
-                        assignments[other_case_idx] == cluster_id
-                    {
-                        is_merged = true;
+    // Prepare data for the icicle plot
+    // We need: case labels and numbers in dendrogram order, and merge levels
+    let mut ordered_case_labels = Vec::with_capacity(num_items);
+    let mut ordered_case_numbers = Vec::with_capacity(num_items);
+    let mut merge_levels = Vec::with_capacity(num_items);
+
+    // For each case in dendrogram order
+    for &case_idx in &ordered_cases {
+        if case_idx < case_labels.len() {
+            // Add case label and number (1-based)
+            ordered_case_labels.push(case_labels[case_idx].clone());
+            ordered_case_numbers.push(case_idx + 1); // Convert to 1-based
+
+            // Determine at which level this case first merges with others
+            let mut merge_level = None;
+
+            for (level_idx, assignments) in cluster_assignments.iter().enumerate() {
+                if case_idx < assignments.len() {
+                    let cluster_id = assignments[case_idx];
+
+                    // Check if any other case is in the same cluster
+                    let is_merged = (0..num_items).any(
+                        |other_idx|
+                            other_idx != case_idx &&
+                            other_idx < assignments.len() &&
+                            assignments[other_idx] == cluster_id
+                    );
+
+                    if is_merged {
+                        merge_level = Some(level_idx);
                         break;
                     }
                 }
-
-                // Jika kasus ini digabungkan dengan yang lain, lacak level di mana kasus bergabung
-                if is_merged {
-                    cluster_merge_matrix[level_idx][pos_idx] = 1;
-                }
             }
+
+            merge_levels.push(merge_level);
         }
     }
 
-    // Konversi matriks ke representasi datar untuk struct IciclePlot
-    // Untuk setiap kasus, tentukan level pertama di mana kasus tersebut bergabung
-    let mut clusters_flat = Vec::with_capacity(num_items);
-
-    for (pos_idx, &case_idx) in ordering.iter().enumerate() {
-        if case_idx < case_labels.len() {
-            clusters_flat.push(case_labels[case_idx].clone());
-
-            // Temukan level pertama di mana kasus ini bergabung dengan yang lain
-            for level_idx in 0..num_clusters.len() {
-                if cluster_merge_matrix[level_idx][pos_idx] == 1 {
-                    break;
-                }
-            }
-        }
-    }
-
+    // Create the IciclePlot structure
     Ok(IciclePlot {
         orientation: orientation.to_string(),
-        clusters: clusters_flat,
-        num_clusters: num_clusters,
+        case_labels: ordered_case_labels,
+        case_numbers: ordered_case_numbers,
+        num_clusters,
         start_cluster,
         stop_cluster,
         step_by,
+        cluster_assignments,
+        merge_levels,
     })
+}
+
+// Utility function to map node positions for icicle plot
+pub fn map_node_to_icicle_position(
+    dendrogram: &Dendrogram,
+    icicle: &IciclePlot
+) -> HashMap<usize, (usize, f64)> {
+    let mut position_map = HashMap::new();
+
+    // For each case in the ordered sequence
+    for (pos, &case_idx) in dendrogram.ordered_cases.iter().enumerate() {
+        if case_idx < dendrogram.case_labels.len() {
+            // Get the merge level (if any)
+            let merge_level = icicle.merge_levels
+                .get(pos)
+                .and_then(|&level| level)
+                .unwrap_or(icicle.num_clusters.len() - 1);
+
+            // Map the case to its position and merge level
+            position_map.insert(case_idx, (pos, merge_level as f64));
+        }
+    }
+
+    position_map
+}
+
+// Extract data for icicle plot visualization
+pub fn extract_icicle_visualization_data(
+    icicle_plot: &IciclePlot
+) -> Vec<(String, usize, usize, Option<usize>)> {
+    let mut visualization_data = Vec::with_capacity(icicle_plot.case_labels.len());
+
+    // For each case in display order
+    for i in 0..icicle_plot.case_labels.len() {
+        visualization_data.push((
+            icicle_plot.case_labels[i].clone(),
+            icicle_plot.case_numbers[i],
+            i, // Position in the display order
+            icicle_plot.merge_levels[i], // Level at which this case merges
+        ));
+    }
+
+    visualization_data
 }

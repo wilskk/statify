@@ -110,7 +110,7 @@ pub fn run_analysis(
 
         match core::generate_icicle_plot(&analysis_data, config) {
             Ok(plot) => {
-                web_sys::console::log_1(&format!("Icicle Plot generated").into());
+                web_sys::console::log_1(&format!("Icicle Plot: {:?}", plot).into());
                 icicle_plot = Some(plot);
             }
             Err(e) => {
@@ -156,7 +156,6 @@ pub fn run_analysis(
     Ok(Some(result))
 }
 
-// Utility functions remain unchanged
 pub fn get_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
