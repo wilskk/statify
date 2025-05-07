@@ -1,4 +1,4 @@
-import React, { FC, useCallback } from "react";
+import React, { FC, useCallback, useMemo } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,6 +37,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
     setSaveStandardized
 }) => {
     const variableIdKeyToUse: keyof Variable = 'columnIndex';
+
+    // Filter availableVariables to include only NUMERIC and DATE types
+    const filteredAvailableVariables = useMemo(() => {
+        return availableVariables.filter(
+            (variable) => variable.type === 'NUMERIC' || variable.type === 'DATE'
+        );
+    }, [availableVariables]);
 
     const targetLists: TargetListConfig[] = [
         {
@@ -102,7 +109,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     return (
         <VariableListManager
-            availableVariables={availableVariables}
+            availableVariables={filteredAvailableVariables}
             targetLists={targetLists}
             variableIdKey={variableIdKeyToUse}
             highlightedVariable={managerHighlightedVariable}

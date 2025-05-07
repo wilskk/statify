@@ -103,7 +103,7 @@ export const useDescriptivesAnalysis = ({
             }
 
             // --- Worker Setup ---
-            descWorkerRef.current = new Worker('/workers/Descriptives/descriptives.js'); // Adjust path if needed
+            descWorkerRef.current = new Worker('/workers/DescriptiveStatistics/Descriptives/descriptives.js'); // Adjust path if needed
 
             descWorkerRef.current.onmessage = (e: MessageEvent<DescriptiveWorkerResult>) => {
                 const workerResult = e.data;
@@ -121,7 +121,7 @@ export const useDescriptivesAnalysis = ({
 
                         const analyticEntry = {
                             title: statsOutput.title || "Descriptives", // Use title from worker or default
-                            note: `Analysis performed with ${selectedVariables.length} variables.`
+                            note: ``
                         };
                         const analyticId = await addAnalytic(logId, analyticEntry);
 

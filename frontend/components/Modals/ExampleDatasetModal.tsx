@@ -259,7 +259,7 @@ export const ExampleDatasetModal = () => {
         setError(null);
         const fileName = filePath.split('/').pop() || 'Untitled Project';
         const fileExtension = filePath.split('.').pop()?.toLowerCase();
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'; // Get backend URL
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api'; // Get backend URL
 
         try {
             console.log("Fetching example file from path:", filePath);

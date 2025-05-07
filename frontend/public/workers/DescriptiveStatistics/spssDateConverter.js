@@ -1,41 +1,36 @@
 // public/workers/DescriptiveStatistics/Frequencies/spssDateConverter.js
 
-// Epoch SPSS: 14 Oktober 1582, 00:00:00 UTC
-// Kita gunakan Date.UTC untuk mendapatkan timestamp dalam milidetik sejak epoch JavaScript (1 Jan 1970 UTC)
-// secara konsisten. Bulan dalam Date.UTC/Date object adalah 0-indexed (0=Januari, 9=Oktober).
+// SPSS Epoch: 14 October 1582, 00:00:00 UTC.
+// Date.UTC is used for consistent millisecond timestamps from the JavaScript epoch (1 Jan 1970 UTC).
+// Months in Date.UTC/Date objects are 0-indexed (e.g., 9 for October).
 const SPSS_EPOCH_MILLIS = Date.UTC(1582, 9, 14, 0, 0, 0);
 
 /**
- * Mengonversi detik SPSS (detik sejak 14 Okt 1582 00:00:00 UTC)
- * ke string tanggal dengan format dd-mm-yyyy.
- * Mengembalikan null jika input menghasilkan tanggal tidak valid.
+ * Converts SPSS seconds (seconds since 14 Oct 1582 00:00:00 UTC)
+ * to a 'dd-mm-yyyy' formatted date string.
+ * Returns null if the input results in an invalid date.
  *
- * @param {number} spssSeconds - Jumlah detik sejak epoch SPSS.
- * @returns {string | null} String tanggal yang diformat atau null.
+ * @param {number} spssSeconds - Seconds since SPSS epoch.
+ * @returns {string | null} Formatted date string or null.
  */
 function spssSecondsToDateString(spssSeconds) {
-    // Validasi input dasar
     if (typeof spssSeconds !== 'number' || !Number.isFinite(spssSeconds)) {
         return null;
     }
 
-    // Hitung timestamp target dalam milidetik sejak epoch JavaScript
     const targetMillis = SPSS_EPOCH_MILLIS + spssSeconds * 1000;
-
-    // Buat objek Date dari timestamp milidetik
     const date = new Date(targetMillis);
 
-    // Periksa apakah tanggal yang dihasilkan valid
     if (isNaN(date.getTime())) {
         return null;
     }
 
-    // Ekstrak komponen tanggal menggunakan metode UTC agar sesuai definisi epoch UTC
+    // Extract date components using UTC methods to align with UTC epoch definition.
     const day = date.getUTCDate();
-    const month = date.getUTCMonth() + 1; // Bulan 0-indexed, jadi tambah 1
+    // Month is 0-indexed, so add 1.
+    const month = date.getUTCMonth() + 1;
     const year = date.getUTCFullYear();
 
-    // Format komponen dengan nol di depan jika perlu
     const dayString = String(day).padStart(2, '0');
     const monthString = String(month).padStart(2, '0');
 
@@ -43,12 +38,12 @@ function spssSecondsToDateString(spssSeconds) {
 }
 
 /**
- * Mengonversi string tanggal format dd-mm-yyyy ke detik SPSS
- * (detik sejak 14 Okt 1582 00:00:00 UTC).
- * Mengembalikan null jika string input tidak valid atau merepresentasikan tanggal yang tidak valid.
+ * Converts a 'dd-mm-yyyy' date string to SPSS seconds
+ * (seconds since 14 Oct 1582 00:00:00 UTC).
+ * Returns null for invalid input string or date.
  *
- * @param {string} dateString - String tanggal dalam format dd-mm-yyyy.
- * @returns {number | null} Jumlah detik SPSS atau null.
+ * @param {string} dateString - Date string in 'dd-mm-yyyy' format.
+ * @returns {number | null} SPSS seconds or null.
  */
 function dateStringToSpssSeconds(dateString) {
     if (typeof dateString !== 'string') {
@@ -57,24 +52,23 @@ function dateStringToSpssSeconds(dateString) {
 
     const parts = dateString.split('-');
     if (parts.length !== 3) {
-        return null; // Format tidak valid
+        return null; // Invalid format.
     }
 
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
 
-    // Validasi dasar hasil parsing
     if (isNaN(day) || isNaN(month) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31) {
         return null;
     }
 
-    // Hitung timestamp target dalam milidetik sejak epoch JavaScript (gunakan UTC)
-    // Bulan perlu 0-indexed untuk Date.UTC
+    // Calculate target timestamp in milliseconds from JavaScript epoch (use UTC).
+    // Month must be 0-indexed for Date.UTC.
     const targetMillis = Date.UTC(year, month - 1, day, 0, 0, 0);
 
-    // Periksa apakah Date.UTC menghasilkan timestamp valid (menangani tgl spt 30 Feb)
-    // Validasi ulang komponen karena Date.UTC bisa 'meluap' (misal bulan 13 jadi tahun berikutnya)
+    // Validate if Date.UTC produced a valid timestamp (handles dates like Feb 30).
+    // Re-validate components as Date.UTC can "overflow" (e.g., month 13 becomes next year).
     const validationDate = new Date(targetMillis);
     if (
         isNaN(targetMillis) ||
@@ -82,32 +76,29 @@ function dateStringToSpssSeconds(dateString) {
         validationDate.getUTCMonth() !== month - 1 ||
         validationDate.getUTCDate() !== day
     ) {
-        return null; // Komponen tanggal tidak valid atau masalah parsing
+        return null; // Invalid date components or parsing issue.
     }
 
-    // Pastikan epoch SPSS valid (seharusnya selalu valid)
     if (isNaN(SPSS_EPOCH_MILLIS)) {
-        // Seharusnya tidak pernah terjadi di lingkungan JS modern
-        console.error("Perhitungan Epoch SPSS menghasilkan NaN.");
+        // This should not happen in modern JS environments.
+        console.error("SPSS Epoch calculation resulted in NaN.");
         return null;
     }
 
-    // Hitung selisih dalam milidetik
     const diffMillis = targetMillis - SPSS_EPOCH_MILLIS;
-
-    // Konversi selisih ke detik. Gunakan Math.round untuk presisi.
+    // Convert difference to seconds; use Math.round for precision.
     const spssSeconds = Math.round(diffMillis / 1000);
 
-    // Anda bisa menambahkan pengecekan jika tanggal sebelum epoch jika diperlukan
+    // Optional: Check if the date is before the SPSS epoch.
     // if (spssSeconds < 0) return null;
 
     return spssSeconds;
 }
 
 /**
- * Mengonversi durasi dalam detik menjadi format string "X days HH:MM".
- * @param {number | null | undefined} totalSeconds - Jumlah total detik.
- * @returns {string | null} String durasi yang diformat atau null jika input tidak valid.
+ * Converts a duration in seconds to an "X days HH:MM" string format.
+ * @param {number | null | undefined} totalSeconds - Total duration in seconds.
+ * @returns {string | null} Formatted duration string or null for invalid input.
  */
 function secondsToDaysHoursMinutesString(totalSeconds) {
     if (totalSeconds === null || totalSeconds === undefined || typeof totalSeconds !== 'number' || !Number.isFinite(totalSeconds) || totalSeconds < 0) {
@@ -115,15 +106,15 @@ function secondsToDaysHoursMinutesString(totalSeconds) {
     }
 
     const secondsPerMinute = 60;
-    const secondsPerHour = 3600; // 60 * 60
-    const secondsPerDay = 86400; // 3600 * 24
+    const secondsPerHour = 3600;
+    const secondsPerDay = 86400;
 
     const days = Math.floor(totalSeconds / secondsPerDay);
     const remainingSecondsAfterDays = totalSeconds % secondsPerDay;
     const hours = Math.floor(remainingSecondsAfterDays / secondsPerHour);
     const remainingSecondsAfterHours = remainingSecondsAfterDays % secondsPerHour;
     const minutes = Math.floor(remainingSecondsAfterHours / secondsPerMinute);
-    // Kita bisa abaikan sisa detik untuk format ini
+    // Remaining seconds are ignored for this "X days HH:MM" format.
 
     const hoursString = String(hours).padStart(2, '0');
     const minutesString = String(minutes).padStart(2, '0');
@@ -131,7 +122,7 @@ function secondsToDaysHoursMinutesString(totalSeconds) {
     return `${days} days ${hoursString}:${minutesString}`;
 }
 
-// Make functions available globally in the worker scope
+// Expose functions to the global worker scope.
 self.spssSecondsToDateString = spssSecondsToDateString;
 self.dateStringToSpssSeconds = dateStringToSpssSeconds;
 self.secondsToDaysHoursMinutesString = secondsToDaysHoursMinutesString; 

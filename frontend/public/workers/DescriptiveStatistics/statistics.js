@@ -7,16 +7,16 @@
 // SEBELUM digunakan dengan fungsi statistik numerik.
 
 /**
- * Helper: Memfilter data berdasarkan nilai yang hilang/kosong dan bobot yang tidak valid.
- * Memperhitungkan definisi missing value user-defined (discrete & range).
- * Menghitung jumlah kasus valid (validN) dan jumlah total bobot untuk data numerik (totalW_numeric).
+ * Filter data berdasarkan missing values & bobot tidak valid.
+ * Mempertimbangkan missing user-defined (discrete & range).
+ * Hitung validN & total bobot untuk data numerik (totalW).
  * @param {Array<any>} data - Array data input.
  * @param {Array<number|null|undefined>} [weights] - Array bobot opsional.
  * @param {string} variableType - Tipe variabel ('NUMERIC', 'STRING', 'DATE').
- * @param {object|null|undefined} missingDefinition - Definisi missing value dari metadata variabel.
+ * @param {object|null|undefined} missingDefinition - Definisi missing value.
  * @returns {{validRawData: Array<any>, validWeights: Array<number>|null, totalW: number, validN: number}}
- * totalW adalah jumlah bobot HANYA untuk data numerik yang valid (tidak missing).
- * validN adalah jumlah total entri data yang valid (tidak missing).
+ * totalW: Jumlah bobot untuk data numerik valid.
+ * validN: Jumlah total entri data valid.
  */
 function getValidDataAndWeights(data, weights, variableType, missingDefinition) {
     const validRawData = [];
@@ -25,31 +25,32 @@ function getValidDataAndWeights(data, weights, variableType, missingDefinition) 
     let validN = 0;
     const n = data ? data.length : 0;
 
-    // Helper internal mirip checkMissing dari frequency.js
+    // Helper: Cek apakah nilai dianggap missing.
     const checkIsMissing = (value, type, definition) => {
-        // 1. Cek system missing (string kosong untuk NUMERIC/DATE)
+        // Cek system missing: string kosong untuk NUMERIC/DATE.
         if (value === "") {
             if (type === 'NUMERIC' || type === 'DATE') {
-                return true; // System missing
+                return true;
             }
-            // String kosong valid untuk tipe STRING
+            // String kosong adalah valid untuk tipe STRING.
             return false;
         }
 
-        // 2. Cek null/undefined (dianggap system missing secara umum)
+        // Cek null/undefined (dianggap system missing).
         if (value === null || value === undefined) {
-            return true; // System missing
+            return true;
         }
 
-        // 3. Cek user-defined missing
+        // Cek user-defined missing.
         if (!definition) {
-            return false; // Tidak ada definisi, tidak user-defined missing
+            // Tidak ada definisi missing, maka tidak user-defined missing.
+            return false;
         }
 
-        // 3a. User-defined Discrete
+        // User-defined Discrete.
         if (definition.discrete && Array.isArray(definition.discrete)) {
             let valueToCompare = value;
-            // Konversi value ke number jika tipe NUMERIC untuk perbandingan
+            // Konversi `value` ke number jika tipe NUMERIC, untuk perbandingan.
             if (type === 'NUMERIC' && typeof value !== 'number') {
                 const numVal = parseFloat(value);
                 if (!isNaN(numVal)) {
@@ -59,61 +60,74 @@ function getValidDataAndWeights(data, weights, variableType, missingDefinition) 
 
             for (const missingVal of definition.discrete) {
                 let discreteMissingToCompare = missingVal;
-                // Konversi discrete missing value ke number jika tipe NUMERIC & missingVal string
+                // Konversi `missingVal` diskrit ke number jika tipe NUMERIC & `missingVal` adalah string.
                 if (type === 'NUMERIC' && typeof missingVal === 'string'){
                     const numMissing = parseFloat(missingVal);
                     if(!isNaN(numMissing)){
                         discreteMissingToCompare = numMissing;
                     }
                 }
-                // Bandingkan (setelah potensi konversi numerik)
-                // Juga cek perbandingan string untuk menangkap kasus seperti '99' vs 99
+                // Bandingkan (setelah konversi numerik jika ada). Cek juga perbandingan string.
                 if (valueToCompare === discreteMissingToCompare || String(value) === String(missingVal)) {
-                    return true; // User-defined discrete missing
+                    return true; // User-defined discrete missing.
                 }
             }
         }
 
-        // 3b. User-defined Range (hanya untuk NUMERIC)
-        if (type === 'NUMERIC' && definition.range) {
-            const numValue = typeof value === 'number' ? value : parseFloat(value);
-            if (!isNaN(numValue)) {
-                // Pastikan min/max range adalah angka
+        // User-defined Range (untuk NUMERIC atau DATE).
+        if ((type === 'NUMERIC' || type === 'DATE') && definition.range) {
+            let numValue;
+            if (type === 'DATE') {
+                // Untuk DATE, konversi `value` string ke SPSS seconds.
+                // `dateStringToSpssSeconds` return null jika invalid.
+                if (typeof value === 'string' && typeof dateStringToSpssSeconds === 'function') {
+                    numValue = dateStringToSpssSeconds(value);
+                } else {
+                    // `value` tidak bisa dikonversi atau fungsi tidak ada.
+                    numValue = null;
+                }
+            } else { // NUMERIC
+                // Untuk NUMERIC, parse jika string, atau gunakan langsung jika number.
+                numValue = typeof value === 'number' ? value : parseFloat(value);
+            }
+
+            // Lanjut jika `numValue` adalah angka valid (setelah konversi DATE/parse NUMERIC).
+            if (numValue !== null && !isNaN(numValue)) {
+                // Pastikan min/max range adalah angka valid.
                 const min = typeof definition.range.min === 'number' ? definition.range.min : parseFloat(definition.range.min);
                 const max = typeof definition.range.max === 'number' ? definition.range.max : parseFloat(definition.range.max);
+                
                 if (!isNaN(min) && !isNaN(max) && numValue >= min && numValue <= max) {
-                    return true; // User-defined range missing
+                    return true; // User-defined range missing.
                 }
             }
         }
-
-        // Jika lolos semua cek, data tidak missing
+        // Bukan missing jika lolos semua cek.
         return false;
     };
 
-    // Helper untuk cek apakah nilai bisa dianggap numerik (angka valid atau string tanggal valid)
+    // Helper: Cek apakah nilai bisa dikonversi ke numerik (angka valid atau string tanggal valid).
     const isNumericallyConvertible = (value, type) => {
         if (type === 'NUMERIC') {
             if (typeof value === 'number' && !isNaN(value)) return true;
             if (typeof value === 'string') {
                 const numVal = parseFloat(value);
-                // Anggap string angka valid jika bisa diparse & bukan string kosong (sudah dicek di missing)
+                // String angka dianggap valid jika bisa di-parse & bukan string kosong.
                 return !isNaN(numVal);
             }
             return false;
         }
         if (type === 'DATE') {
-            // Gunakan fungsi konversi untuk cek validitas format dan tanggal
-            // Pastikan dateStringToSpssSeconds tersedia di scope ini atau diimpor
+            // Untuk DATE, gunakan `dateStringToSpssSeconds` untuk cek validitas format & tanggal.
             if (typeof dateStringToSpssSeconds === 'function') {
                  return dateStringToSpssSeconds(value) !== null;
             } else {
-                // Fallback jika fungsi tidak ada (misalnya saat testing terisolasi)
-                // Ini hanya cek format dasar, bukan validitas tanggal (31-feb-2023)
+                // Fallback: cek format dasar jika `dateStringToSpssSeconds` tidak ada.
                 return typeof value === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(value);
             }
         }
-        return false; // Tipe lain tidak dianggap numerik
+        // Tipe lain tidak dianggap numerik.
+        return false;
     };
 
     for (let i = 0; i < n; i++) {
@@ -121,7 +135,7 @@ function getValidDataAndWeights(data, weights, variableType, missingDefinition) 
         const weightValue = weights ? (weights[i] ?? null) : 1;
         const isWeightInvalid = (weightValue === null || weightValue === undefined || typeof weightValue !== 'number' || isNaN(weightValue) || weightValue <= 0);
 
-        // Cek apakah data missing berdasarkan tipe dan definisi
+        // Cek apakah data missing.
         const isDataMissing = checkIsMissing(dataValue, variableType, missingDefinition);
 
         if (!isDataMissing && !isWeightInvalid) {
@@ -131,18 +145,18 @@ function getValidDataAndWeights(data, weights, variableType, missingDefinition) 
              }
             validN++;
 
-            // Hitung total bobot HANYA jika nilai valid DAN bisa dikonversi/dianggap numerik
+            // Akumulasi total bobot jika nilai valid & numerik/konvertibel.
             if (isNumericallyConvertible(dataValue, variableType)) {
                  totalW_numeric += weightValue;
             }
         }
     }
 
-     // Penyesuaian totalW jika tidak ada bobot (case unweighted)
+     // Jika tidak ada bobot (unweighted), hitung ulang `totalW` sebagai jumlah item numerik valid.
      if (!weights) {
-         totalW_numeric = 0; // Reset dan hitung ulang
+         totalW_numeric = 0;
          for(const val of validRawData) {
-            // Hitung 1 untuk setiap item valid yang numerik/convertible
+            // Tambah 1 untuk tiap item numerik/konvertibel valid.
             if (isNumericallyConvertible(val, variableType)) {
                 totalW_numeric += 1;
             }
@@ -155,26 +169,26 @@ function getValidDataAndWeights(data, weights, variableType, missingDefinition) 
 // --- Fungsi Statistik Utama ---
 
 /**
- * Menghitung jumlah bobot yang valid (W) untuk nilai numerik.
- * Memperhitungkan definisi missing value.
+ * Hitung total bobot valid (W) untuk nilai numerik.
+ * Mempertimbangkan missing values.
  * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
+ * @param {Array<number|null|undefined>} [weights] - Array bobot opsional.
  * @param {string} variableType - Tipe variabel.
  * @param {object|null|undefined} missingDefinition - Definisi missing.
- * @returns {number} Jumlah bobot valid untuk nilai numerik.
+ * @returns {number} Total bobot valid untuk nilai numerik.
  */
 function getTotalValidWeight(data, weights, variableType, missingDefinition) {
-    // Hanya relevan untuk NUMERIC
+    // Hanya untuk tipe NUMERIC.
     if (variableType !== 'NUMERIC') return 0;
     const { totalW } = getValidDataAndWeights(data, weights, variableType, missingDefinition);
     return totalW;
 }
 
 /**
- * Menghitung jumlah kasus yang valid (validN) untuk semua tipe data.
- * Memperhitungkan definisi missing value.
+ * Hitung jumlah kasus valid (validN) untuk semua tipe data.
+ * Mempertimbangkan missing values.
  * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
+ * @param {Array<number|null|undefined>} [weights] - Array bobot opsional.
  * @param {string} variableType - Tipe variabel.
  * @param {object|null|undefined} missingDefinition - Definisi missing.
  * @returns {number} Jumlah kasus valid.
@@ -185,27 +199,24 @@ function getValidN(data, weights, variableType, missingDefinition) {
 }
 
 /**
- * Menghitung jumlah (Sum) dari nilai numerik dengan bobot.
- * Memperhitungkan definisi missing value.
- * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
- * @param {string} variableType - Tipe variabel (harus 'NUMERIC').
- * @param {object|null|undefined} missingDefinition - Definisi missing.
- * @returns {number} Jumlah nilai numerik dengan bobot.
+ * Hitung Sum dari nilai numerik, dengan bobot.
+ * Fungsi ini mengasumsikan input sudah valid dan numerik.
+ * @param {Array<number>} validNumericData - Array data numerik valid.
+ * @param {Array<number>|null} validWeights - Array bobot valid atau null.
+ * @returns {number} Sum nilai numerik terbobot.
  */
 function calculateSum(validNumericData, validWeights) {
-    // Fungsi ini mengasumsikan input sudah valid dan numerik
     let sum = 0;
     if (!validWeights) {
         for(const val of validNumericData) {
-             // Cek lagi tipe karena DATE mungkin masuk sebagai null jika gagal konversi
+            // Pastikan nilai adalah number valid sebelum kalkulasi.
             if(typeof val === 'number' && !isNaN(val)) {
                 sum += val;
             }
         }
     } else {
          for(let i = 0; i < validNumericData.length; i++) {
-             // Cek lagi tipe
+            // Pastikan nilai adalah number valid sebelum kalkulasi.
             if(typeof validNumericData[i] === 'number' && !isNaN(validNumericData[i])) {
                 sum += validNumericData[i] * validWeights[i];
             }
@@ -215,23 +226,25 @@ function calculateSum(validNumericData, validWeights) {
 }
 
 /**
- * Menghitung rata-rata (Mean) nilai numerik dengan bobot.
- * MEMBUTUHKAN: data numerik valid, bobot valid, dan total bobot valid (totalW).
- * @param {Array<number>} validNumericData - Array data numerik yang sudah valid.
+ * Hitung Mean nilai numerik terbobot.
+ * Membutuhkan data numerik & bobot valid, dan total bobot valid (totalW).
+ * @param {Array<number>} validNumericData - Array data numerik valid.
  * @param {Array<number>|null} validWeights - Array bobot valid yang sesuai.
- * @param {number} totalW - Jumlah total bobot yang valid untuk data numerik ini.
- * @returns {number|null} Rata-rata, atau null jika tidak dapat dihitung.
+ * @param {number} totalW - Total bobot valid untuk data numerik ini.
+ * @returns {number|null} Mean, atau null jika tidak bisa dihitung.
  */
 function calculateMean(validNumericData, validWeights, totalW) {
     if (totalW === 0) return null;
-    // Hitung Sum dari data yang sudah valid
+    // Hitung Sum dari data valid.
     let sum = 0;
     if (!validWeights) {
         for(const val of validNumericData) {
+            // Pastikan nilai adalah number valid.
             if(typeof val === 'number' && !isNaN(val)) sum += val;
         }
     } else {
          for(let i = 0; i < validNumericData.length; i++) {
+            // Pastikan nilai adalah number valid.
              if(typeof validNumericData[i] === 'number' && !isNaN(validNumericData[i])) {
                  sum += validNumericData[i] * validWeights[i];
              }
@@ -241,22 +254,23 @@ function calculateMean(validNumericData, validWeights, totalW) {
 }
 
 /**
- * Helper: Menghitung momen pusat ke-r untuk nilai numerik.
- * MEMBUTUHKAN: data numerik valid, bobot valid, dan rata-rata.
+ * Helper: Hitung momen pusat ke-r untuk nilai numerik.
+ * Membutuhkan data numerik & bobot valid, dan mean.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @param {Array<number>|null} validWeights - Array bobot valid atau null.
- * @param {number} r - Orde momen (mis., 2, 3, 4).
- * @param {number} mean - Rata-rata numerik yang telah dihitung.
- * @returns {number|null} Momen pusat ke-r, atau null jika tidak dapat dihitung.
+ * @param {number} r - Orde momen (e.g., 2, 3, 4).
+ * @param {number} mean - Mean numerik yang sudah dihitung.
+ * @returns {number|null} Momen pusat ke-r, atau null jika tidak bisa dihitung.
  */
 function calculateCentralMoment(validNumericData, validWeights, r, mean) {
     if (mean === null) return null;
     let moment = 0;
-    let numericCount = 0; // Hitung item numerik valid yang diproses
+    // Jumlah item numerik valid yang diproses.
+    let numericCount = 0;
 
     if (!validWeights) {
         for (const val of validNumericData) {
-            // Cek tipe lagi
+            // Pastikan nilai adalah number valid.
             if (typeof val === 'number' && !isNaN(val)) {
                 moment += Math.pow(val - mean, r);
                 numericCount++;
@@ -264,25 +278,25 @@ function calculateCentralMoment(validNumericData, validWeights, r, mean) {
         }
     } else {
         for (let i = 0; i < validNumericData.length; i++) {
-             // Cek tipe lagi
+            // Pastikan nilai adalah number valid.
              if (typeof validNumericData[i] === 'number' && !isNaN(validNumericData[i])) {
                 moment += validWeights[i] * Math.pow(validNumericData[i] - mean, r);
                 numericCount++;
             }
         }
     }
-    // Kembalikan null jika tidak ada data numerik valid yang diproses
+    // Return null jika tidak ada data numerik valid diproses.
     return numericCount > 0 ? moment : null;
 }
 
 /**
- * Menghitung varians untuk nilai numerik.
- * MEMBUTUHKAN: data numerik valid, bobot valid, total bobot valid, dan rata-rata.
+ * Hitung Variance nilai numerik.
+ * Membutuhkan data numerik & bobot valid, total bobot valid, dan mean.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @param {Array<number>|null} validWeights - Array bobot valid.
- * @param {number} totalW - Jumlah total bobot valid.
- * @param {number} mean - Rata-rata yang telah dihitung.
- * @returns {number|null} Varians, atau null jika tidak dapat dihitung.
+ * @param {number} totalW - Total bobot valid.
+ * @param {number} mean - Mean yang sudah dihitung.
+ * @returns {number|null} Variance, atau null jika tidak bisa dihitung.
  */
 function calculateVariance(validNumericData, validWeights, totalW, mean) {
     if (totalW <= 1 || mean === null) return null;
@@ -290,31 +304,31 @@ function calculateVariance(validNumericData, validWeights, totalW, mean) {
     const M2 = calculateCentralMoment(validNumericData, validWeights, 2, mean);
     if (M2 === null) return null;
 
-    // Hindari pembagian dengan nol atau nilai negatif kecil dekat nol
+    // Hindari pembagian dengan nol atau nilai sangat kecil.
     const denominator = totalW - 1;
     return denominator > 1e-15 ? (M2 / denominator) : null;
 }
 
 /**
- * Menghitung simpangan baku (Standard Deviation) untuk nilai numerik.
- * MEMBUTUHKAN: varians yang telah dihitung.
- * @param {number|null} variance - Varians yang telah dihitung.
- * @returns {number|null} Simpangan baku, atau null jika tidak dapat dihitung.
+ * Hitung Standard Deviation (simpangan baku) nilai numerik.
+ * Membutuhkan variance yang sudah dihitung.
+ * @param {number|null} variance - Variance yang sudah dihitung.
+ * @returns {number|null} Standard deviation, atau null jika tidak bisa dihitung.
  */
 function calculateStdDev(variance) {
     return variance === null || variance < 0 ? null : Math.sqrt(variance);
 }
 
 /**
- * Menghitung nilai minimum (hanya untuk angka).
- * MEMBUTUHKAN: data numerik valid.
+ * Hitung nilai Minimum (hanya untuk angka).
+ * Membutuhkan data numerik valid.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @returns {number|null} Nilai minimum numerik, atau null jika tidak ada.
  */
 function calculateMin(validNumericData) {
     let min = null;
     for (const val of validNumericData) {
-      // Cek tipe lagi
+      // Pastikan nilai adalah number valid.
       if (typeof val === 'number' && !isNaN(val)) {
         if (min === null || val < min) {
           min = val;
@@ -325,15 +339,15 @@ function calculateMin(validNumericData) {
 }
 
 /**
- * Menghitung nilai maksimum (hanya untuk angka).
- * MEMBUTUHKAN: data numerik valid.
+ * Hitung nilai Maximum (hanya untuk angka).
+ * Membutuhkan data numerik valid.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @returns {number|null} Nilai maksimum numerik, atau null jika tidak ada.
  */
 function calculateMax(validNumericData) {
     let max = null;
     for (const val of validNumericData) {
-       // Cek tipe lagi
+       // Pastikan nilai adalah number valid.
        if (typeof val === 'number' && !isNaN(val)) {
         if (max === null || val > max) {
           max = val;
@@ -344,22 +358,22 @@ function calculateMax(validNumericData) {
 }
 
 /**
- * Menghitung jangkauan (Range) untuk nilai numerik.
- * MEMBUTUHKAN: nilai min dan max yang telah dihitung.
+ * Hitung Range (jangkauan) untuk nilai numerik.
+ * Membutuhkan nilai min & max yang sudah dihitung.
  * @param {number|null} min - Nilai minimum.
  * @param {number|null} max - Nilai maksimum.
- * @returns {number|null} Jangkauan, atau null jika min/max tidak dapat dihitung.
+ * @returns {number|null} Range, atau null jika min/max tidak bisa dihitung.
  */
 function calculateRange(min, max) {
     return min === null || max === null ? null : max - min;
 }
 
 /**
- * Menghitung kesalahan baku rata-rata (Standard Error of Mean).
- * MEMBUTUHKAN: simpangan baku dan total bobot valid.
- * @param {number|null} stdDev - Simpangan baku yang telah dihitung.
- * @param {number} totalW - Jumlah total bobot valid.
- * @returns {number|null} Kesalahan baku rata-rata, atau null jika tidak dapat dihitung.
+ * Hitung Standard Error of Mean (kesalahan baku rata-rata).
+ * Membutuhkan standard deviation dan total bobot valid.
+ * @param {number|null} stdDev - Standard deviation yang sudah dihitung.
+ * @param {number} totalW - Total bobot valid.
+ * @returns {number|null} Standard error of mean, atau null jika tidak bisa dihitung.
  */
 function calculateSEMean(stdDev, totalW) {
     if (totalW <= 0 || stdDev === null) return null;
@@ -368,14 +382,14 @@ function calculateSEMean(stdDev, totalW) {
 }
 
 /**
- * Menghitung Skewness (Kemiringan) untuk nilai numerik.
- * MEMBUTUHKAN: data numerik valid, bobot valid, total bobot valid, rata-rata, dan simpangan baku.
+ * Hitung Skewness (kemiringan) nilai numerik.
+ * Membutuhkan data numerik & bobot valid, total bobot, mean, dan stdDev.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @param {Array<number>|null} validWeights - Array bobot valid.
- * @param {number} totalW - Jumlah total bobot valid.
- * @param {number} mean - Rata-rata yang telah dihitung.
- * @param {number} stdDev - Simpangan baku yang telah dihitung.
- * @returns {number|null} Skewness, atau null jika tidak dapat dihitung.
+ * @param {number} totalW - Total bobot valid.
+ * @param {number} mean - Mean yang sudah dihitung.
+ * @param {number} stdDev - Standard deviation yang sudah dihitung.
+ * @returns {number|null} Skewness, atau null jika tidak bisa dihitung.
  */
 function calculateSkewness(validNumericData, validWeights, totalW, mean, stdDev) {
     const W = totalW;
@@ -391,10 +405,10 @@ function calculateSkewness(validNumericData, validWeights, totalW, mean, stdDev)
 }
 
 /**
- * Menghitung kesalahan baku Skewness (Standard Error of Skewness).
- * MEMBUTUHKAN: total bobot valid.
- * @param {number} totalW - Jumlah total bobot valid.
- * @returns {number|null} Kesalahan baku skewness, atau null jika tidak dapat dihitung.
+ * Hitung Standard Error of Skewness.
+ * Membutuhkan total bobot valid.
+ * @param {number} totalW - Total bobot valid.
+ * @returns {number|null} Standard error of skewness, atau null jika tidak bisa dihitung.
  */
 function calculateSESkewness(totalW) {
     const W = totalW;
@@ -410,14 +424,14 @@ function calculateSESkewness(totalW) {
 }
 
 /**
- * Menghitung Kurtosis untuk nilai numerik.
- * MEMBUTUHKAN: data numerik valid, bobot valid, total bobot valid, rata-rata, dan simpangan baku.
+ * Hitung Kurtosis nilai numerik.
+ * Membutuhkan data numerik & bobot valid, total bobot, mean, dan stdDev.
  * @param {Array<number>} validNumericData - Array data numerik valid.
  * @param {Array<number>|null} validWeights - Array bobot valid.
- * @param {number} totalW - Jumlah total bobot valid.
- * @param {number} mean - Rata-rata yang telah dihitung.
- * @param {number} stdDev - Simpangan baku yang telah dihitung.
- * @returns {number|null} Kurtosis, atau null jika tidak dapat dihitung.
+ * @param {number} totalW - Total bobot valid.
+ * @param {number} mean - Mean yang sudah dihitung.
+ * @param {number} stdDev - Standard deviation yang sudah dihitung.
+ * @returns {number|null} Kurtosis, atau null jika tidak bisa dihitung.
  */
 function calculateKurtosis(validNumericData, validWeights, totalW, mean, stdDev) {
     const W = totalW;
@@ -442,10 +456,10 @@ function calculateKurtosis(validNumericData, validWeights, totalW, mean, stdDev)
 }
 
 /**
- * Menghitung kesalahan baku Kurtosis (Standard Error of Kurtosis).
- * MEMBUTUHKAN: total bobot valid.
- * @param {number} totalW - Jumlah total bobot valid.
- * @returns {number|null} Kesalahan baku kurtosis, atau null jika tidak dapat dihitung.
+ * Hitung Standard Error of Kurtosis.
+ * Membutuhkan total bobot valid.
+ * @param {number} totalW - Total bobot valid.
+ * @returns {number|null} Standard error of kurtosis, atau null jika tidak bisa dihitung.
  */
 function calculateSEKurtosis(totalW) {
     const W = totalW;
@@ -461,20 +475,18 @@ function calculateSEKurtosis(totalW) {
 }
 
 /**
- * Helper function to find the data value corresponding to a specific rank
- * in weighted, sorted data.
- * @param {number} targetRank - The 1-based rank to find the value for.
- * @param {Array<{value: number, weight: number}>} sortedItems - Array of {value, weight} objects, sorted by value.
- * @param {number} totalW - The total weight W.
- * @returns {number} The data value corresponding to the target rank.
+ * Helper: Cari nilai data pada rank tertentu dalam data terurut & terbobot.
+ * @param {number} targetRank - Rank (1-based) yang dicari nilainya.
+ * @param {Array<{value: number, weight: number}>} sortedItems - Array objek {value, weight}, terurut berdasarkan value.
+ * @param {number} totalW - Total bobot W.
+ * @returns {number} Nilai data pada targetRank.
  */
 function findValueAtRank(targetRank, sortedItems, totalW) {
-    // Handle ranks below 1 (should correspond to the smallest value)
+    // Handle rank < 1: return nilai terkecil.
     if (targetRank < 1) {
         return sortedItems[0].value;
     }
-    // Handle ranks at or above total weight W (should correspond to the largest value)
-    // Using 1e-9 epsilon for comparison due to potential floating point issues
+    // Handle rank >= totalW: return nilai terbesar (gunakan epsilon untuk float comparison).
     if (targetRank >= totalW - 1e-9) {
         return sortedItems[sortedItems.length - 1].value;
     }
@@ -482,29 +494,28 @@ function findValueAtRank(targetRank, sortedItems, totalW) {
     let cumulativeWeight = 0;
     for (let k = 0; k < sortedItems.length; k++) {
         cumulativeWeight += sortedItems[k].weight;
-        // If the target rank falls within the cumulative weight of this item
+        // Jika target rank masuk dalam cumulative weight item ini.
         if (targetRank <= cumulativeWeight + 1e-9) {
             return sortedItems[k].value;
         }
     }
 
-    // Fallback: Should theoretically not be reached if targetRank < totalW,
-    // but return the largest value just in case.
+    // Fallback (seharusnya tidak tercapai jika targetRank < totalW): return nilai terbesar.
     return sortedItems[sortedItems.length - 1].value;
 }
 
 /**
- * Menghitung modus (Mode) untuk semua tipe data valid (angka, string).
- * Termasuk string format tanggal "dd-mmm-yyyy".
- * Memperhitungkan definisi missing value.
+ * Hitung Mode untuk semua tipe data valid (angka, string).
+ * Termasuk string tanggal format "dd-mmm-yyyy".
+ * Mempertimbangkan missing values.
  * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
+ * @param {Array<number|null|undefined>} [weights] - Array bobot opsional.
  * @param {string} variableType - Tipe variabel.
  * @param {object|null|undefined} missingDefinition - Definisi missing.
- * @returns {number|string|null} Modus (nilai terkecil jika ada multiple mode), atau null jika tidak ada data/mode.
+ * @returns {number|string|null} Mode (nilai terkecil jika ada multiple mode), atau null jika tidak ada data/mode.
  */
 function calculateMode(data, weights, variableType, missingDefinition) {
-    // Gunakan data yang sudah difilter missing
+    // Gunakan data yang sudah difilter dari missing values.
     const { validRawData, validWeights, validN } = getValidDataAndWeights(data, weights, variableType, missingDefinition);
     if (validN === 0) return null;
 
@@ -514,7 +525,8 @@ function calculateMode(data, weights, variableType, missingDefinition) {
 
     if (!validWeights) {
         for (const val of validRawData) {
-            const key = typeof val === 'number' && isNaN(val) ? 'NaN' : val; // Handle NaN numbers as key
+            // Handle NaN sebagai key map.
+            const key = typeof val === 'number' && isNaN(val) ? 'NaN' : val;
             const currentFreq = (frequencyMap.get(key) || 0) + 1;
             frequencyMap.set(key, currentFreq);
 
@@ -530,6 +542,7 @@ function calculateMode(data, weights, variableType, missingDefinition) {
         for (let i = 0; i < validRawData.length; i++) {
             const val = validRawData[i];
             const weightValue = validWeights[i];
+            // Handle NaN sebagai key map.
             const key = typeof val === 'number' && isNaN(val) ? 'NaN' : val;
             const currentFreq = (frequencyMap.get(key) || 0) + weightValue;
             frequencyMap.set(key, currentFreq);
@@ -545,9 +558,9 @@ function calculateMode(data, weights, variableType, missingDefinition) {
     }
 
     if (modes.length === 0 || maxFrequency <= 1e-9) return null;
-    // Cek jika semua nilai unik memiliki frekuensi yang sama (tidak ada modus unik)
+    // Jika semua nilai unik punya frekuensi sama (tidak ada mode unik).
     if (modes.length === frequencyMap.size && modes.length > 1) {
-        // Urutkan untuk mendapatkan yang terkecil
+        // Urutkan untuk dapat nilai terkecil.
         modes.sort((a, b) => {
             const numA = Number(a);
             const numB = Number(b);
@@ -560,20 +573,19 @@ function calculateMode(data, weights, variableType, missingDefinition) {
             if (stringA > stringB) return 1;
             return 0;
         });
-        // Kembalikan nilai terkecil dengan asterisk
-        // Pastikan dikonversi ke string jika awalnya angka
+        // Return nilai terkecil + '*' (pastikan string).
         return String(modes[0]) + '*';
     }
 
-    // Urutkan untuk mendapatkan yang terkecil jika ada multiple modes (kasus normal)
+    // Urutkan untuk dapat nilai terkecil jika ada multiple modes.
     modes.sort((a, b) => {
-        // Coba urutkan sebagai angka jika memungkinkan
+        // Urutkan sebagai angka jika bisa.
         const numA = Number(a);
         const numB = Number(b);
         if (!isNaN(numA) && !isNaN(numB)) {
             return numA - numB;
         }
-        // Fallback ke string comparison
+        // Fallback ke perbandingan string.
         const stringA = String(a);
         const stringB = String(b);
         if (stringA < stringB) return -1;
@@ -585,25 +597,23 @@ function calculateMode(data, weights, variableType, missingDefinition) {
 }
 
 /**
- * Menghitung persentil untuk nilai numerik menggunakan metode WAVERAGE.
- * Memperhitungkan definisi missing value.
- * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
- * @param {number} p - Persentil yang diinginkan (0 hingga 1).
- * @param {string} variableType - Tipe variabel (harus 'NUMERIC' atau 'DATE' - DATE diperlakukan numerik di sini).
- * @param {object|null|undefined} missingDefinition - Definisi missing.
- * @returns {number|null} Nilai persentil, atau null jika tidak dapat dihitung.
+ * Hitung Persentil nilai numerik (metode WAVERAGE).
+ * Fungsi ini mengasumsikan input (data & bobot) sudah valid dan numerik.
+ * @param {Array<number>} validNumericData - Array data numerik valid.
+ * @param {Array<number>|null} validWeights - Array bobot valid atau null.
+ * @param {number} p - Persentil yang dicari (0 hingga 1).
+ * @param {number} totalW - Total bobot valid.
+ * @returns {number|null} Nilai persentil, atau null jika tidak bisa dihitung.
  */
 function calculatePercentile(validNumericData, validWeights, p, totalW) {
     if (p < 0 || p > 1) return null;
-    // Fungsi ini mengasumsikan input sudah valid dan numerik
     const W = totalW;
     if (W <= 0 || !validNumericData || validNumericData.length === 0) return null;
 
     const items = [];
     for (let i = 0; i < validNumericData.length; i++) {
         const val = validNumericData[i];
-        // Cek tipe lagi
+        // Pastikan nilai adalah number valid.
         if (typeof val === 'number' && !isNaN(val)) {
             items.push({ value: val, weight: validWeights ? validWeights[i] : 1 });
         }
@@ -611,53 +621,75 @@ function calculatePercentile(validNumericData, validWeights, p, totalW) {
 
     if (items.length === 0) return null;
 
-    // 1. Urutkan data berdasarkan nilai
+    // 1. Urutkan data berdasarkan nilai.
     items.sort((a, b) => a.value - b.value);
 
-    // Handle P=0 and P=1 directly as edge cases (min and max value)
+    // Handle P=0 (min) dan P=1 (max) sebagai edge case.
     if (p === 0) return items[0].value;
     if (p === 1) return items[items.length - 1].value;
 
-    // 2. Hitung Indeks Peringkat (Rank Index) i
+    // 2. Hitung Rank Index i.
     const i_rank = (W + 1) * p;
 
-    // 3. Dekomposisi Indeks i
+    // 3. Dekomposisi Index i.
     const g = Math.floor(i_rank);
-    const f = i_rank - g; // Bagian pecahan
+    // Bagian pecahan f.
+    const f = i_rank - g;
 
-    // 5. Handle Edge Cases (berdasarkan rank g dan total weight W)
-    // Kasus g=0 (i_rank < 1)
+    // 4. Handle Edge Cases (berdasarkan rank g dan totalW).
+    // Kasus g < 1 (i_rank < 1).
     if (g < 1) {
-        return items[0].value; // Nilai terkecil
+        // Return nilai terkecil.
+        return items[0].value;
     }
-    // Kasus g >= W (i_rank >= W+1 effectively, karena i=g+f)
-    // Check using g, as rank g must exist for interpolation
+    // Kasus g >= W.
     if (g >= W) {
-         return items[items.length - 1].value; // Nilai terbesar
+        // Return nilai terbesar.
+         return items[items.length - 1].value;
     }
 
-    // 4. Cari nilai pada rank g (xg) dan rank g+1 (xg1)
-    // Gunakan helper function findValueAtRank
+    // 5. Cari nilai pada rank g (xg) dan g+1 (xg1) menggunakan findValueAtRank.
     const xg = findValueAtRank(g, items, W);
     const xg1 = findValueAtRank(g + 1, items, W);
 
-    // 6. Lakukan Interpolasi Linier
-    // xp = (1 - f) * xg + f * xg1
+    // 6. Interpolasi Linier: xp = (1 - f) * xg + f * xg1.
     const percentileValue = (1 - f) * xg + f * xg1;
 
     return percentileValue;
 }
 
 /**
- * Menghitung median (persentil ke-50) untuk nilai numerik.
- * Memperhitungkan definisi missing value.
- * @param {Array<any>} data - Array nilai.
- * @param {Array<number|null|undefined>} [weights] - Array bobot (opsional).
- * @param {string} variableType - Tipe variabel (harus 'NUMERIC' atau 'DATE').
- * @param {object|null|undefined} missingDefinition - Definisi missing.
- * @returns {number|null} Median, atau null jika tidak dapat dihitung.
+ * Hitung Median (persentil ke-50) nilai numerik.
+ * Fungsi ini mengasumsikan input (data & bobot) sudah valid dan numerik.
+ * @param {Array<number>} validNumericData - Array data numerik valid.
+ * @param {Array<number>|null} validWeights - Array bobot valid atau null.
+ * @param {number} totalW - Total bobot valid.
+ * @returns {number|null} Median, atau null jika tidak bisa dihitung.
  */
 function calculateMedian(validNumericData, validWeights, totalW) {
-    // Median adalah persentil ke-50
+    // Median adalah persentil ke-50.
     return calculatePercentile(validNumericData, validWeights, 0.5, totalW);
 }
+
+// Ekspor fungsi ke global worker scope.
+// calculateCentralMoment & findValueAtRank diekspor meski tidak langsung dipakai descriptives.js, berguna sebagai bagian dari library.
+self.getValidDataAndWeights = getValidDataAndWeights;
+self.getTotalValidWeight = getTotalValidWeight;
+self.getValidN = getValidN;
+self.calculateSum = calculateSum;
+self.calculateMean = calculateMean;
+self.calculateCentralMoment = calculateCentralMoment;
+self.calculateVariance = calculateVariance;
+self.calculateStdDev = calculateStdDev;
+self.calculateMin = calculateMin;
+self.calculateMax = calculateMax;
+self.calculateRange = calculateRange;
+self.calculateSEMean = calculateSEMean;
+self.calculateSkewness = calculateSkewness;
+self.calculateSESkewness = calculateSESkewness;
+self.calculateKurtosis = calculateKurtosis;
+self.calculateSEKurtosis = calculateSEKurtosis;
+self.findValueAtRank = findValueAtRank;
+self.calculateMode = calculateMode;
+self.calculatePercentile = calculatePercentile;
+self.calculateMedian = calculateMedian;

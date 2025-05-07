@@ -1,171 +1,19 @@
-// /path/to/your/descriptiveStatsFunctions.js
+// Worker untuk kalkulasi statistik deskriptif.
 
-function getValidDataAndWeights(data, weights) {
-    const validData = [];
-    const validWeights = weights ? [] : null;
-    let totalW = 0;
-    let validN = 0;
-
-    for (let i = 0; i < data.length; i++) {
-        const dataValue = data[i];
-        const isDataMissing = (dataValue === null || dataValue === undefined || dataValue === '');
-        const weightValue = weights ? (weights[i] ?? null) : 1;
-        const isWeightInvalid = (weightValue === null || weightValue === undefined || weightValue === '' || weightValue <= 0);
-
-        if (!isDataMissing && !isWeightInvalid) {
-            validData.push(dataValue);
-            if (validWeights) {
-                validWeights.push(weightValue);
-            }
-            totalW += weightValue;
-            validN++;
-        }
-    }
-    if (!weights) {
-        totalW = validN;
-    }
-    return { validData, validWeights, totalW, validN };
-}
-
-function getTotalValidWeight(data, weights) {
-    const { totalW } = getValidDataAndWeights(data, weights);
-    return totalW;
-}
-
-function getValidN(data, weights) {
-    const { validN } = getValidDataAndWeights(data, weights);
-    return validN;
-}
-
-function calculateSum(data, weights) {
-    const { validData, validWeights } = getValidDataAndWeights(data, weights);
-    if (validData.length === 0) return 0;
-    if (!validWeights) {
-        return validData.reduce((sum, val) => sum + val, 0);
-    } else {
-        return validData.reduce((sum, val, i) => sum + val * validWeights[i], 0);
-    }
-}
-
-function calculateMean(data, weights) {
-    const { totalW } = getValidDataAndWeights(data, weights);
-    if (totalW === 0) return null;
-    const sum = calculateSum(data, weights);
-    return sum / totalW;
-}
-
-function calculateVariance(data, weights) {
-    const { validData, validWeights, totalW } = getValidDataAndWeights(data, weights);
-    if (totalW <= 1) return null;
-    const mean = calculateMean(data, weights);
-    if (mean === null) return null;
-    let sumSqDev = 0;
-    if (!validWeights) {
-        sumSqDev = validData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0);
-    } else {
-        sumSqDev = validData.reduce((sum, val, i) => sum + validWeights[i] * Math.pow(val - mean, 2), 0);
-    }
-    return sumSqDev / (totalW - 1);
-}
-
-function calculateStdDev(data, weights) {
-    const variance = calculateVariance(data, weights);
-    return variance === null || variance < 0 ? null : Math.sqrt(variance);
-}
-
-function calculateMin(data) {
-    const { validData } = getValidDataAndWeights(data, null);
-    if (validData.length === 0) return null;
-    return Math.min(...validData);
-}
-
-function calculateMax(data) {
-    const { validData } = getValidDataAndWeights(data, null);
-    if (validData.length === 0) return null;
-    return Math.max(...validData);
-}
-
-function calculateRange(data) {
-    const min = calculateMin(data);
-    const max = calculateMax(data);
-    return min === null || max === null ? null : max - min;
-}
-
-function calculateSEMean(data, weights) {
-    const { totalW } = getValidDataAndWeights(data, weights);
-    if (totalW <= 1) return null;
-    const stdDev = calculateStdDev(data, weights);
-    return stdDev === null || totalW <= 0 ? null : stdDev / Math.sqrt(totalW);
-}
-
-function calculateSkewness(data, weights) {
-    const { validData, validWeights, totalW } = getValidDataAndWeights(data, weights);
-    const W = totalW;
-    if (W < 3) return null;
-    const mean = calculateMean(data, weights);
-    const stdDev = calculateStdDev(data, weights);
-    if (mean === null || stdDev === null || stdDev <= 1e-15) return null;
-    let sumCubedDev = 0;
-    if (!validWeights) {
-        sumCubedDev = validData.reduce((sum, val) => sum + Math.pow((val - mean) / stdDev, 3), 0);
-    } else {
-        sumCubedDev = validData.reduce((sum, val, i) => sum + validWeights[i] * Math.pow((val - mean) / stdDev, 3), 0);
-    }
-    const N = W;
-    const denominator = (N - 1) * (N - 2);
-    if (denominator === 0) return null;
-    return (N / denominator) * sumCubedDev;
-}
-
-function calculateKurtosis(data, weights) {
-    const { validData, validWeights, totalW } = getValidDataAndWeights(data, weights);
-    const W = totalW;
-    if (W < 4) return null;
-    const mean = calculateMean(data, weights);
-    const stdDev = calculateStdDev(data, weights);
-    if (mean === null || stdDev === null || stdDev <= 1e-15) return null;
-    let sumFourthDev = 0;
-    if (!validWeights) {
-        sumFourthDev = validData.reduce((sum, val) => sum + Math.pow((val - mean) / stdDev, 4), 0);
-    } else {
-        sumFourthDev = validData.reduce((sum, val, i) => sum + validWeights[i] * Math.pow((val - mean) / stdDev, 4), 0);
-    }
-    const N = W;
-    const term1Denominator = (N - 1) * (N - 2) * (N - 3);
-    const term2Denominator = (N - 2) * (N - 3);
-    if (term1Denominator === 0 || term2Denominator === 0) return null;
-    const term1 = (N * (N + 1) / term1Denominator) * sumFourthDev;
-    const term2 = (3 * Math.pow(N - 1, 2)) / term2Denominator;
-    return term1 - term2;
-}
-
-function calculateSESkewness(data, weights) {
-    const { totalW } = getValidDataAndWeights(data, weights);
-    const W = totalW;
-    if (W < 3) return null;
-    const numerator = 6 * W * (W - 1);
-    const denominator = (W - 2) * (W + 1) * (W + 3);
-    if (denominator === 0) return null;
-    const varianceSkew = numerator / denominator;
-    return varianceSkew < 0 ? null : Math.sqrt(varianceSkew);
-}
-
-function calculateSEKurtosis(data, weights) {
-    const { totalW } = getValidDataAndWeights(data, weights);
-    const W = totalW;
-    if (W < 4) return null;
-    const numerator = 24 * W * Math.pow(W - 1, 2);
-    const denominator = (W - 3) * (W - 2) * (W + 3) * (W + 5);
-    if (denominator === 0) return null;
-    const varianceKurt = numerator / denominator;
-    return varianceKurt < 0 ? null : Math.sqrt(varianceKurt);
+// Impor skrip dependensi dengan error handling.
+try {
+    self.importScripts('../statistics.js', '../spssDateConverter.js');
+} catch (e) {
+    console.error("Worker importScripts failed:", e);
+    // Kirim pesan error jika impor gagal & hentikan worker.
+    self.postMessage({ success: false, error: `Failed to load dependency scripts: ${e.message}${e.stack ? '\nStack: ' + e.stack : ''}` });
+    throw e;
 }
 
 self.onmessage = function(e) {
     try {
+        // Destructure data input.
         const { variableData, weightVariableData, params /*, saveStandardized */ } = e.data;
-
-        self.importScripts('../statistics.js', '../spssDateConverter.js');
 
         const outputTable = {
             title: "Descriptive Statistics",
@@ -173,8 +21,8 @@ self.onmessage = function(e) {
             rows: []
         };
 
-        // Dynamically build columnHeaders based on params and user's example structure
-        const columnHeaders = [{ "header": "" }]; // For rowHeader (variable name/label)
+        // Bangun `columnHeaders` secara dinamis berdasarkan `params`.
+        const columnHeaders = [{ "header": "" }]; // Untuk rowHeader (nama/label variabel).
         columnHeaders.push({ "header": "N", "key": "n" });
         if (params.range) columnHeaders.push({ "header": "Range", "key": "range" });
         if (params.minimum) columnHeaders.push({ "header": "Minimum", "key": "minimum" });
@@ -191,14 +39,16 @@ self.onmessage = function(e) {
         if (params.variance) columnHeaders.push({ "header": "Variance", "key": "variance" });
 
         const skewnessGroupChildren = [];
-        if (params.skewness) { // Skewness implies both statistic and std. error typically
+        // Jika skewness diminta, biasanya termasuk statistik & std. error.
+        if (params.skewness) {
             skewnessGroupChildren.push({ "header": "Statistic", "key": "skewness_statistic" });
             skewnessGroupChildren.push({ "header": "Std. Error", "key": "skewness_std_error" });
             columnHeaders.push({ "header": "Skewness", "children": skewnessGroupChildren });
         }
 
         const kurtosisGroupChildren = [];
-        if (params.kurtosis) { // Kurtosis implies both statistic and std. error
+        // Jika kurtosis diminta, biasanya termasuk statistik & std. error.
+        if (params.kurtosis) {
             kurtosisGroupChildren.push({ "header": "Statistic", "key": "kurtosis_statistic" });
             kurtosisGroupChildren.push({ "header": "Std. Error", "key": "kurtosis_std_error" });
             columnHeaders.push({ "header": "Kurtosis", "children": kurtosisGroupChildren });
@@ -213,7 +63,7 @@ self.onmessage = function(e) {
 
             const rowData = { rowHeader: [currentVariable.label || currentVariable.name] };
 
-            // Initialize keys based on columnHeaders to ensure they exist if a stat is requested
+            // Inisialisasi semua key statistik di `rowData` agar ada meski nilainya null.
             outputTable.columnHeaders.forEach(ch => {
                 if (ch.key) rowData[ch.key] = null;
                 if (ch.children) {
@@ -224,28 +74,32 @@ self.onmessage = function(e) {
             const {
                 validRawData: initialValidRawData,
                 validWeights,
-                totalW, // This totalW from statistics.js is sum of weights for numerically convertible values
+                totalW, // totalW dari statistics.js: jumlah bobot untuk nilai numerik/konvertibel.
                 validN
             } = self.getValidDataAndWeights(rawDataArray, weightVariableData, variableType, missingDefinition);
 
             rowData.n = validN;
 
+            // Kalkulasi statistik hanya jika ada data valid dan tipe variabel NUMERIC atau DATE.
             if (validN > 0 && (variableType === 'NUMERIC' || variableType === 'DATE')) {
                 let dataForNumericStats = [];
                 if (variableType === 'NUMERIC') {
                     dataForNumericStats = initialValidRawData.map(val => {
                         if (typeof val === 'string') {
                             const num = parseFloat(val);
-                            return isNaN(num) ? null : num; // Functions in statistics.js will filter NaNs/nulls
+                            // Fungsi di statistics.js akan filter NaN/null.
+                            return isNaN(num) ? null : num;
                         }
-                        return val; // Pass numbers and nulls as is
+                        return val; // Angka dan null diteruskan.
                     });
                 } else if (variableType === 'DATE') {
+                    // Konversi string tanggal ke SPSS seconds; null jika invalid.
                     dataForNumericStats = initialValidRawData.map(val =>
                         typeof val === 'string' ? self.dateStringToSpssSeconds(val) : null
                     );
                 }
 
+                // Kalkulasi statistik yang diminta.
                 const mean = params.mean ? self.calculateMean(dataForNumericStats, validWeights, totalW) : null;
                 const variance = (params.variance && mean !== null) ? self.calculateVariance(dataForNumericStats, validWeights, totalW, mean) : null;
                 const stdDev = (params.stdDev && variance !== null) ? self.calculateStdDev(variance) : null;
@@ -261,6 +115,7 @@ self.onmessage = function(e) {
                 const kurtosisStat = (params.kurtosis && mean !== null && stdDev !== null && totalW > 0) ? self.calculateKurtosis(dataForNumericStats, validWeights, totalW, mean, stdDev) : null;
                 const seKurtosis = (params.kurtosis && kurtosisStat !== null && totalW > 0) ? self.calculateSEKurtosis(totalW) : null;
 
+                // Format hasil statistik untuk tipe DATE.
                 if (variableType === 'DATE') {
                     if (params.range && rowData.hasOwnProperty('range')) rowData.range = (range !== null) ? self.secondsToDaysHoursMinutesString(range) : null;
                     if (params.minimum && rowData.hasOwnProperty('minimum')) rowData.minimum = (minimum !== null) ? self.spssSecondsToDateString(minimum) : null;
@@ -270,8 +125,10 @@ self.onmessage = function(e) {
                     if (params.standardError && rowData.hasOwnProperty('mean_std_error')) rowData.mean_std_error = (seMean !== null) ? self.secondsToDaysHoursMinutesString(seMean) : null;
                     if (params.median && rowData.hasOwnProperty('median_statistic')) rowData.median_statistic = (median !== null) ? self.spssSecondsToDateString(median) : null;
                     if (params.stdDev && rowData.hasOwnProperty('std_deviation')) rowData.std_deviation = (stdDev !== null) ? self.secondsToDaysHoursMinutesString(stdDev) : null;
+                    // Variance tidak diformat khusus untuk DATE.
                     if (params.variance && rowData.hasOwnProperty('variance')) rowData.variance = variance;
                 } else { // NUMERIC
+                    // Isi hasil statistik untuk tipe NUMERIC.
                     if (params.range && rowData.hasOwnProperty('range')) rowData.range = range;
                     if (params.minimum && rowData.hasOwnProperty('minimum')) rowData.minimum = minimum;
                     if (params.maximum && rowData.hasOwnProperty('maximum')) rowData.maximum = maximum;
@@ -283,6 +140,7 @@ self.onmessage = function(e) {
                     if (params.variance && rowData.hasOwnProperty('variance')) rowData.variance = variance;
                 }
 
+                // Isi hasil Skewness & Kurtosis jika diminta.
                 if (params.skewness) {
                     if(rowData.hasOwnProperty('skewness_statistic')) rowData.skewness_statistic = skewnessStat;
                     if(rowData.hasOwnProperty('skewness_std_error')) rowData.skewness_std_error = seSkewness;
@@ -296,12 +154,15 @@ self.onmessage = function(e) {
         }
         
         // --- Valid N (listwise) ---
-        // Helper to check missing based on statistics.js internal logic (simplified for this context)
+        // Helper: Cek missing value (mirip logic di statistics.js, disederhanakan untuk konteks ini).
         function isValueMissing(value, type, definition) {
+            // System missing: string kosong untuk NUMERIC/DATE.
             if (value === "" && (type === 'NUMERIC' || type === 'DATE')) return true;
+            // System missing: null/undefined.
             if (value === null || value === undefined) return true;
             if (!definition) return false;
 
+            // User-defined discrete missing.
             if (definition.discrete && Array.isArray(definition.discrete)) {
                 let valueToCompare = value;
                 if (type === 'NUMERIC' && typeof value !== 'number') {
@@ -317,7 +178,8 @@ self.onmessage = function(e) {
                     if (valueToCompare === discreteMissingToCompare || String(value) === String(missingVal)) return true;
                 }
             }
-            if ((type === 'NUMERIC' || type === 'DATE') && definition.range) { // DATE also uses numeric range for missings
+            // User-defined range missing (DATE juga pakai range numerik untuk missing).
+            if ((type === 'NUMERIC' || type === 'DATE') && definition.range) {
                  const numValue = (type === 'DATE') ? self.dateStringToSpssSeconds(String(value)) : 
                                 (typeof value === 'number' ? value : parseFloat(value));
 
@@ -332,7 +194,8 @@ self.onmessage = function(e) {
 
         let listwiseValidN = 0;
         if (variableData.length > 0) {
-            const numCases = variableData[0].data.length; // Assume all data arrays have same length
+            // Asumsi semua array data punya panjang sama.
+            const numCases = variableData[0].data.length;
             for (let i = 0; i < numCases; i++) {
                 let isCaseListwiseValid = true;
                 const currentWeight = weightVariableData ? (weightVariableData[i] ?? null) : 1;
@@ -356,7 +219,7 @@ self.onmessage = function(e) {
         }
         
         const listwiseRow = { rowHeader: ["Valid N (listwise)"], n: listwiseValidN };
-        // Fill other stat cells with null for listwise row, or leave as is if rowData init covers it
+        // Isi sel statistik lain dengan null untuk baris listwise.
          outputTable.columnHeaders.forEach(ch => {
             if (ch.key && ch.key !== 'n') listwiseRow[ch.key] = null;
             if (ch.children) {
@@ -365,6 +228,7 @@ self.onmessage = function(e) {
         });
         outputTable.rows.push(listwiseRow);
 
+        // Kirim hasil kembali ke thread utama.
         self.postMessage({
             success: true,
             statistics: {

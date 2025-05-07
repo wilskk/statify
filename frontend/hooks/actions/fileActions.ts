@@ -120,7 +120,7 @@ export const useFileActions = () => {
                 });
 
                 try {
-                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api';
                     const response = await fetch(`${backendUrl}/sav/create`, {
                         method: "POST",
                         headers: {
