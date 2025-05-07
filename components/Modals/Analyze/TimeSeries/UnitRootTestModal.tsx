@@ -405,7 +405,7 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
                             
                             {/* Difference Selection */}
                             <div className="w-full pl-4 pr-4 border-0 rounded-t-md flex flex-col gap-4 mt-4">
-                                <Label className="w-[200px]">autocorrelate on:</Label>
+                                <Label className="w-[200px]">calculate on:</Label>
                                 <RadioGroup
                                     value={selectedDifference[0]}
                                     onValueChange={handleDifferenceChange}

@@ -1,4 +1,3 @@
-import { string } from 'mathjs';
 import init, {Arima} from '../../../../../src/wasm/pkg/wasm.js';
 import {generateDate} from '../generateDate/generateDateTimeSeries';
 
