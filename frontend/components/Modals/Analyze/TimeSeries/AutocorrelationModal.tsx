@@ -81,7 +81,7 @@ const AutocorrelationModal: FC<AutocorrelationModalProps> = ({ onClose }) => {
             setStoreVariables(variables.filter(v => v.name !== ""));
         };
         loadVars();
-    }, [loadVariables]);
+    }, [loadVariables, variables]);
 
     // Update available variables when store variables change
     useEffect(() => {

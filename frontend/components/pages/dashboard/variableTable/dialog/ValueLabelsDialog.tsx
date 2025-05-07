@@ -319,7 +319,7 @@ export const ValueLabelsDialog = ({
                                         {item.value === " " ? "[Space]" : item.value.toString()}
                                     </span>
                                     <span className="text-muted-foreground break-all text-right">
-                                        = "{item.label}"
+                                        = &quot;{item.label}&quot;
                                     </span>
                                 </div>
                             ))}

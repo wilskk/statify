@@ -78,7 +78,7 @@ const UnitRootTestModal: FC<UnitRootTestModalProps> = ({ onClose }) => {
             setStoreVariables(variables.filter(v => v.name !== ""));
         };
         loadVars();
-    }, [loadVariables]);
+    }, [loadVariables, variables]);
 
     // Update available variables when store variables change
     useEffect(() => {

@@ -96,22 +96,23 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
             setStoreVariables(variables.filter(v => v.name !== ""));
         };
         loadVars();
-    }, [loadVariables]);
+    }, [loadVariables, variables]);
 
     // Update available variables when store variables change
     useEffect(() => {
         setAvailableVariables(storeVariables.map(v => v.name));
     }, [storeVariables]);
 
-    // Update parameters when method changes - FIX: Separate dependencies for selectedMethod vs selectedPeriod
+    const selectedMethodName = selectedMethod[0];
+    // Update parameters when method changes
     useEffect(() => {
-        if (selectedMethod[0] && defaultParameters[selectedMethod[0]]) {
-            const newParams = [...defaultParameters[selectedMethod[0]]];
+        if (selectedMethodName && defaultParameters[selectedMethodName]) {
+            const newParams = [...defaultParameters[selectedMethodName]];
             setParameters(newParams);
         } else {
             setParameters([]);
         }
-    }, [selectedMethod[0]]);
+    }, [selectedMethodName, defaultParameters]);
 
     // Variable selection handlers
     const handleVariableHighlight = (variable: string) => {

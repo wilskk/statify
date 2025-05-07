@@ -465,7 +465,7 @@ export const useTableUpdates = ({
         // We handle all state updates asynchronously via the queue
         return false;
 
-    }, [actualNumRows, actualNumCols, processPendingOperations, columns]); // Dependencies: dimensions, process function
+    }, [actualNumRows, actualNumCols, processPendingOperations, columns, hotTableRef]); // Dependencies: dimensions, process function
 
     // Placeholder handlers for other events if needed later
     const handleAfterCreateRow = useCallback((index: number, amount: number, source?: Handsontable.ChangeSource) => {
@@ -509,7 +509,7 @@ export const useTableUpdates = ({
                 sizeChanged: variable?.columns !== newSize
             });
         }
-    }, [variables, updateVariable, hotTableRef]); // Keep dependencies
+    }, [variables, updateVariable]); // Keep dependencies
 
      const handleAfterValidate = useCallback((isValid: boolean, value: any, row: number, prop: string | number, source: Handsontable.ChangeSource) => {
         // This can be used for fine-grained validation feedback if needed

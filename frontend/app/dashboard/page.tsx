@@ -13,6 +13,13 @@ import { useVariableStore } from '@/stores/useVariableStore';
 import { DashboardLandingSkeleton } from '@/components/ui/Skeletons';
 import { ExampleDatasetModal } from '@/components/Modals/ExampleDatasetModal';
 
+interface ResourceItem {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    link?: string;
+}
+
 export default function DashboardPage() {
     const router = useRouter();
     const { meta, isLoading: metaIsLoading, isLoaded: metaIsLoaded, setMeta } = useMetaStore();
@@ -73,7 +80,7 @@ export default function DashboardPage() {
         // return null;
     }
 
-    const resources = [
+    const resources: ResourceItem[] = [
         /*
         {
             icon: <BookOpen className="h-6 w-6 text-black" />,
@@ -149,6 +156,7 @@ export default function DashboardPage() {
                         }
                         return null;
                         */
+                        return null;
                     })}
                 </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { FC, useState, useCallback } from 'react';
+import React, { FC, useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from "lucide-react";
 import type { Variable } from "@/types/Variable";
@@ -79,10 +79,10 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // Use the mobile hook to detect mobile devices and orientation
     const { isMobile, isPortrait } = useMobile();
 
-    const allLists = [
-        { id: 'available', title: 'Available Variables', variables: availableVariables, height: availableListHeight }, // Use the provided height
+    const allLists = useMemo(() => [
+        { id: 'available', title: 'Available Variables', variables: availableVariables, height: availableListHeight },
         ...targetLists
-    ];
+    ], [availableVariables, targetLists, availableListHeight]);
 
     // --- Drag and Drop Handlers ---
 

@@ -92,7 +92,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
 
         // Clear highlight
         setHighlightedVariable(null);
-    }, [defaultSortOrder]);
+    }, [defaultSortOrder, sortByConfigs]);
 
     // Handler for reordering variables within a list - compatible with VariableListManager
     const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
