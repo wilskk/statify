@@ -1,5 +1,5 @@
-// Memodifikasi ModalLinear dengan menggunakan handleAnalyze dari versi lama
-// Bagian import sesuai dengan modal baru
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -325,6 +325,11 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   
       const dependentVarName = selectedDependentVariable.name;
       const independentVarNames = selectedIndependentVariables.map(v => v.name);
+      // Prepare an array of objects with name and label for independents
+      const independentVariableInfos = selectedIndependentVariables.map(v => ({
+        name: v.name,
+        label: v.label
+      }));
   
       // Buat log message
       const logMessage = `REGRESSION 
@@ -391,7 +396,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       const regressionResults = calculateLinearRegression(filteredDependentData, independentDataTransposed);
       console.log("[Analyze] Hasil regresi (calculateLinearRegression):", regressionResults);
 
-      // --- WORKERS DARI VERSI LAMA (SEMUA WORKER DIJALANKAN TERPISAH) ---
 
       // 1. Variables Entered/Removed Worker
       const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
@@ -399,8 +403,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       variablesEnteredRemovedWorker.postMessage({
         dependent: filteredDependentData,
         independent: filteredIndependentData,
-        dependentName: dependentVarName,
-        independentNames: independentVarNames
+        dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+        independentVariableInfos: independentVariableInfos
       });
 
       variablesEnteredRemovedWorker.onmessage = async (e: MessageEvent) => {
@@ -463,7 +467,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       coefficientsWorker.postMessage({
         dependentData: filteredDependentData,
         independentData: filteredIndependentData,
-        independentVarNames: independentVarNames
+        independentVariableInfos: independentVariableInfos
       });
 
       coefficientsWorker.onmessage = async (e: MessageEvent) => {
@@ -532,7 +536,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Confidence Interval...");
         confidenceWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+          independentVariableInfos: independentVariableInfos
         });
   
         confidenceWorker.onmessage = async (e: MessageEvent) => {
@@ -563,7 +569,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Part & Partial Correlations...");
         partAndPartialWorker.postMessage({
           dependent: filteredDependentData,
-          independents: filteredIndependentData
+          independents: filteredIndependentData,
+          independentVariableInfos: independentVariableInfos
         });
   
         partAndPartialWorker.onmessage = async (e: MessageEvent) => {
@@ -595,7 +602,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Coefficients Collinearity...");
         collinearityWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          independentVariableInfos: independentVariableInfos
         });
   
         collinearityWorker.onmessage = async (e: MessageEvent) => {
@@ -622,7 +630,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Collinearity Diagnostics...");
         collinearityDiagnosticsWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+          independentVariableInfos: independentVariableInfos
         });
   
         collinearityDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
@@ -716,7 +726,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         casewiseDiagnosticsWorker.postMessage({
           dependent: filteredDependentData,
           independent: filteredIndependentData[0],
-          threshold: parseFloat(currentStatsParams.outlierThreshold) || 3
+          threshold: parseFloat(currentStatsParams.outlierThreshold) || 3,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label }
         });
   
         casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
@@ -747,7 +758,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Coefficient Correlations...");
         coefficientCorrelationsWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+          independentVariableInfos: independentVariableInfos
         });
   
         coefficientCorrelationsWorker.onmessage = async (e: MessageEvent) => {
@@ -779,7 +792,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Descriptive Statistics...");
         descriptiveWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+          independentVariableInfos: independentVariableInfos
         });
   
         descriptiveWorker.onmessage = async (e: MessageEvent) => {
@@ -806,7 +821,9 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
         console.log("[Analyze] Mengirim data ke Worker untuk Correlations...");
         correlationsWorker.postMessage({
           dependent: filteredDependentData,
-          independent: filteredIndependentData
+          independent: filteredIndependentData,
+          dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label },
+          independentVariableInfos: independentVariableInfos
         });
   
         correlationsWorker.onmessage = async (e: MessageEvent) => {

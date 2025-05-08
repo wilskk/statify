@@ -1,11 +1,11 @@
 // collinearity_diagnostics.js
 
 self.onmessage = function(e) {
-    const { dependent, independent } = e.data;
+    const { dependent, independent, dependentVariableInfo, independentVariableInfos } = e.data;
 
     // Validasi input
-    if (!dependent || !independent) {
-        self.postMessage({ error: "Data dependent dan independent harus disediakan." });
+    if (!dependent || !independent || !dependentVariableInfo || !independentVariableInfos) {
+        self.postMessage({ error: "Data dependent, independent, dan info variabel harus disediakan." });
         return;
     }
 
@@ -251,12 +251,14 @@ self.onmessage = function(e) {
         { header: "Constant", key: "constant" }
     ];
 
-    for (let i = 0; i < k; i++) {
+    // Generate headers and keys for independent variables
+    independentVariableInfos.forEach(varInfo => {
+        const displayName = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
         varianceChildren.push({
-            header: `VAR0000${i+2}`, // VAR00002, VAR00003, dst.
-            key: `var0000${i+2}`
+            header: displayName,
+            key: varInfo.name // Use actual variable name as key
         });
-    }
+    });
 
     // Baris untuk tiap dimensi
     const dimensionRows = [];
@@ -270,7 +272,9 @@ self.onmessage = function(e) {
         // Tambahkan Variance Proportions
         rowData.constant = round2(varianceProportions[0][i]);
         for (let j = 0; j < k; j++) {
-            rowData[`var0000${j+2}`] = round2(varianceProportions[j+1][i]);
+            // Use the actual variable name (which is the key) from independentVariableInfos
+            const varNameKey = independentVariableInfos[j].name;
+            rowData[varNameKey] = round2(varianceProportions[j+1][i]);
         }
 
         dimensionRows.push(rowData);
@@ -296,7 +300,9 @@ self.onmessage = function(e) {
                         children: dimensionRows
                     }
                 ],
-                footnotes: ["a. Dependent Variable: VAR00001"]
+                footnotes: [{
+                    a: `Dependent Variable: ${(dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') ? dependentVariableInfo.label : dependentVariableInfo.name}`
+                }]
             }
         ]
     };

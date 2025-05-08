@@ -2,7 +2,7 @@
 
 self.onmessage = function(e) {
   try {
-    const { independentVarNames, dependentData, independentData } = e.data;
+    const { dependentData, independentData, independentVariableInfos } = e.data;
 
     console.log("Coefficients Worker received data:", e.data);
 
@@ -10,12 +10,12 @@ self.onmessage = function(e) {
       throw new Error("Missing required data: dependentData or independentData");
     }
 
-    if (!independentVarNames || !Array.isArray(independentVarNames)) {
-      throw new Error("Missing or invalid independentVarNames");
+    if (!independentVariableInfos || !Array.isArray(independentVariableInfos)) {
+      throw new Error("Missing or invalid independentVariableInfos");
     }
 
     // Calculate regression coefficients directly from raw data
-    const coefficients = calculateCoefficients(dependentData, independentData, independentVarNames);
+    const coefficients = calculateCoefficients(dependentData, independentData, independentVariableInfos);
 
     // NEW CODE: Format coefficients using a different structure that shows VAR00002, VAR00003, etc.
     // Create a children array first with properly labeled rows
@@ -26,8 +26,9 @@ self.onmessage = function(e) {
       if (idx === 0) {
         rowLabel = "(Constant)";
       } else {
-        // Use provided variable names or create VAR0000X format
-        rowLabel = independentVarNames[idx - 1] || `VAR0000${idx + 1}`;
+        // Use label from provided variable info, fallback to name
+        const varInfo = independentVariableInfos[idx - 1];
+        rowLabel = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
       }
       
       children.push({
@@ -88,7 +89,7 @@ self.onmessage = function(e) {
 };
 
 // Calculate regression coefficients from raw data
-function calculateCoefficients(dependent, independents, varNames) {
+function calculateCoefficients(dependent, independents, varInfos) {
   const n = dependent.length;
   const p = independents.length;
 
@@ -187,7 +188,8 @@ function calculateCoefficients(dependent, independents, varNames) {
     }];
 
     // Add a coefficient for each independent variable
-    for (let i = 0; i < varNames.length; i++) {
+    for (let i = 0; i < varInfos.length; i++) {
+      // Potentially use varInfos[i].label or .name here for more descriptive placeholders if needed
       coefficients.push({
         coefficient: 0,
         stdError: 0,

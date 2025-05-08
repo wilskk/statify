@@ -3,7 +3,7 @@
 
 self.onmessage = function(e) {
     try {
-        const { independent, dependent } = e.data;
+        const { independent, dependent, dependentVariableInfo, independentVariableInfos } = e.data;
 
         // Validasi input data
         if (!independent || !dependent) {
@@ -197,8 +197,10 @@ self.onmessage = function(e) {
             });
 
             // Tambahkan baris slope untuk variabel ini
+            const varInfo = independentVariableInfos[varIndex];
+            const displayName = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
             children.push({
-                rowHeader: [null, `VAR0000${varIndex+2}`],
+                rowHeader: [null, displayName],
                 lowerBound: formatSPSSValue(results.slope.lower),
                 upperBound: formatSPSSValue(results.slope.upper)
             });
@@ -225,7 +227,9 @@ self.onmessage = function(e) {
                         }
                     ],
                     rows: rows,
-                    footnote: "a. Dependent Variable: VAR00001"
+                    footnote: {
+                        a: `Dependent Variable: ${(dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') ? dependentVariableInfo.label : dependentVariableInfo.name}`
+                    }
                 }
             ]
         };
