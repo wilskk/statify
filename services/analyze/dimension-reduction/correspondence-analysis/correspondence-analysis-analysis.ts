@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { CorrespondenceAnalysisType } from "@/models/dimension-reduction/correspondence-analysis/correspondence-analysis-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { CorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 import { transformCorrespondenceResult } from "./correspondence-analysis-formatter";
 import { resultCorrespondence } from "./correspondence-analysis-output";
 
@@ -47,15 +47,15 @@ export async function analyzeCorrespondence({
 
     console.log(configData);
 
-    // const correspondence = new CorrespondenceAnalysis(
-    //     slicedDataForRow,
-    //     slicedDataForCol,
-    //     slicedDataForWeight,
-    //     varDefsForRow,
-    //     varDefsForCol,
-    //     varDefsForWeight,
-    //     configData
-    // );
+    const correspondence = new CorrespondenceAnalysis(
+        slicedDataForRow,
+        slicedDataForCol,
+        slicedDataForWeight,
+        varDefsForRow,
+        varDefsForCol,
+        varDefsForWeight,
+        configData
+    );
 
     // const results = correspondence.get_formatted_results();
     // const error = correspondence.get_all_errors();

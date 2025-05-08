@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaMCAAnalysisType } from "@/models/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { MultipleCorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaMCA({
     configData,
@@ -40,15 +40,15 @@ export async function analyzeOptScaMCA({
 
     console.log(configData);
 
-    // const mca = new MultipleCorrespondenceAnalysis(
-    //     slicedDataForAnalysis,
-    //     slicedDataForSupplement,
-    //     slicedDataForLabeling,
-    //     varDefsForAnalysis,
-    //     varDefsForSupplement,
-    //     varDefsForLabeling,
-    //     configData
-    // );
+    const mca = new MultipleCorrespondenceAnalysis(
+        slicedDataForAnalysis,
+        slicedDataForSupplement,
+        slicedDataForLabeling,
+        varDefsForAnalysis,
+        varDefsForSupplement,
+        varDefsForLabeling,
+        configData
+    );
 
     // const results = mca.get_results();
     // const error = mca.get_all_errors();

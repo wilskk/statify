@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { DiscriminantAnalysisType } from "@/models/classify/discriminant/discriminant-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 import { resultDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis-output";
 import { transformDiscriminantResult } from "./discriminant-analysis-formatter";
 
@@ -45,15 +45,15 @@ export async function analyzeDiscriminant({
     const varDefsForSelection = getVarDefs(variables, SelectionVariable);
     console.log(configData);
 
-    // const da = new DiscriminantAnalysis(
-    //     slicedDataForGrouping,
-    //     slicedDataForIndependent,
-    //     slicedDataForSelection,
-    //     varDefsForGrouping,
-    //     varDefsForIndependent,
-    //     varDefsForSelection,
-    //     configData
-    // );
+    const da = new DiscriminantAnalysis(
+        slicedDataForGrouping,
+        slicedDataForIndependent,
+        slicedDataForSelection,
+        varDefsForGrouping,
+        varDefsForIndependent,
+        varDefsForSelection,
+        configData
+    );
 
     // const results = da.get_formatted_results();
 

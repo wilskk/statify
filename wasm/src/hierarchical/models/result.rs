@@ -93,27 +93,18 @@ pub struct ClusterState {
     pub method: ClusMethod, // Clustering method
 }
 
-// Redesigned icicle plot structure
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IciclePlot {
     // The orientation of the plot ("vertical" or "horizontal")
     pub orientation: String,
-    // Case labels in dendrogram order
-    pub case_labels: Vec<String>,
-    // Case numbers in dendrogram order
-    pub case_numbers: Vec<usize>,
-    // The number of clusters at each level
-    pub num_clusters: Vec<usize>,
-    // The starting cluster number
+    // HashMap mapping case labels to their complete sequence of cluster counts
+    pub case_clusters: HashMap<String, Vec<usize>>,
+    // The starting cluster number for display
     pub start_cluster: i32,
-    // The ending cluster number
+    // The ending cluster number for display
     pub stop_cluster: i32,
     // The step size between cluster numbers
     pub step_by: i32,
-    // Matrix showing which cluster each case belongs to at each level
-    pub cluster_assignments: Vec<Vec<usize>>,
-    // For each case, the level at which it first merges with another
-    pub merge_levels: Vec<Option<usize>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

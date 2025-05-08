@@ -1,11 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
+export function partial_kj(k: number, j: number, partial_autocorrelate: Float64Array): number;
 export function mse(data: Float64Array, forecast: Float64Array): number;
 export function rmse(data: Float64Array, forecast: Float64Array): number;
 export function mae(data: Float64Array, forecast: Float64Array): number;
 export function mpe(data: Float64Array, forecast: Float64Array): number;
 export function mape(data: Float64Array, forecast: Float64Array): number;
-export function partial_kj(k: number, j: number, partial_autocorrelate: Float64Array): number;
 export function first_difference(data: Float64Array): Float64Array;
 export function second_difference(data: Float64Array): Float64Array;
 export function seasonal_difference(data: Float64Array, season: number): Float64Array;
@@ -41,6 +41,14 @@ export class Autocorrelation {
   df_ljung_box(): Uint32Array;
   autocorelate(difference: string, seasonally: number): void;
 }
+export class CorrespondenceAnalysis {
+  free(): void;
+  constructor(row_data: any, col_data: any, weight_data: any, row_data_defs: any, col_data_defs: any, weight_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
 export class Decomposition {
   free(): void;
   constructor(data: Float64Array, data_header: string, time: string[], time_header: string, period: number);
@@ -60,21 +68,97 @@ export class Decomposition {
   set_seasonal_indices(seasonal_indices: Float64Array): void;
   set_trend_equation(trend_equation: string): void;
   calculate_centered_moving_average(): Float64Array;
+  multiplicative_decomposition(trend: string): Float64Array;
   calculate_multiplicative_seasonal_component(centered_ma: Float64Array): Float64Array;
   calculate_multiplicative_trend_component(trend: string, deseasonalizing: Float64Array): Float64Array;
   linear_trend(deseasonalizing: Float64Array): Float64Array;
   exponential_trend(deseasonalizing: Float64Array): Float64Array;
-  decomposition_evaluation(forecast: Float64Array): any;
-  calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
-  multiplicative_decomposition(trend: string): Float64Array;
   additive_decomposition(): Float64Array;
   calculate_additive_trend_component(centered_ma: Float64Array): Float64Array;
+  calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
+  decomposition_evaluation(forecast: Float64Array): any;
+}
+export class DiscriminantAnalysis {
+  free(): void;
+  constructor(group_data: any, independent_data: any, selection_data: any, group_data_defs: any, independent_data_defs: any, selection_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_all_errors(): any;
+  get_all_log(): any;
+}
+export class FactorAnalysis {
+  free(): void;
+  constructor(target_data: any, value_target_data: any, target_data_defs: any, value_target_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
 }
 export class HierarchicalCluster {
   free(): void;
   constructor(cluster_data: any, label_data: any, cluster_data_defs: any, label_data_defs: any, config_data: any);
   get_results(): any;
   get_formatted_results(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class KMeansClusterAnalysis {
+  free(): void;
+  constructor(target_data: any, case_data: any, target_data_defs: any, case_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class KNNAnalysis {
+  free(): void;
+  constructor(target_data: any, features_data: any, focal_case_data: any, case_data: any, target_data_defs: any, features_data_defs: any, focal_case_data_defs: any, case_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class MultipleCorrespondenceAnalysis {
+  free(): void;
+  constructor(analysis_data: any, supplement_data: any, labeling_data: any, analysis_data_defs: any, supplement_data_defs: any, labeling_data_defs: any, config_data: any);
+  get_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class MultivariateAnalysis {
+  free(): void;
+  constructor(dep_data: any, fix_factor_data: any, covar_data: any, wls_data: any, dep_data_defs: any, fix_factor_data_defs: any, covar_data_defs: any, wls_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class OVERALSAnalysis {
+  free(): void;
+  constructor(set_target_data: any, plots_target_data: any, set_target_data_defs: any, plots_target_data_defs: any, config_data: any);
+  get_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class RocAnalysis {
+  free(): void;
+  constructor(test_data: any, state_data: any, group_data: any, test_data_defs: any, state_data_defs: any, group_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_all_errors(): any;
+  get_all_log(): any;
+}
+export class RocCurve {
+  free(): void;
+  constructor(test_data: any, state_data: any, test_data_defs: any, state_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
   get_all_errors(): any;
   clear_errors(): any;
 }
@@ -97,6 +181,33 @@ export class Smoothing {
   calculate_holt(alpha: number, beta: number): Float64Array;
   calculate_winter(alpha: number, beta: number, gamma: number, period: number): Float64Array;
   smoothing_evaluation(forecast: Float64Array): any;
+}
+export class TwoStepClusterAnalysis {
+  free(): void;
+  constructor(categorical_data: any, continuous_data: any, categorical_data_defs: any, continuous_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class UnivariateAnalysis {
+  free(): void;
+  constructor(dep_data: any, fix_factor_data: any, rand_factor_data: any, covar_data: any, wls_data: any, dep_data_defs: any, fix_factor_data_defs: any, rand_factor_data_defs: any, covar_data_defs: any, wls_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
+}
+export class VarianceComponentsAnalysis {
+  free(): void;
+  constructor(dependent_data: any, fix_factor_data: any, random_factor_data: any, covar_data: any, wls_data: any, dependent_data_defs: any, fix_factor_data_defs: any, random_factor_data_defs: any, covar_data_defs: any, wls_data_defs: any, config_data: any);
+  get_results(): any;
+  get_formatted_results(): any;
+  get_executed_functions(): any;
+  get_all_errors(): any;
+  clear_errors(): any;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -121,43 +232,6 @@ export interface InitOutput {
   readonly smoothing_calculate_holt: (a: number, b: number, c: number) => [number, number];
   readonly smoothing_calculate_winter: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
-  readonly __wbg_hierarchicalcluster_free: (a: number, b: number) => void;
-  readonly hierarchicalcluster_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
-  readonly hierarchicalcluster_get_results: (a: number) => [number, number, number];
-  readonly hierarchicalcluster_get_formatted_results: (a: number) => [number, number, number];
-  readonly hierarchicalcluster_get_all_errors: (a: number) => any;
-  readonly hierarchicalcluster_clear_errors: (a: number) => any;
-  readonly __wbg_decomposition_free: (a: number, b: number) => void;
-  readonly decomposition_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
-  readonly decomposition_get_data: (a: number) => [number, number];
-  readonly decomposition_get_data_header: (a: number) => [number, number];
-  readonly decomposition_get_time: (a: number) => [number, number];
-  readonly decomposition_get_time_header: (a: number) => [number, number];
-  readonly decomposition_get_seasonal_component: (a: number) => [number, number];
-  readonly decomposition_get_trend_component: (a: number) => [number, number];
-  readonly decomposition_get_irregular_component: (a: number) => [number, number];
-  readonly decomposition_get_seasonal_indices: (a: number) => [number, number];
-  readonly decomposition_get_period: (a: number) => number;
-  readonly decomposition_get_trend_equation: (a: number) => [number, number];
-  readonly decomposition_set_seasonal_component: (a: number, b: number, c: number) => void;
-  readonly decomposition_set_trend_component: (a: number, b: number, c: number) => void;
-  readonly decomposition_set_irregular_component: (a: number, b: number, c: number) => void;
-  readonly decomposition_set_seasonal_indices: (a: number, b: number, c: number) => void;
-  readonly decomposition_set_trend_equation: (a: number, b: number, c: number) => void;
-  readonly decomposition_calculate_centered_moving_average: (a: number) => [number, number];
-  readonly decomposition_calculate_multiplicative_seasonal_component: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_calculate_multiplicative_trend_component: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-  readonly decomposition_linear_trend: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_exponential_trend: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
-  readonly mse: (a: number, b: number, c: number, d: number) => number;
-  readonly rmse: (a: number, b: number, c: number, d: number) => number;
-  readonly mae: (a: number, b: number, c: number, d: number) => number;
-  readonly mpe: (a: number, b: number, c: number, d: number) => number;
-  readonly mape: (a: number, b: number, c: number, d: number) => number;
-  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_multiplicative_decomposition: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_additive_decomposition: (a: number) => [number, number];
   readonly __wbg_autocorrelation_free: (a: number, b: number) => void;
   readonly autocorrelation_new: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly autocorrelation_get_data: (a: number) => [number, number];
@@ -189,10 +263,132 @@ export interface InitOutput {
   readonly autocorrelation_pvalue_ljung_box: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_df_ljung_box: (a: number) => [number, number];
   readonly autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
+  readonly __wbg_discriminantanalysis_free: (a: number, b: number) => void;
+  readonly discriminantanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
+  readonly discriminantanalysis_get_results: (a: number) => [number, number, number];
+  readonly discriminantanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly discriminantanalysis_get_all_errors: (a: number) => any;
+  readonly discriminantanalysis_get_all_log: (a: number) => [number, number, number];
+  readonly __wbg_factoranalysis_free: (a: number, b: number) => void;
+  readonly factoranalysis_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly factoranalysis_get_results: (a: number) => [number, number, number];
+  readonly factoranalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly factoranalysis_get_all_errors: (a: number) => any;
+  readonly factoranalysis_clear_errors: (a: number) => any;
+  readonly __wbg_knnanalysis_free: (a: number, b: number) => void;
+  readonly knnanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any) => [number, number, number];
+  readonly knnanalysis_get_results: (a: number) => [number, number, number];
+  readonly knnanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly knnanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly knnanalysis_get_all_errors: (a: number) => any;
+  readonly knnanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_multiplecorrespondenceanalysis_free: (a: number, b: number) => void;
+  readonly multiplecorrespondenceanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
+  readonly multiplecorrespondenceanalysis_get_results: (a: number) => [number, number, number];
+  readonly multiplecorrespondenceanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly multiplecorrespondenceanalysis_get_all_errors: (a: number) => any;
+  readonly multiplecorrespondenceanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_multivariateanalysis_free: (a: number, b: number) => void;
+  readonly multivariateanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any) => [number, number, number];
+  readonly multivariateanalysis_get_results: (a: number) => [number, number, number];
+  readonly multivariateanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly multivariateanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly multivariateanalysis_get_all_errors: (a: number) => any;
+  readonly multivariateanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_overalsanalysis_free: (a: number, b: number) => void;
+  readonly overalsanalysis_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly overalsanalysis_get_results: (a: number) => [number, number, number];
+  readonly overalsanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly overalsanalysis_get_all_errors: (a: number) => any;
+  readonly overalsanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_univariateanalysis_free: (a: number, b: number) => void;
+  readonly univariateanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any, k: any) => [number, number, number];
+  readonly univariateanalysis_get_results: (a: number) => [number, number, number];
+  readonly univariateanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly univariateanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly univariateanalysis_get_all_errors: (a: number) => any;
+  readonly univariateanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_kmeansclusteranalysis_free: (a: number, b: number) => void;
+  readonly kmeansclusteranalysis_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly kmeansclusteranalysis_get_results: (a: number) => [number, number, number];
+  readonly kmeansclusteranalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly kmeansclusteranalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly kmeansclusteranalysis_get_all_errors: (a: number) => any;
+  readonly kmeansclusteranalysis_clear_errors: (a: number) => any;
+  readonly __wbg_decomposition_free: (a: number, b: number) => void;
+  readonly decomposition_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
+  readonly decomposition_get_data: (a: number) => [number, number];
+  readonly decomposition_get_data_header: (a: number) => [number, number];
+  readonly decomposition_get_time: (a: number) => [number, number];
+  readonly decomposition_get_time_header: (a: number) => [number, number];
+  readonly decomposition_get_seasonal_component: (a: number) => [number, number];
+  readonly decomposition_get_trend_component: (a: number) => [number, number];
+  readonly decomposition_get_irregular_component: (a: number) => [number, number];
+  readonly decomposition_get_seasonal_indices: (a: number) => [number, number];
+  readonly decomposition_get_period: (a: number) => number;
+  readonly decomposition_get_trend_equation: (a: number) => [number, number];
+  readonly decomposition_set_seasonal_component: (a: number, b: number, c: number) => void;
+  readonly decomposition_set_trend_component: (a: number, b: number, c: number) => void;
+  readonly decomposition_set_irregular_component: (a: number, b: number, c: number) => void;
+  readonly decomposition_set_seasonal_indices: (a: number, b: number, c: number) => void;
+  readonly decomposition_set_trend_equation: (a: number, b: number, c: number) => void;
+  readonly decomposition_calculate_centered_moving_average: (a: number) => [number, number];
+  readonly decomposition_multiplicative_decomposition: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_multiplicative_seasonal_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_multiplicative_trend_component: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+  readonly decomposition_linear_trend: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_exponential_trend: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_additive_decomposition: (a: number) => [number, number];
+  readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
+  readonly __wbg_rocanalysis_free: (a: number, b: number) => void;
+  readonly rocanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
+  readonly rocanalysis_get_results: (a: number) => [number, number, number];
+  readonly rocanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly rocanalysis_get_all_errors: (a: number) => any;
+  readonly rocanalysis_get_all_log: (a: number) => [number, number, number];
+  readonly __wbg_variancecomponentsanalysis_free: (a: number, b: number) => void;
+  readonly variancecomponentsanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any, k: any) => [number, number, number];
+  readonly variancecomponentsanalysis_get_results: (a: number) => [number, number, number];
+  readonly variancecomponentsanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly variancecomponentsanalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly variancecomponentsanalysis_get_all_errors: (a: number) => any;
+  readonly variancecomponentsanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_twostepclusteranalysis_free: (a: number, b: number) => void;
+  readonly twostepclusteranalysis_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly twostepclusteranalysis_get_results: (a: number) => [number, number, number];
+  readonly twostepclusteranalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly twostepclusteranalysis_get_executed_functions: (a: number) => [number, number, number];
+  readonly twostepclusteranalysis_get_all_errors: (a: number) => any;
+  readonly twostepclusteranalysis_clear_errors: (a: number) => any;
+  readonly mse: (a: number, b: number, c: number, d: number) => number;
+  readonly rmse: (a: number, b: number, c: number, d: number) => number;
+  readonly mae: (a: number, b: number, c: number, d: number) => number;
+  readonly mpe: (a: number, b: number, c: number, d: number) => number;
+  readonly mape: (a: number, b: number, c: number, d: number) => number;
   readonly first_difference: (a: number, b: number) => [number, number];
   readonly second_difference: (a: number, b: number) => [number, number];
   readonly seasonal_difference: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
+  readonly __wbg_correspondenceanalysis_free: (a: number, b: number) => void;
+  readonly correspondenceanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
+  readonly correspondenceanalysis_get_results: (a: number) => [number, number, number];
+  readonly correspondenceanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly correspondenceanalysis_get_all_errors: (a: number) => any;
+  readonly correspondenceanalysis_clear_errors: (a: number) => any;
+  readonly __wbg_hierarchicalcluster_free: (a: number, b: number) => void;
+  readonly hierarchicalcluster_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly hierarchicalcluster_get_results: (a: number) => [number, number, number];
+  readonly hierarchicalcluster_get_formatted_results: (a: number) => [number, number, number];
+  readonly hierarchicalcluster_get_all_errors: (a: number) => any;
+  readonly hierarchicalcluster_clear_errors: (a: number) => any;
+  readonly __wbg_roccurve_free: (a: number, b: number) => void;
+  readonly roccurve_new: (a: any, b: any, c: any, d: any, e: any) => [number, number, number];
+  readonly roccurve_get_results: (a: number) => [number, number, number];
+  readonly roccurve_get_formatted_results: (a: number) => [number, number, number];
+  readonly roccurve_get_executed_functions: (a: number) => [number, number, number];
+  readonly roccurve_get_all_errors: (a: number) => any;
+  readonly roccurve_clear_errors: (a: number) => any;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

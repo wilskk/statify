@@ -52,9 +52,12 @@ pub fn generate_dendrogram(
         ))
         .collect();
 
-    // Track next node ID
+    // Maps to track the actual clusters across stages
+    let mut cluster_to_node_id: HashMap<usize, usize> = (1..=num_items).map(|i| (i, i)).collect();
+
+    // Next node ID
     let mut next_id = num_items + 1;
-    
+
     // Maximum height in the tree
     let mut max_height = 0.0;
 
@@ -63,28 +66,37 @@ pub fn generate_dendrogram(
         let (cluster1_id, cluster2_id) = stage.clusters_combined;
         let stage_num = stage_idx + 1;
 
-        // Get the two nodes being merged
-        if
-            let (Some(node1), Some(node2)) = (
-                nodes.remove(&cluster1_id),
-                nodes.remove(&cluster2_id),
-            )
-        {
-            // Create new node representing the merger
-            let mut merged_cases = node1.cases.clone();
-            merged_cases.extend(node2.cases.clone());
-            
+        // Find the actual node IDs for these clusters
+        let node1_id = *cluster_to_node_id.get(&cluster1_id).unwrap_or(&cluster1_id);
+        let node2_id = *cluster_to_node_id.get(&cluster2_id).unwrap_or(&cluster2_id);
+
+        // Get the nodes being merged
+        if let (Some(node1), Some(node2)) = (nodes.remove(&node1_id), nodes.remove(&node2_id)) {
             // Update max height if needed
             if stage.coefficients > max_height {
                 max_height = stage.coefficients;
             }
 
+            // Combine cases from both nodes
+            let mut merged_cases = node1.cases.clone();
+            merged_cases.extend(node2.cases.clone());
+            merged_cases.sort(); // Sort for consistency
+
+            // Create new node for the merged cluster
+            // Always put the node with more cases (or the first one if equal) on the left
+            // This helps with consistent visualization
+            let (left_node, right_node) = if node1.cases.len() >= node2.cases.len() {
+                (node1, node2)
+            } else {
+                (node2, node1)
+            };
+
             let merged_node = DendrogramNode {
                 id: next_id,
                 height: stage.coefficients,
                 cases: merged_cases,
-                left: Some(Box::new(node1)),
-                right: Some(Box::new(node2)),
+                left: Some(Box::new(left_node)),
+                right: Some(Box::new(right_node)),
                 is_leaf: false,
                 stage: Some(stage_num),
                 x_position: None,
@@ -94,6 +106,10 @@ pub fn generate_dendrogram(
 
             // Add new node to map
             nodes.insert(next_id, merged_node);
+
+            // Update cluster to node mapping - the new merged cluster is represented by cluster1_id
+            cluster_to_node_id.insert(cluster1_id, next_id);
+
             next_id += 1;
         }
     }
@@ -106,17 +122,16 @@ pub fn generate_dendrogram(
         return Err("Invalid agglomeration schedule: failed to build dendrogram".to_string());
     };
 
-    // Calculate x positions for visualization
-    // Get the leaf ordering first
+    // Get the leaf order using in-order traversal
     let ordered_cases = get_dendrogram_leaf_order(&root);
-    
-    // Create a mapping of case indices to their positions
+
+    // Create a position map for leaves
     let mut position_map = HashMap::new();
     for (pos, &case_idx) in ordered_cases.iter().enumerate() {
         position_map.insert(case_idx, pos as f64);
     }
-    
-    // Assign x positions to all nodes in the tree
+
+    // Assign x positions to all nodes
     assign_x_positions(&mut root, &position_map);
 
     Ok(Dendrogram {
@@ -128,24 +143,27 @@ pub fn generate_dendrogram(
     })
 }
 
-// Get the leaf order (cases) from a dendrogram tree using in-order traversal
+// Improved in-order traversal to get leaf order
 fn get_dendrogram_leaf_order(node: &DendrogramNode) -> Vec<usize> {
+    if node.is_leaf {
+        // Leaf node - return its case index
+        if let Some(&case_idx) = node.cases.first() {
+            return vec![case_idx];
+        } else {
+            return vec![];
+        }
+    }
+
     let mut ordered_cases = Vec::new();
 
-    if node.is_leaf {
-        // Leaf node - return its case
-        if let Some(&case_idx) = node.cases.first() {
-            ordered_cases.push(case_idx);
-        }
-    } else {
-        // Internal node - traverse left then right
-        if let Some(left) = &node.left {
-            ordered_cases.extend(get_dendrogram_leaf_order(left));
-        }
-        
-        if let Some(right) = &node.right {
-            ordered_cases.extend(get_dendrogram_leaf_order(right));
-        }
+    // Add leaves from left subtree
+    if let Some(left) = &node.left {
+        ordered_cases.extend(get_dendrogram_leaf_order(left));
+    }
+
+    // Add leaves from right subtree
+    if let Some(right) = &node.right {
+        ordered_cases.extend(get_dendrogram_leaf_order(right));
     }
 
     ordered_cases
@@ -162,22 +180,28 @@ fn assign_x_positions(node: &mut DendrogramNode, position_map: &HashMap<usize, f
         }
         return;
     }
-    
+
     // Process children first
     if let Some(mut left_child) = node.left.take() {
         assign_x_positions(&mut left_child, position_map);
         node.left = Some(left_child);
     }
-    
+
     if let Some(mut right_child) = node.right.take() {
         assign_x_positions(&mut right_child, position_map);
         node.right = Some(right_child);
     }
-    
+
     // Internal node's position is the average of its children
-    let left_pos = node.left.as_ref().and_then(|n| n.x_position).unwrap_or(0.0);
-    let right_pos = node.right.as_ref().and_then(|n| n.x_position).unwrap_or(0.0);
-    
+    let left_pos = node.left
+        .as_ref()
+        .and_then(|n| n.x_position)
+        .unwrap_or(0.0);
+    let right_pos = node.right
+        .as_ref()
+        .and_then(|n| n.x_position)
+        .unwrap_or(0.0);
+
     node.x_position = Some((left_pos + right_pos) / 2.0);
 }
 
@@ -186,7 +210,12 @@ pub fn extract_dendrogram_visualization_data(
     dendrogram: &Dendrogram
 ) -> Vec<(String, usize, f64, f64, f64)> {
     let mut visualization_data = Vec::new();
-    extract_node_visualization_data(&dendrogram.root, 0.0, dendrogram.max_height, &mut visualization_data);
+    extract_node_visualization_data(
+        &dendrogram.root,
+        0.0,
+        dendrogram.max_height,
+        &mut visualization_data
+    );
     visualization_data
 }
 
@@ -199,7 +228,7 @@ fn extract_node_visualization_data(
 ) {
     // Normalize height
     let normalized_height = if max_height > 0.0 { node.height / max_height } else { 0.0 };
-    
+
     if let Some(x_pos) = node.x_position {
         if node.is_leaf {
             // For leaf nodes, add a data point with label and case number
@@ -209,53 +238,53 @@ fn extract_node_visualization_data(
                     *case_num,
                     x_pos,
                     normalized_height,
-                    normalized_height // For leaf nodes, start and end height are the same
+                    normalized_height, // For leaf nodes, start and end height are the same
                 ));
             }
         } else {
             // For internal nodes, add connection data
-            let left_x = node.left.as_ref().and_then(|n| n.x_position).unwrap_or(x_pos);
-            let right_x = node.right.as_ref().and_then(|n| n.x_position).unwrap_or(x_pos);
-            
+            let left_x = node.left
+                .as_ref()
+                .and_then(|n| n.x_position)
+                .unwrap_or(x_pos);
+            let right_x = node.right
+                .as_ref()
+                .and_then(|n| n.x_position)
+                .unwrap_or(x_pos);
+
             // Add data for horizontal line
             data.push((
                 String::new(), // No label for internal node
                 0, // No case number
                 left_x,
                 normalized_height,
-                right_x // Connect left and right x positions
+                right_x, // Connect left and right x positions
             ));
-            
+
             // Add data for vertical lines to children (if needed)
-            let left_height = node.left.as_ref().map(|n| n.height / max_height).unwrap_or(0.0);
+            let left_height = node.left
+                .as_ref()
+                .map(|n| n.height / max_height)
+                .unwrap_or(0.0);
             if left_height < normalized_height {
-                data.push((
-                    String::new(),
-                    0,
-                    left_x,
-                    left_height,
-                    normalized_height
-                ));
+                data.push((String::new(), 0, left_x, left_height, normalized_height));
             }
-            
-            let right_height = node.right.as_ref().map(|n| n.height / max_height).unwrap_or(0.0);
+
+            let right_height = node.right
+                .as_ref()
+                .map(|n| n.height / max_height)
+                .unwrap_or(0.0);
             if right_height < normalized_height {
-                data.push((
-                    String::new(),
-                    0,
-                    right_x,
-                    right_height,
-                    normalized_height
-                ));
+                data.push((String::new(), 0, right_x, right_height, normalized_height));
             }
         }
     }
-    
+
     // Recursively process children
     if let Some(left) = &node.left {
         extract_node_visualization_data(left, normalized_height, max_height, data);
     }
-    
+
     if let Some(right) = &node.right {
         extract_node_visualization_data(right, normalized_height, max_height, data);
     }

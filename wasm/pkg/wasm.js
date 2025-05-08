@@ -89,6 +89,15 @@ function handleError(f, args) {
     }
 }
 
+const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+
+function getStringFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
 function isLikeNone(x) {
     return x === undefined || x === null;
 }
@@ -158,15 +167,6 @@ function debugString(val) {
     return className;
 }
 
-const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
-
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
-
-function getStringFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
-}
-
 let cachedFloat64ArrayMemory0 = null;
 
 function getFloat64ArrayMemory0() {
@@ -207,6 +207,39 @@ function getArrayJsValueFromWasm0(ptr, len) {
     }
     wasm.__externref_drop_slice(ptr, len);
     return result;
+}
+
+let cachedUint32ArrayMemory0 = null;
+
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+/**
+ * @param {number} k
+ * @param {number} j
+ * @param {Float64Array} partial_autocorrelate
+ * @returns {number}
+ */
+export function partial_kj(k, j, partial_autocorrelate) {
+    const ptr0 = passArrayF64ToWasm0(partial_autocorrelate, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.partial_kj(k, j, ptr0, len0);
+    return ret;
 }
 
 function takeFromExternrefTable0(idx) {
@@ -281,39 +314,6 @@ export function mape(data, forecast) {
     const ptr1 = passArrayF64ToWasm0(forecast, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
     const ret = wasm.mape(ptr0, len0, ptr1, len1);
-    return ret;
-}
-
-let cachedUint32ArrayMemory0 = null;
-
-function getUint32ArrayMemory0() {
-    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
-        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
-    }
-    return cachedUint32ArrayMemory0;
-}
-
-function getArrayU32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
-}
-
-function passArray32ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 4, 4) >>> 0;
-    getUint32ArrayMemory0().set(arg, ptr / 4);
-    WASM_VECTOR_LEN = arg.length;
-    return ptr;
-}
-/**
- * @param {number} k
- * @param {number} j
- * @param {Float64Array} partial_autocorrelate
- * @returns {number}
- */
-export function partial_kj(k, j, partial_autocorrelate) {
-    const ptr0 = passArrayF64ToWasm0(partial_autocorrelate, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.partial_kj(k, j, ptr0, len0);
     return ret;
 }
 
@@ -653,6 +653,77 @@ export class Autocorrelation {
     }
 }
 
+const CorrespondenceAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_correspondenceanalysis_free(ptr >>> 0, 1));
+
+export class CorrespondenceAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        CorrespondenceAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_correspondenceanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} row_data
+     * @param {any} col_data
+     * @param {any} weight_data
+     * @param {any} row_data_defs
+     * @param {any} col_data_defs
+     * @param {any} weight_data_defs
+     * @param {any} config_data
+     */
+    constructor(row_data, col_data, weight_data, row_data_defs, col_data_defs, weight_data_defs, config_data) {
+        const ret = wasm.correspondenceanalysis_new(row_data, col_data, weight_data, row_data_defs, col_data_defs, weight_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        CorrespondenceAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.correspondenceanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.correspondenceanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.correspondenceanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.correspondenceanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
 const DecompositionFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_decomposition_free(ptr >>> 0, 1));
@@ -847,6 +918,18 @@ export class Decomposition {
         return v1;
     }
     /**
+     * @param {string} trend
+     * @returns {Float64Array}
+     */
+    multiplicative_decomposition(trend) {
+        const ptr0 = passStringToWasm0(trend, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.decomposition_multiplicative_decomposition(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
      * @param {Float64Array} centered_ma
      * @returns {Float64Array}
      */
@@ -898,40 +981,6 @@ export class Decomposition {
         return v2;
     }
     /**
-     * @param {Float64Array} forecast
-     * @returns {any}
-     */
-    decomposition_evaluation(forecast) {
-        const ptr0 = passArrayF64ToWasm0(forecast, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.decomposition_decomposition_evaluation(this.__wbg_ptr, ptr0, len0);
-        return ret;
-    }
-    /**
-     * @param {Float64Array} detrended
-     * @returns {Float64Array}
-     */
-    calculate_additive_seasonal_component(detrended) {
-        const ptr0 = passArrayF64ToWasm0(detrended, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.decomposition_calculate_additive_seasonal_component(this.__wbg_ptr, ptr0, len0);
-        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v2;
-    }
-    /**
-     * @param {string} trend
-     * @returns {Float64Array}
-     */
-    multiplicative_decomposition(trend) {
-        const ptr0 = passStringToWasm0(trend, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.decomposition_multiplicative_decomposition(this.__wbg_ptr, ptr0, len0);
-        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v2;
-    }
-    /**
      * @returns {Float64Array}
      */
     additive_decomposition() {
@@ -951,6 +1000,171 @@ export class Decomposition {
         var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
         return v2;
+    }
+    /**
+     * @param {Float64Array} detrended
+     * @returns {Float64Array}
+     */
+    calculate_additive_seasonal_component(detrended) {
+        const ptr0 = passArrayF64ToWasm0(detrended, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.decomposition_calculate_additive_seasonal_component(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * @param {Float64Array} forecast
+     * @returns {any}
+     */
+    decomposition_evaluation(forecast) {
+        const ptr0 = passArrayF64ToWasm0(forecast, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.decomposition_decomposition_evaluation(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+}
+
+const DiscriminantAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_discriminantanalysis_free(ptr >>> 0, 1));
+
+export class DiscriminantAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        DiscriminantAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_discriminantanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} group_data
+     * @param {any} independent_data
+     * @param {any} selection_data
+     * @param {any} group_data_defs
+     * @param {any} independent_data_defs
+     * @param {any} selection_data_defs
+     * @param {any} config_data
+     */
+    constructor(group_data, independent_data, selection_data, group_data_defs, independent_data_defs, selection_data_defs, config_data) {
+        const ret = wasm.discriminantanalysis_new(group_data, independent_data, selection_data, group_data_defs, independent_data_defs, selection_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        DiscriminantAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.discriminantanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.discriminantanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.discriminantanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_log() {
+        const ret = wasm.discriminantanalysis_get_all_log(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+}
+
+const FactorAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_factoranalysis_free(ptr >>> 0, 1));
+
+export class FactorAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        FactorAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_factoranalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} target_data
+     * @param {any} value_target_data
+     * @param {any} target_data_defs
+     * @param {any} value_target_data_defs
+     * @param {any} config_data
+     */
+    constructor(target_data, value_target_data, target_data_defs, value_target_data_defs, config_data) {
+        const ret = wasm.factoranalysis_new(target_data, value_target_data, target_data_defs, value_target_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        FactorAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.factoranalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.factoranalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.factoranalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.factoranalysis_clear_errors(this.__wbg_ptr);
+        return ret;
     }
 }
 
@@ -1019,6 +1233,544 @@ export class HierarchicalCluster {
      */
     clear_errors() {
         const ret = wasm.hierarchicalcluster_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const KMeansClusterAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_kmeansclusteranalysis_free(ptr >>> 0, 1));
+
+export class KMeansClusterAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        KMeansClusterAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_kmeansclusteranalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} target_data
+     * @param {any} case_data
+     * @param {any} target_data_defs
+     * @param {any} case_data_defs
+     * @param {any} config_data
+     */
+    constructor(target_data, case_data, target_data_defs, case_data_defs, config_data) {
+        const ret = wasm.kmeansclusteranalysis_new(target_data, case_data, target_data_defs, case_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        KMeansClusterAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.kmeansclusteranalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.kmeansclusteranalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.kmeansclusteranalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.kmeansclusteranalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.kmeansclusteranalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const KNNAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_knnanalysis_free(ptr >>> 0, 1));
+
+export class KNNAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        KNNAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_knnanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} target_data
+     * @param {any} features_data
+     * @param {any} focal_case_data
+     * @param {any} case_data
+     * @param {any} target_data_defs
+     * @param {any} features_data_defs
+     * @param {any} focal_case_data_defs
+     * @param {any} case_data_defs
+     * @param {any} config_data
+     */
+    constructor(target_data, features_data, focal_case_data, case_data, target_data_defs, features_data_defs, focal_case_data_defs, case_data_defs, config_data) {
+        const ret = wasm.knnanalysis_new(target_data, features_data, focal_case_data, case_data, target_data_defs, features_data_defs, focal_case_data_defs, case_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        KNNAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.knnanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.knnanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.knnanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.knnanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.knnanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const MultipleCorrespondenceAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_multiplecorrespondenceanalysis_free(ptr >>> 0, 1));
+
+export class MultipleCorrespondenceAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MultipleCorrespondenceAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_multiplecorrespondenceanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} analysis_data
+     * @param {any} supplement_data
+     * @param {any} labeling_data
+     * @param {any} analysis_data_defs
+     * @param {any} supplement_data_defs
+     * @param {any} labeling_data_defs
+     * @param {any} config_data
+     */
+    constructor(analysis_data, supplement_data, labeling_data, analysis_data_defs, supplement_data_defs, labeling_data_defs, config_data) {
+        const ret = wasm.multiplecorrespondenceanalysis_new(analysis_data, supplement_data, labeling_data, analysis_data_defs, supplement_data_defs, labeling_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        MultipleCorrespondenceAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.multiplecorrespondenceanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.multiplecorrespondenceanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.multiplecorrespondenceanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.multiplecorrespondenceanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const MultivariateAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_multivariateanalysis_free(ptr >>> 0, 1));
+
+export class MultivariateAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MultivariateAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_multivariateanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} dep_data
+     * @param {any} fix_factor_data
+     * @param {any} covar_data
+     * @param {any} wls_data
+     * @param {any} dep_data_defs
+     * @param {any} fix_factor_data_defs
+     * @param {any} covar_data_defs
+     * @param {any} wls_data_defs
+     * @param {any} config_data
+     */
+    constructor(dep_data, fix_factor_data, covar_data, wls_data, dep_data_defs, fix_factor_data_defs, covar_data_defs, wls_data_defs, config_data) {
+        const ret = wasm.multivariateanalysis_new(dep_data, fix_factor_data, covar_data, wls_data, dep_data_defs, fix_factor_data_defs, covar_data_defs, wls_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        MultivariateAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.multivariateanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.multivariateanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.multivariateanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.multivariateanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.multivariateanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const OVERALSAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_overalsanalysis_free(ptr >>> 0, 1));
+
+export class OVERALSAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        OVERALSAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_overalsanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} set_target_data
+     * @param {any} plots_target_data
+     * @param {any} set_target_data_defs
+     * @param {any} plots_target_data_defs
+     * @param {any} config_data
+     */
+    constructor(set_target_data, plots_target_data, set_target_data_defs, plots_target_data_defs, config_data) {
+        const ret = wasm.overalsanalysis_new(set_target_data, plots_target_data, set_target_data_defs, plots_target_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        OVERALSAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.overalsanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.overalsanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.overalsanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.overalsanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const RocAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_rocanalysis_free(ptr >>> 0, 1));
+
+export class RocAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        RocAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_rocanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} test_data
+     * @param {any} state_data
+     * @param {any} group_data
+     * @param {any} test_data_defs
+     * @param {any} state_data_defs
+     * @param {any} group_data_defs
+     * @param {any} config_data
+     */
+    constructor(test_data, state_data, group_data, test_data_defs, state_data_defs, group_data_defs, config_data) {
+        const ret = wasm.rocanalysis_new(test_data, state_data, group_data, test_data_defs, state_data_defs, group_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        RocAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.rocanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.rocanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.rocanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_log() {
+        const ret = wasm.rocanalysis_get_all_log(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+}
+
+const RocCurveFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_roccurve_free(ptr >>> 0, 1));
+
+export class RocCurve {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        RocCurveFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_roccurve_free(ptr, 0);
+    }
+    /**
+     * @param {any} test_data
+     * @param {any} state_data
+     * @param {any} test_data_defs
+     * @param {any} state_data_defs
+     * @param {any} config_data
+     */
+    constructor(test_data, state_data, test_data_defs, state_data_defs, config_data) {
+        const ret = wasm.roccurve_new(test_data, state_data, test_data_defs, state_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        RocCurveFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.roccurve_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.roccurve_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.roccurve_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.roccurve_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.roccurve_clear_errors(this.__wbg_ptr);
         return ret;
     }
 }
@@ -1226,6 +1978,255 @@ export class Smoothing {
     }
 }
 
+const TwoStepClusterAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_twostepclusteranalysis_free(ptr >>> 0, 1));
+
+export class TwoStepClusterAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        TwoStepClusterAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_twostepclusteranalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} categorical_data
+     * @param {any} continuous_data
+     * @param {any} categorical_data_defs
+     * @param {any} continuous_data_defs
+     * @param {any} config_data
+     */
+    constructor(categorical_data, continuous_data, categorical_data_defs, continuous_data_defs, config_data) {
+        const ret = wasm.twostepclusteranalysis_new(categorical_data, continuous_data, categorical_data_defs, continuous_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        TwoStepClusterAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.twostepclusteranalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.twostepclusteranalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.twostepclusteranalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.twostepclusteranalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.twostepclusteranalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const UnivariateAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_univariateanalysis_free(ptr >>> 0, 1));
+
+export class UnivariateAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        UnivariateAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_univariateanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} dep_data
+     * @param {any} fix_factor_data
+     * @param {any} rand_factor_data
+     * @param {any} covar_data
+     * @param {any} wls_data
+     * @param {any} dep_data_defs
+     * @param {any} fix_factor_data_defs
+     * @param {any} rand_factor_data_defs
+     * @param {any} covar_data_defs
+     * @param {any} wls_data_defs
+     * @param {any} config_data
+     */
+    constructor(dep_data, fix_factor_data, rand_factor_data, covar_data, wls_data, dep_data_defs, fix_factor_data_defs, rand_factor_data_defs, covar_data_defs, wls_data_defs, config_data) {
+        const ret = wasm.univariateanalysis_new(dep_data, fix_factor_data, rand_factor_data, covar_data, wls_data, dep_data_defs, fix_factor_data_defs, rand_factor_data_defs, covar_data_defs, wls_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        UnivariateAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.univariateanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.univariateanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.univariateanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.univariateanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.univariateanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const VarianceComponentsAnalysisFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_variancecomponentsanalysis_free(ptr >>> 0, 1));
+
+export class VarianceComponentsAnalysis {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        VarianceComponentsAnalysisFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_variancecomponentsanalysis_free(ptr, 0);
+    }
+    /**
+     * @param {any} dependent_data
+     * @param {any} fix_factor_data
+     * @param {any} random_factor_data
+     * @param {any} covar_data
+     * @param {any} wls_data
+     * @param {any} dependent_data_defs
+     * @param {any} fix_factor_data_defs
+     * @param {any} random_factor_data_defs
+     * @param {any} covar_data_defs
+     * @param {any} wls_data_defs
+     * @param {any} config_data
+     */
+    constructor(dependent_data, fix_factor_data, random_factor_data, covar_data, wls_data, dependent_data_defs, fix_factor_data_defs, random_factor_data_defs, covar_data_defs, wls_data_defs, config_data) {
+        const ret = wasm.variancecomponentsanalysis_new(dependent_data, fix_factor_data, random_factor_data, covar_data, wls_data, dependent_data_defs, fix_factor_data_defs, random_factor_data_defs, covar_data_defs, wls_data_defs, config_data);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        VarianceComponentsAnalysisFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @returns {any}
+     */
+    get_results() {
+        const ret = wasm.variancecomponentsanalysis_get_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_formatted_results() {
+        const ret = wasm.variancecomponentsanalysis_get_formatted_results(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_executed_functions() {
+        const ret = wasm.variancecomponentsanalysis_get_executed_functions(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @returns {any}
+     */
+    get_all_errors() {
+        const ret = wasm.variancecomponentsanalysis_get_all_errors(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {any}
+     */
+    clear_errors() {
+        const ret = wasm.variancecomponentsanalysis_clear_errors(this.__wbg_ptr);
+        return ret;
+    }
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {
@@ -1275,6 +2276,14 @@ function __wbg_get_imports() {
         const ret = arg0.call(arg1);
         return ret;
     }, arguments) };
+    imports.wbg.__wbg_call_7cccdd69e0791ae2 = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = arg0.call(arg1, arg2);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_crypto_ed58b8e10a292839 = function(arg0) {
+        const ret = arg0.crypto;
+        return ret;
+    };
     imports.wbg.__wbg_done_769e5ede4b31c67b = function(arg0) {
         const ret = arg0.done;
         return ret;
@@ -1283,6 +2292,12 @@ function __wbg_get_imports() {
         const ret = Object.entries(arg0);
         return ret;
     };
+    imports.wbg.__wbg_error_524f506f44df1645 = function(arg0) {
+        console.error(arg0);
+    };
+    imports.wbg.__wbg_getRandomValues_bcb4912f16000dc4 = function() { return handleError(function (arg0, arg1) {
+        arg0.getRandomValues(arg1);
+    }, arguments) };
     imports.wbg.__wbg_get_67b2ba62fc30de12 = function() { return handleError(function (arg0, arg1) {
         const ret = Reflect.get(arg0, arg1);
         return ret;
@@ -1348,6 +2363,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_log_c222819a41e063d3 = function(arg0) {
         console.log(arg0);
     };
+    imports.wbg.__wbg_msCrypto_0a36e2ec3a343d26 = function(arg0) {
+        const ret = arg0.msCrypto;
+        return ret;
+    };
     imports.wbg.__wbg_new_405e22f390576ce2 = function() {
         const ret = new Object();
         return ret;
@@ -1364,12 +2383,39 @@ function __wbg_get_imports() {
         const ret = new Uint8Array(arg0);
         return ret;
     };
+    imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
+        const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return ret;
+    };
+    imports.wbg.__wbg_newwithbyteoffsetandlength_d97e637ebe145a9a = function(arg0, arg1, arg2) {
+        const ret = new Uint8Array(arg0, arg1 >>> 0, arg2 >>> 0);
+        return ret;
+    };
+    imports.wbg.__wbg_newwithlength_a381634e90c276d4 = function(arg0) {
+        const ret = new Uint8Array(arg0 >>> 0);
+        return ret;
+    };
     imports.wbg.__wbg_next_25feadfc0913fea9 = function(arg0) {
         const ret = arg0.next;
         return ret;
     };
     imports.wbg.__wbg_next_6574e1a8a62d1055 = function() { return handleError(function (arg0) {
         const ret = arg0.next();
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_node_02999533c4ea02e3 = function(arg0) {
+        const ret = arg0.node;
+        return ret;
+    };
+    imports.wbg.__wbg_process_5c1d670bc53614b8 = function(arg0) {
+        const ret = arg0.process;
+        return ret;
+    };
+    imports.wbg.__wbg_randomFillSync_ab2cfe79ebbf2740 = function() { return handleError(function (arg0, arg1) {
+        arg0.randomFillSync(arg1);
+    }, arguments) };
+    imports.wbg.__wbg_require_79b1e9274cde3c87 = function() { return handleError(function () {
+        const ret = module.require;
         return ret;
     }, arguments) };
     imports.wbg.__wbg_set_37837023f3d740e8 = function(arg0, arg1, arg2) {
@@ -1393,8 +2439,36 @@ function __wbg_get_imports() {
         const ret = Math.sqrt(arg0);
         return ret;
     };
+    imports.wbg.__wbg_static_accessor_GLOBAL_88a902d13a557d07 = function() {
+        const ret = typeof global === 'undefined' ? null : global;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_GLOBAL_THIS_56578be7e9f832b0 = function() {
+        const ret = typeof globalThis === 'undefined' ? null : globalThis;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_SELF_37c5d418e4bf5819 = function() {
+        const ret = typeof self === 'undefined' ? null : self;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_WINDOW_5de37043a91a9c40 = function() {
+        const ret = typeof window === 'undefined' ? null : window;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_stringify_f7ed6987935b4a24 = function() { return handleError(function (arg0) {
+        const ret = JSON.stringify(arg0);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_subarray_aa9065fa9dc5df96 = function(arg0, arg1, arg2) {
+        const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
+        return ret;
+    };
     imports.wbg.__wbg_value_cd1ffa7b1ab794f1 = function(arg0) {
         const ret = arg0.value;
+        return ret;
+    };
+    imports.wbg.__wbg_versions_c71aa1626a93e0a1 = function(arg0) {
+        const ret = arg0.versions;
         return ret;
     };
     imports.wbg.__wbindgen_as_number = function(arg0) {

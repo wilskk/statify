@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaOveralsAnalysisType } from "@/models/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { OVERALSAnalysis } from "@/wasm/pkg/wasm";
 
 // Helper function to extract just the variable name from a string like "age (Ordinal 1 10) (Ordinal 1 5)"
 function extractVariableName(variableStr: string) {
@@ -59,13 +59,13 @@ export async function analyzeOptScaOverals({
 
     console.log(configData);
 
-    // const overals = new OVERALSAnalysis(
-    //     slicedDataSets,
-    //     slicedDataForPlotsTarget,
-    //     varDefsSets,
-    //     varDefsForPlotsTarget,
-    //     configData
-    // );
+    const overals = new OVERALSAnalysis(
+        slicedDataSets,
+        slicedDataForPlotsTarget,
+        varDefsSets,
+        varDefsForPlotsTarget,
+        configData
+    );
 
     // const results = overals.get_results();
     // const error = overals.get_all_errors();

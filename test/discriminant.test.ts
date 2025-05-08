@@ -1,31 +1,36 @@
-import { analyzeOptScaOverals } from "@/services/analyze/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-analysis";
-import init, { OVERALSAnalysis } from "@/wasm/pkg/wasm";
+import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
+import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 
 // Mock the wasm init function
 jest.mock("@/wasm/pkg/wasm", () => {
-    const mockOVERALSAnalysis = jest.fn();
-    mockOVERALSAnalysis.mockImplementation(
+    const mockDiscriminantAnalysis = jest.fn();
+    mockDiscriminantAnalysis.mockImplementation(
         (
-            set_target_data,
-            plots_target_data,
-            set_target_data_defs,
-            plots_target_data_defs,
-            config_data
+            groupData,
+            independentData,
+            selectionData,
+            groupDataDefs,
+            independentDataDefs,
+            selectionDataDefs,
+            configData
         ) => {
             // This implementation mimics the behavior of the actual Rust constructor
             // It will validate inputs and throw errors for invalid data
 
-            // Check if set_target_variable is missing or empty
+            // Check if grouping_variable is missing or empty
+            if (!configData?.main?.GroupingVariable) {
+                throw new Error(
+                    "Grouping variable must be selected for discriminant analysis"
+                );
+            }
+
+            // Check if independent_variables is missing or empty
             if (
-                !config_data?.main?.SetTargetVariable ||
-                config_data.main.SetTargetVariable.length === 0 ||
-                (Array.isArray(config_data.main.SetTargetVariable) &&
-                    config_data.main.SetTargetVariable.every(
-                        (set) => set.length === 0
-                    ))
+                !configData?.main?.IndependentVariables ||
+                configData.main.IndependentVariables.length === 0
             ) {
                 throw new Error(
-                    "Set target variables must be selected for OVERALS analysis"
+                    "At least one independent variable must be selected"
                 );
             }
 
@@ -35,7 +40,6 @@ jest.mock("@/wasm/pkg/wasm", () => {
                 get_formatted_results: jest.fn().mockReturnValue({}),
                 get_all_errors: jest.fn().mockReturnValue([]),
                 get_executed_functions: jest.fn().mockReturnValue([]),
-                clear_errors: jest.fn(),
             };
         }
     );
@@ -43,7 +47,7 @@ jest.mock("@/wasm/pkg/wasm", () => {
     return {
         __esModule: true,
         default: jest.fn().mockResolvedValue(true),
-        OVERALSAnalysis: mockOVERALSAnalysis,
+        DiscriminantAnalysis: mockDiscriminantAnalysis,
     };
 });
 
@@ -53,46 +57,83 @@ jest.mock("@/hooks/useVariable", () => ({
     getVarDefs: jest.fn().mockReturnValue([]),
 }));
 
-describe("OVERALS Analysis Constructor Error Handling", () => {
+describe("Discriminant Analysis Constructor Error Handling", () => {
     // Helper function to create a minimal valid config
     const createValidConfig = () => ({
         main: {
-            SetTargetVariable: [
-                ["var1", "var2"],
-                ["var3", "var4"],
-            ],
-            PlotsTargetVariable: ["var5", "var6"],
-            Dimensions: 2,
-        },
-        defineRangeScale: {
-            Minimum: 1,
-            Maximum: 10,
-            Ordinal: true,
-            SingleNominal: false,
-            MultipleNominal: false,
-            DiscreteNumeric: false,
+            GroupingVariable: "group",
+            IndependentVariables: ["var1", "var2"],
+            SelectionVariable: null,
+            Together: true,
+            Stepwise: false,
         },
         defineRange: {
-            Minimum: 1,
-            Maximum: 5,
+            minRange: 1,
+            maxRange: 5,
         },
-        options: {
-            Freq: true,
-            Centroid: true,
-            IterHistory: false,
-            WeightCompload: true,
-            SingMult: false,
-            CategoryQuant: true,
-            ObjScore: true,
-            CategCoord: false,
-            PlotObjScore: true,
-            Compload: true,
-            CategCentroid: false,
-            Trans: false,
-            SaveObjscore: true,
-            UseRandconf: false,
-            MaxIter: 100,
-            Conv: 0.001,
+        setValue: {
+            Value: 3,
+        },
+        statistics: {
+            Means: true,
+            ANOVA: true,
+            BoxM: false,
+            Fisher: true,
+            Unstandardized: true,
+            WGCorrelation: false,
+            WGCovariance: false,
+            SGCovariance: false,
+            TotalCovariance: false,
+        },
+        method: {
+            Wilks: true,
+            Unexplained: false,
+            Mahalonobis: true,
+            FRatio: true,
+            Raos: false,
+            FValue: false,
+            FProbability: false,
+            Summary: true,
+            Pairwise: false,
+            VEnter: 0.05,
+            FEntry: 3.84,
+            FRemoval: 2.71,
+            PEntry: 0.05,
+            PRemoval: 0.1,
+        },
+        classify: {
+            AllGroupEqual: true,
+            GroupSize: false,
+            WithinGroup: true,
+            SepGroup: false,
+            Case: true,
+            Limit: false,
+            LimitValue: null,
+            Summary: true,
+            Leave: false,
+            Combine: false,
+            SepGrp: false,
+            Terr: false,
+            Replace: false,
+        },
+        save: {
+            Predicted: true,
+            Discriminant: true,
+            Probabilities: false,
+            XmlFile: null,
+        },
+        bootstrap: {
+            PerformBootStrapping: false,
+            NumOfSamples: 1000,
+            Seed: false,
+            SeedValue: null,
+            Level: 95,
+            Percentile: true,
+            BCa: false,
+            Simple: true,
+            Stratified: false,
+            Variables: null,
+            StrataVariables: null,
         },
     });
 
@@ -101,12 +142,10 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
     const mockAddAnalytic = jest.fn().mockResolvedValue(1);
     const mockAddStatistic = jest.fn().mockResolvedValue(1);
     const mockVariables = [
+        { name: "group" },
         { name: "var1" },
         { name: "var2" },
         { name: "var3" },
-        { name: "var4" },
-        { name: "var5" },
-        { name: "var6" },
     ];
     const mockDataVariables = [
         [1, 2, 3],
@@ -118,14 +157,14 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
         jest.clearAllMocks();
     });
 
-    test("should throw error when SetTargetVariable is missing", async () => {
-        // Setup invalid config with missing SetTargetVariable
+    test("should throw error when GroupingVariable is missing", async () => {
+        // Setup invalid config with missing GroupingVariable
         const invalidConfig = createValidConfig();
-        invalidConfig.main.SetTargetVariable = null;
+        invalidConfig.main.GroupingVariable = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeOptScaOverals({
+            analyzeDiscriminant({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -134,21 +173,21 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Set target variables must be selected for OVERALS analysis"
+            "Grouping variable must be selected for discriminant analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(OVERALSAnalysis).toHaveBeenCalled();
+        expect(DiscriminantAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when SetTargetVariable is empty array", async () => {
-        // Setup invalid config with empty SetTargetVariable
+    test("should throw error when IndependentVariables is missing", async () => {
+        // Setup invalid config with missing IndependentVariables
         const invalidConfig = createValidConfig();
-        invalidConfig.main.SetTargetVariable = [];
+        invalidConfig.main.IndependentVariables = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeOptScaOverals({
+            analyzeDiscriminant({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -156,22 +195,20 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow(
-            "Set target variables must be selected for OVERALS analysis"
-        );
+        ).rejects.toThrow("At least one independent variable must be selected");
 
         // Verify the constructor was called with the invalid config
-        expect(OVERALSAnalysis).toHaveBeenCalled();
+        expect(DiscriminantAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when SetTargetVariable contains only empty sets", async () => {
-        // Setup invalid config with SetTargetVariable containing only empty arrays
+    test("should throw error when IndependentVariables is empty", async () => {
+        // Setup invalid config with empty IndependentVariables
         const invalidConfig = createValidConfig();
-        invalidConfig.main.SetTargetVariable = [[], []];
+        invalidConfig.main.IndependentVariables = [];
 
         // Call the function and expect it to throw
         await expect(
-            analyzeOptScaOverals({
+            analyzeDiscriminant({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -179,12 +216,10 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow(
-            "Set target variables must be selected for OVERALS analysis"
-        );
+        ).rejects.toThrow("At least one independent variable must be selected");
 
         // Verify the constructor was called with the invalid config
-        expect(OVERALSAnalysis).toHaveBeenCalled();
+        expect(DiscriminantAnalysis).toHaveBeenCalled();
     });
 
     test("should process valid configuration correctly", async () => {
@@ -192,7 +227,7 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
         const validConfig = createValidConfig();
 
         // Call the function
-        await analyzeOptScaOverals({
+        await analyzeDiscriminant({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -202,16 +237,11 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
         });
 
         // Verify the constructor was called with the valid config
-        expect(OVERALSAnalysis).toHaveBeenCalled();
-
-        // Check that OVERALSAnalysis was called with the correct parameters
-        expect(OVERALSAnalysis).toHaveBeenCalledWith(
-            expect.any(Array), // slicedDataSets
-            expect.any(Array), // slicedDataForPlotsTarget
-            expect.any(Array), // varDefsSets
-            expect.any(Array), // varDefsForPlotsTarget
-            validConfig // config
-        );
+        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        // Verify that execution reached this point without throwing
+        expect(
+            DiscriminantAnalysis.mock.results[0].value.get_formatted_results
+        ).not.toHaveBeenCalled();
     });
 
     test("should handle data type mismatches in constructor arguments", async () => {
@@ -226,7 +256,7 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
         getSlicedData.mockReturnValueOnce("invalid data type"); // String instead of expected array
 
         // Call the function (it should catch the error internally)
-        await analyzeOptScaOverals({
+        await analyzeDiscriminant({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -250,7 +280,7 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
 
         // Call the function and expect it to throw
         await expect(
-            analyzeOptScaOverals({
+            analyzeDiscriminant({
                 configData: malformedConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -261,6 +291,6 @@ describe("OVERALS Analysis Constructor Error Handling", () => {
         ).rejects.toThrow();
 
         // Verify the constructor was called with the malformed config
-        expect(OVERALSAnalysis).toHaveBeenCalled();
+        expect(DiscriminantAnalysis).toHaveBeenCalled();
     });
 });
