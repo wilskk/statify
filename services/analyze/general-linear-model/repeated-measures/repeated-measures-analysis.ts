@@ -10,8 +10,6 @@ export async function analyzeRepeatedMeasures({
     addAnalytic,
     addStatistic,
 }: RepeatedMeasuresAnalysisType) {
-    await init();
-
     const SubjectVariables = configData.main.SubVar || [];
     const FactorsVariables = configData.main.FactorsVar || [];
     const CovariateVariables = configData.main.Covariates || [];
@@ -40,6 +38,7 @@ export async function analyzeRepeatedMeasures({
 
     console.log(configData);
 
+    await init();
     // const repeatedMeasure = new RepeatedMeasureAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,

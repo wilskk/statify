@@ -12,8 +12,6 @@ export async function analyzeDiscriminant({
     addAnalytic,
     addStatistic,
 }: DiscriminantAnalysisType) {
-    await init();
-
     const GroupingVariable = configData.main.GroupingVariable
         ? [configData.main.GroupingVariable]
         : [];
@@ -45,6 +43,7 @@ export async function analyzeDiscriminant({
     const varDefsForSelection = getVarDefs(variables, SelectionVariable);
     console.log(configData);
 
+    await init();
     const da = new DiscriminantAnalysis(
         slicedDataForGrouping,
         slicedDataForIndependent,
@@ -55,14 +54,14 @@ export async function analyzeDiscriminant({
         configData
     );
 
-    // const results = da.get_formatted_results();
+    const results = da.get_formatted_results();
 
-    // const executed = da.get_executed_functions();
-    // const errors = da.get_all_errors();
+    const executed = da.get_all_log();
+    const errors = da.get_all_errors();
 
-    // console.log("executed", executed);
-    // console.log("errors", errors);
-    // console.log("results", results);
+    console.log("executed", executed);
+    console.log("errors", errors);
+    console.log("results", results);
 
     // const formattedResults = transformDiscriminantResult(results);
     // console.log("formattedResults", formattedResults);

@@ -1,39 +1,39 @@
-import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
-import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
+import { analyzeCorrespondence } from "@/services/analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-analysis";
+import init, { CorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 // Mock the wasm init function
 jest.mock("@/wasm/pkg/wasm", () => {
-    const mockDiscriminantAnalysis = jest.fn();
-    mockDiscriminantAnalysis.mockImplementation(
+    const mockCorrespondenceAnalysis = jest.fn();
+    mockCorrespondenceAnalysis.mockImplementation(
         (
-            group_data,
-            independent_data,
-            selection_data,
-            group_data_defs,
-            independent_data_defs,
-            selection_data_defs,
+            row_data,
+            col_data,
+            weight_data,
+            row_data_defs,
+            col_data_defs,
+            weight_data_defs,
             config_data
         ) => {
             // This implementation mimics the behavior of the actual Rust constructor
             // It will validate inputs and throw errors for invalid data
 
-            // Check if grouping variable is selected
+            // Check if row target variable is selected
             if (
-                !config_data?.main?.GroupingVariable ||
-                config_data.main.GroupingVariable === ""
+                !config_data?.main?.RowTargetVar ||
+                config_data.main.RowTargetVar === ""
             ) {
                 throw new Error(
-                    "Grouping variable must be selected for discriminant analysis"
+                    "Row target variable must be selected for correspondence analysis"
                 );
             }
 
-            // Check if independent variables are selected
+            // Check if column target variable is selected
             if (
-                !config_data?.main?.IndependentVariables ||
-                config_data.main.IndependentVariables.length === 0
+                !config_data?.main?.ColTargetVar ||
+                config_data.main.ColTargetVar === ""
             ) {
                 throw new Error(
-                    "At least one independent variable must be selected"
+                    "Column target variable must be selected for correspondence analysis"
                 );
             }
 
@@ -42,7 +42,7 @@ jest.mock("@/wasm/pkg/wasm", () => {
                 get_results: jest.fn().mockReturnValue({}),
                 get_formatted_results: jest.fn().mockReturnValue({}),
                 get_all_errors: jest.fn().mockReturnValue([]),
-                get_all_log: jest.fn().mockReturnValue([]),
+                clear_errors: jest.fn(),
             };
         }
     );
@@ -50,7 +50,7 @@ jest.mock("@/wasm/pkg/wasm", () => {
     return {
         __esModule: true,
         default: jest.fn().mockResolvedValue(true),
-        DiscriminantAnalysis: mockDiscriminantAnalysis,
+        CorrespondenceAnalysis: mockCorrespondenceAnalysis,
     };
 });
 
@@ -60,83 +60,71 @@ jest.mock("@/hooks/useVariable", () => ({
     getVarDefs: jest.fn().mockReturnValue([]),
 }));
 
-describe("Discriminant Analysis Constructor Error Handling", () => {
+describe("CorrespondenceAnalysis Constructor Error Handling", () => {
     // Helper function to create a minimal valid config
     const createValidConfig = () => ({
         main: {
-            GroupingVariable: "group1",
-            IndependentVariables: ["var1", "var2"],
-            Together: true,
-            Stepwise: false,
-            SelectionVariable: null,
+            RowTargetVar: "row_var",
+            ColTargetVar: "col_var",
         },
-        defineRange: {
-            minRange: 0,
-            maxRange: 100,
+        defineRangeRow: {
+            MinValue: null,
+            MaxValue: null,
+            ConstraintsList: null,
+            None: true,
+            CategoryEqual: false,
+            CategorySupplemental: false,
+            DefaultListModel: null,
         },
-        setValue: {
-            Value: 0.5,
+        defineRangeColumn: {
+            MinValue: null,
+            MaxValue: null,
+            ConstraintsList: null,
+            None: true,
+            CategoryEqual: false,
+            CategorySupplemental: false,
+            DefaultListModel: null,
+        },
+        model: {
+            ChiSquare: true,
+            Euclidean: false,
+            RNCRemoved: false,
+            RowRemoved: false,
+            ColRemoved: false,
+            RowTotals: false,
+            ColTotals: false,
+            Symmetrical: true,
+            RowPrincipal: false,
+            Custom: false,
+            Principal: false,
+            ColPrincipal: false,
+            Dimensions: 2,
+            CustomDimensions: null,
+            CustomQ: null,
         },
         statistics: {
-            Means: true,
-            ANOVA: true,
-            BoxM: false,
-            Fisher: true,
-            Unstandardized: true,
-            WGCorrelation: true,
-            WGCovariance: false,
-            SGCovariance: false,
-            TotalCovariance: false,
+            CorrTable: true,
+            StatRowPoints: true,
+            StatColPoints: true,
+            PermutationTest: false,
+            MaxPermutations: null,
+            RowProfile: false,
+            ColProfile: false,
+            RowPoints: true,
+            ColPoints: true,
         },
-        method: {
-            Wilks: true,
-            Unexplained: false,
-            Mahalonobis: false,
-            FRatio: true,
-            Raos: false,
-            FValue: false,
-            FProbability: false,
-            Summary: true,
-            Pairwise: false,
-            VEnter: 0.05,
-            FEntry: 3.84,
-            FRemoval: 2.71,
-            PEntry: 0.05,
-            PRemoval: 0.1,
-        },
-        classify: {
-            AllGroupEqual: true,
-            GroupSize: false,
-            WithinGroup: true,
-            SepGroup: false,
-            Case: true,
-            Limit: false,
-            LimitValue: null,
-            Summary: true,
-            Leave: true,
-            Combine: false,
-            SepGrp: false,
-            Terr: false,
-            Replace: false,
-        },
-        save: {
-            Predicted: true,
-            Discriminant: true,
-            Probabilities: false,
-            XmlFile: null,
-        },
-        bootstrap: {
-            PerformBootStrapping: false,
-            NumOfSamples: 1000,
-            Seed: false,
-            SeedValue: null,
-            Level: 95,
-            Percentile: true,
-            BCa: false,
-            Simple: true,
-            Stratified: false,
-            Variables: null,
-            StrataVariables: null,
+        plots: {
+            Biplot: true,
+            RowPts: true,
+            ColPts: true,
+            IdScatter: null,
+            TransRow: false,
+            TransCol: false,
+            IdLine: null,
+            DisplayAll: true,
+            RestrictDim: false,
+            Lowest: null,
+            Highest: null,
         },
     });
 
@@ -145,106 +133,115 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
     const mockAddAnalytic = jest.fn().mockResolvedValue(1);
     const mockAddStatistic = jest.fn().mockResolvedValue(1);
     const mockVariables = [
-        { name: "group1" },
-        { name: "var1" },
-        { name: "var2" },
+        { name: "row_var" },
+        { name: "col_var" },
+        { name: "weight_var" },
     ];
     const mockDataVariables = [
         [1, 2, 3],
         [4, 5, 6],
         [7, 8, 9],
     ];
+    const mockMeta = { weight: null };
 
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-    test("should throw error when GroupingVariable is missing", async () => {
-        // Setup invalid config with missing GroupingVariable
+    test("should throw error when RowTargetVar is missing", async () => {
+        // Setup invalid config with missing RowTargetVar
         const invalidConfig = createValidConfig();
-        invalidConfig.main.GroupingVariable = null;
+        invalidConfig.main.RowTargetVar = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeCorrespondence({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
+                meta: mockMeta,
                 addLog: mockAddLog,
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Grouping variable must be selected for discriminant analysis"
+            "Row target variable must be selected for correspondence analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when GroupingVariable is empty string", async () => {
-        // Setup invalid config with empty GroupingVariable
+    test("should throw error when RowTargetVar is empty string", async () => {
+        // Setup invalid config with empty RowTargetVar
         const invalidConfig = createValidConfig();
-        invalidConfig.main.GroupingVariable = "";
+        invalidConfig.main.RowTargetVar = "";
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeCorrespondence({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
+                meta: mockMeta,
                 addLog: mockAddLog,
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Grouping variable must be selected for discriminant analysis"
+            "Row target variable must be selected for correspondence analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when IndependentVariables is missing", async () => {
-        // Setup invalid config with missing IndependentVariables
+    test("should throw error when ColTargetVar is missing", async () => {
+        // Setup invalid config with missing ColTargetVar
         const invalidConfig = createValidConfig();
-        invalidConfig.main.IndependentVariables = null;
+        invalidConfig.main.ColTargetVar = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeCorrespondence({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
+                meta: mockMeta,
                 addLog: mockAddLog,
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow("At least one independent variable must be selected");
+        ).rejects.toThrow(
+            "Column target variable must be selected for correspondence analysis"
+        );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when IndependentVariables is empty array", async () => {
-        // Setup invalid config with empty IndependentVariables array
+    test("should throw error when ColTargetVar is empty string", async () => {
+        // Setup invalid config with empty ColTargetVar
         const invalidConfig = createValidConfig();
-        invalidConfig.main.IndependentVariables = [];
+        invalidConfig.main.ColTargetVar = "";
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeCorrespondence({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
+                meta: mockMeta,
                 addLog: mockAddLog,
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
             })
-        ).rejects.toThrow("At least one independent variable must be selected");
+        ).rejects.toThrow(
+            "Column target variable must be selected for correspondence analysis"
+        );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
     });
 
     test("should process valid configuration correctly", async () => {
@@ -252,26 +249,27 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         const validConfig = createValidConfig();
 
         // Call the function
-        await analyzeDiscriminant({
+        await analyzeCorrespondence({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
+            meta: mockMeta,
             addLog: mockAddLog,
             addAnalytic: mockAddAnalytic,
             addStatistic: mockAddStatistic,
         });
 
         // Verify the constructor was called with the valid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
 
-        // Check that DiscriminantAnalysis was called with the correct parameters
-        expect(DiscriminantAnalysis).toHaveBeenCalledWith(
-            expect.any(Array), // slicedDataForGrouping
-            expect.any(Array), // slicedDataForIndependent
-            expect.any(Array), // slicedDataForSelection
-            expect.any(Array), // varDefsForGrouping
-            expect.any(Array), // varDefsForIndependent
-            expect.any(Array), // varDefsForSelection
+        // Check that CorrespondenceAnalysis was called with the correct parameters
+        expect(CorrespondenceAnalysis).toHaveBeenCalledWith(
+            expect.any(Array), // slicedDataForRow
+            expect.any(Array), // slicedDataForCol
+            expect.any(Array), // slicedDataForWeight
+            expect.any(Array), // varDefsForRow
+            expect.any(Array), // varDefsForCol
+            expect.any(Array), // varDefsForWeight
             validConfig // config
         );
     });
@@ -288,16 +286,17 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         getSlicedData.mockReturnValueOnce("invalid data type"); // String instead of expected array
 
         // Call the function (it should catch the error internally)
-        await analyzeDiscriminant({
+        await analyzeCorrespondence({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
+            meta: mockMeta,
             addLog: mockAddLog,
             addAnalytic: mockAddAnalytic,
             addStatistic: mockAddStatistic,
         });
 
-        // Check if the config was logged
+        // Check if an error was logged
         expect(consoleLogSpy).toHaveBeenCalled();
         // Restore the spy
         consoleLogSpy.mockRestore();
@@ -312,10 +311,11 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeCorrespondence({
                 configData: malformedConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
+                meta: mockMeta,
                 addLog: mockAddLog,
                 addAnalytic: mockAddAnalytic,
                 addStatistic: mockAddStatistic,
@@ -323,6 +323,6 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         ).rejects.toThrow();
 
         // Verify the constructor was called with the malformed config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(CorrespondenceAnalysis).toHaveBeenCalled();
     });
 });

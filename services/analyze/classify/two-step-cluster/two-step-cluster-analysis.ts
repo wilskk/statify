@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { TwoStepClusterAnalysisType } from "@/models/classify/two-step-cluster/two-step-cluste-worker";
-import init, { TwoStepClusterAnalysis } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 import { transformClusteringResult } from "./two-step-cluster-analysis-formatter";
 import { resultTwoStepCluster } from "./two-step-cluster-analysis-output";
 
@@ -12,8 +12,6 @@ export async function analyzeTwoStepCluster({
     addAnalytic,
     addStatistic,
 }: TwoStepClusterAnalysisType) {
-    await init();
-
     const CategoricalVariables = configData.main.CategoricalVar || [];
     const ContinousVariables = configData.main.ContinousVar || [];
 
@@ -34,13 +32,14 @@ export async function analyzeTwoStepCluster({
 
     console.log(configData);
 
-    const twostep = new TwoStepClusterAnalysis(
-        slicedDataForCategorical,
-        slicedDataForContinous,
-        varDefsForCategorical,
-        varDefsForContinous,
-        configData
-    );
+    await init();
+    // const twostep = new TwoStepClusterAnalysis(
+    //     slicedDataForCategorical,
+    //     slicedDataForContinous,
+    //     varDefsForCategorical,
+    //     varDefsForContinous,
+    //     configData
+    // );
 
     // const results = twostep.get_formatted_results();
     // const error = twostep.get_all_errors();

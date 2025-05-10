@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { VarianceCompsAnalysisType } from "@/models/general-linear-model/variance-components/variance-components-worker";
-import init, { VarianceComponentsAnalysis } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeVarianceComps({
     configData,
@@ -10,8 +10,6 @@ export async function analyzeVarianceComps({
     addAnalytic,
     addStatistic,
 }: VarianceCompsAnalysisType) {
-    await init();
-
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
     const CovariateVariables = configData.main.Covar || [];
@@ -58,19 +56,20 @@ export async function analyzeVarianceComps({
 
     console.log(configData);
 
-    const varianceComps = new VarianceComponentsAnalysis(
-        slicedDataForDependent,
-        slicedDataForFixFactor,
-        slicedDataForRandomFactor,
-        slicedDataForCovariate,
-        slicedDataForWlsWeight,
-        varDefsForDependent,
-        varDefsForFixFactor,
-        varDefsForRandomFactor,
-        varDefsForCovariate,
-        varDefsForWlsWeight,
-        configData
-    );
+    await init();
+    // const varianceComps = new VarianceComponentsAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForRandomFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForRandomFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
 
     // const results = varianceComps.get_formatted_results();
     // const error = varianceComps.get_all_errors();

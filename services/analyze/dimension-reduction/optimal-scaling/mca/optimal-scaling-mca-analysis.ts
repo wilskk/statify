@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaMCAAnalysisType } from "@/models/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-worker";
-import init, { MultipleCorrespondenceAnalysis } from "@/wasm/pkg/wasm";
+// import init, { MultipleCorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaMCA({
     configData,
@@ -10,8 +10,6 @@ export async function analyzeOptScaMCA({
     addAnalytic,
     addStatistic,
 }: OptScaMCAAnalysisType) {
-    await init();
-
     const AnalysisVariables = configData.main.AnalysisVars || [];
     const SupplementVariables = configData.main.SuppleVars || [];
     const LabelingVariables = configData.main.LabelingVars || [];
@@ -40,15 +38,16 @@ export async function analyzeOptScaMCA({
 
     console.log(configData);
 
-    const mca = new MultipleCorrespondenceAnalysis(
-        slicedDataForAnalysis,
-        slicedDataForSupplement,
-        slicedDataForLabeling,
-        varDefsForAnalysis,
-        varDefsForSupplement,
-        varDefsForLabeling,
-        configData
-    );
+    // await init();
+    // const mca = new MultipleCorrespondenceAnalysis(
+    //     slicedDataForAnalysis,
+    //     slicedDataForSupplement,
+    //     slicedDataForLabeling,
+    //     varDefsForAnalysis,
+    //     varDefsForSupplement,
+    //     varDefsForLabeling,
+    //     configData
+    // );
 
     // const results = mca.get_results();
     // const error = mca.get_all_errors();

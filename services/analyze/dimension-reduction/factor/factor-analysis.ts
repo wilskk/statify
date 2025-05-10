@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { FactorAnalysisType } from "@/models/dimension-reduction/factor/factor-worker";
-import init, { FactorAnalysis } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 import { transformFactorAnalysisResult } from "./factor-analysis-formatter";
 import { resultFactorAnalysis } from "./factor-analysis-output";
 
@@ -12,8 +12,6 @@ export async function analyzeFactor({
     addAnalytic,
     addStatistic,
 }: FactorAnalysisType) {
-    await init();
-
     const targetVariables = configData.main.TargetVar || [];
     const valueTarget = configData.main.ValueTarget
         ? [configData.main.ValueTarget]
@@ -36,13 +34,14 @@ export async function analyzeFactor({
 
     console.log(configData);
 
-    const factor = new FactorAnalysis(
-        slicedDataForTarget,
-        slicedDataForValue,
-        varDefsForTarget,
-        varDefsForValue,
-        configData
-    );
+    await init();
+    // const factor = new FactorAnalysis(
+    //     slicedDataForTarget,
+    //     slicedDataForValue,
+    //     varDefsForTarget,
+    //     varDefsForValue,
+    //     configData
+    // );
 
     // const results = factor.get_formatted_results();
     // const error = factor.get_all_errors();

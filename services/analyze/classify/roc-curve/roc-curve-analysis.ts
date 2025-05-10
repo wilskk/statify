@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocCurveAnalysisType } from "@/models/classify/roc-curve/roc-curve-worker";
-import init, { RocCurve } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 import { transformROCCurveResult } from "./roc-curve-analysis-formatter";
 import { resultROCCurve } from "./roc-curve-analysis-output";
 
@@ -12,8 +12,6 @@ export async function analyzeRocCurve({
     addAnalytic,
     addStatistic,
 }: RocCurveAnalysisType) {
-    await init();
-
     const TestVariables = configData.main.TestTargetVariable || [];
     const StateVariable = configData.main.StateTargetVariable
         ? [configData.main.StateTargetVariable]
@@ -36,13 +34,14 @@ export async function analyzeRocCurve({
 
     console.log(configData);
 
-    const rocCurve = new RocCurve(
-        slicedDataForTest,
-        slicedDataForState,
-        varDefsForTest,
-        varDefsForState,
-        configData
-    );
+    await init();
+    // const rocCurve = new RocCurve(
+    //     slicedDataForTest,
+    //     slicedDataForState,
+    //     varDefsForTest,
+    //     varDefsForState,
+    //     configData
+    // );
 
     // const results = rocCurve.get_formatted_results();
     // const error = rocCurve.get_all_errors();

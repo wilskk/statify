@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { MultivariateAnalysisType } from "@/models/general-linear-model/multivariate/multivariate-worker";
-import init, { MultivariateAnalysis } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 export async function analyzeMultivariate({
     configData,
@@ -10,8 +10,6 @@ export async function analyzeMultivariate({
     addAnalytic,
     addStatistic,
 }: MultivariateAnalysisType) {
-    await init();
-
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
     const CovariateVariables = configData.main.Covar || [];
@@ -50,17 +48,18 @@ export async function analyzeMultivariate({
 
     console.log(configData);
 
-    const multivariate = new MultivariateAnalysis(
-        slicedDataForDependent,
-        slicedDataForFixFactor,
-        slicedDataForCovariate,
-        slicedDataForWlsWeight,
-        varDefsForDependent,
-        varDefsForFixFactor,
-        varDefsForCovariate,
-        varDefsForWlsWeight,
-        configData
-    );
+    await init();
+    // const multivariate = new MultivariateAnalysis(
+    //     slicedDataForDependent,
+    //     slicedDataForFixFactor,
+    //     slicedDataForCovariate,
+    //     slicedDataForWlsWeight,
+    //     varDefsForDependent,
+    //     varDefsForFixFactor,
+    //     varDefsForCovariate,
+    //     varDefsForWlsWeight,
+    //     configData
+    // );
 
     // const results = multivariate.get_formatted_results();
     // const error = multivariate.get_all_errors();

@@ -1,39 +1,32 @@
-import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
-import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
+import { analyzeKMeansCluster } from "@/services/analyze/classify/k-means-cluster/k-means-cluster-analysis";
+import init, { KMeansClusterAnalysis } from "@/wasm/pkg/wasm";
 
 // Mock the wasm init function
 jest.mock("@/wasm/pkg/wasm", () => {
-    const mockDiscriminantAnalysis = jest.fn();
-    mockDiscriminantAnalysis.mockImplementation(
+    const mockKMeansClusterAnalysis = jest.fn();
+    mockKMeansClusterAnalysis.mockImplementation(
         (
-            group_data,
-            independent_data,
-            selection_data,
-            group_data_defs,
-            independent_data_defs,
-            selection_data_defs,
+            target_data,
+            case_data,
+            target_data_defs,
+            case_data_defs,
             config_data
         ) => {
             // This implementation mimics the behavior of the actual Rust constructor
             // It will validate inputs and throw errors for invalid data
 
-            // Check if grouping variable is selected
-            if (
-                !config_data?.main?.GroupingVariable ||
-                config_data.main.GroupingVariable === ""
-            ) {
-                throw new Error(
-                    "Grouping variable must be selected for discriminant analysis"
-                );
+            // Check if cluster number is positive
+            if (!config_data?.main?.Cluster || config_data.main.Cluster <= 0) {
+                throw new Error("Number of clusters must be positive");
             }
 
-            // Check if independent variables are selected
+            // Check if target variables are selected
             if (
-                !config_data?.main?.IndependentVariables ||
-                config_data.main.IndependentVariables.length === 0
+                !config_data?.main?.TargetVar ||
+                config_data.main.TargetVar.length === 0
             ) {
                 throw new Error(
-                    "At least one independent variable must be selected"
+                    "Target variables must be selected for K-Means Cluster analysis"
                 );
             }
 
@@ -42,7 +35,8 @@ jest.mock("@/wasm/pkg/wasm", () => {
                 get_results: jest.fn().mockReturnValue({}),
                 get_formatted_results: jest.fn().mockReturnValue({}),
                 get_all_errors: jest.fn().mockReturnValue([]),
-                get_all_log: jest.fn().mockReturnValue([]),
+                get_executed_functions: jest.fn().mockReturnValue([]),
+                clear_errors: jest.fn(),
             };
         }
     );
@@ -50,7 +44,7 @@ jest.mock("@/wasm/pkg/wasm", () => {
     return {
         __esModule: true,
         default: jest.fn().mockResolvedValue(true),
-        DiscriminantAnalysis: mockDiscriminantAnalysis,
+        KMeansClusterAnalysis: mockKMeansClusterAnalysis,
     };
 });
 
@@ -60,83 +54,41 @@ jest.mock("@/hooks/useVariable", () => ({
     getVarDefs: jest.fn().mockReturnValue([]),
 }));
 
-describe("Discriminant Analysis Constructor Error Handling", () => {
+describe("KMeansCluster Analysis Constructor Error Handling", () => {
     // Helper function to create a minimal valid config
     const createValidConfig = () => ({
         main: {
-            GroupingVariable: "group1",
-            IndependentVariables: ["var1", "var2"],
-            Together: true,
-            Stepwise: false,
-            SelectionVariable: null,
+            TargetVar: ["var1", "var2"],
+            CaseTarget: "var3",
+            IterateClassify: true,
+            ClassifyOnly: false,
+            Cluster: 3,
+            OpenDataset: false,
+            ExternalDatafile: false,
+            NewDataset: false,
+            DataFile: false,
+            ReadInitial: false,
+            WriteFinal: false,
+            OpenDatasetMethod: null,
+            NewData: null,
+            InitialData: null,
+            FinalData: null,
         },
-        defineRange: {
-            minRange: 0,
-            maxRange: 100,
-        },
-        setValue: {
-            Value: 0.5,
-        },
-        statistics: {
-            Means: true,
-            ANOVA: true,
-            BoxM: false,
-            Fisher: true,
-            Unstandardized: true,
-            WGCorrelation: true,
-            WGCovariance: false,
-            SGCovariance: false,
-            TotalCovariance: false,
-        },
-        method: {
-            Wilks: true,
-            Unexplained: false,
-            Mahalonobis: false,
-            FRatio: true,
-            Raos: false,
-            FValue: false,
-            FProbability: false,
-            Summary: true,
-            Pairwise: false,
-            VEnter: 0.05,
-            FEntry: 3.84,
-            FRemoval: 2.71,
-            PEntry: 0.05,
-            PRemoval: 0.1,
-        },
-        classify: {
-            AllGroupEqual: true,
-            GroupSize: false,
-            WithinGroup: true,
-            SepGroup: false,
-            Case: true,
-            Limit: false,
-            LimitValue: null,
-            Summary: true,
-            Leave: true,
-            Combine: false,
-            SepGrp: false,
-            Terr: false,
-            Replace: false,
+        iterate: {
+            MaximumIterations: 100,
+            ConvergenceCriterion: 0.001,
+            UseRunningMeans: true,
         },
         save: {
-            Predicted: true,
-            Discriminant: true,
-            Probabilities: false,
-            XmlFile: null,
+            ClusterMembership: true,
+            DistanceClusterCenter: true,
         },
-        bootstrap: {
-            PerformBootStrapping: false,
-            NumOfSamples: 1000,
-            Seed: false,
-            SeedValue: null,
-            Level: 95,
-            Percentile: true,
-            BCa: false,
-            Simple: true,
-            Stratified: false,
-            Variables: null,
-            StrataVariables: null,
+        options: {
+            InitialCluster: true,
+            ANOVA: true,
+            ClusterInfo: true,
+            ExcludeListWise: true,
+            ExcludePairWise: false,
         },
     });
 
@@ -145,9 +97,9 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
     const mockAddAnalytic = jest.fn().mockResolvedValue(1);
     const mockAddStatistic = jest.fn().mockResolvedValue(1);
     const mockVariables = [
-        { name: "group1" },
         { name: "var1" },
         { name: "var2" },
+        { name: "var3" },
     ];
     const mockDataVariables = [
         [1, 2, 3],
@@ -159,14 +111,54 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         jest.clearAllMocks();
     });
 
-    test("should throw error when GroupingVariable is missing", async () => {
-        // Setup invalid config with missing GroupingVariable
+    test("should throw error when Cluster value is missing or not positive", async () => {
+        // Setup invalid config with missing Cluster value
         const invalidConfig = createValidConfig();
-        invalidConfig.main.GroupingVariable = null;
+        invalidConfig.main.Cluster = null;
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeKMeansCluster({
+                configData: invalidConfig,
+                dataVariables: mockDataVariables,
+                variables: mockVariables,
+                addLog: mockAddLog,
+                addAnalytic: mockAddAnalytic,
+                addStatistic: mockAddStatistic,
+            })
+        ).rejects.toThrow("Number of clusters must be positive");
+
+        // Verify the constructor was called with the invalid config
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+
+        // Setup another invalid config with non-positive Cluster value
+        const invalidConfig2 = createValidConfig();
+        invalidConfig2.main.Cluster = 0;
+
+        // Call the function and expect it to throw
+        await expect(
+            analyzeKMeansCluster({
+                configData: invalidConfig2,
+                dataVariables: mockDataVariables,
+                variables: mockVariables,
+                addLog: mockAddLog,
+                addAnalytic: mockAddAnalytic,
+                addStatistic: mockAddStatistic,
+            })
+        ).rejects.toThrow("Number of clusters must be positive");
+
+        // Verify the constructor was called with the invalid config
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
+    });
+
+    test("should throw error when TargetVar is missing", async () => {
+        // Setup invalid config with missing TargetVar
+        const invalidConfig = createValidConfig();
+        invalidConfig.main.TargetVar = null;
+
+        // Call the function and expect it to throw
+        await expect(
+            analyzeKMeansCluster({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -175,21 +167,21 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Grouping variable must be selected for discriminant analysis"
+            "Target variables must be selected for K-Means Cluster analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
     });
 
-    test("should throw error when GroupingVariable is empty string", async () => {
-        // Setup invalid config with empty GroupingVariable
+    test("should throw error when TargetVar is empty array", async () => {
+        // Setup invalid config with empty TargetVar
         const invalidConfig = createValidConfig();
-        invalidConfig.main.GroupingVariable = "";
+        invalidConfig.main.TargetVar = [];
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeKMeansCluster({
                 configData: invalidConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -198,53 +190,11 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
                 addStatistic: mockAddStatistic,
             })
         ).rejects.toThrow(
-            "Grouping variable must be selected for discriminant analysis"
+            "Target variables must be selected for K-Means Cluster analysis"
         );
 
         // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
-    });
-
-    test("should throw error when IndependentVariables is missing", async () => {
-        // Setup invalid config with missing IndependentVariables
-        const invalidConfig = createValidConfig();
-        invalidConfig.main.IndependentVariables = null;
-
-        // Call the function and expect it to throw
-        await expect(
-            analyzeDiscriminant({
-                configData: invalidConfig,
-                dataVariables: mockDataVariables,
-                variables: mockVariables,
-                addLog: mockAddLog,
-                addAnalytic: mockAddAnalytic,
-                addStatistic: mockAddStatistic,
-            })
-        ).rejects.toThrow("At least one independent variable must be selected");
-
-        // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
-    });
-
-    test("should throw error when IndependentVariables is empty array", async () => {
-        // Setup invalid config with empty IndependentVariables array
-        const invalidConfig = createValidConfig();
-        invalidConfig.main.IndependentVariables = [];
-
-        // Call the function and expect it to throw
-        await expect(
-            analyzeDiscriminant({
-                configData: invalidConfig,
-                dataVariables: mockDataVariables,
-                variables: mockVariables,
-                addLog: mockAddLog,
-                addAnalytic: mockAddAnalytic,
-                addStatistic: mockAddStatistic,
-            })
-        ).rejects.toThrow("At least one independent variable must be selected");
-
-        // Verify the constructor was called with the invalid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
     });
 
     test("should process valid configuration correctly", async () => {
@@ -252,7 +202,7 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         const validConfig = createValidConfig();
 
         // Call the function
-        await analyzeDiscriminant({
+        await analyzeKMeansCluster({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -262,16 +212,14 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         });
 
         // Verify the constructor was called with the valid config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
 
-        // Check that DiscriminantAnalysis was called with the correct parameters
-        expect(DiscriminantAnalysis).toHaveBeenCalledWith(
-            expect.any(Array), // slicedDataForGrouping
-            expect.any(Array), // slicedDataForIndependent
-            expect.any(Array), // slicedDataForSelection
-            expect.any(Array), // varDefsForGrouping
-            expect.any(Array), // varDefsForIndependent
-            expect.any(Array), // varDefsForSelection
+        // Check that KMeansClusterAnalysis was called with the correct parameters
+        expect(KMeansClusterAnalysis).toHaveBeenCalledWith(
+            expect.any(Array), // slicedDataForTarget
+            expect.any(Array), // slicedDataForCaseTarget
+            expect.any(Array), // varDefsForTarget
+            expect.any(Array), // varDefsForCaseTarget
             validConfig // config
         );
     });
@@ -288,7 +236,7 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         getSlicedData.mockReturnValueOnce("invalid data type"); // String instead of expected array
 
         // Call the function (it should catch the error internally)
-        await analyzeDiscriminant({
+        await analyzeKMeansCluster({
             configData: validConfig,
             dataVariables: mockDataVariables,
             variables: mockVariables,
@@ -297,7 +245,7 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
             addStatistic: mockAddStatistic,
         });
 
-        // Check if the config was logged
+        // Check if an error was logged
         expect(consoleLogSpy).toHaveBeenCalled();
         // Restore the spy
         consoleLogSpy.mockRestore();
@@ -312,7 +260,7 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
 
         // Call the function and expect it to throw
         await expect(
-            analyzeDiscriminant({
+            analyzeKMeansCluster({
                 configData: malformedConfig,
                 dataVariables: mockDataVariables,
                 variables: mockVariables,
@@ -323,6 +271,6 @@ describe("Discriminant Analysis Constructor Error Handling", () => {
         ).rejects.toThrow();
 
         // Verify the constructor was called with the malformed config
-        expect(DiscriminantAnalysis).toHaveBeenCalled();
+        expect(KMeansClusterAnalysis).toHaveBeenCalled();
     });
 });
