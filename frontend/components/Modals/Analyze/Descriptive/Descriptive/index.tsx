@@ -107,27 +107,16 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                 <DialogTitle className="text-[22px] font-semibold">Descriptives</DialogTitle>
             </DialogHeader>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -157,12 +146,11 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
 
             </Tabs>
 
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
                         onClick={runAnalysis}
                         disabled={isCalculating}
                     >
@@ -170,14 +158,24 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        onClick={() => {
+                            // Add reset logic here if needed, e.g., call a resetAllStates function
+                            setSelectedVariables([]);
+                            setAvailableVariables(variables.filter(v => v.name !== ""));
+                            setSaveStandardized(false);
+                            setDisplayStatistics({
+                                mean: true, stdDev: true, minimum: true, maximum: true,
+                                variance: false, range: false, sum: false, median: false,
+                                skewness: false, kurtosis: false, standardError: false
+                            });
+                            setDisplayOrder("variableList");
+                        }}
                         disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={onClose}
                         disabled={isCalculating}
                     >
@@ -185,7 +183,7 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
                         disabled={isCalculating}
                     >
                         Help

@@ -47,7 +47,7 @@ export default function DashboardPage() {
     const dataActions = [
         {
             id: 'new',
-            icon: <FilePlus className="h-12 w-12 text-black" />,
+            icon: <FilePlus className="h-12 w-12 text-primary" />,
             title: 'Proyek Baru',
             description: 'Mulai proyek analisis data baru dari awal',
             action: handleNewProject,
@@ -55,7 +55,7 @@ export default function DashboardPage() {
         },
         {
             id: 'open',
-            icon: <FolderOpen className="h-12 w-12 text-black" />,
+            icon: <FolderOpen className="h-12 w-12 text-primary" />,
             title: 'Buka Proyek',
             description: 'Buka file data SPSS (.sav)',
             action: handleOpenProject,
@@ -63,7 +63,7 @@ export default function DashboardPage() {
         },
         {
             id: 'example',
-            icon: <Database className="h-12 w-12 text-black" />,
+            icon: <Database className="h-12 w-12 text-primary" />,
             title: 'Dataset Contoh',
             description: 'Akses berbagai dataset untuk latihan',
             action: () => openModal(ModalType.ExampleDataset),
@@ -94,8 +94,8 @@ export default function DashboardPage() {
     return (
         <div className="container mx-auto px-4 py-12 max-w-6xl">
             <div className="mb-12">
-                <h1 className="text-3xl font-semibold text-black mb-2">Selamat Datang di Statify</h1>
-                <p className="text-[#444444]">Mulai analisis statistik atau buka proyek yang sudah ada.</p>
+                <h1 className="text-3xl font-semibold text-foreground mb-2">Selamat Datang di Statify</h1>
+                <p className="text-muted-foreground">Mulai analisis statistik atau buka proyek yang sudah ada.</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 mb-12">
@@ -103,23 +103,23 @@ export default function DashboardPage() {
                     <Card
                         key={action.id}
                         onClick={action.action}
-                        className={`h-full border border-[#E6E6E6] shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer ${
-                            action.primary ? 'bg-black text-white' : 'bg-white text-black'
+                        className={`h-full border border-border shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer ${
+                            action.primary ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground'
                         }`}
                     >
                         <CardContent className="p-6 flex flex-col items-center text-center h-full">
                             <div className={`p-4 rounded-full mb-4 ${
-                                action.primary ? 'bg-white/10' : 'bg-[#F7F7F7]'
+                                action.primary ? 'bg-primary-foreground/10' : 'bg-muted'
                             }`}>
                                 {action.icon}
                             </div>
                             <CardTitle className={`text-xl font-semibold mb-2 ${
-                                action.primary ? 'text-white' : 'text-black'
+                                action.primary ? 'text-primary-foreground' : 'text-card-foreground'
                             }`}>
                                 {action.title}
                             </CardTitle>
                             <CardDescription className={
-                                action.primary ? 'text-white/80' : 'text-[#444444]'
+                                action.primary ? 'text-primary-foreground/80' : 'text-muted-foreground'
                             }>
                                 {action.description}
                             </CardDescription>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
 
             <div>
                 <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-black">Sumber Daya</h2>
+                    <h2 className="text-xl font-semibold text-foreground">Sumber Daya</h2>
                 </div>
                 <div className="space-y-4">
                     {resources.map((resource, index) => {
@@ -138,15 +138,15 @@ export default function DashboardPage() {
                         if ('link' in resource && resource.link) {
                             return (
                                 <Link href={resource.link} key={index} className="block">
-                                    <Card className="bg-white border border-[#E6E6E6] shadow-sm hover:shadow-md transition-all duration-200">
+                                    <Card className="bg-card border-border shadow-sm hover:shadow-md transition-all duration-200">
                                         <CardContent className="p-4">
                                             <div className="flex items-center">
-                                                <div className="mr-4 p-2 bg-[#F7F7F7] rounded-full">
+                                                <div className="mr-4 p-2 bg-muted rounded-full">
                                                     {resource.icon}
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-medium text-black">{resource.title}</h3>
-                                                    <p className="text-sm text-[#444444]">{resource.description}</p>
+                                                    <h3 className="font-medium text-card-foreground">{resource.title}</h3>
+                                                    <p className="text-sm text-muted-foreground">{resource.description}</p>
                                                 </div>
                                             </div>
                                         </CardContent>

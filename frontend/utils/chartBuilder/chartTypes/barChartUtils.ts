@@ -89,7 +89,7 @@ export const createVerticalBarChart2 = (
   // Menambahkan rectangle untuk setiap bar
   svg
     .append("g")
-    .attr("fill", "steelblue")
+    .attr("fill", "hsl(var(--primary))")
     .selectAll("rect")
     .data(data)
     .join("rect")
@@ -107,20 +107,24 @@ export const createVerticalBarChart2 = (
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+      .call(d3.axisBottom(x).tickSizeOuter(0))
+      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
 
     // Y-Axis (Vertical)
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
       .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove())
+      .call((g: any) => g.select(".domain").remove()) // Domain is removed
+      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"))
       .call((g: any) =>
         g
           .append("text")
           .attr("x", -marginLeft)
           .attr("y", 10)
-          .attr("fill", "currentColor")
+          .attr("fill", "hsl(var(--foreground))") // Changed from currentColor
           .attr("text-anchor", "start")
           .text("↑ Value")
       );
@@ -135,7 +139,7 @@ export const createHorizontalBarChart = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  barColor: string = "steelblue",
+  barColor: string = "hsl(var(--primary))",
   threshold: number = 0.007
 ) => {
   // Menentukan margin
@@ -212,13 +216,17 @@ export const createHorizontalBarChart = (
       .append("g")
       .attr("transform", `translate(0,${marginTop})`)
       .call(d3.axisTop(x).ticks(width / 80))
-      .call((g) => g.select(".domain").remove());
+      .call((g) => g.select(".domain").remove()) // Domain is removed
+      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
 
     // Sumbu Y (Vertical)
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).tickSizeOuter(0));
+      .call(d3.axisLeft(y).tickSizeOuter(0))
+      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
   }
 
   // Mengembalikan elemen SVG
@@ -1112,20 +1120,24 @@ export const createClusteredErrorBarChart = (
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+      .call(d3.axisBottom(x).tickSizeOuter(0))
+      .call(g => g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"));
 
     // Y-Axis (Vertical)
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
       .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove())
+      .call((g: any) => g.select(".domain").remove()) // Domain is removed
+      .call(g => g.selectAll(".tick line").attr("stroke", "hsl(var(--border))"))
+      .call(g => g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))"))
       .call((g: any) =>
         g
           .append("text")
           .attr("x", -marginLeft)
           .attr("y", 10)
-          .attr("fill", "currentColor")
+          .attr("fill", "hsl(var(--foreground))") // Changed from currentColor
           .attr("text-anchor", "start")
           .text("↑ Value")
       );
@@ -1707,7 +1719,7 @@ export const createClusteredErrorBarChart = (
 //   pointLight.position.set(10, 20, 30);
 //   scene.add(pointLight);
 
-//   // Tambahkan Grid Helper
+//   // Grid Helper
 //   const gridHelper = new THREE.GridHelper(20, 20);
 //   scene.add(gridHelper);
 
@@ -2734,204 +2746,6 @@ export const create3DScatterPlot = (
   return container;
 };
 
-// export const createGrouped3DScatterPlot = (
-//   data: { x: number; y: number; z: number; group: string }[], // Tambahkan properti 'group' untuk kategori
-//   width: number,
-//   height: number
-// ) => {
-//   // Fungsi untuk menambahkan teks label
-//   const addLabel = (text: string, position: THREE.Vector3) => {
-//     const loader = new FontLoader();
-//     loader.load(
-//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//       (font) => {
-//         const textGeometry = new TextGeometry(text, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1,
-//         });
-//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-//         textMesh.position.set(position.x, position.y, position.z);
-//         scene.add(textMesh);
-//       }
-//     );
-//   };
-
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(20, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Menentukan rentang data
-//   const xExtent = d3.extent(data, (d) => d.x)!;
-//   const yExtent = d3.extent(data, (d) => d.y)!;
-//   const zExtent = d3.extent(data, (d) => d.z)!;
-
-//   const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-//   const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-//   const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-//   console.log("xMax", xMax);
-//   console.log("yMax", yMax);
-//   console.log("zMax", zMax);
-
-//   // Menentukan rentang koordinat
-//   const gridSizeX = 2 * xMax; // Rentang dari -xMax ke xMax
-//   const gridSizeZ = 2 * zMax; // Rentang dari -xMax ke xMax
-//   const gridSize = Math.max(gridSizeX, gridSizeZ);
-//   console.log("gridSize", gridSize);
-
-//   // Membuat GridHelper
-//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-//   scene.add(gridHelper);
-
-//   const createAxisLine = (
-//     start: THREE.Vector3,
-//     end: THREE.Vector3,
-//     color: number
-//   ) => {
-//     const material = new THREE.LineDashedMaterial({
-//       color: color,
-//       dashSize: 1, // Panjang garis putus-putus
-//       gapSize: 0.5, // Jarak antar garis putus-putus
-//     });
-
-//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-//     const line = new THREE.Line(geometry, material);
-//     line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-//     return line;
-//   };
-
-//   //Garis Sumbu X (Merah)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(-gridSize, 0, 0),
-//       new THREE.Vector3(gridSize, 0, 0),
-//       0xff0000
-//     )
-//   );
-
-//   // Garis Sumbu Y (Hijau)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(0, -gridSize, 0),
-//       new THREE.Vector3(0, gridSize, 0),
-//       0x00ff00
-//     )
-//   );
-
-//   // Garis Sumbu Z (Biru)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(0, 0, -gridSize),
-//       new THREE.Vector3(0, 0, gridSize),
-//       0x0000ff
-//     )
-//   );
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala yang disesuaikan agar sesuai dengan rentang grid
-//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-
-//   const yScale = d3.scaleLinear().domain([-yMax, yMax]).range([-yMax, yMax]);
-
-//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-//   // Kelompokkan data berdasarkan kategori 'group'
-//   const groupedData = d3.group(data, (d) => d.group);
-
-//   // Daftar warna untuk setiap grup
-//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-//   // Menambahkan titik untuk setiap grup
-//   groupedData.forEach((group, groupName) => {
-//     const color = colors(groupName); // Ambil warna berdasarkan grup
-
-//     group.forEach((d) => {
-//       const geometry = new THREE.SphereGeometry(0.5, 8, 8); // Bola untuk titik
-//       const material = new THREE.MeshStandardMaterial({
-//         color: color, // Gunakan warna grup
-//         metalness: 0.3,
-//         roughness: 0.7,
-//       });
-//       const point = new THREE.Mesh(geometry, material);
-
-//       // Posisi titik berdasarkan data dan skala
-//       point.position.set(xScale(d.x)!, yScale(d.y)!, zScale(d.z)!);
-//       scene.add(point);
-
-//       // Posisi titik berdasarkan data dan skala
-//       point.position.set(xScale(d.x)!, yScale(d.y), zScale(d.z)!);
-//       scene.add(point);
-
-//       addLabel(
-//         ` ${d.y}`,
-//         new THREE.Vector3(
-//           xScale(d.x),
-//           yScale(d.y) + (yScale(d.y) >= 0 ? 1 : -1),
-//           zScale(d.z)
-//         )
-//       );
-//     });
-
-//     // Tambahkan label untuk grup di posisi rata-rata titik
-//     const averagePosition = group.reduce(
-//       (acc, d) => {
-//         acc.x += d.x;
-//         acc.y += d.y;
-//         acc.z += d.z;
-//         return acc;
-//       },
-//       { x: 0, y: 0, z: 0 }
-//     );
-//     // addLabel(
-//     //   groupName, // Nama grup sebagai label
-//     //   new THREE.Vector3(
-//     //     xScale(averagePosition.x / group.length),
-//     //     yScale(averagePosition.y / group.length),
-//     //     zScale(averagePosition.z / group.length)
-//     //   )
-//     // );
-//   });
-
-//   // Menambahkan label untuk sumbu
-//   addLabel("X", new THREE.Vector3(gridSize / 2 + 3, 0, 0));
-//   addLabel("Y", new THREE.Vector3(0, gridSize / 2 + 3, 0));
-//   addLabel("Z", new THREE.Vector3(0, 0, gridSize / 2 + 3));
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
 export const createGrouped3DScatterPlot = (
   data: { x: number; y: number; z: number; category: string }[],
   width: number,
@@ -3118,389 +2932,6 @@ export const createGrouped3DScatterPlot = (
 
   return container;
 };
-// export const createClustered3DBarChart = (
-//   data: { x: number; y: number; z: number; group: string }[],
-//   width: number,
-//   height: number
-// ) => {
-//   // Fungsi untuk menambahkan teks label
-//   const addLabel = (text: string, position: THREE.Vector3) => {
-//     const loader = new FontLoader();
-//     loader.load(
-//       "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
-//       (font) => {
-//         const textGeometry = new TextGeometry(text, {
-//           font: font,
-//           size: 1,
-//           depth: 0.1,
-//         });
-//         const textMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-//         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-//         textMesh.position.set(position.x, position.y, position.z);
-//         scene.add(textMesh);
-//       }
-//     );
-//   };
-
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(20, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Menentukan rentang koordinat
-//   const xExtent = d3.extent(data, (d) => d.x)!;
-//   const yExtent = d3.extent(data, (d) => d.y)!;
-//   const zExtent = d3.extent(data, (d) => d.z)!;
-
-//   const xMax = Math.max(Math.abs(xExtent[0]!), Math.abs(xExtent[1]!));
-//   const yMax = Math.max(Math.abs(yExtent[0]!), Math.abs(yExtent[1]!));
-//   const zMax = Math.max(Math.abs(zExtent[0]!), Math.abs(zExtent[1]!));
-
-//   console.log("xMax", xMax);
-//   console.log("yMax", yMax);
-//   console.log("zMax", zMax);
-
-//   // Menentukan rentang koordinat
-//   const gridSizeX = 2 * xMax; // Rentang dari -xMax ke xMax
-//   const gridSizeZ = 2 * zMax; // Rentang dari -xMax ke xMax
-//   const gridSize = Math.max(gridSizeX, gridSizeZ);
-//   console.log("gridSize", gridSize);
-
-//   // Membuat GridHelper
-//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-//   scene.add(gridHelper);
-
-//   const createAxisLine = (
-//     start: THREE.Vector3,
-//     end: THREE.Vector3,
-//     color: number
-//   ) => {
-//     const material = new THREE.LineDashedMaterial({
-//       color: color,
-//       dashSize: 1, // Panjang garis putus-putus
-//       gapSize: 0.5, // Jarak antar garis putus-putus
-//     });
-
-//     const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-//     const line = new THREE.Line(geometry, material);
-//     line.computeLineDistances(); // Penting agar efek putus-putus berfungsi
-
-//     return line;
-//   };
-
-//   //Garis Sumbu X (Merah)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(-gridSize, 0, 0),
-//       new THREE.Vector3(gridSize, 0, 0),
-//       0xff0000
-//     )
-//   );
-
-//   // Garis Sumbu Y (Hijau)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(0, -gridSize, 0),
-//       new THREE.Vector3(0, gridSize, 0),
-//       0x00ff00
-//     )
-//   );
-
-//   // Garis Sumbu Z (Biru)
-//   scene.add(
-//     createAxisLine(
-//       new THREE.Vector3(0, 0, -gridSize),
-//       new THREE.Vector3(0, 0, gridSize),
-//       0x0000ff
-//     )
-//   );
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala yang disesuaikan agar sesuai dengan rentang grid
-//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-
-//   const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-
-//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-//   // Kelompokkan data berdasarkan kategori 'group'
-//   const groupedData = d3.group(data, (d) => d.group);
-
-//   // Daftar warna untuk setiap grup
-//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-//   const barWidth = 1; // Lebar batang
-//   const barSpacing = 2; // Spasi antara batang dalam cluster
-
-//   // Menambahkan batang (bars) untuk setiap grup
-//   groupedData.forEach((group, groupName) => {
-//     const color = colors(groupName); // Ambil warna berdasarkan grup
-
-//     group.forEach((d, index) => {
-//       const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), barWidth); // Batang 3D
-//       const material = new THREE.MeshStandardMaterial({
-//         color: color, // Gunakan warna grup
-//         metalness: 0.3,
-//         roughness: 0.7,
-//       });
-//       const bar = new THREE.Mesh(geometry, material);
-
-//       // Tentukan posisi batang, dengan sedikit pergeseran untuk setiap grup
-//       const xPos = xScale(d.x); // Posisi X disesuaikan
-//       const yPos = yScale(d.y) / 2;
-//       const zPos = zScale(d.z);
-
-//       bar.position.set(xPos, yPos, zPos);
-//       scene.add(bar);
-//     });
-
-//     // Tambahkan label untuk grup di posisi rata-rata titik
-//     const averagePosition = group.reduce(
-//       (acc, d) => {
-//         acc.x += d.x;
-//         acc.y += d.y;
-//         acc.z += d.z;
-//         return acc;
-//       },
-//       { x: 0, y: 0, z: 0 }
-//     );
-//     // addLabel(
-//     //   groupName, // Nama grup sebagai label
-//     //   new THREE.Vector3(
-//     //     xScale(averagePosition.x / group.length),
-//     //     yScale(averagePosition.y / group.length),
-//     //     zScale(averagePosition.z / group.length)
-//     //   )
-//     // );
-//   });
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const createClustered3DBarChart = (
-//   data: { x: number; z: number; y: number; category: string }[],
-//   width: number,
-//   height: number
-// ) => {
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(20, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Menentukan rentang koordinat
-//   const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-//   const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-//   const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-//   const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-//   const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-//   const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-//   const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-//   // Membuat GridHelper
-//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-//   scene.add(gridHelper);
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala koordinat
-//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-//   const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-//   // Kelompokkan berdasarkan koordinat (x, z)
-//   const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-//   groupedData.forEach((group, key) => {
-//     const numBars = group.length; // Jumlah kategori dalam satu (x, z)
-//     const barSpacing = 0.05; // Jarak antar batang dalam cluster
-//     const maxBarWidth = 1 - numBars * barSpacing; // Lebar maksimum per koordinat (bisa disesuaikan)
-//     const barWidth = Math.min(0.95, maxBarWidth / numBars); // Lebar batang tergantung jumlah kategori
-
-//     group.forEach((d, index) => {
-//       const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), barWidth);
-//       const material = new THREE.MeshStandardMaterial({
-//         color: colors(d.category),
-//         metalness: 0.3,
-//         roughness: 0.7,
-//       });
-//       const bar = new THREE.Mesh(geometry, material);
-
-//       // Posisi batang dalam satu (x, z) agar tetap dalam area yang sama
-//       const xOffset = (index - (numBars - 1) / 2) * (barWidth + barSpacing);
-//       const xPos = xScale(d.x) + xOffset;
-//       const yPos = yScale(d.y) / 2;
-//       const zPos = zScale(d.z);
-
-//       bar.position.set(xPos, yPos, zPos);
-//       scene.add(bar);
-//     });
-//   });
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
-
-// export const createClustered3DBarChart = (
-//   data: { x: number; z: number; y: number; category: string }[],
-//   width: number,
-//   height: number
-// ) => {
-//   const container = document.createElement("div");
-//   container.style.width = `${width}px`;
-//   container.style.height = `${height}px`;
-//   container.style.position = "relative";
-//   container.style.overflow = "hidden";
-
-//   const scene = new THREE.Scene();
-//   scene.background = new THREE.Color(0xffffff);
-
-//   const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-//   camera.position.set(20, 20, 30);
-//   camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//   const renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setSize(width, height);
-//   container.appendChild(renderer.domElement);
-
-//   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-//   scene.add(ambientLight);
-
-//   const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-//   pointLight.position.set(10, 20, 30);
-//   scene.add(pointLight);
-
-//   // Menentukan rentang koordinat
-//   const xExtent = d3.extent(data, (d) => d.x) as [number, number];
-//   const yExtent = d3.extent(data, (d) => d.y) as [number, number];
-//   const zExtent = d3.extent(data, (d) => d.z) as [number, number];
-
-//   const xMax = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]));
-//   const yMax = Math.max(Math.abs(yExtent[0]), Math.abs(yExtent[1]));
-//   const zMax = Math.max(Math.abs(zExtent[0]), Math.abs(zExtent[1]));
-
-//   const gridSize = Math.max(2 * xMax, 2 * zMax);
-
-//   // Membuat GridHelper
-//   const gridHelper = new THREE.GridHelper(gridSize + 3, gridSize + 3);
-//   scene.add(gridHelper);
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.enableDamping = true;
-
-//   // Skala koordinat
-//   const xScale = d3.scaleLinear().domain([-xMax, xMax]).range([-xMax, xMax]);
-//   const yScale = d3.scaleLinear().domain([0, yMax]).range([0, yMax]);
-//   const zScale = d3.scaleLinear().domain([-zMax, zMax]).range([-zMax, zMax]);
-
-//   // Kelompokkan berdasarkan koordinat (x, z)
-//   const groupedData = d3.group(data, (d) => `${d.x},${d.z}`);
-
-//   const colors = d3.scaleOrdinal(d3.schemeCategory10);
-
-//   groupedData.forEach((group, key) => {
-//     const numBars = group.length; // Jumlah kategori dalam satu (x, z)
-
-//     // Hitung jumlah kolom & baris agar tetap menutup 1x1
-//     const numCols = Math.ceil(Math.sqrt(numBars));
-//     const numRows = Math.ceil(numBars / numCols);
-
-//     const barSpacing = 0.05; // Jarak antar batang dalam cluster
-//     const maxBarWidth = 1 - barSpacing * (numCols - 1); // Pastikan tetap dalam 1 unit
-//     const barWidth = maxBarWidth / numCols; // Lebar batang agar tetap rapi
-//     const barDepth = maxBarWidth / numRows; // Kedalaman batang agar tetap rapi
-
-//     group.forEach((d, index) => {
-//       const row = Math.floor(index / numCols); // Baris ke-berapa
-//       const col = index % numCols; // Kolom ke-berapa
-
-//       const geometry = new THREE.BoxGeometry(barWidth, yScale(d.y), barDepth);
-//       const material = new THREE.MeshStandardMaterial({
-//         color: colors(d.category),
-//         metalness: 0.3,
-//         roughness: 0.7,
-//       });
-//       const bar = new THREE.Mesh(geometry, material);
-
-//       // Hitung offset dalam grid 1x1
-//       const xOffset = (col - (numCols - 1) / 2) * (barWidth + barSpacing);
-//       const zOffset = (row - (numRows - 1) / 2) * (barDepth + barSpacing);
-
-//       const xPos = xScale(d.x) + xOffset;
-//       const yPos = yScale(d.y) / 2;
-//       const zPos = zScale(d.z) + zOffset;
-
-//       bar.position.set(xPos, yPos, zPos);
-//       scene.add(bar);
-//     });
-//   });
-
-//   const animate = () => {
-//     requestAnimationFrame(animate);
-//     controls.update();
-//     renderer.render(scene, camera);
-//   };
-//   animate();
-
-//   return container;
-// };
 
 export const createClustered3DBarChart = (
   data: { x: number; z: number; y: number; category: string }[],

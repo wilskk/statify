@@ -16,8 +16,8 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                              setSortBeforeAggregating
                                          }) => {
     return (
-        <div className="border p-2 rounded-md">
-            <div className="text-xs font-semibold mb-2">Options for Very Large Datasets</div>
+        <div className="border border-border p-2 rounded-md bg-card">
+            <div className="text-xs font-semibold mb-2 text-foreground">Options for Very Large Datasets</div>
             <div className="space-y-3">
                 <div className="flex items-center space-x-2">
                     <Checkbox
@@ -26,7 +26,7 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         checked={isAlreadySorted}
                         onCheckedChange={(checked) => setIsAlreadySorted(!!checked)}
                     />
-                    <Label htmlFor="already-sorted" className="text-xs cursor-pointer">
+                    <Label htmlFor="already-sorted" className="text-xs cursor-pointer text-foreground">
                         File is already sorted on break variable(s)
                     </Label>
                 </div>
@@ -38,12 +38,12 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         checked={sortBeforeAggregating}
                         onCheckedChange={(checked) => setSortBeforeAggregating(!!checked)}
                     />
-                    <Label htmlFor="sort-before" className="text-xs cursor-pointer">
+                    <Label htmlFor="sort-before" className="text-xs cursor-pointer text-foreground">
                         Sort file before aggregating
                     </Label>
                 </div>
 
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-muted-foreground mt-2">
                     <p>For very large datasets, sorting can improve performance significantly.</p>
                     <p className="mt-1">
                         If your data is already sorted by the break variables, check the first option to skip the sorting step.

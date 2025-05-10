@@ -1,7 +1,7 @@
 /* components/VariableTable.css atau file CSS global */
 .handsontable th.grayed-header {
-    color: #999999;
-    background-color: #f8f9fa;
+    color: hsl(var(--muted-foreground));
+    background-color: hsl(var(--muted));
     font-weight: normal;
 }
 

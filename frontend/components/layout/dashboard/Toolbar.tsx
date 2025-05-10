@@ -44,8 +44,8 @@ export default function Toolbar() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`flex items-center justify-center h-8 w-8 text-gray-700 hover:bg-[#F7F7F7] transition-colors
-                                ${hoveredTool === tool.name ? 'bg-[#F7F7F7]' : ''}`}
+                                className={`flex items-center justify-center h-8 w-8 text-muted-foreground hover:bg-accent transition-colors
+                                ${hoveredTool === tool.name ? 'bg-accent' : ''}`}
                                 onMouseEnter={() => setHoveredTool(tool.name)}
                                 onMouseLeave={() => setHoveredTool(null)}
                                 aria-label={tool.name}
@@ -64,7 +64,7 @@ export default function Toolbar() {
     );
 
     return (
-        <div className="bg-white px-4 py-1 border-b border-[#E6E6E6] flex justify-between items-center overflow-hidden">
+        <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden">
             <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
                 <div className="flex space-x-2 min-w-max">
                     <ToolGroup tools={fileTools} />

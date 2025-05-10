@@ -250,10 +250,10 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={cn(
-                "p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]",
+                "p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]",
                 isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px]"
             )}>
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-[22px] font-semibold">Variable Type</DialogTitle>
                 </DialogHeader>
 
@@ -273,8 +273,8 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                     { id: "RESTRICTED_NUMERIC", label: "Restricted Numeric (integer with leading zeros)" }
                                 ].map((type) => (
                                     <div key={type.id} className="flex items-center space-x-2 py-1.5">
-                                        <RadioGroupItem value={type.id} id={type.id} className="border-gray-400 text-gray-800" />
-                                        <Label htmlFor={type.id} className="text-gray-800">
+                                        <RadioGroupItem value={type.id} id={type.id} />
+                                        <Label htmlFor={type.id} className="text-foreground">
                                             {type.label}
                                         </Label>
                                     </div>
@@ -282,12 +282,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                             </RadioGroup>
                         </div>
 
-                        <div className="h-72 overflow-y-auto border border-gray-200 rounded p-1.5">
+                        <div className="h-72 overflow-y-auto border border-border rounded p-1.5">
                             <div className="space-y-4">
                                 {isNumericType && (
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="width" className="text-gray-700">
+                                            <Label htmlFor="width" className="text-foreground">
                                                 Width:
                                             </Label>
                                             <Input
@@ -301,7 +301,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                         </div>
                                         {selectedType !== "RESTRICTED_NUMERIC" && (
                                             <div className="space-y-2">
-                                                <Label htmlFor="decimals" className="text-gray-700">
+                                                <Label htmlFor="decimals" className="text-foreground">
                                                     Decimal Places:
                                                 </Label>
                                                 <Input
@@ -320,7 +320,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 {isDateType && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-gray-700">Format:</Label>
+                                            <Label className="text-foreground">Format:</Label>
                                             <Select value={dateFormat} onValueChange={handleDateFormatChange}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select format" />
@@ -335,7 +335,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="dateWidth" className="text-gray-700">
+                                            <Label htmlFor="dateWidth" className="text-foreground">
                                                 Width:
                                             </Label>
                                             <Input
@@ -343,7 +343,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 type="number"
                                                 value={width}
                                                 readOnly
-                                                className="bg-gray-50"
+                                                className="bg-muted"
                                             />
                                         </div>
                                     </div>
@@ -351,7 +351,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
 
                                 {selectedType === "STRING" && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="characters" className="text-gray-700">
+                                        <Label htmlFor="characters" className="text-foreground">
                                             Characters:
                                         </Label>
                                         <Input
@@ -368,7 +368,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 {selectedType === "CUSTOM_CURRENCY" && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-gray-700">Currency Format:</Label>
+                                            <Label className="text-foreground">Currency Format:</Label>
                                             <div className="border rounded h-20 overflow-y-auto">
                                                 {[
                                                     { type: "CCA", label: "CCA" },
@@ -379,7 +379,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 ].map((currency) => (
                                                     <div
                                                         key={currency.type}
-                                                        className={`p-1.5 cursor-pointer border-l-2 ${selectedCurrencyFormat === currency.type ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
+                                                        className={`p-1.5 cursor-pointer border-l-2 ${selectedCurrencyFormat === currency.type ? 'bg-accent border-l-primary' : 'border-l-transparent hover:bg-accent'}`}
                                                         onClick={() => {
                                                             setSelectedCurrencyFormat(currency.type);
                                                         }}
@@ -390,7 +390,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="currencyWidth" className="text-gray-700">
+                                            <Label htmlFor="currencyWidth" className="text-foreground">
                                                 Width:
                                             </Label>
                                             <Input
@@ -402,7 +402,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="currencyDecimals" className="text-gray-700">
+                                            <Label htmlFor="currencyDecimals" className="text-foreground">
                                                 Decimal Places:
                                             </Label>
                                             <Input
@@ -420,12 +420,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 {selectedType === "DOLLAR" && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-gray-700">Dollar Format:</Label>
+                                            <Label className="text-foreground">Dollar Format:</Label>
                                             <div className="border rounded h-24 overflow-y-auto">
                                                 {dollarFormats.map(format => (
                                                     <div
                                                         key={format.value}
-                                                        className={`p-1.5 cursor-pointer border-l-2 ${dollarFormat === format.value ? 'bg-gray-200 border-l-gray-800' : 'border-l-transparent hover:bg-gray-100'}`}
+                                                        className={`p-1.5 cursor-pointer border-l-2 ${dollarFormat === format.value ? 'bg-accent border-l-primary' : 'border-l-transparent hover:bg-accent'}`}
                                                         onClick={() => handleDollarFormatSelect(format.value)}
                                                     >
                                                         {format.label}
@@ -434,7 +434,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="dollarWidth" className="text-gray-700">
+                                            <Label htmlFor="dollarWidth" className="text-foreground">
                                                 Width:
                                             </Label>
                                             <Input
@@ -442,11 +442,11 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 type="number"
                                                 value={width}
                                                 readOnly
-                                                className="bg-gray-50"
+                                                className="bg-muted"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="dollarDecimals" className="text-gray-700">
+                                            <Label htmlFor="dollarDecimals" className="text-foreground">
                                                 Decimal Places:
                                             </Label>
                                             <Input
@@ -454,7 +454,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 type="number"
                                                 value={decimals}
                                                 readOnly
-                                                className="bg-gray-50"
+                                                className="bg-muted"
                                             />
                                         </div>
                                     </div>
@@ -463,12 +463,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 {["CCA", "CCB", "CCC", "CCD", "CCE"].includes(selectedType) && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-gray-700">
+                                            <Label className="text-foreground">
                                                 {selectedType} Currency Format
                                             </Label>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="customCurrencyWidth" className="text-gray-700">
+                                            <Label htmlFor="customCurrencyWidth" className="text-foreground">
                                                 Width:
                                             </Label>
                                             <Input
@@ -480,7 +480,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="customCurrencyDecimals" className="text-gray-700">
+                                            <Label htmlFor="customCurrencyDecimals" className="text-foreground">
                                                 Decimal Places:
                                             </Label>
                                             <Input
@@ -506,7 +506,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                     </div>
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] flex-shrink-0">
+                <DialogFooter className="px-6 py-4 border-t border-border flex-shrink-0">
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>

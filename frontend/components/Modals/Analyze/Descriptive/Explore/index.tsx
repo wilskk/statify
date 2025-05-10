@@ -283,38 +283,28 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
         // TODO: Implement paste logic if needed
     };
 
+    const handleHelp = () => {
+        console.log("Help action triggered");
+        // TODO: Implement help logic if needed
+    };
+
     return (
-        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Explore</DialogTitle>
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Explore</DialogTitle>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                            <TabsTrigger
-                                value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                            >
-                                Variables
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="statistics"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                            >
-                                Statistics
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="plots"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'plots' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                            >
-                                Plots
-                            </TabsTrigger>
+                    <div className="border-b border-border flex-shrink-0">
+                        <TabsList>
+                            <TabsTrigger value="variables">Variables</TabsTrigger>
+                            <TabsTrigger value="statistics">Statistics</TabsTrigger>
+                            <TabsTrigger value="plots">Plots</TabsTrigger>
                         </TabsList>
                     </div>
 
-                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                         <VariablesTab
                             availableVariables={availableVariables}
                             dependentVariables={dependentVariables}
@@ -331,12 +321,12 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                         />
                     </TabsContent>
 
-                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
                         <StatisticsTab
-                            showDescriptives={showDescriptives}
-                            setShowDescriptives={setShowDescriptives}
                             confidenceInterval={confidenceInterval}
                             setConfidenceInterval={setConfidenceInterval}
+                            showDescriptives={showDescriptives}
+                            setShowDescriptives={setShowDescriptives}
                             showMEstimators={showMEstimators}
                             setShowMEstimators={setShowMEstimators}
                             showOutliers={showOutliers}
@@ -346,7 +336,7 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                         />
                     </TabsContent>
 
-                    <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
                         <PlotsTab
                             boxplotOption={boxplotOption}
                             setBoxplotOption={setBoxplotOption}
@@ -360,44 +350,22 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                    <div className="flex justify-end space-x-3">
-                        <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4 text-sm"
-                            onClick={handleExplore}
-                            disabled={isCalculating}
-                        >
-                            {isCalculating ? "Running..." : "OK"}
-                        </Button>
-                        {/* <Button
-                            variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                            onClick={handlePaste}
-                            disabled={isCalculating}
-                        >
-                            Paste
-                        </Button> */}
-                        <Button
-                            variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                            onClick={handleReset}
-                            disabled={isCalculating}
-                        >
-                            Reset
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                            onClick={onClose}
-                            disabled={isCalculating}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                        >
-                            Help
+                {errorMsg && (
+                    <div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-t border-destructive/20">
+                        {errorMsg}
+                    </div>
+                )}
+
+                <DialogFooter className="px-6 py-3 border-t border-border bg-muted flex-shrink-0">
+                    <div className="flex items-center space-x-2">
+                        <Button variant="ghost" onClick={handleHelp}>Help</Button>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button variant="outline" onClick={handlePaste} disabled={isCalculating}>Paste</Button>
+                        <Button variant="outline" onClick={handleReset} disabled={isCalculating}>Reset</Button>
+                        <Button variant="outline" onClick={onClose} disabled={isCalculating}>Cancel</Button>
+                        <Button onClick={handleExplore} disabled={isCalculating}>
+                            {isCalculating ? "Processing..." : "OK"}
                         </Button>
                     </div>
                 </DialogFooter>

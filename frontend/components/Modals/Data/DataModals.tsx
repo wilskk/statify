@@ -18,17 +18,17 @@ import DefineValidationRules from "@/components/Modals/Data/Validate/DefineValid
 import PropertiesEditor from "@/components/Modals/Data/DefineVarProps/PropertiesEditor";
 
 export const modalStyles = {
-    dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
-    dialogHeader: "bg-[#F7F7F7] px-6 py-5 border-b border-[#E6E6E6] h-16",
+    dialogContent: "bg-popover text-popover-foreground p-0 shadow-lg",
+    dialogHeader: "bg-muted px-6 py-5 border-b border-border h-16",
     dialogBody: "px-6 py-6",
-    dialogFooter: "bg-[#F7F7F7] px-6 py-5 border-t border-[#E6E6E6] h-16",
-    dialogTitle: "text-lg font-semibold text-black",
-    dialogDescription: "text-sm text-[#888888]",
-    primaryButton: "bg-black text-white hover:opacity-90 h-8",
-    secondaryButton: "border-[#CCCCCC] text-black hover:bg-[#F7F7F7] h-8",
+    dialogFooter: "bg-muted px-6 py-5 border-t border-border h-16",
+    dialogTitle: "text-lg font-semibold text-foreground",
+    dialogDescription: "text-sm text-muted-foreground",
+    primaryButton: "bg-primary text-primary-foreground hover:bg-primary/90 h-8",
+    secondaryButton: "border-border text-foreground hover:bg-accent h-8",
     formGroup: "space-y-2 mb-6",
-    label: "text-[#444444] text-xs font-medium",
-    input: "h-10 border-[#CCCCCC] focus:border-black"
+    label: "text-muted-foreground text-xs font-medium",
+    input: "h-10 border-input focus:border-ring"
 };
 
 interface DataModalsProps {

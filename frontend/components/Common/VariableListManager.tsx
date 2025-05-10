@@ -36,15 +36,15 @@ interface VariableListManagerProps {
 const defaultGetVariableIcon = (variable: Variable) => {
     switch (variable.measure) {
         case "scale":
-            return <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
+            return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         case "nominal":
-            return <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
+            return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         case "ordinal":
-            return <BarChartHorizontal size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
+            return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         default:
             return variable.type === "STRING"
-                ? <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />
-                : <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
+                ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
     }
 };
 
@@ -373,22 +373,22 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                             className={`
                                 flex items-center p-1 border rounded-md group relative transition-all duration-150 ease-in-out text-sm
                                 ${isDraggable ? 'cursor-grab' : 'cursor-default'}
-                                ${isBeingDragged ? "opacity-40 bg-slate-100" : "hover:bg-slate-100"}
-                                ${isHighlighted ? "bg-slate-200 border-slate-400" : "border-slate-300"}
-                                ${isDropTargetIndicator ? "border-t-[3px] border-t-blue-500 pt-[1px]" : "pt-1"}
+                                ${isBeingDragged ? "opacity-40 bg-accent" : "hover:bg-accent"}
+                                ${isHighlighted ? "bg-accent border-primary" : "border-border"}
+                                ${isDropTargetIndicator ? "border-t-[3px] border-t-primary pt-[1px]" : "pt-1"}
                             `}
                             style={{
                                 // More precise styling based on state
                                 borderTopStyle: isDropTargetIndicator ? 'solid' : 'solid',
                                 borderTopWidth: isDropTargetIndicator ? '3px' : '1px',
-                                borderTopColor: isDropTargetIndicator ? '#3B82F6' : (isHighlighted ? '#94A3B8' : '#CBD5E1'), // slate-400 and slate-300
+                                borderTopColor: isDropTargetIndicator ? 'hsl(var(--primary))' : (isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'),
                                 paddingTop: isDropTargetIndicator ? '1px' : '4px', // Adjust padding for border
                                 paddingBottom: '4px',
                                 // Consistent side/bottom borders
                                 borderLeftWidth: '1px', borderRightWidth: '1px', borderBottomWidth: '1px',
-                                borderLeftColor: isHighlighted ? '#94A3B8' : '#CBD5E1',
-                                borderRightColor: isHighlighted ? '#94A3B8' : '#CBD5E1',
-                                borderBottomColor: isHighlighted ? '#94A3B8' : '#CBD5E1',
+                                borderLeftColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                                borderRightColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                                borderBottomColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                             }}
                             onClick={() => handleVariableSelect(variable, listId)}
                             onDoubleClick={() => handleVariableDoubleClick(variable, listId)}
@@ -400,7 +400,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                             onDrop={(e) => handleDrop(e, listId, index)} // Pass index for item-specific drop
                         >
                             <div className="flex items-center w-full truncate">
-                                {itemsDraggableInList && <GripVertical size={14} className="text-slate-400 mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />}
+                                {itemsDraggableInList && <GripVertical size={14} className="text-muted-foreground mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />}
                                 {!itemsDraggableInList && <div className="w-[14px] mr-1 flex-shrink-0"></div> /* Placeholder */}
                                 {getVariableIcon(variable)}
                                 <span className="truncate">{getDisplayName(variable)}</span>
@@ -454,8 +454,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     className={`
                         flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
                         ${isDisabled
-                        ? 'border-slate-200 text-slate-300 cursor-not-allowed'
-                        : 'border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'}
+                        ? 'border-border text-muted-foreground cursor-not-allowed'
+                        : 'border-border text-foreground hover:bg-accent hover:border-primary'}
                     `}
                     onClick={() => !isDisabled && handleArrowButtonClick(id)}
                     disabled={isDisabled}
@@ -470,17 +470,17 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         return (
             <div key={id} className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}>
                 {title && (
-                    <div className="text-sm font-medium text-slate-700 mb-1.5 px-1 flex items-center">
+                    <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center">
                         {id !== 'available' && renderArrowButton()}
                         <span className="flex-1">{title}</span>
                     </div>
                 )}
                 <div
                     className={`
-                        border p-1 rounded-md w-full transition-colors relative bg-white
+                        border p-1 rounded-md w-full transition-colors relative bg-background
                         ${overflowStyle}
-                        ${isDraggingOver === id && droppable ? "border-blue-500 bg-blue-50" : "border-slate-300"}
-                        ${!droppable && id !== 'available' ? 'bg-slate-50 cursor-not-allowed' : ''}
+                        ${isDraggingOver === id && droppable ? "border-primary bg-accent" : "border-border"}
+                        ${!droppable && id !== 'available' ? 'bg-muted cursor-not-allowed' : ''}
                     `}
                     style={{ height: adjustedHeight, minHeight: isSingleItemList ? "auto" : "" }}
                     onDragOver={(e) => handleDragOver(e, id)}
@@ -489,7 +489,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     onDrop={(e) => handleDrop(e, id)} // Pass undefined index for drop on container
                 >
                     {showDropPlaceholder && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none p-2">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-2">
                             <MoveHorizontal size={18} className="mb-1" />
                             <p className="text-xs text-center">
                                 {config?.maxItems === 1 ? "Drop one variable here" : "Drop variables here"}
@@ -497,7 +497,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         </div>
                     )}
                     {variables.length === 0 && id === 'available' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none p-4">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4">
                             <p className="text-sm text-center">All variables used</p>
                         </div>
                     )}
@@ -522,8 +522,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 {renderList(allLists.find(l => l.id === 'available')!)}
                 {/* General Helper Text - Hidden in mobile portrait mode */}
                 {(!isMobile || !isPortrait) && (
-                    <div className="text-xs mt-2 text-slate-500 flex items-center p-1.5 rounded bg-slate-50 border border-slate-200">
-                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-slate-400" />
+                    <div className="text-xs mt-2 text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
                         <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
                     </div>
                 )}

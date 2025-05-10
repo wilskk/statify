@@ -56,11 +56,11 @@ export default function Footer() {
     }, [router]);
 
     const tabStyle = "py-1 px-2.5 flex items-center gap-1.5 text-sm transition-colors";
-    const activeTabStyle = "bg-black text-white";
-    const inactiveTabStyle = "text-[#444444] hover:bg-[#F7F7F7]";
+    const activeTabStyle = "bg-primary text-primary-foreground";
+    const inactiveTabStyle = "text-muted-foreground hover:bg-accent";
 
     return (
-        <footer className="w-full bg-white border-t border-[#E6E6E6] py-1 px-3 flex items-center justify-between flex-shrink-0">
+        <footer className="w-full bg-background border-t border-border py-1 px-3 flex items-center justify-between flex-shrink-0">
             <TooltipProvider>
                 <div className="flex items-center gap-1">
                     <Tooltip>
@@ -114,14 +114,14 @@ export default function Footer() {
 
                 <div className="flex items-center gap-3 text-xs">
                     {connectionStatus === 'offline' && (
-                        <span className="flex items-center text-[#888888]">
-                            <span className="inline-block w-2 h-2 rounded-full bg-[#888888] mr-1"></span>
+                        <span className="flex items-center text-muted-foreground">
+                            <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground mr-1"></span>
                             Offline mode
                         </span>
                     )}
 
                     {!isMobile && (
-                        <span className="text-[#888888] hidden md:inline">Current dataset: <span className="font-medium">sample_data</span></span>
+                        <span className="text-muted-foreground hidden md:inline">Current dataset: <span className="font-medium">sample_data</span></span>
                     )}
                 </div>
             </TooltipProvider>

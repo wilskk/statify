@@ -494,22 +494,22 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
     return (
         <>
             <DialogContent className="max-w-[650px] p-0">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Aggregate Data</DialogTitle>
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground">Aggregate Data</DialogTitle>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                    <div className="border-b border-border flex-shrink-0">
+                        <TabsList className="bg-muted rounded-none h-9 p-0">
                             <TabsTrigger
                                 value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                             >
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
                                 value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                             >
                                 Options
                             </TabsTrigger>
@@ -553,37 +553,39 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                     <div className="flex justify-end space-x-3">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={handleConfirm}
                         >
                             OK
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                            onClick={() => console.log("Paste clicked")}
                         >
                             Paste
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             onClick={handleReset}
                         >
                             Reset
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                            onClick={() => console.log("Help clicked")}
                         >
                             Help
                         </Button>

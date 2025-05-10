@@ -42,14 +42,14 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                                }) => {
     return (
         <div className="space-y-6">
-            <div className="border border-[#E6E6E6] rounded-md p-5">
+            <div className="bg-card border border-border rounded-md p-5">
                 <div className="grid grid-cols-2 gap-y-3">
                     <div className="flex items-center">
                         <Checkbox
                             id="mean"
                             checked={displayStatistics.mean}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, mean: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="mean" className="text-sm cursor-pointer">
                             Mean
@@ -61,7 +61,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="sum"
                             checked={displayStatistics.sum}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, sum: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="sum" className="text-sm cursor-pointer">
                             Sum
@@ -70,7 +70,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-5">
+            <div className="bg-card border border-border rounded-md p-5">
                 <div className="text-sm font-medium mb-3">Dispersion</div>
                 <div className="grid grid-cols-2 gap-y-3">
                     <div className="flex items-center">
@@ -78,7 +78,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="stdDev"
                             checked={displayStatistics.stdDev}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, stdDev: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="stdDev" className="text-sm cursor-pointer">
                             Std. deviation
@@ -90,7 +90,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="minimum"
                             checked={displayStatistics.minimum}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, minimum: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="minimum" className="text-sm cursor-pointer">
                             Minimum
@@ -102,7 +102,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="variance"
                             checked={displayStatistics.variance}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, variance: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="variance" className="text-sm cursor-pointer">
                             Variance
@@ -114,7 +114,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="maximum"
                             checked={displayStatistics.maximum}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, maximum: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="maximum" className="text-sm cursor-pointer">
                             Maximum
@@ -126,7 +126,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="range"
                             checked={displayStatistics.range}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, range: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="range" className="text-sm cursor-pointer">
                             Range
@@ -138,7 +138,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="standardError"
                             checked={displayStatistics.standardError}
                             onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, standardError: !!checked})}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="standardError" className="text-sm cursor-pointer">
                             S.E. mean
@@ -147,7 +147,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-5">
+            <div className="bg-card border border-border rounded-md p-5">
                 <div className="text-sm font-medium mb-3">Characterize Posterior Distribution</div>
                 <div className="grid grid-cols-2 gap-y-3">
                     <div className="flex items-center">

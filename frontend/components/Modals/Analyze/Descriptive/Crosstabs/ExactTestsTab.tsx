@@ -31,7 +31,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                                }) => {
     return (
         <div className="p-6">
-            <div className="border border-[#E6E6E6] rounded-md p-6">
+            <div className="bg-card border border-border rounded-md p-6">
                 <div className="text-sm font-medium mb-4">Exact Tests Method</div>
                 <RadioGroup
                     value={exactTestMethod}
@@ -42,7 +42,6 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                         <RadioGroupItem
                             value="asymptotic"
                             id="asymptotic"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="asymptotic" className="text-sm ml-2 cursor-pointer">
                             Asymptotic only
@@ -54,7 +53,6 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                             <RadioGroupItem
                                 value="monteCarlo"
                                 id="monteCarlo"
-                                className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                             />
                             <Label htmlFor="monteCarlo" className="text-sm ml-2 cursor-pointer">
                                 Monte Carlo
@@ -70,7 +68,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                     id="confidenceLevel"
                                     value={confidenceLevel}
                                     onChange={(e) => setConfidenceLevel(e.target.value)}
-                                    className="h-8 text-sm w-16 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    className="h-8 text-sm w-16"
                                     disabled={exactTestMethod !== 'monteCarlo'}
                                 />
                                 <span className="ml-2 text-sm">%</span>
@@ -84,7 +82,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                     id="monteCarloSamples"
                                     value={monteCarloSamples}
                                     onChange={(e) => setMonteCarloSamples(e.target.value)}
-                                    className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    className="h-8 text-sm w-24"
                                     disabled={exactTestMethod !== 'monteCarlo'}
                                 />
                             </div>
@@ -96,7 +94,6 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                             <RadioGroupItem
                                 value="exact"
                                 id="exact"
-                                className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                             />
                             <Label htmlFor="exact" className="text-sm ml-2 cursor-pointer">
                                 Exact
@@ -109,7 +106,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                     id="useTimeLimit"
                                     checked={useTimeLimit}
                                     onCheckedChange={(checked) => setUseTimeLimit(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                     disabled={exactTestMethod !== 'exact'}
                                 />
                                 <Label htmlFor="useTimeLimit" className="text-sm cursor-pointer">
@@ -119,7 +116,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                     id="timeLimit"
                                     value={timeLimit}
                                     onChange={(e) => setTimeLimit(e.target.value)}
-                                    className="h-8 text-sm w-16 ml-3 mr-2 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    className="h-8 text-sm w-16 ml-3 mr-2"
                                     disabled={!useTimeLimit || exactTestMethod !== 'exact'}
                                 />
                                 <span className="text-sm">minutes</span>
@@ -128,7 +125,7 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                     </div>
                 </RadioGroup>
 
-                <div className="mt-6 text-xs text-[#444444]">
+                <div className="mt-6 text-xs text-muted-foreground">
                     <p>Exact method will be used instead of Monte Carlo when computational limits allow.</p>
                     <p className="mt-2">For nonasymptotic methods, cell counts are always rounded or truncated in computing the test statistics.</p>
                 </div>

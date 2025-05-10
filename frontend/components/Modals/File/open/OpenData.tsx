@@ -219,10 +219,10 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-md bg-white border border-[#E6E6E6] rounded">
+        <DialogContent className="max-w-md bg-popover border-border rounded">
             <DialogHeader className="mb-6">
-                <DialogTitle className="text-[22px] font-semibold">Open Data</DialogTitle>
-                <DialogDescription className="text-[#444444] mt-2">
+                <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Open Data</DialogTitle>
+                <DialogDescription className="text-muted-foreground mt-2">
                     Select a SPSS .sav file to import for statistical analysis.
                 </DialogDescription>
             </DialogHeader>
@@ -230,17 +230,17 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
             <div className="mb-6">
                 <div
                     className={`border-2 border-dashed rounded p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                        error ? "border-red-500 bg-red-50" : "border-[#CCCCCC] hover:border-black"
+                        error ? "border-destructive bg-destructive/10" : "border-input hover:border-primary"
                     }`}
                     onClick={() => document.getElementById("file-upload")?.click()}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                 >
-                    <Upload size={24} className="mb-4 text-gray-500" />
-                    <p className="text-center font-medium mb-1">
+                    <Upload size={24} className="mb-4 text-muted-foreground" />
+                    <p className="text-center font-medium mb-1 text-popover-foreground">
                         {file ? file.name : "Click to select a .sav file"}
                     </p>
-                    <p className="text-[14px] text-[#888888]">
+                    <p className="text-[14px] text-muted-foreground">
                         {file
                             ? `${(file.size / 1024).toFixed(2)} KB`
                             : "or drag and drop here"}
@@ -250,45 +250,43 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                         name="file-upload"
                         type="file"
                         accept=".sav"
-                        className="hidden"
                         onChange={handleFileChange}
-                        disabled={loading}
+                        className="hidden"
                     />
                 </div>
-
-                {error && (
-                    <div className="flex items-center gap-2 mt-2 text-[14px] text-red-600">
-                        <AlertCircle size={16} />
-                        <span>{error}</span>
-                    </div>
-                )}
-
-                {file && !error && (
-                    <div className="flex items-center gap-2 mt-2 text-[14px] text-green-700">
-                        <FileText size={16} />
-                        <span>Ready to upload: {file.name}</span>
-                    </div>
-                )}
             </div>
 
-            <DialogFooter className="gap-3">
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="text-black bg-[#F7F7F7] hover:bg-[#E6E6E6] border-[#CCCCCC] min-w-[80px]"
-                    disabled={loading}
-                >
+            {file && (
+                <div className="mb-6 p-3 bg-muted border-border rounded flex items-center justify-between">
+                    <div className="flex items-center">
+                        <FileText size={20} className="mr-3 text-muted-foreground" />
+                        <div>
+                            <p className="text-sm font-medium text-popover-foreground">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {(file.size / 1024).toFixed(2)} KB
+                            </p>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setFile(null)} className="text-muted-foreground hover:text-foreground">
+                        <X size={18} />
+                    </Button>
+                </div>
+            )}
+
+            {error && (
+                <Alert variant="destructive" className="mb-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            <DialogFooter>
+                <Button variant="outline" onClick={onClose}>
                     Cancel
                 </Button>
-                <Button
-                    onClick={handleSubmit}
-                    disabled={loading || !file}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[80px] flex items-center gap-2 disabled:opacity-50"
-                >
-                    {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : null}
-                    {loading ? "Processing..." : "Upload"}
+                <Button onClick={handleSubmit} disabled={loading || !file}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}                    
+                    {loading ? "Processing..." : "Open"}
                 </Button>
             </DialogFooter>
         </DialogContent>

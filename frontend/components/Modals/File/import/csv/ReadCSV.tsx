@@ -47,13 +47,13 @@ interface ReadCSVProps {
 // Custom Select Component
 const CustomSelect: FC<CustomSelectProps> = ({ label, value, onChange, options }) => (
     <div className="mb-4">
-        <Label htmlFor={`select-${label}`} className="block text-sm font-medium mb-2">{label}:</Label>
+        <Label htmlFor={`select-${label}`} className="block text-sm font-medium mb-2 text-popover-foreground">{label}:</Label>
         <div className="relative">
             <select
                 id={`select-${label}`}
                 value={value}
                 onChange={onChange}
-                className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded border border-gray-300 focus:border-black focus:outline-none focus:ring-1 focus:ring-black bg-white"
+                className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background"
             >
                 {options.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -61,7 +61,7 @@ const CustomSelect: FC<CustomSelectProps> = ({ label, value, onChange, options }
                     </option>
                 ))}
             </select>
-            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
     </div>
 );
@@ -88,12 +88,12 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
         return lines.map((line, index) => (
             <div
                 key={index}
-                className={`flex ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}
+                className={`flex ${index % 2 === 0 ? 'bg-muted' : 'bg-popover'}`}
             >
-                <div className="w-10 flex-shrink-0 text-right pr-2 text-gray-500 py-1 border-r border-gray-200">
+                <div className="w-10 flex-shrink-0 text-right pr-2 text-muted-foreground py-1 border-r border-border">
                     {index + 1}
                 </div>
-                <div className="py-1 pl-3 whitespace-pre">
+                <div className="py-1 pl-3 whitespace-pre text-popover-foreground">
                     {line}
                 </div>
             </div>
@@ -217,20 +217,20 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
 
     return (
         <>
-            <div className="border-b px-6 py-4 flex items-center">
+            <div className="border-b border-border px-6 py-4 flex items-center">
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={onBack}
-                    className="mr-2 -ml-2 text-gray-500 hover:text-black"
+                    className="mr-2 -ml-2 text-muted-foreground hover:text-foreground"
                 >
                     <ArrowLeft size={16} />
                 </Button>
                 <div>
-                    <DialogTitle className="text-lg font-medium">Read CSV File</DialogTitle>
+                    <DialogTitle className="text-lg font-medium text-popover-foreground">Read CSV File</DialogTitle>
                     <div className="flex items-center mt-1">
-                        <FileIcon size={16} className="mr-2 text-gray-600" />
-                        <span className="text-sm truncate max-w-xs">{fileName}</span>
+                        <FileIcon size={16} className="mr-2 text-muted-foreground" />
+                        <span className="text-sm truncate max-w-xs text-muted-foreground">{fileName}</span>
                     </div>
                 </div>
             </div>
@@ -239,8 +239,8 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
                 {/* Left column - CSV preview */}
                 <div>
                     <div className="mb-5">
-                        <h3 className="text-sm font-medium mb-2">Preview</h3>
-                        <div className="mt-4 border border-gray-200 rounded overflow-hidden">
+                        <h3 className="text-sm font-medium mb-2 text-popover-foreground">Preview</h3>
+                        <div className="mt-4 border border-border rounded overflow-hidden">
                             <div className="overflow-x-auto max-h-[200px] overflow-y-auto">
                                 {previewContent}
                             </div>
@@ -248,139 +248,100 @@ const ReadCSV: FC<ReadCSVProps> = ({ onClose, onBack, fileName, fileContent }) =
                     </div>
 
                     <div className="space-y-4">
-                        <CustomSelect
-                            label="Delimiter"
-                            value={delimiter}
-                            onChange={(e) => setDelimiter(e.target.value as DelimiterOption)}
-                            options={[
-                                { value: "comma", label: "Comma (,)" },
-                                { value: "semicolon", label: "Semicolon (;)" },
-                                { value: "tab", label: "Tab (↹)" }
-                            ]}
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <CustomSelect
-                                label="Decimal"
-                                value={decimal}
-                                onChange={(e) => setDecimal(e.target.value as DecimalOption)}
-                                options={[
-                                    { value: "period", label: "Period (.)" },
-                                    { value: "comma", label: "Comma (,)" }
-                                ]}
-                            />
-
-                            <CustomSelect
-                                label="Text Qualifier"
-                                value={textQualifier}
-                                onChange={(e) => setTextQualifier(e.target.value as TextQualifierOption)}
-                                options={[
-                                    { value: "doubleQuote", label: "Double Quote (\")" },
-                                    { value: "singleQuote", label: "Single Quote (')" },
-                                    { value: "none", label: "None" }
-                                ]}
-                            />
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="firstLine" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} />
+                            <Label htmlFor="firstLine" className="text-sm font-medium text-popover-foreground">First line contains variable names</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="removeLeading" checked={removeLeading} onCheckedChange={(checked) => setRemoveLeading(Boolean(checked))} />
+                            <Label htmlFor="removeLeading" className="text-sm font-medium text-popover-foreground">Remove leading spaces from string values</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="removeTrailing" checked={removeTrailing} onCheckedChange={(checked) => setRemoveTrailing(Boolean(checked))} />
+                            <Label htmlFor="removeTrailing" className="text-sm font-medium text-popover-foreground">Remove trailing spaces from string values</Label>
                         </div>
                     </div>
                 </div>
 
-                {/* Right column - Options */}
+                {/* Right column - Configuration options */}
                 <div>
-                    <h3 className="text-sm font-medium mb-4">File Structure Options</h3>
-                    <div className="space-y-4 mb-6">
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="first-line"
-                                checked={firstLineContains}
-                                onCheckedChange={(checked) => setFirstLineContains(checked === true)}
-                            />
-                            <Label htmlFor="first-line" className="text-sm cursor-pointer">
-                                First line contains variable names
-                            </Label>
+                    <CustomSelect
+                        label="Delimiter"
+                        value={delimiter}
+                        onChange={(e) => setDelimiter(e.target.value as DelimiterOption)}
+                        options={[
+                            { value: "comma", label: "Comma (,)" },
+                            { value: "semicolon", label: "Semicolon (;)" },
+                            { value: "tab", label: "Tab" },
+                        ]}
+                    />
+                    <CustomSelect
+                        label="Decimal Symbol"
+                        value={decimal}
+                        onChange={(e) => setDecimal(e.target.value as DecimalOption)}
+                        options={[
+                            { value: "period", label: "Period (.)" },
+                            { value: "comma", label: "Comma (,)" },
+                        ]}
+                    />
+                    <div className="mb-4">
+                        <div className="flex items-center mb-2">
+                            <Label htmlFor="textQualifier" className="block text-sm font-medium text-popover-foreground">Text Qualifier:</Label>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <InfoIcon size={14} className="ml-2 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="bg-tooltip text-tooltip-foreground">
+                                        <p>Character used to enclose string values that may contain delimiters.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
-
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="leading-spaces"
-                                checked={removeLeading}
-                                onCheckedChange={(checked) => setRemoveLeading(checked === true)}
-                            />
-                            <Label htmlFor="leading-spaces" className="text-sm cursor-pointer">
-                                Remove leading spaces
-                            </Label>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="trailing-spaces"
-                                checked={removeTrailing}
-                                onCheckedChange={(checked) => setRemoveTrailing(checked === true)}
-                            />
-                            <Label htmlFor="trailing-spaces" className="text-sm cursor-pointer">
-                                Remove trailing spaces
-                            </Label>
+                        <div className="relative">
+                            <select
+                                id="textQualifier"
+                                value={textQualifier}
+                                onChange={(e) => setTextQualifier(e.target.value as TextQualifierOption)}
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background"
+                            >
+                                <option value="doubleQuote">Double Quote (")</option>
+                                <option value="singleQuote">Single Quote (')</option>
+                                <option value="none">None</option>
+                            </select>
+                            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                         </div>
                     </div>
 
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                        <div className="text-sm text-destructive mt-4">
                             {error}
                         </div>
                     )}
-
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="flex items-center text-xs text-gray-500 cursor-help">
-                                    <InfoIcon size={14} className="mr-2" />
-                                    <span>Preview shows first 10 lines</span>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>The preview displays only the first 10 lines of your CSV file.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
                 </div>
             </div>
 
-            <div className="flex items-center px-6 py-3 border-t bg-gray-50 text-xs text-gray-500">
-                <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                <span>CSV files should be properly formatted for accurate data import</span>
-            </div>
-
-            <DialogFooter className="p-4 flex justify-end gap-2 border-t">
+            <DialogFooter className="border-t border-border px-6 py-4 flex justify-between">
                 <Button
-                    onClick={handleOk}
-                    className="bg-black text-white hover:bg-gray-800"
-                    disabled={isProcessing}
-                >
-                    {isProcessing ? "Processing..." : "OK"}
-                </Button>
-                <Button
-                    variant="outline"
+                    variant="link"
                     onClick={handleReset}
-                    className="bg-white text-black border"
+                    className="text-primary hover:text-primary/90 px-0"
                     disabled={isProcessing}
                 >
-                    Reset
+                    Reset to Default
                 </Button>
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="bg-white text-black border"
-                    disabled={isProcessing}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    variant="outline"
-                    onClick={() => alert("Help functionality not implemented")}
-                    className="bg-white text-black border"
-                    disabled={isProcessing}
-                >
-                    Help
-                </Button>
+                <div className="flex space-x-2">
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isProcessing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleOk} disabled={isProcessing}>
+                        OK
+                    </Button>
+                </div>
             </DialogFooter>
         </>
     );

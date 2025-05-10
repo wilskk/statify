@@ -114,10 +114,10 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-md bg-white border border-[#E6E6E6] rounded">
+        <DialogContent className="max-w-md bg-popover border-border rounded">
             <DialogHeader className="mb-6">
-                <DialogTitle className="text-[22px] font-semibold">Export Data to CSV</DialogTitle>
-                <DialogDescription className="text-[#444444] mt-2">
+                <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Export Data to CSV</DialogTitle>
+                <DialogDescription className="text-muted-foreground mt-2">
                     Configure options and download your dataset as a Comma Separated Values (CSV) file.
                 </DialogDescription>
             </DialogHeader>
@@ -125,23 +125,23 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
             <TooltipProvider delayDuration={200}>
                 <div className="mb-6 space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="filename" className="block text-sm font-medium">File Name</Label>
+                        <Label htmlFor="filename" className="block text-sm font-medium text-popover-foreground">File Name</Label>
                         <Input
                             id="filename"
                             value={exportOptions.filename}
                             onChange={(e) => handleFilenameChange(e.target.value)}
-                            className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
+                            className="w-full"
                             placeholder="Enter file name (e.g., dataset_export)"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="delimiter" className="block text-sm font-medium">Delimiter</Label>
+                        <Label htmlFor="delimiter" className="block text-sm font-medium text-popover-foreground">Delimiter</Label>
                         <Select
                             value={exportOptions.delimiter}
                             onValueChange={(value) => handleChange("delimiter", value)}
                         >
-                            <SelectTrigger id="delimiter" className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black">
+                            <SelectTrigger id="delimiter" className="w-full">
                                 <SelectValue placeholder="Select delimiter" />
                             </SelectTrigger>
                             <SelectContent>
@@ -154,12 +154,12 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="encoding" className="block text-sm font-medium">Encoding</Label>
+                        <Label htmlFor="encoding" className="block text-sm font-medium text-popover-foreground">Encoding</Label>
                         <Select
                             value={exportOptions.encoding}
                             onValueChange={(value) => handleChange("encoding", value)}
                         >
-                            <SelectTrigger id="encoding" className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black">
+                            <SelectTrigger id="encoding" className="w-full">
                                 <SelectValue placeholder="Select encoding" />
                             </SelectTrigger>
                             <SelectContent>
@@ -171,7 +171,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                     </div>
 
                     <div className="space-y-3 pt-2">
-                        <Label className="block text-sm font-medium mb-1">Options</Label>
+                        <Label className="block text-sm font-medium mb-1 text-popover-foreground">Options</Label>
 
                         <div className="flex items-center space-x-2">
                             <Checkbox
@@ -179,7 +179,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                                 checked={exportOptions.includeHeaders}
                                 onCheckedChange={(checked) => handleChange("includeHeaders", Boolean(checked))}
                             />
-                            <Label htmlFor="includeHeaders" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeHeaders" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Include variable names as header row
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -198,7 +198,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                                 checked={exportOptions.includeVariableProperties}
                                 onCheckedChange={(checked) => handleChange("includeVariableProperties", Boolean(checked))}
                             />
-                            <Label htmlFor="includeVariableProperties" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeVariableProperties" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Include variable properties (metadata)
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -217,14 +217,14 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                                 checked={exportOptions.quoteStrings}
                                 onCheckedChange={(checked) => handleChange("quoteStrings", Boolean(checked))}
                             />
-                            <Label htmlFor="quoteStrings" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="quoteStrings" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Quote string values
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Always wrap text values in double quotes (&quot;&quot;). If unchecked, quotes are only added if necessary (e.g., value contains delimiter or quotes).</p>
+                                        <p>Always wrap text values in double quotes (""). If unchecked, quotes are only added if necessary (e.g., value contains delimiter or quotes).</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </Label>
@@ -233,7 +233,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                 </div>
             </TooltipProvider>
 
-            <div className="flex items-center py-3 text-xs text-gray-500 border-t border-gray-200 mt-4">
+            <div className="flex items-center py-3 text-xs text-muted-foreground border-t border-border mt-4">
                 <InfoIcon size={14} className="mr-2 flex-shrink-0" />
                 <span>CSV is a common format for data exchange. Ensure compatibility with the target application.</span>
             </div>
@@ -243,26 +243,19 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                     variant="outline"
                     onClick={onClose}
                     disabled={isExporting}
-                    className="text-black bg-[#F7F7F7] hover:bg-[#E6E6E6] border-[#CCCCCC] min-w-[80px]"
+                    className="min-w-[80px]"
                 >
                     Cancel
                 </Button>
                 <Button
                     onClick={handleExport}
-                    disabled={isExporting || !exportOptions.filename.trim()}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[110px]"
+                    disabled={isExporting}
+                    className="min-w-[100px]"
                 >
                     {isExporting ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            <span>Exporting...</span>
-                        </>
-                    ) : (
-                        <>
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span>Export CSV</span>
-                        </>
-                    )}
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {isExporting ? "Exporting..." : "Export CSV"}
                 </Button>
             </DialogFooter>
         </DialogContent>

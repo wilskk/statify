@@ -421,10 +421,10 @@ export const ExampleDatasetModal = () => {
 
     return (
         <Dialog open={isModalOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[525px] bg-white text-black">
+            <DialogContent className="sm:max-w-[525px] bg-popover text-popover-foreground">
                 <DialogHeader>
                     <DialogTitle className="flex items-center">
-                        <Database className="h-5 w-5 mr-2 text-blue-700"/> Dataset Contoh
+                        <Database className="h-5 w-5 mr-2 text-primary"/> Dataset Contoh
                     </DialogTitle>
                     <DialogDescription>
                         Pilih dataset contoh (.sav) untuk memulai analisis. Data akan dimuat ke dalam proyek baru.
@@ -432,16 +432,16 @@ export const ExampleDatasetModal = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     {isLoading && (
-                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-                            <Loader2 className="h-8 w-8 animate-spin text-black" />
+                        <div className="absolute inset-0 bg-popover/70 flex items-center justify-center z-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-popover-foreground" />
                         </div>
                     )}
                     {error && (
-                        <p className="text-red-600 text-sm px-4 py-2 bg-red-100 rounded border border-red-300">{error}</p>
+                        <p className="text-destructive-foreground text-sm px-4 py-2 bg-destructive rounded border border-destructive/50">{error}</p>
                     )}
                     <div className="mt-6">
-                        <DialogTitle className="text-lg font-medium text-gray-900">Dataset SPSS (.sav)</DialogTitle>
-                        <DialogDescription className="mt-1 text-sm text-gray-500 mb-4">
+                        <DialogTitle className="text-lg font-medium text-popover-foreground">Dataset SPSS (.sav)</DialogTitle>
+                        <DialogDescription className="mt-1 text-sm text-muted-foreground mb-4">
                             Pilih salah satu dataset contoh untuk memulai analisis.
                         </DialogDescription>
                         {renderFileList(exampleFiles.sav)}

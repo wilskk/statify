@@ -38,7 +38,7 @@ const NameLabelDialog: React.FC<NameLabelDialogProps> = ({
                     <DialogTitle>Aggregate Data: Variable Name</DialogTitle>
                 </DialogHeader>
 
-                <div className="text-center mb-4">
+                <div className="text-center mb-4 text-foreground">
                     {currentEditingVariable && (() => {
                         const func = currentEditingVariable.calculationFunction || currentEditingVariable.function;
                         let displayFormula;
@@ -59,7 +59,7 @@ const NameLabelDialog: React.FC<NameLabelDialogProps> = ({
 
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="name" className="text-xs whitespace-nowrap">Name:</Label>
+                        <Label htmlFor="name" className="text-xs whitespace-nowrap text-foreground">Name:</Label>
                         <Input
                             id="name"
                             value={newVariableName}
@@ -69,7 +69,7 @@ const NameLabelDialog: React.FC<NameLabelDialogProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="label" className="text-xs whitespace-nowrap">Label:</Label>
+                        <Label htmlFor="label" className="text-xs whitespace-nowrap text-foreground">Label:</Label>
                         <Input
                             id="label"
                             value={newVariableLabel}
