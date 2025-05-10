@@ -44,7 +44,7 @@ const Navbar: React.FC = () => {
                 <MenubarItem disabled>Count Values within Cases...</MenubarItem>
                 <MenubarItem disabled>Shift Values...</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>Recode into Same Variables...</MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.RecodeSameVariables)}>Recode into Same Variables...</MenubarItem>
                 <MenubarItem disabled>Recode into Different Variables...</MenubarItem>
                 <MenubarItem disabled>Automatic Recode...</MenubarItem>
                 <MenubarItem disabled>Create Dummy Variables...</MenubarItem>

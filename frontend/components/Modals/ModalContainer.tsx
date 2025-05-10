@@ -10,6 +10,7 @@ import {
     isDescriptiveModal,
 } from "@/components/Modals/Analyze/Descriptive/DescriptiveModal";
 import ComputeVariableModal from "@/components/Modals/Transform/ComputeVariableModal";
+import RecodeSameVariablesModal from "@/components/Modals/Transform/recodeSameVariables";
 import { Dialog } from '@/components/ui/dialog';
 import ModalAutomaticLinearModeling from '@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling';
 import ModalLinear from './Regression/Linear/ModalLinear';
@@ -174,7 +175,13 @@ const ModalContainer: React.FC = () => {
                         {...currentModal.props}
                     />
                 );
-
+            case ModalType.RecodeSameVariables:
+                return (
+                    <RecodeSameVariablesModal
+                        onClose={closeModal}
+                        {...currentModal.props}
+                    />
+                );
             case ModalType.ModalAutomaticLinearModeling:
                 return (
                     <ModalAutomaticLinearModeling
