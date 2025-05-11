@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { useMobile } from "@/hooks/useMobile";
 import { useActions } from '@/hooks/actions';
 import { ModalType, useModal } from '@/hooks/useModal';
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function Toolbar() {
                     <ToolGroup tools={dataTools} />
                 </div>
             </div>
+            <ModeToggle />
         </div>
     );
 }

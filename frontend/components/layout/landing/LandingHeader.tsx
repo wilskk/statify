@@ -20,6 +20,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { useState } from 'react';
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function LandingHeader() {
     const [open, setOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function LandingHeader() {
                 </div>
 
                 {/* Auth Button - Menggunakan warna primer sesuai dokumentasi */}
-                <div className="hidden md:flex items-center">
+                <div className="hidden md:flex items-center space-x-2">
                     <Link href="/dashboard/data">
                         <Button
                             variant="default"
@@ -71,6 +72,7 @@ export default function LandingHeader() {
                             <span>Masuk</span>
                         </Button>
                     </Link>
+                    <ModeToggle />
                 </div>
 
                 {/* Mobile Menu - Dengan warna monokromatik dan spacing yang konsisten */}

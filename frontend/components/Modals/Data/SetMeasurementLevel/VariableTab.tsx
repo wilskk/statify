@@ -98,7 +98,7 @@ const VariableTab: FC<VariableTabProps> = ({
                 <span>Variables will retain their assigned measurement level for statistical analysis</span>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
                     <Button size="sm" onClick={handleSave}>OK</Button>
                     {/* <Button variant="outline" size="sm">Paste</Button> */}
