@@ -1,3 +1,8 @@
+//! Stepwise variable selection for discriminant analysis.
+//!
+//! This module implements the stepwise variable selection procedure,
+//! which iteratively adds or removes variables based on statistical criteria.
+
 use std::collections::HashMap;
 
 use crate::discriminant::{
@@ -14,19 +19,18 @@ use crate::discriminant::{
     stats::core::{ calculate_p_value_from_f, extract_analyzed_dataset, AnalyzedDataset },
 };
 
-use super::{
-    pairwise_comparisons::generate_pairwise_comparisons,
-    statistical_tests::{ calculate_overall_f_statistic, calculate_overall_wilks_lambda },
-    variable_selection::{
-        analyze_variables_in_model,
-        analyze_variables_not_in_model,
-        determine_method_type,
-        find_best_variable_to_enter,
-        find_worst_variable_to_remove,
-    },
+use super::core::{
+    analyze_variables_in_model,
+    analyze_variables_not_in_model,
+    calculate_overall_f_statistic,
+    calculate_overall_wilks_lambda,
+    determine_method_type,
+    find_best_variable_to_enter,
+    find_worst_variable_to_remove,
+    generate_pairwise_comparisons,
 };
 
-// Method type enum for different stepwise methods
+/// Method type enum for different stepwise methods
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MethodType {
     Wilks,
@@ -36,7 +40,7 @@ pub enum MethodType {
     Raos,
 }
 
-// Helper struct to store step data
+/// Helper struct to store step data
 #[derive(Clone)]
 struct StepData {
     variable_entered: Option<String>,
@@ -55,6 +59,17 @@ struct StepData {
     pairwise_comparisons: HashMap<String, Vec<PairwiseComparison>>,
 }
 
+/// Calculate statistics for stepwise discriminant analysis
+///
+/// This function performs stepwise variable selection and calculates
+/// associated statistics for discriminant analysis.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A StepwiseStatistics object with variable selection results
 pub fn calculate_stepwise_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -83,6 +98,18 @@ pub fn calculate_stepwise_statistics(
     convert_steps_to_output(steps_data)
 }
 
+/// Perform stepwise analysis
+///
+/// This function performs the stepwise variable selection procedure,
+/// iteratively adding or removing variables based on the specified method.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `variables` - Variables to consider for selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A vector of StepData containing results for each step
 fn perform_stepwise_analysis(
     dataset: &AnalyzedDataset,
     variables: &Vec<String>,
@@ -100,13 +127,13 @@ fn perform_stepwise_analysis(
     let method_type = determine_method_type(config);
 
     // Maximum number of steps (at most all variables)
-    let max_steps = variables.len();
+    let max_steps = variables.len() * 2; // Account for both additions and removals
 
     // Perform stepwise selection
     for step in 0..max_steps {
         // Process one step of variable selection
         let step_result = process_selection_step(
-            &dataset,
+            dataset,
             &mut current_variables,
             &mut remaining_variables,
             step,
@@ -131,11 +158,27 @@ fn perform_stepwise_analysis(
     Ok(steps_data)
 }
 
+/// Result of a single selection step
 struct StepResult {
     changes_made: bool,
     step_data: Vec<StepData>,
 }
 
+/// Process one step of variable selection
+///
+/// This function either adds a variable to the model or removes one,
+/// depending on the statistical criteria.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `remaining_variables` - Variables not yet in the model
+/// * `step` - Current step number
+/// * `method_type` - The method to use for variable selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A StepResult with changes made and step data
 fn process_selection_step(
     dataset: &AnalyzedDataset,
     current_variables: &mut Vec<String>,
@@ -150,7 +193,7 @@ fn process_selection_step(
     // Find best variable to enter
     let (best_var_to_enter, best_stats) = find_best_variable_to_enter(
         remaining_variables,
-        &dataset,
+        dataset,
         current_variables,
         method_type,
         config
@@ -217,6 +260,21 @@ fn process_selection_step(
     })
 }
 
+/// Process variable removal
+///
+/// This function checks if any variables should be removed from the model
+/// based on the statistical criteria.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `remaining_variables` - Variables not yet in the model
+/// * `step` - Current step number
+/// * `method_type` - The method to use for variable selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A StepResult with changes made and step data
 fn process_variable_removal(
     dataset: &AnalyzedDataset,
     current_variables: &mut Vec<String>,
@@ -233,7 +291,7 @@ fn process_variable_removal(
         // Find worst variable to remove
         let (worst_var_to_remove, worst_stats) = find_worst_variable_to_remove(
             current_variables,
-            &dataset,
+            dataset,
             method_type,
             config
         );
@@ -282,6 +340,18 @@ fn process_variable_removal(
     })
 }
 
+/// Determine if a variable should be entered into the model
+///
+/// # Parameters
+/// * `var_opt` - Optional variable name
+/// * `stats` - Statistics for the variable
+/// * `num_groups` - Number of groups
+/// * `total_cases` - Total number of cases
+/// * `num_current_vars` - Number of variables currently in the model
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// Boolean indicating whether the variable should be entered
 fn should_enter_variable(
     var_opt: &Option<String>,
     stats: &VariableNotInAnalysis,
@@ -308,6 +378,18 @@ fn should_enter_variable(
     }
 }
 
+/// Determine if a variable should be removed from the model
+///
+/// # Parameters
+/// * `var_opt` - Optional variable name
+/// * `stats` - Statistics for the variable
+/// * `num_groups` - Number of groups
+/// * `total_cases` - Total number of cases
+/// * `num_current_vars` - Number of variables currently in the model
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// Boolean indicating whether the variable should be removed
 fn should_remove_variable(
     var_opt: &Option<String>,
     stats: &VariableInAnalysis,
@@ -334,12 +416,21 @@ fn should_remove_variable(
     }
 }
 
+/// Create data for the initial step (no variables in the model)
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `variables` - Variables to consider
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// StepData for the initial step
 fn create_initial_step(
     dataset: &AnalyzedDataset,
     variables: &[String],
     config: &DiscriminantConfig
 ) -> StepData {
-    let initial_variables_not_in = analyze_variables_not_in_model(variables, &dataset, &[], config);
+    let initial_variables_not_in = analyze_variables_not_in_model(variables, dataset, &[], config);
 
     StepData {
         variable_entered: None,
@@ -359,6 +450,20 @@ fn create_initial_step(
     }
 }
 
+/// Create data for a step in the stepwise procedure
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `remaining_variables` - Variables not yet in the model
+/// * `variable_entered` - Variable that was entered in this step
+/// * `variable_removed` - Variable that was removed in this step
+/// * `step` - Step number
+/// * `method_type` - The method being used
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// StepData for the current step
 fn create_step_data(
     dataset: &AnalyzedDataset,
     current_variables: &[String],
@@ -372,20 +477,20 @@ fn create_step_data(
     // Analyze variables in and out of the model
     let vars_in_analysis = analyze_variables_in_model(
         current_variables,
-        &dataset,
+        dataset,
         method_type,
         config
     );
 
     let vars_not_in_analysis = analyze_variables_not_in_model(
         remaining_variables,
-        &dataset,
+        dataset,
         current_variables,
         config
     );
 
     // Calculate overall statistics
-    let wilks_lambda = calculate_overall_wilks_lambda(&dataset, current_variables);
+    let wilks_lambda = calculate_overall_wilks_lambda(dataset, current_variables);
 
     // Calculate F statistic
     let (f_value, df1, df2, df3) = calculate_overall_f_statistic(
@@ -405,7 +510,7 @@ fn create_step_data(
 
     // Generate pairwise comparisons if requested
     let pairwise_comparisons = if config.method.pairwise {
-        generate_pairwise_comparisons(&dataset, current_variables, step)
+        generate_pairwise_comparisons(dataset, current_variables, step)
     } else {
         HashMap::new()
     };
@@ -428,6 +533,13 @@ fn create_step_data(
     }
 }
 
+/// Convert internal step data to the output format
+///
+/// # Parameters
+/// * `steps_data` - Vector of StepData
+///
+/// # Returns
+/// A StepwiseStatistics object for output
 fn convert_steps_to_output(steps_data: Vec<StepData>) -> Result<StepwiseStatistics, String> {
     let mut result = StepwiseStatistics {
         variables_entered: Vec::new(),

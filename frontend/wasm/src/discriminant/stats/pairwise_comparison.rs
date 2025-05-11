@@ -1,3 +1,8 @@
+//! Pairwise comparisons between groups for discriminant analysis.
+//!
+//! This module implements functions to generate pairwise comparisons
+//! between groups and calculate Mahalanobis distances.
+
 use std::collections::HashMap;
 use rayon::prelude::*;
 
@@ -7,6 +12,17 @@ use crate::discriminant::{
 };
 
 /// Generate pairwise comparisons between groups
+///
+/// This function calculates F values and significance levels for
+/// all pairs of groups, based on the Mahalanobis distance between them.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `variables` - Variables to use in the comparisons
+/// * `step` - Current step in the stepwise procedure
+///
+/// # Returns
+/// A HashMap mapping group names to vectors of pairwise comparisons
 pub fn generate_pairwise_comparisons(
     dataset: &AnalyzedDataset,
     variables: &[String],
@@ -62,17 +78,25 @@ pub fn generate_pairwise_comparisons(
                 })
                 .collect::<Vec<_>>();
 
-            if !group_comparisons.is_empty() {
-                (group_i.clone(), group_comparisons)
-            } else {
-                (group_i.clone(), Vec::new())
-            }
+            (group_i.clone(), group_comparisons)
         })
         .filter(|(_, comparisons)| !comparisons.is_empty())
         .collect()
 }
 
 /// Calculate Mahalanobis distance between two specific groups
+///
+/// The Mahalanobis distance accounts for the correlation between variables
+/// and is scale-invariant. It measures the separation between group means.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `group_i` - First group name
+/// * `group_j` - Second group name
+/// * `variables` - Variables to use in the calculation
+///
+/// # Returns
+/// The squared Mahalanobis distance between the groups
 pub fn calculate_mahalanobis_distance(
     dataset: &AnalyzedDataset,
     group_i: &str,
@@ -81,6 +105,7 @@ pub fn calculate_mahalanobis_distance(
 ) -> f64 {
     // Optimized version for specific group pairs
     use nalgebra::{ DVector, DMatrix };
+    use crate::discriminant::stats::core::{ calculate_covariance, EPSILON };
 
     // Extract means for both groups
     let mut mean_diff = DVector::zeros(variables.len());
@@ -130,11 +155,12 @@ pub fn calculate_mahalanobis_distance(
                         let mean_j = dataset.group_means[group_label][var_j];
 
                         // Calculate covariance
-                        let mut cov_sum = 0.0;
-                        for k in 0..values_i.len() {
-                            cov_sum += (values_i[k] - mean_i) * (values_j[k] - mean_j);
-                        }
-                        let cov = cov_sum / ((values_i.len() - 1) as f64);
+                        let cov = calculate_covariance(
+                            values_i,
+                            values_j,
+                            Some(mean_i),
+                            Some(mean_j)
+                        );
 
                         pooled_cov[(i, j)] += (df as f64) * cov;
                     }
@@ -153,7 +179,7 @@ pub fn calculate_mahalanobis_distance(
 
     // Add small regularization for numerical stability
     for i in 0..variables.len() {
-        pooled_cov[(i, i)] += 1e-8;
+        pooled_cov[(i, i)] += EPSILON;
     }
 
     // Try to invert the matrix using nalgebra

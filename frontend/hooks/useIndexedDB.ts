@@ -26,7 +26,6 @@ type AnalysisType =
 
 const DB_NAME = "Statify";
 const STORE_NAME = "AnalysisForm";
-const DB_VERSION = 35;
 
 // Generate a consistent ID for each analysis type
 const generateFormId = (
@@ -39,15 +38,48 @@ const generateFormId = (
 // Initialize the database with a single store
 export const initializeDatabase = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        // First try to open the database without specifying a version
+        // This will open the database with its current version
+        const checkRequest = indexedDB.open(DB_NAME);
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
+        checkRequest.onerror = () => reject(checkRequest.error);
 
-        request.onupgradeneeded = (event) => {
-            const db = request.result;
+        checkRequest.onsuccess = () => {
+            const db = checkRequest.result;
 
-            // Create a single store for all analysis forms
+            // Check if our required object store exists
+            if (db.objectStoreNames.contains(STORE_NAME)) {
+                resolve(db); // If it exists, we're good to go
+            } else {
+                // Need schema upgrade, close and reopen with incremented version
+                const currentVersion = db.version;
+                db.close();
+
+                const upgradeRequest = indexedDB.open(
+                    DB_NAME,
+                    currentVersion + 1
+                );
+
+                upgradeRequest.onerror = () => reject(upgradeRequest.error);
+
+                upgradeRequest.onupgradeneeded = (event) => {
+                    const upgradedDb = upgradeRequest.result;
+                    if (!upgradedDb.objectStoreNames.contains(STORE_NAME)) {
+                        upgradedDb.createObjectStore(STORE_NAME, {
+                            keyPath: "id",
+                        });
+                    }
+                };
+
+                upgradeRequest.onsuccess = () => resolve(upgradeRequest.result);
+            }
+        };
+
+        // If database doesn't exist yet, this will create it with version 1
+        checkRequest.onupgradeneeded = (event) => {
+            const db = checkRequest.result;
+
+            // Create our store if it doesn't exist
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: "id" });
             }

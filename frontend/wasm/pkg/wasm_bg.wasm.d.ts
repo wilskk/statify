@@ -1,6 +1,17 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_discriminantanalysis_free: (a: number, b: number) => void;
+export const discriminantanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
+export const discriminantanalysis_get_results: (a: number) => [number, number, number];
+export const discriminantanalysis_get_formatted_results: (a: number) => [number, number, number];
+export const discriminantanalysis_get_all_errors: (a: number) => any;
+export const discriminantanalysis_get_all_log: (a: number) => [number, number, number];
+export const mse: (a: number, b: number, c: number, d: number) => number;
+export const rmse: (a: number, b: number, c: number, d: number) => number;
+export const mae: (a: number, b: number, c: number, d: number) => number;
+export const mpe: (a: number, b: number, c: number, d: number) => number;
+export const mape: (a: number, b: number, c: number, d: number) => number;
 export const first_difference: (a: number, b: number) => [number, number];
 export const second_difference: (a: number, b: number) => [number, number];
 export const seasonal_difference: (a: number, b: number, c: number) => [number, number];
@@ -35,11 +46,6 @@ export const autocorrelation_calculate_ljung_box: (a: number, b: number, c: numb
 export const autocorrelation_pvalue_ljung_box: (a: number, b: number, c: number) => [number, number];
 export const autocorrelation_df_ljung_box: (a: number) => [number, number];
 export const autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
-export const mse: (a: number, b: number, c: number, d: number) => number;
-export const rmse: (a: number, b: number, c: number, d: number) => number;
-export const mae: (a: number, b: number, c: number, d: number) => number;
-export const mpe: (a: number, b: number, c: number, d: number) => number;
-export const mape: (a: number, b: number, c: number, d: number) => number;
 export const __wbg_smoothing_free: (a: number, b: number) => void;
 export const smoothing_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
 export const smoothing_get_data_header: (a: number) => [number, number];
@@ -50,12 +56,6 @@ export const smoothing_set_data_header: (a: number, b: number, c: number) => voi
 export const smoothing_set_data: (a: number, b: number, c: number) => void;
 export const smoothing_set_time: (a: number, b: number, c: number) => void;
 export const smoothing_set_time_header: (a: number, b: number, c: number) => void;
-export const __wbg_discriminantanalysis_free: (a: number, b: number) => void;
-export const discriminantanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any) => [number, number, number];
-export const discriminantanalysis_get_results: (a: number) => [number, number, number];
-export const discriminantanalysis_get_formatted_results: (a: number) => [number, number, number];
-export const discriminantanalysis_get_all_errors: (a: number) => any;
-export const discriminantanalysis_get_all_log: (a: number) => [number, number, number];
 export const smoothing_calculate_sma: (a: number, b: number) => [number, number];
 export const smoothing_calculate_dma: (a: number, b: number) => [number, number];
 export const smoothing_calculate_wma: (a: number, b: number) => [number, number];
@@ -96,7 +96,7 @@ export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) =>
 export const __wbindgen_exn_store: (a: number) => void;
 export const __externref_table_alloc: () => number;
 export const __wbindgen_export_4: WebAssembly.Table;
+export const __externref_table_dealloc: (a: number) => void;
 export const __wbindgen_free: (a: number, b: number, c: number) => void;
 export const __externref_drop_slice: (a: number, b: number) => void;
-export const __externref_table_dealloc: (a: number) => void;
 export const __wbindgen_start: () => void;

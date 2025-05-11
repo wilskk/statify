@@ -72,6 +72,8 @@ pub struct GroupStatistics {
     pub means: HashMap<String, Vec<f64>>,
     #[serde(rename = "std_deviations")]
     pub std_deviations: HashMap<String, Vec<f64>>,
+    pub unweighted_n: HashMap<String, Vec<f64>>,
+    pub weighted_n: HashMap<String, Vec<f64>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -139,6 +141,7 @@ pub struct BoxMTest {
     pub df2: f64,
     #[serde(rename = "p_value")]
     pub p_value: f64,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -148,6 +151,8 @@ pub struct PooledMatrices {
     pub covariance: HashMap<String, HashMap<String, f64>>,
     #[serde(rename = "correlation")]
     pub correlation: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "note_df")]
+    pub note_df: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -156,6 +161,8 @@ pub struct CovarianceMatrices {
     pub variables: Vec<String>,
     #[serde(rename = "matrices")]
     pub matrices: HashMap<String, HashMap<String, HashMap<String, f64>>>,
+    #[serde(rename = "note_df")]
+    pub note_df: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -168,6 +175,7 @@ pub struct LogDeterminants {
     pub rank_pooled: i32,
     #[serde(rename = "pooled_log_determinant")]
     pub pooled_log_determinant: f64,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

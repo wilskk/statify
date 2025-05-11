@@ -34,6 +34,8 @@ pub fn run_analysis(
         }
     };
 
+    web_sys::console::log_1(&format!("Processing Summary: {:?}", processing_summary).into());
+
     // Filter Data
     let filtered_data = match core::filter_valid_cases(data, config) {
         Ok(filtered) => filtered,
@@ -75,22 +77,6 @@ pub fn run_analysis(
         };
     }
 
-    // Step 4: Box's M test if requested
-    let mut box_m_test = None;
-    if config.statistics.box_m {
-        logger.add_log("calculate_box_m_test");
-        match core::calculate_box_m_test(&filtered_data, config) {
-            Ok(test) => {
-                box_m_test = Some(test);
-                web_sys::console::log_1(&format!("Box M: {:?}", box_m_test).into());
-            }
-            Err(e) => {
-                error_collector.add_error("calculate_box_m_test", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
     // Step 5: Pooled matrices if requested
     let mut pooled_matrices = None;
     if config.statistics.wg_correlation || config.statistics.wg_covariance {
@@ -127,6 +113,7 @@ pub fn run_analysis(
 
     // Step 7: Log determinants if Box's M test is requested
     let mut log_determinants = None;
+    let mut box_m_test = None;
     if config.statistics.box_m {
         logger.add_log("calculate_log_determinants");
         match core::calculate_log_determinants(&filtered_data, config) {
@@ -138,6 +125,18 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_log_determinants", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+
+        logger.add_log("calculate_box_m_test");
+        match core::calculate_box_m_test(&filtered_data, config) {
+            Ok(test) => {
+                box_m_test = Some(test);
+                web_sys::console::log_1(&format!("Box M: {:?}", box_m_test).into());
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_box_m_test", &e);
                 // Continue execution despite errors for non-critical functions
             }
         };
@@ -283,62 +282,6 @@ pub fn run_analysis(
         };
     }
 
-    // Step 12: Bootstrap analysis if requested and not in stepwise mode
-    if config.bootstrap.perform_boot_strapping && !config.main.stepwise {
-        logger.add_log("perform_bootstrap_analysis");
-        match core::perform_bootstrap_analysis(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("perform_bootstrap_analysis", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 13: Generate plots if requested
-    if config.classify.combine || config.classify.sep_grp || config.classify.terr {
-        logger.add_log("generate_plots");
-        match core::generate_plots(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("generate_plots", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 14: Save results if requested
-    if
-        config.save.predicted ||
-        config.save.discriminant ||
-        config.save.probabilities ||
-        (config.save.xml_file.is_some() && !config.save.xml_file.as_ref().unwrap().is_empty())
-    {
-        logger.add_log("save_model_results");
-        match core::save_model_results(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("save_model_results", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 15: Generate discriminant histograms
-    let mut discriminant_histograms = None;
-    if config.classify.combine || config.classify.sep_grp {
-        logger.add_log("generate_discriminant_histograms");
-        match core::generate_discriminant_histograms(&filtered_data, config) {
-            Ok(histograms) => {
-                discriminant_histograms = Some(histograms);
-            }
-            Err(e) => {
-                error_collector.add_error("generate_discriminant_histograms", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
     // Create the final result
     let result = DiscriminantResult {
         processing_summary,
@@ -357,7 +300,7 @@ pub fn run_analysis(
         casewise_statistics,
         prior_probabilities,
         classification_function_coefficients,
-        discriminant_histograms,
+        discriminant_histograms: None,
     };
 
     Ok(Some(result))
