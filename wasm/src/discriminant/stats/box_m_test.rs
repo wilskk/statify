@@ -1,4 +1,3 @@
-// box_m_test.rs
 use nalgebra::DMatrix;
 use statrs::distribution::ContinuousCDF;
 use rayon::prelude::*;
@@ -12,6 +11,24 @@ use super::core::{
     calculate_covariance,
 };
 
+/// Calculates Box's M test for homogeneity of covariance matrices.
+///
+/// Box's M test is used to test the null hypothesis:
+/// H₀: Σ₁ = Σ₂ = ... = Σₖ
+///
+/// Where Σᵢ is the covariance matrix for the ith group.
+/// For moderate to small sample sizes, an F approximation is used to
+/// compute the significance level using the formula:
+///
+/// F_approx = γM/f₁
+///
+/// Where:
+/// - γ = (1-ρ-f₂/f₁)/f₁
+/// - M = (n-g)log|S| - Σ(nᵢ-1)log|Sᵢ|
+/// - f₁ = (g-1)p(p+1)/2
+/// - f₂ = (f₁+2)/(ρ-τ/ρ²)
+///
+/// Returns: BoxMTest structure containing test statistics and p-value
 pub fn calculate_box_m_test(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -32,34 +49,39 @@ pub fn calculate_box_m_test(
         return Err("No valid groups for Box's M test".to_string());
     }
 
-    let p = independent_variables.len();
-    let k = group_covs.len();
+    let p = independent_variables.len(); // Number of variables
+    let k = group_covs.len(); // Number of groups
     let total_sample_size: usize = group_sizes.iter().sum();
 
-    // Compute pooled matrix
+    // Compute pooled covariance matrix
     let pooled_cov_matrix = compute_pooled_covariance_matrix(&group_covs, &group_sizes);
     let pooled_log_det = calculate_log_determinant(&pooled_cov_matrix);
 
-    // Compute Box's M statistic
+    // Compute Box's M statistic: M = (n-g)log|S| - Σ(nᵢ-1)log|Sᵢ|
     let mut box_m = ((total_sample_size - k) as f64) * pooled_log_det;
     for (i, log_det) in group_log_dets.iter().enumerate() {
         box_m -= ((group_sizes[i] - 1) as f64) * log_det;
     }
 
-    // Compute correction factors
-    let c1 = compute_c1_factor(p, k);
-    let c2 = compute_c2_factor(&group_sizes, total_sample_size);
+    // Compute correction factors ρ and τ (named c1 and c2 in code)
+    let c1 = compute_c1_factor(p, k); // ρ = 1 - (2p²+3p-1)/(6(p+1)(g-1))
+    let c2 = compute_c2_factor(&group_sizes, total_sample_size); // τ calculation
 
     // Compute F approximation
-    let v1 = ((p * (p + 1) * (k - 1)) as f64) / 2.0;
+    let v1 = ((p * (p + 1) * (k - 1)) as f64) / 2.0; // f₁ = (g-1)p(p+1)/2
+
+    // Calculate γM where γ = (1-ρ-f₂/f₁)/f₁
+    // This is implemented as adjusted_m = box_m * (1.0 - c1 - c2/box_m)
     let adjusted_m = box_m * (1.0 - c1 - c2 / (box_m + 1e-10));
 
+    // F approximation = γM/f₁
     let f_approx = if adjusted_m > 0.0 && v1 > 0.0 { adjusted_m / v1 } else { 0.0 };
 
     // Compute degrees of freedom and p-value
-    let df1 = v1;
-    let df2 = compute_df2(c1, c2, df1);
+    let df1 = v1; // First degrees of freedom
+    let df2 = compute_df2(c1, c2, df1); // Second degrees of freedom
 
+    // P-value calculation: 1 - CDF.F(F_approx, df1, df2)
     let p_value = if f_approx.is_finite() { compute_p_value(f_approx, df1, df2) } else { 1.0 };
 
     Ok(BoxMTest {
@@ -71,6 +93,10 @@ pub fn calculate_box_m_test(
     })
 }
 
+/// Computes group covariance matrices, their log determinants, and group sizes.
+///
+/// This function calculates the covariance matrix for each group with sufficient data,
+/// along with the natural logarithm of the determinant of each covariance matrix.
 fn compute_group_covariances(
     dataset: &AnalyzedDataset,
     variables: &[String]
@@ -83,7 +109,7 @@ fn compute_group_covariances(
     let results: Vec<Option<(DMatrix<f64>, f64, usize)>> = dataset.group_labels
         .par_iter()
         .map(|group| {
-            // Get the data for this group
+            // Check if group has enough data for covariance calculation
             let mut valid_values = true;
             for var in variables {
                 if let Some(values) = dataset.group_data.get(var).and_then(|g| g.get(group)) {
@@ -111,7 +137,7 @@ fn compute_group_covariances(
                 return None;
             }
 
-            // Compute covariance matrix - FIX: Using match instead of ? operator
+            // Compute covariance matrix
             match compute_group_covariance_matrix(dataset, group, variables) {
                 Ok(cov_matrix) => {
                     let log_det = calculate_log_determinant(&cov_matrix);
@@ -134,6 +160,7 @@ fn compute_group_covariances(
     Ok((group_covs, group_log_dets, group_sizes))
 }
 
+/// Computes the covariance matrix for a specific group.
 fn compute_group_covariance_matrix(
     dataset: &AnalyzedDataset,
     group: &str,
@@ -183,6 +210,16 @@ fn compute_group_covariance_matrix(
     Ok(cov_matrix)
 }
 
+/// Computes the pooled covariance matrix across all groups.
+///
+/// The pooled matrix is calculated as:
+/// S = Σ(nᵢ-1)Sᵢ / (n-g)
+///
+/// Where:
+/// - nᵢ is the size of group i
+/// - Sᵢ is the covariance matrix for group i
+/// - n is the total sample size
+/// - g is the number of groups
 fn compute_pooled_covariance_matrix(
     group_covs: &[DMatrix<f64>],
     group_sizes: &[usize]
@@ -204,11 +241,17 @@ fn compute_pooled_covariance_matrix(
     pooled_cov
 }
 
+/// Computes the c1 (rho) correction factor for Box's M test.
+///
+/// ρ = 1 - (2p²+3p-1)/(6(p+1)(g-1))
 fn compute_c1_factor(p: usize, k: usize) -> f64 {
     (2.0 * (p as f64).powi(2) + 3.0 * (p as f64) - 1.0) /
         (6.0 * ((p as f64) + 1.0) * ((k as f64) - 1.0))
 }
 
+/// Computes the c2 (tau) correction factor for Box's M test.
+///
+/// τ = (r-1)(r+2)/(6(g-1)) * [Σ1/(nᵢ-1) - 1/(n-g)]
 fn compute_c2_factor(group_sizes: &[usize], total_sample_size: usize) -> f64 {
     let k = group_sizes.len();
     let mut sum1 = 0.0;
@@ -221,10 +264,16 @@ fn compute_c2_factor(group_sizes: &[usize], total_sample_size: usize) -> f64 {
     (sum1 * ((k as f64) - 1.0)) / 6.0
 }
 
+/// Computes the second degrees of freedom (df2) for F approximation.
+///
+/// f₂ = (f₁+2)/(c2/(1-c1)² + epsilon)
 fn compute_df2(c1: f64, c2: f64, df1: f64) -> f64 {
     (df1 + 2.0) / (c2 / (1.0 - c1).powi(2) + 1e-10)
 }
 
+/// Computes the p-value from the F distribution.
+///
+/// P-value = 1 - F_CDF(f_approx, df1, df2)
 fn compute_p_value(f_approx: f64, df1: f64, df2: f64) -> f64 {
     match statrs::distribution::FisherSnedecor::new(df1, df2) {
         Ok(dist) => dist.sf(f_approx).max(0.0).min(1.0),

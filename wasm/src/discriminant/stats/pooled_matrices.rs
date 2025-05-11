@@ -5,6 +5,19 @@ use rayon::prelude::*;
 use crate::discriminant::models::{ result::PooledMatrices, AnalysisData, DiscriminantConfig };
 use super::core::{ extract_analyzed_dataset, calculate_covariance, AnalyzedDataset };
 
+/// Calculates pooled covariance and correlation matrices across all groups.
+///
+/// The pooled covariance matrix is a weighted average of the individual group
+/// covariance matrices, with weights proportional to the degrees of freedom (n-1)
+/// for each group.
+///
+/// S = Σ(nᵢ-1)Sᵢ / (n-g)
+///
+/// Where:
+/// - Sᵢ is the covariance matrix for group i
+/// - nᵢ is the sample size of group i
+/// - n is the total sample size
+/// - g is the number of groups
 pub fn calculate_pooled_matrices(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -44,6 +57,10 @@ pub fn calculate_pooled_matrices(
     })
 }
 
+/// Calculates the pooled covariance matrix across all groups.
+///
+/// The pooled covariance matrix is a weighted average where each group's
+/// covariance matrix is weighted by its degrees of freedom (n-1).
 fn calculate_pooled_covariance_matrix(
     dataset: &AnalyzedDataset,
     variables: &[String]
@@ -112,6 +129,12 @@ fn calculate_pooled_covariance_matrix(
     pooled_cov
 }
 
+/// Calculates the correlation matrix from a covariance matrix.
+///
+/// For each element (i,j), the correlation is calculated as:
+/// Corr(i,j) = Cov(i,j) / sqrt(Var(i) * Var(j))
+///
+/// Where Var(i) = Cov(i,i) is the variance of variable i.
 fn calculate_correlation_matrix(cov_matrix: &DMatrix<f64>) -> DMatrix<f64> {
     let n = cov_matrix.nrows();
     let mut corr_matrix = DMatrix::zeros(n, n);

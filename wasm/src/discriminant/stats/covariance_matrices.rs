@@ -4,6 +4,19 @@ use rayon::prelude::*;
 use crate::discriminant::models::{ result::CovarianceMatrices, AnalysisData, DiscriminantConfig };
 use super::core::{ extract_analyzed_dataset, calculate_covariance, AnalyzedDataset };
 
+/// Calculates covariance matrices for each group and optionally for the total dataset.
+///
+/// This function computes covariance matrices based on configuration settings:
+/// - Individual group covariance matrices when sg_covariance is enabled
+/// - Total covariance matrix (pooled across all groups) when total_covariance is enabled
+///
+/// The covariance matrix element (i,j) is calculated as:
+/// Cov(i,j) = Σ(Xᵢₖ - X̄ᵢ)(Xⱼₖ - X̄ⱼ) / (n-1)
+///
+/// Where:
+/// - Xᵢₖ is the kth observation of variable i
+/// - X̄ᵢ is the mean of variable i
+/// - n is the sample size
 pub fn calculate_covariance_matrices(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -23,10 +36,11 @@ pub fn calculate_covariance_matrices(
     let mut dataset = extract_analyzed_dataset(data, config)?;
     let independent_variables = &config.main.independent_variables;
 
-    // Add "Total" group if needed
+    // Add "Total" group if needed - this combines data across all groups
     if config.statistics.total_covariance {
         let mut total_group = HashMap::new();
 
+        // Combine variable values across all groups
         for variable in independent_variables {
             let mut all_values = Vec::new();
 
@@ -41,7 +55,7 @@ pub fn calculate_covariance_matrices(
 
         dataset.group_data.insert("Total".to_string(), total_group);
 
-        // Add "Total" to group means as well
+        // Calculate "Total" means for each variable
         let mut total_means = HashMap::new();
         for variable in independent_variables {
             // Create a static empty Vec that can be referenced safely
@@ -94,7 +108,7 @@ pub fn calculate_covariance_matrices(
         })
         .collect();
 
-    // Determine result groups based on selected statistics
+    // Determine which groups to include in the result
     let result_groups = if config.statistics.sg_covariance && config.statistics.total_covariance {
         let mut result = dataset.group_labels.clone();
         result.push("Total".to_string());
@@ -114,6 +128,15 @@ pub fn calculate_covariance_matrices(
     })
 }
 
+/// Calculates the covariance matrix for a specific group.
+///
+/// For each pair of variables, computes the covariance using the formula:
+/// Cov(X,Y) = Σ(Xᵢ - X̄)(Yᵢ - Ȳ) / (n-1)
+///
+/// Where:
+/// - Xᵢ, Yᵢ are individual observations
+/// - X̄, Ȳ are the variable means
+/// - n is the sample size
 fn calculate_group_covariance_matrix(
     dataset: &AnalyzedDataset,
     group: &str,
