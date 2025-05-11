@@ -368,7 +368,7 @@ const HamburgerMenu: React.FC = () => {
                     </div>
                 </SheetContent>
             </Sheet>
-            <div className="text-sm font-semibold text-foreground">Statify</div>
+            <div className="font-sans text-base font-semibold text-foreground">Statify</div>
         </div>
     );
 };

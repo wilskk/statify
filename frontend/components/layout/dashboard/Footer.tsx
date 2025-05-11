@@ -55,9 +55,9 @@ export default function Footer() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [router]);
 
-    const tabStyle = "py-1 px-2.5 flex items-center gap-1.5 text-sm transition-colors";
-    const activeTabStyle = "bg-primary text-primary-foreground";
-    const inactiveTabStyle = "text-muted-foreground hover:bg-accent";
+    const tabStyle = "py-1 px-2.5 flex items-center gap-1.5 text-sm transition-colors rounded-md";
+    const activeTabStyle = "bg-primary text-primary-foreground ring-2 ring-primary/30";
+    const inactiveTabStyle = "text-muted-foreground hover:bg-accent hover:text-accent-foreground";
 
     return (
         <footer className="w-full bg-background border-t border-border py-1 px-3 flex items-center justify-between flex-shrink-0">
@@ -112,16 +112,18 @@ export default function Footer() {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-3">
                     {connectionStatus === 'offline' && (
-                        <span className="flex items-center text-muted-foreground">
-                            <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground mr-1"></span>
-                            Offline mode
+                        <span className="flex items-center text-muted-foreground text-sm">
+                            <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground mr-1.5"></span>
+                            Offline
                         </span>
                     )}
 
                     {!isMobile && (
-                        <span className="text-muted-foreground hidden md:inline">Current dataset: <span className="font-medium">sample_data</span></span>
+                        <span className="text-sm text-foreground/80 hidden md:inline">
+                            Current dataset: <span className="font-semibold text-foreground">sample_data</span>
+                        </span>
                     )}
                 </div>
             </TooltipProvider>

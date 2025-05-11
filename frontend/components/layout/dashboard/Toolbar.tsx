@@ -65,7 +65,7 @@ export default function Toolbar() {
     );
 
     return (
-        <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden">
+        <div className="bg-background px-4 py-1 border-b border-border flex justify-between items-center overflow-hidden shadow-md">
             <div className={`flex ${isMobile ? 'w-full overflow-x-auto' : ''}`}>
                 <div className="flex space-x-2 min-w-max">
                     <ToolGroup tools={fileTools} />

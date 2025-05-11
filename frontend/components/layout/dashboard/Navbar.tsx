@@ -192,7 +192,7 @@ const Navbar: React.FC = () => {
             <MenubarTrigger disabled>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
-        <div className="text-sm font-semibold text-foreground">Statify</div>
+        <div className="font-sans text-lg font-semibold text-foreground">Statify</div>
       </div>
     </nav>
   );
