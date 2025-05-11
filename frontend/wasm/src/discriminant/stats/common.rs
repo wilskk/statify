@@ -380,15 +380,52 @@ pub fn calculate_rank_and_log_det(matrix: &DMatrix<f64>) -> (i32, f64) {
     (rank, log_det)
 }
 
-/// Calculate p-value from F statistic
+/// Calculate p-value from F statistic with enhanced error handling
+///
+/// # Parameters
+/// * `f_value` - The F statistic
+/// * `df1` - Numerator degrees of freedom
+/// * `df2` - Denominator degrees of freedom
+///
+/// # Returns
+/// The p-value (1-tailed)
 pub fn calculate_p_value_from_f(f_value: f64, df1: f64, df2: f64) -> f64 {
-    if f_value <= 0.0 || df1 <= 0.0 || df2 <= 0.0 {
+    // Extensive error checking for numerical stability
+    if f_value.is_nan() {
         return 1.0;
     }
 
+    if f_value <= 0.0 {
+        return 1.0;
+    }
+
+    if df1 <= 0.0 {
+        return 1.0;
+    }
+
+    if df2 <= 0.0 {
+        return 1.0;
+    }
+
+    // Handle extreme F values that might cause numerical issues
+    if f_value > 1000000.0 {
+        return 0.0;
+    }
+
+    // Calculate p-value using the F distribution
     match FisherSnedecor::new(df1, df2) {
-        Ok(dist) => dist.sf(f_value),
-        Err(_) => 1.0,
+        Ok(dist) => {
+            let p_value = dist.sf(f_value);
+
+            // Handle potential NaN results
+            if p_value.is_nan() {
+                1.0
+            } else {
+                // Enforce bounds of p-value (should be between 0 and 1)
+                p_value.max(0.0).min(1.0)
+            }
+        }
+        Err(e) => { 1.0 }
     }
 }
 

@@ -205,6 +205,15 @@ pub struct StepwiseStatistics {
     pub variables_not_in_analysis: HashMap<String, Vec<VariableNotInAnalysis>>,
     #[serde(rename = "pairwise_comparisons")]
     pub pairwise_comparisons: HashMap<String, HashMap<String, Vec<PairwiseComparison>>>,
+    pub note: StepwiseNote,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StepwiseNote {
+    pub max_steps: String,
+    pub min_f_to_enter: String,
+    pub max_f_to_remove: String,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

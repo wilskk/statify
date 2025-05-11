@@ -310,12 +310,14 @@ pub fn calculate_covariance_matrices(
 
     // Initialize collection for all matrices
     let mut matrices = HashMap::new();
-    
+
     // Group degrees of freedom (not used for total covariance calculation)
     let mut group_dfs = 0;
 
     // Calculate covariance matrix for each group in parallel
-    let group_matrices: Vec<(String, HashMap<String, HashMap<String, f64>>, usize)> = dataset.group_labels
+    let group_matrices: Vec<
+        (String, HashMap<String, HashMap<String, f64>>, usize)
+    > = dataset.group_labels
         .par_iter()
         .filter_map(|group| {
             // Check if this group has enough data
@@ -330,7 +332,7 @@ pub fn calculate_covariance_matrices(
 
             // Calculate degrees of freedom for this group
             let df = group_size - 1;
-            
+
             // Create covariance matrix for this group
             let mut group_matrix = HashMap::new();
 
@@ -381,7 +383,7 @@ pub fn calculate_covariance_matrices(
     // This is greater than the pooled df because we're using all the data
     // without separating by groups
     let df = dataset.total_cases - 1;
-    
+
     // Create note for degrees of freedom
     let note_df = format!("a. The total covariance matrix has {} degrees of freedom.", df);
 
