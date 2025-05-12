@@ -26,7 +26,7 @@ use super::core::{
     analyze_variables_not_in_model,
     calculate_overall_wilks_lambda,
     determine_method_type,
-    filter_dataset_excluding,
+    filter_dataset,
     find_best_variable_to_enter,
     find_worst_variable_to_remove,
     generate_pairwise_comparisons,
@@ -562,16 +562,21 @@ fn create_step_data(
     let df3 = (dataset.total_cases - dataset.num_groups) as i32;
 
     let var = variable_entered.clone().or(variable_removed.clone()).unwrap_or_default();
-    let mut other_vars = current_variables.to_owned();
-    if !other_vars.is_empty() {
-        // Buang elemen terakhir
-        other_vars.pop();
+    web_sys::console::log_1(&format!("Variable entered/removed: {:?}", var).into());
+    let mut combined_vars = Vec::new();
+
+    // Only push `var` if it's not empty
+    if !var.is_empty() {
+        combined_vars.push(var.clone());
+        combined_vars.extend(remaining_variables.iter().cloned());
     }
     web_sys::console::log_1(&format!("Cureent vars: {:?}", current_variables).into());
-    web_sys::console::log_1(&format!("Other vars: {:?}", other_vars).into());
+    web_sys::console::log_1(&format!("Other vars: {:?}", combined_vars).into());
+    web_sys::console::log_1(&format!("Remaining vars: {:?}", remaining_variables).into());
 
     // `other_vars` sekarang berisi semua kecuali last
-    let new_dataset = filter_dataset_excluding(dataset, &other_vars);
+    let new_dataset = filter_dataset(&dataset, &combined_vars);
+    web_sys::console::log_1(&format!("dataset: {:?}", dataset).into());
     web_sys::console::log_1(&format!("New dataset: {:?}", new_dataset).into());
     let (f_value, wilks_lambda) = calculate_univariate_f(&var, &new_dataset);
 

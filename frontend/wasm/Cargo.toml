@@ -24,7 +24,10 @@ statrs = "0.18.0"
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 web-sys = { version = "0.3", features = ["console"] }
 
-[profile.dev.build-override]
+[profile.dev]
+opt-level = 0
+
+[profile.release]
 opt-level = 0
 
 [package.metadata.wasm-pack.profile.release]

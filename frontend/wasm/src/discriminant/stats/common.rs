@@ -80,31 +80,31 @@ pub fn extract_analyzed_dataset(
     })
 }
 
-pub fn filter_dataset_excluding(
-    dataset: &AnalyzedDataset,
-    exclude_vars: &[String]
-) -> AnalyzedDataset {
-    web_sys::console::log_1(
-        &format!("Filtering dataset, excluding variables: {:?}", exclude_vars).into()
-    );
-    // 1. Filter group_data: hanya sisakan variable names yang tidak ada di exclude_vars
+pub fn filter_dataset(dataset: &AnalyzedDataset, include_vars: &[String]) -> AnalyzedDataset {
+    // 1. Filter group_data: masukkan variable yang ada include_vars
     let filtered_group_data: HashMap<String, HashMap<String, Vec<f64>>> = dataset.group_data
         .iter()
-        .filter(|(var, _)| !exclude_vars.contains(var))
+        .filter(|(var, _)| include_vars.contains(var))
         .map(|(var, groups)| (var.clone(), groups.clone()))
         .collect();
 
     // 2. Filter group_means dengan kunci yang sama
     let filtered_group_means: HashMap<String, HashMap<String, f64>> = dataset.group_means
         .iter()
-        .filter(|(var, _)| !exclude_vars.contains(var))
-        .map(|(var, means)| (var.clone(), means.clone()))
+        .map(|(group_id, var_map)| {
+            let filtered_vars = var_map
+                .iter()
+                .filter(|(var, _)| include_vars.contains(var))
+                .map(|(var, val)| (var.clone(), *val))
+                .collect();
+            (group_id.clone(), filtered_vars)
+        })
         .collect();
 
     // 3. Filter overall_means
     let filtered_overall_means: HashMap<String, f64> = dataset.overall_means
         .iter()
-        .filter(|(var, _)| !exclude_vars.contains(var))
+        .filter(|(var, _)| include_vars.contains(var))
         .map(|(var, &m)| (var.clone(), m))
         .collect();
 
