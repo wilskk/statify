@@ -1,6 +1,5 @@
 use serde::{ Deserialize, Serialize };
 use std::collections::HashMap;
-use web_sys::console;
 
 use crate::discriminant::{
     models::{
@@ -14,15 +13,20 @@ use crate::discriminant::{
         AnalysisData,
         DiscriminantConfig,
     },
-    stats::core::{ calculate_p_value_from_f, extract_analyzed_dataset, AnalyzedDataset },
+    stats::core::{
+        calculate_p_value_from_f,
+        calculate_univariate_f,
+        extract_analyzed_dataset,
+        AnalyzedDataset,
+    },
 };
 
 use super::core::{
     analyze_variables_in_model,
     analyze_variables_not_in_model,
-    calculate_overall_f_statistic,
     calculate_overall_wilks_lambda,
     determine_method_type,
+    filter_dataset_excluding,
     find_best_variable_to_enter,
     find_worst_variable_to_remove,
     generate_pairwise_comparisons,
@@ -57,30 +61,6 @@ struct StepData {
     pairwise_comparisons: HashMap<String, Vec<PairwiseComparison>>,
 }
 
-/// Log a message to the console with a tag for easier tracing
-fn log_debug(tag: &str, message: &str) {
-    console::log_1(&format!("[STEPWISE][{}] {}", tag, message).into());
-}
-
-/// Log a JSON-stringified object to the console
-fn log_object<T: serde::Serialize>(tag: &str, label: &str, obj: &T) {
-    match serde_json::to_string(obj) {
-        Ok(json) => {
-            let truncated = if json.len() > 1000 {
-                format!("{}... (truncated)", &json[0..1000])
-            } else {
-                json
-            };
-            console::log_1(&format!("[STEPWISE][{}] {}: {}", tag, label, truncated).into());
-        }
-        Err(e) => {
-            console::error_1(
-                &format!("[STEPWISE][{}] Error serializing {}: {}", tag, label, e).into()
-            );
-        }
-    }
-}
-
 /// Calculate statistics for stepwise discriminant analysis
 ///
 /// This function performs stepwise variable selection and calculates
@@ -96,31 +76,18 @@ pub fn calculate_stepwise_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig
 ) -> Result<StepwiseStatistics, String> {
-    log_debug("START", "Beginning stepwise discriminant analysis");
-    log_object("CONFIG", "Analysis configuration", config);
-
     // Check if stepwise analysis is requested
     if !config.main.stepwise {
         let err = "Stepwise analysis not requested".to_string();
-        log_debug("ERROR", &err);
         return Err(err);
     }
 
     // Get variables and extract analyzed dataset
     let variables = &config.main.independent_variables;
-    log_debug("VARIABLES", &format!("Total variables to analyze: {}", variables.len()));
 
-    log_debug("EXTRACT", "Extracting analyzed dataset");
     let dataset = match extract_analyzed_dataset(data, config) {
-        Ok(ds) => {
-            log_debug(
-                "DATASET",
-                &format!("Dataset extracted: {} groups, {} cases", ds.num_groups, ds.total_cases)
-            );
-            ds
-        }
+        Ok(ds) => { ds }
         Err(e) => {
-            log_debug("ERROR", &format!("Failed to extract dataset: {}", e));
             return Err(e);
         }
     };
@@ -130,63 +97,25 @@ pub fn calculate_stepwise_statistics(
             "Not enough valid groups for analysis: found {} groups",
             dataset.num_groups
         );
-        log_debug("ERROR", &err);
         return Err(err);
     }
 
-    // Log selection criteria based on config
-    if config.method.f_value {
-        log_debug(
-            "CRITERIA",
-            &format!(
-                "Using F-value criteria: F-to-enter >= {}, F-to-remove <= {}",
-                config.method.f_entry,
-                config.method.f_removal
-            )
-        );
-    } else if config.method.f_probability {
-        log_debug(
-            "CRITERIA",
-            &format!(
-                "Using probability criteria: p-value <= {}, p-value >= {}",
-                config.method.p_entry,
-                config.method.p_removal
-            )
-        );
-    }
-
     // Perform stepwise analysis
-    log_debug("ANALYSIS", "Starting stepwise variable selection");
     let steps_data = if config.method.f_value || config.method.f_probability {
         match perform_stepwise_analysis(&dataset, variables, config) {
-            Ok(data) => {
-                log_debug(
-                    "COMPLETE",
-                    &format!("Stepwise analysis completed with {} steps", data.len())
-                );
-                data
-            }
+            Ok(data) => { data }
             Err(e) => {
-                log_debug("ERROR", &format!("Error in stepwise analysis: {}", e));
                 return Err(e);
             }
         }
     } else {
-        log_debug("INITIAL", "No variable selection method specified, using initial step only");
         vec![create_initial_step(&dataset, variables, config)]
     };
 
     // Convert step data to output format
-    log_debug("OUTPUT", "Converting step data to output format");
     match convert_steps_to_output(steps_data, config) {
-        Ok(result) => {
-            log_debug("SUCCESS", "Stepwise discriminant analysis completed successfully");
-            Ok(result)
-        }
-        Err(e) => {
-            log_debug("ERROR", &format!("Error converting step data: {}", e));
-            Err(e)
-        }
+        Ok(result) => { Ok(result) }
+        Err(e) => { Err(e) }
     }
 }
 
@@ -212,59 +141,25 @@ fn perform_stepwise_analysis(
     let mut remaining_variables: Vec<String> = variables.clone();
     let mut steps_data: Vec<StepData> = Vec::new();
 
-    log_debug("STEPWISE", "Initializing stepwise procedure");
-    log_debug(
-        "REMAINING",
-        &format!("Starting with {} variables to consider", remaining_variables.len())
-    );
-
     // Add initial step
     let initial_step = create_initial_step(dataset, variables, config);
     steps_data.push(initial_step.clone());
-    log_object("INITIAL", "Initial step data", &initial_step);
 
     // Determine which method to use
     let method_type = determine_method_type(config);
-    log_debug("METHOD", &format!("Using method: {:?}", method_type));
 
     // Maximum number of steps (at most all variables × 2)
     let max_steps = variables.len() * 2; // Account for both additions and removals
-    log_debug("MAX_STEPS", &format!("Maximum number of steps: {}", max_steps));
 
     // Perform stepwise selection
     let mut step = 0;
     while step < max_steps {
-        log_debug("STEP", &format!("Processing step {}", step + 1));
-
         // Safety check - ensure we don't get stuck in an infinite loop
         if current_variables.len() > variables.len() {
-            log_debug(
-                "WARNING",
-                &format!(
-                    "Safety break: current variables ({}) exceeds total variables ({})",
-                    current_variables.len(),
-                    variables.len()
-                )
-            );
             break;
         }
 
-        // Log current state
-        log_debug(
-            "STATE",
-            &format!(
-                "Current variables: {}, Remaining variables: {}",
-                current_variables.len(),
-                remaining_variables.len()
-            )
-        );
-
-        if !current_variables.is_empty() {
-            log_debug("CURRENT", &format!("Current variables: {:?}", current_variables));
-        }
-
         // Process one step of variable selection
-        log_debug("SELECTION", "Finding best variable to enter");
         let step_result = match
             process_selection_step(
                 dataset,
@@ -277,44 +172,25 @@ fn perform_stepwise_analysis(
         {
             Ok(result) => result,
             Err(e) => {
-                log_debug("ERROR", &format!("Error in selection step: {}", e));
                 return Err(e);
             }
         };
 
-        log_debug("RESULT", &format!("Step result: changes made = {}", step_result.changes_made));
-
         // If no changes made, break
         if !step_result.changes_made {
-            log_debug("COMPLETE", "No changes made in this step, stopping");
             break;
         }
 
         // Add step data
         steps_data.extend(step_result.step_data);
 
-        // Log current model
-        if !current_variables.is_empty() {
-            log_debug("MODEL", &format!("Current model variables: {:?}", current_variables));
-        }
-
         // If all variables are in the model, break
         if remaining_variables.is_empty() {
-            log_debug("COMPLETE", "All variables are in the model, stopping");
             break;
         }
 
         step += 1;
     }
-
-    log_debug(
-        "DONE",
-        &format!(
-            "Stepwise procedure completed with {} steps, {} variables in model",
-            steps_data.len(),
-            current_variables.len()
-        )
-    );
 
     Ok(steps_data)
 }
@@ -353,7 +229,6 @@ fn process_selection_step(
     let mut changes_made = false;
 
     // Find best variable to enter
-    log_debug("ENTER", "Looking for best variable to enter");
     let (best_var_to_enter, best_stats) = find_best_variable_to_enter(
         remaining_variables,
         dataset,
@@ -361,20 +236,6 @@ fn process_selection_step(
         method_type,
         config
     );
-
-    if let Some(var_name) = &best_var_to_enter {
-        log_debug(
-            "BEST",
-            &format!(
-                "Best variable to enter: {} (F={:.4}, Lambda={:.4})",
-                var_name,
-                best_stats.f_to_enter,
-                best_stats.wilks_lambda
-            )
-        );
-    } else {
-        log_debug("BEST", "No eligible variable found to enter");
-    }
 
     // Check if we should enter this variable
     let should_enter = should_enter_variable(
@@ -386,11 +247,8 @@ fn process_selection_step(
         config
     );
 
-    log_debug("DECISION", &format!("Enter variable? {}", should_enter));
-
     // If no variable meets entry criteria, return
     if !should_enter || best_var_to_enter.is_none() {
-        log_debug("SKIP", "No variable meets entry criteria");
         return Ok(StepResult {
             changes_made: false,
             step_data: steps_data,
@@ -401,7 +259,6 @@ fn process_selection_step(
     if let Some(var_name) = best_var_to_enter {
         // Only add if not already in the model (safeguard against duplicates)
         if !current_variables.contains(&var_name) {
-            log_debug("ADD", &format!("Adding variable {} to the model", var_name));
             current_variables.push(var_name.clone());
             remaining_variables.retain(|v| v != &var_name);
             changes_made = true;
@@ -418,21 +275,10 @@ fn process_selection_step(
                 config
             );
 
-            log_debug(
-                "STATS",
-                &format!(
-                    "After addition: Wilks' Lambda = {:.4}, F = {:.4}, p = {:.4}",
-                    step_data.wilks_lambda,
-                    step_data.exact_f,
-                    step_data.significance
-                )
-            );
-
             steps_data.push(step_data);
 
             // Check for variable removal if needed
             if step > 0 && current_variables.len() > 1 {
-                log_debug("REMOVAL", "Checking if any variables should be removed");
                 let removal_result = match
                     process_variable_removal(
                         dataset,
@@ -445,26 +291,14 @@ fn process_selection_step(
                 {
                     Ok(result) => result,
                     Err(e) => {
-                        log_debug("ERROR", &format!("Error in removal step: {}", e));
                         return Err(e);
                     }
                 };
 
                 if removal_result.changes_made {
-                    log_debug(
-                        "REMOVED",
-                        &format!("Removed {} variables", removal_result.step_data.len())
-                    );
                     steps_data.extend(removal_result.step_data);
-                } else {
-                    log_debug("REMOVED", "No variables removed");
                 }
             }
-        } else {
-            log_debug(
-                "DUPLICATE",
-                &format!("Variable {} is already in the model, skipping", var_name)
-            );
         }
     }
 
@@ -503,14 +337,8 @@ fn process_variable_removal(
     let max_removal_attempts = current_variables.len(); // Limit removal attempts to prevent infinite loop
     let mut step_complete = false;
 
-    log_debug(
-        "REMOVAL_START",
-        &format!("Starting removal process with {} variables in model", current_variables.len())
-    );
-
     while !step_complete && removal_attempts < max_removal_attempts {
         removal_attempts += 1;
-        log_debug("REMOVAL_ATTEMPT", &format!("Removal attempt {}", removal_attempts));
 
         // Find worst variable to remove
         let (worst_var_to_remove, worst_stats) = find_worst_variable_to_remove(
@@ -519,20 +347,6 @@ fn process_variable_removal(
             method_type,
             config
         );
-
-        if let Some(var_name) = &worst_var_to_remove {
-            log_debug(
-                "WORST",
-                &format!(
-                    "Worst variable: {} (F={:.4}, Lambda={:.4})",
-                    var_name,
-                    worst_stats.f_to_remove,
-                    worst_stats.wilks_lambda
-                )
-            );
-        } else {
-            log_debug("WORST", "No eligible variable found to remove");
-        }
 
         // Check if we should remove this variable
         let should_remove = should_remove_variable(
@@ -544,11 +358,8 @@ fn process_variable_removal(
             config
         );
 
-        log_debug("DECISION", &format!("Remove variable? {}", should_remove));
-
         // If no variable meets removal criteria, break
         if !should_remove || worst_var_to_remove.is_none() {
-            log_debug("NO_REMOVAL", "No variable meets removal criteria");
             step_complete = true;
             continue;
         }
@@ -557,7 +368,6 @@ fn process_variable_removal(
         if let Some(var_name) = worst_var_to_remove {
             // Only remove if actually in the model
             if current_variables.contains(&var_name) {
-                log_debug("REMOVE", &format!("Removing variable {} from model", var_name));
                 current_variables.retain(|v| v != &var_name);
                 if !remaining_variables.contains(&var_name) {
                     remaining_variables.push(var_name.clone());
@@ -576,30 +386,10 @@ fn process_variable_removal(
                     config
                 );
 
-                log_debug(
-                    "STATS",
-                    &format!(
-                        "After removal: Wilks' Lambda = {:.4}, F = {:.4}, p = {:.4}",
-                        step_data.wilks_lambda,
-                        step_data.exact_f,
-                        step_data.significance
-                    )
-                );
-
                 steps_data.push(step_data);
-            } else {
-                log_debug(
-                    "NOT_FOUND",
-                    &format!("Variable {} not found in model, cannot remove", var_name)
-                );
             }
         }
     }
-
-    log_debug(
-        "REMOVAL_COMPLETE",
-        &format!("Removal process completed: {} variables removed", steps_data.len())
-    );
 
     Ok(StepResult {
         changes_made,
@@ -633,30 +423,15 @@ fn should_enter_variable(
 
     let result = if config.method.f_value {
         // Use direct F value comparison
-        let decision = stats.f_to_enter >= config.method.f_entry;
-        log_debug(
-            "ENTRY_F",
-            &format!(
-                "F-value criterion: {} >= {} ? {}",
-                stats.f_to_enter,
-                config.method.f_entry,
-                decision
-            )
-        );
-        decision
+        stats.f_to_enter >= config.method.f_entry
     } else if config.method.f_probability {
         // Calculate p-value and compare with probability threshold
         let p_value = calculate_p_value_from_f(
             stats.f_to_enter,
             (num_groups - 1) as f64,
-            (total_cases - num_current_vars - num_groups) as f64
+            (total_cases - num_groups) as f64
         );
-        let decision = p_value <= config.method.p_entry;
-        log_debug(
-            "ENTRY_P",
-            &format!("P-value criterion: {} <= {} ? {}", p_value, config.method.p_entry, decision)
-        );
-        decision
+        p_value <= config.method.p_entry
     } else {
         false
     };
@@ -691,31 +466,16 @@ fn should_remove_variable(
     let result = if config.method.f_value {
         // Use direct F value comparison for removal
         // For removal, the F value must be LESS THAN OR EQUAL TO the threshold
-        let decision = stats.f_to_remove <= config.method.f_removal;
-        log_debug(
-            "REMOVAL_F",
-            &format!(
-                "F-value criterion: {} <= {} ? {}",
-                stats.f_to_remove,
-                config.method.f_removal,
-                decision
-            )
-        );
-        decision
+        stats.f_to_remove <= config.method.f_removal
     } else if config.method.f_probability {
         // Calculate p-value and compare with probability threshold
         // For removal, the p-value must be GREATER THAN OR EQUAL TO the threshold
         let p_value = calculate_p_value_from_f(
             stats.f_to_remove,
             (num_groups - 1) as f64,
-            (total_cases - num_current_vars + 1 - num_groups) as f64
+            (total_cases - num_groups) as f64
         );
-        let decision = p_value >= config.method.p_removal;
-        log_debug(
-            "REMOVAL_P",
-            &format!("P-value criterion: {} >= {} ? {}", p_value, config.method.p_removal, decision)
-        );
-        decision
+        p_value >= config.method.p_removal
     } else {
         false
     };
@@ -737,14 +497,7 @@ fn create_initial_step(
     variables: &[String],
     config: &DiscriminantConfig
 ) -> StepData {
-    log_debug("INITIAL_STEP", "Creating initial step data (no variables in model)");
-
     let initial_variables_not_in = analyze_variables_not_in_model(variables, dataset, &[], config);
-
-    log_debug(
-        "VARIABLES_NOT_IN",
-        &format!("Found {} variables not in model", initial_variables_not_in.len())
-    );
 
     StepData {
         variable_entered: None,
@@ -752,11 +505,11 @@ fn create_initial_step(
         wilks_lambda: 1.0, // No discrimination initially
         f_value: 0.0,
         df1: 0,
-        df2: 1,
-        df3: (dataset.total_cases - dataset.num_groups) as i32,
+        df2: 1, // df2 selalu 1
+        df3: (dataset.total_cases - dataset.num_groups) as i32, // df3 adalah total_cases - num_groups
         exact_f: 0.0,
         exact_df1: 0,
-        exact_df2: (dataset.total_cases - dataset.num_groups) as i32,
+        exact_df2: (dataset.total_cases - dataset.num_groups) as i32, // Sesuaikan dengan df3
         significance: 1.0,
         variables_in_analysis: Vec::new(),
         variables_not_in_analysis: initial_variables_not_in,
@@ -788,25 +541,7 @@ fn create_step_data(
     method_type: MethodType,
     config: &DiscriminantConfig
 ) -> StepData {
-    log_debug(
-        "STEP_DATA",
-        &format!(
-            "Creating step data for step {}, variables in model: {}",
-            step,
-            current_variables.len()
-        )
-    );
-
-    if let Some(var) = &variable_entered {
-        log_debug("ENTERED", &format!("Variable entered: {}", var));
-    }
-
-    if let Some(var) = &variable_removed {
-        log_debug("REMOVED", &format!("Variable removed: {}", var));
-    }
-
     // Analyze variables in and out of the model
-    log_debug("ANALYZE_IN", "Analyzing variables in the model");
     let vars_in_analysis = analyze_variables_in_model(
         current_variables,
         dataset,
@@ -814,7 +549,6 @@ fn create_step_data(
         config
     );
 
-    log_debug("ANALYZE_OUT", "Analyzing variables not in the model");
     let vars_not_in_analysis = analyze_variables_not_in_model(
         remaining_variables,
         dataset,
@@ -822,68 +556,51 @@ fn create_step_data(
         config
     );
 
-    // Calculate overall statistics
-    log_debug("WILKS", "Calculating overall Wilks' Lambda");
-    let wilks_lambda = calculate_overall_wilks_lambda(dataset, current_variables);
+    // Hitung derajat kebebasan
+    let df1 = current_variables.len() as i32; // Jumlah variabel dalam model
+    let df2 = 1; // Selalu 1 berdasarkan output di gambar
+    let df3 = (dataset.total_cases - dataset.num_groups) as i32;
 
-    // Calculate F statistic
-    log_debug("F_STAT", "Calculating overall F statistic");
-    let (f_value, df1, df2, df3) = calculate_overall_f_statistic(
-        wilks_lambda,
-        current_variables.len(),
-        dataset.num_groups,
-        dataset.total_cases
-    );
+    let var = variable_entered.clone().or(variable_removed.clone()).unwrap_or_default();
+    let mut other_vars = current_variables.to_owned();
+    if !other_vars.is_empty() {
+        // Buang elemen terakhir
+        other_vars.pop();
+    }
+    web_sys::console::log_1(&format!("Cureent vars: {:?}", current_variables).into());
+    web_sys::console::log_1(&format!("Other vars: {:?}", other_vars).into());
 
-    // Calculate exact F for display
+    // `other_vars` sekarang berisi semua kecuali last
+    let new_dataset = filter_dataset_excluding(dataset, &other_vars);
+    web_sys::console::log_1(&format!("New dataset: {:?}", new_dataset).into());
+    let (f_value, wilks_lambda) = calculate_univariate_f(&var, &new_dataset);
+
+    // Untuk exact F, df1 adalah jumlah variabel dalam model
     let exact_f = f_value;
     let exact_df1 = df1;
+
+    // exact_df2 berkurang seiring bertambahnya variabel (df3 - df1 + 1)
     let exact_df2 = df3 - df1 + 1;
 
-    // Calculate significance with error handling
-    log_debug("SIGNIFICANCE", "Calculating significance");
-    let significance = if exact_f.is_nan() || exact_f <= 0.0 || exact_df1 <= 0 || exact_df2 <= 0 {
-        log_debug(
-            "WARNING",
-            &format!(
-                "Invalid values for p-value calculation: F={}, df1={}, df2={}. Using p=1.0",
-                exact_f,
-                exact_df1,
-                exact_df2
-            )
-        );
-        1.0 // Default to non-significant when calculation fails
-    } else {
-        let p_value = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
-
-        // Handle NaN p-values
-        if p_value.is_nan() {
-            log_debug("WARNING", "p-value calculation returned NaN. Using p=1.0");
-            1.0
-        } else {
-            p_value
-        }
-    };
-
-    log_debug(
-        "OVERALL",
-        &format!(
-            "Step statistics: Lambda={:.4}, F={:.4} (df={},{}), p={:.4}",
-            wilks_lambda,
-            exact_f,
-            exact_df1,
-            exact_df2,
-            significance
-        )
-    );
+    // Hitung signifikansi menggunakan calculate_p_value_from_f
+    let significance = calculate_p_value_from_f(exact_f, exact_df1 as f64, exact_df2 as f64);
 
     // Generate pairwise comparisons if requested
     let pairwise_comparisons = if config.method.pairwise {
-        log_debug("PAIRWISE", "Generating pairwise comparisons");
         generate_pairwise_comparisons(dataset, current_variables, step)
     } else {
         HashMap::new()
     };
+
+    web_sys::console::log_1(&format!("Step {}: Wilks' Lambda: {}", step, wilks_lambda).into());
+    web_sys::console::log_1(&format!("Step {}: F-value: {}", step, f_value).into());
+    web_sys::console::log_1(&format!("Step {}: Significance: {}", step, significance).into());
+    web_sys::console::log_1(&format!("Step {}: Exact F: {}", step, exact_f).into());
+    web_sys::console::log_1(&format!("Step {}: Exact df1: {}", step, exact_df1).into());
+    web_sys::console::log_1(&format!("Step {}: Exact df2: {}", step, exact_df2).into());
+    web_sys::console::log_1(&format!("Step {}: df3: {}", step, df3).into());
+    web_sys::console::log_1(&format!("Step {}: df1: {}", step, df1).into());
+    web_sys::console::log_1(&format!("Step {}: df2: {}", step, df2).into());
 
     StepData {
         variable_entered,
@@ -915,8 +632,6 @@ fn convert_steps_to_output(
     steps_data: Vec<StepData>,
     config: &DiscriminantConfig
 ) -> Result<StepwiseStatistics, String> {
-    log_debug("CONVERT", &format!("Converting {} steps to output format", steps_data.len()));
-
     let mut result = StepwiseStatistics {
         variables_entered: Vec::new(),
         variables_removed: Vec::new(),
@@ -973,7 +688,6 @@ fn convert_steps_to_output(
         }
     }
 
-    log_debug("OUTPUT", "Output conversion complete");
     Ok(result)
 }
 
@@ -985,8 +699,6 @@ fn convert_steps_to_output(
 /// # Returns
 /// A StepwiseNote object with method details
 fn create_stepwise_note(config: &DiscriminantConfig) -> StepwiseNote {
-    log_debug("NOTE", "Creating stepwise note");
-
     let max_steps = config.main.independent_variables.len() * 2;
 
     // Choose the appropriate message based on whether we're using F-values or p-values
@@ -1006,9 +718,6 @@ fn create_stepwise_note(config: &DiscriminantConfig) -> StepwiseNote {
             format!("c. Maximum partial F to remove is {}.", config.method.f_removal),
         )
     };
-
-    log_debug("NOTE_ENTRY", &entry_msg);
-    log_debug("NOTE_REMOVAL", &removal_msg);
 
     StepwiseNote {
         max_steps: format!("a. Maximum number of steps is {}.", max_steps),
