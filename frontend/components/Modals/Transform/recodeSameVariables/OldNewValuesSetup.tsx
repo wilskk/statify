@@ -430,7 +430,7 @@ const OldNewValuesSetup: FC<OldNewValuesSetupProps> = ({
 
                 {/* Old -> New Rules Display (Column 3) */}
                 <div className="border rounded-md p-3 bg-[#FAFAFA]">
-                    <h3 className="font-semibold mb-2">Old -> New</h3>
+                    <h3 className="font-semibold mb-2">Old  New</h3>
                     <div className="h-[300px]">
                         <ScrollArea className="h-full pr-2">
                             {recodeRules.length === 0 ? (
