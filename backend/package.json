@@ -1,0 +1,21 @@
+{
+  "name": "statify-backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch server/index.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "formidable": "^3.5.2",
+    "sav-writer": "^1.0.0",
+    "sav-reader": "^2.0.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.1"
+  }
+} 

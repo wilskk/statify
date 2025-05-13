@@ -1,0 +1,31 @@
+/* components/VariableTable.css atau file CSS global */
+.handsontable th.grayed-header {
+    color: #999999;
+    background-color: #f8f9fa;
+    font-weight: normal;
+}
+
+.handsontable th {
+    /* Styling dasar TH jika diperlukan */
+}
+
+/* Add these styles for text truncation in table cells */
+.handsontable td {
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden; /* Hide overflowing text */
+    text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
+}
+
+/* Optional: Apply specifically to certain columns if needed */
+/*
+.handsontable td.htDimmed {
+    color: #777;
+}
+
+.handsontable .col-values,
+.handsontable .col-missing {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+*/
