@@ -383,6 +383,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.mcNemar}
                             onCheckedChange={(checked) => setTestType({ ...testType, mcNemar: !!checked })}
                             className="mr-2 border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="mcnemar-option">McNemar</Label>
                     </div>
@@ -392,6 +393,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.marginalHomogeneity}
                             onCheckedChange={(checked) => setTestType({ ...testType, marginalHomogeneity: !!checked })}
                             className="mr-2 border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="marginal-homogeneity-option">Marginal Homogeneity</Label>
                     </div>

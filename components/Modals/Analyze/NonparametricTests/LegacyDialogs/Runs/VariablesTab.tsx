@@ -208,7 +208,11 @@ const VariablesTab: FC<VariablesTabProps> = (
                             disabled={cutPoint.custom === false}
                             value={customValue}
                             onChange={(e) => setCustomValue(Number(e.target.value))}
-                            className="border rounded ml-2 w-16 px-2"
+                            className={`border rounded ml-2 w-16 px-2 ${
+                                cutPoint.custom === false 
+                                    ? 'text-[#888888]' 
+                                    : ''
+                            }`}
                         />
                     </div>
                 </div>

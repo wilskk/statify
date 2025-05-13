@@ -308,6 +308,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.median}
                             onCheckedChange={(checked) => setTestType({ ...testType, median: !!checked })}
                             className="border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="median" className="text-sm">Median</Label>
                     </div>
@@ -317,6 +318,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             checked={testType.jonckheereTerpstra}
                             onCheckedChange={(checked) => setTestType({ ...testType, jonckheereTerpstra: !!checked })}
                             className="border-[#CCCCCC]"
+                            disabled
                         />
                         <Label htmlFor="jonckheere-terpstra" className="text-sm">Jonckheere-Terpstra</Label>
                     </div>
