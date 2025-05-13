@@ -16,6 +16,7 @@ import { HotTable } from "@handsontable/react";
 import { FileIcon, InfoIcon, ExternalLinkIcon, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReadExcelProps {
     onClose: () => void;
@@ -310,7 +311,16 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
                         <div className="flex items-center space-x-2">
                             <Checkbox id="ignoreHiddenExcel" checked={ignoreHidden} onCheckedChange={(checked) => setIgnoreHidden(Boolean(checked))} />
                             <Label htmlFor="ignoreHiddenExcel" className="text-sm font-medium text-popover-foreground">Ignore hidden rows and columns</Label>
-                            <InfoIcon size={14} className="text-muted-foreground cursor-help" title="This option is currently not implemented." />
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <InfoIcon size={14} className="text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>This option is currently not implemented.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     </div>
                 </div>

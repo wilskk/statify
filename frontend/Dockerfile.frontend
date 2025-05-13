@@ -1,54 +1,60 @@
 FROM node:18-alpine AS builder
 
-WORKDIR /app
-
-# Install dependencies using npm ci based on root lockfile
-COPY package.json package-lock.json* ./
-# Install all workspace dependencies including dev dependencies needed for build
-RUN npm ci
+WORKDIR /app/frontend
 
 # Declare build arguments
 ARG NEXT_PUBLIC_BACKEND_URL
 
 # Set environment variables from build arguments
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+ENV NODE_ENV=development
 
-# --- Frontend Build Stage ---
-# Copy frontend specific files
-COPY frontend/package.json frontend/package-lock.json* ./frontend/
-COPY frontend/ ./frontend/
-
-# Change WORKDIR to frontend context
-WORKDIR /app/frontend
-
-# Ensure all frontend dependencies are available locally after root install
+# Copy frontend package.json dan install dependencies
+COPY package.json package-lock.json* ./
 RUN npm install
 
-# Build the Next.js application using npx
-RUN npx next build
+# Copy frontend code
+COPY ./ ./
 
-# Change WORKDIR back to root before production stage
-WORKDIR /app
+# Tambahkan ENV placeholder untuk memastikan Next.js mengenali env
+RUN touch .env.production
+RUN echo "NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL" >> .env.production
+
+# Build Next.js application
+RUN npm run build
 
 # --- Production stage ---
-FROM node:18-alpine
+FROM node:18-alpine AS production
 
-WORKDIR /app
+WORKDIR /app/frontend
 
-# Copy root dependency files again for production install
+# Set Node environment for optimal performance
+ENV NODE_ENV=production
+
+# Pass env variables to runtime
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+
+# Copy package files
 COPY package.json package-lock.json* ./
 
-# Install only production dependencies for all workspaces
-RUN npm install --omit=dev
+# Install ALL dependencies untuk memastikan CSS plugins tersedia
+RUN NODE_ENV=development npm install --include=dev
 
-# Copy production necessary files from frontend
-COPY frontend/package.json frontend/next.config.js ./frontend/
+# Copy next.config.js dan other necessary files
+COPY next.config.js ./
+COPY postcss.config.js ./
+COPY tailwind.config.ts ./
 
-# Copy build artifacts from builder stage
-COPY --from=builder /app/frontend/.next ./frontend/.next
-COPY --from=builder /app/frontend/public ./frontend/public
+# Copy build artifacts dari builder stage
+COPY --from=builder /app/frontend/.next ./.next
+COPY --from=builder /app/frontend/public ./public
+COPY --from=builder /app/frontend/.env.production ./.env.production
+# Ensure WASM files are copied if they exist
+RUN mkdir -p ./wasm
+COPY --from=builder /app/frontend/wasm/ ./wasm/
 
 EXPOSE 3001
 
-# Run Next.js using the start script from frontend/package.json
-CMD ["npm", "run", "start", "--prefix", "frontend"]
+# Run Next.js
+CMD ["npm", "run", "start"]

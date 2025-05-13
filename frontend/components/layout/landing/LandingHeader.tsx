@@ -47,13 +47,14 @@ export default function LandingHeader() {
                         <NavigationMenuList>
                             {navItems.map((item) => (
                                 <NavigationMenuItem key={item.name}>
-                                    <Link href={item.href} legacyBehavior passHref>
-                                        <NavigationMenuLink
-                                            className={`px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200 rounded-md`}
+                                    <NavigationMenuLink asChild>
+                                        <Link 
+                                            href={item.href}
+                                            className="px-4 py-2 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200 rounded-md"
                                         >
                                             {item.name}
-                                        </NavigationMenuLink>
-                                    </Link>
+                                        </Link>
+                                    </NavigationMenuLink>
                                 </NavigationMenuItem>
                             ))}
                         </NavigationMenuList>

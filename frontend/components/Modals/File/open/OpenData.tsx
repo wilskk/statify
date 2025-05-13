@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, X, AlertCircle } from "lucide-react";
 import { spssSecondsToDateString } from "@/lib/spssDateConverter";
+import { uploadSavFile } from "@/services/api";
 
 interface OpenDataProps {
     onClose: () => void;
@@ -73,9 +74,6 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
 
     const handleSubmit = async () => {
         if (file) {
-            const formData = new FormData();
-            formData.append("file", file);
-
             setLoading(true);
             setError(null);
 
@@ -83,18 +81,12 @@ const OpenData: FC<OpenDataProps> = ({ onClose }) => {
                 await resetData();
                 await resetVariables();
 
-                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api';
-                const response = await fetch(`${backendUrl}/sav/upload`, {
-                    method: "POST",
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => null);
-                    throw new Error(errorData?.message || "Failed to process file on backend");
-                }
-
-                const result = await response.json();
+                // Create FormData dengan file
+                const formData = new FormData();
+                formData.append("file", file);
+                
+                // Gunakan service dengan FormData
+                const result = await uploadSavFile(formData);
 
                 const metaHeader = result.meta?.header;
                 const sysvars = result.meta?.sysvars;

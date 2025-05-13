@@ -311,7 +311,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         } else {
             console.warn("Could not determine valid target list for double click.");
         }
-    }, [targetLists, onMoveVariable, allLists, variableIdKey]); // Added variableIdKey dependency
+    }, [targetLists, onMoveVariable, allLists]);
 
     // --- Arrow Button Handlers ---
     const handleArrowButtonClick = useCallback((targetListId: string) => {

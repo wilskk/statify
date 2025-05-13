@@ -224,7 +224,7 @@ const ExportCSV: FC<ExportCSVProps> = ({ onClose }) => {
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Always wrap text values in double quotes (""). If unchecked, quotes are only added if necessary (e.g., value contains delimiter or quotes).</p>
+                                        <p>Always wrap text values in double quotes (&quot;&quot;). If unchecked, quotes are only added if necessary (e.g., value contains delimiter or quotes).</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </Label>
