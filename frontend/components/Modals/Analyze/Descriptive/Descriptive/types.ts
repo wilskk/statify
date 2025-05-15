@@ -37,19 +37,37 @@ export interface FetchedData {
 }
 
 // ---------------------------------
+// Z-Score Data Types
+// ---------------------------------
+export interface ZScoreVariableInfo {
+  name: string;
+  label: string;
+  type: "NUMERIC"; // Z-scores always numeric
+  width: number;
+  decimals: number;
+  measure: "scale"; // Z-scores always scale measure
+}
+
+export interface ZScoreData {
+  [variableName: string]: {
+    scores: (number | string)[];
+    variableInfo: ZScoreVariableInfo;
+  };
+}
+
+// ---------------------------------
 // Worker Types
 // ---------------------------------
 export interface DescriptiveWorkerResult {
   success: boolean;
   statistics?: DescriptiveStatistics;
+  zScoreData?: ZScoreData | null;
   error?: string;
 }
 
 export interface DescriptiveStatistics {
   title: string;
-  output_data: { 
-    tables: Array<DescriptiveStatisticsTable> 
-  };
+  output_data: any; // Mengubah tipe ini agar lebih fleksibel untuk perubahan format
   components: string;
   description: string;
 }
@@ -144,6 +162,7 @@ export interface DescriptivesAnalysisProps {
   selectedVariables: Variable[];
   displayStatistics: DescriptiveStatisticsOptions;
   saveStandardized: boolean;
+  displayOrder?: DisplayOrderType;
   onClose: () => void;
 }
 

@@ -59,6 +59,7 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
         selectedVariables,
         displayStatistics,
         saveStandardized,
+        displayOrder,
         onClose
     });
 
