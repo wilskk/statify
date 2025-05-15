@@ -1,23 +1,19 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
-import type { Variable } from '@/types/Variable';
-import { DescriptiveStatisticsOptions } from './useStatisticsSettings';
+import { 
+    DescriptivesAnalysisProps, 
+    DescriptivesAnalysisResult,
+    FetchedData
+} from '../types';
 import { useDataFetching } from './useDataFetching';
 import { useDescriptivesWorker } from './useDescriptivesWorker';
-
-interface DescriptivesAnalysisHookParams {
-    selectedVariables: Variable[];
-    displayStatistics: DescriptiveStatisticsOptions;
-    saveStandardized: boolean; // Keep for potential future use
-    onClose: () => void;
-}
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,
     displayStatistics,
     saveStandardized,
     onClose,
-}: DescriptivesAnalysisHookParams) => {
+}: DescriptivesAnalysisProps): DescriptivesAnalysisResult => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     

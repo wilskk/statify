@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Variable } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { 
+  VariableSelectionProps, 
+  VariableSelectionResult, 
+  HighlightedVariableInfo 
+} from '../types';
 
-interface UseVariableSelectionProps {
-  initialVariables?: Variable[];
-}
-
-export const useVariableSelection = ({ initialVariables = [] }: UseVariableSelectionProps = {}) => {
+export const useVariableSelection = ({
+  initialVariables = []
+}: VariableSelectionProps = {}): VariableSelectionResult => {
   const { variables } = useVariableStore();
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-  const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
+  const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
 
   useEffect(() => {
     setAvailableVariables(variables.filter(v => v.name !== ""));

@@ -2,19 +2,10 @@ import { useState, useCallback } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import type { Variable, VariableData } from '@/types/Variable';
+import type { Variable } from '@/types/Variable';
+import { DataFetchingResult, FetchedData } from '../types';
 
-interface UseFetchDataResult {
-  isLoading: boolean;
-  error: string | null;
-  fetchData: (variables: Variable[]) => Promise<{
-    variableData: VariableData[] | null;
-    weightVariableData: (string | number)[] | null;
-  }>;
-  clearError: () => void;
-}
-
-export const useDataFetching = (): UseFetchDataResult => {
+export const useDataFetching = (): DataFetchingResult => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +13,7 @@ export const useDataFetching = (): UseFetchDataResult => {
     setError(null);
   }, []);
 
-  const fetchData = useCallback(async (variables: Variable[]) => {
+  const fetchData = useCallback(async (variables: Variable[]): Promise<FetchedData> => {
     if (variables.length === 0) {
       setError("Please select at least one variable.");
       return { variableData: null, weightVariableData: null };
@@ -36,7 +27,7 @@ export const useDataFetching = (): UseFetchDataResult => {
       const variableDataPromises = variables.map(varDef =>
         useDataStore.getState().getVariableData(varDef)
       );
-      const fetchedVariableData: VariableData[] = await Promise.all(variableDataPromises);
+      const fetchedVariableData = await Promise.all(variableDataPromises);
 
       // Check for weight variable
       const weightVariableName = useMetaStore.getState().meta.weight;

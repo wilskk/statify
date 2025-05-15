@@ -11,18 +11,20 @@ import {
     GripVertical,
     InfoIcon
 } from "lucide-react";
+import { HighlightedVariableInfo } from "./types";
+import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
 interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    highlightedVariable: { columnIndex: number, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ columnIndex: number, source: 'available' | 'selected' } | null>>;
+    highlightedVariable: HighlightedVariableInfo | null;
+    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
     moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
     moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
     reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
     saveStandardized: boolean;
-    setSaveStandardized: React.Dispatch<React.SetStateAction<boolean>>;
+    setSaveStandardized: Dispatch<SetStateAction<boolean>>;
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({

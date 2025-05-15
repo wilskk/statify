@@ -1,32 +1,16 @@
 import { useState } from 'react';
-
-export interface DescriptiveStatisticsOptions {
-  mean: boolean;
-  stdDev: boolean;
-  minimum: boolean;
-  maximum: boolean;
-  variance: boolean;
-  range: boolean;
-  sum: boolean;
-  median: boolean;
-  skewness: boolean;
-  kurtosis: boolean;
-  standardError: boolean;
-}
-
-export type DisplayOrderType = 'variableList' | 'alphabetic' | 'ascendingMeans' | 'descendingMeans';
-
-interface UseStatisticsSettingsProps {
-  initialDisplayStatistics?: Partial<DescriptiveStatisticsOptions>;
-  initialDisplayOrder?: DisplayOrderType;
-  initialSaveStandardized?: boolean;
-}
+import { 
+  DescriptiveStatisticsOptions, 
+  DisplayOrderType, 
+  StatisticsSettingsProps, 
+  StatisticsSettingsResult 
+} from '../types';
 
 export const useStatisticsSettings = ({
   initialDisplayStatistics = {},
   initialDisplayOrder = 'variableList',
   initialSaveStandardized = false
-}: UseStatisticsSettingsProps = {}) => {
+}: StatisticsSettingsProps = {}): StatisticsSettingsResult => {
   const defaultStatistics: DescriptiveStatisticsOptions = {
     mean: true,
     stdDev: true,

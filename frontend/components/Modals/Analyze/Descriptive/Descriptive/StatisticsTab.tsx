@@ -2,13 +2,14 @@ import React, { FC } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DescriptiveStatisticsOptions, DisplayOrderType } from "./hooks/useStatisticsSettings";
+import { DescriptiveStatisticsOptions, DisplayOrderType } from "./types";
+import { Dispatch, SetStateAction } from "react";
 
 interface StatisticsTabProps {
     displayStatistics: DescriptiveStatisticsOptions;
-    setDisplayStatistics: React.Dispatch<React.SetStateAction<DescriptiveStatisticsOptions>>;
+    setDisplayStatistics: Dispatch<SetStateAction<DescriptiveStatisticsOptions>>;
     displayOrder: DisplayOrderType;
-    setDisplayOrder: React.Dispatch<React.SetStateAction<DisplayOrderType>>;
+    setDisplayOrder: Dispatch<SetStateAction<DisplayOrderType>>;
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({

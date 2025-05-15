@@ -1,45 +1,21 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { VariableData } from '@/types/Variable';
-import { DescriptiveStatisticsOptions } from './useStatisticsSettings';
-
-// Define types for worker messages
-interface DescriptiveWorkerResult {
-  success: boolean;
-  statistics?: {
-    title: string;
-    output_data: { tables: Array<any> };
-    components: string;
-    description: string;
-  };
-  error?: string;
-}
-
-interface WorkerInput {
-  variableData: VariableData[];
-  weightVariableData: (string | number)[] | null;
-  params: DescriptiveStatisticsOptions;
-  saveStandardized: boolean;
-}
-
-interface UseDescriptivesWorkerResult {
-  isCalculating: boolean;
-  error: string | null; 
-  calculate: (input: WorkerInput) => Promise<DescriptiveWorkerResult | null>;
-  cancelCalculation: () => void;
-}
+import { 
+  DescriptiveWorkerResult, 
+  WorkerInput, 
+  WorkerCalculationPromise,
+  DescriptivesWorkerProps,
+  DescriptivesWorkerResult
+} from '../types';
 
 export const useDescriptivesWorker = (
   workerUrl = '/workers/DescriptiveStatistics/Descriptives/descriptives.js',
   timeoutDuration = 60000 // 60 seconds default timeout
-): UseDescriptivesWorkerResult => {
+): DescriptivesWorkerResult => {
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
-  const calculationPromiseRef = useRef<{
-    resolve: (value: DescriptiveWorkerResult | null) => void;
-    reject: (reason: any) => void;
-  } | null>(null);
+  const calculationPromiseRef = useRef<WorkerCalculationPromise | null>(null);
 
   // Clean up worker and timeout
   const cleanup = useCallback(() => {
