@@ -9,7 +9,6 @@ export async function resultKMeans({
     formattedResult,
 }: KMeansClusterFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

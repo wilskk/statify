@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { DiscriminantAnalysisType } from "@/models/classify/discriminant/discriminant-worker";
-import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
+// import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 import { resultDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis-output";
 import { transformDiscriminantResult } from "./discriminant-analysis-formatter";
 
@@ -43,25 +43,25 @@ export async function analyzeDiscriminant({
     const varDefsForSelection = getVarDefs(variables, SelectionVariable);
     console.log(configData);
 
-    await init();
-    const da = new DiscriminantAnalysis(
-        slicedDataForGrouping,
-        slicedDataForIndependent,
-        slicedDataForSelection,
-        varDefsForGrouping,
-        varDefsForIndependent,
-        varDefsForSelection,
-        configData
-    );
+    // await init();
+    // const da = new DiscriminantAnalysis(
+    //     slicedDataForGrouping,
+    //     slicedDataForIndependent,
+    //     slicedDataForSelection,
+    //     varDefsForGrouping,
+    //     varDefsForIndependent,
+    //     varDefsForSelection,
+    //     configData
+    // );
 
-    const results = da.get_formatted_results();
+    // const results = da.get_formatted_results();
 
-    const executed = da.get_all_log();
-    const errors = da.get_all_errors();
+    // const executed = da.get_all_log();
+    // const errors = da.get_all_errors();
 
-    console.log("executed", executed);
-    console.log("errors", errors);
-    console.log("results", results);
+    // console.log("executed", executed);
+    // console.log("errors", errors);
+    // console.log("results", results);
 
     // const formattedResults = transformDiscriminantResult(results);
     // console.log("formattedResults", formattedResults);
