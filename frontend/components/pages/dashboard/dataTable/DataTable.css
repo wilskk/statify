@@ -1,8 +1,8 @@
 /* components/dataTable/DataTable.css */
 .handsontable th.grayed-row-header,
 .handsontable th.grayed-col-header {
-    color: #999999;
-    background-color: #f8f9fa;
+    color: hsl(var(--muted-foreground));
+    background-color: hsl(var(--muted));
     font-weight: normal;
 } 
 

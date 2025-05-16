@@ -121,10 +121,10 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-md bg-white border border-[#E6E6E6] rounded">
+        <DialogContent className="max-w-md bg-popover border-border rounded">
             <DialogHeader className="mb-6">
-                <DialogTitle className="text-[22px] font-semibold">Export Data to Excel/Other</DialogTitle>
-                <DialogDescription className="text-[#444444] mt-2">
+                <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Export Data to Excel/Other</DialogTitle>
+                <DialogDescription className="text-muted-foreground mt-2">
                     Configure options and download your dataset.
                 </DialogDescription>
             </DialogHeader>
@@ -132,23 +132,23 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
             <TooltipProvider delayDuration={200}>
                 <div className="mb-6 space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="filename" className="block text-sm font-medium">File Name</Label>
+                        <Label htmlFor="filename" className="block text-sm font-medium text-popover-foreground">File Name</Label>
                         <Input
                             id="filename"
                             value={exportOptions.filename}
                             onChange={(e) => handleFilenameChange(e.target.value)}
-                            className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black"
+                            className="w-full"
                             placeholder="Enter file name"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="format" className="block text-sm font-medium">Format</Label>
+                        <Label htmlFor="format" className="block text-sm font-medium text-popover-foreground">Format</Label>
                         <Select
                             value={exportOptions.format}
                             onValueChange={(value) => handleChange("format", value as ComponentState['format'])}
                         >
-                            <SelectTrigger id="format" className="w-full border-gray-300 focus:border-black focus:ring-1 focus:ring-black">
+                            <SelectTrigger id="format" className="w-full">
                                 <SelectValue placeholder="Select format" />
                             </SelectTrigger>
                             <SelectContent>
@@ -161,7 +161,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                     </div>
 
                     <div className="space-y-3 pt-2">
-                        <Label className="block text-sm font-medium mb-1">Options (for Excel/ODS)</Label>
+                        <Label className="block text-sm font-medium mb-1 text-popover-foreground">Options (for Excel/ODS)</Label>
 
                         <div className="flex items-center space-x-2">
                             <Checkbox
@@ -169,7 +169,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 checked={exportOptions.includeHeaders}
                                 onCheckedChange={(checked) => handleChange("includeHeaders", Boolean(checked))}
                             />
-                            <Label htmlFor="includeHeaders" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeHeaders" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Include variable names as headers
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -188,7 +188,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 checked={exportOptions.includeVariableProperties}
                                 onCheckedChange={(checked) => handleChange("includeVariableProperties", Boolean(checked))}
                             />
-                            <Label htmlFor="includeVariableProperties" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeVariableProperties" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Include &apos;Variable Definitions&apos; sheet
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -207,7 +207,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 checked={exportOptions.includeDataLabels}
                                 onCheckedChange={(checked) => handleChange("includeDataLabels", Boolean(checked))}
                             />
-                            <Label htmlFor="includeDataLabels" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeDataLabels" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Apply value labels to data
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -226,7 +226,7 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 checked={exportOptions.includeMetadataSheet}
                                 onCheckedChange={(checked) => handleChange("includeMetadataSheet", Boolean(checked))}
                             />
-                            <Label htmlFor="includeMetadataSheet" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="includeMetadataSheet" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Include &apos;Metadata&apos; sheet
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -245,14 +245,14 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                                 checked={exportOptions.applyHeaderStyling}
                                 onCheckedChange={(checked) => handleChange("applyHeaderStyling", Boolean(checked))}
                             />
-                            <Label htmlFor="applyHeaderStyling" className="text-sm font-normal cursor-pointer flex items-center">
+                            <Label htmlFor="applyHeaderStyling" className="text-sm font-normal cursor-pointer flex items-center text-popover-foreground">
                                 Apply basic header styling
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <HelpCircle className="h-4 w-4 ml-1.5 text-muted-foreground cursor-help" />
                                     </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Makes header rows bold with a light gray background.</p>
+                                    <TooltipContent className="max-w-xs">
+                                        <p>Applies bold font and a light background fill to header rows in the sheets.</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </Label>
@@ -261,9 +261,9 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                 </div>
             </TooltipProvider>
 
-            <div className="flex items-center py-3 text-xs text-gray-500 border-t border-gray-200 mt-4">
+            <div className="flex items-center py-3 text-xs text-muted-foreground border-t border-border mt-4">
                 <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                <span>Options primarily affect Excel (.xlsx, .xls) and ODS formats. CSV export is basic here.</span>
+                <span>Select the appropriate format for your needs. XLSX is recommended for modern Excel.</span>
             </div>
 
             <DialogFooter className="gap-3 mt-2">
@@ -271,26 +271,19 @@ const ExportExcel: FC<ExportExcelProps> = ({ onClose }) => {
                     variant="outline"
                     onClick={onClose}
                     disabled={isExporting}
-                    className="text-black bg-[#F7F7F7] hover:bg-[#E6E6E6] border-[#CCCCCC] min-w-[80px]"
+                    className="min-w-[80px]"
                 >
                     Cancel
                 </Button>
                 <Button
                     onClick={handleExport}
-                    disabled={isExporting || !exportOptions.filename.trim()}
-                    className="bg-black text-white hover:bg-[#444444] min-w-[110px]"
+                    disabled={isExporting}
+                    className="min-w-[100px]"
                 >
                     {isExporting ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            <span>Exporting...</span>
-                        </>
-                    ) : (
-                        <>
-                            <FileSpreadsheet className="h-4 w-4 mr-2" />
-                            <span>Export</span>
-                        </>
-                    )}
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {isExporting ? "Exporting..." : "Export"}
                 </Button>
             </DialogFooter>
         </DialogContent>

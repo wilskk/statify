@@ -28,11 +28,11 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
     try {
         parsedData = JSON.parse(data);
     } catch {
-        return <div className="text-red-500">Invalid JSON format</div>;
+        return <div className="text-destructive">Invalid JSON format</div>;
     }
 
     if (!parsedData.tables || !Array.isArray(parsedData.tables)) {
-        return <div className="text-red-500">Invalid tables format</div>;
+        return <div className="text-destructive">Invalid tables format</div>;
     }
 
     const getLeafColumnCount = (col: ColumnHeader): number => {
@@ -82,7 +82,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                             key={`col-header-${level}-${idx}`}
                             colSpan={colSpan}
                             rowSpan={rowSpan}
-                            className="border border-gray-300 bg-gray-100 px-2 py-1 text-center text-sm font-medium"
+                            className="border border-border bg-muted px-2 py-1 text-center text-sm font-medium"
                         >
                             {col.header}
                         </th>
@@ -169,7 +169,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                     key={`rowheader-${rowIndex}-${colIdx}`}
                     rowSpan={rowSpan}
                     colSpan={2}
-                    className="border border-gray-300 bg-gray-50 px-2 py-1 text-left text-sm font-normal"
+                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
                     {current}
                 </th>
@@ -193,7 +193,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 <th
                     key={`rowheader-${rowIndex}-${colIdx}`}
                     rowSpan={rowSpan}
-                    className="border border-gray-300 bg-gray-50 px-2 py-1 text-left text-sm font-normal"
+                    className="border border-border bg-muted px-2 py-1 text-left text-sm font-normal"
                 >
                     {current}
                 </th>
@@ -215,13 +215,13 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 return (
                     <table
                         key={tableIndex}
-                        className="border-collapse border border-gray-300 text-sm mb-6"
+                        className="border-collapse border border-border text-sm mb-6"
                     >
                         <thead>
                         <tr>
                             <th
                                 colSpan={rowHeaderCount + leafCols.length}
-                                className="border border-gray-300 bg-gray-200 px-2 py-2 text-center font-semibold"
+                                className="border border-border bg-muted px-2 py-2 text-center font-semibold"
                             >
                                 {title}
                             </th>
@@ -240,7 +240,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                                     {leafCols.map((colKey, i) => (
                                         <td
                                             key={i}
-                                            className="border border-gray-300 px-2 py-1 text-center text-sm"
+                                            className="border border-border px-2 py-1 text-center text-sm"
                                         >
                                             {row[colKey] ?? ""}
                                         </td>

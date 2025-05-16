@@ -55,37 +55,40 @@ const RestructureDataWizard: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     <DialogHeader>
                         <DialogTitle>Welcome to the Restructure Data Wizard!</DialogTitle>
                     </DialogHeader>
-                    <div className="mb-4 space-y-2">
+                    <div className="mb-4 space-y-2 text-foreground">
                         <p>
                             This wizard helps you restructure your data from multiple variables
                             (columns) in a single case to groups of related cases (rows) or vice
                             versa, or choose to transpose your data. The wizard replaces the current
                             data with the restructured data. Note that data restructuring cannot be undone.
                         </p>
-                        <p className="font-semibold">What do you want to do?</p>
+                        <p className="font-semibold text-foreground">What do you want to do?</p>
                         <div className="space-y-2">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer text-foreground">
                                 <input
                                     type="radio"
                                     name="restructureMethod"
+                                    className="accent-primary"
                                     checked={method === RestructureMethod.VariablesToCases}
                                     onChange={() => setMethod(RestructureMethod.VariablesToCases)}
                                 />
                                 Restructure selected variables into cases
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer text-foreground">
                                 <input
                                     type="radio"
                                     name="restructureMethod"
+                                    className="accent-primary"
                                     checked={method === RestructureMethod.CasesToVariables}
                                     onChange={() => setMethod(RestructureMethod.CasesToVariables)}
                                 />
                                 Restructure selected cases into variables
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer text-foreground">
                                 <input
                                     type="radio"
                                     name="restructureMethod"
+                                    className="accent-primary"
                                     checked={method === RestructureMethod.TransposeAllData}
                                     onChange={() => setMethod(RestructureMethod.TransposeAllData)}
                                 />

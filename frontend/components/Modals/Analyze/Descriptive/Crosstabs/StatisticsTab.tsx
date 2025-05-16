@@ -75,13 +75,13 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     return (
         <div className="p-6">
             <div className="grid grid-cols-2 gap-6">
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="flex items-center mb-3">
                         <Checkbox
                             id="chiSquare"
                             checked={chiSquare}
                             onCheckedChange={(checked) => setChiSquare(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="chiSquare" className="text-sm cursor-pointer">
                             Chi-square
@@ -93,7 +93,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="correlations"
                             checked={correlations}
                             onCheckedChange={(checked) => setCorrelations(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="correlations" className="text-sm cursor-pointer">
                             Correlations
@@ -101,13 +101,13 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="flex items-center mb-3">
                         <Checkbox
                             id="cochranMantelHaenszel"
                             checked={cochranMantelHaenszel}
                             onCheckedChange={(checked) => setCochranMantelHaenszel(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="cochranMantelHaenszel" className="text-sm cursor-pointer">
                             Cochran&apos;s and Mantel-Haenszel statistics
@@ -122,7 +122,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                             id="commonOddsRatio"
                             value={commonOddsRatio}
                             onChange={(e) => setCommonOddsRatio(e.target.value)}
-                            className="h-8 text-sm w-16 border-[#CCCCCC] focus:border-black focus:ring-black"
+                            className="h-8 text-sm w-16"
                             disabled={!cochranMantelHaenszel}
                         />
                     </div>
@@ -130,7 +130,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Nominal</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -138,7 +138,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="contingencyCoefficient"
                                 checked={contingencyCoefficient}
                                 onCheckedChange={(checked) => setContingencyCoefficient(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="contingencyCoefficient" className="text-sm cursor-pointer">
                                 Contingency coefficient
@@ -150,7 +150,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="phiAndCramersV"
                                 checked={phiAndCramersV}
                                 onCheckedChange={(checked) => setPhiAndCramersV(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="phiAndCramersV" className="text-sm cursor-pointer">
                                 Phi and Cramer&apos;s V
@@ -162,7 +162,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="lambda"
                                 checked={lambda}
                                 onCheckedChange={(checked) => setLambda(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="lambda" className="text-sm cursor-pointer">
                                 Lambda
@@ -174,7 +174,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="uncertaintyCoefficient"
                                 checked={uncertaintyCoefficient}
                                 onCheckedChange={(checked) => setUncertaintyCoefficient(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="uncertaintyCoefficient" className="text-sm cursor-pointer">
                                 Uncertainty coefficient
@@ -183,7 +183,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Ordinal</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -191,7 +191,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="gamma"
                                 checked={gamma}
                                 onCheckedChange={(checked) => setGamma(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="gamma" className="text-sm cursor-pointer">
                                 Gamma
@@ -203,7 +203,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="somersD"
                                 checked={somersD}
                                 onCheckedChange={(checked) => setSomersD(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="somersD" className="text-sm cursor-pointer">
                                 Somers&apos; d
@@ -215,7 +215,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="kendallTauB"
                                 checked={kendallTauB}
                                 onCheckedChange={(checked) => setKendallTauB(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="kendallTauB" className="text-sm cursor-pointer">
                                 Kendall&apos;s tau-b
@@ -227,7 +227,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                 id="kendallTauC"
                                 checked={kendallTauC}
                                 onCheckedChange={(checked) => setKendallTauC(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="kendallTauC" className="text-sm cursor-pointer">
                                 Kendall&apos;s tau-c
@@ -238,14 +238,14 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Nominal by Interval</div>
                     <div className="flex items-center">
                         <Checkbox
                             id="eta"
                             checked={eta}
                             onCheckedChange={(checked) => setEta(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                         />
                         <Label htmlFor="eta" className="text-sm cursor-pointer">
                             Eta
@@ -253,43 +253,50 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="border border-[#E6E6E6] rounded-md p-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="kappa"
-                                checked={kappa}
-                                onCheckedChange={(checked) => setKappa(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
-                            />
-                            <Label htmlFor="kappa" className="text-sm cursor-pointer">
-                                Kappa
-                            </Label>
-                        </div>
+                <div className="bg-card border border-border rounded-md p-4">
+                    <div className="text-sm font-medium mb-3">Agreement</div>
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="kappa"
+                            checked={kappa}
+                            onCheckedChange={(checked) => setKappa(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="kappa" className="text-sm cursor-pointer">
+                            Kappa
+                        </Label>
+                    </div>
+                </div>
+            </div>
 
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="risk"
-                                checked={risk}
-                                onCheckedChange={(checked) => setRisk(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
-                            />
-                            <Label htmlFor="risk" className="text-sm cursor-pointer">
-                                Risk
-                            </Label>
-                        </div>
+            <div className="grid grid-cols-2 gap-6 mt-6">
+                <div className="bg-card border border-border rounded-md p-4">
+                    <div className="text-sm font-medium mb-3">Strength of Association</div>
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="risk"
+                            checked={risk}
+                            onCheckedChange={(checked) => setRisk(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="risk" className="text-sm cursor-pointer">
+                            Risk
+                        </Label>
+                    </div>
+                </div>
 
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="mcNemar"
-                                checked={mcNemar}
-                                onCheckedChange={(checked) => setMcNemar(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
-                            />
-                            <Label htmlFor="mcNemar" className="text-sm cursor-pointer">
-                                McNemar
-                            </Label>
-                        </div>
+                <div className="bg-card border border-border rounded-md p-4">
+                    <div className="text-sm font-medium mb-3">Test for Paired Samples</div>
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="mcNemar"
+                            checked={mcNemar}
+                            onCheckedChange={(checked) => setMcNemar(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="mcNemar" className="text-sm cursor-pointer">
+                            McNemar
+                        </Label>
                     </div>
                 </div>
             </div>

@@ -125,6 +125,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     // Remove Reset Effect (reset is handled in index.tsx now)
     // useEffect(() => { if (resetCounter > 0) { ... } }, [resetCounter]);
 
+    const getTextClass = (disabled: boolean) => {
+        return disabled ? "text-muted-foreground" : "";
+    };
+
     // Helper function to validate percentile value
     const validatePercentileValue = (value: string): boolean => {
         const numValue = Number(value);
@@ -222,193 +226,159 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </AlertDialogContent>
             </AlertDialog>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4">
-                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Percentile Values</div>
-                <div className="space-y-3">
-                    <div className="flex items-center">
+            <div className="border border-border rounded-md p-4 space-y-3 bg-card">
+                <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>
+                <div className="flex items-center">
+                    <Checkbox
+                        id="quartiles"
+                        className="mr-2"
+                        disabled={!showStatistics}
+                        checked={quartilesChecked}
+                        onCheckedChange={(checked) => setQuartilesChecked(!!checked)}
+                    />
+                    <Label htmlFor="quartiles" className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>
+                        Quartiles
+                    </Label>
+                </div>
+
+                <div>
+                    <div className="flex items-start mb-2">
                         <Checkbox
-                            id="quartiles"
-                            className="mr-2 border-[#CCCCCC]"
+                            id="cutPoints"
+                            className="mr-2 mt-1"
                             disabled={!showStatistics}
-                            checked={quartilesChecked}
-                            onCheckedChange={(checked) => setQuartilesChecked(!!checked)}
+                            checked={cutPointsChecked}
+                            onCheckedChange={(checked) => setCutPointsChecked(!!checked)}
                         />
-                        <Label htmlFor="quartiles" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                            Quartiles
-                        </Label>
-                    </div>
-
-                    <div>
-                        <div className="flex items-start mb-2">
-                            <Checkbox
-                                id="cutPoints"
-                                className="mr-2 border-[#CCCCCC] mt-1"
-                                disabled={!showStatistics}
-                                checked={cutPointsChecked}
-                                onCheckedChange={(checked) => setCutPointsChecked(!!checked)}
+                        <div className="flex flex-wrap items-center">
+                            <Label htmlFor="cutPoints" className={`text-sm mr-2 cursor-pointer ${getTextClass(!showStatistics)}`}>
+                                Cut points for
+                            </Label>
+                            <Input
+                                type="number"
+                                id="cutPointsValue"
+                                value={cutPointsValue}
+                                onChange={(e) => setCutPointsValue(e.target.value)}
+                                className={`w-20 h-8 mr-2 ${getTextClass(!showStatistics || !cutPointsChecked)}`}
+                                disabled={!showStatistics || !cutPointsChecked}
                             />
-                            <div className="flex flex-wrap items-center">
-                                <Label htmlFor="cutPoints" className={`text-sm cursor-pointer mr-2 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                                    Cut points for
-                                </Label>
-                                <div className="flex items-center">
-                                    <Input
-                                        type="number"
-                                        className="h-7 w-16 border-[#CCCCCC] text-sm px-2"
-                                        disabled={!showStatistics || !cutPointsChecked}
-                                        value={cutPointsValue}
-                                        onChange={(e) => setCutPointsValue(e.target.value)}
-                                    />
-                                    <span className={`text-sm ml-2 ${!showStatistics || !cutPointsChecked ? 'text-[#AAAAAA]' : ''}`}>equal groups</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center mb-2">
-                            <Checkbox
-                                id="enablePercentiles"
-                                className="mr-2 border-[#CCCCCC]"
-                                disabled={!showStatistics}
-                                checked={enablePercentiles}
-                                onCheckedChange={(checked) => setEnablePercentiles(!!checked)}
-                            />
-                            <Label htmlFor="enablePercentiles" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>
-                                Percentiles
+                            <Label htmlFor="cutPointsValue" className={`text-sm cursor-pointer ${getTextClass(!showStatistics || !cutPointsChecked)}`}>
+                                equal groups
                             </Label>
                         </div>
-                        <div className={`pl-6 space-y-2 ${!enablePercentiles ? 'opacity-50 pointer-events-none' : ''}`}>
+                    </div>
+                </div>
+
+                <div>
+                    <div className="flex items-center mb-2">
+                        <Checkbox
+                            id="percentiles"
+                            className="mr-2"
+                            disabled={!showStatistics}
+                            checked={enablePercentiles}
+                            onCheckedChange={(checked) => setEnablePercentiles(!!checked)}
+                        />
+                        <Label htmlFor="percentiles" className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>
+                            Percentiles
+                        </Label>
+                    </div>
+                    {enablePercentiles && showStatistics && (
+                        <div className="space-y-2 pl-6">
                             <div className="flex items-center space-x-2">
                                 <Input
                                     type="number"
                                     placeholder="0-100"
-                                    className="h-7 w-20 border-[#CCCCCC] text-sm px-2"
                                     value={currentPercentileInput}
                                     onChange={(e) => setCurrentPercentileInput(e.target.value)}
-                                    disabled={!enablePercentiles || !showStatistics}
-                                    min="0"
-                                    max="100"
-                                    step="any"
+                                    className="w-24 h-8"
                                 />
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2 text-xs border-[#CCCCCC]"
-                                    onClick={handleAddPercentile}
-                                    disabled={!enablePercentiles || !showStatistics || !currentPercentileInput}
-                                >
-                                    Add
-                                </Button>
+                                <Button onClick={handleAddPercentile} size="sm" variant="outline" className="h-8">Add</Button>
+                                <Button onClick={handleChangePercentile} size="sm" variant="outline" className="h-8" disabled={!selectedPercentileItem}>Change</Button>
+                                <Button onClick={handleRemovePercentile} size="sm" variant="destructive" className="h-8" disabled={!selectedPercentileItem}>Remove</Button>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <select
-                                    size={5}
-                                    className="h-auto w-20 border border-[#CCCCCC] text-sm px-1 py-1"
-                                    value={selectedPercentileItem ?? ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value || null;
-                                        setSelectedPercentileItem(value);
-                                        setCurrentPercentileInput(value ?? "");
-                                    }}
-                                    disabled={!enablePercentiles || !showStatistics || percentileValues.length === 0}
-                                >
+                            {percentileValues.length > 0 && (
+                                <div className="max-h-20 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                                     {percentileValues.map((p) => (
-                                        <option key={p} value={p}>
+                                        <div
+                                            key={p}
+                                            onClick={() => {
+                                                setSelectedPercentileItem(p);
+                                                setCurrentPercentileInput(p);
+                                            }}
+                                            className={`p-1 rounded-md cursor-pointer text-sm ${selectedPercentileItem === p ? "bg-muted text-muted-foreground" : "hover:bg-muted/50"
+                                                }`}
+                                        >
                                             {p}
-                                        </option>
+                                        </div>
                                     ))}
-                                </select>
-                                <div className="flex flex-col space-y-1">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-xs border-[#CCCCCC]"
-                                        onClick={handleChangePercentile}
-                                        disabled={!enablePercentiles || !showStatistics || !selectedPercentileItem || !currentPercentileInput}
-                                    >
-                                        Change
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-xs border-[#CCCCCC]"
-                                        onClick={handleRemovePercentile}
-                                        disabled={!enablePercentiles || !showStatistics || !selectedPercentileItem}
-                                    >
-                                        Remove
-                                    </Button>
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4">
-                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Central Tendency</div>
-                <div className="space-y-3">
-                    <div className="flex items-center">
-                        <Checkbox id="mean" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={meanChecked} onCheckedChange={(checked) => setMeanChecked(!!checked)} />
-                        <Label htmlFor="mean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Mean</Label>
+            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+                <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
+                {[
+                    { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked },
+                    { id: "median", label: "Median", checked: medianChecked, setter: setMedianChecked },
+                    { id: "mode", label: "Mode", checked: modeChecked, setter: setModeChecked },
+                    { id: "sum", label: "Sum", checked: sumChecked, setter: setSumChecked },
+                ].map(({ id, label, checked, setter }) => (
+                    <div key={id} className="flex items-center">
+                        <Checkbox
+                            id={id}
+                            className="mr-2"
+                            disabled={!showStatistics}
+                            checked={checked}
+                            onCheckedChange={(val) => setter(!!val)}
+                        />
+                        <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
-                    <div className="flex items-center">
-                        <Checkbox id="median" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={medianChecked} onCheckedChange={(checked) => setMedianChecked(!!checked)} />
-                        <Label htmlFor="median" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Median</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="mode" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={modeChecked} onCheckedChange={(checked) => setModeChecked(!!checked)} />
-                        <Label htmlFor="mode" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Mode</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="sum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={sumChecked} onCheckedChange={(checked) => setSumChecked(!!checked)} />
-                        <Label htmlFor="sum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Sum</Label>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4">
-                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Dispersion</div>
-                <div className="space-y-3">
-                    <div className="flex items-center">
-                        <Checkbox id="stddev" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={stdDevChecked} onCheckedChange={(checked) => setStdDevChecked(!!checked)} />
-                        <Label htmlFor="stddev" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Std. deviation</Label>
+            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+                <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Dispersion</div>
+                {[
+                    { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked },
+                    { id: "variance", label: "Variance", checked: varianceChecked, setter: setVarianceChecked },
+                    { id: "range", label: "Range", checked: rangeChecked, setter: setRangeChecked },
+                    { id: "minimum", label: "Minimum", checked: minChecked, setter: setMinChecked },
+                    { id: "maximum", label: "Maximum", checked: maxChecked, setter: setMaxChecked },
+                    { id: "semean", label: "S. E. mean", checked: seMeanChecked, setter: setSeMeanChecked },
+                ].map(({ id, label, checked, setter }) => (
+                    <div key={id} className="flex items-center">
+                        <Checkbox
+                            id={id}
+                            className="mr-2"
+                            disabled={!showStatistics}
+                            checked={checked}
+                            onCheckedChange={(val) => setter(!!val)}
+                        />
+                        <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
-                    <div className="flex items-center">
-                        <Checkbox id="variance" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={varianceChecked} onCheckedChange={(checked) => setVarianceChecked(!!checked)} />
-                        <Label htmlFor="variance" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Variance</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="range" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={rangeChecked} onCheckedChange={(checked) => setRangeChecked(!!checked)} />
-                        <Label htmlFor="range" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Range</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="minimum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={minChecked} onCheckedChange={(checked) => setMinChecked(!!checked)} />
-                        <Label htmlFor="minimum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Minimum</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="maximum" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={maxChecked} onCheckedChange={(checked) => setMaxChecked(!!checked)} />
-                        <Label htmlFor="maximum" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Maximum</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox id="semean" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={seMeanChecked} onCheckedChange={(checked) => setSeMeanChecked(!!checked)} />
-                        <Label htmlFor="semean" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>S.E. Mean</Label>
-                    </div>
-                </div>
+                ))}
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4">
-                <div className={`text-sm font-medium mb-3 ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Distribution</div>
-                <div className="space-y-3">
-                    <div className="flex items-center">
-                        <Checkbox id="skewness" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={skewnessChecked} onCheckedChange={(checked) => setSkewnessChecked(!!checked)} />
-                        <Label htmlFor="skewness" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Skewness</Label>
+            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+                <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Distribution</div>
+                {[
+                    { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked },
+                    { id: "kurtosis", label: "Kurtosis", checked: kurtosisChecked, setter: setKurtosisChecked },
+                ].map(({ id, label, checked, setter }) => (
+                    <div key={id} className="flex items-center">
+                        <Checkbox
+                            id={id}
+                            className="mr-2"
+                            disabled={!showStatistics}
+                            checked={checked}
+                            onCheckedChange={(val) => setter(!!val)}
+                        />
+                        <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
-                    <div className="flex items-center">
-                        <Checkbox id="kurtosis" className="mr-2 border-[#CCCCCC]" disabled={!showStatistics} checked={kurtosisChecked} onCheckedChange={(checked) => setKurtosisChecked(!!checked)} />
-                        <Label htmlFor="kurtosis" className={`text-sm cursor-pointer ${!showStatistics ? 'text-[#AAAAAA]' : ''}`}>Kurtosis</Label>
-                    </div>
-                </div>
+                ))}
             </div>
         </div>
     );

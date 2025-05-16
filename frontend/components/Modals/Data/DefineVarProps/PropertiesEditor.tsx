@@ -23,6 +23,14 @@ import 'handsontable/dist/handsontable.full.css';
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "@/components/ui/tooltip";
 
 // Register all Handsontable modules
 registerAllModules();
@@ -388,15 +396,15 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={12} className="text-gray-700 mr-1 flex-shrink-0" />;
+                return <Ruler size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={12} className="text-gray-700 mr-1 flex-shrink-0" />;
+                return <Shapes size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={12} className="text-gray-700 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={12} className="text-gray-700 mr-1 flex-shrink-0" />
-                    : <Ruler size={12} className="text-gray-700 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={12} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -761,11 +769,11 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     // Render dropdown with options
     const renderDropdown = (options: string[], currentValue: string, onChange: (value: string) => void, onClose: () => void) => {
         return (
-            <div className="absolute top-full left-0 z-10 mt-1 w-full bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+            <div className="absolute top-full left-0 z-10 mt-1 w-full bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
                 {options.map((option) => (
                     <div
                         key={option}
-                        className="text-xs p-1 hover:bg-gray-100 cursor-pointer"
+                        className="text-xs p-1 hover:bg-accent cursor-pointer text-popover-foreground"
                         onClick={() => {
                             onChange(option);
                             onClose();
@@ -780,17 +788,16 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
     };
 
     // Render date format dropdown
-    const renderDateFormatDropdown = () => {
+    const renderDateFormatDropdown = (currentVariable: Variable | null, handleVariableFieldChange: (field: keyof Variable, value: any) => void, setShowDateFormatDropdown: (show: boolean) => void) => {
         if (!currentVariable) return null;
 
         return (
-            <div className="absolute top-full right-0 z-10 mt-1 w-60 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+            <div className="absolute top-full right-0 z-10 mt-1 w-60 bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
                 {DATE_FORMAT_SPECS.map((format, index) => (
                     <div
                         key={index}
-                        className="text-xs p-1 hover:bg-gray-100 cursor-pointer"
+                        className="text-xs p-1 hover:bg-accent cursor-pointer text-popover-foreground"
                         onClick={() => {
-                            // Update both type and width when selecting a date format
                             handleVariableFieldChange('type', format.type);
                             handleVariableFieldChange('width', format.width);
                             setShowDateFormatDropdown(false);
@@ -806,9 +813,9 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
 
     return (
         <>
-            <DialogContent className="max-w-[880px] max-h-[90vh] p-0 bg-gray-100">
-                <DialogHeader className="px-4 py-3 border-b border-gray-200">
-                    <DialogTitle className="flex items-center text-sm font-semibold">
+            <DialogContent className="max-w-[880px] max-h-[90vh] p-0 bg-background">
+                <DialogHeader className="px-4 py-3 border-b border-border">
+                    <DialogTitle className="flex items-center text-sm font-semibold text-foreground">
                         Define Variable Properties
                     </DialogTitle>
                 </DialogHeader>
@@ -816,17 +823,17 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 <div className="grid grid-cols-12 gap-4 p-4">
                     {/* Left Column - Scanned Variable List */}
                     <div className="col-span-4 flex flex-col">
-                        <div className="text-xs font-semibold mb-1 text-gray-800">Scanned Variable List</div>
-                        <div className="border border-gray-300 rounded h-full overflow-y-auto bg-white">
-                            <div className="bg-gray-100 border-b border-gray-300">
-                                <div className="grid grid-cols-12 text-xs font-semibold">
-                                    <div className="col-span-2 p-1 text-center border-r border-gray-300 overflow-hidden" title="Labeled">
+                        <div className="text-xs font-semibold mb-1 text-foreground">Scanned Variable List</div>
+                        <div className="border border-border rounded h-full overflow-y-auto bg-card">
+                            <div className="bg-muted border-b border-border">
+                                <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground">
+                                    <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Labeled">
                                         <span className="block truncate">Labeled</span>
                                     </div>
-                                    <div className="col-span-4 p-1 text-center border-r border-gray-300 overflow-hidden" title="Measurement">
+                                    <div className="col-span-4 p-1 text-center border-r border-border overflow-hidden" title="Measurement">
                                         <span className="block truncate">Measurement</span>
                                     </div>
-                                    <div className="col-span-2 p-1 text-center border-r border-gray-300 overflow-hidden" title="Role">
+                                    <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Role">
                                         <span className="block truncate">Role</span>
                                     </div>
                                     <div className="col-span-4 p-1 text-center overflow-hidden" title="Variable">
@@ -838,24 +845,23 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 {modifiedVariables.map((variable, index) => (
                                     <div
                                         key={variable.columnIndex}
-                                        className={`grid grid-cols-12 text-xs cursor-pointer border-b border-gray-200 hover:bg-gray-50 ${selectedVariableIndex === index ? 'bg-blue-100' : ''}`}
+                                        className={`grid grid-cols-12 text-xs cursor-pointer border-b border-border hover:bg-accent ${selectedVariableIndex === index ? 'bg-primary text-primary-foreground' : 'text-card-foreground'}`}
                                         onClick={() => handleVariableChange(index)}
                                     >
-                                        <div className="col-span-2 p-1 text-center border-r border-gray-200">
+                                        <div className="col-span-2 p-1 text-center border-r border-border">
                                             <input
                                                 type="checkbox"
-                                                className="w-3 h-3"
+                                                className="w-3 h-3 accent-primary"
                                                 checked={variable.values.length > 0}
-                                                onChange={(e) => setLabeledVariables({...labeledVariables, [index]: e.target.checked})}
                                                 readOnly
                                             />
                                         </div>
-                                        <div className="col-span-4 p-1 text-center border-r border-gray-200 flex items-center justify-center"
+                                        <div className="col-span-4 p-1 text-center border-r border-border flex items-center justify-center"
                                              title={formatDropdownText(variable.measure)}>
                                             {getVariableIcon(variable)}
                                             <span className="truncate">{formatDropdownText(variable.measure)}</span>
                                         </div>
-                                        <div className="col-span-2 p-1 text-center border-r border-gray-200 truncate"
+                                        <div className="col-span-2 p-1 text-center border-r border-border truncate"
                                              title={formatDropdownText(variable.role)}>
                                             {formatDropdownText(variable.role)}
                                         </div>
@@ -867,9 +873,9 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                 ))}
                             </div>
                         </div>
-                        <div className="flex justify-between mt-1 text-xs text-gray-600">
-                            <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50" readOnly /></div>
-                            <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50" readOnly /></div>
+                        <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                            <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
+                            <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
                         </div>
                     </div>
 
@@ -881,37 +887,37 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                     {/* Left Column of Form */}
                                     <div className="col-span-6 space-y-2">
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Current Variable:</div>
+                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Current Variable:</div>
                                             <div className="col-span-7">
-                                                <input
+                                                <Input
                                                     value={currentVariable.name}
                                                     onChange={(e) => handleVariableFieldChange('name', e.target.value)}
-                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1 focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
+                                                    className="h-5 w-full text-xs"
                                                 />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Label:</div>
+                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Label:</div>
                                             <div className="col-span-7">
-                                                <input
+                                                <Input
                                                     value={currentVariable.label || ''}
                                                     onChange={(e) => handleVariableFieldChange('label', e.target.value)}
-                                                    className="h-5 w-full text-xs border border-gray-300 rounded px-1 focus:outline-none focus:ring-1 focus:ring-black focus:border-black"
+                                                    className="h-5 w-full text-xs"
                                                 />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Measurement Level:</div>
+                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Measurement Level:</div>
                                             <div className="col-span-7 flex">
                                                 <div className="relative flex-grow">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
+                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
                                                         onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}
                                                         title={formatDropdownText(currentVariable.measure)}
                                                     >
                                                         {getVariableIcon(currentVariable)}
-                                                        <span className="capitalize truncate">{formatDropdownText(currentVariable.measure)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
+                                                        <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.measure)}</span>
+                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
                                                     </div>
                                                     {showMeasureDropdown && renderDropdown(
                                                         MEASURE_OPTIONS,
@@ -920,25 +926,27 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                         () => setShowMeasureDropdown(false)
                                                     )}
                                                 </div>
-                                                <button
-                                                    className="text-xs h-5 px-2 ml-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded whitespace-nowrap"
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="text-xs h-5 px-2 ml-1 whitespace-nowrap"
                                                     onClick={handleSuggestMeasurement}
                                                 >
                                                     Suggest
-                                                </button>
+                                                </Button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Role:</div>
+                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Role:</div>
                                             <div className="col-span-7">
                                                 <div className="relative w-full">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
+                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
                                                         onClick={() => setShowRoleDropdown(!showRoleDropdown)}
                                                         title={formatDropdownText(currentVariable.role)}
                                                     >
-                                                        <span className="capitalize truncate">{formatDropdownText(currentVariable.role)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
+                                                        <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.role)}</span>
+                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
                                                     </div>
                                                     {showRoleDropdown && renderDropdown(
                                                         ROLE_OPTIONS,
@@ -950,11 +958,11 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-gray-800 pr-1">Unlabeled values:</div>
+                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Unlabeled values:</div>
                                             <div className="col-span-7">
-                                                <input
+                                                <Input
                                                     value={unlabeledValuesCount}
-                                                    className="w-full h-5 text-xs border border-gray-300 rounded px-1 bg-gray-50"
+                                                    className="w-full h-5 text-xs bg-muted text-muted-foreground border-input"
                                                     readOnly
                                                 />
                                             </div>
@@ -964,16 +972,16 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                     {/* Right Column of Form */}
                                     <div className="col-span-6 space-y-2">
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-3 text-xs font-semibold text-gray-800 pr-1 pl-2">Type:</div>
+                                            <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Type:</div>
                                             <div className="col-span-9 flex">
                                                 <div className="relative flex-1">
                                                     <div
-                                                        className="flex items-center h-5 text-xs border border-gray-300 rounded bg-white px-1 w-full cursor-pointer hover:border-gray-400"
+                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
                                                         onClick={() => setShowTypeDropdown(!showTypeDropdown)}
                                                         title={getFormattedTypeName(currentVariable.type)}
                                                     >
-                                                        <span className="capitalize truncate">{getFormattedTypeName(currentVariable.type)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
+                                                        <span className="capitalize truncate text-foreground">{getFormattedTypeName(currentVariable.type)}</span>
+                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
                                                     </div>
                                                     {showTypeDropdown && renderDropdown(
                                                         TYPE_OPTIONS,
@@ -984,23 +992,19 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                 </div>
                                                 <div className="relative ml-1 flex-1">
                                                     <div
-                                                        className={`flex items-center h-5 text-xs border border-gray-300 rounded px-1 w-full ${
-                                                            isDateType(currentVariable.type)
-                                                                ? 'bg-white cursor-pointer hover:border-gray-400'
-                                                                : 'bg-gray-100 cursor-not-allowed text-gray-500'
-                                                        }`}
+                                                        className={`flex items-center h-5 text-xs border rounded px-1 w-full ${isDateType(currentVariable.type) ? 'bg-background border-input cursor-pointer hover:border-ring' : 'bg-muted border-input cursor-not-allowed text-muted-foreground/70'}`}
                                                         onClick={() => isDateType(currentVariable.type) && setShowDateFormatDropdown(!showDateFormatDropdown)}
                                                         title={isDateType(currentVariable.type) ? "Select date format" : "Format (only available for date types)"}
                                                     >
-                                                        <span className="capitalize truncate">Format</span>
-                                                        <ChevronDown size={12} className="ml-auto text-gray-500 flex-shrink-0" />
+                                                        <span className={`capitalize truncate ${isDateType(currentVariable.type) ? 'text-foreground' : 'text-muted-foreground/70'}`}>Format</span>
+                                                        <ChevronDown size={12} className={`ml-auto flex-shrink-0 ${isDateType(currentVariable.type) ? 'text-muted-foreground' : 'text-muted-foreground/70'}`} />
                                                     </div>
-                                                    {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown()}
+                                                    {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown(currentVariable, handleVariableFieldChange, setShowDateFormatDropdown)}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-3 text-xs font-semibold text-gray-800 pr-1 pl-2">Width:</div>
+                                            <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Width:</div>
                                             <div className="col-span-4">
                                                 <input
                                                     value={currentVariable.width}
@@ -1009,7 +1013,7 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                                     disabled={isDateType(currentVariable.type)}
                                                 />
                                             </div>
-                                            <div className="col-span-3 text-xs font-semibold text-gray-800 px-1">Decimals:</div>
+                                            <div className="col-span-3 text-xs font-semibold text-foreground px-1">Decimals:</div>
                                             <div className="col-span-2">
                                                 <input
                                                     value={currentVariable.decimals}
@@ -1022,227 +1026,118 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="flex items-center mt-3 mb-1">
-                                    <div className="text-xs font-semibold mr-1 text-gray-800">Value Label grid:</div>
-                                    <div className="flex items-center">
-                                        <Info size={12} className="text-gray-500 mr-1" />
-                                        <span className="text-xs text-gray-600 truncate">Enter or edit labels in the grid. You can enter additional values at the bottom.</span>
-                                    </div>
-                                </div>
-
-                                {/* Value Labels Grid using Handsontable */}
-                                <div className="border border-gray-300 rounded flex-grow bg-white">
-                                    {dataIsLoading ? (
-                                        <div className="flex items-center justify-center h-40">
-                                            <p className="text-gray-500">Loading data...</p>
+                                {/* Value Labels Grid */}
+                                <div className="mt-3">
+                                    <div className="flex items-center mb-1">
+                                        <div className="text-xs font-semibold text-foreground mr-1">
+                                            Value Labels for {currentVariable.name}:
                                         </div>
-                                    ) : (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Info size={12} className="text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top">
+                                                    <p className="text-xs">
+                                                        Enter or paste values and their labels. Changed rows are indicated.
+                                                        <br />Use the checkbox to mark values as missing.
+                                                    </p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <span className="ml-auto text-xs text-muted-foreground">
+                                            Unlabeled Values: {unlabeledValuesCount}
+                                        </span>
+                                    </div>
+                                    <div className="h-48 border border-border rounded overflow-hidden">
                                         <HotTable
                                             ref={hotTableRef}
                                             data={gridData}
-                                            colHeaders={['#', 'Changed', 'Missing', 'Count', 'Value', 'Label']}
                                             columns={[
-                                                { data: 0, type: 'text', readOnly: true, className: 'htCenter htDimmed', width: 24 },
-                                                { data: 1, type: 'checkbox', renderer: checkboxRenderer, width: 56, readOnly: true, className: 'htCenter' },
-                                                { data: 2, type: 'checkbox', renderer: checkboxRenderer, width: 56, className: 'htCenter' },
-                                                { data: 3, type: 'numeric', readOnly: true, className: 'htCenter htDimmed', width: 46 },
-                                                { data: 4, type: 'text', width: 70 },
-                                                { data: 5, type: 'text' }
+                                                { data: 0, title: '#', readOnly: true, width: 30, className: 'htCenter htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
+                                                { data: 1, title: '<span class="text-destructive">*</span>', renderer: checkboxRenderer, readOnly: true, width: 30, className: 'htCenter htMiddle text-xs bg-muted border-r-border' }, // Changed
+                                                { data: 2, title: 'Missing', renderer: checkboxRenderer, width: 50, className: 'htCenter htMiddle text-xs bg-muted border-r-border' },
+                                                { data: 3, title: 'Count', type: 'numeric', readOnly: true, width: 50, className: 'htRight htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
+                                                { data: 4, title: 'Value', width: 100, className: 'htLeft htMiddle text-xs text-foreground' },
+                                                { data: 5, title: 'Label', width: 150, className: 'htLeft htMiddle text-xs text-foreground' },
                                             ]}
-                                            width="100%"
-                                            height="180"
+                                            rowHeaders={false}
+                                            colHeaders={true}
+                                            manualColumnResize={true}
+                                            manualRowResize={true}
+                                            selectionMode="single"
+                                            className="htXSmall htCustomTheme" // Added htCustomTheme for potential global overrides
                                             licenseKey="non-commercial-and-evaluation"
                                             afterChange={handleDataChange}
-                                            stretchH="all"
-                                            rowHeaders={false}
-                                            className="spss-hot-table"
-                                            rowHeights={18}
-                                            manualColumnResize
-                                            fixedColumnsLeft={0}
-                                            contextMenu={false}
+                                            // afterSelection={handleCellSelection}
                                         />
-                                    )}
-                                </div>
-
-                                {/* Bottom Action Buttons */}
-                                <div className="grid grid-cols-1 gap-2 mt-2">
-                                    <div className="border border-gray-300 rounded p-2 bg-gray-50">
-                                        <div className="text-xs font-semibold mb-1 text-gray-800">Unlabeled Values</div>
-                                        <div className="flex justify-center">
-                                            <button
-                                                className="text-xs w-full h-5 px-1 bg-white hover:bg-gray-100 border border-gray-300 rounded"
-                                                onClick={handleAutoLabel}
-                                            >
-                                                Automatic Labels
-                                            </button>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-1">
+                                        <div className="flex gap-1">
+                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleAutoLabel}>Auto Label</Button>
+                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyFromVariable}>Copy From...</Button>
+                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyToVariables}>Copy To...</Button>
                                         </div>
+                                        {/* Placeholder for Add/Remove buttons if needed */}
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="flex items-center justify-center h-full">
-                                <p className="text-gray-500">No variable selected</p>
+                            <div className="text-center text-sm text-muted-foreground py-10">
+                                Select a variable from the list to view and edit its properties.
                             </div>
                         )}
                     </div>
                 </div>
 
-                <DialogFooter className="flex justify-end space-x-2 p-4 bg-gray-50 border-t border-gray-200">
-                    <button
-                        className="text-sm h-8 px-4 bg-black text-white hover:bg-gray-800 rounded"
-                        onClick={handleSave}
-                    >
-                        OK
-                    </button>
-                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
-                        Paste
-                    </button>
-                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
-                        Reset
-                    </button>
-                    <button
-                        className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </button>
-                    <button className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded">
-                        Help
-                    </button>
+                <DialogFooter className="px-4 py-3 border-t border-border bg-muted flex-shrink-0">
+                    <div className="flex items-center">
+                        <Button variant="link" size="sm" className="text-xs p-0 text-muted-foreground hover:text-foreground">
+                            <Info size={14} className="mr-1"/> Help
+                        </Button>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={onClose}>Cancel</Button>
+                        <Button size="sm" className="text-xs h-7" onClick={handleSave}>OK</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
 
-            {/* Add custom styles for HandsonTable */}
-            <style jsx global>{`
-                /* Add these styles to ensure proper truncation */
-                .truncate {
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
-                /* Make sure dropdown items also truncate properly */
-                .absolute.z-10 div {
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-
-                .spss-hot-table .handsontable {
-                    font-size: 11px;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    z-index: 0 !important; /* Set z-index to 0 */
-                }
-                .spss-hot-table .handsontable th {
-                    background-color: #f3f4f6;
-                    color: #374151;
-                    text-align: center;
-                    font-weight: 600;
-                    border-color: #d1d5db;
-                    padding: 1px 2px;
-                    height: 18px;
-                }
-                .spss-hot-table .handsontable td {
-                    border-color: #e5e7eb;
-                    padding: 1px 2px;
-                    height: 18px;
-                }
-                .spss-hot-table .handsontable tr:nth-child(even) td {
-                    background-color: #f9fafb;
-                }
-                .spss-hot-table .handsontable .htCenter {
-                    text-align: center;
-                }
-                .spss-hot-table .handsontable td.current {
-                    background-color: #dbeafe !important;
-                }
-                .spss-hot-table .handsontable td.area {
-                   background-color: rgba(59, 130, 246, 0.1) !important;
-                }
-                .spss-hot-table .handsontable .htCheckboxRendererInput {
-                    margin: 1px;
-                    cursor: pointer;
-                }
-                .spss-hot-table .handsontable .htCheckboxRendererInput.htBadValue {
-                    cursor: default;
-                    opacity: 0.6;
-                }
-                .spss-hot-table .handsontable .wtBorder {
-                    background-color: #3b82f6 !important;
-                }
-                .spss-hot-table .handsontable .htDimmed {
-                    color: #6b7280;
-                    font-style: italic;
-                }
-            `}</style>
-
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[400px] p-0 bg-white">
-                    <DialogHeader className="px-4 py-3 border-b border-gray-200">
-                        <DialogTitle className="text-sm font-semibold">IBM SPSS Statistics</DialogTitle>
+                <DialogContent className="sm:max-w-[425px] bg-popover border-border">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Error</DialogTitle>
                     </DialogHeader>
-                    <div className="p-4 flex gap-3 items-start">
-                        <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm">{errorMessage}</p>
-                        </div>
+                    <div className="flex items-start space-x-3 py-4">
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-popover-foreground">
+                            {errorMessage}
+                        </p>
                     </div>
-                    <DialogFooter className="flex justify-center p-3 bg-gray-50 border-t border-gray-200">
-                        <button
-                            className="text-sm h-8 px-4 bg-gray-200 hover:bg-gray-300 border border-gray-300 rounded"
-                            onClick={() => setErrorDialogOpen(false)}
-                        >
-                            OK
-                        </button>
+                    <DialogFooter>
+                        <Button onClick={() => setErrorDialogOpen(false)}>OK</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Measurement Level Suggestion Dialog */}
+            {/* Suggest Measurement Level Dialog */}
             <Dialog open={suggestDialogOpen} onOpenChange={setSuggestDialogOpen}>
-                <DialogContent className="max-w-[450px] p-0 bg-white">
-                    <DialogHeader className="px-4 py-3 border-b border-gray-200">
-                        <DialogTitle className="text-sm font-semibold">Suggest Measurement Level</DialogTitle>
+                <DialogContent className="sm:max-w-[425px] bg-popover border-border">
+                    <DialogHeader>
+                        <DialogTitle className="text-foreground">Suggested Measurement Level</DialogTitle>
                     </DialogHeader>
-
-                    <div className="p-4">
-                        <div className="mb-3">
-                            <div className="flex items-center mb-2">
-                                <div className="mr-2">
-                                    {suggestedMeasure === "scale" && <Ruler size={16} className="text-gray-700" />}
-                                    {suggestedMeasure === "nominal" && <Shapes size={16} className="text-gray-700" />}
-                                    {suggestedMeasure === "ordinal" && <BarChartHorizontal size={16} className="text-gray-700" />}
-                                </div>
-                                <p className="text-sm font-semibold">
-                                    Suggested measurement level: <span className="capitalize">{formatDropdownText(suggestedMeasure)}</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-50 border border-gray-200 rounded p-2 mb-2">
-                            <p className="text-xs mb-1 font-semibold text-gray-800">Explanation:</p>
-                            <p className="text-xs text-gray-700">{measurementExplanation}</p>
-                        </div>
-
-                        <p className="text-xs text-gray-500">
-                            Note: Values defined as representing missing values were not included in this evaluation.
+                    <div className="py-4 space-y-2">
+                        <p className="text-sm text-popover-foreground">
+                            Based on the data, we suggest setting the measurement level to <strong className="text-primary">{suggestedMeasure}</strong>.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Explanation: {measurementExplanation}
                         </p>
                     </div>
-
-                    <DialogFooter className="flex justify-end space-x-2 p-3 bg-gray-50 border-t border-gray-200">
-                        <button
-                            className="text-sm h-8 px-4 bg-black text-white hover:bg-gray-800 rounded"
-                            onClick={handleAcceptSuggestion}
-                        >
-                            Continue
-                        </button>
-                        <button
-                            className="text-sm h-8 px-3 bg-white hover:bg-gray-100 border border-gray-300 rounded"
-                            onClick={() => setSuggestDialogOpen(false)}
-                        >
-                            Cancel
-                        </button>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setSuggestDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAcceptSuggestion}>Accept Suggestion</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

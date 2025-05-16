@@ -227,7 +227,7 @@ export const ValueLabelsDialog = ({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={cn(
-                "bg-white flex flex-col",
+                "bg-card flex flex-col",
                 isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
             )}>
                 <DialogHeader className="px-6 py-4 flex-shrink-0">
@@ -250,7 +250,7 @@ export const ValueLabelsDialog = ({
                                     placeholder={isStringType ? "Any text or space" : "Numeric value"}
                                 />
                                 {currentValue === " " && (
-                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-blue-100 px-1.5 py-0.5 rounded text-blue-800">
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-primary/20 px-1.5 py-0.5 rounded text-primary">
                                         Space
                                     </div>
                                 )}

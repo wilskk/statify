@@ -21,8 +21,8 @@ const SaveTab: FC<SaveTabProps> = ({
                                        setFilePath
                                    }) => {
     return (
-        <div className="border p-2 rounded-md">
-            <div className="text-xs font-semibold mb-2">Save</div>
+        <div className="border border-border p-2 rounded-md bg-card">
+            <div className="text-xs font-semibold mb-2 text-foreground">Save</div>
             <div className="space-y-3">
                 <label className="flex items-center space-x-2">
                     <input
@@ -32,7 +32,7 @@ const SaveTab: FC<SaveTabProps> = ({
                         checked={saveOption === "ADD"}
                         onChange={() => setSaveOption("ADD")}
                     />
-                    <span className="text-xs">Add aggregated variables to active dataset</span>
+                    <span className="text-xs text-foreground">Add aggregated variables to active dataset</span>
                 </label>
 
                 <label className="flex items-center space-x-2">
@@ -43,12 +43,12 @@ const SaveTab: FC<SaveTabProps> = ({
                         checked={saveOption === "CREATE"}
                         onChange={() => setSaveOption("CREATE")}
                     />
-                    <span className="text-xs">Create a new dataset containing only the aggregated variables</span>
+                    <span className="text-xs text-foreground">Create a new dataset containing only the aggregated variables</span>
                 </label>
 
                 {saveOption === "CREATE" && (
                     <div className="ml-5 flex items-center gap-2">
-                        <Label className="text-xs">Dataset name:</Label>
+                        <Label className="text-xs text-foreground">Dataset name:</Label>
                         <Input
                             value={datasetName}
                             onChange={(e) => setDatasetName(e.target.value)}
@@ -65,7 +65,7 @@ const SaveTab: FC<SaveTabProps> = ({
                         checked={saveOption === "WRITE"}
                         onChange={() => setSaveOption("WRITE")}
                     />
-                    <span className="text-xs">Write a new data file containing only the aggregated variables</span>
+                    <span className="text-xs text-foreground">Write a new data file containing only the aggregated variables</span>
                 </label>
 
                 {saveOption === "WRITE" && (
@@ -82,7 +82,7 @@ const SaveTab: FC<SaveTabProps> = ({
                         >
                             File...
                         </Button>
-                        <span className="text-xs truncate">{filePath}</span>
+                        <span className="text-xs truncate text-foreground">{filePath}</span>
                     </div>
                 )}
             </div>

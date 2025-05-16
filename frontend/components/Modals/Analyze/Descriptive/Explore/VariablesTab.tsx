@@ -132,7 +132,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 // No specific footers needed here
             />
             {errorMsg && (
-                <div className="col-span-2 text-red-600 text-sm mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                <div className="col-span-2 text-destructive-foreground text-sm mt-3 p-2 bg-destructive border border-destructive/50 rounded">
                     {errorMsg}
                 </div>
             )}

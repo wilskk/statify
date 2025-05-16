@@ -58,8 +58,8 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <fieldset className="border rounded-md p-2">
-                        <legend className="text-xs font-semibold px-1">Summary Statistics</legend>
+                    <fieldset className="border border-border rounded-md p-2 bg-card">
+                        <legend className="text-xs font-semibold px-1 text-foreground">Summary Statistics</legend>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="flex items-center space-x-1">
                                 <input
@@ -77,7 +77,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="mean"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Mean
                                 </Label>
@@ -98,7 +98,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="median"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Median
                                 </Label>
@@ -119,7 +119,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="sum"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Sum
                                 </Label>
@@ -140,7 +140,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="stddev"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Standard Deviation
                                 </Label>
@@ -148,8 +148,8 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                         </div>
                     </fieldset>
 
-                    <fieldset className="border rounded-md p-2">
-                        <legend className="text-xs font-semibold px-1">Specific Values</legend>
+                    <fieldset className="border border-border rounded-md p-2 bg-card">
+                        <legend className="text-xs font-semibold px-1 text-foreground">Specific Values</legend>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="flex items-center space-x-1">
                                 <input
@@ -164,7 +164,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("FIRST");
                                     }}
                                 />
-                                <Label htmlFor="first" className="text-xs">First</Label>
+                                <Label htmlFor="first" className="text-xs text-foreground">First</Label>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <input
@@ -179,7 +179,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("LAST");
                                     }}
                                 />
-                                <Label htmlFor="last" className="text-xs">Last</Label>
+                                <Label htmlFor="last" className="text-xs text-foreground">Last</Label>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <input
@@ -197,7 +197,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="min"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Minimum
                                 </Label>
@@ -218,7 +218,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="max"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Maximum
                                 </Label>
@@ -226,8 +226,8 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                         </div>
                     </fieldset>
 
-                    <fieldset className="border rounded-md p-2">
-                        <legend className="text-xs font-semibold px-1">Number of cases</legend>
+                    <fieldset className="border border-border rounded-md p-2 bg-card">
+                        <legend className="text-xs font-semibold px-1 text-foreground">Number of cases</legend>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="flex items-center space-x-1">
                                 <input
@@ -242,7 +242,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("WEIGHTED");
                                     }}
                                 />
-                                <Label htmlFor="weighted" className="text-xs">Weighted</Label>
+                                <Label htmlFor="weighted" className="text-xs text-foreground">Weighted</Label>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <input
@@ -257,7 +257,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("WEIGHTED_MISSING");
                                     }}
                                 />
-                                <Label htmlFor="weighted-missing" className="text-xs">Weighted missing</Label>
+                                <Label htmlFor="weighted-missing" className="text-xs text-foreground">Weighted missing</Label>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <input
@@ -272,7 +272,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("UNWEIGHTED");
                                     }}
                                 />
-                                <Label htmlFor="unweighted" className="text-xs">Unweighted</Label>
+                                <Label htmlFor="unweighted" className="text-xs text-foreground">Unweighted</Label>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <input
@@ -287,13 +287,13 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("UNWEIGHTED_MISSING");
                                     }}
                                 />
-                                <Label htmlFor="unweighted-missing" className="text-xs">Unweighted missing</Label>
+                                <Label htmlFor="unweighted-missing" className="text-xs text-foreground">Unweighted missing</Label>
                             </div>
                         </div>
                     </fieldset>
 
-                    <fieldset className="border rounded-md p-2">
-                        <legend className="text-xs font-semibold px-1">Percentages, Fractions, Counts</legend>
+                    <fieldset className="border border-border rounded-md p-2 bg-card">
+                        <legend className="text-xs font-semibold px-1 text-foreground">Percentages, Fractions, Counts</legend>
                         <div className="flex gap-4 mb-2">
                             <div className="flex items-center space-x-1">
                                 <input
@@ -311,7 +311,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="percentages"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Percentages
                                 </Label>
@@ -332,7 +332,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                 />
                                 <Label
                                     htmlFor="fractions"
-                                    className={`text-xs ${isBaseStringType ? 'text-gray-400' : ''}`}
+                                    className={`text-xs ${isBaseStringType ? 'text-muted-foreground/70 cursor-not-allowed' : 'text-foreground'}`}
                                 >
                                     Fractions
                                 </Label>
@@ -350,7 +350,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                         setSelectedFunction("COUNT");
                                     }}
                                 />
-                                <Label htmlFor="counts" className="text-xs">Counts</Label>
+                                <Label htmlFor="counts" className="text-xs text-foreground">Counts</Label>
                             </div>
                         </div>
 
@@ -368,7 +368,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                             onChange={() => setPercentageType("above")}
                                             disabled={functionCategory !== "percentages"}
                                         />
-                                        <Label htmlFor="above" className="text-xs">Above</Label>
+                                        <Label htmlFor="above" className="text-xs text-foreground">Above</Label>
                                     </div>
                                     <div className="flex items-center space-x-1">
                                         <input
@@ -381,7 +381,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                             onChange={() => setPercentageType("below")}
                                             disabled={functionCategory !== "percentages"}
                                         />
-                                        <Label htmlFor="below" className="text-xs">Below</Label>
+                                        <Label htmlFor="below" className="text-xs text-foreground">Below</Label>
                                     </div>
                                     <div className="flex items-center space-x-1">
                                         <input
@@ -394,7 +394,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                             onChange={() => setPercentageType("inside")}
                                             disabled={functionCategory !== "percentages"}
                                         />
-                                        <Label htmlFor="inside" className="text-xs">Inside</Label>
+                                        <Label htmlFor="inside" className="text-xs text-foreground">Inside</Label>
                                     </div>
                                     <div className="flex items-center space-x-1">
                                         <input
@@ -407,13 +407,13 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                             onChange={() => setPercentageType("outside")}
                                             disabled={functionCategory !== "percentages"}
                                         />
-                                        <Label htmlFor="outside" className="text-xs">Outside</Label>
+                                        <Label htmlFor="outside" className="text-xs text-foreground">Outside</Label>
                                     </div>
                                 </div>
 
                                 {(percentageType === "above" || percentageType === "below") && (
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor="value" className="text-xs whitespace-nowrap">Value:</Label>
+                                        <Label htmlFor="value" className="text-xs text-foreground whitespace-nowrap">Value:</Label>
                                         <Input
                                             id="value"
                                             value={percentageValue}
@@ -426,7 +426,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
 
                                 {(percentageType === "inside" || percentageType === "outside") && (
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor="low" className="text-xs whitespace-nowrap">Low:</Label>
+                                        <Label htmlFor="low" className="text-xs text-foreground whitespace-nowrap">Low:</Label>
                                         <Input
                                             id="low"
                                             value={percentageLow}
@@ -435,7 +435,7 @@ const FunctionDialog: React.FC<FunctionDialogProps> = ({
                                             disabled={functionCategory !== "percentages"}
                                         />
 
-                                        <Label htmlFor="high" className="text-xs whitespace-nowrap ml-2">High:</Label>
+                                        <Label htmlFor="high" className="text-xs text-foreground whitespace-nowrap ml-2">High:</Label>
                                         <Input
                                             id="high"
                                             value={percentageHigh}

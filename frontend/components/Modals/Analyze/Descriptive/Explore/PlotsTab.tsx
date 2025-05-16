@@ -35,40 +35,40 @@ const PlotsTab: FC<PlotsTabProps> = ({
         <div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
                 {/* Boxplots Section */}
-                <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
+                <div className="bg-card border border-border rounded-md p-4">
                     {/* Removed underline from h3 */}
-                    <h3 className="text-sm font-medium mb-3 text-[#333333]">Boxplots</h3>
+                    <h3 className="text-sm font-medium mb-3 text-card-foreground">Boxplots</h3>
                     <RadioGroup
                         value={boxplotOption}
                         onValueChange={setBoxplotOption}
                         className="space-y-2"
                     >
                         <div className="flex items-center">
-                            <RadioGroupItem value="factorLevels" id="factorLevels" className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                            <RadioGroupItem value="factorLevels" id="factorLevels" className="mr-2 h-4 w-4" />
                             <Label htmlFor="factorLevels" className="text-sm cursor-pointer">Factor levels together</Label>
                         </div>
                         <div className="flex items-center">
-                            <RadioGroupItem value="dependents" id="dependents" className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                            <RadioGroupItem value="dependents" id="dependents" className="mr-2 h-4 w-4" />
                             <Label htmlFor="dependents" className="text-sm cursor-pointer">Dependents together</Label>
                         </div>
                         <div className="flex items-center">
-                            <RadioGroupItem value="none" id="noneBox" className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                            <RadioGroupItem value="none" id="noneBox" className="mr-2 h-4 w-4" />
                             <Label htmlFor="noneBox" className="text-sm cursor-pointer">None</Label>
                         </div>
                     </RadioGroup>
                 </div>
 
                 {/* Descriptive Plots Section */}
-                <div className="border border-[#E6E6E6] rounded-md p-4 bg-white">
+                <div className="bg-card border border-border rounded-md p-4">
                      {/* Removed underline from h3 */}
-                    <h3 className="text-sm font-medium mb-3 text-[#333333]">Descriptive</h3>
+                    <h3 className="text-sm font-medium mb-3 text-card-foreground">Descriptive</h3>
                     <div className="space-y-2">
                         <div className="flex items-center">
-                            <Checkbox id="stemAndLeaf" checked={showStemAndLeaf} onCheckedChange={(checked) => setShowStemAndLeaf(checked as boolean)} className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                            <Checkbox id="stemAndLeaf" checked={showStemAndLeaf} onCheckedChange={(checked) => setShowStemAndLeaf(checked as boolean)} className="mr-2 h-4 w-4" />
                             <Label htmlFor="stemAndLeaf" className="text-sm cursor-pointer">Stem-and-leaf</Label>
                         </div>
                         <div className="flex items-center">
-                            <Checkbox id="histogram" checked={showHistogram} onCheckedChange={(checked) => setShowHistogram(checked as boolean)} className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                            <Checkbox id="histogram" checked={showHistogram} onCheckedChange={(checked) => setShowHistogram(checked as boolean)} className="mr-2 h-4 w-4" />
                             <Label htmlFor="histogram" className="text-sm cursor-pointer">Histogram</Label>
                         </div>
                     </div>
@@ -76,9 +76,9 @@ const PlotsTab: FC<PlotsTabProps> = ({
             </div>
 
             {/* Normality Plots Section */}
-            <div className="border border-[#E6E6E6] rounded-md p-4 bg-white mb-5">
+            <div className="bg-card border border-border rounded-md p-4 mb-5">
                 <div className="flex items-center">
-                    <Checkbox id="normalityPlots" checked={showNormalityPlots} onCheckedChange={(checked) => setShowNormalityPlots(checked as boolean)} className="mr-2 border-[#CCCCCC] h-4 w-4" />
+                    <Checkbox id="normalityPlots" checked={showNormalityPlots} onCheckedChange={(checked) => setShowNormalityPlots(checked as boolean)} className="mr-2 h-4 w-4" />
                     {/* Removed underline from Label */}
                     <Label htmlFor="normalityPlots" className="text-sm cursor-pointer">Normality plots with tests</Label>
                 </div>

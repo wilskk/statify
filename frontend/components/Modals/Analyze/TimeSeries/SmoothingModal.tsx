@@ -1,5 +1,5 @@
 // SmoothingModal.tsx
-import React, { useState, useEffect, FC} from "react";
+import React, { useState, useEffect, FC, useMemo } from "react";
 import { CornerDownLeft, CornerDownRight } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -71,14 +71,14 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
     const [dataVariable, setDataVariable] = useState<string[]>([]);
     
     // Default parameters for each method
-    const defaultParameters: MethodParameters = {
+    const defaultParameters: MethodParameters = useMemo(() => ({
         'sma': [2, 0, 0],
         'dma': [2, 0, 0],
         'ses': [0.1, 0, 0],
         'des': [0.1, 0, 0],
         'holt': [0.1, 0.1, 0],
         'winter': [0.1, 0.1, 0.1],
-    };
+    }), []);
 
     // UI state management
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
