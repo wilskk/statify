@@ -12,7 +12,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import type { StatisticsOptions } from "@/types/Analysis";
 import { useMobile } from '@/hooks/useMobile';
 
 interface StatisticsTabProps {

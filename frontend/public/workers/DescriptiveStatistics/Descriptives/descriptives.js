@@ -10,6 +10,67 @@ try {
     throw e;
 }
 
+/**
+ * Fungsi untuk menghitung Z-score dari array data
+ * @param {Array} rawDataArray - Array data mentah
+ * @param {number} mean - Nilai mean yang sudah dihitung
+ * @param {number} stdDev - Nilai standar deviasi yang sudah dihitung
+ * @returns {Array} - Array Z-score dengan panjang yang sama dengan rawDataArray
+ */
+function calculateZScores(rawDataArray, mean, stdDev) {
+    // Buat array baru dengan panjang yang sama dengan rawDataArray
+    const zScores = new Array(rawDataArray.length);
+    
+    // Error check: Jika stdDev adalah 0 atau tidak valid, semua Z-score akan jadi 0
+    if (stdDev === 0 || !stdDev || isNaN(stdDev)) {
+        console.warn("Standard deviation is zero or invalid. Z-scores will be constant zero for non-missing values.");
+        for (let i = 0; i < rawDataArray.length; i++) {
+            const rawValue = rawDataArray[i];
+            // Cek jika nilai valid (tidak null, tidak undefined, bukan string kosong)
+            if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+                let numValue = rawValue;
+                if (typeof rawValue === 'string') {
+                    numValue = parseFloat(rawValue);
+                    if (isNaN(numValue)) {
+                        zScores[i] = ""; // Nilai invalid, set Z-score ke string kosong
+                        continue;
+                    }
+                }
+                // Semua nilai valid akan jadi 0 karena stdDev = 0 (semua nilai sama dengan mean)
+                zScores[i] = 0;
+            } else {
+                // Nilai missing/invalid, set Z-score ke string kosong
+                zScores[i] = "";
+            }
+        }
+        return zScores;
+    }
+    
+    // Kasus normal: Hitung Z-score untuk setiap nilai
+    for (let i = 0; i < rawDataArray.length; i++) {
+        const rawValue = rawDataArray[i];
+        // Cek jika nilai valid (tidak null, tidak undefined, bukan string kosong)
+        if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
+            let numValue = rawValue;
+            if (typeof rawValue === 'string') {
+                numValue = parseFloat(rawValue);
+                if (isNaN(numValue)) {
+                    zScores[i] = ""; // Nilai invalid, set Z-score ke string kosong
+                    continue;
+                }
+            }
+            
+            // Kalkulasi Z-score: (nilai - mean) / stdDev
+            zScores[i] = (numValue - mean) / stdDev;
+        } else {
+            // Nilai missing/invalid, set Z-score ke string kosong
+            zScores[i] = "";
+        }
+    }
+    
+    return zScores;
+}
+
 self.onmessage = function(e) {
     try {
         // Destructure data input.
@@ -21,9 +82,10 @@ self.onmessage = function(e) {
             listwiseValidN: 0
         };
         
-        // Objek untuk menyimpan data Z-score
+        // Objek untuk menyimpan data Z-score, hanya jika saveStandardized aktif
         const zScoreData = saveStandardized ? {} : null;
 
+        // ---- Hitung statistik deskriptif untuk setiap variabel ----
         for (const varInstance of variableData) {
             const currentVariable = varInstance.variable;
             const rawDataArray = varInstance.data;
@@ -203,31 +265,10 @@ self.onmessage = function(e) {
                 }
                 
                 // Hitung Z-score values jika saveStandardized aktif
-                if (saveStandardized && variableType === 'NUMERIC' && mean !== null && stdDev !== null && stdDev > 0) {
-                    // Buat array baru dengan panjang yang sama dengan rawDataArray
-                    const zScores = new Array(rawDataArray.length);
-                    
-                    // Hitung Z-score untuk setiap nilai
-                    for (let i = 0; i < rawDataArray.length; i++) {
-                        const rawValue = rawDataArray[i];
-                        // Cek jika nilai valid (tidak null, tidak undefined, bukan string kosong, bisa dikonversi ke angka)
-                        if (rawValue !== null && rawValue !== undefined && rawValue !== "") {
-                            let numValue = rawValue;
-                            if (typeof rawValue === 'string') {
-                                numValue = parseFloat(rawValue);
-                                if (isNaN(numValue)) {
-                                    zScores[i] = ""; // Nilai invalid, set Z-score ke string kosong
-                                    continue;
-                                }
-                            }
-                            
-                            // Kalkulasi Z-score: (nilai - mean) / stdDev
-                            zScores[i] = (numValue - mean) / stdDev;
-                        } else {
-                            // Nilai missing/invalid, set Z-score ke string kosong
-                            zScores[i] = "";
-                        }
-                    }
+                // Tipe data harus NUMERIC dan harus ada mean & stdDev
+                if (saveStandardized && variableType === 'NUMERIC' && mean !== null && stdDev !== null) {
+                    // Gunakan fungsi terpisah untuk menghitung Z-scores
+                    const zScores = calculateZScores(rawDataArray, mean, stdDev);
                     
                     // Simpan Z-scores untuk variabel ini
                     zScoreData[variableName] = {

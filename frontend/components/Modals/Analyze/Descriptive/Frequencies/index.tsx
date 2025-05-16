@@ -1,8 +1,7 @@
 "use client";
-import React, { useState, useEffect, FC, useCallback } from "react";
+import React, { useState, FC, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
     DialogContent,
     DialogFooter,
     DialogHeader,
@@ -14,217 +13,130 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { useVariableStore } from "@/stores/useVariableStore";
-import type { Variable } from "@/types/Variable";
-import { useFrequenciesAnalysis } from "@/hooks/useFrequenciesAnalysis";
-import type { StatisticsOptions } from "@/types/Analysis";
-import type { ChartOptions } from "@/types/Analysis";
+import { 
+    useVariableSelection,
+    useStatisticsSettings,
+    useChartsSettings,
+    useFrequenciesAnalysis
+} from "./hooks";
+import type { FrequenciesAnalysisParams } from "./types";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import ChartsTab from "./ChartsTab";
 
+// Simple hook for managing the frequency tables option
+const useFrequencyTablesOption = (initialValue = true) => {
+    const [showFrequencyTables, setShowFrequencyTables] = useState(initialValue);
+    return { showFrequencyTables, setShowFrequencyTables };
+};
+
 interface FrequenciesModalProps {
     onClose: () => void;
 }
 
-const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
+const Frequencies: FC<FrequenciesModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState("variables");
-    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
-    const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
 
-    const [resetChartsCounter, setResetChartsCounter] = useState(0);
+    // Use the custom hooks for state management
+    const {
+        availableVariables,
+        selectedVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToSelectedVariables,
+        moveToAvailableVariables,
+        reorderVariables,
+        resetVariableSelection
+    } = useVariableSelection();
 
-    const [showFrequencyTables, setShowFrequencyTables] = useState(true);
-    const [showCharts, setShowCharts] = useState(false);
-    const [showStatistics, setShowStatistics] = useState(true);
+    const {
+        showFrequencyTables,
+        setShowFrequencyTables
+    } = useFrequencyTablesOption();
 
-    const [chartType, setChartType] = useState<"none" | "barCharts" | "pieCharts" | "histograms">("none");
-    const [chartValues, setChartValues] = useState<"frequencies" | "percentages">("frequencies");
-    const [showNormalCurve, setShowNormalCurve] = useState(false);
-
-    const [quartilesChecked, setQuartilesChecked] = useState(false);
-    const [cutPointsChecked, setCutPointsChecked] = useState(false);
-    const [cutPointsValue, setCutPointsValue] = useState("10");
-    const [enablePercentiles, setEnablePercentiles] = useState(false);
-    const [percentileValues, setPercentileValues] = useState<string[]>([]);
-    const [currentPercentileInput, setCurrentPercentileInput] = useState("");
-    const [selectedPercentileItem, setSelectedPercentileItem] = useState<string | null>(null);
-
-    const [meanChecked, setMeanChecked] = useState(false);
-    const [medianChecked, setMedianChecked] = useState(false);
-    const [modeChecked, setModeChecked] = useState(false);
-    const [sumChecked, setSumChecked] = useState(false);
-
-    const [stdDevChecked, setStdDevChecked] = useState(false);
-    const [varianceChecked, setVarianceChecked] = useState(false);
-    const [rangeChecked, setRangeChecked] = useState(false);
-    const [minChecked, setMinChecked] = useState(false);
-    const [maxChecked, setMaxChecked] = useState(false);
-    const [seMeanChecked, setSeMeanChecked] = useState(false);
-
-    const [skewnessChecked, setSkewnessChecked] = useState(false);
-    const [kurtosisChecked, setKurtosisChecked] = useState(false);
-
-    const variables = useVariableStore.getState().variables;
-
-    const getCurrentStatisticsOptions = useCallback((): StatisticsOptions | null => {
-        if (!showStatistics) return null;
-        return {
-            percentileValues: {
-                quartiles: quartilesChecked,
-                cutPoints: cutPointsChecked,
-                cutPointsN: parseInt(cutPointsValue, 10) || 10,
-                enablePercentiles: enablePercentiles,
-                percentilesList: percentileValues,
-            },
-            centralTendency: {
-                mean: meanChecked,
-                median: medianChecked,
-                mode: modeChecked,
-                sum: sumChecked,
-            },
-            dispersion: {
-                stddev: stdDevChecked,
-                variance: varianceChecked,
-                range: rangeChecked,
-                minimum: minChecked,
-                maximum: maxChecked,
-                stdErrorMean: seMeanChecked,
-            },
-            distribution: {
-                skewness: skewnessChecked,
-                stdErrorSkewness: skewnessChecked,
-                kurtosis: kurtosisChecked,
-                stdErrorKurtosis: kurtosisChecked,
-            },
-        };
-    }, [
+    const {
         showStatistics,
-        quartilesChecked, cutPointsChecked, cutPointsValue, enablePercentiles, percentileValues,
-        meanChecked, medianChecked, modeChecked, sumChecked,
-        stdDevChecked, varianceChecked, rangeChecked, minChecked, maxChecked, seMeanChecked,
-        kurtosisChecked, skewnessChecked,
-    ]);
+        setShowStatistics,
+        quartilesChecked,
+        setQuartilesChecked,
+        cutPointsChecked,
+        setCutPointsChecked,
+        cutPointsValue,
+        setCutPointsValue,
+        enablePercentiles,
+        setEnablePercentiles,
+        percentileValues,
+        setPercentileValues,
+        currentPercentileInput,
+        setCurrentPercentileInput,
+        selectedPercentileItem,
+        setSelectedPercentileItem,
+        meanChecked,
+        setMeanChecked,
+        medianChecked,
+        setMedianChecked,
+        modeChecked,
+        setModeChecked,
+        sumChecked,
+        setSumChecked,
+        stdDevChecked,
+        setStdDevChecked,
+        varianceChecked,
+        setVarianceChecked,
+        rangeChecked,
+        setRangeChecked,
+        minChecked,
+        setMinChecked,
+        maxChecked,
+        setMaxChecked,
+        seMeanChecked,
+        setSeMeanChecked,
+        skewnessChecked,
+        setSkewnessChecked,
+        kurtosisChecked,
+        setKurtosisChecked,
+        getCurrentStatisticsOptions,
+        resetStatisticsSettings
+    } = useStatisticsSettings();
 
-    const getCurrentChartOptions = useCallback((): ChartOptions | null => {
-        if (!showCharts) return null;
-        return {
-            type: chartType === "none" ? null : chartType,
-            values: chartValues,
-            showNormalCurveOnHistogram: chartType === "histograms" ? showNormalCurve : false,
-        };
-    }, [showCharts, chartType, chartValues, showNormalCurve]);
+    const {
+        showCharts,
+        setShowCharts,
+        chartType,
+        setChartType,
+        chartValues,
+        setChartValues,
+        showNormalCurve,
+        setShowNormalCurve,
+        getCurrentChartOptions,
+        resetChartsSettings
+    } = useChartsSettings();
 
-    const { isCalculating, errorMsg, runAnalysis } = useFrequenciesAnalysis({
+    // Build the analysis parameters
+    const analysisParams: FrequenciesAnalysisParams = {
         selectedVariables,
         showFrequencyTables,
         showStatistics,
-        showCharts,
         statisticsOptions: getCurrentStatisticsOptions(),
+        showCharts,
         chartOptions: getCurrentChartOptions(),
         onClose
-    });
-
-    useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "").map(v => ({
-            ...v,
-            tempId: v.tempId || `temp_${v.columnIndex}`
-        }));
-        const selectedTempIds = new Set(selectedVariables.map(v => v.tempId));
-        const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId));
-        setAvailableVariables(finalAvailable);
-    }, [variables, selectedVariables]);
-
-    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        if (!variable.tempId) {
-            console.error("Cannot move variable without tempId:", variable);
-            return;
-        }
-        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        setSelectedVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) {
-                return prev;
-            }
-            const newList = [...prev];
-            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-                newList.splice(targetIndex, 0, variable);
-            } else {
-                newList.push(variable);
-            }
-            return newList;
-        });
-        setHighlightedVariable(null);
     };
 
-    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
-        if (!variable.tempId) {
-            console.error("Cannot move variable without tempId:", variable);
-            return;
-        }
-        setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        setAvailableVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) {
-                return prev;
-            }
-            const newList = [...prev];
-            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-                newList.splice(targetIndex, 0, variable);
-            } else {
-                newList.push(variable);
-            }
-            newList.sort((a, b) => a.columnIndex - b.columnIndex);
-            return newList;
-        });
-        setHighlightedVariable(null);
-    };
+    const { 
+        isLoading, 
+        errorMsg, 
+        runAnalysis, 
+        cancelAnalysis 
+    } = useFrequenciesAnalysis(analysisParams);
 
-    const reorderVariables = (source: 'available' | 'selected', reorderedList: Variable[]) => {
-        if (source === 'available') {
-            setAvailableVariables([...reorderedList]);
-        } else {
-            setSelectedVariables([...reorderedList]);
-        }
-    };
-
-    const handleReset = () => {
-        const allVars = [...availableVariables, ...selectedVariables].sort((a, b) => a.columnIndex - b.columnIndex);
-        setAvailableVariables(allVars);
-        setSelectedVariables([]);
-
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetStatisticsSettings();
+        resetChartsSettings();
         setShowFrequencyTables(true);
-        setShowStatistics(true);
-        setShowCharts(false);
-
-        setQuartilesChecked(false);
-        setCutPointsChecked(false);
-        setCutPointsValue("10");
-        setEnablePercentiles(false);
-        setPercentileValues([]);
-        setCurrentPercentileInput("");
-        setSelectedPercentileItem(null);
-        setMeanChecked(false);
-        setMedianChecked(false);
-        setModeChecked(false);
-        setSumChecked(false);
-        setStdDevChecked(false);
-        setVarianceChecked(false);
-        setRangeChecked(false);
-        setMinChecked(false);
-        setMaxChecked(false);
-        setSeMeanChecked(false);
-        setKurtosisChecked(false);
-        setSkewnessChecked(false);
-
-        setChartType("none");
-        setChartValues("frequencies");
-        setShowNormalCurve(false);
-
-        setHighlightedVariable(null);
-
-        setActiveTab("variables");
-    };
+    }, [resetVariableSelection, resetStatisticsSettings, resetChartsSettings, setShowFrequencyTables]);
 
     return (
         <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
@@ -247,12 +159,12 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         >
                             Statistics
                         </TabsTrigger>
-                        {/* <TabsTrigger
+                        <TabsTrigger
                             value="charts"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Charts
-                        </TabsTrigger> */}
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -338,9 +250,9 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <Button
                         className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={runAnalysis}
-                        disabled={isCalculating || selectedVariables.length === 0}
+                        disabled={isLoading || selectedVariables.length === 0}
                     >
-                        {isCalculating ? "Calculating..." : "OK"}
+                        {isLoading ? "Calculating..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
@@ -353,14 +265,14 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         variant="outline"
                         className="h-8 px-4"
                         onClick={onClose}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
                         className="h-8 px-4"
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Help
                     </Button>
@@ -370,4 +282,4 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     );
 };
 
-export default Index;
+export default Frequencies;

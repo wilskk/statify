@@ -1,5 +1,6 @@
-import type { Variable } from "./Variable";
+import type { Variable } from "@/types/Variable";
 
+// === Statistics Options ===
 export interface PercentileOptions {
     quartiles: boolean;
     cutPoints: boolean;
@@ -13,7 +14,6 @@ export interface CentralTendencyOptions {
     median: boolean;
     mode: boolean;
     sum: boolean;
-    // valuesAreGroupMidpoints: boolean; // Add if needed
 }
 
 export interface DispersionOptions {
@@ -39,20 +39,51 @@ export interface StatisticsOptions {
     distribution: DistributionOptions;
 }
 
-// Add ChartOptions definition
+// === Chart Options ===
 export interface ChartOptions {
     type: "barCharts" | "pieCharts" | "histograms" | null;
     values: "frequencies" | "percentages";
     showNormalCurveOnHistogram: boolean;
 }
 
+// === Analysis Params ===
 export interface FrequenciesAnalysisParams {
     selectedVariables: Variable[];
     showFrequencyTables: boolean;
     showStatistics: boolean;
     statisticsOptions: StatisticsOptions | null;
     showCharts: boolean;
-    // Add chartOptions here?
-    chartOptions: ChartOptions | null; // Add chartOptions
+    chartOptions: ChartOptions | null;
     onClose: () => void;
+}
+
+// === Results Types ===
+export interface FrequenciesResults {
+    descriptive?: any;
+    frequencies?: any[];
+}
+
+// === Worker Types ===
+export interface WorkerInput {
+    variableData: any[];
+    weightVariableData: (string | number)[] | null;
+    statisticsOptions?: StatisticsOptions | null;
+    chartOptions?: ChartOptions | null;
+}
+
+export interface FrequencyWorkerResult {
+    success: boolean;
+    frequencies?: any[];
+    error?: string;
+}
+
+export interface DescriptiveWorkerResult {
+    success: boolean;
+    descriptive?: any;
+    error?: string;
+}
+
+export interface WorkerCalculationPromise {
+    resolve: (value: { frequencies?: any[]; descriptive?: any; } | null) => void;
+    reject: (reason: any) => void;
 } 
