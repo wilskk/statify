@@ -5,7 +5,8 @@ import type {
   WorkerInput,
   FrequencyWorkerResult as FrequencyResult,
   DescriptiveWorkerResult as DescriptiveResult,
-  WorkerCalculationPromise
+  WorkerCalculationPromise,
+  RawFrequencyData
 } from '../types';
 
 export interface FrequenciesWorkerProps {
@@ -23,7 +24,7 @@ export interface FrequenciesWorkerResult {
       calculateFrequencies: boolean;
       calculateDescriptives: boolean;
     }
-  ) => Promise<{ frequencies?: any[]; descriptive?: any; } | null>;
+  ) => Promise<{ frequencies?: RawFrequencyData[]; descriptive?: any; } | null>;
   cancelCalculation: () => void;
 }
 
@@ -40,7 +41,7 @@ export const useFrequenciesWorker = ({
   const descWorkerRef = useRef<Worker | null>(null);
   
   // Tracking references
-  const resultsRef = useRef<{ frequencies?: any[]; descriptive?: any; }>({});
+  const resultsRef = useRef<{ frequencies?: RawFrequencyData[]; descriptive?: any; }>({});
   const workersFinishedRef = useRef<number>(0);
   const totalWorkersRef = useRef<number>(0);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
@@ -110,7 +111,7 @@ export const useFrequenciesWorker = ({
       calculateFrequencies: boolean;
       calculateDescriptives: boolean;
     }
-  ): Promise<{ frequencies?: any[]; descriptive?: any; } | null> => {
+  ): Promise<{ frequencies?: RawFrequencyData[]; descriptive?: any; } | null> => {
     // Cancel any in-progress calculation
     cancelCalculation();
     
@@ -125,7 +126,7 @@ export const useFrequenciesWorker = ({
     if (totalWorkersRef.current === 0) {
       setError("No calculation options selected");
       setIsCalculating(false);
-      return null;
+      return Promise.resolve(null);
     }
     
     try {
@@ -143,7 +144,7 @@ export const useFrequenciesWorker = ({
       }, timeoutDuration * totalWorkersRef.current);
       
       // Create a promise that will be resolved when all workers have completed
-      const resultPromise = new Promise<{ frequencies?: any[]; descriptive?: any; } | null>((resolve, reject) => {
+      const resultPromise = new Promise<{ frequencies?: RawFrequencyData[]; descriptive?: any; } | null>((resolve, reject) => {
         calculationPromiseRef.current = { resolve, reject };
       });
       

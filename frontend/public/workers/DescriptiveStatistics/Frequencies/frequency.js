@@ -268,140 +268,23 @@ const round = (num, decimals) => {
     };
   };
   
-  // Format hasil analisis frekuensi menjadi struktur tabel output.
-  const formatOutput = (analysisResults) => {
-    const tables = [];
-  
-    if (!Array.isArray(analysisResults)) {
-        // console.error("Internal error: Analysis results are not an array.");
-        return { tables: [] }; // Return empty structure to prevent further errors
-    }
-  
-    for (const result of analysisResults) {
-      if (!result || typeof result !== 'object' || !result.variableLabel) {
-          // console.warn("Skipping invalid analysis result:", result);
-          continue; // Skip if a result is malformed
-      }
-  
-      const tableObject = {
-        title: result.variableLabel,
-        // Define structure needed by the consuming code (useFrequenciesAnalysis)
-        // Assuming it expects the full table structure including headers and rows
-        columnHeaders: [
-          { header: "" },
-          { header: "" },
-          { header: "Frequency", key: "frequency" },
-          { header: "Percent", key: "percent" },
-          { header: "Valid Percent", key: "valid_percent" },
-          { header: "Cumulative Percent", key: "cumulative_percent" }
-        ],
-        rows: [],
-        // Add components and description keys as expected by addStatistic
-        components: ['Frequency Table'], // Indicate a table component is the primary output
-        description: `Frequency table for ${result.variableLabel}`
-      };
-  
-      // Add rows for valid data
-      if(Array.isArray(result.validRowsData)){
-          result.validRowsData.forEach(validRow => {
-            tableObject.rows.push({
-              rowHeader: ["Valid", validRow.label],
-              frequency: validRow.frequency,
-              percent: round(validRow.percent, 1), // Round percentages
-              valid_percent: round(validRow.validPercent, 1),
-              cumulative_percent: round(validRow.cumulativePercent, 1)
-            });
-          });
-      }
-  
-      // Add total row for valid data if there are any valid entries
-      if (result.validN > 0) {
-        tableObject.rows.push({
-          rowHeader: ["Valid", "Total"],
-          frequency: result.validN,
-          percent: round((result.validN / result.totalN) * 100, 1),
-          valid_percent: 100.0, // Valid percent for total valid is always 100%
-          cumulative_percent: null // No cumulative percent for total row
-        });
-      }
-  
-      // Add rows for missing data
-      if (result.totalMissingN > 0 && Array.isArray(result.missingRowsData)) {
-        let numberOfMissingRowsAdded = 0;
-  
-        result.missingRowsData.forEach(missingRow => {
-          tableObject.rows.push({
-            rowHeader: ["Missing", missingRow.label],
-            frequency: missingRow.frequency,
-            percent: round(missingRow.percent, 1),
-            valid_percent: null, // No valid percent for missing values
-            cumulative_percent: null // No cumulative percent for missing values
-          });
-          numberOfMissingRowsAdded++;
-      });
-  
-        // Add total row for missing data if there is more than one type of missing or multiple missing entries
-        if (numberOfMissingRowsAdded > 1) {
-           tableObject.rows.push({
-              rowHeader: ["Missing", "Total"],
-              frequency: result.totalMissingN,
-              percent: round((result.totalMissingN / result.totalN) * 100, 1),
-              valid_percent: null,
-              cumulative_percent: null
-        });
-      }
-      }
-  
-      // Add overall total row
-      tableObject.rows.push({
-        rowHeader: ["Total", null], // No sub-label for overall total
-        frequency: result.totalN,
-        percent: 100.0, // Percent for overall total is always 100%
-        valid_percent: null,
-        cumulative_percent: null
-      });
-  
-      // Push the fully structured table object
-      tables.push(tableObject);
-    }
-  
-    // The worker should return an array of these table objects
-    return tables;
-  };
-  
-  // Fungsi utama worker: analisis frekuensi.
-  const analyzeFrequencies = (inputData) => {
-    if (!inputData || !Array.isArray(inputData.variableData)) {
-        // console.error("Invalid input data structure received by worker.");
-        throw new Error("Invalid input data structure received by worker.");
-    }
-  
-    const analysisResults = inputData.variableData
-      .map(variableItem => {
-        try {
-              // Pass weight data if needed in the future
-              return calculateFrequencyForVariable(variableItem /*, inputData.weightVariableData */);
-          } catch (error) {
-              // console.error(`Error processing variable ${variableItem?.variable?.name || 'unknown'}:`, error);
-              // Rethrow or handle appropriately; returning null might hide errors
-               throw new Error(`Error processing variable ${variableItem?.variable?.name || 'unknown'}: ${error.message}`);
-             // return null; // Or handle error more gracefully
-    }
-      })
-      .filter(result => result !== null); // Filter out any nulls from errored processing if not rethrowing
-
-    // FormatOutput now returns the array of table objects directly
-    return formatOutput(analysisResults);
-  };
-  
   // Web Worker message handler
   self.onmessage = function(event) {
     try {
           const inputData = event.data;
-          // Note: Weighting data (inputData.weightVariableData) is received but not yet used.
-          const frequencyTables = analyzeFrequencies(inputData);
-          // Send back an array of formatted table objects
-          self.postMessage({ success: true, frequencies: frequencyTables });
+          // Calculate raw frequency data for each variable
+          const rawFrequencyData = inputData.variableData
+            .map(variableItem => {
+              try {
+                return calculateFrequencyForVariable(variableItem);
+              } catch (error) {
+                throw new Error(`Error processing variable ${variableItem?.variable?.name || 'unknown'}: ${error.message}`);
+              }
+            })
+            .filter(result => result !== null);
+            
+          // Return the raw frequency data without formatting
+          self.postMessage({ success: true, frequencies: rawFrequencyData });
     } catch (error) {
           self.postMessage({ success: false, error: error.message });
     }

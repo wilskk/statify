@@ -5,10 +5,12 @@ import type {
   StatisticsOptions, 
   ChartOptions, 
   FrequenciesAnalysisParams,
-  FrequenciesResults
+  FrequenciesResults,
+  RawFrequencyData
 } from '../types';
 import { useDataFetching } from './useDataFetching';
 import { useFrequenciesWorker } from './useFrequenciesWorker';
+import { formatFrequencyTable } from '../utils';
 
 export interface FrequenciesAnalysisResult {
   isLoading: boolean;
@@ -18,16 +20,16 @@ export interface FrequenciesAnalysisResult {
 }
 
 export const useFrequenciesAnalysis = ({
-  selectedVariables,
-  showFrequencyTables,
-  showStatistics,
-  statisticsOptions,
+    selectedVariables,
+    showFrequencyTables,
+    showStatistics,
+    statisticsOptions,
   showCharts,
   chartOptions,
-  onClose,
+    onClose,
 }: FrequenciesAnalysisParams): FrequenciesAnalysisResult => {
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
   
   // Use the data fetching hook
   const { fetchData, error: fetchError, isLoading: isFetching } = useDataFetching();
@@ -94,32 +96,32 @@ export const useFrequenciesAnalysis = ({
       }
 
       // Process the successful result
-      try {
-        const variableNames = selectedVariables.map(v => v.name);
-        const executedActions = [];
+                try {
+                    const variableNames = selectedVariables.map(v => v.name);
+                    const executedActions = [];
 
         if (result.frequencies) executedActions.push("Frequencies");
         if (result.descriptive) executedActions.push("Statistics");
 
-        if (executedActions.length === 0) {
-          console.warn("Workers finished, but no results were generated.");
+                    if (executedActions.length === 0) {
+                         console.warn("Workers finished, but no results were generated.");
           setErrorMsg("Analysis completed but produced no output.");
           return;
-        }
+                    }
 
-        const logMsg = `${executedActions.join(' & ').toUpperCase()} VARIABLES=${variableNames.join(", ")}`;
-        const logId = await addLog({ log: logMsg });
+                    const logMsg = `${executedActions.join(' & ').toUpperCase()} VARIABLES=${variableNames.join(", ")}`;
+                    const logId = await addLog({ log: logMsg });
 
-        const analyticId = await addAnalytic(logId, {
-          title: executedActions.join(' & '),
-          note: `Analysis performed on: ${variableNames.join(", ")}`
-        });
+                    const analyticId = await addAnalytic(logId, {
+                        title: executedActions.join(' & '),
+                        note: `Analysis performed on: ${variableNames.join(", ")}`
+                    });
 
         const statisticsToAdd: any[] = [];
 
         // Add Descriptive Statistics
         if (result.descriptive) {
-          statisticsToAdd.push({
+                        statisticsToAdd.push({
             title: result.descriptive.title,
             output_data: JSON.stringify(result.descriptive.output_data),
             components: result.descriptive.components,
@@ -127,25 +129,28 @@ export const useFrequenciesAnalysis = ({
           });
         }
 
-        // Add Frequency Tables
-        if (result.frequencies) {
-          result.frequencies.forEach((formattedFreqTable: any) => {
-            statisticsToAdd.push({
-              title: formattedFreqTable.title,
-              output_data: JSON.stringify({ tables: [formattedFreqTable] }),
-              components: formattedFreqTable.components,
-              description: formattedFreqTable.description
+        // Format and add Frequency Tables
+        if (result.frequencies && Array.isArray(result.frequencies)) {
+          for (const rawFrequencyData of result.frequencies) {
+            // Use the formatter utility to convert raw data to table format
+            const formattedTable = formatFrequencyTable(rawFrequencyData as RawFrequencyData);
+            
+                            statisticsToAdd.push({
+              title: formattedTable.title,
+              output_data: JSON.stringify({ tables: [formattedTable] }),
+              components: formattedTable.components,
+              description: formattedTable.description
             });
-          });
+          }
         }
 
         // Add all statistics to the result store
-        for (const stat of statisticsToAdd) {
-          await addStatistic(analyticId, stat);
-        }
+                    for (const stat of statisticsToAdd) {
+                        await addStatistic(analyticId, stat);
+                    }
 
-        onClose(); // Close modal on success
-      } catch (err) {
+                    onClose(); // Close modal on success
+                } catch (err) {
         console.error("Error saving frequencies results:", err);
         setErrorMsg("An error occurred while saving the analysis results.");
       }
