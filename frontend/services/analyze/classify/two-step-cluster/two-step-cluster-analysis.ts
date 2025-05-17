@@ -8,9 +8,6 @@ export async function analyzeTwoStepCluster({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: TwoStepClusterAnalysisType) {
     const CategoricalVariables = configData.main.CategoricalVar || [];
     const ContinousVariables = configData.main.ContinousVar || [];
@@ -50,13 +47,10 @@ export async function analyzeTwoStepCluster({
     // const formattedResults = transformClusteringResult(results);
     // console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
     // await resultTwoStepCluster({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

@@ -6,9 +6,6 @@ export async function analyzeOptScaCatpca({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaCatpcaAnalysisType) {
     const AnalysisVariables = configData.main.AnalysisVars || [];
     const SupplementVariables = configData.main.SuppleVars || [];

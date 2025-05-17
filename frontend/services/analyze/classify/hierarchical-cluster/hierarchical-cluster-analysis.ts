@@ -8,9 +8,6 @@ export async function analyzeHierClus({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: HierClusAnalysisType) {
     const ClusterVariables = configData.main.Variables || [];
 
@@ -59,9 +56,6 @@ export async function analyzeHierClus({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultHierarchicalCluster({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

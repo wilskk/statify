@@ -8,9 +8,6 @@ export async function analyzeKMeansCluster({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: KMeansClusterAnalysisType) {
     const TargetVariables = configData.main.TargetVar || [];
     const CaseTargetVariable = configData.main.CaseTarget
@@ -52,9 +49,6 @@ export async function analyzeKMeansCluster({
      * 🎉 Final Result Process 🎯
      * */
     await resultKMeans({
-        addLog,
-        addAnalytic,
-        addStatistic,
         formattedResult: formattedResults ?? [],
         configData,
         variables,

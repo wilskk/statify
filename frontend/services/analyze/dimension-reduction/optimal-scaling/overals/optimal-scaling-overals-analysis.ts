@@ -12,9 +12,6 @@ export async function analyzeOptScaOverals({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaOveralsAnalysisType) {
     // Keep the original nested structure from configData
     const SetTargetVariable = configData?.main?.SetTargetVariable || [];
@@ -76,9 +73,6 @@ export async function analyzeOptScaOverals({
      * 🎉 Final Result Process 🎯
      * */
     // await resultOVERALSAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

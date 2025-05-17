@@ -6,9 +6,6 @@ export async function analyzeVarianceComps({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: VarianceCompsAnalysisType) {
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
@@ -83,10 +80,7 @@ export async function analyzeVarianceComps({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultVarianceCompsAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
+    // await resultVarianceComponents({
     //     formattedResult: formattedResults ?? [],
     // });
 }

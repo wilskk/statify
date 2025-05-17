@@ -6,9 +6,6 @@ export async function analyzeOptScaMCA({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaMCAAnalysisType) {
     const AnalysisVariables = configData.main.AnalysisVars || [];
     const SupplementVariables = configData.main.SuppleVars || [];
@@ -62,9 +59,6 @@ export async function analyzeOptScaMCA({
      * 🎉 Final Result Process 🎯
      * */
     // await resultMCAAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

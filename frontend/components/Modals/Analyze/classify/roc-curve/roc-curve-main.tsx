@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeRocCurve } from "@/services/analyze/classify/roc-curve/roc-curve-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -30,7 +29,6 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -77,9 +75,6 @@ export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

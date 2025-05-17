@@ -6,9 +6,6 @@ export async function analyzeMultivariate({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: MultivariateAnalysisType) {
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
@@ -74,9 +71,6 @@ export async function analyzeMultivariate({
      * 🎉 Final Result Process 🎯
      * */
     // await resultMultivariateAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

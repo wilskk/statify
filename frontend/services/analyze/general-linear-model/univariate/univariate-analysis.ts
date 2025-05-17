@@ -8,9 +8,6 @@ export async function analyzeUnivariate({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: UnivariateAnalysisType) {
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
@@ -86,9 +83,6 @@ export async function analyzeUnivariate({
      * 🎉 Final Result Process 🎯
      * */
     // await resultUnivariateAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

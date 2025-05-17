@@ -8,9 +8,6 @@ export async function analyzeRocCurve({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: RocCurveAnalysisType) {
     const TestVariables = configData.main.TestTargetVariable || [];
     const StateVariable = configData.main.StateTargetVariable
@@ -52,13 +49,10 @@ export async function analyzeRocCurve({
     // const formattedResults = transformROCCurveResult(results);
     // console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
     // await resultROCCurve({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

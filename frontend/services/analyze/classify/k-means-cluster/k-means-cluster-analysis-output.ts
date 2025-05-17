@@ -4,16 +4,16 @@ import { Table } from "@/types/Table";
 import { Variable } from "@/types/Variable";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultKMeans({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
     configData,
     variables,
 }: KMeansClusterFinalResultType) {
     try {
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key
@@ -245,7 +245,7 @@ async function saveClusterResults(
             measure: "nominal",
             width: 8,
             decimals: 0,
-            columns: 8,
+            columns: 200,
             align: "right",
         };
 
@@ -279,7 +279,7 @@ async function saveClusterResults(
             measure: "scale",
             width: 8,
             decimals: 3,
-            columns: 8,
+            columns: 200,
             align: "right",
         };
 

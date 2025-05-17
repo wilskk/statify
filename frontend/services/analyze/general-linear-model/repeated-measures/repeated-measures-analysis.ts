@@ -6,9 +6,6 @@ export async function analyzeRepeatedMeasures({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: RepeatedMeasuresAnalysisType) {
     const SubjectVariables = configData.main.SubVar || [];
     const FactorsVariables = configData.main.FactorsVar || [];
@@ -63,10 +60,7 @@ export async function analyzeRepeatedMeasures({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultRepeatedMeasureAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
+    // await resultRepeatedMeasures({
     //     formattedResult: formattedResults ?? [],
     // });
 }

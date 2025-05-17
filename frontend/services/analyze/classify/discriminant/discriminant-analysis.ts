@@ -8,9 +8,6 @@ export async function analyzeDiscriminant({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: DiscriminantAnalysisType) {
     const GroupingVariable = configData.main.GroupingVariable
         ? [configData.main.GroupingVariable]
@@ -70,9 +67,6 @@ export async function analyzeDiscriminant({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultDiscriminant({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }
