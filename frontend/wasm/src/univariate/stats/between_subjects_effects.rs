@@ -6,7 +6,7 @@ use crate::univariate::models::{
     result::{ TestEffectEntry, TestsBetweenSubjectsEffects },
 };
 
-use super::core::{
+use super::common::{
     calculate_f_significance,
     calculate_mean,
     calculate_observed_power,
@@ -20,6 +20,7 @@ use super::core::{
     matrix_inverse,
     matrix_multiply,
     matrix_transpose,
+    matrix_vec_multiply,
     parse_interaction_term,
 };
 
@@ -341,9 +342,7 @@ fn calculate_type_iii_interaction_ss(
     let mut all_terms = Vec::new();
 
     // Add main effects
-    for factor in factors {
-        all_terms.push(factor.clone());
-    }
+    all_terms.extend(factors.iter().cloned());
 
     // Add all interaction terms
     let interaction_terms = generate_interaction_terms(factors);
@@ -729,8 +728,8 @@ fn create_contrast_coded_interaction_matrix(
                     // Check if this record matches the current combination
                     let matches = combo
                         .iter()
-                        .all(|(factor, expected_level)| {
-                            factor_values.get(factor) == Some(expected_level)
+                        .all(|(f, expected_level)| {
+                            factor_values.get(f).map_or(false, |val| val == expected_level)
                         });
 
                     x_matrix[row_idx][col_idx] = if matches { 1.0 } else { 0.0 };
@@ -742,37 +741,6 @@ fn create_contrast_coded_interaction_matrix(
     }
 
     Ok(x_matrix)
-}
-
-/// Helper function to multiply a matrix by a vector
-fn matrix_vec_multiply(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, String> {
-    if matrix.is_empty() || matrix[0].is_empty() || vector.is_empty() {
-        return Err("Empty matrices provided for multiplication".to_string());
-    }
-
-    let rows = matrix.len();
-    let cols = matrix[0].len();
-
-    if cols != vector.len() {
-        return Err(
-            format!(
-                "Matrix dimensions mismatch: {}x{} and vector of length {}",
-                rows,
-                cols,
-                vector.len()
-            )
-        );
-    }
-
-    let mut result = vec![0.0; rows];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            result[i] += matrix[i][j] * vector[j];
-        }
-    }
-
-    Ok(result)
 }
 
 /// Helper function to calculate raw SS for an interaction term without adjustments
@@ -988,7 +956,6 @@ fn calculate_type_i_factor_ss(
     // Type I: Sequential SS - each term adjusted for terms that precede it
     if let (Some(residuals), Some(res_mean)) = (residual_values, residual_mean) {
         let factor_levels = get_factor_levels(data, factor)?;
-        let mut factor_ss = 0.0;
 
         // Calculate adjusted SS for each level
         let level_means = factor_levels
@@ -1010,9 +977,11 @@ fn calculate_type_i_factor_ss(
             })
             .collect::<Result<Vec<_>, String>>()?;
 
-        for (_, level_mean, count) in &level_means {
-            factor_ss += (*count as f64) * (level_mean - res_mean).powi(2);
-        }
+        // Calculate factor SS
+        let factor_ss = level_means
+            .iter()
+            .map(|(_, level_mean, count)| (*count as f64) * (level_mean - res_mean).powi(2))
+            .sum();
 
         Ok(factor_ss)
     } else {
@@ -1056,7 +1025,7 @@ fn calculate_type_ii_factor_ss(
         other_factor_levels.insert(other_factor.clone(), levels);
     }
 
-    // Extract dependent values
+    // Extract dependent values and create indicators
     for dep_records in &data.dependent_data {
         for dep_record in dep_records {
             if let Some(value) = extract_dependent_value(dep_record, dep_var_name) {
@@ -1066,27 +1035,26 @@ fn calculate_type_ii_factor_ss(
                 let mut level_indicators = vec![0.0; factor_levels.len()];
 
                 // Find the level of this factor for this record
-                for (level_idx, level) in factor_levels.iter().enumerate() {
-                    let mut level_match = false;
+                let mut main_factor_level = None;
 
-                    // Search in fix_factor_data for this factor level
-                    for fix_factor_group in &data.fix_factor_data {
-                        for fix_record in fix_factor_group {
-                            if let Some(value) = fix_record.values.get(factor) {
-                                let current_level = data_value_to_string(value);
-                                if &current_level == level {
-                                    level_match = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if level_match {
+                for fix_factor_group in &data.fix_factor_data {
+                    for fix_record in fix_factor_group {
+                        if let Some(value) = fix_record.values.get(factor) {
+                            main_factor_level = Some(data_value_to_string(value));
                             break;
                         }
                     }
+                    if main_factor_level.is_some() {
+                        break;
+                    }
+                }
 
-                    if level_match {
-                        level_indicators[level_idx] = 1.0;
+                // Set factor indicators based on level
+                if let Some(level) = main_factor_level {
+                    for (level_idx, lvl) in factor_levels.iter().enumerate() {
+                        if lvl == &level {
+                            level_indicators[level_idx] = 1.0;
+                        }
                     }
                 }
 
@@ -1096,29 +1064,27 @@ fn calculate_type_ii_factor_ss(
                 for other_factor in &other_factors {
                     if let Some(levels) = other_factor_levels.get(other_factor) {
                         let mut other_level_indicators = vec![0.0; levels.len()];
+                        let mut other_factor_level = None;
 
-                        // Find the level of this other factor for this record
-                        for (level_idx, level) in levels.iter().enumerate() {
-                            let mut level_match = false;
-
-                            // Search in fix_factor_data for this other factor level
-                            for fix_factor_group in &data.fix_factor_data {
-                                for fix_record in fix_factor_group {
-                                    if let Some(value) = fix_record.values.get(other_factor) {
-                                        let current_level = data_value_to_string(value);
-                                        if &current_level == level {
-                                            level_match = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if level_match {
+                        // Find this other factor's level
+                        for fix_factor_group in &data.fix_factor_data {
+                            for fix_record in fix_factor_group {
+                                if let Some(value) = fix_record.values.get(other_factor) {
+                                    other_factor_level = Some(data_value_to_string(value));
                                     break;
                                 }
                             }
+                            if other_factor_level.is_some() {
+                                break;
+                            }
+                        }
 
-                            if level_match {
-                                other_level_indicators[level_idx] = 1.0;
+                        // Set other factor indicators based on level
+                        if let Some(level) = other_factor_level {
+                            for (level_idx, lvl) in levels.iter().enumerate() {
+                                if lvl == &level {
+                                    other_level_indicators[level_idx] = 1.0;
+                                }
                             }
                         }
 
@@ -1137,7 +1103,6 @@ fn calculate_type_ii_factor_ss(
     }
 
     // Create design matrix for other factors (X_others)
-    // Initialize with appropriate number of rows
     let n_obs = all_values.len();
     let n_cols = other_factors
         .iter()
@@ -1238,10 +1203,11 @@ fn calculate_type_ii_factor_ss(
     }
 
     // Calculate SS = b' * X_factor'(I - P)y
-    let mut ss = 0.0;
-    for i in 0..factor_levels.len() {
-        ss += b[i] * xtr[i];
-    }
+    let ss = b
+        .iter()
+        .zip(xtr.iter())
+        .map(|(&b_i, &xtr_i)| b_i * xtr_i)
+        .sum::<f64>();
 
     Ok(ss)
 }
@@ -1275,7 +1241,7 @@ fn calculate_type_iii_factor_ss(
     // Generate all possible interactions
     let interaction_terms = generate_interaction_terms(&all_factors);
 
-    // Extract dependent values
+    // Extract dependent values and build design matrix
     for dep_records in &data.dependent_data {
         for dep_record in dep_records {
             if let Some(value) = extract_dependent_value(dep_record, dep_var_name) {
@@ -1459,10 +1425,11 @@ fn calculate_type_iii_factor_ss(
 
     let b_full = matrix_vec_multiply(&xtx_inv, &xty)?;
 
-    let mut ss_full = 0.0;
-    for i in 0..b_full.len() {
-        ss_full += b_full[i] * xty[i];
-    }
+    let ss_full = b_full
+        .iter()
+        .zip(xty.iter())
+        .map(|(&b, &y)| b * y)
+        .sum::<f64>();
 
     // Calculate reduced model SS
     let x_reduced_transpose = matrix_transpose(&x_reduced);
@@ -1479,10 +1446,11 @@ fn calculate_type_iii_factor_ss(
 
     let b_reduced = matrix_vec_multiply(&xtx_reduced_inv, &xty_reduced)?;
 
-    let mut ss_reduced = 0.0;
-    for i in 0..b_reduced.len() {
-        ss_reduced += b_reduced[i] * xty_reduced[i];
-    }
+    let ss_reduced = b_reduced
+        .iter()
+        .zip(xty_reduced.iter())
+        .map(|(&b, &y)| b * y)
+        .sum::<f64>();
 
     // Type III SS is the difference between full and reduced model SS
     let ss = ss_full - ss_reduced;
@@ -1609,198 +1577,45 @@ pub fn calculate_tests_between_subjects_effects(
     if let Some(factors) = &config.main.fix_factor {
         match config.model.sum_of_square_method {
             SumOfSquaresMethod::TypeI => {
-                // Type I: Sequential SS - each term adjusted for terms that precede it
-                let mut residual_values = all_values.clone();
-                let mut residual_mean = grand_mean;
-
-                // Process main factors sequentially
-                for factor in factors {
-                    let factor_levels = get_factor_levels(data, factor)?;
-                    let df = factor_levels.len() - 1;
-
-                    // Calculate factor SS
-                    let factor_ss = calculate_factor_ss(
-                        data,
-                        factor,
-                        dep_var_name,
-                        grand_mean,
-                        SumOfSquaresMethod::TypeI,
-                        Some(&residual_values),
-                        Some(residual_mean)
-                    )?;
-
-                    ss_model += factor_ss;
-
-                    // Adjust residuals for this factor
-                    for (i, dep_record) in data.dependent_data.iter().flatten().enumerate() {
-                        if i >= residual_values.len() {
-                            continue;
-                        }
-
-                        // Find the level of this factor for the current record
-                        let mut factor_level: Option<String> = None;
-
-                        // Search in fix_factor_data for this factor's level
-                        for fix_factor_group in &data.fix_factor_data {
-                            for fix_record in fix_factor_group {
-                                if let Some(value) = fix_record.values.get(factor) {
-                                    factor_level = Some(data_value_to_string(value));
-                                    break;
-                                }
-                            }
-                            if factor_level.is_some() {
-                                break;
-                            }
-                        }
-
-                        // If we found the factor level, adjust the residual
-                        if let Some(level) = factor_level {
-                            let level_values = get_level_values_adjusted(
-                                &residual_values,
-                                data,
-                                factor,
-                                &level,
-                                dep_var_name
-                            )?;
-
-                            if !level_values.is_empty() {
-                                let level_mean = calculate_mean(&level_values);
-                                residual_values[i] =
-                                    residual_values[i] - (level_mean - residual_mean);
-                            }
-                        }
-                    }
-
-                    // Update residual mean
-                    residual_mean = calculate_mean(&residual_values);
-
-                    // Create effect entry
-                    let error_df = n_total - factors.len();
-                    let error_ms = (ss_total - ss_model) / (error_df as f64);
-
-                    source.insert(
-                        factor.to_string(),
-                        create_effect_entry(
-                            factor_ss,
-                            df,
-                            error_ms,
-                            error_df,
-                            config.options.sig_level
-                        )
-                    );
-                }
-
-                // Process interaction terms sequentially for Type I
-                process_type_i_interactions(
+                process_type_i_factors_and_interactions(
                     data,
+                    factors,
                     &interaction_terms,
                     dep_var_name,
                     grand_mean,
-                    factors,
-                    &residual_values,
-                    residual_mean,
-                    &mut ss_model,
+                    &all_values,
                     n_total,
                     ss_total,
                     config.options.sig_level,
+                    &mut ss_model,
                     &mut source
                 )?;
             }
             SumOfSquaresMethod::TypeII => {
-                // Type II: Each effect adjusted for all other "appropriate" effects
-                for factor in factors {
-                    let factor_levels = get_factor_levels(data, factor)?;
-                    let df = factor_levels.len() - 1;
-
-                    // Calculate factor SS
-                    let factor_ss = calculate_factor_ss(
-                        data,
-                        factor,
-                        dep_var_name,
-                        grand_mean,
-                        SumOfSquaresMethod::TypeII,
-                        None,
-                        None
-                    )?;
-
-                    ss_model += factor_ss;
-
-                    // Create effect entry
-                    let error_df = n_total - factors.len();
-                    let error_ms = (ss_total - ss_model) / (error_df as f64);
-
-                    source.insert(
-                        factor.to_string(),
-                        create_effect_entry(
-                            factor_ss,
-                            df,
-                            error_ms,
-                            error_df,
-                            config.options.sig_level
-                        )
-                    );
-                }
-
-                // Process interaction terms for Type II
-                process_type_ii_interactions(
+                process_type_ii_factors_and_interactions(
                     data,
+                    factors,
                     &interaction_terms,
                     dep_var_name,
                     grand_mean,
-                    factors,
-                    &mut ss_model,
                     n_total,
                     ss_total,
                     config.options.sig_level,
+                    &mut ss_model,
                     &mut source
                 )?;
             }
             SumOfSquaresMethod::TypeIII | SumOfSquaresMethod::TypeIV => {
-                // Type III/IV: Orthogonal to any effects that contain it
-                for factor in factors {
-                    let factor_levels = get_factor_levels(data, factor)?;
-                    let df = factor_levels.len() - 1;
-
-                    // Calculate factor SS
-                    let factor_ss = calculate_factor_ss(
-                        data,
-                        factor,
-                        dep_var_name,
-                        grand_mean,
-                        SumOfSquaresMethod::TypeIII,
-                        None,
-                        None
-                    )?;
-
-                    ss_model += factor_ss;
-
-                    // Create effect entry
-                    let error_df = n_total - factors.len() - interaction_terms.len();
-                    let error_ms = (ss_total - ss_model) / (error_df as f64);
-
-                    source.insert(
-                        factor.to_string(),
-                        create_effect_entry(
-                            factor_ss,
-                            df,
-                            error_ms,
-                            error_df,
-                            config.options.sig_level
-                        )
-                    );
-                }
-
-                // Process interaction terms for Type III/IV
-                process_type_iii_interactions(
+                process_type_iii_factors_and_interactions(
                     data,
+                    factors,
                     &interaction_terms,
                     dep_var_name,
                     grand_mean,
-                    factors,
-                    &mut ss_model,
                     n_total,
                     ss_total,
                     config.options.sig_level,
+                    &mut ss_model,
                     &mut source
                 )?;
             }
@@ -1905,6 +1720,223 @@ pub fn calculate_tests_between_subjects_effects(
     })
 }
 
+/// Process Type I factors and interactions
+fn process_type_i_factors_and_interactions(
+    data: &AnalysisData,
+    factors: &[String],
+    interaction_terms: &[String],
+    dep_var_name: &str,
+    grand_mean: f64,
+    all_values: &[f64],
+    n_total: usize,
+    ss_total: f64,
+    sig_level: f64,
+    ss_model: &mut f64,
+    source: &mut HashMap<String, TestEffectEntry>
+) -> Result<(), String> {
+    // Type I: Sequential SS - each term adjusted for terms that precede it
+    let mut residual_values = all_values.to_vec();
+    let mut residual_mean = grand_mean;
+
+    // Process main factors sequentially
+    for factor in factors {
+        let factor_levels = get_factor_levels(data, factor)?;
+        let df = factor_levels.len() - 1;
+
+        // Calculate factor SS
+        let factor_ss = calculate_factor_ss(
+            data,
+            factor,
+            dep_var_name,
+            grand_mean,
+            SumOfSquaresMethod::TypeI,
+            Some(&residual_values),
+            Some(residual_mean)
+        )?;
+
+        *ss_model += factor_ss;
+
+        // Adjust residuals for this factor
+        for (i, dep_record) in data.dependent_data.iter().flatten().enumerate() {
+            if i >= residual_values.len() {
+                continue;
+            }
+
+            // Find the level of this factor for the current record
+            let mut factor_level: Option<String> = None;
+
+            // Search in fix_factor_data for this factor's level
+            for fix_factor_group in &data.fix_factor_data {
+                for fix_record in fix_factor_group {
+                    if let Some(value) = fix_record.values.get(factor) {
+                        factor_level = Some(data_value_to_string(value));
+                        break;
+                    }
+                }
+                if factor_level.is_some() {
+                    break;
+                }
+            }
+
+            // If we found the factor level, adjust the residual
+            if let Some(level) = factor_level {
+                let level_values = get_level_values_adjusted(
+                    &residual_values,
+                    data,
+                    factor,
+                    &level,
+                    dep_var_name
+                )?;
+
+                if !level_values.is_empty() {
+                    let level_mean = calculate_mean(&level_values);
+                    residual_values[i] = residual_values[i] - (level_mean - residual_mean);
+                }
+            }
+        }
+
+        // Update residual mean
+        residual_mean = calculate_mean(&residual_values);
+
+        // Create effect entry
+        let error_df = n_total - factors.len();
+        let error_ms = (ss_total - *ss_model) / (error_df as f64);
+
+        source.insert(
+            factor.to_string(),
+            create_effect_entry(factor_ss, df, error_ms, error_df, sig_level)
+        );
+    }
+
+    // Process interaction terms sequentially for Type I
+    process_type_i_interactions(
+        data,
+        interaction_terms,
+        dep_var_name,
+        grand_mean,
+        factors,
+        &residual_values,
+        residual_mean,
+        ss_model,
+        n_total,
+        ss_total,
+        sig_level,
+        source
+    )
+}
+
+/// Process Type II factors and interactions
+fn process_type_ii_factors_and_interactions(
+    data: &AnalysisData,
+    factors: &[String],
+    interaction_terms: &[String],
+    dep_var_name: &str,
+    grand_mean: f64,
+    n_total: usize,
+    ss_total: f64,
+    sig_level: f64,
+    ss_model: &mut f64,
+    source: &mut HashMap<String, TestEffectEntry>
+) -> Result<(), String> {
+    // Type II: Each effect adjusted for all other "appropriate" effects
+    for factor in factors {
+        let factor_levels = get_factor_levels(data, factor)?;
+        let df = factor_levels.len() - 1;
+
+        // Calculate factor SS
+        let factor_ss = calculate_factor_ss(
+            data,
+            factor,
+            dep_var_name,
+            grand_mean,
+            SumOfSquaresMethod::TypeII,
+            None,
+            None
+        )?;
+
+        *ss_model += factor_ss;
+
+        // Create effect entry
+        let error_df = n_total - factors.len();
+        let error_ms = (ss_total - *ss_model) / (error_df as f64);
+
+        source.insert(
+            factor.to_string(),
+            create_effect_entry(factor_ss, df, error_ms, error_df, sig_level)
+        );
+    }
+
+    // Process interaction terms for Type II
+    process_type_ii_interactions(
+        data,
+        interaction_terms,
+        dep_var_name,
+        grand_mean,
+        factors,
+        ss_model,
+        n_total,
+        ss_total,
+        sig_level,
+        source
+    )
+}
+
+/// Process Type III/IV factors and interactions
+fn process_type_iii_factors_and_interactions(
+    data: &AnalysisData,
+    factors: &[String],
+    interaction_terms: &[String],
+    dep_var_name: &str,
+    grand_mean: f64,
+    n_total: usize,
+    ss_total: f64,
+    sig_level: f64,
+    ss_model: &mut f64,
+    source: &mut HashMap<String, TestEffectEntry>
+) -> Result<(), String> {
+    // Type III/IV: Orthogonal to any effects that contain it
+    for factor in factors {
+        let factor_levels = get_factor_levels(data, factor)?;
+        let df = factor_levels.len() - 1;
+
+        // Calculate factor SS
+        let factor_ss = calculate_factor_ss(
+            data,
+            factor,
+            dep_var_name,
+            grand_mean,
+            SumOfSquaresMethod::TypeIII,
+            None,
+            None
+        )?;
+
+        *ss_model += factor_ss;
+
+        // Create effect entry
+        let error_df = n_total - factors.len() - interaction_terms.len();
+        let error_ms = (ss_total - *ss_model) / (error_df as f64);
+
+        source.insert(
+            factor.to_string(),
+            create_effect_entry(factor_ss, df, error_ms, error_df, sig_level)
+        );
+    }
+
+    // Process interaction terms for Type III/IV
+    process_type_iii_interactions(
+        data,
+        interaction_terms,
+        dep_var_name,
+        grand_mean,
+        factors,
+        ss_model,
+        n_total,
+        ss_total,
+        sig_level,
+        source
+    )
+}
+
 /// Process Type I interaction terms
 fn process_type_i_interactions(
     data: &AnalysisData,
@@ -1986,32 +2018,20 @@ fn process_type_i_interactions(
                 }
 
                 // Check if all factors match this combination
-                let mut all_factors_match = true;
-
-                for (factor, expected_level) in combo {
-                    let mut factor_match = false;
-
+                let all_factors_match = combo.iter().all(|(factor, expected_level)| {
                     // Look in fix_factor_data for this factor's value
                     for fix_factor_group in &data.fix_factor_data {
                         for fix_record in fix_factor_group {
                             if let Some(value) = fix_record.values.get(factor) {
                                 let actual_level = data_value_to_string(value);
                                 if &actual_level == expected_level {
-                                    factor_match = true;
-                                    break;
+                                    return true;
                                 }
                             }
                         }
-                        if factor_match {
-                            break;
-                        }
                     }
-
-                    if !factor_match {
-                        all_factors_match = false;
-                        break;
-                    }
-                }
+                    false
+                });
 
                 if all_factors_match {
                     values_for_combo.push(current_residuals[i]);

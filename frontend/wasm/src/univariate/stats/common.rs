@@ -197,7 +197,6 @@ pub fn data_value_to_string(value: &DataValue) -> String {
 }
 
 pub fn get_factor_levels(data: &AnalysisData, factor: &str) -> Result<Vec<String>, String> {
-    let mut levels = Vec::new();
     let mut level_set = HashSet::new();
 
     for (i, factor_defs) in data.fix_factor_data_defs.iter().enumerate() {
@@ -206,15 +205,11 @@ pub fn get_factor_levels(data: &AnalysisData, factor: &str) -> Result<Vec<String
                 // Found our factor, extract levels
                 for records in &data.fix_factor_data[i] {
                     if let Some(value) = records.values.get(factor) {
-                        let level = data_value_to_string(value);
-                        if !level_set.contains(&level) {
-                            level_set.insert(level.clone());
-                            levels.push(level);
-                        }
+                        level_set.insert(data_value_to_string(value));
                     }
                 }
 
-                return Ok(levels);
+                return Ok(level_set.into_iter().collect());
             }
         }
     }
@@ -227,8 +222,6 @@ pub fn get_factor_combinations(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<Vec<HashMap<String, String>>, String> {
-    let mut combinations = Vec::new();
-
     if let Some(factors) = &config.main.fix_factor {
         if factors.is_empty() {
             return Ok(vec![HashMap::new()]);
@@ -241,13 +234,14 @@ pub fn get_factor_combinations(
         }
 
         // Generate all combinations
+        let mut combinations = Vec::new();
         let mut current = HashMap::new();
         generate_combinations(&mut current, factors, &factor_levels, 0, &mut combinations);
-    } else {
-        combinations.push(HashMap::new()); // No factors case
-    }
 
-    Ok(combinations)
+        Ok(combinations)
+    } else {
+        Ok(vec![HashMap::new()]) // No factors case
+    }
 }
 
 /// Helper function to generate factor combinations
@@ -275,11 +269,9 @@ pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
         return Vec::new();
     }
 
-    // We'll store all the interaction terms here
     let mut interactions = Vec::new();
 
     // Generate all possible combinations of factors from size 2 to size N
-    // (We start from 2 because size 1 would just be the individual factors)
     for size in 2..=factors.len() {
         generate_factor_combinations(factors, size, &mut Vec::new(), 0, &mut interactions);
     }
@@ -295,23 +287,14 @@ fn generate_factor_combinations(
     start_idx: usize,
     result: &mut Vec<String>
 ) {
-    // If we've selected the required number of factors, create the interaction term
     if current.len() == size {
-        // Join the selected factors with "*" to form the interaction term
-        let interaction = current.join("*");
-        result.push(interaction);
+        result.push(current.join("*"));
         return;
     }
 
-    // Try including each remaining factor
     for i in start_idx..factors.len() {
-        // Add this factor to our current selection
         current.push(factors[i].clone());
-
-        // Recursively generate combinations with this factor included
         generate_factor_combinations(factors, size, current, i + 1, result);
-
-        // Remove this factor for the next iteration (backtracking)
         current.pop();
     }
 }
@@ -370,9 +353,6 @@ pub fn get_factor_combinations_with_interactions(
     // For each combination, add derived values for each interaction term
     for combo in &mut combinations {
         for term in &interaction_terms {
-            // For interaction terms, we could store a special value that indicates
-            // this is a combination of the individual factors, but for simplicity
-            // we'll just store the term name as the key and value
             combo.insert(term.clone(), term.clone());
         }
     }
@@ -387,7 +367,6 @@ pub fn get_interaction_level_values(
     dep_var_name: &str
 ) -> Result<Vec<f64>, String> {
     let factors = parse_interaction_term(interaction_term);
-    let mut values = Vec::new();
 
     // Get the levels for each factor in the interaction
     let mut factor_levels = Vec::new();
@@ -419,10 +398,10 @@ pub fn get_interaction_level_values(
 
     generate_level_combinations(&mut current, &factors, &factor_levels, 0, &mut level_combinations);
 
-    // For each level combination, extract matching records
-    for combo in &level_combinations {
-        let mut combo_values = Vec::new();
+    // Extract matching records for each combination
+    let mut values = Vec::new();
 
+    for combo in &level_combinations {
         for records in &data.dependent_data {
             for record in records {
                 let mut matches = true;
@@ -442,13 +421,11 @@ pub fn get_interaction_level_values(
 
                 if matches {
                     if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                        combo_values.push(value);
+                        values.push(value);
                     }
                 }
             }
         }
-
-        values.extend(combo_values);
     }
 
     Ok(values)
@@ -676,6 +653,37 @@ pub fn matrix_transpose(matrix: &[Vec<f64>]) -> Vec<Vec<f64>> {
     }
 
     result
+}
+
+/// Matrix-vector multiplication helper
+pub fn matrix_vec_multiply(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, String> {
+    if matrix.is_empty() || matrix[0].is_empty() || vector.is_empty() {
+        return Err("Empty matrices provided for multiplication".to_string());
+    }
+
+    let rows = matrix.len();
+    let cols = matrix[0].len();
+
+    if cols != vector.len() {
+        return Err(
+            format!(
+                "Matrix dimensions mismatch: {}x{} and vector of length {}",
+                rows,
+                cols,
+                vector.len()
+            )
+        );
+    }
+
+    let mut result = vec![0.0; rows];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            result[i] += matrix[i][j] * vector[j];
+        }
+    }
+
+    Ok(result)
 }
 
 /// Solve linear system Ax = b

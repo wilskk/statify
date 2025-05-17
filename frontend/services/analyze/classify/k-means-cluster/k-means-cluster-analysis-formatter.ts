@@ -102,24 +102,43 @@ export function transformKMeansResult(data: any): ResultJson {
 
     // 3. Cluster Membership
     if (data.cluster_membership) {
+        // Check if any case has a name
+        const hasCaseNames = data.cluster_membership.some(
+            (membership: any) =>
+                membership.case_name && membership.case_name.trim() !== ""
+        );
+
+        // Create column headers based on whether we have case names
+        const columnHeaders = [
+            { header: "Case Number", key: "case_number" },
+            ...(hasCaseNames
+                ? [{ header: "Case Name", key: "case_name" }]
+                : []),
+            { header: "Cluster", key: "cluster" },
+            { header: "Distance", key: "distance" },
+        ];
+
         const table: Table = {
             key: "cluster_membership",
             title: "Cluster Membership",
-            columnHeaders: [
-                { header: "Case Number", key: "case_number" },
-                { header: "Cluster", key: "cluster" },
-                { header: "Distance", key: "distance" },
-            ],
+            columnHeaders,
             rows: [],
         };
 
         // Fill data rows
         data.cluster_membership.forEach((membership: any) => {
-            table.rows.push({
+            const rowData: any = {
                 rowHeader: [membership.case_number.toString()],
                 cluster: membership.cluster.toString(),
                 distance: formatDisplayNumber(membership.distance),
-            });
+            };
+
+            // Only add case_name if we're displaying that column
+            if (hasCaseNames) {
+                rowData.case_name = membership.case_name || "";
+            }
+
+            table.rows.push(rowData);
         });
 
         resultJson.tables.push(table);

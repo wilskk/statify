@@ -56,5 +56,7 @@ export async function analyzeKMeansCluster({
         addAnalytic,
         addStatistic,
         formattedResult: formattedResults ?? [],
+        configData,
+        variables,
     });
 }

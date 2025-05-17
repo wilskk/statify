@@ -34,12 +34,12 @@ export class Autocorrelation {
   set_pvalue_lb(pvalue_lb: Float64Array): void;
   calculate_pacf(autocorrelate: Float64Array): Float64Array;
   calculate_pacf_se(partial_autocorelate: Float64Array): Float64Array;
-  autocorelate(difference: string, seasonally: number): void;
   calculate_acf(difference: Float64Array): Float64Array;
   calculate_acf_se(autocorelate: Float64Array): Float64Array;
   calculate_ljung_box(autocorrelate: Float64Array): Float64Array;
   pvalue_ljung_box(ljung_box: Float64Array): Float64Array;
   df_ljung_box(): Uint32Array;
+  autocorelate(difference: string, seasonally: number): void;
 }
 export class Decomposition {
   free(): void;
@@ -64,10 +64,10 @@ export class Decomposition {
   calculate_multiplicative_trend_component(trend: string, deseasonalizing: Float64Array): Float64Array;
   linear_trend(deseasonalizing: Float64Array): Float64Array;
   exponential_trend(deseasonalizing: Float64Array): Float64Array;
-  additive_decomposition(): Float64Array;
   calculate_additive_trend_component(centered_ma: Float64Array): Float64Array;
-  multiplicative_decomposition(trend: string): Float64Array;
   calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
+  multiplicative_decomposition(trend: string): Float64Array;
+  additive_decomposition(): Float64Array;
   decomposition_evaluation(forecast: Float64Array): any;
 }
 export class KMeansClusterAnalysis {
@@ -155,8 +155,8 @@ export interface InitOutput {
   readonly decomposition_calculate_multiplicative_trend_component: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly decomposition_linear_trend: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_exponential_trend: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_additive_decomposition: (a: number) => [number, number];
   readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
   readonly __wbg_autocorrelation_free: (a: number, b: number) => void;
   readonly autocorrelation_new: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly autocorrelation_get_data: (a: number) => [number, number];
@@ -182,19 +182,19 @@ export interface InitOutput {
   readonly partial_kj: (a: number, b: number, c: number, d: number) => number;
   readonly autocorrelation_calculate_pacf: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_calculate_pacf_se: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
   readonly first_difference: (a: number, b: number) => [number, number];
   readonly second_difference: (a: number, b: number) => [number, number];
   readonly seasonal_difference: (a: number, b: number, c: number) => [number, number];
   readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
   readonly decomposition_multiplicative_decomposition: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_additive_decomposition: (a: number) => [number, number];
   readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
   readonly autocorrelation_calculate_acf: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_calculate_acf_se: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_calculate_ljung_box: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_pvalue_ljung_box: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_df_ljung_box: (a: number) => [number, number];
+  readonly autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;
