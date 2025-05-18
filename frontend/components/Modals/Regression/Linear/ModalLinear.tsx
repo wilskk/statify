@@ -20,6 +20,8 @@ import SaveLinear, { SaveLinearParams } from './SaveLinear';
 import OptionsLinear, { OptionsLinearParams } from './OptionsLinear';
 import VariablesLinearTab from './VariablesLinearTab';
 import { Variable } from '@/types/Variable';
+import { v4 as uuidv4 } from 'uuid';
+import { CellUpdate } from '@/stores/useDataStore';
 
 interface ModalLinearProps {
   onClose: () => void;
@@ -396,6 +398,163 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       const regressionResults = calculateLinearRegression(filteredDependentData, independentDataTransposed);
       console.log("[Analyze] Hasil regresi (calculateLinearRegression):", regressionResults);
 
+      // Process SaveLinear options (example for predictedUnstandardized)
+      if (saveParams.predictedUnstandardized) {
+        if (regressionResults && regressionResults.coefficients) {
+          console.log("[Analyze] Starting Predicted Values calculation...");
+          console.log("[Analyze] Regression results:", regressionResults);
+          
+          const predUnstandardizedWorker = new Worker('/workers/Regression/Save/predictedUnstandardized.js');
+          console.log("[Analyze] Worker created for Predicted Values");
+          
+          // Format data untuk worker
+          const workerData = {
+            independentData: independentDataTransposed.map(row => 
+              row.map(val => {
+                const num = Number(val);
+                return isNaN(num) ? 0 : num;
+              })
+            ),
+            coefficients: regressionResults.coefficients.map(coef => {
+              const num = Number(coef.coefficient);
+              return isNaN(num) ? 0 : num;
+            }),
+            dependentData: filteredDependentData
+          };
+          
+          console.log("[Analyze] Data prepared for worker:", {
+            independentDataLength: workerData.independentData.length,
+            independentVarsCount: workerData.independentData[0]?.length,
+            firstRow: workerData.independentData[0],
+            coefficients: workerData.coefficients,
+            dependentDataLength: workerData.dependentData.length
+          });
+          
+          predUnstandardizedWorker.postMessage(workerData);
+          console.log("[Analyze] Data sent to worker");
+
+          predUnstandardizedWorker.onmessage = async (e: MessageEvent) => {
+            console.log("[Analyze] Received response from worker:", e.data);
+            const response = e.data;
+            
+            if (response && response.error) {
+              console.error("[Analyze] Worker error:", response.error);
+              alert(`Error in Predicted Values worker: ${response.error}`);
+            } else {
+              console.log("[Analyze] Processing worker response...");
+              
+              try {
+                // Pastikan response adalah array objek dengan nilai prediksi
+                const predictedValues = Array.isArray(response) ? response : [];
+                console.log("[Analyze] Predicted values array:", predictedValues);
+                
+                // Get the next save sequence number
+                const existingVars = variablesFromStore.map(v => v.name);
+                
+                // Find the highest number for each prefix
+                const findNextNumber = (prefix: string) => {
+                  const pattern = new RegExp(`^${prefix}_(\\d+)$`);
+                  let maxNum = 0;
+                  
+                  existingVars.forEach(name => {
+                    const match = name.match(pattern);
+                    if (match) {
+                      const num = parseInt(match[1], 10);
+                      if (num > maxNum) maxNum = num;
+                    }
+                  });
+                  
+                  return maxNum + 1;
+                };
+                
+                const preNumber = findNextNumber("PRE");
+                const adjNumber = findNextNumber("ADJ");
+                const zprNumber = findNextNumber("ZPR");
+                const sepNumber = findNextNumber("SEP");
+                
+                // Create new variables for each type of predicted value
+                const newVariables = [
+                  {
+                    name: `PRE_${preNumber}`,
+                    label: `Predicted Values (Unstandardized) - ${selectedDependentVariable.name}`,
+                    values: predictedValues.map(v => v.unstandardized)
+                  },
+                  {
+                    name: `ADJ_${adjNumber}`,
+                    label: `Predicted Values (Adjusted) - ${selectedDependentVariable.name}`,
+                    values: predictedValues.map(v => v.adjusted)
+                  },
+                  {
+                    name: `ZPR_${zprNumber}`,
+                    label: `Predicted Values (Standardized) - ${selectedDependentVariable.name}`,
+                    values: predictedValues.map(v => v.standardized)
+                  },
+                  {
+                    name: `SEP_${sepNumber}`,
+                    label: `S.E. of mean predictions - ${selectedDependentVariable.name}`,
+                    values: predictedValues.map(v => v.se)
+                  }
+                ];
+
+                // Add each variable to the store
+                for (const newVar of newVariables) {
+                  const variable: Variable = {
+                    tempId: uuidv4(),
+                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
+                    name: newVar.name,
+                    type: "NUMERIC",
+                    width: 12,
+                    decimals: 5,
+                    label: newVar.label,
+                    values: [],
+                    missing: null,
+                    columns: 64,
+                    align: "right",
+                    measure: "scale",
+                    role: "input"
+                  };
+                  
+                  console.log("[Analyze] Created new variable:", variable);
+                  await useVariableStore.getState().addVariable(variable);
+
+                  // Update the data store with the predicted values
+                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
+                    row: rowIndex,
+                    col: variable.columnIndex,
+                    value: Number(value.toFixed(5))
+                  }));
+                  
+                  console.log("[Analyze] Updating data store for", variable.name);
+                  await useDataStore.getState().updateBulkCells(updates);
+                }
+
+                console.log("[Analyze] All predicted values saved as new variables");
+              } catch (error) {
+                console.error("[Analyze] Error saving predicted values:", error);
+                alert("Failed to save predicted values as new variables");
+              }
+            }
+            predUnstandardizedWorker.terminate();
+            console.log("[Analyze] Worker terminated");
+          };
+
+          predUnstandardizedWorker.onerror = (error: ErrorEvent) => {
+            console.error("[Analyze] Worker error:", {
+              message: error.message,
+              error: error
+            });
+            alert(`Failed to run Predicted Values worker: ${error.message}`);
+            predUnstandardizedWorker.terminate();
+          };
+        } else {
+          console.error("[Analyze] Missing regression results:", {
+            hasResults: !!regressionResults,
+            hasCoefficients: regressionResults?.coefficients ? true : false
+          });
+          alert("Regression results or coefficients not available to calculate predicted values.");
+        }
+      }
+      // End of SaveLinear options processing example
 
       // 1. Variables Entered/Removed Worker
       const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
