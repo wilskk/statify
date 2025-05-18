@@ -235,7 +235,7 @@ pub fn get_unique_predictor_combinations(
     let mut unique_combos = HashSet::new();
 
     if let Some(factors) = &config.main.fix_factor {
-        for (data_idx, records_group) in data.fix_factor_data.iter().enumerate() {
+        for records_group in &data.fix_factor_data {
             for record in records_group {
                 let mut combo = HashMap::new();
 
@@ -281,7 +281,7 @@ pub fn matches_predictor_combination(
             .position(|r| (r as *const _) == (record as *const _));
 
         if let Some(idx) = record_index {
-            for (factor_group_idx, factor_group) in data.fix_factor_data.iter().enumerate() {
+            for factor_group in &data.fix_factor_data {
                 if idx < factor_group.len() {
                     let factor_record = &factor_group[idx];
 

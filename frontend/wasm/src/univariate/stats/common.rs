@@ -1,5 +1,5 @@
-use statrs::distribution::{ ContinuousCDF, FisherSnedecor, StudentsT, ChiSquared, Gamma, Normal };
-use statrs::{ Statistics, Mean, StandardDeviation, Variance };
+use statrs::distribution::{ ContinuousCDF, FisherSnedecor, StudentsT, ChiSquared, Normal };
+use statrs::statistics::{ Statistics };
 use nalgebra::{ DMatrix, DVector };
 use rayon::prelude::*;
 
@@ -93,9 +93,10 @@ pub fn calculate_observed_power(df1: usize, df2: usize, f_value: f64, alpha: f64
         .unwrap_or(4.0);
 
     // Approximation of power
+    // Use the noncentrality parameter for a better power approximation
     1.0 -
         FisherSnedecor::new(df1 as f64, df2 as f64)
-            .map(|dist| dist.cdf(crit_f))
+            .map(|dist| dist.cdf(crit_f / (1.0 + ncp / (df1 as f64))))
             .unwrap_or(0.5)
 }
 
@@ -456,8 +457,7 @@ pub fn get_level_values_adjusted(
     values: &[f64],
     data: &AnalysisData,
     factor: &str,
-    level: &str,
-    dep_var_name: &str
+    level: &str
 ) -> Result<Vec<f64>, String> {
     let mut level_values = Vec::new();
     let mut i = 0;

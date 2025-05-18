@@ -75,6 +75,9 @@ pub fn calculate_general_estimable_function(
                 if param_idx < row.len() {
                     row[param_idx] = 1;
                     matrix.push(row);
+
+                    // Add a description of the parameter to the function
+                    println!("Parameter for {}={} at index {}", factor, level, param_idx);
                 }
             }
         }

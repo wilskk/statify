@@ -1,7 +1,7 @@
 // descriptive_statistics.rs
 use std::collections::{ HashMap, HashSet, BTreeMap };
 use rayon::prelude::*;
-use statrs::statistics::{ Statistics, Mean, StandardDeviation };
+use statrs::statistics::{ Statistics };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -318,8 +318,8 @@ fn process_all_combinations(
             }
 
             // Calculate statistics
-            let mean = filtered_values.mean();
-            let std_dev = filtered_values.std_dev();
+            let mean = filtered_values.clone().mean();
+            let std_dev = filtered_values.clone().std_dev();
 
             // Create stats entry
             let stats = StatsEntry {

@@ -1,5 +1,5 @@
 // posthoc.rs
-use std::{ collections::HashMap, f32::consts::E };
+use std::{ collections::HashMap };
 
 use crate::univariate::models::{
     config::{ CategoryMethod, UnivariateConfig },
@@ -113,9 +113,13 @@ pub fn calculate_posthoc_tests(
                     continue;
                 }
 
-                let n_i = values_i.len() as f64; // FIX: Removed '*' dereferencing operator
-                let n_j = values_j.len() as f64; // FIX: Removed '*' dereferencing operator
+                let n_i = values_i.len() as f64;
+                let n_j = values_j.len() as f64;
                 let mean_diff = mean_i - mean_j;
+
+                // Calculate deviation from grand mean (for effect size calculation)
+                let grand_mean_effect =
+                    (mean_i - grand_mean).powi(2) + (mean_j - grand_mean).powi(2);
 
                 // Calculate standard error based on test type
                 let (std_error, df) = if
@@ -142,7 +146,7 @@ pub fn calculate_posthoc_tests(
                 let t_abs = t_value.abs();
 
                 // Get appropriate significance based on the test
-                let mut significance = calculate_t_significance(df, t_value);
+                let significance = calculate_t_significance(df, t_value);
                 let mut test_name = "";
 
                 // Apply appropriate adjustments for each test
@@ -295,7 +299,18 @@ pub fn calculate_posthoc_tests(
                 let ci_width = std_error * t_critical;
 
                 // Calculate effect size and power
-                let partial_eta_squared = t_value.powi(2) / (t_value.powi(2) + (df as f64));
+                let partial_eta_squared = if config.options.est_effect_size {
+                    // Use grand mean for more accurate effect size calculation
+                    let effect_size = t_value.powi(2) / (t_value.powi(2) + (df as f64));
+                    // Adjust with grand mean deviation when available
+                    if grand_mean_effect > 0.0 {
+                        effect_size * (grand_mean_effect / (mean_diff.powi(2) + 0.001))
+                    } else {
+                        effect_size
+                    }
+                } else {
+                    t_value.powi(2) / (t_value.powi(2) + (df as f64))
+                };
                 let noncent_parameter = t_abs;
                 let observed_power = if config.options.obs_power {
                     1.0 - (-noncent_parameter * 0.5).exp()

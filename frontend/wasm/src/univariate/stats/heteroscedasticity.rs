@@ -177,7 +177,6 @@ pub fn calculate_heteroscedasticity_tests(
                 z_data.push(z_row);
             }
 
-            let z_cols = z_data[0].len();
             let z = to_dmatrix(&z_data);
 
             // Estimate auxiliary regression
@@ -208,7 +207,7 @@ pub fn calculate_heteroscedasticity_tests(
             let white_stat = (n as f64) * r_squared;
 
             // Degrees of freedom = number of predictors in Z matrix (excluding intercept)
-            let df = z_cols - 1;
+            let df = z_data[0].len() - 1;
 
             // Calculate p-value using chi-square distribution
             let p_value = 1.0 - chi_square_cdf(white_stat, df as f64);

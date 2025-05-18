@@ -1,5 +1,4 @@
-use statrs::distribution::FisherSnedecor;
-use statrs::statistics::{ Statistics, Mean };
+use statrs::statistics::{ Statistics };
 use rayon::prelude::*;
 
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData, result::LeveneTest };
@@ -174,10 +173,19 @@ fn record_matches_combination(
         return true;
     }
 
+    // First check if the record itself has any direct factor values
     for (factor, combo_level) in combo {
+        if let Some(value) = record.values.get(factor) {
+            let record_level = data_value_to_string(value);
+            if &record_level != combo_level {
+                return false;
+            }
+            continue; // Found directly in the record, no need to check fix_factor_data
+        }
+
+        // If not found directly, look in fix_factor_data
         let mut found_match = false;
 
-        // Look for the factor in fix_factor_data
         for (i, factor_name) in fix_factors.iter().enumerate() {
             if
                 factor_name == factor &&
@@ -240,7 +248,8 @@ fn calculate_levene_statistic(groups: &[Vec<f64>]) -> (f64, usize, usize, f64) {
         .enumerate()
         .map(|(i, group)| {
             let group_mean = group.mean();
-            (group.len() as f64) * (group_mean - overall_mean).powi(2)
+            let group_size = groups[i].len() as f64;
+            group_size * (group_mean - overall_mean).powi(2)
         })
         .sum::<f64>();
 
