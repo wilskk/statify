@@ -2,7 +2,11 @@ use wasm_bindgen::prelude::*;
 
 use crate::knn::models::data::{ DataRecord, VariableDefinition };
 use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
-use crate::knn::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::knn::utils::{
+    converter::string_to_js_error,
+    error::ErrorCollector,
+    log::FunctionLogger,
+};
 use crate::knn::wasm::function;
 
 #[wasm_bindgen]
@@ -11,7 +15,7 @@ pub struct KNNAnalysis {
     data: AnalysisData,
     result: Option<NearestNeighborAnalysis>,
     error_collector: ErrorCollector,
-    executed_functions: Vec<String>,
+    logger: FunctionLogger,
 }
 
 #[wasm_bindgen]
@@ -30,6 +34,9 @@ impl KNNAnalysis {
     ) -> Result<KNNAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
+
+        // Initialize function logger
+        let mut logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let target_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(target_data) {
@@ -159,18 +166,23 @@ impl KNNAnalysis {
             case_data_defs,
         };
 
-        // Create instance with executed_functions initialized
+        // Create instance
         let mut analysis = KNNAnalysis {
             config,
             data,
             result: None,
             error_collector,
-            executed_functions: Vec::new(),
+            logger,
         };
 
         // Run the analysis using the function from function.rs
         match
-            function::run_analysis(&analysis.data, &analysis.config, &mut analysis.error_collector)
+            function::run_analysis(
+                &analysis.data,
+                &analysis.config,
+                &mut analysis.error_collector,
+                &mut analysis.logger
+            )
         {
             Ok(result) => {
                 analysis.result = result;
@@ -189,8 +201,8 @@ impl KNNAnalysis {
         function::get_formatted_results(&self.result)
     }
 
-    pub fn get_executed_functions(&self) -> Result<JsValue, JsValue> {
-        function::get_executed_functions(&Some(self.executed_functions.clone()))
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> {
+        function::get_all_log(&self.logger)
     }
 
     pub fn get_all_errors(&self) -> JsValue {

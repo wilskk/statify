@@ -46,7 +46,6 @@ struct FormatResult {
     robust_parameter_estimates: Option<ParameterEstimates>,
     plots: Option<Vec<FormattedPlot>>,
     saved_variables: Option<SavedVariables>,
-    executed_functions: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -214,7 +213,6 @@ impl FormatResult {
             robust_parameter_estimates: result.robust_parameter_estimates.clone(),
             plots,
             saved_variables: result.saved_variables.clone(),
-            executed_functions: result.executed_functions.clone(),
         }
     }
 }

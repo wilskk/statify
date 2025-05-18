@@ -6,6 +6,7 @@ use crate::univariate::models::{
     result::UnivariateResult,
 };
 use crate::univariate::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::univariate::utils::log::FunctionLogger;
 use crate::univariate::wasm::function;
 
 #[wasm_bindgen]
@@ -14,6 +15,7 @@ pub struct UnivariateAnalysis {
     data: AnalysisData,
     result: Option<UnivariateResult>,
     error_collector: ErrorCollector,
+    logger: FunctionLogger,
 }
 
 #[wasm_bindgen]
@@ -34,6 +36,9 @@ impl UnivariateAnalysis {
     ) -> Result<UnivariateAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
+
+        // Initialize function logger
+        let mut logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let dependent_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(dep_data) {
@@ -178,11 +183,17 @@ impl UnivariateAnalysis {
             data,
             result: None,
             error_collector,
+            logger,
         };
 
         // Run the analysis using the function from function.rs
         match
-            function::run_analysis(&analysis.data, &analysis.config, &mut analysis.error_collector)
+            function::run_analysis(
+                &analysis.data,
+                &analysis.config,
+                &mut analysis.error_collector,
+                &mut analysis.logger
+            )
         {
             Ok(result) => {
                 analysis.result = result;
@@ -201,12 +212,12 @@ impl UnivariateAnalysis {
         function::get_formatted_results(&self.result)
     }
 
-    pub fn get_executed_functions(&self) -> Result<JsValue, JsValue> {
-        function::get_executed_functions(&self.result)
-    }
-
     pub fn get_all_errors(&self) -> JsValue {
         function::get_all_errors(&self.error_collector)
+    }
+
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> {
+        function::get_all_log(&self.logger)
     }
 
     pub fn clear_errors(&mut self) -> JsValue {

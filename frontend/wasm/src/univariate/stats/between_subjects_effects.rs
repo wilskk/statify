@@ -887,23 +887,29 @@ fn generate_lower_order_terms(
     }
 }
 
-/// Helper function to generate factor level combinations
+/// Generate all combinations of factor levels for interaction analysis
 fn generate_level_combinations(
     factor_levels: &[(String, Vec<String>)],
     current_combo: &mut HashMap<String, String>,
     index: usize,
     result: &mut Vec<HashMap<String, String>>
 ) {
-    if index == factor_levels.len() {
+    if index >= factor_levels.len() {
+        // We've processed all factors, add this combination
         result.push(current_combo.clone());
         return;
     }
 
     let (factor, levels) = &factor_levels[index];
+
+    // Process each level for the current factor
     for level in levels {
         current_combo.insert(factor.clone(), level.clone());
         generate_level_combinations(factor_levels, current_combo, index + 1, result);
     }
+
+    // Remove the factor key after processing all its levels
+    current_combo.remove(factor);
 }
 
 /// Calculate degrees of freedom for an interaction effect
@@ -1458,25 +1464,66 @@ fn calculate_type_iii_factor_ss(
     Ok(ss)
 }
 
-/// Helper function to calculate raw SS for a factor without adjustments
+/// Calculate raw sum of squares for a factor
 fn calculate_raw_factor_ss(
     data: &AnalysisData,
     factor: &str,
     dep_var_name: &str,
     grand_mean: f64
 ) -> Result<f64, String> {
-    let factor_levels = get_factor_levels(data, factor)?;
-    let mut ss = 0.0;
+    use statrs::statistics::Statistics;
+    use rayon::prelude::*;
 
-    for level in &factor_levels {
-        let level_values = get_level_values(data, factor, level, dep_var_name)?;
-        if !level_values.is_empty() {
-            let level_mean = calculate_mean(&level_values);
-            ss += (level_values.len() as f64) * (level_mean - grand_mean).powi(2);
-        }
-    }
+    // Get levels for this factor
+    let levels = get_factor_levels(data, factor)?;
 
-    Ok(ss)
+    // Parallelize level processing for large datasets
+    let ss_factor: f64 = if levels.len() > 5 {
+        levels
+            .par_iter()
+            .filter_map(|level| {
+                let level_values = match get_level_values(data, factor, level, dep_var_name) {
+                    Ok(values) => values,
+                    Err(_) => {
+                        return None;
+                    }
+                };
+
+                if level_values.is_empty() {
+                    return None;
+                }
+
+                let level_mean = level_values.mean();
+                let n = level_values.len() as f64;
+
+                Some(n * (level_mean - grand_mean).powi(2))
+            })
+            .sum()
+    } else {
+        // Sequential for small number of levels
+        levels
+            .iter()
+            .filter_map(|level| {
+                let level_values = match get_level_values(data, factor, level, dep_var_name) {
+                    Ok(values) => values,
+                    Err(_) => {
+                        return None;
+                    }
+                };
+
+                if level_values.is_empty() {
+                    return None;
+                }
+
+                let level_mean = level_values.mean();
+                let n = level_values.len() as f64;
+
+                Some(n * (level_mean - grand_mean).powi(2))
+            })
+            .sum()
+    };
+
+    Ok(ss_factor)
 }
 
 /// Create a TestEffectEntry with calculated statistics

@@ -7,17 +7,16 @@ use crate::multivariate::models::{
     result::MultivariateResult,
 };
 use crate::multivariate::stats::core;
+use crate::multivariate::utils::log::FunctionLogger;
 use crate::multivariate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,
     config: &MultivariateConfig,
-    error_collector: &mut ErrorCollector
+    error_collector: &mut ErrorCollector,
+    logger: &mut FunctionLogger
 ) -> Result<Option<MultivariateResult>, JsValue> {
-    web_sys::console::log_1(&"Starting univariate analysis".into());
-
-    // Initialize result with executed functions tracking
-    let mut executed_functions = Vec::new();
+    web_sys::console::log_1(&"Starting multivariate analysis".into());
 
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
@@ -26,7 +25,7 @@ pub fn run_analysis(
     web_sys::console::log_1(&format!("Data: {:?}", data).into());
 
     // Step 1: Basic processing summary (always executed)
-    executed_functions.push("basic_processing_summary".to_string());
+    logger.add_log("basic_processing_summary");
     let mut processing_summary = None;
     match core::basic_processing_summary(data, config) {
         Ok(summary) => {
@@ -41,7 +40,7 @@ pub fn run_analysis(
     // Step 2: Descriptive statistics if requested
     let mut descriptive_statistics = None;
     if config.options.desc_stats {
-        executed_functions.push("calculate_descriptive_statistics".to_string());
+        logger.add_log("calculate_descriptive_statistics");
         match core::calculate_descriptive_statistics(data, config) {
             Ok(stats) => {
                 descriptive_statistics = Some(stats);
@@ -55,7 +54,7 @@ pub fn run_analysis(
 
     let mut box_test = None;
     if config.options.homogen_test {
-        executed_functions.push("calculate_box_test".to_string());
+        logger.add_log("calculate_box_test");
         match core::calculate_box_test(data, config) {
             Ok(test) => {
                 box_test = Some(test);
@@ -69,7 +68,7 @@ pub fn run_analysis(
 
     let mut bartlett_test = None;
     if config.options.homogen_test {
-        executed_functions.push("calculate_bartlett_test".to_string());
+        logger.add_log("calculate_bartlett_test");
         match core::calculate_bartlett_test(data, config) {
             Ok(test) => {
                 bartlett_test = Some(test);
@@ -84,7 +83,7 @@ pub fn run_analysis(
     // Step 3: Levene's Test for Homogeneity of Variances if requested
     let mut levene_test = None;
     if config.options.homogen_test {
-        executed_functions.push("calculate_levene_test".to_string());
+        logger.add_log("calculate_levene_test");
         match core::calculate_levene_test(data, config) {
             Ok(test) => {
                 levene_test = Some(test);
@@ -100,7 +99,7 @@ pub fn run_analysis(
     let mut tests_of_between_subjects_effects = None;
     match core::calculate_tests_between_subjects_effects(data, config) {
         Ok(tests) => {
-            executed_functions.push("calculate_tests_between_subjects_effects".to_string());
+            logger.add_log("calculate_tests_between_subjects_effects");
             tests_of_between_subjects_effects = Some(tests);
         }
         Err(e) => {
@@ -111,7 +110,7 @@ pub fn run_analysis(
     // Step 5: Parameter Estimates if requested
     let mut parameter_estimates = None;
     if config.options.param_est {
-        executed_functions.push("calculate_parameter_estimates".to_string());
+        logger.add_log("calculate_parameter_estimates");
         match core::calculate_parameter_estimates(data, config) {
             Ok(estimates) => {
                 parameter_estimates = Some(estimates);
@@ -125,7 +124,7 @@ pub fn run_analysis(
 
     let mut between_subjects_sscp = None;
     if config.options.sscp_mat {
-        executed_functions.push("calculate_between_subjects_sscp".to_string());
+        logger.add_log("calculate_between_subjects_sscp");
         match core::calculate_between_subjects_sscp(data, config) {
             Ok(sscp) => {
                 // Store the SSCP matrix in the result
@@ -351,7 +350,7 @@ pub fn run_analysis(
         emmeans,
         plots,
         saved_variables,
-        executed_functions,
+        executed_functions: logger.get_executed_functions(),
         box_test,
         bartlett_test,
         multivariate_tests,
@@ -392,6 +391,10 @@ pub fn get_executed_functions(result: &Option<MultivariateResult>) -> Result<JsV
 
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {
     JsValue::from_str(&error_collector.get_error_summary())
+}
+
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
+    Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }
 
 pub fn clear_errors(error_collector: &mut ErrorCollector) -> JsValue {

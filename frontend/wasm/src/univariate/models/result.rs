@@ -17,7 +17,6 @@ pub struct UnivariateResult {
     pub robust_parameter_estimates: Option<ParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
-    pub executed_functions: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -3,7 +3,7 @@
 // pub mod discriminant;
 // pub mod factor;
 // pub mod hierarchical;
-pub mod kmeans;
+// pub mod kmeans;
 // pub mod knn;
 // pub mod mca;
 // pub mod multivariate;
@@ -14,7 +14,7 @@ pub mod kmeans;
 pub mod time_series;
 // pub mod tree;
 // pub mod twostep;
-// pub mod univariate;
+pub mod univariate;
 // pub mod varcomps;
 
 pub use time_series::smoothing::smoothing::Smoothing;

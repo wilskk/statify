@@ -15,3 +15,19 @@ pub mod robust;
 pub mod save;
 pub mod spread_vs_level;
 pub mod summary_processing;
+
+// Re-export commonly used functions and types
+pub use common::{
+    calculate_mean,
+    calculate_variance,
+    calculate_std_deviation,
+    calculate_f_significance,
+    calculate_t_significance,
+    calculate_t_critical,
+    extract_dependent_value,
+    data_value_to_string,
+};
+
+// Utility functions for parallel processing
+pub use rayon;
+pub use statrs;

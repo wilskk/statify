@@ -1,6 +1,7 @@
-use statrs::distribution::{ ContinuousCDF, FisherSnedecor, StudentsT, ChiSquared, Gamma };
-use statrs::function::gamma::gamma;
+use statrs::distribution::{ ContinuousCDF, FisherSnedecor, StudentsT, ChiSquared, Gamma, Normal };
+use statrs::{ Statistics, Mean, StandardDeviation, Variance };
 use nalgebra::{ DMatrix, DVector };
+use rayon::prelude::*;
 
 use std::collections::{ HashMap, HashSet };
 use crate::univariate::models::{
@@ -8,29 +9,40 @@ use crate::univariate::models::{
     config::UnivariateConfig,
 };
 
+/// Calculate mean of values using statrs
 pub fn calculate_mean(values: &[f64]) -> f64 {
     if values.is_empty() {
         return 0.0;
     }
-    values.iter().sum::<f64>() / (values.len() as f64)
+    values.mean()
 }
 
-/// Calculate variance of values
+/// Calculate variance of values using statrs
 pub fn calculate_variance(values: &[f64], mean: Option<f64>) -> f64 {
     if values.len() <= 1 {
         return 0.0;
     }
 
-    let mean_val = mean.unwrap_or_else(|| calculate_mean(values));
-    values
-        .iter()
-        .map(|x| (x - mean_val).powi(2))
-        .sum::<f64>() / (values.len() as f64)
+    match mean {
+        Some(m) =>
+            values
+                .iter()
+                .map(|x| (x - m).powi(2))
+                .sum::<f64>() / (values.len() as f64),
+        None => values.variance(),
+    }
 }
 
-/// Calculate standard deviation of values
+/// Calculate standard deviation of values using statrs
 pub fn calculate_std_deviation(values: &[f64], mean: Option<f64>) -> f64 {
-    calculate_variance(values, mean).sqrt()
+    if values.len() <= 1 {
+        return 0.0;
+    }
+
+    match mean {
+        Some(m) => calculate_variance(values, Some(m)).sqrt(),
+        None => values.std_dev(),
+    }
 }
 
 /// Calculate F significance (p-value) for F statistic
@@ -58,36 +70,14 @@ pub fn calculate_t_significance(df: usize, t_value: f64) -> f64 {
 /// Calculate critical t value for confidence intervals
 pub fn calculate_t_critical(df: usize, alpha: f64) -> f64 {
     if df == 0 {
-        return 1.96; // Default to normal approximation
+        return Normal::new(0.0, 1.0)
+            .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
+            .unwrap_or(1.96); // Default to normal approximation
     }
 
     StudentsT::new(0.0, 1.0, df as f64)
-        .and_then(|dist| Ok(dist.inverse_cdf(1.0 - alpha)))
-        .unwrap_or_else(|_| {
-            // Fallback to bisection method
-            let dist = StudentsT::new(0.0, 1.0, df as f64).unwrap();
-            let p = 1.0 - alpha;
-            let mut low = -10.0;
-            let mut high = 10.0;
-            let tol = 1e-6;
-
-            for _ in 0..50 {
-                let mid = (low + high) / 2.0;
-                let prob = dist.cdf(mid);
-
-                if (prob - p).abs() < tol {
-                    return mid;
-                }
-
-                if prob < p {
-                    low = mid;
-                } else {
-                    high = mid;
-                }
-            }
-
-            (low + high) / 2.0
-        })
+        .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
+        .unwrap_or(1.96)
 }
 
 /// Calculate observed power for F-test
@@ -96,9 +86,17 @@ pub fn calculate_observed_power(df1: usize, df2: usize, f_value: f64, alpha: f64
         return 0.0;
     }
 
-    // Approximation using non-central parameter
+    // Non-central F distribution approximation
     let ncp = f_value * (df1 as f64);
-    1.0 - (-ncp * 0.5).exp()
+    let crit_f = FisherSnedecor::new(df1 as f64, df2 as f64)
+        .map(|dist| dist.inverse_cdf(1.0 - alpha))
+        .unwrap_or(4.0);
+
+    // Approximation of power
+    1.0 -
+        FisherSnedecor::new(df1 as f64, df2 as f64)
+            .map(|dist| dist.cdf(crit_f))
+            .unwrap_or(0.5)
 }
 
 /// Calculate observed power for t-test
@@ -107,12 +105,22 @@ pub fn calculate_observed_power_t(df: usize, t_value: f64, alpha: f64) -> f64 {
         return 0.0;
     }
 
-    // Approximation using non-central parameter
-    let ncp = t_value.abs();
-    1.0 - (-ncp * 0.5).exp()
+    let abs_t = t_value.abs();
+    let crit_t = StudentsT::new(0.0, 1.0, df as f64)
+        .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
+        .unwrap_or(1.96);
+
+    // Approximation of power for two-tailed test
+    if abs_t <= crit_t {
+        return 0.0;
+    }
+
+    StudentsT::new(0.0, 1.0, df as f64)
+        .map(|dist| dist.cdf(-crit_t) + (1.0 - dist.cdf(crit_t)))
+        .unwrap_or(0.0)
 }
 
-/// Chi-square CDF approximation for p-value calculations
+/// Chi-square CDF using statrs
 pub fn chi_square_cdf(x: f64, df: f64) -> f64 {
     if x <= 0.0 {
         return 0.0;
@@ -120,40 +128,10 @@ pub fn chi_square_cdf(x: f64, df: f64) -> f64 {
 
     ChiSquared::new(df)
         .map(|dist| dist.cdf(x))
-        .unwrap_or_else(|_| {
-            // Fallback approximation
-            if df > 30.0 {
-                // Normal approximation for large df
-                let z = (x / df).sqrt();
-                let t = z - (1.0 - 2.0 / (9.0 * df)) / (3.0 * df.sqrt());
-                0.5 * (1.0 + (0.5 * t.sqrt() * t).tanh())
-            } else {
-                // Gamma approximation for smaller df
-                let shape = df / 2.0;
-                Gamma::new(shape, 2.0)
-                    .map(|dist| dist.cdf(x))
-                    .unwrap_or_else(|_| {
-                        // Last resort manual calculation
-                        let mut p = 0.0;
-                        let mut term = (-x / 2.0).exp() * x.powf(shape - 1.0);
-                        p += term;
-
-                        for i in 1..100 {
-                            term *= x / (shape + (i as f64) - 1.0);
-                            p += term;
-                            if term < 1e-10 * p {
-                                break;
-                            }
-                        }
-
-                        p *= 1.0 / ((2.0_f64).powf(shape) * gamma(shape));
-                        1.0 - p
-                    })
-            }
-        })
+        .unwrap_or(0.0)
 }
 
-/// F distribution CDF
+/// F distribution CDF using statrs
 pub fn f_distribution_cdf(x: f64, df1: f64, df2: f64) -> f64 {
     if x <= 0.0 {
         return 0.0;
@@ -161,11 +139,7 @@ pub fn f_distribution_cdf(x: f64, df1: f64, df2: f64) -> f64 {
 
     FisherSnedecor::new(df1, df2)
         .map(|dist| dist.cdf(x))
-        .unwrap_or_else(|_| {
-            // Fallback approximation
-            let z = (df1 * x) / (df1 * x + df2);
-            z.min(1.0).max(0.0)
-        })
+        .unwrap_or(0.0)
 }
 
 /// Count total cases in the data
@@ -507,7 +481,7 @@ pub fn get_level_values_adjusted(
     Ok(level_values)
 }
 
-/// Convert 2D vector to DMatrix
+/// Create DMatrix from Vec<Vec<f64>> efficiently
 pub fn to_dmatrix(matrix: &[Vec<f64>]) -> DMatrix<f64> {
     if matrix.is_empty() || matrix[0].is_empty() {
         return DMatrix::zeros(0, 0);
@@ -515,20 +489,25 @@ pub fn to_dmatrix(matrix: &[Vec<f64>]) -> DMatrix<f64> {
 
     let rows = matrix.len();
     let cols = matrix[0].len();
-    DMatrix::from_fn(rows, cols, |i, j| matrix[i][j])
+    let mut flat_data = Vec::with_capacity(rows * cols);
+
+    for row in matrix {
+        flat_data.extend_from_slice(row);
+    }
+
+    DMatrix::from_row_slice(rows, cols, &flat_data)
 }
 
-/// Convert vector to DVector
+/// Create DVector from Vec<f64> efficiently
 pub fn to_dvector(vector: &[f64]) -> DVector<f64> {
-    DVector::from_iterator(vector.len(), vector.iter().cloned())
+    DVector::from_row_slice(vector)
 }
 
-/// Convert DMatrix to 2D vector
+/// Convert DMatrix to Vec<Vec<f64>>
 pub fn from_dmatrix(matrix: &DMatrix<f64>) -> Vec<Vec<f64>> {
-    let rows = matrix.nrows();
-    let cols = matrix.ncols();
-
+    let (rows, cols) = matrix.shape();
     let mut result = vec![vec![0.0; cols]; rows];
+
     for i in 0..rows {
         for j in 0..cols {
             result[i][j] = matrix[(i, j)];
@@ -540,179 +519,85 @@ pub fn from_dmatrix(matrix: &DMatrix<f64>) -> Vec<Vec<f64>> {
 
 /// Matrix multiplication using nalgebra
 pub fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
-    if a.is_empty() || b.is_empty() || a[0].is_empty() || b[0].is_empty() {
-        return Err("Empty matrices provided for multiplication".to_string());
-    }
-
-    let a_cols = a[0].len();
-    let b_rows = b.len();
-
-    if a_cols != b_rows {
-        return Err(
-            format!(
-                "Matrix dimensions mismatch: {}x{} and {}x{}",
-                a.len(),
-                a_cols,
-                b_rows,
-                b[0].len()
-            )
-        );
+    if a.is_empty() || b.is_empty() {
+        return Err("Cannot multiply empty matrices".to_string());
     }
 
     let a_matrix = to_dmatrix(a);
     let b_matrix = to_dmatrix(b);
 
-    Ok(from_dmatrix(&(a_matrix * b_matrix)))
+    let result = a_matrix * b_matrix;
+    Ok(from_dmatrix(&result))
 }
 
-/// Matrix inversion using nalgebra
+/// Matrix inverse using nalgebra
 pub fn matrix_inverse(matrix: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
-    if matrix.is_empty() || matrix[0].is_empty() {
-        return Err("Empty matrix provided for inversion".to_string());
+    if matrix.is_empty() {
+        return Err("Cannot invert empty matrix".to_string());
     }
 
-    let rows = matrix.len();
-    let cols = matrix[0].len();
+    let na_matrix = to_dmatrix(matrix);
 
-    if rows != cols {
-        return Err("Matrix must be square for inversion".to_string());
-    }
-
-    // Special cases for small matrices (faster than general algorithm)
-    if rows == 1 {
-        if matrix[0][0] == 0.0 {
-            return Err("Matrix is singular".to_string());
-        }
-        return Ok(vec![vec![1.0 / matrix[0][0]]]);
-    }
-
-    if rows == 2 {
-        let det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
-        if det.abs() < 1e-10 {
-            return Err("Matrix is nearly singular".to_string());
-        }
-
-        let inv_det = 1.0 / det;
-        return Ok(
-            vec![
-                vec![matrix[1][1] * inv_det, -matrix[0][1] * inv_det],
-                vec![-matrix[1][0] * inv_det, matrix[0][0] * inv_det]
-            ]
-        );
-    }
-
-    // General case using nalgebra
-    let a_matrix = to_dmatrix(matrix);
-    match a_matrix.try_inverse() {
-        Some(inv) => Ok(from_dmatrix(&inv)),
-        None => Err("Matrix is singular and cannot be inverted".to_string()),
+    match na_matrix.try_inverse() {
+        Some(inverse) => Ok(from_dmatrix(&inverse)),
+        None => Err("Matrix is not invertible".to_string()),
     }
 }
 
-/// Calculate matrix determinant
+/// Matrix determinant using nalgebra
 pub fn matrix_determinant(matrix: &[Vec<f64>]) -> Result<f64, String> {
-    if matrix.is_empty() || matrix[0].is_empty() {
-        return Err("Empty matrix provided for determinant".to_string());
+    if matrix.is_empty() {
+        return Err("Cannot compute determinant of empty matrix".to_string());
     }
 
-    let rows = matrix.len();
-    let cols = matrix[0].len();
-
-    if rows != cols {
-        return Err("Matrix must be square for determinant".to_string());
-    }
-
-    // Special cases for small matrices
-    if rows == 1 {
-        return Ok(matrix[0][0]);
-    }
-
-    if rows == 2 {
-        return Ok(matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]);
-    }
-
-    // General case using nalgebra
-    let a_matrix = to_dmatrix(matrix);
-    Ok(a_matrix.determinant())
+    let na_matrix = to_dmatrix(matrix);
+    Ok(na_matrix.determinant())
 }
 
-/// Transpose a matrix
+/// Matrix transpose using nalgebra
 pub fn matrix_transpose(matrix: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    if matrix.is_empty() || matrix[0].is_empty() {
+    if matrix.is_empty() {
         return Vec::new();
     }
 
-    let rows = matrix.len();
-    let cols = matrix[0].len();
-
-    let mut result = vec![vec![0.0; rows]; cols];
-    for i in 0..rows {
-        for j in 0..cols {
-            result[j][i] = matrix[i][j];
-        }
-    }
-
-    result
+    let na_matrix = to_dmatrix(matrix);
+    from_dmatrix(&na_matrix.transpose())
 }
 
-/// Matrix-vector multiplication helper
+/// Matrix-vector multiplication using nalgebra
 pub fn matrix_vec_multiply(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, String> {
-    if matrix.is_empty() || matrix[0].is_empty() || vector.is_empty() {
-        return Err("Empty matrices provided for multiplication".to_string());
+    if matrix.is_empty() || vector.is_empty() {
+        return Err("Cannot multiply with empty matrix or vector".to_string());
     }
 
-    let rows = matrix.len();
-    let cols = matrix[0].len();
+    let na_matrix = to_dmatrix(matrix);
+    let na_vector = to_dvector(vector);
 
-    if cols != vector.len() {
+    if na_matrix.ncols() != na_vector.len() {
         return Err(
             format!(
-                "Matrix dimensions mismatch: {}x{} and vector of length {}",
-                rows,
-                cols,
-                vector.len()
+                "Matrix columns ({}) must match vector length ({})",
+                na_matrix.ncols(),
+                na_vector.len()
             )
         );
     }
 
-    let mut result = vec![0.0; rows];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            result[i] += matrix[i][j] * vector[j];
-        }
-    }
-
-    Ok(result)
+    let result = na_matrix * na_vector;
+    Ok(result.iter().cloned().collect())
 }
 
-/// Solve linear system Ax = b
+/// Solve linear system Ax = b using nalgebra
 pub fn solve_linear_system(a: &[Vec<f64>], b: &[f64]) -> Result<Vec<f64>, String> {
-    if a.is_empty() || a[0].is_empty() || b.is_empty() {
-        return Err("Empty matrices provided for linear system".to_string());
+    if a.is_empty() || b.is_empty() {
+        return Err("Cannot solve system with empty matrix or vector".to_string());
     }
 
-    let rows = a.len();
-    let cols = a[0].len();
+    let na_matrix = to_dmatrix(a);
+    let na_vector = to_dvector(b);
 
-    if rows != b.len() {
-        return Err(
-            format!("Dimension mismatch: A is {}x{} but b has length {}", rows, cols, b.len())
-        );
-    }
-
-    if rows != cols {
-        return Err("Matrix A must be square for direct solving".to_string());
-    }
-
-    let a_matrix = to_dmatrix(a);
-    let b_vector = to_dvector(b);
-
-    match a_matrix.try_inverse() {
-        Some(a_inv) => {
-            let x = a_inv * b_vector;
-            Ok(x.as_slice().to_vec())
-        }
-        None => Err("Matrix is singular and system cannot be solved".to_string()),
+    match na_matrix.clone().lu().solve(&na_vector) {
+        Some(solution) => Ok(solution.iter().cloned().collect()),
+        None => Err("Linear system could not be solved".to_string()),
     }
 }
