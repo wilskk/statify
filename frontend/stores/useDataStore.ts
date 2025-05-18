@@ -2,18 +2,17 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import db from "@/lib/db";
+import dataService from "@/services/data/DataService";
 import { Variable } from "@/types/Variable";
 import { WritableDraft } from 'immer';
+import { DataRow } from "@/types/Data";
 
-export type DataRow = (string | number)[];
 export type CellUpdate = { row: number; col: number; value: string | number };
 export type DataStoreError = {
     message: string;
     source: string;
     originalError?: any;
 };
-type CellPrimaryKey = [number, number]; // [col, row]
 
 export interface DataStoreState {
     data: DataRow[];
@@ -33,9 +32,13 @@ export interface DataStoreState {
     saveData: () => Promise<void>;
 
     addRow: (index?: number) => Promise<void>;
+    addBulkRows: (indices: number[]) => Promise<void>;
     addColumn: (index?: number) => Promise<void>;
+    addBulkColumns: (indices: number[]) => Promise<void>;
     deleteRow: (index: number) => Promise<void>;
+    deleteBulkRows: (indices: number[]) => Promise<void>;
     deleteColumn: (index: number) => Promise<void>;
+    deleteBulkColumns: (indices: number[]) => Promise<void>;
     sortData: (columnIndex: number, direction: 'asc' | 'desc') => Promise<void>;
     swapRows: (row1: number, row2: number) => Promise<void>;
     swapColumns: (col1: number, col2: number) => Promise<void>;
@@ -50,7 +53,7 @@ export interface DataStoreState {
 }
 
 // Define the initial state explicitly with the correct type
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addColumn' | 'deleteRow' | 'deleteColumn' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addBulkRows' | 'addColumn' | 'addBulkColumns' | 'deleteRow' | 'deleteBulkRows' | 'deleteColumn' | 'deleteBulkColumns' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
     data: [],
     isLoading: false,
     error: null,
@@ -136,25 +139,11 @@ export const useDataStore = create<DataStoreState>()(
             loadData: async () => {
                 set((state) => { state.isLoading = true; state.error = null; });
                 try {
-                    const allCells = await db.cells.toArray();
-                    if (allCells.length === 0) {
-                        set((state) => { state.data = []; state.lastUpdated = new Date(); state.isLoading = false; });
-                        return;
-                    }
-                    let maxRow = -1; let maxCol = -1;
-                    allCells.forEach(cell => {
-                        if (cell.row > maxRow) maxRow = cell.row;
-                        if (cell.col > maxCol) maxCol = cell.col;
-                    });
-                    const numRows = maxRow + 1; const numCols = maxCol + 1;
-                    const newData: DataRow[] = Array.from({ length: numRows }, () => Array(numCols).fill(""));
-                    allCells.forEach((cell) => {
-                        if (cell.row < numRows && cell.col < numCols) {
-                            newData[cell.row][cell.col] = cell.value;
-                        }
-                    });
-                    set((state) => {
-                        state.data = newData; state.lastUpdated = new Date(); state.isLoading = false;
+                    const { data } = await dataService.loadAllData();
+                    set((state) => { 
+                        state.data = data; 
+                        state.lastUpdated = new Date(); 
+                        state.isLoading = false; 
                     });
                 } catch (error: any) {
                     console.error("Failed to load data:", error);
@@ -167,7 +156,7 @@ export const useDataStore = create<DataStoreState>()(
 
             resetData: async () => {
                 try {
-                    await db.cells.clear();
+                    await dataService.resetAllData();
                     set((state) => { state.data = []; state.lastUpdated = new Date(); state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to reset data:", error);
@@ -176,67 +165,7 @@ export const useDataStore = create<DataStoreState>()(
             },
 
             updateCell: async (row, col, value) => {
-                const currentData = get().data;
-                 // Pengecekan awal untuk menghindari pemanggilan set yang tidak perlu
-                const currentValue = currentData[row]?.[col];
-                const isNewCell = !(row < currentData.length && col < (currentData[0]?.length ?? 0));
-                if (currentValue === value && !isNewCell) {
-                     return; // Tidak ada perubahan
-                 }
-                 if ((value === "" || value === null || value === undefined) && isNewCell) {
-                    return; // Jangan buat sel baru untuk nilai kosong
-                 }
-
-                const oldData = get().data.map(r => [...r]); // Deep copy untuk rollback
-                let dataChangedInState = false;
-                let structureActuallyChanged = false;
-
-                set((state) => {
-                    const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
-                    // Use the renamed internal helper
-                    structureActuallyChanged = _ensureMatrixDimensionsInternal(state, row, col, minCols);
-
-                    // Periksa lagi *setelah* _ensureMatrixDimensionsInternal
-                    if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
-                         if (state.data[row][col] !== value) {
-                            state.data[row][col] = value;
-                            dataChangedInState = true;
-                        } else {
-                        }
-                    } else {
-                         // Ini seharusnya tidak terjadi jika _ensureMatrixDimensionsInternal benar
-                         console.error(`[updateCell] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
-                    }
-
-                    if(dataChangedInState || structureActuallyChanged) {
-                        state.lastUpdated = new Date();
-                    } else {
-                    }
-                });
-
-                 // Hanya lakukan operasi DB jika nilai data benar-benar berubah
-                 if (!dataChangedInState) {
-                      return;
-                  }
-
-                try {
-                    if (value === "" || value === null || value === undefined) {
-                         // Correct key order for delete
-                        await db.cells.delete([col, row]); // Use primary key [col, row]
-                    } else {
-                        await db.cells.put({ row, col, value });
-                    }
-
-                    // Clear related error on success
-                    set(state => { if(state.error?.source === 'updateCell') state.error = null; });
-                } catch (error: any) {
-                    console.error(`[updateCell] DB update failed for (${row}, ${col}):`, error);
-                    // Rollback state
-                    set((state) => {
-                        state.data = oldData;
-                        state.error = { message: "Failed to update cell in database", source: "updateCell", originalError: error };
-                    });
-                }
+                return await get().updateBulkCells([{ row, col, value }]);
             },
 
             updateBulkCells: async (updates) => {
@@ -251,24 +180,14 @@ export const useDataStore = create<DataStoreState>()(
                 updates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
 
                 // Filter updates *before* expansion (based on oldData) to determine if DB op needed later
-                // And to potentially avoid unnecessary state expansion if all updates are identical or empty new cells
-                 const validUpdatesForPotentialChange = updates.filter(({ row, col, value }) => {
+                const validUpdatesForPotentialChange = updates.filter(({ row, col, value }) => {
                     const currentValue = oldData[row]?.[col];
                     const isNewCell = !(row < oldData.length && col < (oldData[row]?.length ?? 0));
                     const isMeaningfulNewValue = value !== "" && value !== null && value !== undefined;
                     // Update needed if: value changes OR it's a new cell with a meaningful value
                     const needsUpdate = (currentValue !== value) || (isNewCell && isMeaningfulNewValue);
-                     // console.log(`  Filter Check: (${row},${col}) Val='${value}', Old='${currentValue}', isNew=${isNewCell}, meaningfulNew=${isMeaningfulNewValue} -> NeedsUpdate=${needsUpdate}`);
                     return needsUpdate;
                 });
-
-                // Early exit if no meaningful changes are detected *before* state manipulation
-                // Note: This might skip expansion if only structure would change, which might be desired or not.
-                // If expansion MUST happen even for empty cells, remove this early exit.
-                // if (validUpdatesForPotentialChange.length === 0) {
-                //     console.log('[updateBulkCells] No meaningful changes detected based on old data. Skipping state update and DB ops.');
-                //     return;
-                // }
 
                 const oldDataCopy = oldData.map(r => [...r]); // Deep copy for rollback
 
@@ -288,7 +207,6 @@ export const useDataStore = create<DataStoreState>()(
                              if(state.data[row][col] !== value) {
                                 state.data[row][col] = value;
                                 dataChangedInState = true; // Mark that data *in the state* definitely changed
-                            } else {
                             }
                         } else {
                             // This error check is still valid, should not happen if ensure is correct
@@ -298,46 +216,28 @@ export const useDataStore = create<DataStoreState>()(
 
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
-                    } else {
                     }
                 });
 
-                 // Perform DB operations based on the `validUpdatesForPotentialChange` list determined *before* the `set` call.
-                 // This ensures we only write to DB if there was an actual intended change from the original state.
+                // Perform DB operations if there are valid updates
                 if (validUpdatesForPotentialChange.length === 0) {
                      return;
-                 }
+                }
 
-                const cellsToPut = validUpdatesForPotentialChange
-                    .filter(({ value }) => value !== "" && value !== null && value !== undefined)
-                    .map(({ row, col, value }) => ({ row, col, value }));
-
-                // Explicitly type keysToDelete and use correct key order [col, row]
-                const keysToDelete: CellPrimaryKey[] = validUpdatesForPotentialChange
-                    .filter(({ value }) => value === "" || value === null || value === undefined)
-                     // Ensure the mapping result conforms to CellPrimaryKey [number, number]
-                    .map(({ row, col }): CellPrimaryKey => [col, row]);
-
-                if (cellsToPut.length > 0 || keysToDelete.length > 0) {
-                    try {
-                        await db.transaction('rw', db.cells, async () => {
-                            // Use bulkDelete with the correctly typed keys
-                            if (keysToDelete.length > 0) await db.cells.bulkDelete(keysToDelete);
-                            if (cellsToPut.length > 0) await db.cells.bulkPut(cellsToPut);
-                        });
-
-                        // Clear related error on success
-                        set(state => { if(state.error?.source === 'updateBulkCells') state.error = null; });
-                    } catch (error: any) {
-                        console.error("[updateBulkCells] DB transaction failed:", error);
-                        // Rollback state using the copy made *before* the 'set' call
-                        set((state) => {
-                            state.data = oldDataCopy;
-                            state.lastUpdated = new Date(); // Reflect rollback time? Or keep original lastUpdated? This resets it.
-                            state.error = { message: "Bulk update failed, state rolled back", source: "updateBulkCells", originalError: error };
-                        });
-                    }
-                } else {
+                try {
+                    // Use dataService to apply bulk updates
+                    await dataService.applyBulkUpdates(validUpdatesForPotentialChange);
+                    
+                    // Clear related error on success
+                    set(state => { if(state.error?.source === 'updateBulkCells') state.error = null; });
+                } catch (error: any) {
+                    console.error("[updateBulkCells] DB transaction failed:", error);
+                    // Rollback state using the copy made *before* the 'set' call
+                    set((state) => {
+                        state.data = oldDataCopy;
+                        state.lastUpdated = new Date(); // Reflect rollback time
+                        state.error = { message: "Bulk update failed, state rolled back", source: "updateBulkCells", originalError: error };
+                    });
                 }
             },
 
@@ -349,61 +249,85 @@ export const useDataStore = create<DataStoreState>()(
                 });
 
                 try {
-                    await db.transaction('rw', db.cells, async () => {
-                        await db.cells.clear();
-                        const cellsToPut: Array<{ row: number, col: number, value: string | number }> = [];
-                        for (let row = 0; row < newData.length; row++) {
-                            for (let col = 0; col < (newData[row]?.length ?? 0); col++) {
-                                const value = newData[row][col];
-                                if (value !== "" && value !== null && value !== undefined) {
-                                    cellsToPut.push({ row, col, value });
-                                }
-                            }
-                        }
-                        if (cellsToPut.length > 0) {
-                            await db.cells.bulkPut(cellsToPut);
-                        }
-                    });
+                    // Use dataService's replaceAllData
+                    await dataService.replaceAllData(newData);
                 } catch (error: any) {
                     console.error("Failed to sync data (replace approach):", error);
                     set((state) => {
                         state.error = { message: "Failed to sync data (replace)", source: "setDataAndSync", originalError: error };
                     });
-                    await get().loadData();
+                    await get().loadData(); // Reload data from DB on error
                 }
             },
 
             applyDiffAndSync: async (newData, oldData) => {
-                const cellsToPut: Array<{ row: number, col: number, value: string | number }> = [];
-                const keysToDelete: CellPrimaryKey[] = [];
+                // Calculate row differences for efficient updates
                 const maxRows = Math.max(oldData.length, newData.length);
-                const oldRowLengths = oldData.map(r => r?.length ?? 0);
-                const newRowLengths = newData.map(r => r?.length ?? 0);
-
+                const updatedRowIndices: number[] = [];
+                
                 for (let r = 0; r < maxRows; r++) {
-                    const oldLength = oldRowLengths[r] ?? 0;
-                    const newLength = newRowLengths[r] ?? 0;
-                    const maxCols = Math.max(oldLength, newLength);
+                    const oldRow = oldData[r] || [];
+                    const newRow = newData[r] || [];
+                    
+                    // Check if this row has any differences
+                    const maxCols = Math.max(oldRow.length, newRow.length);
+                    let rowChanged = false;
+                    
                     for (let c = 0; c < maxCols; c++) {
-                        const oldValue = oldData[r]?.[c] ?? "";
-                        const newValue = newData[r]?.[c] ?? "";
-
+                        const oldValue = oldRow[c] ?? "";
+                        const newValue = newRow[c] ?? "";
+                        
                         if (oldValue !== newValue) {
-                            if (newValue !== "") {
-                                cellsToPut.push({ row: r, col: c, value: newValue });
-                            } else if (oldValue !== "") {
-                                keysToDelete.push([c, r]); // Correct key order [col, row]
-                            }
+                            rowChanged = true;
+                            break;
                         }
                     }
+                    
+                    if (rowChanged) {
+                        updatedRowIndices.push(r);
+                    }
                 }
-
-                if (cellsToPut.length > 0 || keysToDelete.length > 0) {
+                
+                if (updatedRowIndices.length > 0) {
                     try {
-                        await db.transaction('rw', db.cells, async () => {
-                            if (keysToDelete.length > 0) await db.cells.bulkDelete(keysToDelete);
-                            if (cellsToPut.length > 0) await db.cells.bulkPut(cellsToPut);
-                        });
+                        // Prepare bulk updates for the data service
+                        const bulkUpdates: CellUpdate[] = [];
+                        
+                        for (const rowIndex of updatedRowIndices) {
+                            if (rowIndex < newData.length) {
+                                const row = newData[rowIndex];
+                                for (let colIndex = 0; colIndex < row.length; colIndex++) {
+                                    // Only add to bulk updates if the value has changed
+                                    const oldValue = oldData[rowIndex]?.[colIndex] ?? "";
+                                    const newValue = row[colIndex];
+                                    
+                                    if (oldValue !== newValue) {
+                                        bulkUpdates.push({
+                                            row: rowIndex,
+                                            col: colIndex,
+                                            value: newValue
+                                        });
+                                    }
+                                }
+                            } else {
+                                // Row was deleted in newData
+                                // For each column in the old row, set to empty
+                                const oldRow = oldData[rowIndex] || [];
+                                for (let colIndex = 0; colIndex < oldRow.length; colIndex++) {
+                                    bulkUpdates.push({
+                                        row: rowIndex,
+                                        col: colIndex,
+                                        value: ""
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Apply all the updates through the service
+                        if (bulkUpdates.length > 0) {
+                            await dataService.applyBulkUpdates(bulkUpdates);
+                        }
+                        
                         set(state => { if(state.error?.source === 'applyDiffAndSync') state.error = null; });
                     } catch (error: any) {
                         console.error("Failed to sync data (diff approach):", error);
@@ -420,21 +344,8 @@ export const useDataStore = create<DataStoreState>()(
             saveData: async () => {
                 const currentData = get().data;
                 try {
-                    await db.transaction('rw', db.cells, async () => {
-                        await db.cells.clear();
-                        const cellsToPut: Array<{ row: number, col: number, value: string | number }> = [];
-                        for (let row = 0; row < currentData.length; row++) {
-                            for (let col = 0; col < (currentData[row]?.length ?? 0); col++) {
-                                const value = currentData[row][col];
-                                if (value !== "" && value !== null && value !== undefined) {
-                                    cellsToPut.push({ row, col, value });
-                                }
-                            }
-                        }
-                        if (cellsToPut.length > 0) {
-                            await db.cells.bulkPut(cellsToPut);
-                        }
-                    });
+                    // Use dataService.replaceAllData to save the entire dataset
+                    await dataService.replaceAllData(currentData);
                     set((state) => { state.error = null; state.lastUpdated = new Date(); });
                 } catch (error: any) {
                     console.error("Failed to explicitly save data:", error);
@@ -447,81 +358,278 @@ export const useDataStore = create<DataStoreState>()(
 
             addRow: async (index?) => {
                 const oldData = get().data;
-                let finalData: DataRow[] = [];
-                set((state) => {
-                    const rowIndex = index !== undefined ? index : state.data.length;
-                    const colCount = state.data.length > 0 ? (state.data[0]?.length ?? 0) : 0;
-                    const newRow = Array(colCount).fill("");
-                    const updatedData = [...state.data];
-                    updatedData.splice(rowIndex, 0, newRow);
-                    state.data = updatedData;
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                const rowIndex = index !== undefined ? index : oldData.length;
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        const colCount = state.data.length > 0 ? (state.data[0]?.length ?? 0) : 0;
+                        const newRow = Array(colCount).fill("");
+                        const updatedData = [...state.data];
+                        updatedData.splice(rowIndex, 0, newRow);
+                        state.data = updatedData;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to add the row
+                    await dataService.addRow(rowIndex);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'addRow') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to add row at index ${rowIndex}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to add row", 
+                            source: "addRow",
+                            originalError: error
+                        };
+                    });
+                }
+            },
+
+            addBulkRows: async (indices: number[]) => {
+                if (!indices || indices.length === 0) return;
+                
+                // Sort indices in descending order to avoid shifting problems
+                const sortedIndices = [...indices].sort((a, b) => b - a);
+                const oldData = get().data;
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        const colCount = state.data.length > 0 ? (state.data[0]?.length ?? 0) : 0;
+                        const newRow = Array(colCount).fill("");
+                        const updatedData = [...state.data];
+                        
+                        // Add rows at each index
+                        for (const index of sortedIndices) {
+                            const rowIndex = index !== undefined ? index : updatedData.length;
+                            updatedData.splice(rowIndex, 0, [...newRow]);
+                        }
+                        
+                        state.data = updatedData;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to add the rows
+                    await dataService.addBulkRows(indices);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'addBulkRows') state.error = null; });
+                } catch (error: any) {
+                    console.error("Failed to add bulk rows:", error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to add bulk rows", 
+                            source: "addBulkRows",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             addColumn: async (index?) => {
                 const oldData = get().data;
-                let finalData: DataRow[] = [];
-                set((state) => {
-                    const colIndex = index !== undefined ? index : (state.data.length > 0 ? (state.data[0]?.length ?? 0) : 0);
-                    state.data = state.data.map(row => {
-                        const newRow = [...row];
-                        newRow.splice(colIndex, 0, "");
-                        return newRow;
+                const colIndex = index !== undefined ? index : (oldData.length > 0 ? (oldData[0]?.length ?? 0) : 0);
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        state.data = state.data.map(row => {
+                            const newRow = [...row];
+                            newRow.splice(colIndex, 0, "");
+                            return newRow;
+                        });
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
                     });
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                    
+                    // Use the service to add the column
+                    await dataService.addColumn(colIndex);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'addColumn') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to add column at index ${colIndex}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to add column", 
+                            source: "addColumn",
+                            originalError: error
+                        };
+                    });
+                }
+            },
+
+            addBulkColumns: async (indices: number[]) => {
+                if (!indices || indices.length === 0) return;
+                
+                // Sort indices in descending order to avoid shifting problems
+                const sortedIndices = [...indices].sort((a, b) => b - a);
+                const oldData = get().data;
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        // Add columns to each row
+                        state.data = state.data.map(row => {
+                            const newRow = [...row];
+                            for (const colIndex of sortedIndices) {
+                                const columnIndex = colIndex !== undefined ? colIndex : newRow.length;
+                                newRow.splice(columnIndex, 0, "");
+                            }
+                            return newRow;
+                        });
+                        
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to add the columns
+                    await dataService.addBulkColumns(indices);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'addBulkColumns') state.error = null; });
+                } catch (error: any) {
+                    console.error("Failed to add bulk columns:", error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to add bulk columns", 
+                            source: "addBulkColumns",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             deleteRow: async (index: number) => {
                 const oldData = get().data;
-                if (index < 0 || index >= oldData.length) { set(state => { state.error = { message: "Invalid row index", source: "deleteRow" }; }); return; }
-                let finalData: DataRow[] = [];
-                set((state) => {
-                    const updatedData = [...state.data];
-                    updatedData.splice(index, 1);
-                    state.data = updatedData;
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                if (index < 0 || index >= oldData.length) { 
+                    set(state => { 
+                        state.error = { message: "Invalid row index", source: "deleteRow" }; 
+                    }); 
+                    return; 
+                }
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        const updatedData = [...state.data];
+                        updatedData.splice(index, 1);
+                        state.data = updatedData;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to delete the row
+                    await dataService.deleteRow(index);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'deleteRow') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to delete row at index ${index}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to delete row", 
+                            source: "deleteRow",
+                            originalError: error
+                        };
+                    });
+                }
+            },
+
+            deleteBulkRows: async (indices: number[]) => {
+                if (!indices || indices.length === 0) return;
+                
+                const oldData = get().data;
+                
+                // Validate indices
+                for (const index of indices) {
+                    if (index < 0 || index >= oldData.length) {
+                        set(state => { 
+                            state.error = { 
+                                message: `Invalid row index ${index} for deletion`,
+                                source: "deleteBulkRows" 
+                            }; 
+                        });
+                        return;
+                    }
+                }
+                
+                try {
+                    // Sort indices in descending order to avoid shifting problems
+                    const sortedIndices = [...indices].sort((a, b) => b - a);
+                    
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        const updatedData = [...state.data];
+                        
+                        // Delete rows at each index
+                        for (const index of sortedIndices) {
+                            updatedData.splice(index, 1);
+                        }
+                        
+                        state.data = updatedData;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to delete the rows
+                    await dataService.deleteBulkRows(indices);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'deleteBulkRows') state.error = null; });
+                } catch (error: any) {
+                    console.error("Failed to delete bulk rows:", error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to delete bulk rows", 
+                            source: "deleteBulkRows",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             deleteColumn: async (index: number) => {
                 const oldData = get().data;
                 if (oldData.length === 0 || index < 0 || index >= (oldData[0]?.length ?? 0)) { 
-                    set(state => { state.error = { message: "Invalid column index for deletion", source: "deleteColumn" }; }); 
+                    set(state => { 
+                        state.error = { message: "Invalid column index for deletion", source: "deleteColumn" }; 
+                    }); 
                     return; 
                 }
                 
-                // Explicitly collect keys for the column being deleted
-                const rowCount = oldData.length;
-                const keysToDelete: CellPrimaryKey[] = [];
-                for (let r = 0; r < rowCount; r++) {
-                    // Only add key if row exists and column index is valid for that row originally
-                    // Although check at start mostly covers this, belt and braces.
-                    if (oldData[r] && index < oldData[r].length) {
-                         // Primary key for db.cells is [col, row]
-                        keysToDelete.push([index, r]); 
-                    }
-                }
-                
                 try {
-                    // Explicitly delete all cells in the target column from the database first
-                    if (keysToDelete.length > 0) {
-                        await db.transaction('rw', db.cells, async () => {
-                            await db.cells.bulkDelete(keysToDelete);
-                        });
-                         console.log(`[deleteColumn] Explicitly deleted ${keysToDelete.length} keys for column index ${index} from DB.`);
-                    } else {
-                        console.log(`[deleteColumn] No keys needed explicit deletion for column index ${index}.`);
-                    }
-
-                    // Now, update the in-memory state
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
                     set((state) => {
                         state.data = state.data.map(row => {
                             // Ensure the row exists and the index is valid before splicing
@@ -534,21 +642,91 @@ export const useDataStore = create<DataStoreState>()(
                         });
                         state.lastUpdated = new Date();
                         state.error = null; // Clear previous errors on success
+                        finalData = state.data;
                     });
-
-                    // DO NOT call applyDiffAndSync here. 
-                    // The state is updated, and the corresponding DB entries are explicitly removed.
-                    // Relying on React's re-render from the state change is sufficient.
-
+                    
+                    // Use the service to delete the column
+                    await dataService.deleteColumn(index);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'deleteColumn') state.error = null; });
                 } catch (error: any) {
-                     console.error(`[deleteColumn] Failed to delete column ${index} from DB or update state:`, error);
+                    console.error(`Failed to delete column at index ${index}:`, error);
+                    // Rollback state on error
                     set((state) => {
-                        // We cannot easily rollback the DB delete here, but we should report the error
-                        // and potentially try to reload or revert state if possible (reverting state might be complex)
-                        state.error = { message: `Failed to fully delete column ${index}`, source: "deleteColumn", originalError: error };
-                        // Avoid setting state.data = oldData as DB state is inconsistent now.
-                        // Maybe trigger a full reload?
-                        // get().loadData(); // Option: force reload on error
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to delete column", 
+                            source: "deleteColumn",
+                            originalError: error
+                        };
+                    });
+                }
+            },
+
+            deleteBulkColumns: async (indices: number[]) => {
+                if (!indices || indices.length === 0) return;
+                
+                const oldData = get().data;
+                
+                // Validate indices
+                if (oldData.length === 0) return;
+                const colCount = oldData[0]?.length ?? 0;
+                
+                for (const index of indices) {
+                    if (index < 0 || index >= colCount) {
+                        set(state => { 
+                            state.error = { 
+                                message: `Invalid column index ${index} for deletion`,
+                                source: "deleteBulkColumns" 
+                            }; 
+                        });
+                        return;
+                    }
+                }
+                
+                try {
+                    // Sort indices in descending order to avoid shifting problems
+                    const sortedIndices = [...indices].sort((a, b) => b - a);
+                    
+                    // Update state locally first for immediate UI update
+                    let finalData: DataRow[] = [];
+                    set((state) => {
+                        // Delete columns from each row
+                        state.data = state.data.map(row => {
+                            if (!row) return row;
+                            
+                            const newRow = [...row];
+                            for (const index of sortedIndices) {
+                                if (index < newRow.length) {
+                                    newRow.splice(index, 1);
+                                }
+                            }
+                            return newRow;
+                        });
+                        
+                        state.lastUpdated = new Date();
+                        state.error = null; // Clear previous errors on success
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to delete the columns
+                    await dataService.deleteBulkColumns(indices);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'deleteBulkColumns') state.error = null; });
+                } catch (error: any) {
+                    console.error("Failed to delete bulk columns:", error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to delete bulk columns", 
+                            source: "deleteBulkColumns",
+                            originalError: error
+                        };
                     });
                 }
             },
@@ -556,60 +734,139 @@ export const useDataStore = create<DataStoreState>()(
             sortData: async (columnIndex: number, direction: 'asc' | 'desc') => {
                 const oldData = get().data;
                 if (oldData.length === 0) return;
+                
                 let finalData: DataRow[] = [];
-                set(state => {
-                    const rowsToSort = [...state.data];
-                    rowsToSort.sort((rowA, rowB) => {
-                        const valueA = columnIndex < (rowA?.length ?? 0) ? rowA[columnIndex] : "";
-                        const valueB = columnIndex < (rowB?.length ?? 0) ? rowB[columnIndex] : "";
-                        const isANumeric = typeof valueA === 'number' || (typeof valueA === 'string' && valueA !== "" && !isNaN(Number(valueA)));
-                        const isBNumeric = typeof valueB === 'number' || (typeof valueB === 'string' && valueB !== "" && !isNaN(Number(valueB)));
-                        if (isANumeric && isBNumeric) {
-                            const numA = typeof valueA === 'number' ? valueA : Number(valueA); const numB = typeof valueB === 'number' ? valueB : Number(valueB);
-                            return direction === 'asc' ? numA - numB : numB - numA;
-                        }
-                        if (isANumeric && !isBNumeric) return direction === 'asc' ? -1 : 1;
-                        if (!isANumeric && isBNumeric) return direction === 'asc' ? 1 : -1;
-                        const strA = String(valueA ?? '').toLowerCase(); const strB = String(valueB ?? '').toLowerCase();
-                        return direction === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                
+                try {
+                    // Sort locally first for immediate UI update
+                    set(state => {
+                        const rowsToSort = [...state.data];
+                        rowsToSort.sort((rowA, rowB) => {
+                            const valueA = columnIndex < (rowA?.length ?? 0) ? rowA[columnIndex] : "";
+                            const valueB = columnIndex < (rowB?.length ?? 0) ? rowB[columnIndex] : "";
+                            const isANumeric = typeof valueA === 'number' || (typeof valueA === 'string' && valueA !== "" && !isNaN(Number(valueA)));
+                            const isBNumeric = typeof valueB === 'number' || (typeof valueB === 'string' && valueB !== "" && !isNaN(Number(valueB)));
+                            if (isANumeric && isBNumeric) {
+                                const numA = typeof valueA === 'number' ? valueA : Number(valueA); 
+                                const numB = typeof valueB === 'number' ? valueB : Number(valueB);
+                                return direction === 'asc' ? numA - numB : numB - numA;
+                            }
+                            if (isANumeric && !isBNumeric) return direction === 'asc' ? -1 : 1;
+                            if (!isANumeric && isBNumeric) return direction === 'asc' ? 1 : -1;
+                            const strA = String(valueA ?? '').toLowerCase(); 
+                            const strB = String(valueB ?? '').toLowerCase();
+                            return direction === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                        });
+                        state.data = rowsToSort;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
                     });
-                    state.data = rowsToSort;
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                    
+                    // Use the service to persist the sorted data
+                    await dataService.sortData(columnIndex, direction);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'sortData') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to sort data by column ${columnIndex}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to sort data", 
+                            source: "sortData",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             swapRows: async (row1: number, row2: number) => {
                 const oldData = get().data;
-                if (row1 < 0 || row2 < 0 || row1 >= oldData.length || row2 >= oldData.length || row1 === row2) { set(state => { state.error = { message: "Invalid row indices for swapping", source: "swapRows" }; }); return; }
+                if (row1 < 0 || row2 < 0 || row1 >= oldData.length || row2 >= oldData.length || row1 === row2) { 
+                    set(state => { 
+                        state.error = { message: "Invalid row indices for swapping", source: "swapRows" }; 
+                    }); 
+                    return; 
+                }
+                
                 let finalData: DataRow[] = [];
-                set((state) => {
-                    const updatedData = [...state.data];
-                    [updatedData[row1], updatedData[row2]] = [updatedData[row2], updatedData[row1]];
-                    state.data = updatedData;
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    set((state) => {
+                        const updatedData = [...state.data];
+                        [updatedData[row1], updatedData[row2]] = [updatedData[row2], updatedData[row1]];
+                        state.data = updatedData;
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
+                    });
+                    
+                    // Use the service to perform the swap operation
+                    await dataService.swapRows(row1, row2);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'swapRows') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to swap rows ${row1} and ${row2}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to swap rows", 
+                            source: "swapRows",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             swapColumns: async (col1: number, col2: number) => {
                 const oldData = get().data;
                 if (oldData.length === 0) return;
                 const colCount = oldData[0]?.length ?? 0;
-                if (col1 < 0 || col2 < 0 || col1 >= colCount || col2 >= colCount || col1 === col2) { set(state => { state.error = { message: "Invalid column indices for swapping", source: "swapColumns" }; }); return; }
+                
+                if (col1 < 0 || col2 < 0 || col1 >= colCount || col2 >= colCount || col1 === col2) { 
+                    set(state => { 
+                        state.error = { message: "Invalid column indices for swapping", source: "swapColumns" }; 
+                    }); 
+                    return; 
+                }
+                
                 let finalData: DataRow[] = [];
-                set((state) => {
-                    state.data = state.data.map(row => {
-                        const newRow = [...row];
-                        [newRow[col1], newRow[col2]] = [newRow[col2], newRow[col1]];
-                        return newRow;
+                
+                try {
+                    // Update state locally first for immediate UI update
+                    set((state) => {
+                        state.data = state.data.map(row => {
+                            const newRow = [...row];
+                            [newRow[col1], newRow[col2]] = [newRow[col2], newRow[col1]];
+                            return newRow;
+                        });
+                        state.lastUpdated = new Date();
+                        finalData = state.data;
                     });
-                    state.lastUpdated = new Date();
-                    finalData = state.data;
-                });
-                await get().applyDiffAndSync(finalData, oldData);
+                    
+                    // Use the service to perform the swap operation
+                    await dataService.swapColumns(col1, col2);
+                    
+                    // Clear any errors on success
+                    set(state => { if(state.error?.source === 'swapColumns') state.error = null; });
+                } catch (error: any) {
+                    console.error(`Failed to swap columns ${col1} and ${col2}:`, error);
+                    // Rollback state on error
+                    set((state) => {
+                        state.data = oldData;
+                        state.lastUpdated = new Date();
+                        state.error = { 
+                            message: error.message || "Failed to swap columns", 
+                            source: "swapColumns",
+                            originalError: error
+                        };
+                    });
+                }
             },
 
             getVariableData: async (variable: Variable) => {
@@ -617,8 +874,17 @@ export const useDataStore = create<DataStoreState>()(
                 const currentData = get().data;
                 const { columnIndex } = variable;
                 if (columnIndex < 0) return { variable, data: [] };
-                const columnData = currentData.map(row => (row && columnIndex < row.length) ? row[columnIndex] : "" );
-                return { variable, data: columnData };
+                
+                // Use DataService to get column data if possible
+                try {
+                    const { columnData } = await dataService.getColumnData(columnIndex);
+                    return { variable, data: columnData };
+                } catch (error) {
+                    // Fallback to local data if service call fails
+                    console.error(`Failed to get variable data via service, using local: ${error}`);
+                    const columnData = currentData.map(row => (row && columnIndex < row.length) ? row[columnIndex] : "" );
+                    return { variable, data: columnData };
+                }
             },
 
             validateVariableData: async (columnIndex: number, type: string, width: number) => {

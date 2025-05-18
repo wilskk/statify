@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
-import db from "@/lib/db";
+import resultService from "@/services/data/ResultService";
 import { Log } from '@/types/Result';
 import { Analytic } from '@/types/Result';
 import { Statistic } from '@/types/Result';
@@ -17,7 +17,7 @@ export interface ResultState {
     isLoading: boolean;
     error: ResultStoreError | null;
 
-    fetchLogs: () => Promise<void>;
+    loadResults: () => Promise<void>;
     getLogById: (id: number) => Promise<Log | undefined>;
 
     addLog: (log: Omit<Log, "id" | "analytics">) => Promise<number>;
@@ -42,14 +42,14 @@ export const useResultStore = create<ResultState>()(
             isLoading: false,
             error: null,
 
-            fetchLogs: async () => {
+            loadResults: async () => {
                 set((draft) => {
                     draft.isLoading = true;
                     draft.error = null;
                 });
 
                 try {
-                    const logs = await db.getAllLogsWithRelations();
+                    const logs = await resultService.getAllResults();
                     set((draft) => {
                         draft.logs = logs;
                         draft.isLoading = false;
@@ -69,7 +69,7 @@ export const useResultStore = create<ResultState>()(
 
             getLogById: async (id: number) => {
                 try {
-                    return await db.getLogWithRelations(id);
+                    return await resultService.getLog(id);
                 } catch (error) {
                     console.error("Failed to fetch log by id:", error);
                     return undefined;
@@ -78,10 +78,15 @@ export const useResultStore = create<ResultState>()(
 
             addLog: async (log) => {
                 try {
-                    const id = await db.logs.add(log);
+                    const id = await resultService.addResultLog({
+                        log: log.log
+                    });
+                    
+                    // Update state after successful API call
                     set((state) => {
                         state.logs.push({ ...log, id, analytics: [] });
                     });
+                    
                     return id;
                 } catch (error) {
                     console.error("Failed to add log:", error);
@@ -91,7 +96,9 @@ export const useResultStore = create<ResultState>()(
 
             updateLog: async (id, logData) => {
                 try {
-                    await db.logs.update(id, logData);
+                    await resultService.updateLog(id, logData);
+                    
+                    // Update state after successful API call
                     set((state) => {
                         const logIndex = state.logs.findIndex(log => log.id === id);
                         if (logIndex >= 0) {
@@ -106,20 +113,9 @@ export const useResultStore = create<ResultState>()(
 
             deleteLog: async (logId) => {
                 try {
-                    const analytics = await db.analytics.where('log_id').equals(logId).toArray();
-                    const analyticIds = analytics.map(a => a.id!).filter(id => id !== undefined);
-
-                    if (analyticIds.length > 0) {
-                        await Promise.all(
-                            analyticIds.map(id =>
-                                db.statistics.where('analytic_id').equals(id).delete()
-                            )
-                        );
-                    }
-
-                    await db.analytics.where('log_id').equals(logId).delete();
-                    await db.logs.delete(logId);
-
+                    await resultService.deleteLog(logId);
+                    
+                    // Update state after successful API call
                     set((state) => {
                         state.logs = state.logs.filter(log => log.id !== logId);
                     });
@@ -131,13 +127,14 @@ export const useResultStore = create<ResultState>()(
 
             addAnalytic: async (logId, analyticData) => {
                 try {
-                    const analytic: Omit<Analytic, "id"> = {
+                    const analytic: Analytic = {
                         ...analyticData,
                         log_id: logId,
                     };
 
-                    const analyticId = await db.analytics.add(analytic);
+                    const analyticId = await resultService.addAnalytic(logId, analytic);
 
+                    // Update state after successful API call
                     set((state) => {
                         const logIndex = state.logs.findIndex(log => log.id === logId);
                         if (logIndex >= 0) {
@@ -158,8 +155,9 @@ export const useResultStore = create<ResultState>()(
 
             updateAnalytic: async (analyticId, analyticData) => {
                 try {
-                    await db.analytics.update(analyticId, analyticData);
+                    await resultService.updateAnalytic(analyticId, analyticData);
 
+                    // Update state after successful API call
                     set((state) => {
                         for (const log of state.logs) {
                             if (!log.analytics) continue;
@@ -179,9 +177,9 @@ export const useResultStore = create<ResultState>()(
 
             deleteAnalytic: async (analyticId) => {
                 try {
-                    await db.statistics.where('analytic_id').equals(analyticId).delete();
-                    await db.analytics.delete(analyticId);
+                    await resultService.deleteAnalytic(analyticId);
 
+                    // Update state after successful API call
                     set((state) => {
                         for (const log of state.logs) {
                             if (!log.analytics) continue;
@@ -201,14 +199,15 @@ export const useResultStore = create<ResultState>()(
 
             addStatistic: async (analyticId, statisticData) => {
                 try {
-                    const statistic: Omit<Statistic, "id"> = {
+                    const statistic: Statistic = {
                         ...statisticData,
                         analytic_id: analyticId
                     };
 
-                    const statisticId = await db.statistics.add(statistic);
+                    const statisticId = await resultService.addStatistic(analyticId, statistic);
                     const statisticWithId = { ...statistic, id: statisticId };
 
+                    // Update state after successful API call
                     set((state) => {
                         outerLoop: for (const log of state.logs) {
                             if (!log.analytics) continue;
@@ -234,8 +233,9 @@ export const useResultStore = create<ResultState>()(
 
             updateStatistic: async (statisticId, statisticData) => {
                 try {
-                    await db.statistics.update(statisticId, statisticData);
+                    await resultService.updateStatistic(statisticId, statisticData);
 
+                    // Update state after successful API call
                     set((state) => {
                         outerLoop: for (const log of state.logs) {
                             if (!log.analytics) continue;
@@ -259,8 +259,9 @@ export const useResultStore = create<ResultState>()(
 
             deleteStatistic: async (statisticId) => {
                 try {
-                    await db.statistics.delete(statisticId);
+                    await resultService.deleteStatistic(statisticId);
 
+                    // Update state after successful API call
                     set((state) => {
                         outerLoop: for (const log of state.logs) {
                             if (!log.analytics) continue;
@@ -284,12 +285,9 @@ export const useResultStore = create<ResultState>()(
 
             clearAll: async () => {
                 try {
-                    await Promise.all([
-                        db.statistics.clear(),
-                        db.analytics.clear(),
-                        db.logs.clear()
-                    ]);
+                    await resultService.clearAll();
 
+                    // Update state after successful API call
                     set((state) => {
                         state.logs = [];
                     });
