@@ -720,16 +720,20 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       }
   
       // 10. Casewise Diagnostics (Conditional)
-      if (currentStatsParams.casewiseDiagnostics) {
+      if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'allCases') {
         const casewiseDiagnosticsWorker = new Worker('/workers/Regression/casewise_diagnostics.js');
-        console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics...");
+        console.log("[Analyze] Mengirim data ke Worker untuk Casewise Diagnostics (All Cases selected)...");
         casewiseDiagnosticsWorker.postMessage({
           dependent: filteredDependentData,
           independent: filteredIndependentData[0],
+          // Threshold is only relevant if "outliers" was selected, but worker might still use it.
+          // For "all cases", threshold isn't directly used for filtering by this component,
+          // but the worker itself might have logic based on it, or it might be ignored.
+          // We pass it along for now.
           threshold: parseFloat(currentStatsParams.outlierThreshold) || 3,
           dependentVariableInfo: { name: selectedDependentVariable.name, label: selectedDependentVariable.label }
         });
-  
+
         casewiseDiagnosticsWorker.onmessage = async (e: MessageEvent) => {
           const casewiseDiagnosticsResults = e.data;
           console.log("[Analyze] Hasil dari Worker Casewise Diagnostics:", casewiseDiagnosticsResults);
@@ -748,8 +752,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
           console.error("[Analyze] Worker Casewise Diagnostics error:", error);
           casewiseDiagnosticsWorker.terminate();
         };
+      } else if (currentStatsParams.casewiseDiagnostics && currentStatsParams.selectedResidualOption === 'outliers') {
+        console.log("[Analyze] Skipping Casewise Diagnostics table (Outliers outside selected).");
       } else {
-        console.log("[Analyze] Skipping Casewise Diagnostics (not selected).");
+        console.log("[Analyze] Skipping Casewise Diagnostics (not selected or no specific residual option for table).");
       }
   
       // 11. Covariance Matrix (Conditional)
