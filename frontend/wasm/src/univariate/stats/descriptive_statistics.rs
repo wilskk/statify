@@ -1,110 +1,61 @@
 // descriptive_statistics.rs
-use std::collections::{ HashMap, HashSet, BTreeMap };
-use rayon::prelude::*;
-use statrs::statistics::{ Statistics };
+use std::collections::{ HashMap, HashSet };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
-    data::AnalysisData,
+    data::{ AnalysisData },
     result::{ DescriptiveStatistics, StatsEntry },
 };
 
-use super::common::{ extract_dependent_value, data_value_to_string, get_factor_levels };
+use super::common::{
+    extract_dependent_value,
+    extract_numeric_value,
+    map_factors_to_datasets,
+    add_factor_to_entry,
+    collect_factor_levels_from_records,
+    create_combination_key,
+    calculate_stats_for_values,
+};
 
 /// Calculate descriptive statistics for univariate analysis
 pub fn calculate_descriptive_statistics(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<HashMap<String, DescriptiveStatistics>, String> {
-    // Check if descriptive statistics are requested
     if !config.options.desc_stats || data.dependent_data.is_empty() {
         return Err(
             "Descriptive statistics not requested or no dependent data available".to_string()
         );
     }
 
-    // Get dependent variable name
     let dep_var_name = config.main.dep_var
         .as_ref()
         .ok_or_else(|| "No dependent variable specified in configuration".to_string())?;
 
-    // Collect all factors from config
-    let mut all_factors = Vec::new();
+    let all_factors = collect_all_factors(config);
 
-    // Add fixed factors
-    if let Some(fix_factors) = &config.main.fix_factor {
-        all_factors.extend(fix_factors.clone());
-    }
-
-    // Add random factors
-    if let Some(rand_factors) = &config.main.rand_factor {
-        all_factors.extend(rand_factors.clone());
-    }
-
-    // Add covariates
-    if let Some(covariates) = &config.main.covar {
-        all_factors.extend(covariates.clone());
-    }
-
-    // If no factors, we can't calculate descriptive statistics
     if all_factors.is_empty() {
+        // This behavior is kept from previous versions. If no factors are defined,
+        // descriptive stats by factor combinations are not meaningful in the current design.
+        // An overall statistic (ignoring factors) could be a separate feature.
         return Err("No factors specified for descriptive statistics".to_string());
     }
 
-    // Create combined dataset with all variables
-
-    let combined_data = create_combined_dataset(data, dep_var_name, &all_factors)?;
-
-    // Get all unique values for each factor
+    let combined_data = create_combined_dataset(
+        data,
+        dep_var_name,
+        &all_factors,
+        config.main.wls_weight.as_ref() // Pass WLS variable name if specified
+    )?;
 
     let factor_levels = get_factor_levels_from_data(data, &all_factors);
-
-    // Log the number of levels for each factor
-    for (factor, levels) in &factor_levels {
-    }
-
-    // Generate all possible combinations of factor levels including Totals
-
     let all_combinations = generate_all_factor_combinations(&factor_levels);
 
-    // Calculate statistics for each combination
-
-    let mut stats_entries = HashMap::new();
-    let total_combinations = all_combinations.len();
-    let mut filtered_combinations = 0;
-
-    for (i, combo) in all_combinations.iter().enumerate() {
-        if i % 100 == 0 || i == total_combinations - 1 {
-        }
-
-        // Debug: log the combo being processed
-
-        let combo_key = create_combination_key(combo);
-
-        let filtered_values = filter_dataset_for_combination(&combined_data, dep_var_name, combo);
-
-        if filtered_values.is_empty() {
-            // For debugging: Try a case-insensitive search to see if that works
-
-            let case_insensitive_values = filter_dataset_case_insensitive(
-                &combined_data,
-                dep_var_name,
-                combo
-            );
-
-            if !case_insensitive_values.is_empty() {
-                let stats = calculate_stats_for_values(&case_insensitive_values);
-                stats_entries.insert(combo_key, stats);
-                filtered_combinations += 1;
-            }
-        } else {
-            let stats = calculate_stats_for_values(&filtered_values);
-            stats_entries.insert(combo_key, stats);
-            filtered_combinations += 1;
-        }
-    }
-
-    // Return the descriptive statistics
+    let stats_entries = calculate_stats_for_all_combinations(
+        &combined_data,
+        dep_var_name,
+        &all_combinations
+    );
 
     Ok(
         HashMap::from([
@@ -120,548 +71,390 @@ pub fn calculate_descriptive_statistics(
     )
 }
 
-/// Create a dataset combining dependent variable and all factor values
+/// Collect all factors from configuration
+fn collect_all_factors(config: &UnivariateConfig) -> Vec<String> {
+    let mut all_factors = Vec::new();
+    if let Some(fix_factors) = &config.main.fix_factor {
+        all_factors.extend(fix_factors.clone());
+    }
+    if let Some(rand_factors) = &config.main.rand_factor {
+        all_factors.extend(rand_factors.clone());
+    }
+    if let Some(covariates) = &config.main.covar {
+        all_factors.extend(covariates.clone());
+    }
+    all_factors
+}
+
+/// Calculate statistics for all factor combinations
+fn calculate_stats_for_all_combinations(
+    combined_data: &Vec<HashMap<String, String>>,
+    dep_var_name: &str,
+    all_combinations: &[HashMap<String, String>]
+) -> HashMap<String, StatsEntry> {
+    let mut stats_entries = HashMap::new();
+
+    for combo in all_combinations {
+        let combo_key = create_combination_key(combo);
+        let filtered_values_with_weights = filter_dataset_for_combination(
+            combined_data,
+            dep_var_name,
+            combo
+        );
+
+        if filtered_values_with_weights.iter().all(|(_, w)| *w <= 1e-9) {
+            // Check if all weights are effectively zero
+            // Try case-insensitive search if exact search yields no usable data (all zero weights)
+            let case_insensitive_values_with_weights = filter_dataset_case_insensitive(
+                combined_data,
+                dep_var_name,
+                combo
+            );
+
+            if !case_insensitive_values_with_weights.iter().all(|(_, w)| *w <= 1e-9) {
+                let stats = calculate_stats_for_values(&case_insensitive_values_with_weights);
+                stats_entries.insert(combo_key, stats);
+            } else {
+                // If both attempts yield no data (or all zero weights), insert empty stats
+                stats_entries.insert(combo_key, StatsEntry { mean: 0.0, std_deviation: 0.0, n: 0 });
+            }
+        } else {
+            let stats = calculate_stats_for_values(&filtered_values_with_weights);
+            stats_entries.insert(combo_key, stats);
+        }
+    }
+    stats_entries
+}
+
+/// Create a dataset combining dependent variable, all factor values, and WLS weight
 fn create_combined_dataset(
     data: &AnalysisData,
     dep_var_name: &str,
-    factors: &[String]
+    factors: &[String],
+    wls_weight_var_name: Option<&String>
 ) -> Result<Vec<HashMap<String, String>>, String> {
     let mut combined_dataset = Vec::new();
+    let factor_to_dataset_map = map_factors_to_datasets(data, factors);
 
-    // Log the first few records from each data source for debugging
-    if let Some(first_records) = data.dependent_data.first().and_then(|rs| rs.first()) {
-    }
+    for (_record_set_idx, dep_record_set) in data.dependent_data.iter().enumerate() {
+        for (record_idx, dep_record) in dep_record_set.iter().enumerate() {
+            if let Some(dependent_value_str) = extract_dependent_value(dep_record, dep_var_name) {
+                let mut entry: HashMap<String, String> = HashMap::new();
+                entry.insert(dep_var_name.to_string(), dependent_value_str.to_string());
 
-    if let Some(first_records) = data.fix_factor_data.first().and_then(|rs| rs.first()) {
-    }
-
-    // Map fixed factor variables to their data sets
-    let mut factor_to_dataset = HashMap::new();
-    for factor in factors {
-        for (idx, defs) in data.fix_factor_data_defs.iter().enumerate() {
-            if defs.iter().any(|def| &def.name == factor) {
-                factor_to_dataset.insert(factor.clone(), ("fixed", idx));
-            }
-        }
-    }
-
-    // Map random factor variables
-    if
-        let (Some(rand_defs), Some(rand_data)) = (
-            &data.random_factor_data_defs,
-            &data.random_factor_data,
-        )
-    {
-        for factor in factors {
-            for (idx, defs) in rand_defs.iter().enumerate() {
-                if defs.iter().any(|def| &def.name == factor) {
-                    factor_to_dataset.insert(factor.clone(), ("random", idx));
-                }
-            }
-        }
-    }
-
-    // Map covariate variables
-    if let (Some(cov_defs), Some(cov_data)) = (&data.covariate_data_defs, &data.covariate_data) {
-        for factor in factors {
-            for (idx, defs) in cov_defs.iter().enumerate() {
-                if defs.iter().any(|def| &def.name == factor) {
-                    factor_to_dataset.insert(factor.clone(), ("covariate", idx));
-                }
-            }
-        }
-    }
-
-    // If we couldn't find a factor in any dataset, log a warning
-    for factor in factors {
-        if !factor_to_dataset.contains_key(factor) {
-        }
-    }
-
-    for (record_set_idx, record_set) in data.dependent_data.iter().enumerate() {
-        for (record_idx, record) in record_set.iter().enumerate() {
-            // Get dependent variable value
-            if let Some(dependent_value) = extract_dependent_value(record, dep_var_name) {
-                let mut entry = HashMap::new();
-
-                // Add dependent variable
-                entry.insert(dep_var_name.to_string(), dependent_value.to_string());
-
-                // Add all factors from their respective datasets
-                for factor in factors {
-                    let mut factor_found = false;
-
-                    if let Some((source_type, source_idx)) = factor_to_dataset.get(factor) {
-                        match *source_type {
-                            "fixed" => {
-                                if
-                                    let Some(fix_record) = data.fix_factor_data
-                                        .get(*source_idx)
-                                        .and_then(|records| records.get(record_idx))
-                                {
-                                    if let Some(value) = fix_record.values.get(factor) {
-                                        entry.insert(factor.clone(), data_value_to_string(value));
-                                        factor_found = true;
-                                    }
-                                }
-                            }
-                            "random" => {
-                                if let Some(rand_data) = &data.random_factor_data {
-                                    if
-                                        let Some(rand_record) = rand_data
-                                            .get(*source_idx)
-                                            .and_then(|records| records.get(record_idx))
-                                    {
-                                        if let Some(value) = rand_record.values.get(factor) {
-                                            entry.insert(
-                                                factor.clone(),
-                                                data_value_to_string(value)
-                                            );
-                                            factor_found = true;
-                                        }
-                                    }
-                                }
-                            }
-                            "covariate" => {
-                                if let Some(cov_data) = &data.covariate_data {
-                                    if
-                                        let Some(cov_record) = cov_data
-                                            .get(*source_idx)
-                                            .and_then(|records| records.get(record_idx))
-                                    {
-                                        if let Some(value) = cov_record.values.get(factor) {
-                                            entry.insert(
-                                                factor.clone(),
-                                                data_value_to_string(value)
-                                            );
-                                            factor_found = true;
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    // Also check in the dependent record itself
-                    if !factor_found {
-                        if let Some(value) = record.values.get(factor) {
-                            entry.insert(factor.clone(), data_value_to_string(value));
-                            factor_found = true;
-                        }
+                let mut all_factors_found = true;
+                for factor_name in factors {
+                    if
+                        !add_factor_to_entry(
+                            data,
+                            &factor_to_dataset_map,
+                            factor_name,
+                            record_idx,
+                            dep_record,
+                            &mut entry
+                        )
+                    {
+                        all_factors_found = false;
+                        break;
                     }
                 }
 
-                // Check if all factors are present
-                let missing_factors: Vec<_> = factors
-                    .iter()
-                    .filter(|f| !entry.contains_key(*f))
-                    .collect();
+                if all_factors_found {
+                    let mut weight_str = "1.0".to_string(); // Default weight for all cases initially
 
-                if !missing_factors.is_empty() {
-                    // Skip this record if any factors are missing
-                    continue;
+                    if let Some(wls_var_name) = wls_weight_var_name {
+                        // wls_var_name is &String
+                        // Attempt to get weight from the FIRST WLS dataset only.
+                        // If any step fails, weight remains "1.0".
+                        if let Some(wls_data_sets) = &data.wls_data {
+                            if let Some(first_wls_dataset) = wls_data_sets.get(0) {
+                                // Get the Vec<DataRecord>
+                                if let Some(wls_data_record) = first_wls_dataset.get(record_idx) {
+                                    // Use wls_var_name (which is &String) directly for the HashMap get.
+                                    if
+                                        let Some(wls_data_val) =
+                                            wls_data_record.values.get(wls_var_name)
+                                    {
+                                        if
+                                            let Some(num_weight) =
+                                                extract_numeric_value(wls_data_val)
+                                        {
+                                            if num_weight >= 0.0 {
+                                                // Ensure non-negative
+                                                weight_str = num_weight.to_string();
+                                            }
+                                            // If num_weight is negative, it remains "1.0" (default)
+                                        }
+                                        // If not numeric, remains "1.0" (default)
+                                    }
+                                    // If wls_var_name not in record, remains "1.0" (default)
+                                }
+                                // If record_idx out of bounds, remains "1.0" (default)
+                            }
+                            // If no first_wls_dataset, remains "1.0" (default)
+                        }
+                        // If wls_data is None, remains "1.0" (default)
+                    }
+                    // If wls_weight_var_name was None, weight is already "1.0"
+
+                    entry.insert("wls_weight_value".to_string(), weight_str);
+                    combined_dataset.push(entry);
                 }
-
-                // Log entry contents if it's one of the first few records
-                if record_idx < 3 {
-                }
-
-                combined_dataset.push(entry);
             }
         }
     }
-
     Ok(combined_dataset)
 }
 
-/// Get all unique values for each factor directly from the original data (not from combined dataset)
+/// Get all unique values (levels) for each factor from the original data
 fn get_factor_levels_from_data(
     data: &AnalysisData,
     factors: &[String]
 ) -> HashMap<String, Vec<String>> {
-    let mut factor_levels = HashMap::new();
+    let mut factor_levels_map = HashMap::new();
+    let factor_to_dataset_map = map_factors_to_datasets(data, factors);
 
-    // Map fixed factor variables to their data sets
-    let mut factor_to_dataset = HashMap::new();
-    for factor in factors {
-        for (idx, defs) in data.fix_factor_data_defs.iter().enumerate() {
-            if defs.iter().any(|def| &def.name == factor) {
-                factor_to_dataset.insert(factor.clone(), ("fixed", idx));
-            }
-        }
-    }
+    for factor_name in factors {
+        let mut levels = HashSet::new();
 
-    // Map random factor variables
-    if let (Some(rand_defs), Some(_)) = (&data.random_factor_data_defs, &data.random_factor_data) {
-        for factor in factors {
-            for (idx, defs) in rand_defs.iter().enumerate() {
-                if defs.iter().any(|def| &def.name == factor) {
-                    factor_to_dataset.insert(factor.clone(), ("random", idx));
-                }
-            }
-        }
-    }
-
-    // Map covariate variables
-    if let (Some(cov_defs), Some(_)) = (&data.covariate_data_defs, &data.covariate_data) {
-        for factor in factors {
-            for (idx, defs) in cov_defs.iter().enumerate() {
-                if defs.iter().any(|def| &def.name == factor) {
-                    factor_to_dataset.insert(factor.clone(), ("covariate", idx));
-                }
-            }
-        }
-    }
-
-    for factor in factors {
-        let mut levels = std::collections::HashSet::new();
-        let mut level_sources = Vec::new();
-
-        if let Some((source_type, source_idx)) = factor_to_dataset.get(factor) {
-            match *source_type {
-                "fixed" => {
-                    // Get values from fixed factor data
-                    for (j, record) in data.fix_factor_data[*source_idx].iter().enumerate() {
-                        if let Some(value) = record.values.get(factor) {
-                            let str_value = data_value_to_string(value);
-                            levels.insert(str_value.clone());
-                            if j < 3 {
-                                // Log just a few examples
-                                level_sources.push(
-                                    format!(
-                                        "{}={} (from fixed factor {})",
-                                        factor,
-                                        str_value,
-                                        source_idx
-                                    )
-                                );
-                            }
-                        }
-                    }
-                }
+        if let Some((source_type, source_idx)) = factor_to_dataset_map.get(factor_name) {
+            match source_type.as_str() {
+                "fixed" =>
+                    collect_factor_levels_from_records(
+                        &data.fix_factor_data[*source_idx],
+                        factor_name,
+                        &mut levels
+                    ),
                 "random" => {
-                    if let Some(random_data) = &data.random_factor_data {
-                        for (j, record) in random_data[*source_idx].iter().enumerate() {
-                            if let Some(value) = record.values.get(factor) {
-                                let str_value = data_value_to_string(value);
-                                levels.insert(str_value.clone());
-                                if j < 3 {
-                                    // Log just a few examples
-                                    level_sources.push(
-                                        format!(
-                                            "{}={} (from random factor {})",
-                                            factor,
-                                            str_value,
-                                            source_idx
-                                        )
-                                    );
-                                }
-                            }
-                        }
+                    if let Some(rds) = &data.random_factor_data {
+                        collect_factor_levels_from_records(
+                            &rds[*source_idx],
+                            factor_name,
+                            &mut levels
+                        );
                     }
                 }
                 "covariate" => {
-                    if let Some(cov_data) = &data.covariate_data {
-                        for (j, record) in cov_data[*source_idx].iter().enumerate() {
-                            if let Some(value) = record.values.get(factor) {
-                                let str_value = data_value_to_string(value);
-                                levels.insert(str_value.clone());
-                                if j < 3 {
-                                    // Log just a few examples
-                                    level_sources.push(
-                                        format!(
-                                            "{}={} (from covariate {})",
-                                            factor,
-                                            str_value,
-                                            source_idx
-                                        )
-                                    );
-                                }
-                            }
-                        }
+                    if let Some(cds) = &data.covariate_data {
+                        collect_factor_levels_from_records(
+                            &cds[*source_idx],
+                            factor_name,
+                            &mut levels
+                        );
                     }
                 }
                 _ => {}
             }
         } else {
-            // Try to find in all data sources
-
-            // Check in dependent data
-            for (i, record_set) in data.dependent_data.iter().enumerate() {
-                for (j, record) in record_set.iter().enumerate() {
-                    if let Some(value) = record.values.get(factor) {
-                        let str_value = data_value_to_string(value);
-                        levels.insert(str_value.clone());
-                        if j < 3 {
-                            level_sources.push(
-                                format!("{}={} (from dependent data {})", factor, str_value, i)
-                            );
-                        }
-                    }
-                }
+            // If not mapped to a specific factor dataset, try collecting from all dependent data records
+            for dep_record_set in &data.dependent_data {
+                collect_factor_levels_from_records(dep_record_set, factor_name, &mut levels);
             }
         }
 
-        // If no levels found, log a warning
         if levels.is_empty() {
-            // Add a default level to avoid empty factor levels
-            levels.insert("Unknown".to_string());
+            levels.insert("Unknown".to_string()); // Default level if none found
         }
+        levels.insert("Total".to_string()); // Ensure "Total" is always a level
 
-        // Add Total
-        levels.insert("Total".to_string());
-
-        // Sort, Total at the end
         let mut sorted_levels: Vec<String> = levels.into_iter().collect();
         sorted_levels.sort_by(|a, b| {
             if a == "Total" {
-                return std::cmp::Ordering::Greater;
+                std::cmp::Ordering::Greater
+            } else if b == "Total" {
+                std::cmp::Ordering::Less
+            } else {
+                a.cmp(b)
             }
-            if b == "Total" {
-                return std::cmp::Ordering::Less;
-            }
-            a.cmp(b)
         });
-
-        factor_levels.insert(factor.clone(), sorted_levels);
+        factor_levels_map.insert(factor_name.clone(), sorted_levels);
     }
-    factor_levels
+    factor_levels_map
 }
 
-/// Generate all possible combinations of factor levels including Totals
+/// Generate all possible combinations of factor levels, including "Total"
 fn generate_all_factor_combinations(
-    factor_levels: &HashMap<String, Vec<String>>
+    factor_levels_map: &HashMap<String, Vec<String>>
 ) -> Vec<HashMap<String, String>> {
-    let mut factors: Vec<(String, Vec<String>)> = factor_levels
+    let mut factors_vec: Vec<(String, Vec<String>)> = factor_levels_map
         .iter()
-        .map(|(factor, levels)| (factor.clone(), levels.clone()))
+        .map(|(f_name, f_levels)| (f_name.clone(), f_levels.clone()))
         .collect();
+    factors_vec.sort_by(|a, b| a.0.cmp(&b.0)); // Consistent ordering
 
-    // Sort factors to ensure consistent ordering
-    factors.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let mut all_combinations = Vec::new();
-
-    // Add the grand total combination (all factors = Total)
-    let mut grand_total = HashMap::new();
-    for (factor, _) in &factors {
-        grand_total.insert(factor.clone(), "Total".to_string());
+    let mut all_combinations_list = Vec::new();
+    let mut grand_total_combo = HashMap::new();
+    for (f_name, _) in &factors_vec {
+        grand_total_combo.insert(f_name.clone(), "Total".to_string());
     }
-    all_combinations.push(grand_total);
+    if !grand_total_combo.is_empty() || factors_vec.is_empty() {
+        // Add grand total if factors exist, or if no factors (empty map is a valid combo for overall)
+        all_combinations_list.push(grand_total_combo);
+    }
 
-    // Maximum depth of interactions to generate (limit for large number of factors)
-    let max_interaction_depth = if factors.len() > 10 { 3 } else { factors.len() };
-
-    // Generate combinations for each interaction depth (1-way, 2-way, 3-way, etc.)
-    for depth in 1..=max_interaction_depth {
-        let mut selected_factors = Vec::new();
+    let max_depth = if factors_vec.len() > 10 { 3 } else { factors_vec.len() }; // Limit interaction depth for performance
+    for depth in 1..=max_depth {
+        let mut selected_indices = Vec::new();
         generate_combinations_recursive(
-            &factors,
-            &mut selected_factors,
+            &factors_vec,
+            &mut selected_indices,
             0,
             depth,
-            &mut all_combinations
+            &mut all_combinations_list
         );
     }
-
-    all_combinations
+    // If no factors, all_combinations_list might just contain the empty HashMap (grand total).
+    // If factors exist but generate_combinations_recursive doesn't add (e.g. max_depth=0, though it's 1..=),
+    // it ensures at least grand_total is there.
+    if factors_vec.is_empty() && all_combinations_list.is_empty() {
+        all_combinations_list.push(HashMap::new()); // Ensure at least one combo for no-factor case
+    }
+    all_combinations_list
 }
 
-/// Recursively select factors for combinations
+/// Recursively select factors to form combinations up to a max_depth
 fn generate_combinations_recursive(
-    factors: &[(String, Vec<String>)],
-    selected_factors: &mut Vec<usize>,
-    start_index: usize,
+    factors_vec: &[(String, Vec<String>)],
+    selected_indices: &mut Vec<usize>,
+    start_idx: usize,
     max_depth: usize,
-    all_combinations: &mut Vec<HashMap<String, String>>
+    all_combinations_list: &mut Vec<HashMap<String, String>>
 ) {
-    // If we've selected enough factors, generate level combinations
-    if selected_factors.len() == max_depth {
-        let selected_factors_names: Vec<String> = selected_factors
-            .iter()
-            .map(|&idx| factors[idx].0.clone())
-            .collect();
-        let mut base_combination = HashMap::new();
-
-        // Set all non-selected factors to "Total"
-        for (i, (factor, _)) in factors.iter().enumerate() {
-            if !selected_factors.contains(&i) {
-                base_combination.insert(factor.clone(), "Total".to_string());
+    if selected_indices.len() == max_depth {
+        let mut base_combo = HashMap::new();
+        for (i, (f_name, _)) in factors_vec.iter().enumerate() {
+            if !selected_indices.contains(&i) {
+                base_combo.insert(f_name.clone(), "Total".to_string());
             }
         }
-
-        // Generate level combinations for selected factors
-        let combinations_before = all_combinations.len();
         generate_level_combinations(
-            factors,
-            selected_factors,
-            &base_combination,
+            factors_vec,
+            selected_indices,
+            &base_combo,
             0,
-            all_combinations
+            all_combinations_list
         );
-
+        return;
+    }
+    if start_idx >= factors_vec.len() {
         return;
     }
 
-    // Skip if we've reached the end of factors
-    if start_index >= factors.len() {
-        return;
-    }
-
-    // For each remaining factor, either select it or skip it
-    for i in start_index..factors.len() {
-        selected_factors.push(i);
+    for i in start_idx..factors_vec.len() {
+        selected_indices.push(i);
         generate_combinations_recursive(
-            factors,
-            selected_factors,
+            factors_vec,
+            selected_indices,
             i + 1,
             max_depth,
-            all_combinations
+            all_combinations_list
         );
-        selected_factors.pop();
+        selected_indices.pop();
     }
 }
 
-/// Generate all level combinations for selected factors
+/// Generate all level combinations for the currently selected set of factors
 fn generate_level_combinations(
-    factors: &[(String, Vec<String>)],
-    selected_factors: &[usize],
-    base_combination: &HashMap<String, String>,
-    current_index: usize,
-    all_combinations: &mut Vec<HashMap<String, String>>
+    factors_vec: &[(String, Vec<String>)],
+    selected_indices: &[usize],
+    base_combo: &HashMap<String, String>,
+    current_factor_idx_in_selection: usize,
+    all_combinations_list: &mut Vec<HashMap<String, String>>
 ) {
-    if current_index >= selected_factors.len() {
-        // We've assigned values to all selected factors
-        all_combinations.push(base_combination.clone());
+    if current_factor_idx_in_selection >= selected_indices.len() {
+        all_combinations_list.push(base_combo.clone());
         return;
     }
 
-    let factor_idx = selected_factors[current_index];
-    let (factor, levels) = &factors[factor_idx];
+    let actual_factor_idx = selected_indices[current_factor_idx_in_selection];
+    let (factor_name, levels) = &factors_vec[actual_factor_idx];
 
     for level in levels {
-        // Skip "Total" level when generating specific combinations
         if level != "Total" {
-            let mut new_combination = base_combination.clone();
-            new_combination.insert(factor.clone(), level.clone());
-
+            // "Total" is handled by base_combo for non-selected factors
+            let mut next_combo = base_combo.clone();
+            next_combo.insert(factor_name.clone(), level.clone());
             generate_level_combinations(
-                factors,
-                selected_factors,
-                &new_combination,
-                current_index + 1,
-                all_combinations
+                factors_vec,
+                selected_indices,
+                &next_combo,
+                current_factor_idx_in_selection + 1,
+                all_combinations_list
             );
         }
     }
 }
 
-/// Filter the dataset to get values matching a specific combination
+/// Filter dataset for a specific factor combination, returning (value, weight) tuples
 fn filter_dataset_for_combination(
     dataset: &[HashMap<String, String>],
     dep_var_name: &str,
     combination: &HashMap<String, String>
-) -> Vec<f64> {
-    let filtered = dataset
-        .iter()
-        .filter(|record| {
-            let matches = combination.iter().all(|(factor, expected_value)| {
-                if expected_value == "Total" {
-                    true // Total matches everything
-                } else {
-                    let result = match record.get(factor) {
-                        Some(value) => {
-                            // Try exact match first
-                            if value == expected_value {
-                                true
-                            } else {
-                                // Try numeric comparison
-                                let numeric_match = match
-                                    (value.parse::<f64>(), expected_value.parse::<f64>())
-                                {
-                                    (Ok(v), Ok(e)) => (v - e).abs() < 1e-6,
-                                    _ => false,
-                                };
-                                numeric_match
-                            }
-                        }
-                        None => { false }
-                    };
-                    result
-                }
-            });
-            if !matches {
-            }
-            matches
-        })
-        .filter_map(|record| {
-            let parse_result = record.get(dep_var_name).and_then(|value| value.parse::<f64>().ok());
-            if parse_result.is_none() {
-            }
-            parse_result
-        })
-        .collect::<Vec<f64>>();
-
-    filtered
-}
-
-/// Calculate statistics for a set of values
-fn calculate_stats_for_values(values: &[f64]) -> StatsEntry {
-    if values.is_empty() {
-        return StatsEntry {
-            mean: 0.0,
-            std_deviation: 0.0,
-            n: 0,
-        };
-    }
-
-    let mean = values.mean();
-    let std_deviation = if values.len() > 1 { values.std_dev() } else { 0.0 };
-
-    StatsEntry {
-        mean,
-        std_deviation,
-        n: values.len(),
-    }
-}
-
-/// Create a string key for a factor combination
-fn create_combination_key(combination: &HashMap<String, String>) -> String {
-    let mut sorted_pairs: Vec<_> = combination.iter().collect();
-    sorted_pairs.sort_by(|a, b| a.0.cmp(b.0));
-
-    sorted_pairs
-        .iter()
-        .map(|(factor, value)| format!("{}={}", factor, value))
-        .collect::<Vec<_>>()
-        .join(".")
-}
-
-/// Filter dataset with case-insensitive matching
-fn filter_dataset_case_insensitive(
-    dataset: &[HashMap<String, String>],
-    dep_var_name: &str,
-    combination: &HashMap<String, String>
-) -> Vec<f64> {
+) -> Vec<(f64, f64)> {
     dataset
         .iter()
         .filter(|record| {
-            combination.iter().all(|(factor, expected_value)| {
-                if expected_value == "Total" {
-                    true // Total matches everything
-                } else {
-                    record
-                        .get(factor)
-                        .map_or(
-                            false,
-                            |value| value.to_lowercase() == expected_value.to_lowercase()
-                        )
+            combination.iter().all(|(factor, expected_val)| {
+                if expected_val == "Total" {
+                    return true;
+                } // "Total" level matches any value for that factor
+                match record.get(factor) {
+                    Some(actual_val) => {
+                        if actual_val == expected_val {
+                            true
+                        } else {
+                            // Try numeric comparison for robustness
+                            match (actual_val.parse::<f64>(), expected_val.parse::<f64>()) {
+                                (Ok(v_num), Ok(e_num)) => (v_num - e_num).abs() < 1e-9,
+                                _ => false,
+                            }
+                        }
+                    }
+                    None => false, // Factor not in record, so no match
                 }
             })
         })
         .filter_map(|record| {
-            record.get(dep_var_name).and_then(|value| value.parse::<f64>().ok())
+            let dep_val_opt = record.get(dep_var_name).and_then(|s| s.parse::<f64>().ok());
+            let weight_opt = record
+                .get("wls_weight_value") // Key used in create_combined_dataset
+                .and_then(|s| s.parse::<f64>().ok())
+                .map(|w| w.max(0.0)) // Ensure weight is non-negative
+                .unwrap_or(1.0); // Default to 1.0 if missing or unparseable
+
+            dep_val_opt.map(|dep_val| (dep_val, weight_opt))
+        })
+        .collect()
+}
+
+/// Case-insensitive version of filter_dataset_for_combination
+fn filter_dataset_case_insensitive(
+    dataset: &[HashMap<String, String>],
+    dep_var_name: &str,
+    combination: &HashMap<String, String>
+) -> Vec<(f64, f64)> {
+    dataset
+        .iter()
+        .filter(|record| {
+            combination.iter().all(|(factor, expected_val)| {
+                if expected_val == "Total" {
+                    return true;
+                }
+                record
+                    .get(factor)
+                    .map_or(false, |actual_val| {
+                        actual_val.to_lowercase() == expected_val.to_lowercase()
+                    })
+            })
+        })
+        .filter_map(|record| {
+            let dep_val_opt = record.get(dep_var_name).and_then(|s| s.parse::<f64>().ok());
+            let weight_opt = record
+                .get("wls_weight_value")
+                .and_then(|s| s.parse::<f64>().ok())
+                .map(|w| w.max(0.0))
+                .unwrap_or(1.0);
+            dep_val_opt.map(|dep_val| (dep_val, weight_opt))
         })
         .collect()
 }

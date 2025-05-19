@@ -8,6 +8,7 @@ use crate::univariate::models::{
     config::UnivariateConfig,
 };
 use super::core::*;
+use crate::univariate::models::result::StatsEntry;
 
 /// Calculate mean of values using statrs
 pub fn calculate_mean(values: &[f64]) -> f64 {
@@ -576,7 +577,7 @@ pub fn apply_random_factor_structure(
             let mut level_values = Vec::new();
 
             if let Some(random_factor_data) = &data.random_factor_data {
-                for (i, records) in random_factor_data.iter().enumerate() {
+                for (_i, records) in random_factor_data.iter().enumerate() {
                     for record in records {
                         if let Some(factor_value) = record.values.get(factor) {
                             if data_value_to_string(factor_value) == level {
@@ -891,4 +892,221 @@ pub fn generate_model_design_terms(
 
     // Return the model design terms
     Ok(terms)
+}
+
+/// Helper to extract a numeric value from DataValue, typically for weights.
+pub fn extract_numeric_value(data_value: &DataValue) -> Option<f64> {
+    match data_value {
+        DataValue::Number(n) => Some(*n as f64),
+        DataValue::NumberFloat(f) => Some(*f),
+        _ => None,
+    }
+}
+
+/// Map factors to their data sources for efficient lookup.
+/// This version ensures that data exists for the given index in the respective data arrays.
+pub fn map_factors_to_datasets(
+    data: &AnalysisData,
+    factors: &[String]
+) -> HashMap<String, (String, usize)> {
+    let mut factor_map = HashMap::new();
+
+    // Fixed factors
+    for (idx, defs) in data.fix_factor_data_defs.iter().enumerate() {
+        if data.fix_factor_data.get(idx).is_some() {
+            for factor_name in factors {
+                if defs.iter().any(|def| &def.name == factor_name) {
+                    factor_map.insert(factor_name.clone(), ("fixed".to_string(), idx));
+                }
+            }
+        }
+    }
+
+    // Random factors
+    if
+        let (Some(rand_defs_vec), Some(rand_data_vec)) = (
+            &data.random_factor_data_defs,
+            &data.random_factor_data,
+        )
+    {
+        for (idx, defs) in rand_defs_vec.iter().enumerate() {
+            if rand_data_vec.get(idx).is_some() {
+                for factor_name in factors {
+                    if defs.iter().any(|def| &def.name == factor_name) {
+                        factor_map.insert(factor_name.clone(), ("random".to_string(), idx));
+                    }
+                }
+            }
+        }
+    }
+
+    // Covariates
+    if
+        let (Some(cov_defs_vec), Some(cov_data_vec)) = (
+            &data.covariate_data_defs,
+            &data.covariate_data,
+        )
+    {
+        for (idx, defs) in cov_defs_vec.iter().enumerate() {
+            if cov_data_vec.get(idx).is_some() {
+                for factor_name in factors {
+                    if defs.iter().any(|def| &def.name == factor_name) {
+                        factor_map.insert(factor_name.clone(), ("covariate".to_string(), idx));
+                    }
+                }
+            }
+        }
+    }
+    factor_map
+}
+
+/// Add a factor's value to the current data entry being built.
+/// Tries to find value from mapped factor sources, falling back to the dependent record.
+pub fn add_factor_to_entry(
+    data: &AnalysisData,
+    factor_to_dataset_map: &HashMap<String, (String, usize)>,
+    factor_name: &str,
+    record_idx: usize,
+    dependent_record: &DataRecord,
+    entry: &mut HashMap<String, String>
+) -> bool {
+    let mut factor_val_found = false;
+
+    if let Some((source_type, source_idx)) = factor_to_dataset_map.get(factor_name) {
+        let mut found_in_source = false;
+        match source_type.as_str() {
+            "fixed" => {
+                if
+                    let Some(val_str) = data.fix_factor_data
+                        .get(*source_idx)
+                        .and_then(|records| records.get(record_idx))
+                        .and_then(|rec| rec.values.get(factor_name))
+                        .map(|val| data_value_to_string(val))
+                {
+                    entry.insert(factor_name.to_string(), val_str);
+                    found_in_source = true;
+                }
+            }
+            "random" => {
+                if let Some(rand_data_sets) = &data.random_factor_data {
+                    if
+                        let Some(val_str) = rand_data_sets
+                            .get(*source_idx)
+                            .and_then(|records| records.get(record_idx))
+                            .and_then(|rec| rec.values.get(factor_name))
+                            .map(|val| data_value_to_string(val))
+                    {
+                        entry.insert(factor_name.to_string(), val_str);
+                        found_in_source = true;
+                    }
+                }
+            }
+            "covariate" => {
+                if let Some(cov_data_sets) = &data.covariate_data {
+                    if
+                        let Some(val_str) = cov_data_sets
+                            .get(*source_idx)
+                            .and_then(|records| records.get(record_idx))
+                            .and_then(|rec| rec.values.get(factor_name))
+                            .map(|val| data_value_to_string(val))
+                    {
+                        entry.insert(factor_name.to_string(), val_str);
+                        found_in_source = true;
+                    }
+                }
+            }
+            _ => {}
+        }
+        factor_val_found = found_in_source;
+    }
+
+    if !factor_val_found {
+        if let Some(value_in_dep) = dependent_record.values.get(factor_name) {
+            entry.insert(factor_name.to_string(), data_value_to_string(value_in_dep));
+            factor_val_found = true;
+        }
+    }
+    factor_val_found
+}
+
+/// Helper to collect unique factor levels from a set of records.
+/// Uses common::data_value_to_string.
+pub fn collect_factor_levels_from_records(
+    records: &[DataRecord],
+    factor_name: &str,
+    levels_set: &mut HashSet<String>
+) {
+    for record in records {
+        if let Some(value) = record.values.get(factor_name) {
+            levels_set.insert(data_value_to_string(value));
+        }
+    }
+}
+
+/// Create a sorted, dot-separated string key for a factor combination.
+pub fn create_combination_key(combination: &HashMap<String, String>) -> String {
+    if combination.is_empty() {
+        return "Overall".to_string();
+    }
+    let mut sorted_pairs: Vec<_> = combination.iter().collect();
+    sorted_pairs.sort_by(|a, b| a.0.cmp(b.0));
+    sorted_pairs
+        .iter()
+        .map(|(factor, value)| format!("{}={}", factor, value))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+/// Calculate weighted mean, std_deviation, and N for a set of (value, weight) tuples.
+pub fn calculate_stats_for_values(values_with_weights: &[(f64, f64)]) -> StatsEntry {
+    let valid_data: Vec<(f64, f64)> = values_with_weights
+        .iter()
+        .filter(|(_, w)| *w > 1e-9)
+        .cloned()
+        .collect();
+
+    let n_effective = valid_data.len();
+
+    if n_effective == 0 {
+        return StatsEntry { mean: 0.0, std_deviation: 0.0, n: 0 };
+    }
+
+    let sum_of_weights: f64 = valid_data
+        .iter()
+        .map(|(_, w)| *w)
+        .sum();
+
+    if sum_of_weights <= 1e-9 {
+        return StatsEntry { mean: 0.0, std_deviation: 0.0, n: n_effective };
+    }
+
+    let mean: f64 =
+        valid_data
+            .iter()
+            .map(|(v, w)| v * w)
+            .sum::<f64>() / sum_of_weights;
+
+    let std_deviation: f64 = if n_effective > 1 {
+        let variance_numerator: f64 = valid_data
+            .iter()
+            .map(|(v, w)| w * (v - mean).powi(2))
+            .sum();
+
+        let variance_denominator =
+            (sum_of_weights * ((n_effective - 1) as f64)) / (n_effective as f64);
+
+        if variance_denominator > 1e-9 {
+            (variance_numerator / variance_denominator).sqrt()
+        } else {
+            0.0
+        }
+    } else {
+        0.0
+    };
+
+    StatsEntry {
+        mean,
+        std_deviation,
+        n: n_effective,
+    }
 }
