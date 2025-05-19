@@ -95,7 +95,8 @@ pub fn save_variables(
                             .get(covar)
                             .map(|val| {
                                 match val {
-                                    DataValue::Number(n) => *n,
+                                    DataValue::Number(n) => *n as f64,
+                                    DataValue::NumberFloat(f) => *f,
                                     DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                     _ => 0.0,
                                 }
@@ -113,7 +114,8 @@ pub fn save_variables(
                 if let Some(wls_weight) = &config.main.wls_weight {
                     if let Some(value) = record.values.get(wls_weight) {
                         weight = match value {
-                            DataValue::Number(n) => *n,
+                            DataValue::Number(n) => *n as f64,
+                            DataValue::NumberFloat(f) => *f,
                             DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                             _ => 1.0,
                         };

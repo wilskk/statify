@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 /// Multiply two matrices
 pub fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
     if a.is_empty() || b.is_empty() || a[0].is_empty() || b[0].is_empty() {
@@ -248,4 +246,16 @@ pub fn calculate_orthogonal_projection(projection: &[Vec<f64>], size: usize) -> 
         }
     }
     result
+}
+
+/// Create a diagonal matrix from a vector
+pub fn diagonal_matrix(values: &[f64]) -> Vec<Vec<f64>> {
+    let n = values.len();
+    let mut matrix = vec![vec![0.0; n]; n];
+
+    for i in 0..n {
+        matrix[i][i] = values[i];
+    }
+
+    matrix
 }

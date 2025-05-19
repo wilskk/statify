@@ -1,6 +1,5 @@
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
 use super::common::{ extract_dependent_value, calculate_mean };
-use rand::prelude::*;
 
 /// Perform bootstrap analysis
 pub fn perform_bootstrap_analysis(

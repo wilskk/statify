@@ -6,10 +6,10 @@ use statrs::statistics::{ Statistics };
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{ DescriptiveStatistics, StatGroup, StatsEntry },
+    result::{ DescriptiveStatistics, StatsEntry },
 };
 
-use super::common::{ extract_dependent_value, data_value_to_string };
+use super::common::{ extract_dependent_value, data_value_to_string, get_factor_levels };
 
 /// Calculate descriptive statistics for univariate analysis
 pub fn calculate_descriptive_statistics(
@@ -28,208 +28,99 @@ pub fn calculate_descriptive_statistics(
         .as_ref()
         .ok_or_else(|| "No dependent variable specified in configuration".to_string())?;
 
-    // Get factors from config
-    let factors = config.main.fix_factor.clone().unwrap_or_default();
+    // Collect all factors from config
+    let mut all_factors = Vec::new();
 
-    // Create combined dataset for easier processing
-    let combined_data = create_combined_dataset(data, dep_var_name, &factors)?;
+    // Add fixed factors
+    if let Some(fix_factors) = &config.main.fix_factor {
+        all_factors.extend(fix_factors.clone());
+    }
 
-    // Process combinations and get entries with metadata
-    let entries_with_metadata = process_all_combinations(&combined_data, dep_var_name, &factors)?;
+    // Add random factors
+    if let Some(rand_factors) = &config.main.rand_factor {
+        all_factors.extend(rand_factors.clone());
+    }
 
-    // Build hierarchical structure
-    let groups = build_hierarchical_groups(&entries_with_metadata, &factors);
+    // Add covariates
+    if let Some(covariates) = &config.main.covar {
+        all_factors.extend(covariates.clone());
+    }
 
-    // Return result
+    // If no factors, we can't calculate descriptive statistics
+    if all_factors.is_empty() {
+        return Err("No factors specified for descriptive statistics".to_string());
+    }
+
+    // Create combined dataset with all variables
+
+    let combined_data = create_combined_dataset(data, dep_var_name, &all_factors)?;
+
+    // Get all unique values for each factor
+
+    let factor_levels = get_factor_levels_from_data(data, &all_factors);
+
+    // Log the number of levels for each factor
+    for (factor, levels) in &factor_levels {
+    }
+
+    // Generate all possible combinations of factor levels including Totals
+
+    let all_combinations = generate_all_factor_combinations(&factor_levels);
+
+    // Calculate statistics for each combination
+
+    let mut stats_entries = HashMap::new();
+    let total_combinations = all_combinations.len();
+    let mut filtered_combinations = 0;
+
+    for (i, combo) in all_combinations.iter().enumerate() {
+        if i % 100 == 0 || i == total_combinations - 1 {
+        }
+
+        // Debug: log the combo being processed
+
+        let combo_key = create_combination_key(combo);
+
+        let filtered_values = filter_dataset_for_combination(&combined_data, dep_var_name, combo);
+
+        if filtered_values.is_empty() {
+            // For debugging: Try a case-insensitive search to see if that works
+
+            let case_insensitive_values = filter_dataset_case_insensitive(
+                &combined_data,
+                dep_var_name,
+                combo
+            );
+
+            if !case_insensitive_values.is_empty() {
+                let stats = calculate_stats_for_values(&case_insensitive_values);
+                stats_entries.insert(combo_key, stats);
+                filtered_combinations += 1;
+            }
+        } else {
+            let stats = calculate_stats_for_values(&filtered_values);
+            stats_entries.insert(combo_key, stats);
+            filtered_combinations += 1;
+        }
+    }
+
+    // Return the descriptive statistics
+
     Ok(
         HashMap::from([
             (
                 dep_var_name.clone(),
                 DescriptiveStatistics {
                     dependent_variable: dep_var_name.clone(),
-                    groups,
+                    stats_entries,
+                    factor_names: all_factors,
                 },
             ),
         ])
     )
 }
 
-/// Build hierarchical groups from flat entries with metadata
-fn build_hierarchical_groups(
-    entries_with_metadata: &[(StatsEntry, BTreeMap<String, String>)],
-    factors: &[String]
-) -> Vec<StatGroup> {
-    if factors.is_empty() {
-        return Vec::new();
-    }
-
-    // Start with the top-level factor
-    let top_factor = &factors[0];
-    let mut top_groups = HashMap::new();
-
-    // Group entries by the top-level factor
-    for (entry, metadata) in entries_with_metadata {
-        let factor_value = metadata.get(top_factor).unwrap_or(&"Total".to_string()).clone();
-
-        // Skip processing if not for the top level
-        if
-            factors.len() > 1 &&
-            factors[1..].iter().any(|f| metadata.get(f).unwrap_or(&"Total".to_string()) != "Total")
-        {
-            continue;
-        }
-
-        top_groups.entry(factor_value.clone()).or_insert_with(|| StatGroup {
-            factor_name: top_factor.clone(),
-            factor_value,
-            stats: StatsEntry {
-                mean: 0.0,
-                std_deviation: 0.0,
-                n: 0,
-            },
-            subgroups: Vec::new(),
-        }).stats = entry.clone();
-    }
-
-    // If there are more factors, process subgroups recursively
-    if factors.len() > 1 {
-        let remaining_factors = &factors[1..];
-
-        for (top_value, group) in &mut top_groups {
-            // Filter entries for this specific top-level value
-            let filtered_entries: Vec<
-                (StatsEntry, BTreeMap<String, String>)
-            > = entries_with_metadata
-                .iter()
-                .filter(|(_, metadata)| {
-                    metadata.get(top_factor).unwrap_or(&"Total".to_string()) == top_value
-                })
-                .cloned()
-                .collect();
-
-            // Recursively build subgroups
-            group.subgroups = build_hierarchical_groups_recursive(
-                &filtered_entries,
-                remaining_factors
-            );
-        }
-    }
-
-    // Convert HashMap to sorted Vec
-    let mut result: Vec<StatGroup> = top_groups.into_values().collect();
-
-    // Sort groups (put "Total" at the end)
-    result.sort_by(|a, b| {
-        if a.factor_value == "Total" {
-            return std::cmp::Ordering::Greater;
-        }
-        if b.factor_value == "Total" {
-            return std::cmp::Ordering::Less;
-        }
-
-        // Try numeric sort if possible
-        if
-            let (Ok(a_num), Ok(b_num)) = (
-                a.factor_value.parse::<f64>(),
-                b.factor_value.parse::<f64>(),
-            )
-        {
-            return a_num.partial_cmp(&b_num).unwrap_or(std::cmp::Ordering::Equal);
-        }
-
-        a.factor_value.cmp(&b.factor_value)
-    });
-
-    result
-}
-
-/// Recursive helper to build subgroups
-fn build_hierarchical_groups_recursive(
-    entries: &[(StatsEntry, BTreeMap<String, String>)],
-    factors: &[String]
-) -> Vec<StatGroup> {
-    if factors.is_empty() {
-        return Vec::new();
-    }
-
-    let current_factor = &factors[0];
-    let mut groups = HashMap::new();
-
-    // Group entries by the current factor
-    for (entry, metadata) in entries {
-        let factor_value = metadata.get(current_factor).unwrap_or(&"Total".to_string()).clone();
-
-        // Skip processing if not for this level
-        if
-            factors.len() > 1 &&
-            factors[1..].iter().any(|f| metadata.get(f).unwrap_or(&"Total".to_string()) != "Total")
-        {
-            continue;
-        }
-
-        groups.entry(factor_value.clone()).or_insert_with(|| StatGroup {
-            factor_name: current_factor.clone(),
-            factor_value,
-            stats: StatsEntry {
-                mean: 0.0,
-                std_deviation: 0.0,
-                n: 0,
-            },
-            subgroups: Vec::new(),
-        }).stats = entry.clone();
-    }
-
-    // If there are more factors, process subgroups recursively
-    if factors.len() > 1 {
-        let remaining_factors = &factors[1..];
-
-        for (value, group) in &mut groups {
-            // Filter entries for this specific value
-            let filtered_entries: Vec<(StatsEntry, BTreeMap<String, String>)> = entries
-                .iter()
-                .filter(|(_, metadata)| {
-                    metadata.get(current_factor).unwrap_or(&"Total".to_string()) == value
-                })
-                .cloned()
-                .collect();
-
-            // Recursively build subgroups
-            group.subgroups = build_hierarchical_groups_recursive(
-                &filtered_entries,
-                remaining_factors
-            );
-        }
-    }
-
-    // Convert HashMap to sorted Vec
-    let mut result: Vec<StatGroup> = groups.into_values().collect();
-
-    // Sort groups (put "Total" at the end)
-    result.sort_by(|a, b| {
-        if a.factor_value == "Total" {
-            return std::cmp::Ordering::Greater;
-        }
-        if b.factor_value == "Total" {
-            return std::cmp::Ordering::Less;
-        }
-
-        // Try numeric sort if possible
-        if
-            let (Ok(a_num), Ok(b_num)) = (
-                a.factor_value.parse::<f64>(),
-                b.factor_value.parse::<f64>(),
-            )
-        {
-            return a_num.partial_cmp(&b_num).unwrap_or(std::cmp::Ordering::Equal);
-        }
-
-        a.factor_value.cmp(&b.factor_value)
-    });
-
-    result
-}
-
-/// Create unified dataset combining dependent and factor values
+/// Create a dataset combining dependent variable and all factor values
 fn create_combined_dataset(
     data: &AnalysisData,
     dep_var_name: &str,
@@ -237,8 +128,58 @@ fn create_combined_dataset(
 ) -> Result<Vec<HashMap<String, String>>, String> {
     let mut combined_dataset = Vec::new();
 
-    for record_set in &data.dependent_data {
-        for record in record_set {
+    // Log the first few records from each data source for debugging
+    if let Some(first_records) = data.dependent_data.first().and_then(|rs| rs.first()) {
+    }
+
+    if let Some(first_records) = data.fix_factor_data.first().and_then(|rs| rs.first()) {
+    }
+
+    // Map fixed factor variables to their data sets
+    let mut factor_to_dataset = HashMap::new();
+    for factor in factors {
+        for (idx, defs) in data.fix_factor_data_defs.iter().enumerate() {
+            if defs.iter().any(|def| &def.name == factor) {
+                factor_to_dataset.insert(factor.clone(), ("fixed", idx));
+            }
+        }
+    }
+
+    // Map random factor variables
+    if
+        let (Some(rand_defs), Some(rand_data)) = (
+            &data.random_factor_data_defs,
+            &data.random_factor_data,
+        )
+    {
+        for factor in factors {
+            for (idx, defs) in rand_defs.iter().enumerate() {
+                if defs.iter().any(|def| &def.name == factor) {
+                    factor_to_dataset.insert(factor.clone(), ("random", idx));
+                }
+            }
+        }
+    }
+
+    // Map covariate variables
+    if let (Some(cov_defs), Some(cov_data)) = (&data.covariate_data_defs, &data.covariate_data) {
+        for factor in factors {
+            for (idx, defs) in cov_defs.iter().enumerate() {
+                if defs.iter().any(|def| &def.name == factor) {
+                    factor_to_dataset.insert(factor.clone(), ("covariate", idx));
+                }
+            }
+        }
+    }
+
+    // If we couldn't find a factor in any dataset, log a warning
+    for factor in factors {
+        if !factor_to_dataset.contains_key(factor) {
+        }
+    }
+
+    for (record_set_idx, record_set) in data.dependent_data.iter().enumerate() {
+        for (record_idx, record) in record_set.iter().enumerate() {
             // Get dependent variable value
             if let Some(dependent_value) = extract_dependent_value(record, dep_var_name) {
                 let mut entry = HashMap::new();
@@ -246,13 +187,84 @@ fn create_combined_dataset(
                 // Add dependent variable
                 entry.insert(dep_var_name.to_string(), dependent_value.to_string());
 
-                // Add factor values
+                // Add all factors from their respective datasets
                 for factor in factors {
-                    if let Some(factor_value) = record.values.get(factor) {
-                        entry.insert(factor.clone(), data_value_to_string(factor_value));
-                    } else {
-                        entry.insert(factor.clone(), "Total".to_string());
+                    let mut factor_found = false;
+
+                    if let Some((source_type, source_idx)) = factor_to_dataset.get(factor) {
+                        match *source_type {
+                            "fixed" => {
+                                if
+                                    let Some(fix_record) = data.fix_factor_data
+                                        .get(*source_idx)
+                                        .and_then(|records| records.get(record_idx))
+                                {
+                                    if let Some(value) = fix_record.values.get(factor) {
+                                        entry.insert(factor.clone(), data_value_to_string(value));
+                                        factor_found = true;
+                                    }
+                                }
+                            }
+                            "random" => {
+                                if let Some(rand_data) = &data.random_factor_data {
+                                    if
+                                        let Some(rand_record) = rand_data
+                                            .get(*source_idx)
+                                            .and_then(|records| records.get(record_idx))
+                                    {
+                                        if let Some(value) = rand_record.values.get(factor) {
+                                            entry.insert(
+                                                factor.clone(),
+                                                data_value_to_string(value)
+                                            );
+                                            factor_found = true;
+                                        }
+                                    }
+                                }
+                            }
+                            "covariate" => {
+                                if let Some(cov_data) = &data.covariate_data {
+                                    if
+                                        let Some(cov_record) = cov_data
+                                            .get(*source_idx)
+                                            .and_then(|records| records.get(record_idx))
+                                    {
+                                        if let Some(value) = cov_record.values.get(factor) {
+                                            entry.insert(
+                                                factor.clone(),
+                                                data_value_to_string(value)
+                                            );
+                                            factor_found = true;
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
                     }
+
+                    // Also check in the dependent record itself
+                    if !factor_found {
+                        if let Some(value) = record.values.get(factor) {
+                            entry.insert(factor.clone(), data_value_to_string(value));
+                            factor_found = true;
+                        }
+                    }
+                }
+
+                // Check if all factors are present
+                let missing_factors: Vec<_> = factors
+                    .iter()
+                    .filter(|f| !entry.contains_key(*f))
+                    .collect();
+
+                if !missing_factors.is_empty() {
+                    // Skip this record if any factors are missing
+                    continue;
+                }
+
+                // Log entry contents if it's one of the first few records
+                if record_idx < 3 {
                 }
 
                 combined_dataset.push(entry);
@@ -263,164 +275,393 @@ fn create_combined_dataset(
     Ok(combined_dataset)
 }
 
-/// Process all factor combinations and calculate statistics
-fn process_all_combinations(
-    dataset: &[HashMap<String, String>],
-    dep_var_name: &str,
+/// Get all unique values for each factor directly from the original data (not from combined dataset)
+fn get_factor_levels_from_data(
+    data: &AnalysisData,
     factors: &[String]
-) -> Result<Vec<(StatsEntry, BTreeMap<String, String>)>, String> {
-    if dataset.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // Create a HashMap to store unique factor levels
+) -> HashMap<String, Vec<String>> {
     let mut factor_levels = HashMap::new();
 
-    // Extract unique levels for each factor
+    // Map fixed factor variables to their data sets
+    let mut factor_to_dataset = HashMap::new();
     for factor in factors {
-        let mut levels = HashSet::new();
+        for (idx, defs) in data.fix_factor_data_defs.iter().enumerate() {
+            if defs.iter().any(|def| &def.name == factor) {
+                factor_to_dataset.insert(factor.clone(), ("fixed", idx));
+            }
+        }
+    }
 
-        for item in dataset {
-            if let Some(value) = item.get(factor) {
-                levels.insert(value.clone());
+    // Map random factor variables
+    if let (Some(rand_defs), Some(_)) = (&data.random_factor_data_defs, &data.random_factor_data) {
+        for factor in factors {
+            for (idx, defs) in rand_defs.iter().enumerate() {
+                if defs.iter().any(|def| &def.name == factor) {
+                    factor_to_dataset.insert(factor.clone(), ("random", idx));
+                }
+            }
+        }
+    }
+
+    // Map covariate variables
+    if let (Some(cov_defs), Some(_)) = (&data.covariate_data_defs, &data.covariate_data) {
+        for factor in factors {
+            for (idx, defs) in cov_defs.iter().enumerate() {
+                if defs.iter().any(|def| &def.name == factor) {
+                    factor_to_dataset.insert(factor.clone(), ("covariate", idx));
+                }
+            }
+        }
+    }
+
+    for factor in factors {
+        let mut levels = std::collections::HashSet::new();
+        let mut level_sources = Vec::new();
+
+        if let Some((source_type, source_idx)) = factor_to_dataset.get(factor) {
+            match *source_type {
+                "fixed" => {
+                    // Get values from fixed factor data
+                    for (j, record) in data.fix_factor_data[*source_idx].iter().enumerate() {
+                        if let Some(value) = record.values.get(factor) {
+                            let str_value = data_value_to_string(value);
+                            levels.insert(str_value.clone());
+                            if j < 3 {
+                                // Log just a few examples
+                                level_sources.push(
+                                    format!(
+                                        "{}={} (from fixed factor {})",
+                                        factor,
+                                        str_value,
+                                        source_idx
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+                "random" => {
+                    if let Some(random_data) = &data.random_factor_data {
+                        for (j, record) in random_data[*source_idx].iter().enumerate() {
+                            if let Some(value) = record.values.get(factor) {
+                                let str_value = data_value_to_string(value);
+                                levels.insert(str_value.clone());
+                                if j < 3 {
+                                    // Log just a few examples
+                                    level_sources.push(
+                                        format!(
+                                            "{}={} (from random factor {})",
+                                            factor,
+                                            str_value,
+                                            source_idx
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                "covariate" => {
+                    if let Some(cov_data) = &data.covariate_data {
+                        for (j, record) in cov_data[*source_idx].iter().enumerate() {
+                            if let Some(value) = record.values.get(factor) {
+                                let str_value = data_value_to_string(value);
+                                levels.insert(str_value.clone());
+                                if j < 3 {
+                                    // Log just a few examples
+                                    level_sources.push(
+                                        format!(
+                                            "{}={} (from covariate {})",
+                                            factor,
+                                            str_value,
+                                            source_idx
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            // Try to find in all data sources
+
+            // Check in dependent data
+            for (i, record_set) in data.dependent_data.iter().enumerate() {
+                for (j, record) in record_set.iter().enumerate() {
+                    if let Some(value) = record.values.get(factor) {
+                        let str_value = data_value_to_string(value);
+                        levels.insert(str_value.clone());
+                        if j < 3 {
+                            level_sources.push(
+                                format!("{}={} (from dependent data {})", factor, str_value, i)
+                            );
+                        }
+                    }
+                }
             }
         }
 
-        // Add "Total" as a level
+        // If no levels found, log a warning
+        if levels.is_empty() {
+            // Add a default level to avoid empty factor levels
+            levels.insert("Unknown".to_string());
+        }
+
+        // Add Total
         levels.insert("Total".to_string());
 
-        factor_levels.insert(factor.clone(), levels.into_iter().collect::<Vec<String>>());
-    }
-
-    // Generate all possible combinations of factor levels
-    let mut combinations = Vec::new();
-    let mut current = HashMap::new();
-
-    // Special case for total
-    let mut total_combo = HashMap::new();
-    for factor in factors {
-        total_combo.insert(factor.clone(), Some("Total".to_string()));
-    }
-    combinations.push(total_combo);
-
-    // Generate all other combinations
-    generate_all_combinations(&mut combinations, &mut current, factors, &factor_levels, 0);
-
-    // Process each combination and calculate statistics
-    let results = combinations
-        .par_iter()
-        .filter_map(|combination| {
-            // Filter dataset for this combination
-            let filtered_values = filter_dataset(dataset, dep_var_name, combination);
-
-            if filtered_values.is_empty() {
-                return None;
+        // Sort, Total at the end
+        let mut sorted_levels: Vec<String> = levels.into_iter().collect();
+        sorted_levels.sort_by(|a, b| {
+            if a == "Total" {
+                return std::cmp::Ordering::Greater;
             }
+            if b == "Total" {
+                return std::cmp::Ordering::Less;
+            }
+            a.cmp(b)
+        });
 
-            // Calculate statistics
-            let mean = filtered_values.clone().mean();
-            let std_dev = filtered_values.clone().std_dev();
-
-            // Create stats entry
-            let stats = StatsEntry {
-                mean,
-                std_deviation: std_dev,
-                n: filtered_values.len(),
-            };
-
-            // Extract metadata for this combination
-            let metadata = extract_entry_metadata(combination, factors);
-
-            Some((stats, metadata))
-        })
-        .collect();
-
-    Ok(results)
+        factor_levels.insert(factor.clone(), sorted_levels);
+    }
+    factor_levels
 }
 
-/// Generate all combinations of factor levels recursively
-fn generate_all_combinations(
-    combinations: &mut Vec<HashMap<String, Option<String>>>,
-    current: &mut HashMap<String, Option<String>>,
-    factors: &[String],
-    factor_levels: &HashMap<String, Vec<String>>,
-    factor_idx: usize
+/// Generate all possible combinations of factor levels including Totals
+fn generate_all_factor_combinations(
+    factor_levels: &HashMap<String, Vec<String>>
+) -> Vec<HashMap<String, String>> {
+    let mut factors: Vec<(String, Vec<String>)> = factor_levels
+        .iter()
+        .map(|(factor, levels)| (factor.clone(), levels.clone()))
+        .collect();
+
+    // Sort factors to ensure consistent ordering
+    factors.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let mut all_combinations = Vec::new();
+
+    // Add the grand total combination (all factors = Total)
+    let mut grand_total = HashMap::new();
+    for (factor, _) in &factors {
+        grand_total.insert(factor.clone(), "Total".to_string());
+    }
+    all_combinations.push(grand_total);
+
+    // Maximum depth of interactions to generate (limit for large number of factors)
+    let max_interaction_depth = if factors.len() > 10 { 3 } else { factors.len() };
+
+    // Generate combinations for each interaction depth (1-way, 2-way, 3-way, etc.)
+    for depth in 1..=max_interaction_depth {
+        let mut selected_factors = Vec::new();
+        generate_combinations_recursive(
+            &factors,
+            &mut selected_factors,
+            0,
+            depth,
+            &mut all_combinations
+        );
+    }
+
+    all_combinations
+}
+
+/// Recursively select factors for combinations
+fn generate_combinations_recursive(
+    factors: &[(String, Vec<String>)],
+    selected_factors: &mut Vec<usize>,
+    start_index: usize,
+    max_depth: usize,
+    all_combinations: &mut Vec<HashMap<String, String>>
 ) {
-    if factor_idx >= factors.len() {
-        combinations.push(current.clone());
+    // If we've selected enough factors, generate level combinations
+    if selected_factors.len() == max_depth {
+        let selected_factors_names: Vec<String> = selected_factors
+            .iter()
+            .map(|&idx| factors[idx].0.clone())
+            .collect();
+        let mut base_combination = HashMap::new();
+
+        // Set all non-selected factors to "Total"
+        for (i, (factor, _)) in factors.iter().enumerate() {
+            if !selected_factors.contains(&i) {
+                base_combination.insert(factor.clone(), "Total".to_string());
+            }
+        }
+
+        // Generate level combinations for selected factors
+        let combinations_before = all_combinations.len();
+        generate_level_combinations(
+            factors,
+            selected_factors,
+            &base_combination,
+            0,
+            all_combinations
+        );
+
         return;
     }
 
-    let factor = &factors[factor_idx];
+    // Skip if we've reached the end of factors
+    if start_index >= factors.len() {
+        return;
+    }
 
-    if let Some(levels) = factor_levels.get(factor) {
-        // Handle each level
-        for level in levels {
-            if level != "Total" {
-                // Create a combination where this factor is at this level
-                let mut new_combo = current.clone();
-                new_combo.insert(factor.clone(), Some(level.clone()));
+    // For each remaining factor, either select it or skip it
+    for i in start_index..factors.len() {
+        selected_factors.push(i);
+        generate_combinations_recursive(
+            factors,
+            selected_factors,
+            i + 1,
+            max_depth,
+            all_combinations
+        );
+        selected_factors.pop();
+    }
+}
 
-                // Set all other factors to "Total"
-                for i in factor_idx + 1..factors.len() {
-                    new_combo.insert(factors[i].clone(), Some("Total".to_string()));
-                }
+/// Generate all level combinations for selected factors
+fn generate_level_combinations(
+    factors: &[(String, Vec<String>)],
+    selected_factors: &[usize],
+    base_combination: &HashMap<String, String>,
+    current_index: usize,
+    all_combinations: &mut Vec<HashMap<String, String>>
+) {
+    if current_index >= selected_factors.len() {
+        // We've assigned values to all selected factors
+        all_combinations.push(base_combination.clone());
+        return;
+    }
 
-                combinations.push(new_combo);
+    let factor_idx = selected_factors[current_index];
+    let (factor, levels) = &factors[factor_idx];
 
-                // Create combinations where this level is combined with other factors' levels
-                let mut with_other_factors = current.clone();
-                with_other_factors.insert(factor.clone(), Some(level.clone()));
-                generate_all_combinations(
-                    combinations,
-                    &mut with_other_factors,
-                    factors,
-                    factor_levels,
-                    factor_idx + 1
-                );
-            }
+    for level in levels {
+        // Skip "Total" level when generating specific combinations
+        if level != "Total" {
+            let mut new_combination = base_combination.clone();
+            new_combination.insert(factor.clone(), level.clone());
+
+            generate_level_combinations(
+                factors,
+                selected_factors,
+                &new_combination,
+                current_index + 1,
+                all_combinations
+            );
         }
     }
 }
 
-/// Filter dataset based on a specific factor combination
-fn filter_dataset(
+/// Filter the dataset to get values matching a specific combination
+fn filter_dataset_for_combination(
     dataset: &[HashMap<String, String>],
     dep_var_name: &str,
-    combination: &HashMap<String, Option<String>>
+    combination: &HashMap<String, String>
+) -> Vec<f64> {
+    let filtered = dataset
+        .iter()
+        .filter(|record| {
+            let matches = combination.iter().all(|(factor, expected_value)| {
+                if expected_value == "Total" {
+                    true // Total matches everything
+                } else {
+                    let result = match record.get(factor) {
+                        Some(value) => {
+                            // Try exact match first
+                            if value == expected_value {
+                                true
+                            } else {
+                                // Try numeric comparison
+                                let numeric_match = match
+                                    (value.parse::<f64>(), expected_value.parse::<f64>())
+                                {
+                                    (Ok(v), Ok(e)) => (v - e).abs() < 1e-6,
+                                    _ => false,
+                                };
+                                numeric_match
+                            }
+                        }
+                        None => { false }
+                    };
+                    result
+                }
+            });
+            if !matches {
+            }
+            matches
+        })
+        .filter_map(|record| {
+            let parse_result = record.get(dep_var_name).and_then(|value| value.parse::<f64>().ok());
+            if parse_result.is_none() {
+            }
+            parse_result
+        })
+        .collect::<Vec<f64>>();
+
+    filtered
+}
+
+/// Calculate statistics for a set of values
+fn calculate_stats_for_values(values: &[f64]) -> StatsEntry {
+    if values.is_empty() {
+        return StatsEntry {
+            mean: 0.0,
+            std_deviation: 0.0,
+            n: 0,
+        };
+    }
+
+    let mean = values.mean();
+    let std_deviation = if values.len() > 1 { values.std_dev() } else { 0.0 };
+
+    StatsEntry {
+        mean,
+        std_deviation,
+        n: values.len(),
+    }
+}
+
+/// Create a string key for a factor combination
+fn create_combination_key(combination: &HashMap<String, String>) -> String {
+    let mut sorted_pairs: Vec<_> = combination.iter().collect();
+    sorted_pairs.sort_by(|a, b| a.0.cmp(b.0));
+
+    sorted_pairs
+        .iter()
+        .map(|(factor, value)| format!("{}={}", factor, value))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+/// Filter dataset with case-insensitive matching
+fn filter_dataset_case_insensitive(
+    dataset: &[HashMap<String, String>],
+    dep_var_name: &str,
+    combination: &HashMap<String, String>
 ) -> Vec<f64> {
     dataset
         .iter()
-        .filter(|item| {
-            // Check if this item matches the combination
-            combination.iter().all(|(factor, level)| {
-                match level {
-                    Some(l) if l != "Total" => {
-                        item.get(factor).map_or(false, |value| value == l)
-                    }
-                    _ => true, // "Total" matches everything
+        .filter(|record| {
+            combination.iter().all(|(factor, expected_value)| {
+                if expected_value == "Total" {
+                    true // Total matches everything
+                } else {
+                    record
+                        .get(factor)
+                        .map_or(
+                            false,
+                            |value| value.to_lowercase() == expected_value.to_lowercase()
+                        )
                 }
             })
         })
-        .filter_map(|item| { item.get(dep_var_name).and_then(|value| value.parse::<f64>().ok()) })
+        .filter_map(|record| {
+            record.get(dep_var_name).and_then(|value| value.parse::<f64>().ok())
+        })
         .collect()
-}
-
-/// Extract metadata from a factor combination
-fn extract_entry_metadata(
-    combination: &HashMap<String, Option<String>>,
-    factors: &[String]
-) -> BTreeMap<String, String> {
-    let mut metadata = BTreeMap::new();
-
-    for factor in factors {
-        let value = combination
-            .get(factor)
-            .and_then(|v| v.clone())
-            .unwrap_or_else(|| "Total".to_string());
-
-        metadata.insert(factor.clone(), value);
-    }
-
-    metadata
 }

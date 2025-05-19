@@ -104,7 +104,7 @@ pub struct ModelDetails {
     #[serde(rename = "TermsVar")]
     pub terms_var: Option<String>,
     #[serde(rename = "FactorsModel")]
-    pub factors_model: Option<String>,
+    pub factors_model: Option<Vec<String>>,
     #[serde(rename = "CovModel")]
     pub cov_model: Option<String>,
     #[serde(rename = "RandomModel")]
@@ -122,7 +122,7 @@ pub struct ModelDetails {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastConfig {
     #[serde(rename = "FactorList")]
-    pub factor_list: Vec<String>,
+    pub factor_list: Option<Vec<String>>,
     #[serde(rename = "ContrastMethod")]
     pub contrast_method: ContrastMethod,
     #[serde(rename = "Last")]

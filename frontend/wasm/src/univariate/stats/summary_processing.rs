@@ -1,5 +1,5 @@
 // summary_processing.rs
-use std::collections::HashMap;
+use std::collections::{ HashMap, BTreeMap };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -39,7 +39,36 @@ pub fn basic_processing_summary(
             }
         }
 
-        result.insert(factor_name.clone(), BetweenSubjectFactors { factors: level_counts });
+        // Convert HashMap to BTreeMap to sort by key
+        let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
+
+        result.insert(factor_name.clone(), BetweenSubjectFactors { factors: sorted_counts });
+    }
+
+    // Process random factors if present
+    if let Some(random_factors) = &config.main.rand_factor {
+        if let Some(random_factor_data) = &data.random_factor_data {
+            for (i, factor_name) in random_factors.iter().enumerate() {
+                if i >= random_factor_data.len() {
+                    continue;
+                }
+
+                let mut level_counts = HashMap::new();
+                for records in &random_factor_data[i] {
+                    if let Some(value) = records.values.get(factor_name) {
+                        let level = data_value_to_string(value);
+                        *level_counts.entry(level).or_insert(0) += 1;
+                    }
+                }
+
+                // Convert HashMap to BTreeMap to sort by key
+                let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
+
+                result.insert(format!("{} (Random)", factor_name), BetweenSubjectFactors {
+                    factors: sorted_counts,
+                });
+            }
+        }
     }
 
     Ok(result)

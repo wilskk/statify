@@ -1,13 +1,13 @@
 use statrs::distribution::{ ContinuousCDF, FisherSnedecor, StudentsT, ChiSquared, Normal };
 use statrs::statistics::{ Statistics };
-use nalgebra::{ DMatrix, DVector };
-use rayon::prelude::*;
-
 use std::collections::{ HashMap, HashSet };
+
+use crate::univariate::models::config::BuildTermMethod;
 use crate::univariate::models::{
     data::{ AnalysisData, DataRecord, DataValue },
     config::UnivariateConfig,
 };
+use super::core::*;
 
 /// Calculate mean of values using statrs
 pub fn calculate_mean(values: &[f64]) -> f64 {
@@ -155,7 +155,8 @@ pub fn count_total_cases(data: &AnalysisData) -> usize {
 pub fn extract_dependent_value(record: &DataRecord, dep_var_name: &str) -> Option<f64> {
     record.values.get(dep_var_name).and_then(|value| {
         match value {
-            DataValue::Number(n) => Some(*n),
+            DataValue::Number(n) => Some(*n as f64),
+            DataValue::NumberFloat(f) => Some(*f),
             _ => None,
         }
     })
@@ -165,8 +166,15 @@ pub fn extract_dependent_value(record: &DataRecord, dep_var_name: &str) -> Optio
 pub fn data_value_to_string(value: &DataValue) -> String {
     match value {
         DataValue::Number(n) => n.to_string(),
+        DataValue::NumberFloat(f) => f.to_string(),
         DataValue::Text(t) => t.clone(),
         DataValue::Boolean(b) => b.to_string(),
+        DataValue::Date(d) => d.clone(),
+        DataValue::DateTime(dt) => dt.clone(),
+        DataValue::Time(t) => t.clone(),
+        DataValue::Currency(c) => format!("{:.2}", c),
+        DataValue::Scientific(s) => format!("{:e}", s),
+        DataValue::Percentage(p) => format!("{}%", p * 100.0),
         DataValue::Null => "null".to_string(),
     }
 }
@@ -205,36 +213,22 @@ pub fn get_factor_combinations(
         // Get levels for each factor
         let mut factor_levels = Vec::new();
         for factor in factors {
-            factor_levels.push(get_factor_levels(data, factor)?);
+            factor_levels.push((factor.clone(), get_factor_levels(data, factor)?));
         }
 
         // Generate all combinations
         let mut combinations = Vec::new();
         let mut current = HashMap::new();
-        generate_combinations(&mut current, factors, &factor_levels, 0, &mut combinations);
+        super::factor_utils::generate_level_combinations(
+            &factor_levels,
+            &mut current,
+            0,
+            &mut combinations
+        );
 
         Ok(combinations)
     } else {
         Ok(vec![HashMap::new()]) // No factors case
-    }
-}
-
-/// Helper function to generate factor combinations
-fn generate_combinations(
-    current: &mut HashMap<String, String>,
-    factors: &[String],
-    levels: &[Vec<String>],
-    index: usize,
-    result: &mut Vec<HashMap<String, String>>
-) {
-    if index == factors.len() {
-        result.push(current.clone());
-        return;
-    }
-
-    for level in &levels[index] {
-        current.insert(factors[index].clone(), level.clone());
-        generate_combinations(current, factors, levels, index + 1, result);
     }
 }
 
@@ -248,37 +242,16 @@ pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
 
     // Generate all possible combinations of factors from size 2 to size N
     for size in 2..=factors.len() {
-        generate_factor_combinations(factors, size, &mut Vec::new(), 0, &mut interactions);
+        super::factor_utils::generate_lower_order_terms(
+            factors,
+            size,
+            &mut Vec::new(),
+            0,
+            &mut interactions
+        );
     }
 
     interactions
-}
-
-/// Helper function to recursively generate factor combinations of a specific size
-fn generate_factor_combinations(
-    factors: &[String],
-    size: usize,
-    current: &mut Vec<String>,
-    start_idx: usize,
-    result: &mut Vec<String>
-) {
-    if current.len() == size {
-        result.push(current.join("*"));
-        return;
-    }
-
-    for i in start_idx..factors.len() {
-        current.push(factors[i].clone());
-        generate_factor_combinations(factors, size, current, i + 1, result);
-        current.pop();
-    }
-}
-
-/// Parse an interaction term into its component factors
-pub fn parse_interaction_term(term: &str) -> Vec<String> {
-    term.split('*')
-        .map(|s| s.trim().to_string())
-        .collect()
 }
 
 /// Check if a record matches an interaction term
@@ -346,32 +319,20 @@ pub fn get_interaction_level_values(
     // Get the levels for each factor in the interaction
     let mut factor_levels = Vec::new();
     for factor in &factors {
-        factor_levels.push(get_factor_levels(data, factor)?);
+        let levels = get_factor_levels(data, factor)?;
+        factor_levels.push((factor.clone(), levels));
     }
 
     // Generate all possible level combinations for this interaction
     let mut level_combinations = Vec::new();
     let mut current = HashMap::new();
 
-    fn generate_level_combinations(
-        current: &mut HashMap<String, String>,
-        factors: &[String],
-        levels: &[Vec<String>],
-        index: usize,
-        result: &mut Vec<HashMap<String, String>>
-    ) {
-        if index == factors.len() {
-            result.push(current.clone());
-            return;
-        }
-
-        for level in &levels[index] {
-            current.insert(factors[index].clone(), level.clone());
-            generate_level_combinations(current, factors, levels, index + 1, result);
-        }
-    }
-
-    generate_level_combinations(&mut current, &factors, &factor_levels, 0, &mut level_combinations);
+    super::factor_utils::generate_level_combinations(
+        &factor_levels,
+        &mut current,
+        0,
+        &mut level_combinations
+    );
 
     // Extract matching records for each combination
     let mut values = Vec::new();
@@ -459,145 +420,475 @@ pub fn get_level_values_adjusted(
     factor: &str,
     level: &str
 ) -> Result<Vec<f64>, String> {
-    let mut level_values = Vec::new();
-    let mut i = 0;
+    super::factor_utils::get_level_values_adjusted(values, data, factor, level, "")
+}
 
-    for records in &data.dependent_data {
-        for record in records {
-            if i >= values.len() {
-                continue;
+/// Extract random factor value from a record
+pub fn extract_random_factor_value(record: &DataRecord, factor_name: &str) -> Option<String> {
+    record.values.get(factor_name).map(data_value_to_string)
+}
+
+/// Extract covariate value from a record
+pub fn extract_covariate_value(record: &DataRecord, covariate_name: &str) -> Option<f64> {
+    record.values.get(covariate_name).and_then(|value| {
+        match value {
+            DataValue::Number(n) => Some(*n as f64),
+            DataValue::NumberFloat(f) => Some(*f),
+            _ => None,
+        }
+    })
+}
+
+/// Extract WLS weight value from a record
+pub fn extract_wls_weight(record: &DataRecord, wls_weight_name: &str) -> Option<f64> {
+    record.values.get(wls_weight_name).and_then(|value| {
+        match value {
+            DataValue::Number(n) => Some(*n as f64),
+            DataValue::NumberFloat(f) => Some(*f),
+            _ => None,
+        }
+    })
+}
+
+/// Get random factor levels from data
+pub fn get_random_factor_levels(data: &AnalysisData, factor: &str) -> Result<Vec<String>, String> {
+    let mut level_set = HashSet::new();
+
+    if let Some(random_factor_data_defs) = &data.random_factor_data_defs {
+        for (i, factor_defs) in random_factor_data_defs.iter().enumerate() {
+            for factor_def in factor_defs {
+                if factor_def.name == factor {
+                    // Found our factor, extract levels
+                    if let Some(random_factor_data) = &data.random_factor_data {
+                        for records in &random_factor_data[i] {
+                            if let Some(value) = records.values.get(factor) {
+                                level_set.insert(data_value_to_string(value));
+                            }
+                        }
+                    }
+                    return Ok(level_set.into_iter().collect());
+                }
             }
-
-            let factor_level = record.values.get(factor).map(data_value_to_string);
-
-            if factor_level.as_deref() == Some(level) {
-                level_values.push(values[i]);
-            }
-
-            i += 1;
         }
     }
 
-    Ok(level_values)
+    Err(format!("Random factor '{}' not found in the data", factor))
 }
 
-/// Create DMatrix from Vec<Vec<f64>> efficiently
-pub fn to_dmatrix(matrix: &[Vec<f64>]) -> DMatrix<f64> {
-    if matrix.is_empty() || matrix[0].is_empty() {
-        return DMatrix::zeros(0, 0);
-    }
+/// Get covariate values for analysis
+pub fn get_covariate_values(data: &AnalysisData, covariate: &str) -> Result<Vec<f64>, String> {
+    let mut values = Vec::new();
 
-    let rows = matrix.len();
-    let cols = matrix[0].len();
-    let mut flat_data = Vec::with_capacity(rows * cols);
-
-    for row in matrix {
-        flat_data.extend_from_slice(row);
-    }
-
-    DMatrix::from_row_slice(rows, cols, &flat_data)
-}
-
-/// Create DVector from Vec<f64> efficiently
-pub fn to_dvector(vector: &[f64]) -> DVector<f64> {
-    DVector::from_row_slice(vector)
-}
-
-/// Convert DMatrix to Vec<Vec<f64>>
-pub fn from_dmatrix(matrix: &DMatrix<f64>) -> Vec<Vec<f64>> {
-    let (rows, cols) = matrix.shape();
-    let mut result = vec![vec![0.0; cols]; rows];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            result[i][j] = matrix[(i, j)];
+    if let Some(covariate_data_defs) = &data.covariate_data_defs {
+        for (i, covar_defs) in covariate_data_defs.iter().enumerate() {
+            for covar_def in covar_defs {
+                if covar_def.name == covariate {
+                    // Found our covariate, extract values
+                    if let Some(covariate_data) = &data.covariate_data {
+                        for record in &covariate_data[i] {
+                            if let Some(value) = extract_covariate_value(record, covariate) {
+                                values.push(value);
+                            }
+                        }
+                    }
+                    return Ok(values);
+                }
+            }
         }
     }
 
-    result
+    Err(format!("Covariate '{}' not found in the data", covariate))
 }
 
-/// Matrix multiplication using nalgebra
-pub fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
-    if a.is_empty() || b.is_empty() {
-        return Err("Cannot multiply empty matrices".to_string());
+/// Get WLS weights for analysis
+pub fn get_wls_weights(data: &AnalysisData, wls_weight: &str) -> Result<Vec<f64>, String> {
+    let mut weights = Vec::new();
+
+    if let Some(wls_data_defs) = &data.wls_data_defs {
+        for (i, wls_defs) in wls_data_defs.iter().enumerate() {
+            for wls_def in wls_defs {
+                if wls_def.name == wls_weight {
+                    // Found our WLS weight variable, extract values
+                    if let Some(wls_data) = &data.wls_data {
+                        for record in &wls_data[i] {
+                            if let Some(value) = extract_wls_weight(record, wls_weight) {
+                                weights.push(value);
+                            }
+                        }
+                    }
+                    return Ok(weights);
+                }
+            }
+        }
     }
 
-    let a_matrix = to_dmatrix(a);
-    let b_matrix = to_dmatrix(b);
-
-    let result = a_matrix * b_matrix;
-    Ok(from_dmatrix(&result))
+    Err(format!("WLS weight variable '{}' not found in the data", wls_weight))
 }
 
-/// Matrix inverse using nalgebra
-pub fn matrix_inverse(matrix: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
-    if matrix.is_empty() {
-        return Err("Cannot invert empty matrix".to_string());
+/// Apply weights to values (for weighted least squares)
+pub fn apply_weights(values: &[f64], weights: &[f64]) -> Vec<f64> {
+    if values.len() != weights.len() {
+        return values.to_vec();
     }
 
-    let na_matrix = to_dmatrix(matrix);
+    values
+        .iter()
+        .zip(weights.iter())
+        .map(|(v, w)| v * w.sqrt())
+        .collect()
+}
 
-    match na_matrix.try_inverse() {
-        Some(inverse) => Ok(from_dmatrix(&inverse)),
-        None => Err("Matrix is not invertible".to_string()),
+/// Calculate weighted mean (for WLS)
+pub fn calculate_weighted_mean(values: &[f64], weights: &[f64]) -> f64 {
+    if values.is_empty() || values.len() != weights.len() {
+        return 0.0;
+    }
+
+    let sum_weighted_values: f64 = values
+        .iter()
+        .zip(weights.iter())
+        .map(|(v, w)| v * w)
+        .sum();
+
+    let sum_weights: f64 = weights.iter().sum();
+
+    if sum_weights > 0.0 {
+        sum_weighted_values / sum_weights
+    } else {
+        0.0
     }
 }
 
-/// Matrix determinant using nalgebra
-pub fn matrix_determinant(matrix: &[Vec<f64>]) -> Result<f64, String> {
-    if matrix.is_empty() {
-        return Err("Cannot compute determinant of empty matrix".to_string());
+/// Apply random factor structure to the model
+pub fn apply_random_factor_structure(
+    data: &AnalysisData,
+    random_factors: &[String],
+    dep_var_name: &str
+) -> Result<HashMap<String, Vec<f64>>, String> {
+    let mut random_effects = HashMap::new();
+
+    for factor in random_factors {
+        let factor_levels = get_random_factor_levels(data, factor)?;
+
+        // For each level, collect dependent values and calculate mean effect
+        for level in factor_levels {
+            let level_key = format!("{}_{}", factor, level);
+            let mut level_values = Vec::new();
+
+            if let Some(random_factor_data) = &data.random_factor_data {
+                for (i, records) in random_factor_data.iter().enumerate() {
+                    for record in records {
+                        if let Some(factor_value) = record.values.get(factor) {
+                            if data_value_to_string(factor_value) == level {
+                                if
+                                    let Some(dep_value) = extract_dependent_value(
+                                        record,
+                                        dep_var_name
+                                    )
+                                {
+                                    level_values.push(dep_value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            random_effects.insert(level_key, level_values);
+        }
     }
 
-    let na_matrix = to_dmatrix(matrix);
-    Ok(na_matrix.determinant())
+    Ok(random_effects)
 }
 
-/// Matrix transpose using nalgebra
-pub fn matrix_transpose(matrix: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    if matrix.is_empty() {
-        return Vec::new();
+/// Generate model design terms based on the configuration
+pub fn generate_model_design_terms(
+    data: &AnalysisData,
+    config: &UnivariateConfig
+) -> Result<Vec<String>, String> {
+    let mut terms = Vec::new();
+
+    // Add intercept if enabled (always respect intercept setting)
+    if config.model.intercept {
+        terms.push("Intercept".to_string());
     }
 
-    let na_matrix = to_dmatrix(matrix);
-    from_dmatrix(&na_matrix.transpose())
-}
+    // Handle different model design modes
+    if config.model.non_cust {
+        // Mode 1: When non_cust is true, create a full factorial design from fix_factors and covariates
+        if let Some(fix_factors) = &config.main.fix_factor {
+            // Add main effects
+            for factor in fix_factors {
+                terms.push(factor.clone());
+            }
 
-/// Matrix-vector multiplication using nalgebra
-pub fn matrix_vec_multiply(matrix: &[Vec<f64>], vector: &[f64]) -> Result<Vec<f64>, String> {
-    if matrix.is_empty() || vector.is_empty() {
-        return Err("Cannot multiply with empty matrix or vector".to_string());
+            // Add interactions if there are multiple factors
+            if fix_factors.len() > 1 {
+                // Generate all possible interactions
+                let interactions = generate_interaction_terms(fix_factors);
+                terms.extend(interactions);
+            }
+        }
+
+        // Add covariates
+        if let Some(covariates) = &config.main.covar {
+            for covar in covariates {
+                terms.push(covar.clone());
+            }
+        }
+    } else if config.model.custom {
+        // Mode 2: When custom is true, use factors_model and respect build_term_method
+        if let Some(factors_model) = &config.model.factors_model {
+            match config.model.build_term_method {
+                BuildTermMethod::MainEffects => {
+                    // Only include main effects
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+                }
+                BuildTermMethod::Interaction => {
+                    // Include main effects and all possible interactions
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+
+                    if factors_model.len() > 1 {
+                        let interactions = generate_interaction_terms(factors_model);
+                        terms.extend(interactions);
+                    }
+                }
+                BuildTermMethod::All2Way => {
+                    // Include main effects and all 2-way interactions
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+
+                    if factors_model.len() > 1 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
+                            }
+                        }
+                    }
+                }
+                BuildTermMethod::All3Way => {
+                    // Include main effects, 2-way and 3-way interactions
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+
+                    // Add 2-way interactions
+                    if factors_model.len() > 1 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
+                            }
+                        }
+                    }
+
+                    // Add 3-way interactions
+                    if factors_model.len() > 2 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    terms.push(
+                                        format!(
+                                            "{}*{}*{}",
+                                            factors_model[i],
+                                            factors_model[j],
+                                            factors_model[k]
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                BuildTermMethod::All4Way => {
+                    // Include main effects and up to 4-way interactions
+                    // Add 1-way effects (main effects)
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+
+                    // Add 2-way interactions
+                    if factors_model.len() > 1 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
+                            }
+                        }
+                    }
+
+                    // Add 3-way interactions
+                    if factors_model.len() > 2 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    terms.push(
+                                        format!(
+                                            "{}*{}*{}",
+                                            factors_model[i],
+                                            factors_model[j],
+                                            factors_model[k]
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // Add 4-way interactions
+                    if factors_model.len() > 3 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    for l in k + 1..factors_model.len() {
+                                        terms.push(
+                                            format!(
+                                                "{}*{}*{}*{}",
+                                                factors_model[i],
+                                                factors_model[j],
+                                                factors_model[k],
+                                                factors_model[l]
+                                            )
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                BuildTermMethod::All5Way => {
+                    // Include main effects and up to 5-way interactions
+                    // Add 1-way effects (main effects)
+                    for factor in factors_model {
+                        terms.push(factor.clone());
+                    }
+
+                    // Add 2-way interactions
+                    if factors_model.len() > 1 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
+                            }
+                        }
+                    }
+
+                    // Add 3-way interactions
+                    if factors_model.len() > 2 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    terms.push(
+                                        format!(
+                                            "{}*{}*{}",
+                                            factors_model[i],
+                                            factors_model[j],
+                                            factors_model[k]
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // Add 4-way interactions
+                    if factors_model.len() > 3 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    for l in k + 1..factors_model.len() {
+                                        terms.push(
+                                            format!(
+                                                "{}*{}*{}*{}",
+                                                factors_model[i],
+                                                factors_model[j],
+                                                factors_model[k],
+                                                factors_model[l]
+                                            )
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Add 5-way interactions
+                    if factors_model.len() > 4 {
+                        for i in 0..factors_model.len() {
+                            for j in i + 1..factors_model.len() {
+                                for k in j + 1..factors_model.len() {
+                                    for l in k + 1..factors_model.len() {
+                                        for m in l + 1..factors_model.len() {
+                                            terms.push(
+                                                format!(
+                                                    "{}*{}*{}*{}*{}",
+                                                    factors_model[i],
+                                                    factors_model[j],
+                                                    factors_model[k],
+                                                    factors_model[l],
+                                                    factors_model[m]
+                                                )
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add covariate model if specified
+        if let Some(cov_model) = &config.model.cov_model {
+            // Parse covariate model - could be simple or complex
+            // For example: "X1" or "X1*X2" or "X1 X2"
+            for term in cov_model.split_whitespace() {
+                // Handle interaction terms in covariate model (X1*X2)
+                if term.contains('*') {
+                    terms.push(term.to_string());
+                } else {
+                    // Simple term
+                    terms.push(term.to_string());
+                }
+            }
+        }
+    } else if config.model.build_custom_term {
+        // Mode 3: When build_custom_term is true, directly use factors_model
+        if let Some(factors_model) = &config.model.factors_model {
+            for term in factors_model {
+                // Parse terms - can be a main effect or interaction term
+                if term.contains('*') || term.contains("WITHIN") || term.contains('(') {
+                    // This is an interaction or nesting term
+                    // Process according to the specification rules
+                    terms.push(term.clone());
+                } else {
+                    // Simple main effect
+                    terms.push(term.clone());
+                }
+            }
+        }
     }
 
-    let na_matrix = to_dmatrix(matrix);
-    let na_vector = to_dvector(vector);
+    // If no terms were generated, create a default design
+    if terms.is_empty() && !config.model.intercept {
+        // Default design: include all main effects
+        if let Some(fix_factors) = &config.main.fix_factor {
+            for factor in fix_factors {
+                terms.push(factor.clone());
+            }
+        }
 
-    if na_matrix.ncols() != na_vector.len() {
-        return Err(
-            format!(
-                "Matrix columns ({}) must match vector length ({})",
-                na_matrix.ncols(),
-                na_vector.len()
-            )
-        );
+        // Add covariates
+        if let Some(covariates) = &config.main.covar {
+            for covar in covariates {
+                terms.push(covar.clone());
+            }
+        }
     }
 
-    let result = na_matrix * na_vector;
-    Ok(result.iter().cloned().collect())
-}
-
-/// Solve linear system Ax = b using nalgebra
-pub fn solve_linear_system(a: &[Vec<f64>], b: &[f64]) -> Result<Vec<f64>, String> {
-    if a.is_empty() || b.is_empty() {
-        return Err("Cannot solve system with empty matrix or vector".to_string());
-    }
-
-    let na_matrix = to_dmatrix(a);
-    let na_vector = to_dvector(b);
-
-    match na_matrix.clone().lu().solve(&na_vector) {
-        Some(solution) => Ok(solution.iter().cloned().collect()),
-        None => Err("Linear system could not be solved".to_string()),
-    }
+    // Return the model design terms
+    Ok(terms)
 }

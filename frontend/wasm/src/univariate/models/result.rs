@@ -1,5 +1,5 @@
 use serde::{ Deserialize, Serialize };
-use std::collections::HashMap;
+use std::collections::{ HashMap, BTreeMap };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateResult {
@@ -21,21 +21,14 @@ pub struct UnivariateResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BetweenSubjectFactors {
-    pub factors: HashMap<String, usize>,
+    pub factors: BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DescriptiveStatistics {
     pub dependent_variable: String,
-    pub groups: Vec<StatGroup>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct StatGroup {
-    pub factor_name: String,
-    pub factor_value: String,
-    pub stats: StatsEntry,
-    pub subgroups: Vec<StatGroup>,
+    pub stats_entries: HashMap<String, StatsEntry>,
+    pub factor_names: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

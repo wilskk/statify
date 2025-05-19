@@ -1,5 +1,6 @@
 // lack_of_fit.rs
 use std::collections::{ HashMap, HashSet };
+use nalgebra::{ DMatrix, DVector };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -7,17 +8,7 @@ use crate::univariate::models::{
     result::LackOfFitTests,
 };
 
-use super::core::{
-    calculate_mean,
-    calculate_f_significance,
-    calculate_observed_power,
-    count_total_cases,
-    extract_dependent_value,
-    matches_combination,
-    data_value_to_string,
-    to_dmatrix,
-    to_dvector,
-};
+use super::core::*;
 
 /// Calculate lack of fit tests if requested
 pub fn calculate_lack_of_fit_tests(
@@ -68,7 +59,8 @@ pub fn calculate_lack_of_fit_tests(
                     // We need to find the corresponding record in fix_factor_data
                     let factor_value = find_factor_value(data, record, factor);
                     match factor_value {
-                        Some(DataValue::Number(n)) => x_row.push(n),
+                        Some(DataValue::Number(n)) => x_row.push(n as f64),
+                        Some(DataValue::NumberFloat(f)) => x_row.push(f),
                         Some(_) => {
                             // For non-numeric, we need a numeric representation
                             // This is simplified; proper dummy coding would be better
@@ -331,8 +323,14 @@ fn calculate_regression_coefficients(
     }
 
     // Convert to nalgebra matrix formats
-    let x = to_dmatrix(x_matrix);
-    let y = to_dvector(y_values);
+    let nrows = x_matrix.len();
+    let ncols = if nrows > 0 { x_matrix[0].len() } else { 0 };
+    let mut x_data = Vec::with_capacity(nrows * ncols);
+    for row in x_matrix {
+        x_data.extend_from_slice(row);
+    }
+    let x = DMatrix::from_row_slice(nrows, ncols, &x_data);
+    let y = DVector::from_row_slice(y_values);
 
     // Calculate (X'X)^(-1)X'y
     let x_transpose = x.transpose();

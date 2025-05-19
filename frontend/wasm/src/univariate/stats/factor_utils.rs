@@ -1,27 +1,82 @@
 use std::collections::HashMap;
 
 use crate::univariate::models::data::{ AnalysisData, DataValue };
-use crate::univariate::stats::common::{
-    data_value_to_string,
-    extract_dependent_value,
-    get_factor_levels,
-};
-
-/// Count the total number of cases in the analysis data
-pub fn count_total_cases(data: &AnalysisData) -> usize {
-    let mut count = 0;
-    for records in &data.dependent_data {
-        count += records.len();
-    }
-    count
-}
+use super::core::*;
 
 /// Parse interaction term (e.g., "A*B") into a vector of factor names
+/// Handles both interaction terms (A*B) and nesting terms (A(B) or A WITHIN B)
 pub fn parse_interaction_term(interaction_term: &str) -> Vec<String> {
+    // Handle nesting format "A WITHIN B"
+    if interaction_term.contains("WITHIN") {
+        let parts: Vec<&str> = interaction_term.split("WITHIN").collect();
+        if parts.len() == 2 {
+            return vec![parts[0].trim().to_string(), parts[1].trim().to_string()];
+        }
+    }
+
+    // Handle nesting format "A(B)"
+    if interaction_term.contains('(') && interaction_term.contains(')') {
+        let mut factors = Vec::new();
+        let mut current_term = interaction_term;
+
+        while let Some(open_paren) = current_term.find('(') {
+            // Extract the outer factor (before the parenthesis)
+            let outer_factor = current_term[..open_paren].trim();
+            if !outer_factor.is_empty() {
+                factors.push(outer_factor.to_string());
+            }
+
+            // Check for matching closing parenthesis
+            if let Some(close_paren) = find_matching_parenthesis(current_term, open_paren) {
+                // Extract the inner term
+                let inner_term = current_term[open_paren + 1..close_paren].trim();
+
+                // Move to process the inner term
+                current_term = inner_term;
+            } else {
+                // No matching parenthesis, stop processing
+                break;
+            }
+        }
+
+        // Add the innermost term if there is one
+        if !current_term.is_empty() && !current_term.contains('(') && !current_term.contains(')') {
+            factors.push(current_term.trim().to_string());
+        }
+
+        if !factors.is_empty() {
+            return factors;
+        }
+    }
+
+    // Default: standard interaction with "*"
     interaction_term
         .split('*')
         .map(|s| s.trim().to_string())
         .collect()
+}
+
+/// Helper function to find the matching closing parenthesis
+fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut depth = 0;
+
+    for i in open_pos..chars.len() {
+        match chars[i] {
+            '(' => {
+                depth += 1;
+            }
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
 }
 
 /// Checks if there are missing cells in the design for a factor

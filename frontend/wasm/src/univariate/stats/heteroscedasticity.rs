@@ -3,14 +3,9 @@ use crate::univariate::models::{
     data::{ AnalysisData, DataValue },
     result::{ BPTest, FTest, HeteroscedasticityTests, ModifiedBPTest, WhiteTest },
 };
+use nalgebra::{ DMatrix, DVector };
 
-use super::core::{
-    chi_square_cdf,
-    f_distribution_cdf,
-    extract_dependent_value,
-    to_dmatrix,
-    to_dvector,
-};
+use super::core::*;
 
 /// Calculate heteroscedasticity tests if requested
 pub fn calculate_heteroscedasticity_tests(
@@ -65,7 +60,8 @@ pub fn calculate_heteroscedasticity_tests(
                     for (key, val) in &record.values {
                         if key == pred {
                             value = match val {
-                                DataValue::Number(n) => *n,
+                                DataValue::Number(n) => *n as f64,
+                                DataValue::NumberFloat(f) => *f,
                                 DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                 _ => 0.0,
                             };
@@ -88,8 +84,16 @@ pub fn calculate_heteroscedasticity_tests(
         return Err("No valid data points for heteroscedasticity tests".to_string());
     }
 
-    let y = to_dvector(&y_values);
-    let x = to_dmatrix(&x_matrix);
+    let y = DVector::from_row_slice(&y_values);
+
+    // Convert x_matrix to DMatrix
+    let nrows = x_matrix.len();
+    let ncols = if nrows > 0 { x_matrix[0].len() } else { 0 };
+    let mut x_data = Vec::with_capacity(nrows * ncols);
+    for row in &x_matrix {
+        x_data.extend_from_slice(row);
+    }
+    let x = DMatrix::from_row_slice(nrows, ncols, &x_data);
 
     // Calculate OLS residuals
     let xtx = &x.transpose() * &x;
@@ -177,7 +181,14 @@ pub fn calculate_heteroscedasticity_tests(
                 z_data.push(z_row);
             }
 
-            let z = to_dmatrix(&z_data);
+            // Convert z_data to DMatrix
+            let nrows = z_data.len();
+            let ncols = if nrows > 0 { z_data[0].len() } else { 0 };
+            let mut z_flat_data = Vec::with_capacity(nrows * ncols);
+            for row in &z_data {
+                z_flat_data.extend_from_slice(row);
+            }
+            let z = DMatrix::from_row_slice(nrows, ncols, &z_flat_data);
 
             // Estimate auxiliary regression
             let ztz = z.transpose() * &z;

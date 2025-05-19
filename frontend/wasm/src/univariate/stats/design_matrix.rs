@@ -1,17 +1,8 @@
 use std::collections::HashMap;
 
 use crate::univariate::models::data::{ AnalysisData, DataValue };
-use crate::univariate::stats::common::{ data_value_to_string, get_factor_levels };
-use crate::univariate::stats::matrix_utils::{
-    extract_column,
-    add_column_to_matrix,
-    matrix_transpose,
-};
-use crate::univariate::stats::factor_utils::{
-    generate_level_combinations,
-    count_total_cases,
-    parse_interaction_term,
-};
+use super::core::*;
+use super::factor_utils::{ parse_interaction_term, generate_level_combinations };
 
 /// Helper function to create design matrix for a main effect
 pub fn create_main_effect_design_matrix(
@@ -560,4 +551,252 @@ pub fn add_factor_to_design_matrix(
         add_column_to_matrix(design_matrix, &column);
     }
     Ok(())
+}
+
+/// Add a covariate to a design matrix
+pub fn add_covariate_to_design_matrix(
+    design_matrix: &mut Vec<Vec<f64>>,
+    covariate_values: &[f64]
+) -> Result<(), String> {
+    if design_matrix.is_empty() {
+        return Err("Design matrix is empty".to_string());
+    }
+
+    if design_matrix.len() != covariate_values.len() {
+        return Err(
+            format!(
+                "Covariate length ({}) does not match design matrix rows ({})",
+                covariate_values.len(),
+                design_matrix.len()
+            )
+        );
+    }
+
+    // Center the covariate values
+    let mean = covariate_values.iter().sum::<f64>() / (covariate_values.len() as f64);
+    let centered_values: Vec<f64> = covariate_values
+        .iter()
+        .map(|&val| val - mean)
+        .collect();
+
+    // Add the centered covariate as a new column in the design matrix
+    for (i, row) in design_matrix.iter_mut().enumerate() {
+        row.push(centered_values[i]);
+    }
+
+    Ok(())
+}
+
+/// Helper function to create design matrix for covariate interactions (e.g., X1*X2 or X1*X1)
+pub fn create_covariate_interaction_design_matrix(
+    data: &AnalysisData,
+    interaction_term: &str
+) -> Result<Vec<Vec<f64>>, String> {
+    // Parse the covariate interaction term (e.g., "X1*X2")
+    let covariate_names = parse_interaction_term(interaction_term);
+
+    // Get values for each covariate
+    let mut covariate_values: Vec<Vec<f64>> = Vec::new();
+    for covar in &covariate_names {
+        let values = get_covariate_values(data, covar)?;
+        covariate_values.push(values);
+    }
+
+    // Check that all covariates have the same number of observations
+    let n_obs = if let Some(first) = covariate_values.first() {
+        first.len()
+    } else {
+        return Err("No covariate values found".to_string());
+    };
+
+    for values in &covariate_values {
+        if values.len() != n_obs {
+            return Err("Covariates have different number of observations".to_string());
+        }
+    }
+
+    // For each observation, calculate the product of covariate values
+    let mut design_column = vec![0.0; n_obs];
+
+    for i in 0..n_obs {
+        let mut product = 1.0;
+        for values in &covariate_values {
+            product *= values[i];
+        }
+        design_column[i] = product;
+    }
+
+    // Create a design matrix with a single column (the product)
+    let mut design_matrix = Vec::new();
+    design_matrix.push(design_column);
+
+    // Transpose to match expected format [rows × columns]
+    Ok(matrix_transpose(&design_matrix))
+}
+
+/// Helper function to create design matrix for nested terms (e.g., A(B) or A(B(C)))
+pub fn create_nested_design_matrix(
+    data: &AnalysisData,
+    nested_term: &str
+) -> Result<Vec<Vec<f64>>, String> {
+    // Parse nested term structure
+    // For example: "A(B)" -> A is nested within B
+    //              "A(B(C))" -> A is nested within B which is nested within C
+
+    // First identify the hierarchical structure
+    let mut hierarchy = Vec::new();
+    let mut current_term = nested_term;
+
+    while let Some(open_paren) = current_term.find('(') {
+        if let Some(matching_close) = find_matching_parenthesis(current_term, open_paren) {
+            // Extract the outer factor (before the parenthesis)
+            let outer_factor = current_term[..open_paren].trim();
+            hierarchy.push(outer_factor.to_string());
+
+            // Move to the inner term
+            current_term = &current_term[open_paren + 1..matching_close];
+        } else {
+            return Err(format!("Invalid nesting structure in term: {}", nested_term));
+        }
+    }
+
+    // The innermost factor (no more parentheses)
+    if !current_term.is_empty() {
+        hierarchy.push(current_term.trim().to_string());
+    }
+
+    // Reverse hierarchy to get from innermost to outermost
+    hierarchy.reverse();
+
+    // Build combinations based on the nesting structure
+    let n_total = count_total_cases(data);
+    let mut level_combinations: Vec<HashMap<String, String>> = Vec::new();
+
+    // Get levels for each factor in the hierarchy
+    let mut factor_levels = Vec::new();
+    for factor in &hierarchy {
+        let levels = get_factor_levels(data, factor)?;
+        factor_levels.push((factor.clone(), levels));
+    }
+
+    // For each level of the outermost factor (last in hierarchy)
+    if factor_levels.is_empty() {
+        return Err("No valid factors found in nested term".to_string());
+    }
+
+    // Start with the outermost factor (last in our hierarchy)
+    let (outer_factor, outer_levels) = &factor_levels[factor_levels.len() - 1];
+
+    // For each level of the outermost factor
+    let mut all_nested_combinations = Vec::new();
+
+    for outer_level in outer_levels {
+        // Start with this level for the outermost factor
+        let mut base_combo = HashMap::new();
+        base_combo.insert(outer_factor.clone(), outer_level.clone());
+
+        // If we only have one factor, add this combination
+        if factor_levels.len() == 1 {
+            all_nested_combinations.push(base_combo);
+            continue;
+        }
+
+        // For each level of the next factor inward
+        let mut current_combos = vec![base_combo];
+
+        // Process each factor from outer to inner (except the outermost which we already handled)
+        for i in (0..factor_levels.len() - 1).rev() {
+            let (inner_factor, inner_levels) = &factor_levels[i];
+            let mut new_combos = Vec::new();
+
+            // For each existing combination
+            for combo in &current_combos {
+                // For each level of this factor
+                for inner_level in inner_levels {
+                    // Create a new combination with this level
+                    let mut new_combo = combo.clone();
+                    new_combo.insert(inner_factor.clone(), inner_level.clone());
+                    new_combos.push(new_combo);
+                }
+            }
+
+            current_combos = new_combos;
+        }
+
+        // Add all combinations for this outer level
+        all_nested_combinations.extend(current_combos);
+    }
+
+    // Create design matrix based on the nested combinations
+    let mut x_matrix = vec![vec![0.0; all_nested_combinations.len()]; n_total];
+    let mut row_idx = 0;
+
+    // For each data record, check which combination applies
+    for dep_records in &data.dependent_data {
+        for _dep_record in dep_records {
+            if row_idx >= n_total {
+                break;
+            }
+
+            // Check each combination
+            for (col_idx, combo) in all_nested_combinations.iter().enumerate() {
+                let mut all_match = true;
+
+                // Check if this record matches all factors in the combination
+                for (factor, level) in combo {
+                    let mut factor_match = false;
+
+                    // Search through fix_factor_data to find the factor value
+                    for fix_factor_group in &data.fix_factor_data {
+                        for fix_record in fix_factor_group {
+                            if let Some(value) = fix_record.values.get(factor) {
+                                if data_value_to_string(value) == *level {
+                                    factor_match = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if factor_match {
+                            break;
+                        }
+                    }
+
+                    if !factor_match {
+                        all_match = false;
+                        break;
+                    }
+                }
+
+                // If this combination matches, set indicator to 1
+                x_matrix[row_idx][col_idx] = if all_match { 1.0 } else { 0.0 };
+            }
+
+            row_idx += 1;
+        }
+    }
+
+    Ok(x_matrix)
+}
+
+/// Helper function to find the matching closing parenthesis
+fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut depth = 0;
+
+    for i in open_pos..chars.len() {
+        match chars[i] {
+            '(' => {
+                depth += 1;
+            }
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
 }

@@ -2,31 +2,7 @@ use std::collections::HashMap;
 
 use crate::univariate::models::{ config::SumOfSquaresMethod, data::AnalysisData };
 
-use crate::univariate::stats::{
-    common::{ calculate_mean, extract_dependent_value, get_factor_levels, get_level_values },
-    design_matrix::{
-        create_contrast_coded_interaction_matrix,
-        create_contrast_coded_main_effect_matrix,
-        create_interaction_design_matrix,
-        create_main_effect_design_matrix,
-        create_type_iv_interaction_matrix,
-        create_type_iv_main_effect_matrix,
-    },
-    factor_utils::{ calculate_interaction_df, check_for_missing_cells, parse_interaction_term },
-    matrix_utils::{
-        calculate_l_beta,
-        create_l_matrix,
-        matrix_inverse,
-        matrix_multiply,
-        matrix_transpose,
-        matrix_vec_multiply,
-        extract_column,
-        add_column_to_matrix,
-    },
-};
-
-use super::data_value_to_string;
-use super::factor_utils::generate_level_combinations;
+use super::core::*;
 
 /// Calculate sum of squares for a factor based on the method
 pub fn calculate_factor_ss(
@@ -61,7 +37,7 @@ pub fn calculate_factor_ss(
 }
 
 /// Calculate Type I (sequential) sum of squares for a factor
-fn calculate_type_i_factor_ss(
+pub fn calculate_type_i_factor_ss(
     data: &AnalysisData,
     factor: &str,
     dep_var_name: &str,
@@ -105,7 +81,7 @@ fn calculate_type_i_factor_ss(
 }
 
 /// Calculate Type II sum of squares for a factor
-fn calculate_type_ii_factor_ss(
+pub fn calculate_type_ii_factor_ss(
     data: &AnalysisData,
     factor: &str,
     dep_var_name: &str,
@@ -209,7 +185,7 @@ fn calculate_type_ii_factor_ss(
 }
 
 /// Calculate Type III/IV sum of squares for a factor
-fn calculate_type_iii_factor_ss(
+pub fn calculate_type_iii_factor_ss(
     data: &AnalysisData,
     factor: &str,
     dep_var_name: &str,
@@ -282,7 +258,7 @@ fn calculate_type_iii_factor_ss(
 }
 
 /// Calculate Type IV sum of squares for a factor
-fn calculate_type_iv_factor_ss(
+pub fn calculate_type_iv_factor_ss(
     data: &AnalysisData,
     factor: &str,
     dep_var_name: &str,
@@ -389,7 +365,7 @@ pub fn calculate_raw_factor_ss(
 }
 
 /// Helper function to add factor columns to a design matrix
-fn add_factor_to_design_matrix(
+pub fn add_factor_to_design_matrix(
     design_matrix: &mut Vec<Vec<f64>>,
     data: &AnalysisData,
     factor: &str
@@ -527,7 +503,7 @@ pub fn calculate_interaction_ss(
 }
 
 /// Calculate Type I (sequential) sum of squares for interaction effects
-fn calculate_type_i_interaction_ss(
+pub fn calculate_type_i_interaction_ss(
     data: &AnalysisData,
     interaction_factors: &[String],
     interaction_term: &str,
@@ -571,7 +547,7 @@ fn calculate_type_i_interaction_ss(
 }
 
 /// Calculate Type II sum of squares for interaction effects
-fn calculate_type_ii_interaction_ss(
+pub fn calculate_type_ii_interaction_ss(
     data: &AnalysisData,
     interaction_factors: &[String],
     interaction_term: &str,
@@ -692,7 +668,7 @@ fn calculate_type_ii_interaction_ss(
 }
 
 /// Calculate Type III/IV sum of squares for interaction effects
-fn calculate_type_iii_interaction_ss(
+pub fn calculate_type_iii_interaction_ss(
     data: &AnalysisData,
     interaction_factors: &[String],
     interaction_term: &str,
@@ -1009,7 +985,7 @@ pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
 }
 
 /// Helper function to generate all lower-order terms from a list of factors
-fn generate_lower_order_terms(
+pub fn generate_lower_order_terms(
     factors: &[String],
     size: usize,
     current: &mut Vec<String>,
@@ -1026,4 +1002,50 @@ fn generate_lower_order_terms(
         generate_lower_order_terms(factors, size, current, i + 1, result);
         current.pop();
     }
+}
+
+/// Calculate the sum of squares for a covariate
+pub fn calculate_covariate_ss(
+    dependent_values: &[f64],
+    covariate_values: &[f64],
+    grand_mean: f64
+) -> Result<f64, String> {
+    if dependent_values.len() != covariate_values.len() {
+        return Err(
+            format!(
+                "Dependent values length ({}) does not match covariate values length ({})",
+                dependent_values.len(),
+                covariate_values.len()
+            )
+        );
+    }
+
+    // Calculate the regression coefficient
+    let cov_mean = covariate_values.iter().sum::<f64>() / (covariate_values.len() as f64);
+    let centered_cov: Vec<f64> = covariate_values
+        .iter()
+        .map(|&c| c - cov_mean)
+        .collect();
+
+    let numerator: f64 = dependent_values
+        .iter()
+        .zip(centered_cov.iter())
+        .map(|(&y, &x)| (y - grand_mean) * x)
+        .sum();
+
+    let denominator: f64 = centered_cov
+        .iter()
+        .map(|&x| x * x)
+        .sum();
+
+    if denominator.abs() < 1e-10 {
+        return Err("Covariate has zero variance".to_string());
+    }
+
+    let beta = numerator / denominator;
+
+    // Calculate the sum of squares explained by the covariate
+    let ss_covariate = beta * numerator;
+
+    Ok(ss_covariate)
 }
