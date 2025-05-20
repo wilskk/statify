@@ -68,6 +68,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, source: 'available' | 'row' | 'column' | 'layer' } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'row' | 'column' | 'layer' | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const variableIdKeyToUse: keyof Variable = 'tempId';
 
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
@@ -92,10 +93,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleVariableSelect = (variable: Variable, source: 'available' | 'row' | 'column' | 'layer') => {
-        if (highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source) {
+        if (highlightedVariable && highlightedVariable.id === variable.tempId && highlightedVariable.source === source) {
             setHighlightedVariable(null);
         } else {
-            setHighlightedVariable({ id: variable.columnIndex.toString(), source });
+            setHighlightedVariable({ id: variable.tempId!, source });
         }
     };
 
@@ -120,7 +121,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
         // From available to target list
         if (source === 'available') {
-            const variable = availableVariables.find(v => v.columnIndex.toString() === id);
+            const variable = availableVariables.find(v => v.tempId === id);
             if (variable) {
                 if (targetListId === 'row') {
                     moveToRowVariables(variable);
@@ -135,11 +136,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
         else if (source === targetListId) {
             let variable;
             if (targetListId === 'row') {
-                variable = rowVariables.find(v => v.columnIndex.toString() === id);
+                variable = rowVariables.find(v => v.tempId === id);
             } else if (targetListId === 'column') {
-                variable = columnVariables.find(v => v.columnIndex.toString() === id);
+                variable = columnVariables.find(v => v.tempId === id);
             } else if (targetListId === 'layer') {
-                variable = (layerVariablesMap[currentLayerIndex] || []).find(v => v.columnIndex.toString() === id);
+                variable = (layerVariablesMap[currentLayerIndex] || []).find(v => v.tempId === id);
             }
 
             if (variable) {
@@ -179,7 +180,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, variable: Variable, source: 'available' | 'row' | 'column' | 'layer') => {
         e.dataTransfer.setData('application/json', JSON.stringify({
-            columnIndex: variable.columnIndex,
+            id: variable.tempId,
             source
         }));
         e.dataTransfer.effectAllowed = 'move';
@@ -225,7 +226,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
         try {
             const data = JSON.parse(e.dataTransfer.getData('application/json'));
-            const { columnIndex, source } = data;
+            const { id, source } = data;
 
             // Find the variable from the appropriate source list
             let sourceVariables: Variable[] = [];
@@ -234,7 +235,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             else if (source === 'column') sourceVariables = columnVariables;
             else if (source === 'layer') sourceVariables = layerVariablesMap[currentLayerIndex] || [];
 
-            const variable = sourceVariables.find(v => v.columnIndex === columnIndex);
+            const variable = sourceVariables.find(v => v.tempId === id);
 
             if (!variable) return;
 
@@ -242,7 +243,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             if (source === targetSource) {
                 if (targetIndex !== undefined) {
                     const currentList = [...sourceVariables];
-                    const sourceIndex = currentList.findIndex(v => v.columnIndex === columnIndex);
+                    const sourceIndex = currentList.findIndex(v => v.tempId === id);
 
                     if (sourceIndex === targetIndex || sourceIndex === targetIndex - 1) {
                         // No change needed
@@ -269,12 +270,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     // First remove from source list
                     if (source === 'column') {
                         // Direct transfer from column to row
-                        const updatedColumns = columnVariables.filter(v => v.columnIndex !== variable.columnIndex);
+                        const updatedColumns = columnVariables.filter(v => v.tempId !== variable.tempId);
                         reorderVariables('column', updatedColumns);
                     } else if (source === 'layer') {
                         // Direct transfer from layer to row
                         const updatedLayer = (layerVariablesMap[currentLayerIndex] || [])
-                            .filter(v => v.columnIndex !== variable.columnIndex);
+                            .filter(v => v.tempId !== variable.tempId);
                         const newLayerMap = {...layerVariablesMap, [currentLayerIndex]: updatedLayer};
                         // This would need a function to handle layer variables specifically
                         // For now, we'll just move it to available then to row
@@ -287,12 +288,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     // First remove from source list
                     if (source === 'row') {
                         // Direct transfer from row to column
-                        const updatedRows = rowVariables.filter(v => v.columnIndex !== variable.columnIndex);
+                        const updatedRows = rowVariables.filter(v => v.tempId !== variable.tempId);
                         reorderVariables('row', updatedRows);
                     } else if (source === 'layer') {
                         // Direct transfer from layer to column
                         const updatedLayer = (layerVariablesMap[currentLayerIndex] || [])
-                            .filter(v => v.columnIndex !== variable.columnIndex);
+                            .filter(v => v.tempId !== variable.tempId);
                         const newLayerMap = {...layerVariablesMap, [currentLayerIndex]: updatedLayer};
                         // Similar to above, simplified approach
                         moveToAvailableVariables(variable, 'layer');
@@ -304,11 +305,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     // First remove from source list
                     if (source === 'row') {
                         // Direct transfer from row to layer
-                        const updatedRows = rowVariables.filter(v => v.columnIndex !== variable.columnIndex);
+                        const updatedRows = rowVariables.filter(v => v.tempId !== variable.tempId);
                         reorderVariables('row', updatedRows);
                     } else if (source === 'column') {
                         // Direct transfer from column to layer
-                        const updatedColumns = columnVariables.filter(v => v.columnIndex !== variable.columnIndex);
+                        const updatedColumns = columnVariables.filter(v => v.tempId !== variable.tempId);
                         reorderVariables('column', updatedColumns);
                     }
                     moveToLayerVariables(variable);
@@ -361,7 +362,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             )}
             {variables.map((variable, index) => (
                 <div
-                    key={variable.tempId || variable.columnIndex}
+                    key={variable[variableIdKeyToUse]}
                     draggable
                     onDragStart={(e) => handleDragStart(e, variable, source)}
                     onDragEnd={handleDragEnd}
@@ -370,10 +371,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     onDoubleClick={() => handleVariableDoubleClick(variable, source)}
                     className={`
                         flex items-center p-2 cursor-grab border-b last:border-b-0
-                        ${highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                        ? 'bg-accent border-primary' // Keep border-primary for selected item
+                        ${highlightedVariable && highlightedVariable.id === variable.tempId && highlightedVariable.source === source
+                        ? 'bg-accent border-primary'
                         : 'border-border hover:bg-accent'}
-                        ${draggedItem?.variable.columnIndex === variable.columnIndex && draggedItem.source === source ? 'opacity-50' : ''}
+                        ${draggedItem && draggedItem.variable.tempId === variable.tempId && draggedItem.source === source ? 'opacity-50' : ''}
                     `}
                 >
                     {dragOverIndex === index && draggedItem && draggedItem.source === source && (

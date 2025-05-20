@@ -1,7 +1,9 @@
 "use client"
 
 import React from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ModalType } from "@/hooks/useModal";
+import { ContainerType } from "@/types/ui";
 import Descriptive from "@/components/Modals/Analyze/Descriptive/Descriptive";
 import Explore from "@/components/Modals/Analyze/Descriptive/Explore";
 import Frequencies from "@/components/Modals/Analyze/Descriptive/Frequencies";
@@ -24,31 +26,48 @@ export const modalStyles = {
     input: "h-10 border-[#CCCCCC] focus:border-black"
 };
 
-interface DescriptiveModalProps {
+export interface DescriptiveModalProps {
     modalType: ModalType;
     onClose: () => void;
     props?: any;
+    containerType?: ContainerType;
 }
 
-export const DescriptiveModal: React.FC<DescriptiveModalProps> = ({ modalType, onClose, props }) => {
-    switch (modalType) {
-        case ModalType.Descriptive:
-            return <Descriptive onClose={onClose} {...props} />;
-        case ModalType.Explore:
-            return <Explore onClose={onClose} {...props} />;
-        case ModalType.Frequencies:
-            return <Frequencies onClose={onClose} {...props} />;
-        case ModalType.Crosstabs:
-            return <Crosstabs onClose={onClose} {...props} />;
-        case ModalType.Ratio:
-            return <Ratio onClose={onClose} {...props} />;
-        case ModalType.PPPlots:
-            return <PPPlots onClose={onClose} {...props} />;
-        case ModalType.QQPlots:
-            return <QQPlots onClose={onClose} {...props} />;
-        default:
-            return null;
+export const DescriptiveModal: React.FC<DescriptiveModalProps> = ({ 
+    modalType, 
+    onClose, 
+    props,
+    containerType = "dialog" 
+}) => {
+    // Render the appropriate component based on modalType and containerType
+    const renderComponent = () => {
+        switch (modalType) {
+            case ModalType.Descriptive:
+                return <Descriptive onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.Explore:
+                return <Explore onClose={onClose} {...props} />;
+            case ModalType.Frequencies:
+                return <Frequencies onClose={onClose} {...props} />;
+            case ModalType.Crosstabs:
+                return <Crosstabs onClose={onClose} {...props} />;
+            case ModalType.Ratio:
+                return <Ratio onClose={onClose} {...props} />;
+            case ModalType.PPPlots:
+                return <PPPlots onClose={onClose} {...props} />;
+            case ModalType.QQPlots:
+                return <QQPlots onClose={onClose} {...props} />;
+            default:
+                return null;
+        }
+    };
+
+    // If sidebar mode, just return the component
+    if (containerType === "sidebar") {
+        return renderComponent();
     }
+
+    // For dialog mode, wrap in appropriate Dialog components
+    return renderComponent();
 };
 
 export const isDescriptiveModal = (type: ModalType): boolean => {

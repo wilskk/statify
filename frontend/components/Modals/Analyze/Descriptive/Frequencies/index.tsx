@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, FC, useCallback } from "react";
+import React, { useState, FC, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -33,12 +33,15 @@ const useFrequencyTablesOption = (initialValue = true) => {
 
 interface FrequenciesModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const Frequencies: FC<FrequenciesModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState("variables");
+// Main content component that's agnostic of container type
+const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose }) => {
+    const [activeTab, setActiveTab] = useState<string>("variables");
+    const { showFrequencyTables, setShowFrequencyTables } = useFrequencyTablesOption(true);
 
-    // Use the custom hooks for state management
+    // Use the variable selection hook
     const {
         availableVariables,
         selectedVariables,
@@ -50,121 +53,60 @@ const Frequencies: FC<FrequenciesModalProps> = ({ onClose }) => {
         resetVariableSelection
     } = useVariableSelection();
 
-    const {
-        showFrequencyTables,
-        setShowFrequencyTables
-    } = useFrequencyTablesOption();
+    // Use the statistics settings hook
+    const statisticsSettings = useStatisticsSettings();
+    
+    // Use the charts settings hook
+    const chartsSettings = useChartsSettings();
 
+    // Use the frequencies analysis hook
     const {
-        showStatistics,
-        setShowStatistics,
-        quartilesChecked,
-        setQuartilesChecked,
-        cutPointsChecked,
-        setCutPointsChecked,
-        cutPointsValue,
-        setCutPointsValue,
-        enablePercentiles,
-        setEnablePercentiles,
-        percentileValues,
-        setPercentileValues,
-        currentPercentileInput,
-        setCurrentPercentileInput,
-        selectedPercentileItem,
-        setSelectedPercentileItem,
-        meanChecked,
-        setMeanChecked,
-        medianChecked,
-        setMedianChecked,
-        modeChecked,
-        setModeChecked,
-        sumChecked,
-        setSumChecked,
-        stdDevChecked,
-        setStdDevChecked,
-        varianceChecked,
-        setVarianceChecked,
-        rangeChecked,
-        setRangeChecked,
-        minChecked,
-        setMinChecked,
-        maxChecked,
-        setMaxChecked,
-        seMeanChecked,
-        setSeMeanChecked,
-        skewnessChecked,
-        setSkewnessChecked,
-        kurtosisChecked,
-        setKurtosisChecked,
-        getCurrentStatisticsOptions,
-        resetStatisticsSettings
-    } = useStatisticsSettings();
-
-    const {
-        showCharts,
-        setShowCharts,
-        chartType,
-        setChartType,
-        chartValues,
-        setChartValues,
-        showNormalCurve,
-        setShowNormalCurve,
-        getCurrentChartOptions,
-        resetChartsSettings
-    } = useChartsSettings();
-
-    // Build the analysis parameters
-    const analysisParams: FrequenciesAnalysisParams = {
+        isLoading,
+        errorMsg,
+        runAnalysis,
+        cancelAnalysis
+    } = useFrequenciesAnalysis({
         selectedVariables,
         showFrequencyTables,
-        showStatistics,
-        statisticsOptions: getCurrentStatisticsOptions(),
-        showCharts,
-        chartOptions: getCurrentChartOptions(),
+        showStatistics: statisticsSettings.showStatistics,
+        statisticsOptions: statisticsSettings.getCurrentStatisticsOptions(),
+        showCharts: chartsSettings.showCharts,
+        chartOptions: chartsSettings.getCurrentChartOptions(),
         onClose
-    };
+    });
 
-    const { 
-        isLoading, 
-        errorMsg, 
-        runAnalysis, 
-        cancelAnalysis 
-    } = useFrequenciesAnalysis(analysisParams);
+    const handleTabChange = useCallback((value: string) => {
+        setActiveTab(value);
+    }, []);
 
     const handleReset = useCallback(() => {
         resetVariableSelection();
-        resetStatisticsSettings();
-        resetChartsSettings();
+        statisticsSettings.resetStatisticsSettings();
+        chartsSettings.resetChartsSettings();
         setShowFrequencyTables(true);
-    }, [resetVariableSelection, resetStatisticsSettings, resetChartsSettings, setShowFrequencyTables]);
+        cancelAnalysis();
+    }, [
+        resetVariableSelection,
+        statisticsSettings.resetStatisticsSettings,
+        chartsSettings.resetChartsSettings,
+        setShowFrequencyTables,
+        cancelAnalysis
+    ]);
+
+    useEffect(() => {
+        return () => {
+            cancelAnalysis();
+        };
+    }, [cancelAnalysis]);
 
     return (
-        <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
-            </DialogHeader>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+        <>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-grow flex flex-col overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList className="bg-muted rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="charts"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Charts
-                        </TabsTrigger>
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger value="charts">Charts</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -184,86 +126,82 @@ const Frequencies: FC<FrequenciesModalProps> = ({ onClose }) => {
 
                 <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
                     <StatisticsTab
-                        showStatistics={showStatistics}
-                        setShowStatistics={setShowStatistics}
-                        quartilesChecked={quartilesChecked}
-                        setQuartilesChecked={setQuartilesChecked}
-                        cutPointsChecked={cutPointsChecked}
-                        setCutPointsChecked={setCutPointsChecked}
-                        cutPointsValue={cutPointsValue}
-                        setCutPointsValue={setCutPointsValue}
-                        enablePercentiles={enablePercentiles}
-                        setEnablePercentiles={setEnablePercentiles}
-                        percentileValues={percentileValues}
-                        setPercentileValues={setPercentileValues}
-                        currentPercentileInput={currentPercentileInput}
-                        setCurrentPercentileInput={setCurrentPercentileInput}
-                        selectedPercentileItem={selectedPercentileItem}
-                        setSelectedPercentileItem={setSelectedPercentileItem}
-                        meanChecked={meanChecked}
-                        setMeanChecked={setMeanChecked}
-                        medianChecked={medianChecked}
-                        setMedianChecked={setMedianChecked}
-                        modeChecked={modeChecked}
-                        setModeChecked={setModeChecked}
-                        sumChecked={sumChecked}
-                        setSumChecked={setSumChecked}
-                        stdDevChecked={stdDevChecked}
-                        setStdDevChecked={setStdDevChecked}
-                        varianceChecked={varianceChecked}
-                        setVarianceChecked={setVarianceChecked}
-                        rangeChecked={rangeChecked}
-                        setRangeChecked={setRangeChecked}
-                        minChecked={minChecked}
-                        setMinChecked={setMinChecked}
-                        maxChecked={maxChecked}
-                        setMaxChecked={setMaxChecked}
-                        seMeanChecked={seMeanChecked}
-                        setSeMeanChecked={setSeMeanChecked}
-                        skewnessChecked={skewnessChecked}
-                        setSkewnessChecked={setSkewnessChecked}
-                        kurtosisChecked={kurtosisChecked}
-                        setKurtosisChecked={setKurtosisChecked}
+                        showStatistics={statisticsSettings.showStatistics}
+                        setShowStatistics={statisticsSettings.setShowStatistics}
+                        quartilesChecked={statisticsSettings.quartilesChecked}
+                        setQuartilesChecked={statisticsSettings.setQuartilesChecked}
+                        cutPointsChecked={statisticsSettings.cutPointsChecked}
+                        setCutPointsChecked={statisticsSettings.setCutPointsChecked}
+                        cutPointsValue={statisticsSettings.cutPointsValue}
+                        setCutPointsValue={statisticsSettings.setCutPointsValue}
+                        enablePercentiles={statisticsSettings.enablePercentiles}
+                        setEnablePercentiles={statisticsSettings.setEnablePercentiles}
+                        percentileValues={statisticsSettings.percentileValues}
+                        setPercentileValues={statisticsSettings.setPercentileValues}
+                        currentPercentileInput={statisticsSettings.currentPercentileInput}
+                        setCurrentPercentileInput={statisticsSettings.setCurrentPercentileInput}
+                        selectedPercentileItem={statisticsSettings.selectedPercentileItem}
+                        setSelectedPercentileItem={statisticsSettings.setSelectedPercentileItem}
+                        meanChecked={statisticsSettings.meanChecked}
+                        setMeanChecked={statisticsSettings.setMeanChecked}
+                        medianChecked={statisticsSettings.medianChecked}
+                        setMedianChecked={statisticsSettings.setMedianChecked}
+                        modeChecked={statisticsSettings.modeChecked}
+                        setModeChecked={statisticsSettings.setModeChecked}
+                        sumChecked={statisticsSettings.sumChecked}
+                        setSumChecked={statisticsSettings.setSumChecked}
+                        stdDevChecked={statisticsSettings.stdDevChecked}
+                        setStdDevChecked={statisticsSettings.setStdDevChecked}
+                        varianceChecked={statisticsSettings.varianceChecked}
+                        setVarianceChecked={statisticsSettings.setVarianceChecked}
+                        rangeChecked={statisticsSettings.rangeChecked}
+                        setRangeChecked={statisticsSettings.setRangeChecked}
+                        minChecked={statisticsSettings.minChecked}
+                        setMinChecked={statisticsSettings.setMinChecked}
+                        maxChecked={statisticsSettings.maxChecked}
+                        setMaxChecked={statisticsSettings.setMaxChecked}
+                        seMeanChecked={statisticsSettings.seMeanChecked}
+                        setSeMeanChecked={statisticsSettings.setSeMeanChecked}
+                        skewnessChecked={statisticsSettings.skewnessChecked}
+                        setSkewnessChecked={statisticsSettings.setSkewnessChecked}
+                        kurtosisChecked={statisticsSettings.kurtosisChecked}
+                        setKurtosisChecked={statisticsSettings.setKurtosisChecked}
                     />
                 </TabsContent>
 
                 <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
-                    {activeTab === "charts" && (
-                        <ChartsTab
-                            showCharts={showCharts}
-                            setShowCharts={setShowCharts}
-                            chartType={chartType}
-                            setChartType={setChartType}
-                            chartValues={chartValues}
-                            setChartValues={setChartValues}
-                            showNormalCurve={showNormalCurve}
-                            setShowNormalCurve={setShowNormalCurve}
-                        />
-                    )}
+                    <ChartsTab
+                        showCharts={chartsSettings.showCharts}
+                        setShowCharts={chartsSettings.setShowCharts}
+                        chartType={chartsSettings.chartType}
+                        setChartType={chartsSettings.setChartType}
+                        chartValues={chartsSettings.chartValues}
+                        setChartValues={chartsSettings.setChartValues}
+                        showNormalCurve={chartsSettings.showNormalCurve}
+                        setShowNormalCurve={chartsSettings.setShowNormalCurve}
+                    />
                 </TabsContent>
             </Tabs>
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={runAnalysis}
-                        disabled={isLoading || selectedVariables.length === 0}
+                        disabled={isLoading}
                     >
-                        {isLoading ? "Calculating..." : "OK"}
+                        {isLoading ? "Processing..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4"
                         onClick={handleReset}
+                        disabled={isLoading}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4"
                         onClick={onClose}
                         disabled={isLoading}
                     >
@@ -271,15 +209,42 @@ const Frequencies: FC<FrequenciesModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4"
                         disabled={isLoading}
                     >
                         Help
                     </Button>
                 </div>
-            </DialogFooter>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const Frequencies: FC<FrequenciesModalProps> = ({ onClose, containerType = "dialog" }) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <FrequenciesContent onClose={onClose} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use DialogContent
+    return (
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <FrequenciesContent onClose={onClose} />
+            </div>
         </DialogContent>
     );
 };
 
 export default Frequencies;
+export { FrequenciesContent };

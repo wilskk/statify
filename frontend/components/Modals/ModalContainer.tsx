@@ -50,285 +50,198 @@ import {
     DimensionReductionModals,
     isDimensionReductionModal,
 } from "./Analyze/dimension-reduction/dimension-reduction-modals";
+import { ContainerType } from "@/types/ui";
 
-const ModalContainer: React.FC = () => {
+interface ModalContainerProps {
+    modalType?: ModalType; // Optional: if passed, this specific modal is rendered
+    props?: any;           // Optional: props for the specific modal
+    onClose?: () => void;  // Optional: specific close handler
+    containerType?: ContainerType;
+}
+
+const ModalContainer: React.FC<ModalContainerProps> = ({
+    modalType: specificModalType,
+    props: specificProps,
+    onClose: specificOnClose,
+    containerType = "dialog", // Default to dialog if not provided by parent
+}) => {
     const { modals, closeModal } = useModal();
 
-    if (modals.length === 0) return null;
+    // Determine which modal to render
+    // If specificModalType is provided, render that one (used by SidebarContainer)
+    // Otherwise, render the latest modal from the global store (used by DashboardLayout for mobile)
+    const currentGlobalModal = modals.length > 0 ? modals[modals.length - 1] : null;
+    
+    const modalToRender = specificModalType 
+        ? { type: specificModalType, props: specificProps }
+        : currentGlobalModal;
 
-    const currentModal = modals[modals.length - 1];
+    const effectiveOnClose = specificOnClose || closeModal;
 
-    if (isFileModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+    if (!modalToRender) return null;
+
+    // The actual rendering logic for a given modal
+    const renderSpecificModal = (type: ModalType, props: any, onCloseHandler: () => void, currentContainerType: ContainerType) => {
+        if (isFileModal(type)) {
+            return (
                 <FileModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isDataModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isDataModal(type)) {
+            return (
                 <DataModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isEditModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isEditModal(type)) {
+            return (
                 <EditModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isDescriptiveModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isDescriptiveModal(type)) {
+            return (
                 <DescriptiveModal
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
+                    containerType={currentContainerType}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isLegacyDialogsModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isLegacyDialogsModal(type)) {
+            return (
                 <LegacyDialogsModal
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isCompareMeansModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isCompareMeansModal(type)) {
+            return (
                 <CompareMeansModal
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isClassifyModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isClassifyModal(type)) {
+            return (
                 <ClassifyModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isDimensionReductionModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isDimensionReductionModal(type)) {
+            return (
                 <DimensionReductionModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
-
-    if (isGeneralLinearModelModal(currentModal.type)) {
-        return (
-            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+            );
+        }
+        if (isGeneralLinearModelModal(type)) {
+            return (
                 <GeneralLinearModelModals
-                    modalType={currentModal.type}
-                    onClose={closeModal}
-                    props={currentModal.props}
+                    modalType={type}
+                    onClose={onCloseHandler}
+                    props={props}
                 />
-            </Dialog>
-        );
-    }
+            );
+        }
 
-    const renderModal = () => {
-        switch (currentModal.type) {
+        switch (type) {
             case ModalType.ComputeVariable:
-                return (
-                    <ComputeVariableModal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ComputeVariableModal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.RecodeSameVariables:
-                return (
-                    <RecodeSameVariablesModal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <RecodeSameVariablesModal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalAutomaticLinearModeling:
-                return (
-                    <ModalAutomaticLinearModeling
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalAutomaticLinearModeling onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalLinear:
-                return <ModalLinear onClose={closeModal} {...currentModal.props} />;
+                return <ModalLinear onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.Statistics:
-                return <Statistics onClose={closeModal} {...currentModal.props} />;
+                return <Statistics onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.SaveLinear:
-                return <SaveLinear onClose={closeModal} {...currentModal.props} />;
+                return <SaveLinear onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.OptionsLinear:
-                return <OptionsLinear onClose={closeModal} {...currentModal.props} />;
+                return <OptionsLinear onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.PlotsLinear:
-                return <PlotsLinear onClose={closeModal} {...currentModal.props} />;
-                return (
-                    <ModalLinear onClose={closeModal} {...currentModal.props} />
-                );
+                return <PlotsLinear onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalCurveEstimation:
-                return (
-                    <ModalCurveEstimation
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalCurveEstimation onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalPartialLeastSquares:
-                return (
-                    <ModalPartialLeastSquares
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalPartialLeastSquares onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalBinaryLogistic:
-                return (
-                    <ModalBinaryLogistic
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalBinaryLogistic onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalMultinomialLogistic:
-                return (
-                    <ModalMultinomialLogistic
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalMultinomialLogistic onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalOrdinal:
-                return (
-                    <ModalOrdinal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalOrdinal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalProbit:
-                return (
-                    <ModalProbit onClose={closeModal} {...currentModal.props} />
-                );
+                return <ModalProbit onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalNonlinear:
-                return (
-                    <ModalNonlinear
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalNonlinear onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalWeightEstimation:
-                return (
-                    <ModalWeightEstimation
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalWeightEstimation onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalTwoStageLeastSquares:
-                return (
-                    <ModalTwoStageLeastSquares
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalTwoStageLeastSquares onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalQuantiles:
-                return (
-                    <ModalQuantiles
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ModalQuantiles onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ModalOptimalScaling:
-                return (
-                    <ModalOptimalScaling
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
-
-            // case ModalType.KRelatedSamplesTest:
-            //     return (
-            //         <KRelatedSamplesTestModal
-            //             onClose={closeModal}
-            //             {...currentModal.props}
-            //         />
-
-            //     );
-
+                return <ModalOptimalScaling onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.ChartBuilderModal:
-                return (
-                    <ChartBuilderModal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
+                return <ChartBuilderModal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.SimpleBarModal:
-                return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
-            // Time Series
+                return <SimpleBarModal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.Smoothing:
-                return <SmoothingModal onClose={closeModal} {...currentModal.props} />;
+                return <SmoothingModal onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.Decomposition:
-                return (
-                <DecompositionModal onClose={closeModal} {...currentModal.props} />
-                );
+                return <DecompositionModal  onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.Autocorrelation:
-                return (
-                <AutocorrelationModal onClose={closeModal} {...currentModal.props} />
-                );
+                return <AutocorrelationModal  onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.UnitRootTest:
-                return (
-                    <UnitRootTestModal onClose={closeModal} {...currentModal.props} />
-                );
+                return <UnitRootTestModal  onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             case ModalType.BoxJenkinsModel:
-                return (
-                <BoxJenkinsModelModal onClose={closeModal} {...currentModal.props} />
-                );
-                return (
-                    <SimpleBarModal
-                        onClose={closeModal}
-                        {...currentModal.props}
-                    />
-                );
-
+                return <BoxJenkinsModelModal  onClose={onCloseHandler} containerType={currentContainerType} {...props} />;
             default:
+                // Exhaustive check for ModalType, though not strictly necessary with TypeScript
+                // const _exhaustiveCheck: never = type;
                 return null;
         }
     };
 
+    const modalContent = renderSpecificModal(modalToRender.type, modalToRender.props, effectiveOnClose, containerType);
+
+    if (!modalContent) return null;
+
+    // If this ModalContainer instance is for a sidebar, or if it's rendering a modal
+    // that handles its own dialog structure (because its group component was removed earlier),
+    // return content directly.
+    // The main distinction for Dialog wrapping is now primarily for the mobile case in DashboardLayout.
+    if (containerType === "sidebar") {
+        return modalContent;
+    }
+
+    // For dialog containerType, wrap in Dialog. 
+    // This is mainly used by DashboardLayout for mobile view.
     return (
-        <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
-            {renderModal()}
+        <Dialog open={true} onOpenChange={(open) => !open && effectiveOnClose()}>
+            {modalContent}
         </Dialog>
     );
 };

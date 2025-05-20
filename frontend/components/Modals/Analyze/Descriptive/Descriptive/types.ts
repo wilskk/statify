@@ -1,5 +1,6 @@
 import type { Variable, VariableData } from '@/types/Variable';
 import type { Dispatch, SetStateAction } from 'react';
+import { ContainerType } from '@/types/ui';
 
 // ---------------------------------
 // Statistics Settings Types
@@ -24,7 +25,7 @@ export type DisplayOrderType = 'variableList' | 'alphabetic' | 'ascendingMeans' 
 // Variable Selection Types
 // ---------------------------------
 export interface HighlightedVariableInfo {
-  columnIndex: number;
+  tempId: string;
   source: 'available' | 'selected';
 }
 
@@ -164,6 +165,7 @@ export interface DescriptivesAnalysisProps {
   saveStandardized: boolean;
   displayOrder?: DisplayOrderType;
   onClose: () => void;
+  containerType?: ContainerType;
 }
 
 export interface DescriptivesAnalysisResult {

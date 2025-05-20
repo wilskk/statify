@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import { variableService } from "@/services/data";
-import { Variable, ValueLabel } from "@/types/Variable";
+import { Variable, ValueLabel, VariableType } from "@/types/Variable";
 import { v4 as uuidv4 } from 'uuid';
 
 export type VariableStoreError = {
@@ -61,6 +61,24 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
         columnIndex: index, name: nameResult.processedName || baseName, type: "NUMERIC", width: 8, decimals: 2,
         label: "", values: [], missing: null, columns: 64, align: "right", measure: "unknown", role: "input"
     };
+};
+
+// Helper function to validate a variable object
+const isValidVariable = (variable: any): variable is Variable => {
+    return variable &&
+           typeof variable.columnIndex === 'number' &&
+           typeof variable.name === 'string' &&
+           variable.name !== "" &&
+           typeof variable.type === 'string' &&
+           variable.type !== "" &&
+           typeof variable.width === 'number' &&
+           typeof variable.decimals === 'number' &&
+           Array.isArray(variable.values) &&
+           (variable.missing === null || typeof variable.missing === 'object') &&
+           typeof variable.columns === 'number' &&
+           typeof variable.align === 'string' &&
+           typeof variable.measure === 'string' &&
+           typeof variable.role === 'string';
 };
 
 // Helper function to omit tempId
@@ -134,7 +152,10 @@ export const useVariableStore = create<VariableStoreState>()(
 
             setVariables: (variables) => {
                 set((draft) => {
-                    draft.variables = variables;
+                    draft.variables = variables
+                        .filter(isValidVariable) // Filter out invalid variables
+                        .map(v => ({ ...v, tempId: v.tempId || uuidv4() })) // Ensure tempId
+                        .sort((a, b) => a.columnIndex - b.columnIndex); // Sort by columnIndex
                     draft.lastUpdated = new Date();
                 });
             },
@@ -181,10 +202,13 @@ export const useVariableStore = create<VariableStoreState>()(
                         
                         set((draft) => {
                             // Add tempId to variables from service if not present
-                            draft.variables = updatedVariables.map(v => ({
-                                ...v,
-                                tempId: v.tempId || uuidv4()
-                            })).sort((a, b) => a.columnIndex - b.columnIndex);
+                            draft.variables = updatedVariables
+                                .filter(isValidVariable) // Sanitize
+                                .map(v => ({
+                                    ...v,
+                                    tempId: v.tempId || uuidv4()
+                                }))
+                                .sort((a, b) => a.columnIndex - b.columnIndex);
                             draft.lastUpdated = new Date();
                         });
                     }
@@ -452,30 +476,21 @@ export const useVariableStore = create<VariableStoreState>()(
             loadVariables: async () => {
                 set((draft) => { draft.isLoading = true; draft.error = null; });
                 try {
-                    // Load variables from service
-                    const variables = await variableService.getAllVariables();
-                    
-                    // Add tempId to each variable for state management
-                    const processedVariables = variables.map(v => ({
-                        ...v,
-                        tempId: v.tempId || uuidv4()
-                    }));
-                    
-                    const sortedVariables = processedVariables.sort((a, b) => a.columnIndex - b.columnIndex);
-                    
+                    const variablesFromService = await variableService.getAllVariables();
                     set((draft) => {
-                        draft.variables = sortedVariables;
-                        draft.lastUpdated = new Date();
+                        draft.variables = variablesFromService
+                            .filter(isValidVariable) // Sanitize
+                            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+                            .sort((a, b) => a.columnIndex - b.columnIndex);
                         draft.isLoading = false;
+                        draft.lastUpdated = new Date();
+                        draft.error = null; // Clear error on successful load
                     });
-                    
-                    // Ensure all column indices are covered
-                    await get().ensureCompleteVariables();
                 } catch (error: any) {
                     console.error("Error loading variables:", error);
                     set((draft) => {
-                        draft.error = { message: error.message || "Error loading variables", source: "loadVariables", originalError: error };
                         draft.isLoading = false;
+                        draft.error = { message: error.message || "Failed to load variables", source: "loadVariables", originalError: error };
                     });
                 }
             },
@@ -541,37 +556,32 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
-            overwriteVariables: async (variables) => {
+            overwriteVariables: async (newVariables) => {
+                set((draft) => { draft.isLoading = true; draft.error = null; });
                 try {
-                    // Normalize variables for import
-                    const normalizedVariables = variables
-                        .sort((a, b) => (a.columnIndex ?? Infinity) - (b.columnIndex ?? Infinity))
-                        .map((variable, index) => {
-                            const constrainedChanges = enforceMeasureConstraint(variable, null);
-                            return {
-                                ...variable,
-                                ...constrainedChanges,
-                                columnIndex: index,
-                                tempId: variable.tempId ?? uuidv4()
-                            };
-                        });
+                    // Filter incoming newVariables to ensure they are valid before sending to service
+                    const validNewVariables = newVariables.filter(isValidVariable);
+                    // It's important that what's sent to the service is as clean as possible,
+                    // though the service should also have its own validation.
+                    // Omit tempId as it's a frontend-only concept for this store's logic.
+                    await variableService.importVariables(validNewVariables.map(omitTempId));
                     
-                    // Import variables using service
-                    await variableService.importVariables(normalizedVariables);
-                    
-                    // Refresh from service
-                    const updatedVariables = await variableService.getAllVariables();
+                    const variablesFromService = await variableService.getAllVariables();
                     set((draft) => {
-                        draft.variables = updatedVariables.map(v => ({
-                            ...v,
-                            tempId: v.tempId || uuidv4()
-                        }));
+                        draft.variables = variablesFromService
+                            .filter(isValidVariable) // Sanitize
+                            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+                            .sort((a, b) => a.columnIndex - b.columnIndex);
+                        draft.isLoading = false;
                         draft.lastUpdated = new Date();
-                        draft.error = null;
+                        draft.error = null; // Clear error on successful overwrite
                     });
                 } catch (error: any) {
                     console.error("Error overwriting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error overwriting variables", source: "overwriteVariables", originalError: error }; });
+                    set((draft) => {
+                        draft.isLoading = false;
+                        draft.error = { message: error.message || "Failed to overwrite variables", source: "overwriteVariables", originalError: error };
+                    });
                 }
             },
 
