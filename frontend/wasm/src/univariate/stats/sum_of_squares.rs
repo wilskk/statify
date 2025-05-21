@@ -1,1051 +1,668 @@
 use std::collections::HashMap;
 
-use crate::univariate::models::{ config::SumOfSquaresMethod, data::AnalysisData };
+use nalgebra::{ DMatrix, DVector };
+
+use crate::univariate::models::{
+    config::{ SumOfSquaresMethod, UnivariateConfig },
+    data::{ AnalysisData, DataValue },
+};
+// use crate::univariate::stats::common::generate_interaction_terms; // No longer needed from common
 
 use super::core::*;
+use super::matrix_utils::{ create_l_matrix, to_dmatrix, to_dvector };
+
+use crate::univariate::stats::common; // For get_all_dependent_values, get_factor_levels, get_covariate_values, check_for_missing_cells etc.
+// use crate::univariate::models::config::UnivariateConfig; // Already imported
+// use super::factor_utils::generate_level_combinations; // Already imported via factor_utils below
+// use super::design_matrix::{ // These will be removed/moved
+//     create_main_effect_design_matrix,
+//     create_interaction_design_matrix,
+//     create_contrast_coded_main_effect_matrix,
+//     create_contrast_coded_interaction_matrix,
+//     create_type_iv_main_effect_matrix,
+//     create_type_iv_interaction_matrix,
+// };
+// use super::design_matrix; // This will be removed
+use super::factor_utils; // Will provide design matrix functions and term generation
 
 /// Calculate sum of squares for a factor based on the method
+/*
 pub fn calculate_factor_ss(
     data: &AnalysisData,
+    config: &UnivariateConfig,
     factor: &str,
     dep_var_name: &str,
     grand_mean: f64,
     ss_method: SumOfSquaresMethod,
     residual_values: Option<&[f64]>,
-    residual_mean: Option<f64>
+    _residual_mean: Option<f64> 
 ) -> Result<f64, String> {
     match ss_method {
         SumOfSquaresMethod::TypeI =>
-            calculate_type_i_factor_ss(data, factor, dep_var_name, residual_values, residual_mean),
-        SumOfSquaresMethod::TypeII =>
-            calculate_type_ii_factor_ss(data, factor, dep_var_name, grand_mean),
-        SumOfSquaresMethod::TypeIII =>
-            calculate_type_iii_factor_ss(data, factor, dep_var_name, grand_mean),
+            calculate_type_i_ss(
+                data,
+                config,
+                factor,
+                residual_values.ok_or_else(|| "Residual values required for Type I SS".to_string())?                
+            ),
+        SumOfSquaresMethod::TypeII => {
+            calculate_type_ii_ss(data, config, factor, dep_var_name)
+        }
+        SumOfSquaresMethod::TypeIII => {
+            calculate_type_iii_ss(data, config, factor, dep_var_name, grand_mean)
+        }
         SumOfSquaresMethod::TypeIV => {
-            // Check if there are missing cells in the design
             let has_missing_cells = check_for_missing_cells(data, factor)?;
-
             if has_missing_cells {
-                // If missing cells, use Type IV calculation
-                calculate_type_iv_factor_ss(data, factor, dep_var_name, grand_mean)
+                calculate_type_iv_ss(data, config, factor, dep_var_name, grand_mean)
             } else {
-                // If no missing cells, Type IV is equivalent to Type III
-                calculate_type_iii_factor_ss(data, factor, dep_var_name, grand_mean)
+                calculate_type_iii_ss(data, config, factor, dep_var_name, grand_mean)
             }
         }
     }
 }
+*/
+// FUNCTION calculate_factor_ss REMOVED - Replaced by direct calls to calculate_type_i_ss etc.
 
-/// Calculate Type I (sequential) sum of squares for a factor
-pub fn calculate_type_i_factor_ss(
-    data: &AnalysisData,
-    factor: &str,
-    dep_var_name: &str,
-    residual_values: Option<&[f64]>,
-    residual_mean: Option<f64>
+// Helper for Type I SS calculation given term matrix and residuals
+fn calculate_type_i_ss_for_term_matrix(
+    x_term_nalgebra: &DMatrix<f64>,
+    residuals_nalgebra: &DVector<f64>,
+    term_name: &str // For error messages
 ) -> Result<f64, String> {
-    // Type I: Sequential SS - each term adjusted for terms that precede it
-    if let (Some(residuals), Some(res_mean)) = (residual_values, residual_mean) {
-        let factor_levels = get_factor_levels(data, factor)?;
+    if x_term_nalgebra.nrows() != residuals_nalgebra.len() {
+        return Err(
+            format!(
+                "Term '{}' design matrix ({} rows) and residuals ({} elements) mismatch for Type I SS.",
+                term_name,
+                x_term_nalgebra.nrows(),
+                residuals_nalgebra.len()
+            )
+        );
+    }
 
-        // Create design matrix for this factor
-        let x_factor = create_main_effect_design_matrix(data, factor)?;
+    let xt = x_term_nalgebra.transpose();
+    let xtx = &xt * x_term_nalgebra;
 
-        // Calculate X'X and X'y for the factor
-        let x_transpose = matrix_transpose(&x_factor);
-        let xtx = matrix_multiply(&x_transpose, &x_factor)?;
-        let xty = matrix_vec_multiply(&x_transpose, residuals)?;
+    let xtx_inv = xtx
+        .try_inverse()
+        .ok_or_else(|| { format!("X'X inversion failed for term '{}' in Type I SS.", term_name) })?;
 
-        // Calculate (X'X)^-1
-        let xtx_inv = match matrix_inverse(&xtx) {
-            Ok(inv) => inv,
-            Err(_) => {
-                return Err(format!("Could not invert matrix for factor {}", factor));
-            }
-        };
+    let b_hat = &xtx_inv * (&xt * residuals_nalgebra);
+    let ss_term = b_hat.dot(&(&xt * residuals_nalgebra));
 
-        // Calculate coefficients: b = (X'X)^-1 X'y
-        let b = matrix_vec_multiply(&xtx_inv, &xty)?;
+    Ok(ss_term.max(0.0))
+}
 
-        // Calculate Type I SS = b'X'y
-        let ss_factor = b
-            .iter()
-            .zip(xty.iter())
-            .map(|(&b_i, &y_i)| b_i * y_i)
-            .sum::<f64>();
+/// New Public API for Type I SS
+pub fn calculate_type_i_ss(
+    data: &AnalysisData,
+    _config: &UnivariateConfig, // config might not be needed if residuals are directly provided
+    term_of_interest: &str,
+    residuals: &[f64]
+) -> Result<f64, String> {
+    if residuals.is_empty() {
+        return Ok(0.0);
+    }
 
-        Ok(ss_factor)
+    let x_term_vecs = if term_of_interest.contains('*') {
+        factor_utils::create_interaction_design_matrix(data, term_of_interest)?
     } else {
-        Err("Type I SS requires residual values and mean".to_string())
+        factor_utils::create_main_effect_design_matrix(data, term_of_interest)?
+    };
+
+    if x_term_vecs.is_empty() || x_term_vecs.get(0).map_or(true, |row| row.is_empty()) {
+        return Ok(0.0); // Term results in no design columns
+    }
+    let x_term_nalgebra = to_dmatrix(&x_term_vecs)?;
+    let residuals_nalgebra = to_dvector(residuals);
+
+    calculate_type_i_ss_for_term_matrix(&x_term_nalgebra, &residuals_nalgebra, term_of_interest)
+}
+
+/// Helper for Type II SS calculation given Y, X_reduced, and X_term
+fn calculate_type_ii_ss_from_components(
+    y_nalgebra: &DVector<f64>,
+    x_reduced_nalgebra: &DMatrix<f64>,
+    x_term_nalgebra: &DMatrix<f64>,
+    term_name: &str, // For error messages
+    n_obs: usize
+) -> Result<f64, String> {
+    if x_term_nalgebra.nrows() != n_obs || x_reduced_nalgebra.nrows() != n_obs {
+        return Err(
+            format!(
+                "Matrix row mismatch for Type II SS of term '{}': Y({}), X_reduced({}), X_term({}). Expected {}.
+            ",
+                term_name,
+                y_nalgebra.len(),
+                x_reduced_nalgebra.nrows(),
+                x_term_nalgebra.nrows(),
+                n_obs
+            )
+        );
+    }
+
+    let x_reduced_t = x_reduced_nalgebra.transpose();
+    let x_reduced_t_x_reduced = &x_reduced_t * x_reduced_nalgebra;
+
+    let p_reduced = if x_reduced_nalgebra.ncols() == 0 {
+        DMatrix::zeros(n_obs, n_obs)
+    } else {
+        let x_reduced_t_x_reduced_inv = x_reduced_t_x_reduced
+            .try_inverse()
+            .ok_or_else(||
+                format!("(X_reduced'X_reduced) inversion failed for Type II SS of term '{}'", term_name)
+            )?;
+        x_reduced_nalgebra * x_reduced_t_x_reduced_inv * &x_reduced_t
+    };
+    let identity_n = DMatrix::<f64>::identity(n_obs, n_obs);
+    let m_reduced = identity_n - p_reduced;
+
+    let m_reduced_x_term = &m_reduced * x_term_nalgebra;
+    let m_reduced_x_term_t = m_reduced_x_term.transpose();
+
+    let term_in_inverse = &m_reduced_x_term_t * &m_reduced_x_term;
+    if term_in_inverse.iter().all(|&x| x.abs() < 1e-9) || term_in_inverse.ncols() == 0 {
+        // Check if matrix is effectively zero or empty
+        return Ok(0.0); // If X_term projected onto orthogonal space of X_reduced is null, SS is 0
+    }
+
+    let term_in_inverse_inv = term_in_inverse
+        .try_inverse()
+        .ok_or_else(|| {
+            format!("(X_term' M_reduced X_term) inversion failed for Type II SS of term '{}'", term_name)
+        })?;
+
+    let l_beta_equivalent = &m_reduced_x_term_t * (&m_reduced * y_nalgebra);
+    let ss_matrix = l_beta_equivalent.transpose() * term_in_inverse_inv * l_beta_equivalent;
+
+    if ss_matrix.nrows() == 1 && ss_matrix.ncols() == 1 {
+        Ok(ss_matrix[(0, 0)].max(0.0))
+    } else {
+        Err(
+            format!("Type II SS calculation for term '{}' resulted in a non-scalar matrix", term_name)
+        )
     }
 }
 
-/// Calculate Type II sum of squares for a factor
-pub fn calculate_type_ii_factor_ss(
+/// New Public API for Type II SS
+pub fn calculate_type_ii_ss(
     data: &AnalysisData,
-    factor: &str,
-    dep_var_name: &str,
-    grand_mean: f64
+    config: &UnivariateConfig,
+    term_of_interest: &str,
+    dep_var_name: &str
 ) -> Result<f64, String> {
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
-            }
-        }
+    let y_vec = common::get_all_dependent_values(data, dep_var_name)?;
+    if y_vec.is_empty() {
+        return Ok(0.0);
     }
+    let y_nalgebra = to_dvector(&y_vec);
+    let n_obs = y_nalgebra.len();
 
-    // Get all factors in the model
-    let mut all_factors = Vec::new();
-    if let Some(fix_factor_defs) = data.fix_factor_data_defs.get(0) {
-        for factor_def in fix_factor_defs {
-            if factor_def.name != factor {
-                all_factors.push(factor_def.name.clone());
-            }
-        }
-    }
+    let all_model_terms = factor_utils::generate_model_design_terms(data, config)?;
 
-    // Create design matrix X_1 for factors that don't contain the factor of interest
-    let mut x_1 = Vec::new();
-    x_1.push(vec![1.0; all_values.len()]); // Intercept column
-
-    for other_factor in &all_factors {
-        let x_other = create_main_effect_design_matrix(data, other_factor)?;
-        for col in 0..x_other[0].len() {
-            let mut x_col = Vec::new();
-            for row in 0..x_other.len() {
-                x_col.push(x_other[row][col]);
-            }
-            x_1.push(x_col);
-        }
-    }
-
-    // Transpose X_1 to make it [rows x columns]
-    let x_1 = matrix_transpose(&x_1);
-
-    // Create design matrix X_2 for the factor of interest
-    let x_2 = create_main_effect_design_matrix(data, factor)?;
-
-    // Calculate M_1 = I - X_1(X_1'X_1)^-1X_1'
-    // First compute X_1'X_1
-    let x_1_transpose = matrix_transpose(&x_1);
-    let x_1t_x_1 = matrix_multiply(&x_1_transpose, &x_1)?;
-
-    // Compute (X_1'X_1)^-1
-    let x_1t_x_1_inv = match matrix_inverse(&x_1t_x_1) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_factor_ss(data, factor, dep_var_name, grand_mean);
-        }
+    let x_term_vecs = if term_of_interest.contains('*') {
+        factor_utils::create_interaction_design_matrix(data, term_of_interest)?
+    } else {
+        factor_utils::create_main_effect_design_matrix(data, term_of_interest)?
     };
 
-    // Compute X_1(X_1'X_1)^-1X_1'
-    let x_1_x_1t_x_1_inv = matrix_multiply(&x_1, &x_1t_x_1_inv)?;
-    let projection = matrix_multiply(&x_1_x_1t_x_1_inv, &x_1_transpose)?;
-
-    // M_1 = I - P
-    let n = all_values.len();
-    let mut m_1 = vec![vec![0.0; n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            m_1[i][j] = if i == j { 1.0 } else { 0.0 };
-            m_1[i][j] -= projection[i][j];
-        }
+    if x_term_vecs.is_empty() || x_term_vecs.get(0).map_or(true, |row| row.is_empty()) {
+        return Ok(0.0); // Term has no columns
     }
+    let x_term_nalgebra = to_dmatrix(&x_term_vecs)?;
 
-    // Calculate X_2'M_1X_2
-    let x_2_transpose = matrix_transpose(&x_2);
-    let x_2t_m_1 = matrix_multiply(&x_2_transpose, &m_1)?;
-    let x_2t_m_1_x_2 = matrix_multiply(&x_2t_m_1, &x_2)?;
+    // Construct X_reduced based on Type II rules for term_of_interest
+    let mut x_reduced_cols: Vec<DVector<f64>> = vec![DVector::from_element(n_obs, 1.0)]; // Intercept
 
-    // Calculate X_2'M_1y
-    let x_2t_m_1_y = matrix_vec_multiply(&x_2t_m_1, &all_values)?;
+    let factors_in_term_of_interest = factor_utils::parse_interaction_term(term_of_interest);
 
-    // Calculate (X_2'M_1X_2)^-1
-    let c = match matrix_inverse(&x_2t_m_1_x_2) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_factor_ss(data, factor, dep_var_name, grand_mean);
+    for other_term_name in &all_model_terms {
+        if other_term_name == term_of_interest || other_term_name == "Intercept" {
+            continue;
         }
-    };
 
-    // Calculate b = (X_2'M_1X_2)^-1 X_2'M_1y
-    let b = matrix_vec_multiply(&c, &x_2t_m_1_y)?;
-
-    // Calculate Type II SS = b'X_2'M_1y
-    let ss = b
-        .iter()
-        .zip(x_2t_m_1_y.iter())
-        .map(|(&b_i, &y_i)| b_i * y_i)
-        .sum::<f64>();
-
-    Ok(ss)
-}
-
-/// Calculate Type III/IV sum of squares for a factor
-pub fn calculate_type_iii_factor_ss(
-    data: &AnalysisData,
-    factor: &str,
-    dep_var_name: &str,
-    grand_mean: f64
-) -> Result<f64, String> {
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
+        let include_this_other_term_in_x_reduced = if term_of_interest.contains('*') {
+            // Term of interest is an INTERACTION (e.g., A*B)
+            // X_reduced includes: main effects (A, B, C), other interactions not containing A*B (e.g. A*C, C*D), covariates.
+            // Exclude: A*B itself, and higher-order interactions containing A*B (e.g. A*B*C).
+            let other_term_factors = factor_utils::parse_interaction_term(other_term_name);
+            if other_term_name.contains('*') {
+                // other_term is an interaction
+                // Exclude if other_term is a higher-order interaction containing term_of_interest
+                let is_higher_order_and_contains_current =
+                    factors_in_term_of_interest.iter().all(|f| other_term_factors.contains(f)) &&
+                    other_term_factors.len() > factors_in_term_of_interest.len();
+                !is_higher_order_and_contains_current
+            } else {
+                // other_term is a main effect or covariate
+                true
             }
-        }
-    }
-
-    // Get all factors in the model
-    let mut all_factors = Vec::new();
-    if let Some(fix_factor_defs) = data.fix_factor_data_defs.get(0) {
-        for factor_def in fix_factor_defs {
-            all_factors.push(factor_def.name.clone());
-        }
-    }
-
-    // Create the complete design matrix X with contrast coding
-    let mut x_full = Vec::new();
-    x_full.push(vec![1.0; all_values.len()]); // Intercept column
-
-    let mut factor_columns = HashMap::new();
-    let mut start_col = 1; // After intercept
-
-    // Add columns for all factors
-    for f in &all_factors {
-        let x_f = if f == factor {
-            create_contrast_coded_main_effect_matrix(data, f)?
         } else {
-            create_main_effect_design_matrix(data, f)?
+            // Term of interest is a MAIN EFFECT (e.g., A)
+            // X_reduced includes: other main effects (B, C), interactions of those other main effects (B*C), covariates.
+            // Exclude: A itself, and any interaction involving A (A*B, A*C).
+            if other_term_name.contains('*') {
+                // other_term is an interaction
+                !factor_utils
+                    ::parse_interaction_term(other_term_name)
+                    .contains(&term_of_interest.to_string())
+            } else {
+                // other_term is another main effect or covariate
+                true
+            }
         };
 
-        let num_cols = x_f[0].len();
-        factor_columns.insert(f.clone(), (start_col, start_col + num_cols - 1));
-        start_col += num_cols;
+        if include_this_other_term_in_x_reduced {
+            let design_vecs_for_other_term = if other_term_name.contains('*') {
+                factor_utils::create_interaction_design_matrix(data, other_term_name)?
+            } else if
+                config.main.covar.as_ref().map_or(false, |covs| covs.contains(other_term_name))
+            {
+                let vals = common::get_covariate_values(data, other_term_name)?;
+                let mut cov_matrix_rows = Vec::with_capacity(n_obs);
+                if vals.len() != n_obs && n_obs > 0 {
+                    return Err(
+                        format!("Covariate '{}' length mismatch for Type II X_reduced", other_term_name)
+                    );
+                }
+                for i in 0..n_obs {
+                    cov_matrix_rows.push(vec![vals.get(i).copied().unwrap_or(0.0)]);
+                }
+                cov_matrix_rows
+            } else {
+                factor_utils::create_main_effect_design_matrix(data, other_term_name)?
+            };
 
-        for col in 0..x_f[0].len() {
-            let mut x_col = Vec::new();
-            for row in 0..x_f.len() {
-                x_col.push(x_f[row][col]);
-            }
-            x_full.push(x_col);
-        }
-    }
-
-    // Transpose to make X [rows x columns]
-    let x = matrix_transpose(&x_full);
-
-    // Get columns for the factor of interest
-    let (start, end) = match factor_columns.get(factor) {
-        Some(&range) => range,
-        None => {
-            return Err(format!("Factor {} not found in the model", factor));
-        }
-    };
-
-    // Create the L matrix for the Type III test
-    let l = create_l_matrix(start..=end, x_full.len());
-
-    // Perform the hypothesis test
-    perform_hypothesis_test(&x, &all_values, &l, ||
-        calculate_raw_factor_ss(data, factor, dep_var_name, grand_mean)
-    )
-}
-
-/// Calculate Type IV sum of squares for a factor
-pub fn calculate_type_iv_factor_ss(
-    data: &AnalysisData,
-    factor: &str,
-    dep_var_name: &str,
-    grand_mean: f64
-) -> Result<f64, String> {
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
-            }
-        }
-    }
-
-    // Type IV is similar to Type III but handles missing cells differently
-    // Check for missing cells in the design
-    let has_missing_cells = check_for_missing_cells(data, factor)?;
-
-    if !has_missing_cells {
-        // If no missing cells, Type IV = Type III
-        return calculate_type_iii_factor_ss(data, factor, dep_var_name, grand_mean);
-    }
-
-    // Get all factors in the model
-    let mut all_factors = Vec::new();
-    if let Some(fix_factor_defs) = data.fix_factor_data_defs.get(0) {
-        for factor_def in fix_factor_defs {
-            all_factors.push(factor_def.name.clone());
-        }
-    }
-
-    // Create full design matrix
-    let mut x_full = Vec::new();
-    x_full.push(vec![1.0; all_values.len()]); // Intercept column
-
-    // Add columns for other factors (not including the current factor)
-    for other_factor in &all_factors {
-        if other_factor != factor {
-            add_factor_to_design_matrix(&mut x_full, data, other_factor)?;
-        }
-    }
-
-    // Add columns for the factor of interest with Type IV coding
-    let x_factor = create_type_iv_main_effect_matrix(data, factor)?;
-    for col_idx in 0..x_factor[0].len() {
-        let mut column = Vec::new();
-        for row in 0..x_factor.len() {
-            column.push(x_factor[row][col_idx]);
-        }
-        add_column_to_matrix(&mut x_full, &column);
-    }
-
-    // Transpose to make X [rows x columns]
-    let x = matrix_transpose(&x_full);
-
-    // Determine the columns for the factor of interest in the design matrix
-    let other_cols_count =
-        1 + // Intercept
-        all_factors
-            .iter()
-            .filter(|&f| f != factor)
-            .fold(0, |acc, f| {
-                acc + get_factor_levels(data, f).map_or(0, |levels| levels.len())
-            });
-
-    let factor_levels = get_factor_levels(data, factor)?;
-    let factor_cols_count = if factor_levels.len() > 1 { factor_levels.len() - 1 } else { 1 };
-    let factor_cols_range = other_cols_count..other_cols_count + factor_cols_count;
-
-    // Create L matrix for Type IV hypothesis
-    let l = create_l_matrix(factor_cols_range.start..=factor_cols_range.end - 1, x_full.len());
-
-    // Perform the hypothesis test
-    perform_hypothesis_test(&x, &all_values, &l, ||
-        calculate_raw_factor_ss(data, factor, dep_var_name, grand_mean)
-    )
-}
-
-/// Helper function to calculate raw SS for a factor without adjustments
-pub fn calculate_raw_factor_ss(
-    data: &AnalysisData,
-    factor: &str,
-    dep_var_name: &str,
-    grand_mean: f64
-) -> Result<f64, String> {
-    // Get the levels for this factor
-    let factor_levels = get_factor_levels(data, factor)?;
-
-    // Calculate the sum of squares for the factor
-    let mut ss = 0.0;
-
-    for level in &factor_levels {
-        // Get values for this factor level
-        let level_values = get_level_values(data, factor, level, dep_var_name)?;
-
-        if !level_values.is_empty() {
-            let level_mean = calculate_mean(&level_values);
-            ss += (level_values.len() as f64) * (level_mean - grand_mean).powi(2);
-        }
-    }
-
-    Ok(ss)
-}
-
-/// Helper function to add factor columns to a design matrix
-pub fn add_factor_to_design_matrix(
-    design_matrix: &mut Vec<Vec<f64>>,
-    data: &AnalysisData,
-    factor: &str
-) -> Result<(), String> {
-    let x_factor = create_main_effect_design_matrix(data, factor)?;
-    for col_idx in 0..x_factor[0].len() {
-        let mut column = Vec::new();
-        for row in 0..x_factor.len() {
-            column.push(x_factor[row][col_idx]);
-        }
-        add_column_to_matrix(design_matrix, &column);
-    }
-    Ok(())
-}
-
-/// Helper function to perform the Type III/IV hypothesis test
-pub fn perform_hypothesis_test(
-    design_matrix: &[Vec<f64>],
-    all_values: &[f64],
-    l_matrix: &[Vec<f64>],
-    fallback_fn: impl FnOnce() -> Result<f64, String>
-) -> Result<f64, String> {
-    // Calculate X'X and X'y
-    let x_transpose = matrix_transpose(design_matrix);
-    let xtx = matrix_multiply(&x_transpose, design_matrix)?;
-    let xty = matrix_vec_multiply(&x_transpose, all_values)?;
-
-    // Calculate (X'X)^-1
-    let xtx_inv = match matrix_inverse(&xtx) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return fallback_fn();
-        }
-    };
-
-    // Calculate β = (X'X)^-1 X'y
-    let beta = matrix_vec_multiply(&xtx_inv, &xty)?;
-
-    // Calculate L*β
-    let l_beta = calculate_l_beta(l_matrix, &beta);
-
-    // Calculate L * (X'X)^-1 * L'
-    let l_xtx_inv = matrix_multiply(l_matrix, &xtx_inv)?;
-    let l_xtx_inv_lt = matrix_multiply(&l_xtx_inv, &matrix_transpose(l_matrix))?;
-
-    // Calculate (L * (X'X)^-1 * L')^-1
-    let l_xtx_inv_lt_inv = match matrix_inverse(&l_xtx_inv_lt) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return fallback_fn();
-        }
-    };
-
-    // Calculate SS = (Lβ)' * (L(X'X)^-1L')^-1 * (Lβ)
-    let mut ss = 0.0;
-    for i in 0..l_beta.len() {
-        for j in 0..l_beta.len() {
-            ss += l_beta[i] * l_xtx_inv_lt_inv[i][j] * l_beta[j];
-        }
-    }
-
-    Ok(ss)
-}
-
-/// Calculate sum of squares for interaction effects with specified method
-pub fn calculate_interaction_ss(
-    data: &AnalysisData,
-    interaction_term: &str,
-    dep_var_name: &str,
-    grand_mean: f64,
-    ss_method: SumOfSquaresMethod,
-    factors: &[String],
-    residual_values: Option<&[f64]>,
-    residual_mean: Option<f64>
-) -> Result<f64, String> {
-    let interaction_factors = parse_interaction_term(interaction_term);
-
-    match ss_method {
-        SumOfSquaresMethod::TypeI =>
-            calculate_type_i_interaction_ss(
-                data,
-                &interaction_factors,
-                interaction_term,
-                dep_var_name,
-                grand_mean,
-                residual_values,
-                residual_mean
-            ),
-        SumOfSquaresMethod::TypeII =>
-            calculate_type_ii_interaction_ss(
-                data,
-                &interaction_factors,
-                interaction_term,
-                dep_var_name,
-                grand_mean,
-                factors
-            ),
-        SumOfSquaresMethod::TypeIII =>
-            calculate_type_iii_interaction_ss(
-                data,
-                &interaction_factors,
-                interaction_term,
-                dep_var_name,
-                grand_mean,
-                factors
-            ),
-        SumOfSquaresMethod::TypeIV => {
-            // For Type IV, check if there are missing cells in any of the interaction factors
-            let mut has_missing_cells = false;
-            for factor in &interaction_factors {
-                has_missing_cells |= check_for_missing_cells(data, factor)?;
-                if has_missing_cells {
-                    break;
+            if
+                !design_vecs_for_other_term.is_empty() &&
+                !design_vecs_for_other_term.get(0).map_or(true, |r| r.is_empty())
+            {
+                let dmatrix_for_other_term = to_dmatrix(&design_vecs_for_other_term)?;
+                if dmatrix_for_other_term.nrows() != n_obs && n_obs > 0 {
+                    return Err(
+                        format!(
+                            "X_reduced term '{}' (Type II) has {} rows, expected {}",
+                            other_term_name,
+                            dmatrix_for_other_term.nrows(),
+                            n_obs
+                        )
+                    );
+                }
+                for c_idx in 0..dmatrix_for_other_term.ncols() {
+                    x_reduced_cols.push(dmatrix_for_other_term.column(c_idx).into_owned());
                 }
             }
+        }
+    }
+    let x_reduced_nalgebra = DMatrix::from_columns(&x_reduced_cols);
 
-            if has_missing_cells {
-                // If there are missing cells, we need to use a special calculation
-                // that distributes weights based on available cells
-                // For simplicity, we'll fall back to raw calculation here
-                calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean)
+    calculate_type_ii_ss_from_components(
+        &y_nalgebra,
+        &x_reduced_nalgebra,
+        &x_term_nalgebra,
+        term_of_interest,
+        n_obs
+    )
+}
+
+/// Helper for Type III/IV SS: constructs full design matrix using contrast coding for specified terms
+fn build_full_contrast_coded_design_matrix_internal(
+    data: &AnalysisData,
+    config: &UnivariateConfig,
+    all_values_len: usize,
+    term_names: &[String], // All terms in the model (factors, interactions, covariates)
+    factor_of_interest: Option<&str>, // For Type III, the factor of interest gets contrast coded
+    is_type_iv: bool
+) -> Result<(DMatrix<f64>, HashMap<String, (usize, usize)>), String> {
+    let mut x_cols: Vec<DVector<f64>> = vec![DVector::from_element(all_values_len, 1.0)]; // Intercept
+    let mut term_col_ranges: HashMap<String, (usize, usize)> = HashMap::new();
+    let mut current_col_idx = 1; // Start after intercept
+
+    for term_name in term_names {
+        let term_matrix_vec = if term_name.contains('*') {
+            if is_type_iv && self::check_for_missing_cells_in_interaction(data, term_name)? {
+                factor_utils::create_type_iv_interaction_matrix(data, term_name)?
             } else {
-                // If no missing cells, Type IV is equivalent to Type III
-                calculate_type_iii_interaction_ss(
+                factor_utils::create_contrast_coded_interaction_matrix(data, term_name)?
+            }
+        } else if config.main.covar.as_ref().map_or(false, |covs| covs.contains(term_name)) {
+            // Covariate
+            let cov_values = common::get_covariate_values(data, term_name)?;
+            vec![cov_values] // Represent as a single column matrix (vec of vec)
+        } else {
+            // Main effect
+            if
+                is_type_iv &&
+                factor_of_interest == Some(term_name.as_str()) &&
+                common::check_for_missing_cells(data, term_name)?
+            {
+                factor_utils::create_type_iv_main_effect_matrix(data, term_name)?
+            } else {
+                factor_utils::create_contrast_coded_main_effect_matrix(data, term_name)?
+            }
+        };
+
+        if term_matrix_vec.is_empty() || term_matrix_vec[0].is_empty() {
+            continue;
+        }
+        let term_nalgebra_matrix = to_dmatrix(&term_matrix_vec)?;
+
+        let term_start_col = current_col_idx;
+        for i in 0..term_nalgebra_matrix.ncols() {
+            x_cols.push(term_nalgebra_matrix.column(i).into_owned());
+            current_col_idx += 1;
+        }
+        if term_nalgebra_matrix.ncols() > 0 {
+            // Only insert if columns were actually added
+            term_col_ranges.insert(term_name.clone(), (term_start_col, current_col_idx - 1));
+        }
+    }
+
+    if x_cols.len() == 1 && x_cols[0].len() != all_values_len && all_values_len > 0 {
+        return Err(
+            "Cannot build design matrix for empty data or mismatched intercept length.".into()
+        );
+    } else if x_cols.len() == 1 && all_values_len == 0 {
+        // Special case for no data at all
+        return Ok((DMatrix::from_columns(&x_cols), term_col_ranges)); // Return intercept column of 0 rows
+    }
+
+    let x_full_nalgebra = DMatrix::from_columns(&x_cols);
+    Ok((x_full_nalgebra, term_col_ranges))
+}
+
+fn check_for_missing_cells_in_interaction(
+    data: &AnalysisData,
+    interaction_term: &str
+) -> Result<bool, String> {
+    let factors_in_interaction = factor_utils::parse_interaction_term(interaction_term);
+    for f_name in factors_in_interaction {
+        if common::check_for_missing_cells(data, &f_name)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// New generic function for Type III/IV SS for a single term (factor or interaction)
+fn calculate_type_iii_iv_ss_for_term(
+    data: &AnalysisData,
+    config: &UnivariateConfig,
+    term_of_interest: &str,
+    dep_var_name: &str,
+    grand_mean_for_fallback: f64,
+    is_type_iv_calculation: bool // True if this is a Type IV SS calculation overall
+) -> Result<f64, String> {
+    let y_vec = common::get_all_dependent_values(data, dep_var_name)?;
+    if y_vec.is_empty() {
+        return Ok(0.0);
+    }
+    let y_nalgebra = to_dvector(&y_vec);
+
+    let all_model_terms = factor_utils::generate_model_design_terms(data, config)?;
+
+    // Determine if the specific term_of_interest needs Type IV coding rules for its part of the design matrix
+    let apply_type_iv_coding_for_this_term = if is_type_iv_calculation {
+        if term_of_interest.contains('*') {
+            check_for_missing_cells_in_interaction(data, term_of_interest)?
+        } else {
+            // For main effects (or covariates, though they usually don't trigger this path for SS directly)
+            common::check_for_missing_cells(data, term_of_interest)?
+        }
+    } else {
+        false // Not a Type IV calculation, so no Type IV specific coding needed
+    };
+
+    let (x_full_nalgebra, term_col_ranges) = build_full_contrast_coded_design_matrix_internal(
+        data,
+        config,
+        y_nalgebra.len(),
+        &all_model_terms,
+        Some(term_of_interest), // The term for which specific Type IV coding might apply
+        apply_type_iv_coding_for_this_term
+    )?;
+
+    let (l_start, l_end) = term_col_ranges
+        .get(term_of_interest)
+        .ok_or_else(|| {
+            format!("Term '{}' not found in Type III/IV model columns map", term_of_interest)
+        })?;
+
+    let num_hypotheses = l_end - l_start + 1;
+    if num_hypotheses == 0 {
+        // This can happen if a factor has only one level or an interaction term effectively has no estimable contrasts.
+        return Ok(0.0);
+    }
+    let mut l_nalgebra = DMatrix::<f64>::zeros(num_hypotheses, x_full_nalgebra.ncols());
+    for i in 0..num_hypotheses {
+        l_nalgebra[(i, l_start + i)] = 1.0;
+    }
+
+    match perform_hypothesis_test_nalgebra(&x_full_nalgebra, &y_nalgebra, &l_nalgebra) {
+        Ok(ss) => Ok(ss.max(0.0)), // Ensure SS is not negative
+        Err(err) => {
+            eprintln!(
+                "Nalgebra Type III/IV SS for term '{}' failed: {}. Falling back to raw calculation.",
+                term_of_interest,
+                err
+            );
+            // Fallback logic depends on whether it's an interaction or factor
+            if term_of_interest.contains('*') {
+                calculate_raw_ss_for_term_or_interaction(
                     data,
-                    &interaction_factors,
-                    interaction_term,
+                    term_of_interest,
                     dep_var_name,
-                    grand_mean,
-                    factors
+                    grand_mean_for_fallback
+                )
+            } else {
+                calculate_raw_ss_for_term_or_interaction(
+                    data,
+                    term_of_interest,
+                    dep_var_name,
+                    grand_mean_for_fallback
                 )
             }
         }
     }
 }
 
-/// Calculate Type I (sequential) sum of squares for interaction effects
-pub fn calculate_type_i_interaction_ss(
+/// New Public API for Type III SS
+pub fn calculate_type_iii_ss(
     data: &AnalysisData,
-    interaction_factors: &[String],
-    interaction_term: &str,
+    config: &UnivariateConfig,
+    term_of_interest: &str,
     dep_var_name: &str,
-    grand_mean: f64,
-    residual_values: Option<&[f64]>,
-    residual_mean: Option<f64>
+    grand_mean_for_fallback: f64
 ) -> Result<f64, String> {
-    // Type I: Sequential SS - each term adjusted for terms that precede it
-    if let (Some(residuals), Some(res_mean)) = (residual_values, residual_mean) {
-        // Create design matrix for the interaction term
-        let x_interaction = create_interaction_design_matrix(data, interaction_term)?;
-
-        // Calculate X'X and X'y
-        let x_transpose = matrix_transpose(&x_interaction);
-        let xtx = matrix_multiply(&x_transpose, &x_interaction)?;
-        let xty = matrix_vec_multiply(&x_transpose, residuals)?;
-
-        // Calculate (X'X)^-1
-        let xtx_inv = match matrix_inverse(&xtx) {
-            Ok(inv) => inv,
-            Err(_) => {
-                return Err(format!("Could not invert matrix for interaction {}", interaction_term));
-            }
-        };
-
-        // Calculate coefficients: b = (X'X)^-1 X'y
-        let b = matrix_vec_multiply(&xtx_inv, &xty)?;
-
-        // Calculate Type I SS = b'X'y
-        let ss_interaction = b
-            .iter()
-            .zip(xty.iter())
-            .map(|(&b_i, &y_i)| b_i * y_i)
-            .sum::<f64>();
-
-        Ok(ss_interaction)
-    } else {
-        Err("Type I SS requires residual values and mean".to_string())
-    }
-}
-
-/// Calculate Type II sum of squares for interaction effects
-pub fn calculate_type_ii_interaction_ss(
-    data: &AnalysisData,
-    interaction_factors: &[String],
-    interaction_term: &str,
-    dep_var_name: &str,
-    grand_mean: f64,
-    factors: &[String]
-) -> Result<f64, String> {
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
-            }
-        }
-    }
-
-    // Identify terms that don't contain this interaction
-    let mut non_containing_terms = Vec::new();
-
-    // Add intercept
-    non_containing_terms.push("Intercept".to_string());
-
-    // Add main effects and other interactions that don't contain this interaction
-    for f in factors {
-        if !interaction_factors.contains(f) {
-            non_containing_terms.push(f.clone());
-        } else {
-            // Main effects that are part of the interaction
-            non_containing_terms.push(f.clone());
-        }
-    }
-
-    // Create design matrix X_1 for terms that don't fully contain the interaction
-    let mut x_1 = Vec::new();
-    x_1.push(vec![1.0; all_values.len()]); // Intercept column
-
-    for term in &non_containing_terms {
-        if term == "Intercept" {
-            continue; // Already added
-        }
-
-        let x_term = if term.contains('*') {
-            create_interaction_design_matrix(data, term)?
-        } else {
-            create_main_effect_design_matrix(data, term)?
-        };
-
-        for col in 0..x_term[0].len() {
-            let mut x_col = Vec::new();
-            for row in 0..x_term.len() {
-                x_col.push(x_term[row][col]);
-            }
-            x_1.push(x_col);
-        }
-    }
-
-    // Transpose X_1 to make it [rows x columns]
-    let x_1 = matrix_transpose(&x_1);
-
-    // Create design matrix X_2 for the interaction of interest
-    let x_2 = create_interaction_design_matrix(data, interaction_term)?;
-
-    // Calculate M_1 = I - X_1(X_1'X_1)^-1X_1'
-    // First compute X_1'X_1
-    let x_1_transpose = matrix_transpose(&x_1);
-    let x_1t_x_1 = matrix_multiply(&x_1_transpose, &x_1)?;
-
-    // Compute (X_1'X_1)^-1
-    let x_1t_x_1_inv = match matrix_inverse(&x_1t_x_1) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean);
-        }
-    };
-
-    // Compute X_1(X_1'X_1)^-1X_1'
-    let x_1_x_1t_x_1_inv = matrix_multiply(&x_1, &x_1t_x_1_inv)?;
-    let projection = matrix_multiply(&x_1_x_1t_x_1_inv, &x_1_transpose)?;
-
-    // M_1 = I - P
-    let n = all_values.len();
-    let mut m_1 = vec![vec![0.0; n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            m_1[i][j] = if i == j { 1.0 } else { 0.0 };
-            m_1[i][j] -= projection[i][j];
-        }
-    }
-
-    // Calculate X_2'M_1X_2
-    let x_2_transpose = matrix_transpose(&x_2);
-    let x_2t_m_1 = matrix_multiply(&x_2_transpose, &m_1)?;
-    let x_2t_m_1_x_2 = matrix_multiply(&x_2t_m_1, &x_2)?;
-
-    // Calculate X_2'M_1y
-    let x_2t_m_1_y = matrix_vec_multiply(&x_2t_m_1, &all_values)?;
-
-    // Calculate (X_2'M_1X_2)^-1
-    let c = match matrix_inverse(&x_2t_m_1_x_2) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean);
-        }
-    };
-
-    // Calculate b = (X_2'M_1X_2)^-1 X_2'M_1y
-    let b = matrix_vec_multiply(&c, &x_2t_m_1_y)?;
-
-    // Calculate Type II SS = b'X_2'M_1y
-    let ss = b
-        .iter()
-        .zip(x_2t_m_1_y.iter())
-        .map(|(&b_i, &y_i)| b_i * y_i)
-        .sum::<f64>();
-
-    Ok(ss)
-}
-
-/// Calculate Type III/IV sum of squares for interaction effects
-pub fn calculate_type_iii_interaction_ss(
-    data: &AnalysisData,
-    interaction_factors: &[String],
-    interaction_term: &str,
-    dep_var_name: &str,
-    grand_mean: f64,
-    factors: &[String]
-) -> Result<f64, String> {
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
-            }
-        }
-    }
-
-    // Get all possible interaction terms
-    let interaction_terms = generate_interaction_terms(factors);
-
-    // Create the complete design matrix X with contrast coding
-    let mut x_full = Vec::new();
-    x_full.push(vec![1.0; all_values.len()]); // Intercept column
-
-    let mut term_columns = HashMap::new();
-    let mut start_col = 1; // After intercept
-
-    // Add columns for all main effects
-    for f in factors {
-        let x_f = create_contrast_coded_main_effect_matrix(data, f)?;
-
-        let num_cols = x_f[0].len();
-        term_columns.insert(f.clone(), (start_col, start_col + num_cols - 1));
-        start_col += num_cols;
-
-        for col in 0..x_f[0].len() {
-            let mut x_col = Vec::new();
-            for row in 0..x_f.len() {
-                x_col.push(x_f[row][col]);
-            }
-            x_full.push(x_col);
-        }
-    }
-
-    // Add columns for all interaction terms
-    for term in &interaction_terms {
-        let x_term = create_contrast_coded_interaction_matrix(data, term)?;
-
-        let num_cols = x_term[0].len();
-        term_columns.insert(term.clone(), (start_col, start_col + num_cols - 1));
-        start_col += num_cols;
-
-        for col in 0..x_term[0].len() {
-            let mut x_col = Vec::new();
-            for row in 0..x_term.len() {
-                x_col.push(x_term[row][col]);
-            }
-            x_full.push(x_col);
-        }
-    }
-
-    // Transpose to make X [rows x columns]
-    let x = matrix_transpose(&x_full);
-
-    // Calculate X'X and X'y
-    let x_transpose = matrix_transpose(&x);
-    let xtx = matrix_multiply(&x_transpose, &x)?;
-    let xty = matrix_vec_multiply(&x_transpose, &all_values)?;
-
-    // Full design matrix hypothesis test matrix H = (X'X)^-
-    let xtx_inv = match matrix_inverse(&xtx) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean);
-        }
-    };
-
-    // Create L matrix for Type III hypothesis
-    // Get columns for the interaction term of interest
-    let (start, end) = match term_columns.get(interaction_term) {
-        Some(&range) => range,
-        None => {
-            return Err(format!("Interaction term {} not found in the model", interaction_term));
-        }
-    };
-
-    // Create the L matrix for the Type III test
-    let mut l = Vec::new();
-    for col in start..=end {
-        let mut row = vec![0.0; xtx.len()];
-        row[col] = 1.0;
-        l.push(row);
-    }
-
-    // Calculate estimate β = (X'X)^-1 X'y
-    let beta = matrix_vec_multiply(&xtx_inv, &xty)?;
-
-    // Calculate L*β
-    let mut l_beta = Vec::new();
-    for row in &l {
-        let mut sum = 0.0;
-        for (i, &val) in row.iter().enumerate() {
-            sum += val * beta[i];
-        }
-        l_beta.push(sum);
-    }
-
-    // Calculate L * (X'X)^-1 * L'
-    let l_xtx_inv = matrix_multiply(&l, &xtx_inv)?;
-    let l_xtx_inv_lt = matrix_multiply(&l_xtx_inv, &matrix_transpose(&l))?;
-
-    // Calculate (L * (X'X)^-1 * L')^-1
-    let l_xtx_inv_lt_inv = match matrix_inverse(&l_xtx_inv_lt) {
-        Ok(inv) => inv,
-        Err(_) => {
-            return calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean);
-        }
-    };
-
-    // Calculate Type III SS = (Lβ)' * (L(X'X)^-1L')^-1 * (Lβ)
-    let mut ss = 0.0;
-    for i in 0..l_beta.len() {
-        for j in 0..l_beta.len() {
-            ss += l_beta[i] * l_xtx_inv_lt_inv[i][j] * l_beta[j];
-        }
-    }
-
-    Ok(ss)
-}
-
-/// Calculate Type IV sum of squares for interaction effects
-pub fn calculate_type_iv_interaction_ss(
-    data: &AnalysisData,
-    interaction_factors: &[String],
-    interaction_term: &str,
-    dep_var_name: &str,
-    grand_mean: f64,
-    factors: &[String]
-) -> Result<f64, String> {
-    // Check for missing cells
-    let mut has_missing_cells = false;
-
-    // Get levels for each factor in the interaction
-    let mut factor_levels = Vec::new();
-    for factor in interaction_factors {
-        let levels = get_factor_levels(data, factor)?;
-        factor_levels.push((factor.clone(), levels));
-
-        // Check if this factor has missing cells
-        if check_for_missing_cells(data, factor)? {
-            has_missing_cells = true;
-        }
-    }
-
-    if !has_missing_cells {
-        // If no missing cells, Type IV = Type III
-        return calculate_type_iii_interaction_ss(
-            data,
-            interaction_factors,
-            interaction_term,
-            dep_var_name,
-            grand_mean,
-            factors
-        );
-    }
-
-    // Extract all dependent values
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, dep_var_name) {
-                all_values.push(value);
-            }
-        }
-    }
-
-    // Create full design matrix with all main effects and the interaction
-    let mut x_full = Vec::new();
-    x_full.push(vec![1.0; all_values.len()]); // Intercept
-
-    // Add main effects
-    for factor in factors {
-        add_factor_to_design_matrix(&mut x_full, data, factor)?;
-    }
-
-    // Create Type IV interaction design matrix that distributes weights based on available cells
-    let x_interaction = create_type_iv_interaction_matrix(data, interaction_term)?;
-
-    // Add the interaction of interest with Type IV coding
-    for col_idx in 0..x_interaction[0].len() {
-        let column = extract_column(&x_interaction, col_idx);
-        add_column_to_matrix(&mut x_full, &column);
-    }
-
-    // Transpose to make X [rows x columns]
-    let x = matrix_transpose(&x_full);
-
-    // Determine the columns for the interaction in the design matrix
-    let main_effects_cols =
-        1 + // Intercept
-        factors
-            .iter()
-            .fold(0, |acc, f| {
-                acc + get_factor_levels(data, f).map_or(0, |levels| levels.len())
-            });
-
-    let interaction_cols = x_interaction[0].len();
-    let interaction_cols_range = main_effects_cols..main_effects_cols + interaction_cols;
-
-    // Create L matrix for Type IV hypothesis
-    let l = create_l_matrix(
-        interaction_cols_range.start..=interaction_cols_range.end - 1,
-        x_full.len()
-    );
-
-    // Perform the hypothesis test
-    perform_hypothesis_test(&x, &all_values, &l, ||
-        calculate_raw_interaction_ss(data, interaction_term, dep_var_name, grand_mean)
+    calculate_type_iii_iv_ss_for_term(
+        data,
+        config,
+        term_of_interest,
+        dep_var_name,
+        grand_mean_for_fallback,
+        false // is_type_iv_calculation = false
     )
 }
 
-/// Helper function to calculate raw SS for an interaction term without adjustments
-pub fn calculate_raw_interaction_ss(
+/// New Public API for Type IV SS
+pub fn calculate_type_iv_ss(
     data: &AnalysisData,
-    interaction_term: &str,
+    config: &UnivariateConfig,
+    term_of_interest: &str,
     dep_var_name: &str,
-    grand_mean: f64
+    grand_mean_for_fallback: f64
 ) -> Result<f64, String> {
-    let interaction_factors = parse_interaction_term(interaction_term);
-
-    // Get all possible combinations of factor levels for this interaction
-    let mut factor_levels = Vec::new();
-    for factor in &interaction_factors {
-        let levels = get_factor_levels(data, factor)?;
-        factor_levels.push((factor.clone(), levels));
-    }
-
-    // Generate all level combinations for the factors in this interaction
-    let mut level_combinations = Vec::new();
-    let mut current_combo = HashMap::new();
-
-    generate_level_combinations(&factor_levels, &mut current_combo, 0, &mut level_combinations);
-
-    // Calculate the sum of squares for the interaction
-    let mut ss = 0.0;
-
-    for combo in &level_combinations {
-        // Get values that match this combination of factor levels
-        let mut values_for_combo = Vec::new();
-
-        for dep_records in &data.dependent_data {
-            for dep_record in dep_records {
-                // Check if all factors match this combination
-                let mut all_factors_match = true;
-
-                for (factor, expected_level) in combo {
-                    let mut factor_match = false;
-
-                    // Check if this factor's value in fix_factor_data matches expected level
-                    for fix_factor_group in &data.fix_factor_data {
-                        for fix_record in fix_factor_group {
-                            if let Some(value) = fix_record.values.get(factor) {
-                                let actual_level = data_value_to_string(value);
-                                if &actual_level == expected_level {
-                                    factor_match = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if factor_match {
-                            break;
-                        }
-                    }
-
-                    if !factor_match {
-                        all_factors_match = false;
-                        break;
-                    }
-                }
-
-                // If this record matches all factor levels, add its dependent value
-                if all_factors_match {
-                    if let Some(value) = extract_dependent_value(dep_record, dep_var_name) {
-                        values_for_combo.push(value);
-                    }
-                }
-            }
-        }
-
-        if !values_for_combo.is_empty() {
-            let combo_mean = calculate_mean(&values_for_combo);
-            ss += (values_for_combo.len() as f64) * (combo_mean - grand_mean).powi(2);
-        }
-    }
-
-    Ok(ss)
+    calculate_type_iii_iv_ss_for_term(
+        data,
+        config,
+        term_of_interest,
+        dep_var_name,
+        grand_mean_for_fallback,
+        true // is_type_iv_calculation = true
+    )
 }
 
-/// Helper function to generate all interaction terms from a list of factors
-pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
-    if factors.len() <= 1 {
-        return Vec::new();
-    }
-
-    let mut result = Vec::new();
-
-    // Generate all 2-way interactions
-    let mut current = Vec::new();
-    for i in 2..=factors.len() {
-        generate_lower_order_terms(factors, i, &mut current, 0, &mut result);
-    }
-
-    result
-}
-
-/// Helper function to generate all lower-order terms from a list of factors
-pub fn generate_lower_order_terms(
-    factors: &[String],
-    size: usize,
-    current: &mut Vec<String>,
-    start_idx: usize,
-    result: &mut Vec<String>
-) {
-    if current.len() == size {
-        result.push(current.join("*"));
-        return;
-    }
-
-    for i in start_idx..factors.len() {
-        current.push(factors[i].clone());
-        generate_lower_order_terms(factors, size, current, i + 1, result);
-        current.pop();
-    }
-}
-
-/// Calculate the sum of squares for a covariate
+/// Calculate the sum of squares for a covariate (Refactored with nalgebra)
 pub fn calculate_covariate_ss(
     dependent_values: &[f64],
     covariate_values: &[f64],
-    grand_mean: f64
+    _grand_mean_dep: f64 // Not directly used if centering both Y and X
 ) -> Result<f64, String> {
     if dependent_values.len() != covariate_values.len() {
         return Err(
             format!(
-                "Dependent values length ({}) does not match covariate values length ({})",
+                "Dependent variable data count ({}) does not match covariate data count ({}).",
                 dependent_values.len(),
                 covariate_values.len()
             )
         );
     }
-
-    // Calculate the regression coefficient
-    let cov_mean = covariate_values.iter().sum::<f64>() / (covariate_values.len() as f64);
-    let centered_cov: Vec<f64> = covariate_values
-        .iter()
-        .map(|&c| c - cov_mean)
-        .collect();
-
-    let numerator: f64 = dependent_values
-        .iter()
-        .zip(centered_cov.iter())
-        .map(|(&y, &x)| (y - grand_mean) * x)
-        .sum();
-
-    let denominator: f64 = centered_cov
-        .iter()
-        .map(|&x| x * x)
-        .sum();
-
-    if denominator.abs() < 1e-10 {
-        return Err("Covariate has zero variance".to_string());
+    if dependent_values.is_empty() {
+        return Ok(0.0); // No data, so no SS
     }
 
-    let beta = numerator / denominator;
+    let y_dvec = to_dvector(dependent_values);
+    let cov_dvec = to_dvector(covariate_values);
 
-    // Calculate the sum of squares explained by the covariate
-    let ss_covariate = beta * numerator;
+    // Center both dependent and covariate values
+    let y_mean = y_dvec.mean();
+    let cov_mean = cov_dvec.mean();
 
-    Ok(ss_covariate)
+    let y_centered = y_dvec.map(|val| val - y_mean);
+    let cov_centered = cov_dvec.map(|val| val - cov_mean);
+
+    // Denominator for beta calculation: sum of squared centered covariate values (Sxx)
+    let s_xx = cov_centered.dot(&cov_centered);
+
+    if s_xx.abs() < 1e-12 {
+        // Using a very small epsilon to check for zero variance of covariate
+        // If covariate has no variance, it cannot explain any variance in Y.
+        return Ok(0.0);
+    }
+
+    // Numerator for beta calculation: sum of products of centered Y and centered covariate (Sxy)
+    let s_xy = y_centered.dot(&cov_centered);
+
+    // Regression coefficient beta = Sxy / Sxx
+    let beta = s_xy / s_xx;
+
+    // Sum of Squares for covariate = beta * Sxy (or beta^2 * Sxx)
+    let ss_covariate = beta * s_xy;
+
+    Ok(ss_covariate.max(0.0)) // SS should not be negative
+}
+
+// Fallback SS calculation for factors or interactions (generic helper)
+fn calculate_raw_ss_for_term_or_interaction(
+    data: &AnalysisData,
+    term_or_interaction: &str, // e.g., "FactorA" or "FactorA*FactorB"
+    dep_var_name: &str,
+    grand_mean: f64
+) -> Result<f64, String> {
+    let term_factors = factor_utils::parse_interaction_term(term_or_interaction);
+
+    let mut factor_levels_for_combo_gen = Vec::new();
+    for factor_name in &term_factors {
+        let levels = common::get_factor_levels(data, factor_name)?;
+        if levels.is_empty() {
+            // If any constituent factor has no levels, this term/interaction is effectively empty.
+            return Ok(0.0);
+        }
+        factor_levels_for_combo_gen.push((factor_name.clone(), levels));
+    }
+
+    let mut level_combinations = Vec::new();
+    if !factor_levels_for_combo_gen.is_empty() {
+        // If only one factor, generate_level_combinations will produce HashMaps like {"FactorA": "level1"}, {"FactorA": "level2"}
+        // If multiple factors, it produces interaction combinations like {"FactorA": "A1", "FactorB": "B1"}, etc.
+        factor_utils::generate_level_combinations(
+            &factor_levels_for_combo_gen,
+            &mut HashMap::new(), // Start with an empty current combination
+            0, // Start at the first factor in factor_levels_for_combo_gen
+            &mut level_combinations
+        );
+    }
+
+    if level_combinations.is_empty() && !term_factors.is_empty() {
+        // This case might occur if factors were parsed but no levels led to combinations.
+        // Or if term_factors was empty initially (e.g. an empty string term), though caught earlier.
+        return Ok(0.0);
+    }
+
+    let mut ss = 0.0;
+    for combo_map in &level_combinations {
+        let mut values_for_combo = Vec::new();
+        // Iterate through all dependent data records
+        for records_group in &data.dependent_data {
+            for record in records_group {
+                let mut current_record_matches_combo = true;
+                // Check if the current record matches all factor levels in the combo_map
+                for (factor_in_combo, level_in_combo) in combo_map.iter() {
+                    match record.values.get(factor_in_combo) {
+                        Some(data_val) => {
+                            if common::data_value_to_string(data_val) != *level_in_combo {
+                                current_record_matches_combo = false;
+                                break; // This factor doesn't match, so the record doesn't match the combo
+                            }
+                        }
+                        None => {
+                            // Factor not present in the record
+                            current_record_matches_combo = false;
+                            break;
+                        }
+                    }
+                }
+
+                if current_record_matches_combo {
+                    if let Some(value) = common::extract_dependent_value(record, dep_var_name) {
+                        values_for_combo.push(value);
+                    }
+                }
+            }
+        }
+        if !values_for_combo.is_empty() {
+            let combo_mean = common::calculate_mean(&values_for_combo);
+            ss += (values_for_combo.len() as f64) * (combo_mean - grand_mean).powi(2);
+        }
+    }
+    Ok(ss)
+}
+
+/// Nalgebra version of perform_hypothesis_test
+fn perform_hypothesis_test_nalgebra(
+    x_nalgebra: &DMatrix<f64>,
+    y_nalgebra: &DVector<f64>,
+    l_nalgebra: &DMatrix<f64>
+) -> Result<f64, String> {
+    let xt = x_nalgebra.transpose();
+    let xtx = &xt * x_nalgebra;
+    let xty = &xt * y_nalgebra;
+
+    let xtx_inv = match xtx.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("X'X matrix inversion failed in hypothesis test".to_string());
+        }
+    };
+    let beta_hat = &xtx_inv * xty;
+    let l_beta = l_nalgebra * beta_hat;
+
+    let l_xtx_inv_lt = l_nalgebra * xtx_inv * l_nalgebra.transpose();
+
+    let middle_inv = match l_xtx_inv_lt.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("L(X'X)^-1L' matrix inversion failed in hypothesis test".to_string());
+        }
+    };
+
+    // SS = (L*beta_hat)' * (L*(X'X)^-1*L')^-1 * (L*beta_hat)
+    let ss_matrix = l_beta.transpose() * middle_inv * l_beta; // This will be a 1x1 matrix
+
+    if ss_matrix.nrows() == 1 && ss_matrix.ncols() == 1 {
+        Ok(ss_matrix[(0, 0)])
+    } else {
+        Err("SS calculation resulted in non-scalar matrix".to_string())
+    }
 }

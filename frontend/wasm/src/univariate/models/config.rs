@@ -29,7 +29,7 @@ pub enum BuildTermMethod {
     All5Way,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum SumOfSquaresMethod {
     #[serde(rename = "typeI")]
     TypeI,

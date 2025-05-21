@@ -9,6 +9,7 @@ use crate::univariate::models::{
 };
 use super::core::*;
 use crate::univariate::models::result::StatsEntry;
+use crate::univariate::models::result::TestEffectEntry;
 
 /// Calculate mean of values using statrs
 pub fn calculate_mean(values: &[f64]) -> f64 {
@@ -18,67 +19,66 @@ pub fn calculate_mean(values: &[f64]) -> f64 {
     values.mean()
 }
 
-/// Calculate variance of values using statrs
-pub fn calculate_variance(values: &[f64], mean: Option<f64>) -> f64 {
-    if values.len() <= 1 {
+/// Calculate population variance of values.
+/// If mean is provided, it's used. Otherwise, mean is calculated internally.
+pub fn calculate_variance(values: &[f64], known_mean: Option<f64>) -> f64 {
+    let n = values.len();
+    if n == 0 {
+        return 0.0; // Or f64::NAN
+    }
+    if n == 1 && known_mean.is_none() {
+        // Variance of a single point is 0 if we don't have a known mean to compare against.
+        // If a known_mean is provided, we can calculate (value - known_mean)^2.
+        // statrs .variance() returns NaN for n=1, .population_variance() would be more explicit.
         return 0.0;
     }
 
-    match mean {
-        Some(m) =>
-            values
-                .iter()
-                .map(|x| (x - m).powi(2))
-                .sum::<f64>() / (values.len() as f64),
-        None => values.variance(),
-    }
+    let mean = known_mean.unwrap_or_else(|| values.mean());
+    values
+        .iter()
+        .map(|x| (x - mean).powi(2))
+        .sum::<f64>() / (n as f64)
 }
 
-/// Calculate standard deviation of values using statrs
-pub fn calculate_std_deviation(values: &[f64], mean: Option<f64>) -> f64 {
-    if values.len() <= 1 {
-        return 0.0;
-    }
-
-    match mean {
-        Some(m) => calculate_variance(values, Some(m)).sqrt(),
-        None => values.std_dev(),
-    }
+/// Calculate population standard deviation of values.
+/// If mean is provided, it's used. Otherwise, mean is calculated internally.
+pub fn calculate_std_deviation(values: &[f64], known_mean: Option<f64>) -> f64 {
+    calculate_variance(values, known_mean).sqrt()
 }
 
 /// Calculate F significance (p-value) for F statistic
 pub fn calculate_f_significance(df1: usize, df2: usize, f_value: f64) -> f64 {
-    if df1 == 0 || df2 == 0 || f_value.is_nan() {
-        return 0.0;
+    if df1 == 0 || df2 == 0 || f_value.is_nan() || f_value < 0.0 {
+        return f64::NAN;
     }
-
-    FisherSnedecor::new(df1 as f64, df2 as f64)
-        .map(|dist| 1.0 - dist.cdf(f_value))
-        .unwrap_or(0.0)
+    FisherSnedecor::new(df1 as f64, df2 as f64).map_or(f64::NAN, |dist| {
+        let cdf_val = dist.cdf(f_value);
+        (1.0 - cdf_val).max(0.0) // Clamp p-value to be >= 0
+    })
 }
 
 /// Calculate t significance (p-value) for t statistic
 pub fn calculate_t_significance(df: usize, t_value: f64) -> f64 {
     if df == 0 || t_value.is_nan() {
-        return 0.0;
+        return f64::NAN; // Return NaN for invalid input
     }
-
-    StudentsT::new(0.0, 1.0, df as f64)
-        .map(|dist| 2.0 * (1.0 - dist.cdf(t_value.abs())))
-        .unwrap_or(0.0)
+    StudentsT::new(0.0, 1.0, df as f64) // Location 0, Scale 1 for standard t-distribution
+        .map_or(f64::NAN, |dist| 2.0 * dist.cdf(-t_value.abs())) // P(T <= -|t|) or P(T >= |t|)
 }
 
 /// Calculate critical t value for confidence intervals
 pub fn calculate_t_critical(df: usize, alpha: f64) -> f64 {
-    if df == 0 {
-        return Normal::new(0.0, 1.0)
-            .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
-            .unwrap_or(1.96); // Default to normal approximation
+    if alpha <= 0.0 || alpha >= 1.0 {
+        return f64::NAN; // Alpha out of bounds
     }
-
-    StudentsT::new(0.0, 1.0, df as f64)
-        .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
-        .unwrap_or(1.96)
+    if df == 0 {
+        // Use Normal distribution as approximation if df is 0
+        Normal::new(0.0, 1.0).map_or(1.96, |dist| dist.inverse_cdf(1.0 - alpha / 2.0))
+    } else {
+        StudentsT::new(0.0, 1.0, df as f64).map_or(f64::NAN, |dist|
+            dist.inverse_cdf(1.0 - alpha / 2.0)
+        )
+    }
 }
 
 /// Calculate observed power for F-test
@@ -87,61 +87,131 @@ pub fn calculate_observed_power(df1: usize, df2: usize, f_value: f64, alpha: f64
         return 0.0;
     }
 
-    // Non-central F distribution approximation
-    let ncp = f_value * (df1 as f64);
-    let crit_f = FisherSnedecor::new(df1 as f64, df2 as f64)
-        .map(|dist| dist.inverse_cdf(1.0 - alpha))
-        .unwrap_or(4.0);
+    let central_dist = match FisherSnedecor::new(df1 as f64, df2 as f64) {
+        Ok(dist) => dist,
+        Err(_) => {
+            return 0.0;
+        } // Or f64::NAN
+    };
+    let crit_f = central_dist.inverse_cdf(1.0 - alpha);
+    if crit_f.is_nan() {
+        return 0.0;
+    }
 
-    // Approximation of power
-    // Use the noncentrality parameter for a better power approximation
-    1.0 -
-        FisherSnedecor::new(df1 as f64, df2 as f64)
-            .map(|dist| dist.cdf(crit_f / (1.0 + ncp / (df1 as f64))))
-            .unwrap_or(0.5)
+    // Non-central F distribution for power
+    // ncp (non-centrality parameter) = f_value * df1 for observed power
+    let ncp = f_value * (df1 as f64);
+    // statrs does not directly expose a NonCentralFisherSnedecor constructor easily from parameters like this
+    // or a direct power function for F-test. The original approximation is kept for now.
+    // A more accurate calculation might involve a dedicated library or more complex statrs usage if available.
+
+    // Using the existing approximation as direct power calculation with ncp in statrs is complex to set up here.
+    // Power = P(F' > crit_f | H1 is true), where F' follows non-central F(df1, df2, ncp)
+    // This often requires CDF of non-central F.
+    // The original formula: 1.0 - FisherSnedecor::new(df1, df2).cdf(crit_f / (1.0 + ncp / df1)) is an approximation.
+    // For now, retaining a simplified version of the original logic if direct statrs replacement is hard.
+    // Power can be approximated by 1 - CDF_noncentral(crit_f, df1, df2, ncp)
+    // Since statrs might not directly offer NonCentralF.cdf with dynamic ncp easily,
+    // and the original code had an approximation, this part is tricky to replace without potentially changing results.
+    // Let's stick to the original approximation if direct replacement isn't straightforward.
+    match FisherSnedecor::new(df1 as f64, df2 as f64) {
+        // This should be a non-central F if possible
+        Ok(dist) => {
+            // The term crit_f / (1.0 + ncp / (df1 as f64)) is from an approximation formula for non-central F CDF
+            // Power is 1 - CDF_noncentral(F_critical)
+            // This is an approximation of the CDF of a *central* F distribution at a modified value.
+            let val_for_cdf = crit_f / (1.0 + ncp / (df1 as f64));
+            if val_for_cdf.is_nan() || val_for_cdf < 0.0 {
+                return 0.0;
+            }
+            (1.0 - dist.cdf(val_for_cdf)).max(0.0)
+        }
+        Err(_) => 0.0, // Or f64::NAN
+    }
 }
 
 /// Calculate observed power for t-test
 pub fn calculate_observed_power_t(df: usize, t_value: f64, alpha: f64) -> f64 {
-    if df == 0 || t_value.abs() <= 0.0 || alpha <= 0.0 || alpha >= 1.0 {
+    if df == 0 || t_value.abs() <= 1e-9 || alpha <= 0.0 || alpha >= 1.0 {
         return 0.0;
     }
 
-    let abs_t = t_value.abs();
-    let crit_t = StudentsT::new(0.0, 1.0, df as f64)
-        .map(|dist| dist.inverse_cdf(1.0 - alpha / 2.0))
-        .unwrap_or(1.96);
-
-    // Approximation of power for two-tailed test
-    if abs_t <= crit_t {
+    let central_t_dist = match StudentsT::new(0.0, 1.0, df as f64) {
+        Ok(dist) => dist,
+        Err(_) => {
+            return 0.0;
+        } // Or f64::NAN
+    };
+    let crit_t_abs = central_t_dist.inverse_cdf(1.0 - alpha / 2.0).abs();
+    if crit_t_abs.is_nan() {
         return 0.0;
     }
 
-    StudentsT::new(0.0, 1.0, df as f64)
-        .map(|dist| dist.cdf(-crit_t) + (1.0 - dist.cdf(crit_t)))
-        .unwrap_or(0.0)
+    // Non-centrality parameter for t-distribution is often delta = mu / (sigma / sqrt(n))
+    // For observed power, an approximation can use the observed t_value itself as a proxy for the non-centrality parameter.
+    // Power for a two-tailed t-test: P(T' < -crit_t) + P(T' > crit_t)
+    // where T' is a non-central t-distribution with ncp = t_value.
+    // statrs StudentsT is central. A common approximation for power P(|T_obs| > t_crit) under H1:
+    // P(T > t_crit - t_obs) + P(T < -t_crit - t_obs) where T is central t.
+    // Or, using a non-central t-distribution directly if available.
+    // The original code: dist.cdf(-crit_t) + (1.0 - dist.cdf(crit_t)) for central T IS NOT power.
+    // It is alpha if |t_value| == crit_t. This needs correction if it's meant to be power.
+
+    // Let's use a common approximation for power given observed t:
+    // Power = P(Z > z_crit - |t_obs|) + P(Z < -z_crit - |t_obs|) for large df (Normal approx)
+    // Or using non-central T: 1 - CDF_noncentral_T(crit_t, df, ncp=t_value) + CDF_noncentral_T(-crit_t, df, ncp=t_value)
+    // Given statrs.StudentsT is central, a direct computation of non-central T power is not straightforward.
+    // The original was likely an error. A simple approach is to use an approximation or a library that supports non-central T directly.
+    // For now, returning a placeholder or a very rough approximation to avoid complex implementation without external libs for non-central T.
+
+    // A common way to approximate power of a t-test is using normal distribution if df is large
+    // or specific formulas. The original formula `dist.cdf(-crit_t) + (1.0 - dist.cdf(crit_t))` calculates alpha (type I error rate) if `t_value` was `crit_t`.
+    // This is not power. Power is 1 - beta.
+    // If |t_value| <= crit_t_abs, power is low, often approximated as alpha/2 or some small value if effect is in wrong direction.
+    // If |t_value| > crit_t_abs, it suggests H1 might be true.
+    // A proper power calculation needs non-central t-distribution.
+    // For now, let's signal that the original calculation was problematic and return a generic low value if not significant.
+    if t_value.abs() <= crit_t_abs {
+        return alpha; // Or a small value like 0.05 if t_value just meets crit_t_abs
+    }
+
+    // Simplified (and potentially inaccurate) approximation of power for T > crit_t or T < -crit_t.
+    // This is a placeholder as accurate power calculation needs non-central t-distribution.
+    // One common approximation: Power ≈ Φ(|t_observed| - t_critical(α/2, df)) if one-sided test
+    // For two-sided: P(|T_ncp| > t_crit(α/2, df)) where ncp = observed t_value
+    // This is complex. Let's return a more meaningful value than the original if possible, or acknowledge limitation.
+    // Given t_value is significant, power should be > alpha.
+    // A very rough approximation: use normal CDF
+    let normal_dist = Normal::new(0.0, 1.0).unwrap(); // Standard normal
+    let power1 = 1.0 - normal_dist.cdf(crit_t_abs - t_value.abs());
+    // let power2 = normal_dist.cdf(-crit_t_abs - t_value.abs()); // this term is usually very small if t_value.abs() > crit_t_abs
+    // return (power1 + power2).max(alpha).min(1.0);
+    // The above approximation can be problematic. The original code seems to be incorrect for power.
+    // Returning a more standard, albeit still approximate or indicative value:
+    // If the observed t_value is significant, the power should be higher than alpha.
+    // A common R function `power.t.test` would use non-central t. Lacking that, direct port is hard.
+    // Let's use the formula from a source like G*Power or similar approximations.
+    // Power = 1 - CDF_t(t_crit, df, ncp = t_obs) + CDF_t(-t_crit, df, ncp = t_obs)
+    // Since we only have central T, an approximation for P(T_central > t_crit - |t_obs|) can be used for one side.
+    (1.0 - central_t_dist.cdf(crit_t_abs - t_value.abs())).max(alpha) // A common one-sided approximation, then max with alpha
 }
 
 /// Chi-square CDF using statrs
 pub fn chi_square_cdf(x: f64, df: f64) -> f64 {
-    if x <= 0.0 {
+    if x < 0.0 || df <= 0.0 {
+        // x can be 0 for CDF, df must be positive
         return 0.0;
     }
-
-    ChiSquared::new(df)
-        .map(|dist| dist.cdf(x))
-        .unwrap_or(0.0)
+    ChiSquared::new(df).map_or(0.0, |dist| dist.cdf(x).max(0.0).min(1.0))
 }
 
 /// F distribution CDF using statrs
 pub fn f_distribution_cdf(x: f64, df1: f64, df2: f64) -> f64 {
-    if x <= 0.0 {
+    if x < 0.0 || df1 <= 0.0 || df2 <= 0.0 {
+        // x can be 0 for CDF, df1, df2 must be positive
         return 0.0;
     }
-
-    FisherSnedecor::new(df1, df2)
-        .map(|dist| dist.cdf(x))
-        .unwrap_or(0.0)
+    FisherSnedecor::new(df1, df2).map_or(0.0, |dist| dist.cdf(x).max(0.0).min(1.0))
 }
 
 /// Count total cases in the data
@@ -231,28 +301,6 @@ pub fn get_factor_combinations(
     } else {
         Ok(vec![HashMap::new()]) // No factors case
     }
-}
-
-/// Generate all possible interaction terms from a list of factors
-pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
-    if factors.is_empty() {
-        return Vec::new();
-    }
-
-    let mut interactions = Vec::new();
-
-    // Generate all possible combinations of factors from size 2 to size N
-    for size in 2..=factors.len() {
-        super::factor_utils::generate_lower_order_terms(
-            factors,
-            size,
-            &mut Vec::new(),
-            0,
-            &mut interactions
-        );
-    }
-
-    interactions
 }
 
 /// Check if a record matches an interaction term
@@ -414,16 +462,6 @@ pub fn get_level_values(
     Ok(values)
 }
 
-/// Get values adjusted for previous factors (for Type I SS)
-pub fn get_level_values_adjusted(
-    values: &[f64],
-    data: &AnalysisData,
-    factor: &str,
-    level: &str
-) -> Result<Vec<f64>, String> {
-    super::factor_utils::get_level_values_adjusted(values, data, factor, level, "")
-}
-
 /// Extract random factor value from a record
 pub fn extract_random_factor_value(record: &DataRecord, factor_name: &str) -> Option<String> {
     record.values.get(factor_name).map(data_value_to_string)
@@ -539,6 +577,29 @@ pub fn apply_weights(values: &[f64], weights: &[f64]) -> Vec<f64> {
         .collect()
 }
 
+/// Apply weights to the analysis if WLS is specified
+pub(super) fn apply_wls_to_analysis(
+    data: &AnalysisData,
+    config: &UnivariateConfig,
+    values: &[f64]
+) -> Result<Vec<f64>, String> {
+    // Check if WLS weight is specified
+    if let Some(wls_weight) = &config.main.wls_weight {
+        let weights = get_wls_weights(data, wls_weight)?;
+
+        // Ensure weights are the same length as values
+        if weights.len() != values.len() {
+            return Err("WLS weights length does not match data length".to_string());
+        }
+
+        // Apply weights to values
+        Ok(apply_weights(values, &weights))
+    } else {
+        // No WLS, return original values
+        Ok(values.to_vec())
+    }
+}
+
 /// Calculate weighted mean (for WLS)
 pub fn calculate_weighted_mean(values: &[f64], weights: &[f64]) -> f64 {
     if values.is_empty() || values.len() != weights.len() {
@@ -602,296 +663,156 @@ pub fn apply_random_factor_structure(
     Ok(random_effects)
 }
 
-/// Generate model design terms based on the configuration
-pub fn generate_model_design_terms(
+/// Checks if there are missing cells in the design for a factor
+pub fn check_for_missing_cells(data: &AnalysisData, factor: &str) -> Result<bool, String> {
+    // Get all factors defined in the first fixed factor dataset definition.
+    // This matches the original logic from factor_utils.rs.
+    // A more robust approach might consider all factor definitions across all datasets.
+    let mut all_factors = Vec::new();
+    if let Some(fix_factor_defs_first_set) = data.fix_factor_data_defs.get(0) {
+        for factor_def in fix_factor_defs_first_set {
+            all_factors.push(factor_def.name.clone());
+        }
+    }
+
+    // For each other factor, check if all combinations with the factor of interest exist.
+    for other_factor_name in &all_factors {
+        if other_factor_name == factor {
+            continue;
+        }
+
+        let levels_of_interest_factor = get_factor_levels(data, factor)?;
+        let levels_of_other_factor = get_factor_levels(data, other_factor_name)?;
+
+        if levels_of_interest_factor.is_empty() || levels_of_other_factor.is_empty() {
+            // If either factor has no levels, cannot form combinations, assume no missing cells in this context.
+            // Or, this could be an error condition depending on expectations.
+            continue;
+        }
+
+        let mut missing_combinations_found = Vec::new();
+        for level_interest_factor in &levels_of_interest_factor {
+            for level_other_factor in &levels_of_other_factor {
+                let mut combination_exists = false;
+                // Check across all dependent data records and their corresponding fixed factor records.
+                'record_search: for (dep_set_idx, dep_record_set) in data.dependent_data
+                    .iter()
+                    .enumerate() {
+                    for (rec_idx_in_set, _dep_record) in dep_record_set.iter().enumerate() {
+                        let mut interest_factor_matches = false;
+                        let mut other_factor_matches = false;
+
+                        // Check corresponding fixed factor data for this record
+                        if let Some(fix_factor_set) = data.fix_factor_data.get(dep_set_idx) {
+                            if let Some(fix_factor_record) = fix_factor_set.get(rec_idx_in_set) {
+                                // Check level of the factor of interest
+                                if let Some(val) = fix_factor_record.values.get(factor) {
+                                    if data_value_to_string(val) == *level_interest_factor {
+                                        interest_factor_matches = true;
+                                    }
+                                }
+                                // Check level of the other factor
+                                if let Some(val) = fix_factor_record.values.get(other_factor_name) {
+                                    if data_value_to_string(val) == *level_other_factor {
+                                        other_factor_matches = true;
+                                    }
+                                }
+                            }
+                        }
+                        if interest_factor_matches && other_factor_matches {
+                            combination_exists = true;
+                            break 'record_search; // Found this combination, move to next combination
+                        }
+                    }
+                }
+                if !combination_exists {
+                    missing_combinations_found.push((
+                        level_interest_factor.clone(),
+                        level_other_factor.clone(),
+                    ));
+                }
+            }
+        }
+
+        if !missing_combinations_found.is_empty() {
+            // If any pair of levels is missing for this other_factor, then missing cells exist.
+            return Ok(true);
+        }
+    }
+
+    Ok(false) // No missing cells detected for the factor in combination with any other defined factors.
+}
+
+/// Helper to retrieve a factor's string value for a specific record using the factor_sources_map.
+pub fn get_record_factor_value_string(
     data: &AnalysisData,
-    config: &UnivariateConfig
-) -> Result<Vec<String>, String> {
-    let mut terms = Vec::new();
+    factor_sources_map: &HashMap<String, (String, usize)>,
+    factor_name: &str,
+    dep_set_idx: usize, // Index of the dataset within dependent_data
+    rec_idx_in_set: usize // Index of the record within that dataset
+) -> Option<String> {
+    factor_sources_map.get(factor_name).and_then(|(source_type, source_idx)| {
+        match source_type.as_str() {
+            "fixed" =>
+                data.fix_factor_data
+                    .get(*source_idx)
+                    .and_then(|records| records.get(rec_idx_in_set))
+                    .and_then(|rec| rec.values.get(factor_name))
+                    .map(data_value_to_string),
+            "random" =>
+                data.random_factor_data
+                    .as_ref()
+                    .and_then(|data_sets| data_sets.get(*source_idx))
+                    .and_then(|records| records.get(rec_idx_in_set))
+                    .and_then(|rec| rec.values.get(factor_name))
+                    .map(data_value_to_string),
+            // Covariates are typically numeric, but if needed as string, can be handled.
+            // For now, design matrix functions usually fetch them directly as numbers.
+            // If a string representation of a covariate is needed via this function, add here.
+            _ => None,
+        }
+    })
+}
 
-    // Add intercept if enabled (always respect intercept setting)
-    if config.model.intercept {
-        terms.push("Intercept".to_string());
+/// Helper to get all dependent variable values from AnalysisData
+pub fn get_all_dependent_values(
+    data: &AnalysisData,
+    dep_var_name: &str
+) -> Result<Vec<f64>, String> {
+    let mut y_values = Vec::new();
+    if data.dependent_data.is_empty() {
+        // Or return an error if dependent data is expected
+        return Ok(y_values);
     }
 
-    // Handle different model design modes
-    if config.model.non_cust {
-        // Mode 1: When non_cust is true, create a full factorial design from fix_factors and covariates
-        if let Some(fix_factors) = &config.main.fix_factor {
-            // Add main effects
-            for factor in fix_factors {
-                terms.push(factor.clone());
-            }
-
-            // Add interactions if there are multiple factors
-            if fix_factors.len() > 1 {
-                // Generate all possible interactions
-                let interactions = generate_interaction_terms(fix_factors);
-                terms.extend(interactions);
-            }
-        }
-
-        // Add covariates
-        if let Some(covariates) = &config.main.covar {
-            for covar in covariates {
-                terms.push(covar.clone());
-            }
-        }
-    } else if config.model.custom {
-        // Mode 2: When custom is true, use factors_model and respect build_term_method
-        if let Some(factors_model) = &config.model.factors_model {
-            match config.model.build_term_method {
-                BuildTermMethod::MainEffects => {
-                    // Only include main effects
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-                }
-                BuildTermMethod::Interaction => {
-                    // Include main effects and all possible interactions
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-
-                    if factors_model.len() > 1 {
-                        let interactions = generate_interaction_terms(factors_model);
-                        terms.extend(interactions);
-                    }
-                }
-                BuildTermMethod::All2Way => {
-                    // Include main effects and all 2-way interactions
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-
-                    if factors_model.len() > 1 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
-                            }
+    for records_group in &data.dependent_data {
+        for record in records_group {
+            match record.values.get(dep_var_name) {
+                Some(data_value) => {
+                    match data_value {
+                        DataValue::Number(n) => y_values.push(*n as f64),
+                        DataValue::NumberFloat(f) => y_values.push(*f),
+                        // Other DataValue types are not numeric for dep var
+                        _ => {
+                            return Err(
+                                format!(
+                                    "Invalid data type for dependent variable '{}': {:?}. Expected numeric.",
+                                    dep_var_name,
+                                    data_value
+                                )
+                            );
                         }
                     }
                 }
-                BuildTermMethod::All3Way => {
-                    // Include main effects, 2-way and 3-way interactions
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-
-                    // Add 2-way interactions
-                    if factors_model.len() > 1 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
-                            }
-                        }
-                    }
-
-                    // Add 3-way interactions
-                    if factors_model.len() > 2 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    terms.push(
-                                        format!(
-                                            "{}*{}*{}",
-                                            factors_model[i],
-                                            factors_model[j],
-                                            factors_model[k]
-                                        )
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                BuildTermMethod::All4Way => {
-                    // Include main effects and up to 4-way interactions
-                    // Add 1-way effects (main effects)
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-
-                    // Add 2-way interactions
-                    if factors_model.len() > 1 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
-                            }
-                        }
-                    }
-
-                    // Add 3-way interactions
-                    if factors_model.len() > 2 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    terms.push(
-                                        format!(
-                                            "{}*{}*{}",
-                                            factors_model[i],
-                                            factors_model[j],
-                                            factors_model[k]
-                                        )
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    // Add 4-way interactions
-                    if factors_model.len() > 3 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    for l in k + 1..factors_model.len() {
-                                        terms.push(
-                                            format!(
-                                                "{}*{}*{}*{}",
-                                                factors_model[i],
-                                                factors_model[j],
-                                                factors_model[k],
-                                                factors_model[l]
-                                            )
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                BuildTermMethod::All5Way => {
-                    // Include main effects and up to 5-way interactions
-                    // Add 1-way effects (main effects)
-                    for factor in factors_model {
-                        terms.push(factor.clone());
-                    }
-
-                    // Add 2-way interactions
-                    if factors_model.len() > 1 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                terms.push(format!("{}*{}", factors_model[i], factors_model[j]));
-                            }
-                        }
-                    }
-
-                    // Add 3-way interactions
-                    if factors_model.len() > 2 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    terms.push(
-                                        format!(
-                                            "{}*{}*{}",
-                                            factors_model[i],
-                                            factors_model[j],
-                                            factors_model[k]
-                                        )
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    // Add 4-way interactions
-                    if factors_model.len() > 3 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    for l in k + 1..factors_model.len() {
-                                        terms.push(
-                                            format!(
-                                                "{}*{}*{}*{}",
-                                                factors_model[i],
-                                                factors_model[j],
-                                                factors_model[k],
-                                                factors_model[l]
-                                            )
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Add 5-way interactions
-                    if factors_model.len() > 4 {
-                        for i in 0..factors_model.len() {
-                            for j in i + 1..factors_model.len() {
-                                for k in j + 1..factors_model.len() {
-                                    for l in k + 1..factors_model.len() {
-                                        for m in l + 1..factors_model.len() {
-                                            terms.push(
-                                                format!(
-                                                    "{}*{}*{}*{}*{}",
-                                                    factors_model[i],
-                                                    factors_model[j],
-                                                    factors_model[k],
-                                                    factors_model[l],
-                                                    factors_model[m]
-                                                )
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add covariate model if specified
-        if let Some(cov_model) = &config.model.cov_model {
-            // Parse covariate model - could be simple or complex
-            // For example: "X1" or "X1*X2" or "X1 X2"
-            for term in cov_model.split_whitespace() {
-                // Handle interaction terms in covariate model (X1*X2)
-                if term.contains('*') {
-                    terms.push(term.to_string());
-                } else {
-                    // Simple term
-                    terms.push(term.to_string());
-                }
-            }
-        }
-    } else if config.model.build_custom_term {
-        // Mode 3: When build_custom_term is true, directly use factors_model
-        if let Some(factors_model) = &config.model.factors_model {
-            for term in factors_model {
-                // Parse terms - can be a main effect or interaction term
-                if term.contains('*') || term.contains("WITHIN") || term.contains('(') {
-                    // This is an interaction or nesting term
-                    // Process according to the specification rules
-                    terms.push(term.clone());
-                } else {
-                    // Simple main effect
-                    terms.push(term.clone());
+                None => {
+                    return Err(
+                        format!("Dependent variable '{}' not found in a record.", dep_var_name)
+                    );
                 }
             }
         }
     }
-
-    // If no terms were generated, create a default design
-    if terms.is_empty() && !config.model.intercept {
-        // Default design: include all main effects
-        if let Some(fix_factors) = &config.main.fix_factor {
-            for factor in fix_factors {
-                terms.push(factor.clone());
-            }
-        }
-
-        // Add covariates
-        if let Some(covariates) = &config.main.covar {
-            for covar in covariates {
-                terms.push(covar.clone());
-            }
-        }
-    }
-
-    // Return the model design terms
-    Ok(terms)
+    Ok(y_values)
 }
 
 /// Helper to extract a numeric value from DataValue, typically for weights.
@@ -1058,10 +979,12 @@ pub fn create_combination_key(combination: &HashMap<String, String>) -> String {
 }
 
 /// Calculate weighted mean, std_deviation, and N for a set of (value, weight) tuples.
+/// Assumes weights are analytical/reliability weights for the variance calculation formula used.
 pub fn calculate_stats_for_values(values_with_weights: &[(f64, f64)]) -> StatsEntry {
+    // Filter out entries with non-positive or very small weights
     let valid_data: Vec<(f64, f64)> = values_with_weights
         .iter()
-        .filter(|(_, w)| *w > 1e-9)
+        .filter(|(_, w)| *w > 1e-9) // Using a small epsilon for weight positivity
         .cloned()
         .collect();
 
@@ -1076,7 +999,9 @@ pub fn calculate_stats_for_values(values_with_weights: &[(f64, f64)]) -> StatsEn
         .map(|(_, w)| *w)
         .sum();
 
-    if sum_of_weights <= 1e-9 {
+    // If sum of weights is effectively zero, cannot reliably calculate mean or std_dev
+    if sum_of_weights.abs() < 1e-9 {
+        // n_effective might be > 0 but all weights are zero. Mean is undefined or 0.
         return StatsEntry { mean: 0.0, std_deviation: 0.0, n: n_effective };
     }
 
@@ -1087,26 +1012,83 @@ pub fn calculate_stats_for_values(values_with_weights: &[(f64, f64)]) -> StatsEn
             .sum::<f64>() / sum_of_weights;
 
     let std_deviation: f64 = if n_effective > 1 {
+        // Numerator for weighted variance: sum(w_i * (v_i - mean)^2)
         let variance_numerator: f64 = valid_data
             .iter()
-            .map(|(v, w)| w * (v - mean).powi(2))
+            .map(|(v, w)| *w * (v - mean).powi(2))
             .sum();
 
+        // Denominator for specific type of weighted variance (e.g., SPSS "analytical weights")
+        // V1 = sum_weights * (n_effective - 1) / n_effective
+        // This provides an unbiased estimator if weights are related to reliability/precision.
         let variance_denominator =
             (sum_of_weights * ((n_effective - 1) as f64)) / (n_effective as f64);
 
-        if variance_denominator > 1e-9 {
+        if variance_denominator.abs() > 1e-9 {
             (variance_numerator / variance_denominator).sqrt()
         } else {
-            0.0
+            // This case might indicate all weights are the same and n_effective = 1, or other edge cases.
+            // If variance_numerator is also 0, then std_dev is 0.
+            // If variance_numerator is > 0 and denominator is 0, it implies an issue or undefined variance.
+            if variance_numerator.abs() < 1e-9 {
+                0.0
+            } else {
+                f64::NAN
+            }
         }
     } else {
-        0.0
+        // n_effective is 1
+        0.0 // Standard deviation of a single data point is 0
     };
 
     StatsEntry {
         mean,
         std_deviation,
         n: n_effective,
+    }
+}
+
+/// Create a TestEffectEntry with calculated statistics
+pub fn create_effect_entry(
+    sum_of_squares: f64,
+    df: usize,
+    error_ms: f64,
+    error_df: usize,
+    sig_level: f64
+) -> TestEffectEntry {
+    let mean_square = if df > 0 { sum_of_squares / (df as f64) } else { 0.0 };
+    let f_value = if error_ms > 0.0 && mean_square > 0.0 { mean_square / error_ms } else { 0.0 };
+    let significance = if f_value > 0.0 {
+        calculate_f_significance(df, error_df, f_value) // Already in common.rs
+    } else {
+        1.0
+    };
+
+    // Correct partial eta squared calculation
+    let partial_eta_squared = if sum_of_squares >= 0.0 && error_df > 0 {
+        let error_ss = error_ms * (error_df as f64);
+        let eta_sq = sum_of_squares / (sum_of_squares + error_ss);
+        // Ensure the value is between 0 and 1
+        eta_sq.max(0.0).min(1.0)
+    } else {
+        0.0
+    };
+
+    let noncent_parameter = if f_value > 0.0 { f_value * (df as f64) } else { 0.0 };
+    let observed_power = if f_value > 0.0 {
+        calculate_observed_power(df, error_df, f_value, sig_level) // Already in common.rs
+    } else {
+        0.0
+    };
+
+    TestEffectEntry {
+        sum_of_squares,
+        df,
+        mean_square,
+        f_value,
+        significance,
+        partial_eta_squared,
+        noncent_parameter,
+        observed_power,
     }
 }

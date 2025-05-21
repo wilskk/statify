@@ -6,6 +6,7 @@ pub struct UnivariateResult {
     pub between_subjects_factors: Option<HashMap<String, BetweenSubjectFactors>>,
     pub descriptive_statistics: Option<HashMap<String, DescriptiveStatistics>>,
     pub levene_test: Option<Vec<LeveneTest>>,
+    pub heteroscedasticity_tests: Option<HeteroscedasticityTests>,
     pub tests_of_between_subjects_effects: Option<TestsBetweenSubjectsEffects>,
     pub parameter_estimates: Option<ParameterEstimates>,
     pub general_estimable_function: Option<GeneralEstimableFunction>,
@@ -41,12 +42,17 @@ pub struct StatsEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LeveneTest {
     pub dependent_variable: String,
-    pub f_statistic: f64,
-    pub df1: usize,
-    pub df2: usize,
-    pub significance: f64,
-    pub function: String,
+    pub entries: Vec<LeveneTestEntry>,
     pub design: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LeveneTestEntry {
+    pub function: String,
+    pub levene_statistic: f64,
+    pub df1: usize,
+    pub df2: f64,
+    pub significance: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -128,17 +134,10 @@ pub struct SpreadVsLevelPoint {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeteroscedasticityTests {
-    pub breusch_pagan: Option<BPTest>,
     pub white: Option<WhiteTest>,
+    pub breusch_pagan: Option<BPTest>,
     pub modified_breusch_pagan: Option<ModifiedBPTest>,
     pub f_test: Option<FTest>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BPTest {
-    pub statistic: f64,
-    pub df: usize,
-    pub p_value: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -146,6 +145,15 @@ pub struct WhiteTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BPTest {
+    pub statistic: f64,
+    pub df: usize,
+    pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -153,6 +161,7 @@ pub struct ModifiedBPTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -161,6 +170,7 @@ pub struct FTest {
     pub df1: usize,
     pub df2: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 // Añadir estas nuevas estructuras

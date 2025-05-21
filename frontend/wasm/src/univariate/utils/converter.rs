@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::univariate::models::result::{
     ContrastCoefficients,
     GeneralEstimableFunction,
+    HeteroscedasticityTests,
     LackOfFitTests,
     LeveneTest,
     ParameterEstimateEntry,
@@ -36,6 +37,7 @@ struct FormatResult {
     between_subjects_factors: Option<Vec<FormattedBetweenSubjectFactor>>,
     descriptive_statistics: Option<Vec<FormattedDescriptiveStatistic>>,
     levene_test: Option<Vec<LeveneTest>>,
+    heteroscedasticity_tests: Option<HeteroscedasticityTests>,
     tests_of_between_subjects_effects: Option<FormattedTestsBetweenSubjectsEffects>,
     parameter_estimates: Option<ParameterEstimates>,
     general_estimable_function: Option<GeneralEstimableFunction>,
@@ -205,6 +207,7 @@ impl FormatResult {
             between_subjects_factors,
             descriptive_statistics,
             levene_test: result.levene_test.clone(),
+            heteroscedasticity_tests: result.heteroscedasticity_tests.clone(),
             tests_of_between_subjects_effects,
             parameter_estimates: result.parameter_estimates.clone(),
             general_estimable_function: result.general_estimable_function.clone(),

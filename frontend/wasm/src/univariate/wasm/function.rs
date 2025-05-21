@@ -68,6 +68,26 @@ pub fn run_analysis(
         }
     }
 
+    // Step 4: Heteroscedasticity Tests if requested
+    let mut heteroscedasticity_tests = None;
+    if
+        config.options.mod_brusch_pagan ||
+        config.options.brusch_pagan ||
+        config.options.white_test ||
+        config.options.f_test
+    {
+        logger.add_log("calculate_heteroscedasticity_tests");
+        match core::calculate_heteroscedasticity_tests(data, config) {
+            Ok(tests) => {
+                heteroscedasticity_tests = Some(tests);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_heteroscedasticity_tests", &e);
+                // Continue execution despite errors for non-critical functions
+            }
+        }
+    }
+
     // Step 4: Tests of Between-Subjects Effects (ANOVA)
     let mut tests_of_between_subjects_effects = None;
     logger.add_log("calculate_tests_between_subjects_effects");
@@ -252,6 +272,7 @@ pub fn run_analysis(
         between_subjects_factors: processing_summary,
         descriptive_statistics,
         levene_test,
+        heteroscedasticity_tests,
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
