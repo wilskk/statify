@@ -1,14 +1,25 @@
 // lack_of_fit.rs
-use std::collections::{ HashMap, HashSet };
-use nalgebra::{ DMatrix, DVector };
+use std::collections::{ HashMap };
+use std::hash::{ Hash, Hasher };
+use std::collections::hash_map::DefaultHasher;
+use nalgebra::{ DMatrix, DVector, RowDVector };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
-    data::{ AnalysisData, DataRecord, DataValue },
+    data::{ AnalysisData }, // Removed DataRecord, DataValue
     result::LackOfFitTests,
 };
 
 use super::core::*;
+
+// Helper to hash a DVector<f64> row to be used as a HashMap key
+fn hash_dvector_row(row_vector: &RowDVector<f64>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    for val_ref in row_vector.iter() {
+        val_ref.to_bits().hash(&mut hasher);
+    }
+    hasher.finish()
+}
 
 /// Calculate lack of fit tests if requested
 pub fn calculate_lack_of_fit_tests(
@@ -19,346 +30,170 @@ pub fn calculate_lack_of_fit_tests(
         return Err("Lack of fit tests not requested in configuration".to_string());
     }
 
-    let dep_var_name = match &config.main.dep_var {
-        Some(name) => name.clone(),
-        None => {
-            return Err("No dependent variable specified in configuration".to_string());
-        }
-    };
+    // 1. Fit the main model using the new centralized functions
+    let design_info = create_design_response_weights(data, config).map_err(|e|
+        format!("LOF: Failed to create design matrix for main model: {}", e)
+    )?;
 
-    // Check if we have fixed factors to use as predictors
-    let fixed_factors = match &config.main.fix_factor {
-        Some(factors) if !factors.is_empty() => factors,
-        _ => {
-            return Err("No fixed factors specified for lack of fit test".to_string());
-        }
-    };
-
-    // Identify unique combinations of predictor values
-    let predictor_combinations = get_unique_predictor_combinations(data, config)?;
-    let n_unique = predictor_combinations.len();
-    let n_total = count_total_cases(data);
-
-    // Collect all dependent values and corresponding predictor values
-    let mut all_y_values = Vec::new(); // All dependent values
-    let mut all_x_values = Vec::new(); // All predictor values (for regression)
-    let mut combo_indices = Vec::new(); // To track which combination each record belongs to
-
-    // First pass: collect all values and determine combination membership
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(y_value) = extract_dependent_value(record, &dep_var_name) {
-                all_y_values.push(y_value);
-
-                // Create predictor row (design matrix)
-                let mut x_row = Vec::new();
-                x_row.push(1.0); // Intercept term
-
-                // Add factor values
-                for factor in fixed_factors {
-                    // We need to find the corresponding record in fix_factor_data
-                    let factor_value = find_factor_value(data, record, factor);
-                    match factor_value {
-                        Some(DataValue::Number(n)) => x_row.push(n as f64),
-                        Some(DataValue::NumberFloat(f)) => x_row.push(f),
-                        Some(_) => {
-                            // For non-numeric, we need a numeric representation
-                            // This is simplified; proper dummy coding would be better
-                            x_row.push(1.0);
-                        }
-                        None => x_row.push(0.0),
-                    }
-                }
-                all_x_values.push(x_row);
-
-                // Find which combination this record belongs to
-                let mut combo_idx = 0;
-                for (i, combo) in predictor_combinations.iter().enumerate() {
-                    if matches_predictor_combination(record, combo, data, config) {
-                        combo_idx = i;
-                        break;
-                    }
-                }
-                combo_indices.push(combo_idx);
-            }
-        }
+    if design_info.n_samples == 0 {
+        return Err("LOF: No data available for main model fitting.".to_string());
     }
+    // p_parameters is num columns in X, r_x_rank is its rank.
+    // For LOF, p often refers to number of distinct parameters estimated.
+    let p_model_params = design_info.r_x_rank;
 
-    if all_y_values.is_empty() || all_x_values.is_empty() {
-        return Err("No valid data for lack of fit analysis".to_string());
-    }
+    let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e|
+        format!("LOF: Failed to create cross-product matrix for main model: {}", e)
+    )?;
+    let swept_info = perform_sweep_and_extract_results(
+        &ztwz_matrix,
+        design_info.p_parameters
+    ).map_err(|e| format!("LOF: Failed during SWEEP operation for main model: {}", e))?;
 
-    // Calculate regression coefficients
-    let coefficients = calculate_regression_coefficients(&all_x_values, &all_y_values)?;
-
-    // Calculate fitted values using regression model
-    let fitted_values: Vec<f64> = all_x_values
-        .iter()
-        .map(|x_row| {
-            // Calculate predicted value: b0 + b1*x1 + b2*x2 + ...
-            x_row
-                .iter()
-                .zip(coefficients.iter())
-                .map(|(x, coef)| x * coef)
-                .sum()
-        })
-        .collect();
-
-    // Group values by predictor combination
-    let mut combo_y_values = vec![Vec::new(); n_unique];
-    let mut combo_fitted_values = vec![Vec::new(); n_unique];
-
-    for i in 0..all_y_values.len() {
-        let combo_idx = combo_indices[i];
-        combo_y_values[combo_idx].push(all_y_values[i]);
-        combo_fitted_values[combo_idx].push(fitted_values[i]);
-    }
-
-    // Calculate residual sum of squares (total error)
-    let residual_ss = all_y_values
-        .iter()
-        .zip(fitted_values.iter())
-        .map(|(y, yhat)| (y - yhat).powi(2))
-        .sum::<f64>();
-
-    // Calculate pure error sum of squares (within groups)
-    let mut pure_error_ss = 0.0;
-    for combo_vals in &combo_y_values {
-        if combo_vals.len() > 1 {
-            // Only if we have multiple points for this combination
-            let combo_mean = calculate_mean(combo_vals);
-            for val in combo_vals {
-                pure_error_ss += (val - combo_mean).powi(2);
-            }
-        }
-    }
-
-    // Calculate lack of fit sum of squares
-    let lack_of_fit_ss = residual_ss - pure_error_ss;
-
-    // Calculate degrees of freedom
-    let num_parameters = coefficients.len(); // Intercept + coefficients for predictors
-    let df_lack_of_fit = if n_unique > num_parameters {
-        n_unique - num_parameters
-    } else {
-        1 // Fallback to avoid zero/negative df
-    };
-
-    let df_pure_error = n_total - n_unique;
-
-    // Calculate mean squares
-    let ms_lack_of_fit = if df_lack_of_fit > 0 {
-        lack_of_fit_ss / (df_lack_of_fit as f64)
-    } else {
-        0.0
-    };
-
-    let ms_pure_error = if df_pure_error > 0 {
-        pure_error_ss / (df_pure_error as f64)
-    } else {
-        0.0
-    };
-
-    // Calculate F statistic
-    let f_value = if ms_pure_error > 0.0 { ms_lack_of_fit / ms_pure_error } else { 0.0 };
-
-    // Calculate significance
-    let significance = calculate_f_significance(df_lack_of_fit, df_pure_error, f_value);
-
-    // Calculate effect size
-    let partial_eta_squared = if lack_of_fit_ss + pure_error_ss > 0.0 {
-        lack_of_fit_ss / (lack_of_fit_ss + pure_error_ss)
-    } else {
-        0.0
-    };
-
-    // Calculate noncentrality parameter
-    let noncent_parameter = (df_lack_of_fit as f64) * f_value;
-
-    // Calculate observed power
-    let observed_power = calculate_observed_power(
-        df_lack_of_fit,
-        df_pure_error,
-        f_value,
-        config.options.sig_level
-    );
-
-    Ok(LackOfFitTests {
-        sum_of_squares: lack_of_fit_ss,
-        df: df_lack_of_fit,
-        mean_square: ms_lack_of_fit,
-        f_value,
-        significance,
-        partial_eta_squared,
-        noncent_parameter,
-        observed_power,
-    })
-}
-
-/// Helper function to find factor value from fixed factor data
-fn find_factor_value(
-    data: &AnalysisData,
-    record: &DataRecord,
-    factor_name: &str
-) -> Option<DataValue> {
-    // Look through fix_factor_data to find the matching record and extract the factor value
-    // This is simplified and assumes records are in the same order across datasets
-    let record_index = data.dependent_data
-        .iter()
-        .flatten()
-        .position(|r| (r as *const _) == (record as *const _))?;
-
-    for factor_group in &data.fix_factor_data {
-        if record_index < factor_group.len() {
-            if let Some(value) = factor_group[record_index].values.get(factor_name) {
-                return Some(value.clone());
-            }
-        }
-    }
-    None
-}
-
-/// Get unique predictor combinations for lack of fit tests
-pub fn get_unique_predictor_combinations(
-    data: &AnalysisData,
-    config: &UnivariateConfig
-) -> Result<Vec<HashMap<String, String>>, String> {
-    let mut combinations = Vec::new();
-    let mut unique_combos = HashSet::new();
-
-    if let Some(factors) = &config.main.fix_factor {
-        for records_group in &data.fix_factor_data {
-            for record in records_group {
-                let mut combo = HashMap::new();
-
-                for factor in factors {
-                    if let Some(value) = record.values.get(factor) {
-                        let level = data_value_to_string(value);
-                        combo.insert(factor.to_string(), level);
-                    }
-                }
-
-                // Generate a unique key for this combination
-                let mut key = String::new();
-                for factor in factors {
-                    if let Some(level) = combo.get(factor) {
-                        key.push_str(&format!("{}:{},", factor, level));
-                    }
-                }
-
-                if !unique_combos.contains(&key) {
-                    unique_combos.insert(key);
-                    combinations.push(combo);
-                }
-            }
-        }
-    }
-
-    Ok(combinations)
-}
-
-/// Check if a record matches a predictor combination for lack of fit tests
-pub fn matches_predictor_combination(
-    record: &DataRecord,
-    combo: &HashMap<String, String>,
-    data: &AnalysisData,
-    config: &UnivariateConfig
-) -> bool {
-    // We need to check if the record matches the combination based on fixed factors
-    if let Some(factors) = &config.main.fix_factor {
-        // Find corresponding fixed factor records
-        let record_index = data.dependent_data
-            .iter()
-            .flatten()
-            .position(|r| (r as *const _) == (record as *const _));
-
-        if let Some(idx) = record_index {
-            for factor_group in &data.fix_factor_data {
-                if idx < factor_group.len() {
-                    let factor_record = &factor_group[idx];
-
-                    // Check if this record matches the combination for all factors
-                    for factor in factors {
-                        if let Some(value) = factor_record.values.get(factor) {
-                            let level = data_value_to_string(value);
-                            if let Some(combo_level) = combo.get(factor) {
-                                if &level != combo_level {
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    // Fallback to original implementation
-    matches_combination(record, combo, data, config)
-}
-
-/// Calculate regression coefficients using OLS
-fn calculate_regression_coefficients(
-    x_matrix: &[Vec<f64>],
-    y_values: &[f64]
-) -> Result<Vec<f64>, String> {
-    if x_matrix.is_empty() || y_values.is_empty() {
-        return Err("Empty data provided for regression".to_string());
-    }
-
-    if x_matrix.len() != y_values.len() {
+    let ss_error_total = swept_info.s_rss; // Corrected field name
+    // df_error_total is N - rank(X) = N - p_model_params
+    let df_error_total = (design_info.n_samples as isize) - (p_model_params as isize);
+    if df_error_total < 0 {
         return Err(
             format!(
-                "Mismatch between predictor and response data lengths: x={}, y={}",
-                x_matrix.len(),
-                y_values.len()
+                "LOF: df_error_total is negative ({}), N={}, p_params={}",
+                df_error_total,
+                design_info.n_samples,
+                p_model_params
             )
         );
     }
 
-    // Convert to nalgebra matrix formats
-    let nrows = x_matrix.len();
-    let ncols = if nrows > 0 { x_matrix[0].len() } else { 0 };
-    let mut x_data = Vec::with_capacity(nrows * ncols);
-    for row in x_matrix {
-        x_data.extend_from_slice(row);
+    // 2. Calculate Pure Error Sum of Squares (SS_PE)
+    let y_values = &design_info.y;
+    let x_matrix = &design_info.x;
+    let n_total = design_info.n_samples;
+
+    // Group Y values by unique X rows (excluding intercept for uniqueness if always present and not a defining feature of "combination")
+    // For simplicity here, we'll consider each unique full row of X as a unique predictor combination.
+    // If intercept column exists and is always 1, it doesn't help distinguish combinations.
+    // Consider using x_matrix.columns(first_pred_col, num_pred_cols) if intercept is always col 0.
+    // For now, using full X rows:
+    let mut groups_map: HashMap<u64, Vec<f64>> = HashMap::new();
+    for i in 0..n_total {
+        let x_row = x_matrix.row(i).into_owned(); // Convert to owned RowDVector
+        let row_hash = hash_dvector_row(&x_row);
+        groups_map.entry(row_hash).or_default().push(y_values[i]);
     }
-    let x = DMatrix::from_row_slice(nrows, ncols, &x_data);
-    let y = DVector::from_row_slice(y_values);
 
-    // Calculate (X'X)^(-1)X'y
-    let x_transpose = x.transpose();
-    let xtx = &x_transpose * &x;
+    let c_unique_combinations = groups_map.len();
+    let mut ss_pure_error = 0.0;
 
-    match xtx.clone().try_inverse() {
-        Some(xtx_inv) => {
-            let beta = xtx_inv * (x_transpose * y);
-            Ok(beta.as_slice().to_vec())
-        }
-        None => {
-            // Add small regularization to diagonal (ridge-like)
-            let n = xtx.nrows();
-            let mut xtx_reg = xtx.clone();
-            for i in 0..n {
-                xtx_reg[(i, i)] += 1e-6;
-            }
-
-            match xtx_reg.try_inverse() {
-                Some(xtx_inv) => {
-                    let beta = xtx_inv * (x_transpose * y);
-                    Ok(beta.as_slice().to_vec())
-                }
-                None =>
-                    Err(
-                        "Matrix X'X is singular and cannot be inverted, even with regularization".to_string()
-                    ),
+    for (_row_hash, y_group) in groups_map.iter() {
+        if y_group.len() > 1 {
+            // Only if there are replicate points for this combination
+            let group_mean = calculate_mean(y_group); // Assuming calculate_mean from common.rs
+            for &y_val in y_group {
+                ss_pure_error += (y_val - group_mean).powi(2);
             }
         }
     }
+
+    // df_pure_error is N_total - c_unique_combinations
+    let df_pure_error = (n_total as isize) - (c_unique_combinations as isize);
+    if df_pure_error < 0 {
+        // This implies more unique combinations than observations, which shouldn't happen.
+        // Or, if every observation is unique, df_pure_error will be 0, and SS_PE will be 0.
+        // Set to 0 if negative, but log warning or error as it indicates issue.
+        // e.g. if c_unique_combinations > n_total
+        return Err(
+            format!(
+                "LOF: df_pure_error is negative ({}), N={}, c_unique={}. This indicates an issue.",
+                df_pure_error,
+                n_total,
+                c_unique_combinations
+            )
+        );
+    }
+
+    // 3. Calculate Lack of Fit statistics
+    let ss_lack_of_fit = (ss_error_total - ss_pure_error).max(0.0); // SS LOF cannot be negative
+
+    // df_lack_of_fit is (N - p) - (N - c) = c - p
+    let df_lack_of_fit = (c_unique_combinations as isize) - (p_model_params as isize);
+    // Alternatively, df_lack_of_fit = df_error_total - df_pure_error;
+    // Let's use c - p definition directly for clarity, assuming p_model_params is correctly defined.
+
+    if df_lack_of_fit < 0 {
+        // This can happen if p_model_params > c_unique_combinations (e.g. saturated model or more params than unique points)
+        // In such cases, LOF test is not well-defined or df is 0.
+        // Typically, if c_unique_combinations <= p_model_params, there is no LOF, df_lof = 0.
+        // The F-test would not be meaningful. For now, let's proceed but the results might be NaN/Inf.
+        // Consider returning an error or specific note if df_lack_of_fit <=0 when ms_pure_error is also 0.
+    }
+
+    let ms_lack_of_fit = if df_lack_of_fit > 0 {
+        ss_lack_of_fit / (df_lack_of_fit as f64)
+    } else {
+        0.0 // Or NaN if ss_lack_of_fit is non-zero, indicating issue
+    };
+
+    let ms_pure_error = if df_pure_error > 0 {
+        ss_pure_error / (df_pure_error as f64)
+    } else {
+        0.0 // If df_pure_error is 0 (all points unique), MS_PE is undefined or treated as 0 if SS_PE is 0.
+        // If SS_PE > 0 and df_pure_error = 0, this is an issue.
+    };
+
+    let f_value_lof = if ms_pure_error > 1e-9 && df_lack_of_fit > 0 {
+        // Avoid division by zero or if no LOF df
+        (ms_lack_of_fit / ms_pure_error).max(0.0)
+    } else if df_lack_of_fit == 0 && ss_lack_of_fit < 1e-9 {
+        // No LOF sum of squares and no df for it
+        0.0
+    } else {
+        f64::NAN // Undefined or problematic case
+    };
+
+    let significance_lof = if df_lack_of_fit > 0 && df_pure_error > 0 && !f_value_lof.is_nan() {
+        calculate_f_significance(df_lack_of_fit as usize, df_pure_error as usize, f_value_lof)
+    } else {
+        f64::NAN // Significance is not calculable
+    };
+
+    let partial_eta_squared_lof = (
+        if (ss_lack_of_fit + ss_pure_error).abs() > 1e-9 && ss_error_total.abs() > 1e-9 {
+            // Partial Eta^2 for LOF = SS_LOF / (SS_LOF + SS_PE) = SS_LOF / SS_Error_Total
+            // This seems to be the definition of Eta^2 for LOF, not partial Eta^2 in a multi-factor sense.
+            // If SS_LOF + SS_PE = 0, then eta is 0.
+            ss_lack_of_fit / ss_error_total
+        } else {
+            0.0
+        }
+    )
+        .max(0.0)
+        .min(1.0);
+
+    let noncent_parameter_lof = if df_lack_of_fit > 0 && !f_value_lof.is_nan() {
+        (df_lack_of_fit as f64) * f_value_lof
+    } else {
+        0.0
+    };
+
+    let observed_power_lof = if df_lack_of_fit > 0 && df_pure_error > 0 && !f_value_lof.is_nan() {
+        calculate_observed_power_f(
+            f_value_lof,
+            df_lack_of_fit as f64,
+            df_pure_error as f64,
+            config.options.sig_level
+        )
+    } else {
+        f64::NAN
+    };
+
+    Ok(LackOfFitTests {
+        sum_of_squares: ss_lack_of_fit,
+        df: df_lack_of_fit as usize, // Cast to usize, ensure non-negative before this
+        mean_square: ms_lack_of_fit,
+        f_value: f_value_lof,
+        significance: significance_lof,
+        partial_eta_squared: partial_eta_squared_lof,
+        noncent_parameter: noncent_parameter_lof,
+        observed_power: observed_power_lof,
+    })
 }

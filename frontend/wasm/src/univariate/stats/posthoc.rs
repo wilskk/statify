@@ -170,7 +170,7 @@ pub fn calculate_posthoc_tests(
                 let q = t_abs * (2.0_f64).sqrt();
 
                 // Get appropriate significance based on the test
-                let significance = calculate_t_significance(df, t_value);
+                let significance = calculate_t_significance(t_value, df);
                 let mut test_name = "";
 
                 // Apply appropriate adjustments for each test
@@ -200,7 +200,7 @@ pub fn calculate_posthoc_tests(
                     let critical_q = 0.0; // Would need actual critical value from studentized range table
                     // Approximate with t-distribution approach
                     let adjusted_alpha = alpha / (k_star as f64);
-                    let t_critical = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -210,7 +210,7 @@ pub fn calculate_posthoc_tests(
                     // Tukey's b - average of SNK and HSD
                     test_name = "Tukey's b";
                     let adjusted_alpha = alpha / (k_star as f64);
-                    let t_critical = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -221,7 +221,7 @@ pub fn calculate_posthoc_tests(
                     test_name = "SNK";
                     // R_r,v,f = S_r,v,f
                     let step_adjusted_alpha = alpha / r;
-                    let t_critical = calculate_t_critical(df, step_adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(step_adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -232,7 +232,7 @@ pub fn calculate_posthoc_tests(
                     test_name = "Duncan";
                     // alpha_r = 1-(1-alpha)^(r-1)
                     let adjusted_alpha = 1.0 - (1.0 - alpha).powf(r - 1.0);
-                    let t_critical = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -243,7 +243,7 @@ pub fn calculate_posthoc_tests(
                     test_name = "Hochberg's GT2";
                     // Uses studentized maximum modulus
                     let adjusted_alpha = alpha / (k_star as f64);
-                    let t_critical = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -254,7 +254,7 @@ pub fn calculate_posthoc_tests(
                     // |x̄i-x̄j| ≥ s_pp * (1/√(2ni)+1/√(2nj)) * M_k,k*,f
                     let adjustment = ((level_data.len() as f64) / (n_i * n_j)).sqrt();
                     let adjusted_t = t_abs / adjustment;
-                    calculate_t_significance(df, adjusted_t)
+                    calculate_t_significance(adjusted_t, df)
                 } else if config.posthoc.regwf {
                     // Ryan-Einot-Gabriel-Welsch F
                     test_name = "R-E-G-W F";
@@ -277,7 +277,7 @@ pub fn calculate_posthoc_tests(
                         alpha
                     };
 
-                    let t_critical = calculate_t_critical(df, gamma_r / 2.0);
+                    let t_critical = calculate_t_critical(Some(gamma_r / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -289,7 +289,7 @@ pub fn calculate_posthoc_tests(
                     let k_ratio = config.posthoc.error_ratio as f64;
                     let f_crit = (k_ratio * (n_i + n_j)) / (n_i * n_j);
                     let adjusted_t = t_abs / f_crit.sqrt();
-                    calculate_t_significance(df, adjusted_t)
+                    calculate_t_significance(adjusted_t, df)
                 } else if config.posthoc.dunnett {
                     // Dunnett
                     test_name = "Dunnett";
@@ -321,7 +321,7 @@ pub fn calculate_posthoc_tests(
                     test_name = "Dunnett's T3";
                     // Uses studentized maximum modulus with unequal variances
                     let adjusted_alpha = alpha / (k_star as f64);
-                    let adjusted_t_crit = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let adjusted_t_crit = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > adjusted_t_crit {
                         0.01
                     } else {
@@ -332,7 +332,7 @@ pub fn calculate_posthoc_tests(
                     test_name = "Games-Howell";
                     // Uses studentized range with unequal variances
                     let adjusted_alpha = alpha / (k_star as f64);
-                    let t_critical = calculate_t_critical(df, adjusted_alpha / 2.0);
+                    let t_critical = calculate_t_critical(Some(adjusted_alpha / 2.0), df);
                     if t_abs > t_critical {
                         0.01
                     } else {
@@ -354,7 +354,7 @@ pub fn calculate_posthoc_tests(
                 };
 
                 // Calculate confidence interval
-                let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
+                let t_critical = calculate_t_critical(Some(config.options.sig_level / 2.0), df);
                 let ci_width = std_error * t_critical;
 
                 // Calculate effect size and power

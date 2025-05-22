@@ -14,8 +14,8 @@
 pub mod time_series;
 // pub mod tree;
 // pub mod twostep;
-// pub mod univariate;
-pub mod varcomps;
+pub mod univariate;
+// pub mod varcomps;
 
 pub use time_series::smoothing::smoothing::Smoothing;
 pub use time_series::decomposition::decomposition::Decomposition;

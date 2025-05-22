@@ -50,7 +50,7 @@ fn populate_design_matrix_rows<F>(
         }
     }
     // Ensure matrix is fully populated if n_total was larger than actual iterated items
-    // This should ideally not occur if n_total = common::count_total_cases(data)
+    // This should ideally not occur if n_total = count_total_cases(data)
     // If row_idx < n_total, the remaining rows in x_matrix will keep their initial 0.0 values.
     Ok(x_matrix)
 }
@@ -155,7 +155,7 @@ pub fn get_level_values_adjusted(
             for fix_factor_group in &data.fix_factor_data {
                 for fix_record in fix_factor_group {
                     if let Some(value) = fix_record.values.get(factor) {
-                        let current_level = data_value_to_string(value);
+                        let current_level = common::data_value_to_string(value);
                         if current_level == level {
                             factor_level_match = true;
                             break;
@@ -242,7 +242,12 @@ pub fn get_df_for_term(
         if
             !data.fix_factor_data_defs
                 .iter()
-                .any(|defs| defs.iter().any(|def| def.name == term_name))
+                .any(|defs| defs.iter().any(|def| def.name == term_name)) &&
+            !data.random_factor_data_defs
+                .as_ref()
+                .map_or(false, |r_defs|
+                    r_defs.iter().any(|defs| defs.iter().any(|def| def.name == term_name))
+                )
         {
             // If factor definition not found, it might be an issue or imply 0 DF if not in model explicitly.
             // However, generate_model_design_terms should only include valid terms.
@@ -290,11 +295,16 @@ pub fn calculate_interaction_df(
             if
                 !data.fix_factor_data_defs
                     .iter()
-                    .any(|defs| defs.iter().any(|def| def.name == *factor_name))
+                    .any(|defs| defs.iter().any(|def| def.name == *factor_name)) &&
+                !data.random_factor_data_defs
+                    .as_ref()
+                    .map_or(false, |r_defs|
+                        r_defs.iter().any(|defs| defs.iter().any(|def| def.name == *factor_name))
+                    )
             {
                 return Err(
                     format!(
-                        "Term '{}' in interaction '{}' is not a defined fixed factor.",
+                        "Term '{}' in interaction '{}' is not a defined fixed or random factor.",
                         factor_name,
                         interaction_term
                     )
@@ -497,7 +507,19 @@ pub fn generate_model_design_terms(
     } else if config.model.custom {
         generate_custom_terms(data, config, &mut terms)?;
     } else if config.model.build_custom_term {
-        generate_build_custom_terms(config, &mut terms);
+        // If TermText is provided, parse it directly as the model formula
+        if let Some(term_formula) = &config.model.term_text {
+            if !term_formula.trim().is_empty() {
+                // Simple split by space for now, can be enhanced for proper parsing
+                terms.extend(term_formula.split_whitespace().map(String::from));
+            } else {
+                // TermText is empty, fall back to FactorsModel if available
+                generate_build_custom_terms_from_factors_model(config, &mut terms);
+            }
+        } else {
+            // TermText not provided, use FactorsModel
+            generate_build_custom_terms_from_factors_model(config, &mut terms);
+        }
     }
 
     let non_intercept_terms_present = terms.iter().any(|t| t != "Intercept");
@@ -686,6 +708,23 @@ fn generate_specific_n_way_interactions_recursive(
 }
 
 fn generate_build_custom_terms(config: &UnivariateConfig, terms: &mut Vec<String>) {
+    // This function is now a wrapper or will be replaced by the logic above.
+    // For now, let's assume it defaults to using factors_model if term_text is not used.
+    if let Some(factors_model) = &config.model.factors_model {
+        for term in factors_model {
+            if !terms.contains(term) {
+                // Ensure no duplicates if called after term_text parsing
+                terms.push(term.clone());
+            }
+        }
+    }
+}
+
+// Renamed original generate_build_custom_terms to avoid conflict
+fn generate_build_custom_terms_from_factors_model(
+    config: &UnivariateConfig,
+    terms: &mut Vec<String>
+) {
     if let Some(factors_model) = &config.model.factors_model {
         for term in factors_model {
             terms.push(term.clone());
@@ -901,7 +940,7 @@ pub fn create_contrast_coded_interaction_matrix(
     data: &AnalysisData,
     interaction_term: &str
 ) -> Result<Vec<Vec<f64>>, String> {
-    let term_factors = self::parse_interaction_term(interaction_term);
+    let term_factors = parse_interaction_term(interaction_term);
     if term_factors.is_empty() {
         let n_total = common::count_total_cases(data);
         return Ok(vec![Vec::new(); n_total]);
@@ -924,7 +963,7 @@ pub fn create_contrast_coded_interaction_matrix(
 
     let mut level_combinations = Vec::new(); // All combinations
     let mut current_combo_gen = HashMap::new();
-    self::generate_level_combinations(
+    generate_level_combinations(
         &factor_levels_for_combinations,
         &mut current_combo_gen,
         0,
@@ -1133,7 +1172,7 @@ pub fn create_type_iv_interaction_matrix(
     data: &AnalysisData,
     interaction_term: &str
 ) -> Result<Vec<Vec<f64>>, String> {
-    let term_factors = self::parse_interaction_term(interaction_term);
+    let term_factors = parse_interaction_term(interaction_term);
     if term_factors.is_empty() {
         let n_total = common::count_total_cases(data);
         return Ok(vec![Vec::new(); n_total]); // N x 0 matrix
@@ -1152,7 +1191,7 @@ pub fn create_type_iv_interaction_matrix(
     let mut all_possible_level_combinations = Vec::new();
     let mut current_combo_for_generation = HashMap::new();
     if !factor_levels_list.is_empty() {
-        self::generate_level_combinations(
+        generate_level_combinations(
             &factor_levels_list,
             &mut current_combo_for_generation,
             0,
@@ -1297,12 +1336,7 @@ pub fn create_nested_design_matrix(
 
     while let Some(open_paren) = current_term_parser.rfind('(') {
         let factor_before_paren = current_term_parser[..open_paren].trim();
-        if
-            let Some(matching_close) = self::find_matching_parenthesis(
-                current_term_parser,
-                open_paren
-            )
-        {
+        if let Some(matching_close) = find_matching_parenthesis(current_term_parser, open_paren) {
             if open_paren > 0 && !factor_before_paren.is_empty() {
                 hierarchy.push(factor_before_paren.to_string());
             }

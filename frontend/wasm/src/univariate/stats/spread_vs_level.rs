@@ -8,7 +8,7 @@ use crate::univariate::models::{
 use super::core::{
     calculate_mean,
     calculate_std_deviation,
-    extract_dependent_value,
+    extract_numeric_from_record,
     get_factor_combinations,
     matches_combination,
 };
@@ -38,7 +38,7 @@ pub fn calculate_spread_vs_level_plots(
         for records in &data.dependent_data {
             for record in records {
                 if matches_combination(record, combo, data, config) {
-                    if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                    if let Some(value) = extract_numeric_from_record(record, &dep_var_name) {
                         values.push(value);
                     }
                 }

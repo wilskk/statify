@@ -7,14 +7,7 @@ use crate::univariate::models::{
     result::{ ConfidenceInterval, ParameterEstimateEntry },
 };
 
-use super::core::{
-    calculate_mean,
-    calculate_t_critical,
-    calculate_t_significance,
-    extract_dependent_value,
-    get_factor_levels,
-    data_value_to_string,
-};
+use super::core::*;
 
 pub fn calculate_emmeans(
     data: &AnalysisData,
@@ -118,7 +111,7 @@ pub fn calculate_emmeans(
                     }
 
                     if matches {
-                        if let Some(value) = extract_dependent_value(record, &dep_var) {
+                        if let Some(value) = extract_numeric_from_record(record, &dep_var) {
                             values.push(value);
                         }
                     }
@@ -141,7 +134,7 @@ pub fn calculate_emmeans(
             // Calculate t-value and significance
             let df = values.len() - 1;
             let t_value = mean / std_error;
-            let significance = calculate_t_significance(df, t_value);
+            let significance = calculate_t_significance(t_value, df);
 
             // Calculate confidence interval
             let alpha = match config.emmeans.confi_interval_method {
@@ -151,7 +144,7 @@ pub fn calculate_emmeans(
                 CIMethod::LsdNone => config.options.sig_level,
             };
 
-            let t_critical = calculate_t_critical(df, alpha / 2.0);
+            let t_critical = calculate_t_critical(Some(alpha / 2.0), df);
             let ci_width = std_error * t_critical;
 
             // Format parameter name from combination
@@ -214,7 +207,7 @@ pub fn calculate_emmeans(
                     let std_error = (se_i.powi(2) + se_j.powi(2)).sqrt();
                     let df = (df_i + df_j) / 2; // Approximate
                     let t_value = mean_diff / std_error;
-                    let significance = calculate_t_significance(df, t_value);
+                    let significance = calculate_t_significance(t_value, df);
 
                     // Adjust significance based on method
                     let adjusted_significance = match config.emmeans.confi_interval_method {
@@ -229,7 +222,7 @@ pub fn calculate_emmeans(
                     };
 
                     // Calculate confidence interval
-                    let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
+                    let t_critical = calculate_t_critical(Some(config.options.sig_level / 2.0), df);
                     let ci_width = std_error * t_critical;
 
                     // Add to estimates

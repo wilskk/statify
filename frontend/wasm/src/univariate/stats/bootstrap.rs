@@ -1,5 +1,5 @@
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
-use super::common::{ extract_dependent_value, calculate_mean };
+use super::common::{ extract_numeric_from_record, calculate_mean };
 
 /// Perform bootstrap analysis
 pub fn perform_bootstrap_analysis(
@@ -20,7 +20,7 @@ pub fn perform_bootstrap_analysis(
         let mut all_values = Vec::new();
         for records in &data.dependent_data {
             for record in records {
-                if let Some(value) = extract_dependent_value(record, dep_var) {
+                if let Some(value) = extract_numeric_from_record(record, dep_var) {
                     all_values.push(value);
                 }
             }

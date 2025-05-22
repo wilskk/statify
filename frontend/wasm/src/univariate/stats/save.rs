@@ -6,7 +6,7 @@ use crate::univariate::models::{
 };
 
 use super::core::{
-    extract_dependent_value,
+    extract_numeric_from_record,
     get_factor_levels,
     data_value_to_string,
     matrix_inverse,
@@ -60,7 +60,7 @@ pub fn save_variables(
     // Build design matrix based on factors and covariates
     for records in &data.dependent_data {
         for record in records {
-            if let Some(y) = extract_dependent_value(record, &dep_var_name) {
+            if let Some(y) = extract_numeric_from_record(record, &dep_var_name) {
                 y_values.push(y);
 
                 // Create row for X matrix
@@ -200,7 +200,7 @@ pub fn save_variables(
     }
 
     // Calculate MSE
-    let mut mse = 0.0;
+    let mut mse: f64 = 0.0;
     for i in 0..n {
         mse += residuals[i].powi(2) * weight_values[i];
     }

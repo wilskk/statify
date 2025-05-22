@@ -55,7 +55,7 @@ pub fn calculate_robust_parameter_estimates(
     // Extract y values and build X matrix
     for records in &data.dependent_data {
         for record in records {
-            if let Some(y) = extract_dependent_value(record, &dep_var_name) {
+            if let Some(y) = extract_numeric_from_record(record, &dep_var_name) {
                 y_values.push(y);
 
                 // Create a row for X matrix
@@ -205,10 +205,10 @@ pub fn calculate_robust_parameter_estimates(
             let std_error = robust_se[i];
             let t_value = b / std_error;
             let df = n - p;
-            let significance = calculate_t_significance(df, t_value);
+            let significance = calculate_t_significance(t_value, df);
 
             // Calculate confidence interval
-            let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
+            let t_critical = calculate_t_critical(Some(config.options.sig_level / 2.0), df);
             let ci_width = std_error * t_critical;
 
             // Add parameter

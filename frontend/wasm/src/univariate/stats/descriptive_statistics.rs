@@ -8,13 +8,13 @@ use crate::univariate::models::{
 };
 
 use super::common::{
-    extract_dependent_value,
     extract_numeric_value,
     map_factors_to_datasets,
     add_factor_to_entry,
     collect_factor_levels_from_records,
     create_combination_key,
     calculate_stats_for_values,
+    extract_numeric_from_record,
 };
 
 /// Calculate descriptive statistics for univariate analysis
@@ -138,7 +138,12 @@ fn create_combined_dataset(
 
     for (_record_set_idx, dep_record_set) in data.dependent_data.iter().enumerate() {
         for (record_idx, dep_record) in dep_record_set.iter().enumerate() {
-            if let Some(dependent_value_str) = extract_dependent_value(dep_record, dep_var_name) {
+            if
+                let Some(dependent_value_str) = extract_numeric_from_record(
+                    dep_record,
+                    dep_var_name
+                ).map(|v| v.to_string())
+            {
                 let mut entry: HashMap<String, String> = HashMap::new();
                 entry.insert(dep_var_name.to_string(), dependent_value_str.to_string());
 
