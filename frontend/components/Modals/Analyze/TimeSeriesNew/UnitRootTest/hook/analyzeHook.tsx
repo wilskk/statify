@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
-import { handleUnitRootTest } from "../analyze/analyze";
+import { handleUnitRootTest } from "../../../TimeSeries/handleAnalyze/handleUnitRootTest";
 
 export function analyzeHook(
     storeVariables: Variable[],
@@ -117,6 +117,8 @@ export function analyzeHook(
                 selectedEquation[0],
                 selectedDifference[0]
             );
+
+            console.log(dataValues)
 
             console.log("handleUnitRootTest result:", {
                 descriptionTable,
