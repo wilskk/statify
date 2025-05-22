@@ -72,7 +72,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
     const [availableVariables, setAvailableVariables] = useState<string[]>([]);
     const [dataVariable, setDataVariable] = useState<string[]>([]);
     const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
-    
+
     // UI state management
     const [highlightedVariable, setHighlightedVariable] = useState<string | null>(null);
     const [selectedDecompositionMethod, setSelectedDecompositionMethod] = useState<string[]>(['additive','additive']);

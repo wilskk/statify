@@ -1,0 +1,235 @@
+"use client";
+
+import React, { FC, useState, useEffect } from "react";
+import {
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
+} from "@/components/ui/dialog";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger
+} from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { Variable } from "@/types/Variable";
+import { timeHook } from "./hook/timeHook";
+import { optionHook } from "./hook/optionHook";
+import { analyzeHook } from "./hook/analyzeHook";
+import VariablesTab from "./VariablesTab";
+import TimeTab from "./TimeTab";
+import OptionTab from "./OptionTab";
+
+interface AutocorrelationProps {
+    onClose: () => void;
+}
+
+const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
+    const { variables } = useVariableStore();
+    const { data } = useDataStore();
+        
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const [activeTab, setActiveTab] = useState("variables");
+
+    const {
+        periods,
+        selectedPeriod,
+        initialType,
+        handleSelectedPeriod,
+        inputPeriods,
+        resetTime,
+    } = timeHook();
+
+    const {
+        differences,
+        selectedDifference,
+        maximumLag,
+        seasonally,
+        handleSelectedDifference,
+        handleMaximumLag,
+        handleSeasonally,
+        resetOptions,
+    } = optionHook();
+
+    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = analyzeHook(
+        selectedVariables,
+        data,
+        selectedDifference,
+        selectedPeriod,
+        maximumLag,
+        seasonally,
+        onClose
+    );
+    const combinedError = errorMsg || analysisError;
+
+    useEffect(() => {
+            setAvailableVariables(variables.filter(v => v.name !== ""));
+    }, [variables]);
+
+    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
+        if (selectedVariables.length > 0) {
+            setErrorMsg("Hanya boleh memilih satu variabel saja.");
+            return;
+        }
+        setErrorMsg(null); // clear error kalau sukses
+        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setSelectedVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
+        setHighlightedVariable(null);
+    };
+
+    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
+        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
+        setAvailableVariables(prev => {
+            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
+                return prev;
+            }
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
+        setHighlightedVariable(null);
+    };
+
+    const reorderVariables = (source: 'available' | 'selected', variablesToReorder: Variable[]) => {
+        if (source === 'available') {
+            setAvailableVariables([...variablesToReorder]);
+        } else {
+            setSelectedVariables([...variablesToReorder]);
+        }
+    };
+
+    const handleReset = () => {
+        resetOptions();
+        resetTime();
+        reorderVariables('available', variables.filter(v => v.name !== ""));
+        setSelectedVariables([]);
+    }
+
+    return (
+        <DialogContent className="max-w-[600px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Autocorrelation</DialogTitle>
+            </DialogHeader>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-[#E6E6E6] flex-shrink-0">
+                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                        <TabsTrigger
+                            value="variables"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="option"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'option' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Option
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="time"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'time' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Time
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        selectedVariables={selectedVariables}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                    />
+                </TabsContent>
+
+                <TabsContent value="option" className="p-6 overflow-y-auto flex-grow">
+                    <OptionTab
+                        differences={differences}
+                        selectedDifference={selectedDifference}
+                        maximumLag={maximumLag}
+                        seasonally={seasonally}
+                        handleSelectedDifference={handleSelectedDifference}
+                        handleMaximumLag={handleMaximumLag}
+                        handleSeasonally={handleSeasonally}
+                    />
+                </TabsContent>
+
+                <TabsContent value="time" className="p-6 overflow-y-auto flex-grow">
+                    <TimeTab
+                        periods={periods}
+                        selectedPeriod={selectedPeriod}
+                        initialType={initialType}
+                        handleSelectedPeriod={handleSelectedPeriod}
+                        inputPeriods={inputPeriods}
+                    />
+                </TabsContent>
+            </Tabs>
+
+            {combinedError && <div className="px-6 py-2 text-red-600 text-center">{combinedError}</div>}
+
+            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        onClick={handleAnalyzes}
+                        disabled={isCalculating}
+                    >
+                        {isCalculating ? "Processing..." : "OK"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        onClick={onClose}
+                        disabled={isCalculating}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        disabled={isCalculating}
+                    >
+                        Help
+                    </Button>
+                </div>
+            </DialogFooter>
+        </DialogContent>
+    );
+};
+export default Autocorrelation;

@@ -31,11 +31,6 @@ import OptionsLinear from './Regression/Linear/OptionsLinear';
 import PlotsLinear from './Regression/Linear/PlotsLinear';
 import SimpleBarModal from "./Graphs/LegacyDialogs/BarModal/SimpleBarModal";
 import ChartBuilderModal from "./Graphs/ChartBuilder/ChartBuilderModal";
-import SmoothingModal from "./Analyze/TimeSeries/SmoothingModal";
-import DecompositionModal from "./Analyze/TimeSeries/DecompositionModal";
-import AutocorrelationModal from "./Analyze/TimeSeries/AutocorrelationModal";
-import UnitRootTestModal from "./Analyze/TimeSeries/UnitRootTestModal";
-import BoxJenkinsModelModal from "./Analyze/TimeSeries/BoxJenkinsModelModal";
 import { CompareMeansModal, isCompareMeansModal } from "@/components/Modals/Analyze/CompareMeans/CompareMeansModal";
 import { LegacyDialogsModal, isLegacyDialogsModal } from "@/components/Modals/Analyze/NonparametricTests/LegacyDialogs/LegacyDialogsModal";
 import {
@@ -50,6 +45,10 @@ import {
     DimensionReductionModals,
     isDimensionReductionModal,
 } from "./Analyze/dimension-reduction/dimension-reduction-modals";
+import {
+    TimeSeriesModal,
+    isTimeSeriesModal,
+} from "./Analyze/TimeSeriesNew/TimeSeriesModal";
 
 const ModalContainer: React.FC = () => {
     const { modals, closeModal } = useModal();
@@ -158,6 +157,18 @@ const ModalContainer: React.FC = () => {
         return (
             <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
                 <GeneralLinearModelModals
+                    modalType={currentModal.type}
+                    onClose={closeModal}
+                    props={currentModal.props}
+                />
+            </Dialog>
+        );
+    }
+
+    if (isTimeSeriesModal(currentModal.type)) {
+        return (
+            <Dialog open={true} onOpenChange={(open) => !open && closeModal()}>
+                <TimeSeriesModal
                     modalType={currentModal.type}
                     onClose={closeModal}
                     props={currentModal.props}
@@ -295,25 +306,6 @@ const ModalContainer: React.FC = () => {
                 );
             case ModalType.SimpleBarModal:
                 return <SimpleBarModal onClose={closeModal} {...currentModal.props} />;
-            // Time Series
-            case ModalType.Smoothing:
-                return <SmoothingModal onClose={closeModal} {...currentModal.props} />;
-            case ModalType.Decomposition:
-                return (
-                <DecompositionModal onClose={closeModal} {...currentModal.props} />
-                );
-            case ModalType.Autocorrelation:
-                return (
-                <AutocorrelationModal onClose={closeModal} {...currentModal.props} />
-                );
-            case ModalType.UnitRootTest:
-                return (
-                    <UnitRootTestModal onClose={closeModal} {...currentModal.props} />
-                );
-            case ModalType.BoxJenkinsModel:
-                return (
-                <BoxJenkinsModelModal onClose={closeModal} {...currentModal.props} />
-                );
                 return (
                     <SimpleBarModal
                         onClose={closeModal}
