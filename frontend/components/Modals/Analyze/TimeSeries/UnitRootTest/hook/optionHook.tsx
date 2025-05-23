@@ -32,7 +32,7 @@ const equations: EquationOption[] = [
     { value: 'with_trend', label: 'trend and intercept' },
 ];
 
-export function optionHook(
+export function useOptionHook(
 ) {
     const [selectedMethod, setSelectedMethod] = useState<string[]>([methods[0].value, methods[0].label]);
     const [selectedDifference, setSelectedDifference] = useState<string[]>([differences[0].value, differences[0].label]);

@@ -6,7 +6,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { handleBoxJenkinsModel } from "../analyze/analyze";
 
-export function analyzeHook(
+export function useAnalyzeHook(
     storeVariables: Variable[],
     data: any[],
     selectedPeriod: string[],

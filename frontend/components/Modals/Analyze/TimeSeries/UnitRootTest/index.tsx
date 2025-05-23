@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { analyzeHook } from "./hook/analyzeHook";
-import { optionHook } from "./hook/optionHook";
+import { useAnalyzeHook } from "./hook/analyzeHook";
+import { useOptionHook } from "./hook/optionHook";
 import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
 
@@ -50,9 +50,9 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose }) => {
         handleDifferenceChange,
         handleLengthLag,
         resetOptions,
-    } = optionHook();
+    } = useOptionHook();
 
-    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = analyzeHook(
+    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = useAnalyzeHook(
         selectedVariables,
         data,
         selectedMethod,

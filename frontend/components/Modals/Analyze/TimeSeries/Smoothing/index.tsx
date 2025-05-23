@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { optionHook } from "./hook/optionHook";
-import { timeHook } from "./hook/timeHook";
-import { analyzeHook } from "./hook/analyzeHook";
+import { useOptionHook } from "./hook/optionHook";
+import { useTimeHook } from "./hook/timeHook";
+import { useAnalyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
 import TimeTab from "./TimeTab";
@@ -48,7 +48,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose }) => {
         inputParameters,
         handleSelectedMethod,
         resetOptions,
-    } = optionHook();
+    } = useOptionHook();
 
     const {
         periods,
@@ -57,9 +57,9 @@ const Smoothing: FC<SmoothingProps> = ({ onClose }) => {
         handleSelectedPeriod,
         resetTime,
         inputPeriods,
-    } = timeHook();
+    } = useTimeHook();
 
-    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = analyzeHook(
+    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = useAnalyzeHook(
         selectedMethod,
         parameters,
         selectedPeriod,

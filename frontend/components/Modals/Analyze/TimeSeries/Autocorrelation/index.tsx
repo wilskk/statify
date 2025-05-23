@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { timeHook } from "./hook/timeHook";
-import { optionHook } from "./hook/optionHook";
-import { analyzeHook } from "./hook/analyzeHook";
+import { useTimeHook } from "./hook/timeHook";
+import { useOptionHook } from "./hook/optionHook";
+import { useAnalyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
 import TimeTab from "./TimeTab";
 import OptionTab from "./OptionTab";
@@ -46,7 +46,7 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
         handleSelectedPeriod,
         inputPeriods,
         resetTime,
-    } = timeHook();
+    } = useTimeHook();
 
     const {
         differences,
@@ -57,9 +57,9 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
         handleMaximumLag,
         handleSeasonally,
         resetOptions,
-    } = optionHook();
+    } = useOptionHook();
 
-    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = analyzeHook(
+    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = useAnalyzeHook(
         selectedVariables,
         data,
         selectedDifference,

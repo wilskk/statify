@@ -3,7 +3,7 @@ import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { handleAutocorrelation } from "../analyze/analyze";
 
-export function analyzeHook(
+export function useAnalyzeHook(
     storeVariable: Variable[],
     data: any[],
     selectedDifference: string[],

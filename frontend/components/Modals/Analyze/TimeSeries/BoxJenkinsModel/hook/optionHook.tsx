@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export function optionHook(
+export function useOptionHook(
 ) {
 
     const [arOrder, setArOrder] = useState<number>(0);

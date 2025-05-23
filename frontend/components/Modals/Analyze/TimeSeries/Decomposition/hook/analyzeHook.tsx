@@ -6,7 +6,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 
-export function analyzeHook(
+export function useAnalyzeHook(
     selectedDecompositionMethod: string[],
     selectedTrendedMethod: string[],
     selectedPeriod: string[],

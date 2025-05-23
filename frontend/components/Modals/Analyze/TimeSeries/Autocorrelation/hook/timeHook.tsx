@@ -23,7 +23,7 @@ const periods: PeriodOption[] = [
     { value: '0', label: 'Not Dated', id: 'nd'},
 ];
 
-export function timeHook(
+export function useTimeHook(
 ) {
     const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
     // Set default from store getter

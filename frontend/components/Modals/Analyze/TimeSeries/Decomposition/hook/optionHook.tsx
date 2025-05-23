@@ -22,7 +22,7 @@ const trendedMethods: TrendedMethod[] = [
     { value: 'exponential', label: 'Exponential' },
 ];
 
-export function optionHook(
+export function useOptionHook(
 ) {
     const [selectedDecompositionMethod, setSelectedDecompositionMethod] = useState<string[]>([
         'additive',

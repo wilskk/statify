@@ -6,7 +6,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { Variable } from "@/types/Variable"; // Untuk tipe data variabel
 
-export function analyzeHook(
+export function useAnalyzeHook(
     selectedMethod: string[],
     parameters: number[],
     selectedPeriod: string[],

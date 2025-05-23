@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { timeHook } from "./hook/timeHook";
-import { analyzeHook } from "./hook/analyzeHook";
-import { optionHook } from "./hook/optionHook";
+import { useTimeHook } from "./hook/timeHook";
+import { useAnalyzeHook } from "./hook/analyzeHook";
+import { useOptionHook } from "./hook/optionHook";
 import VariablesTab from "./VariablesTab";
 import TimeTab from "./TimeTab";
 import OptionTab from "./OptionTab";
@@ -47,7 +47,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose }) => {
         handleSelectedPeriod,
         inputPeriods,
         resetTime,
-    } = timeHook();
+    } = useTimeHook();
 
     const {
         arOrder,
@@ -57,9 +57,9 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose }) => {
         handleDiffOrder,
         handleMaOrder,
         resetOptions,
-    } = optionHook();
+    } = useOptionHook();
 
-    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = analyzeHook(
+    const { errorMsg: analysisError, isCalculating, handleAnalyzes } = useAnalyzeHook(
         selectedVariables,
         data,
         selectedPeriod,

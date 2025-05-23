@@ -3,7 +3,7 @@ import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
 import { handleUnitRootTest } from "../analyze/analyze";
 
-export function analyzeHook(
+export function useAnalyzeHook(
     storeVariables: Variable[],
     data: any[],
     selectedMethod: string[],

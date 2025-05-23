@@ -30,7 +30,7 @@ const methods: SmoothingMethod[] = [
     { value: 'winter', label: 'Winter\'s Method Exponential Smoothing' },
 ];
 
-export function optionHook(
+export function useOptionHook(
     initialMethod: SmoothingMethod = { value: "sma", label: "Simple Moving Average" }
     ) {
     const [selectedMethod, setSelectedMethod] = useState<[string, string]>([

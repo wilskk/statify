@@ -17,7 +17,7 @@ const differences: DifferenceOption[] = [
     { value: 'second-difference', label: 'second difference' },
 ];
 
-export function optionHook(
+export function useOptionHook(
 
 ) {
     const [selectedDifference, setSelectedDifference] = useState<string[]>(['level', 'level']);
