@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
-import { handleUnitRootTest } from "../../../TimeSeries/handleAnalyze/handleUnitRootTest";
+import { handleUnitRootTest } from "../analyze/analyze";
 
 export function analyzeHook(
     storeVariables: Variable[],
     data: any[],
     selectedMethod: string[],
-    selectedDifference: string[],
     selectedEquation: string[],
+    selectedDifference: string[],
     lengthLag: number,
     onClose: () => void
 ) {
