@@ -79,7 +79,8 @@ pub fn calculate_parameter_estimates(
     let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
     if let Some(fixed_factors) = &config.main.fix_factor {
         for factor in fixed_factors {
-            let levels = get_factor_levels(data, factor)?;
+            let mut levels = get_factor_levels(data, factor)?;
+            levels.sort(); // Ensure levels are sorted
             factor_levels_map.insert(factor.clone(), levels);
         }
     }
@@ -118,9 +119,10 @@ pub fn calculate_parameter_estimates(
                     if let Some(levels) = factor_levels_map.get(factor_name) {
                         // For each factor, we use (levels.len() - 1) parameters (last level is reference)
                         level_counts.push(levels.len().saturating_sub(1));
-                        factor_levels.push(levels.clone());
+                        factor_levels.push(levels.clone()); // Already sorted
                     } else {
-                        let levels = get_factor_levels(data, factor_name)?;
+                        let mut levels = get_factor_levels(data, factor_name)?;
+                        levels.sort(); // Ensure levels are sorted
                         factor_levels_map.insert(factor_name.clone(), levels.clone());
                         level_counts.push(levels.len().saturating_sub(1));
                         factor_levels.push(levels);
@@ -170,9 +172,10 @@ pub fn calculate_parameter_estimates(
             } else {
                 // Main effect (single factor)
                 let levels = if let Some(levels) = factor_levels_map.get(term_name) {
-                    levels.clone()
+                    levels.clone() // Already sorted
                 } else {
-                    let levels = get_factor_levels(data, term_name)?;
+                    let mut levels = get_factor_levels(data, term_name)?;
+                    levels.sort(); // Ensure levels are sorted
                     factor_levels_map.insert(term_name.clone(), levels.clone());
                     levels
                 };
