@@ -1,11 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
-export function partial_kj(k: number, j: number, partial_autocorrelate: Float64Array): number;
 export function mse(data: Float64Array, forecast: Float64Array): number;
 export function rmse(data: Float64Array, forecast: Float64Array): number;
 export function mae(data: Float64Array, forecast: Float64Array): number;
 export function mpe(data: Float64Array, forecast: Float64Array): number;
 export function mape(data: Float64Array, forecast: Float64Array): number;
+export function partial_kj(k: number, j: number, partial_autocorrelate: Float64Array): number;
 export function first_difference(data: Float64Array): Float64Array;
 export function second_difference(data: Float64Array): Float64Array;
 export function seasonal_difference(data: Float64Array, season: number): Float64Array;
@@ -15,6 +15,10 @@ export class Autocorrelation {
   calculate_acf_se(autocorelate: Float64Array): Float64Array;
   calculate_pacf(autocorrelate: Float64Array): Float64Array;
   calculate_pacf_se(partial_autocorelate: Float64Array): Float64Array;
+  calculate_ljung_box(autocorrelate: Float64Array): Float64Array;
+  pvalue_ljung_box(ljung_box: Float64Array): Float64Array;
+  df_ljung_box(): Uint32Array;
+  autocorelate(difference: string, seasonally: number): void;
   constructor(data: Float64Array, data_header: string, lag: number);
   get_data(): Float64Array;
   get_data_header(): string;
@@ -36,10 +40,6 @@ export class Autocorrelation {
   set_lb(lb: Float64Array): void;
   set_df_lb(df_lb: Uint32Array): void;
   set_pvalue_lb(pvalue_lb: Float64Array): void;
-  calculate_ljung_box(autocorrelate: Float64Array): Float64Array;
-  pvalue_ljung_box(ljung_box: Float64Array): Float64Array;
-  df_ljung_box(): Uint32Array;
-  autocorelate(difference: string, seasonally: number): void;
 }
 export class Decomposition {
   free(): void;
@@ -60,22 +60,18 @@ export class Decomposition {
   set_seasonal_indices(seasonal_indices: Float64Array): void;
   set_trend_equation(trend_equation: string): void;
   multiplicative_decomposition(trend: string): Float64Array;
-  additive_decomposition(): Float64Array;
-  decomposition_evaluation(forecast: Float64Array): any;
   calculate_multiplicative_seasonal_component(centered_ma: Float64Array): Float64Array;
-  calculate_additive_trend_component(centered_ma: Float64Array): Float64Array;
-  calculate_centered_moving_average(): Float64Array;
+  additive_decomposition(): Float64Array;
   calculate_multiplicative_trend_component(trend: string, deseasonalizing: Float64Array): Float64Array;
   linear_trend(deseasonalizing: Float64Array): Float64Array;
   exponential_trend(deseasonalizing: Float64Array): Float64Array;
+  calculate_additive_trend_component(centered_ma: Float64Array): Float64Array;
+  decomposition_evaluation(forecast: Float64Array): any;
+  calculate_centered_moving_average(): Float64Array;
   calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
 }
 export class Smoothing {
   free(): void;
-  calculate_ses(alpha: number): Float64Array;
-  calculate_des(alpha: number): Float64Array;
-  calculate_holt(alpha: number, beta: number): Float64Array;
-  calculate_winter(alpha: number, beta: number, gamma: number, period: number): Float64Array;
   constructor(data_header: string, data: Float64Array, time_header: string, time: string[]);
   get_data_header(): string;
   get_data(): Float64Array;
@@ -88,6 +84,10 @@ export class Smoothing {
   calculate_sma(distance: number): Float64Array;
   calculate_dma(distance: number): Float64Array;
   calculate_wma(distance: number): Float64Array;
+  calculate_ses(alpha: number): Float64Array;
+  calculate_des(alpha: number): Float64Array;
+  calculate_holt(alpha: number, beta: number): Float64Array;
+  calculate_winter(alpha: number, beta: number, gamma: number, period: number): Float64Array;
   smoothing_evaluation(forecast: Float64Array): any;
 }
 export class UnivariateAnalysis {
@@ -104,10 +104,11 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly smoothing_calculate_ses: (a: number, b: number) => [number, number];
-  readonly smoothing_calculate_des: (a: number, b: number) => [number, number];
-  readonly smoothing_calculate_holt: (a: number, b: number, c: number) => [number, number];
-  readonly smoothing_calculate_winter: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+  readonly mse: (a: number, b: number, c: number, d: number) => number;
+  readonly rmse: (a: number, b: number, c: number, d: number) => number;
+  readonly mae: (a: number, b: number, c: number, d: number) => number;
+  readonly mpe: (a: number, b: number, c: number, d: number) => number;
+  readonly mape: (a: number, b: number, c: number, d: number) => number;
   readonly __wbg_decomposition_free: (a: number, b: number) => void;
   readonly decomposition_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
   readonly decomposition_get_data: (a: number) => [number, number];
@@ -126,15 +127,17 @@ export interface InitOutput {
   readonly decomposition_set_seasonal_indices: (a: number, b: number, c: number) => void;
   readonly decomposition_set_trend_equation: (a: number, b: number, c: number) => void;
   readonly decomposition_multiplicative_decomposition: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_multiplicative_seasonal_component: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_additive_decomposition: (a: number) => [number, number];
-  readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
-  readonly __wbg_univariateanalysis_free: (a: number, b: number) => void;
-  readonly univariateanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any, k: any) => [number, number, number];
-  readonly univariateanalysis_get_results: (a: number) => [number, number, number];
-  readonly univariateanalysis_get_formatted_results: (a: number) => [number, number, number];
-  readonly univariateanalysis_get_all_errors: (a: number) => any;
-  readonly univariateanalysis_get_all_log: (a: number) => [number, number, number];
-  readonly univariateanalysis_clear_errors: (a: number) => any;
+  readonly autocorrelation_calculate_acf: (a: number, b: number, c: number) => [number, number];
+  readonly autocorrelation_calculate_acf_se: (a: number, b: number, c: number) => [number, number];
+  readonly partial_kj: (a: number, b: number, c: number, d: number) => number;
+  readonly autocorrelation_calculate_pacf: (a: number, b: number, c: number) => [number, number];
+  readonly autocorrelation_calculate_pacf_se: (a: number, b: number, c: number) => [number, number];
+  readonly autocorrelation_calculate_ljung_box: (a: number, b: number, c: number) => [number, number];
+  readonly autocorrelation_pvalue_ljung_box: (a: number, b: number, c: number) => [number, number];
+  readonly autocorrelation_df_ljung_box: (a: number) => [number, number];
+  readonly autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
   readonly __wbg_smoothing_free: (a: number, b: number) => void;
   readonly smoothing_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
   readonly smoothing_get_data_header: (a: number) => [number, number];
@@ -148,23 +151,20 @@ export interface InitOutput {
   readonly smoothing_calculate_sma: (a: number, b: number) => [number, number];
   readonly smoothing_calculate_dma: (a: number, b: number) => [number, number];
   readonly smoothing_calculate_wma: (a: number, b: number) => [number, number];
-  readonly decomposition_calculate_multiplicative_seasonal_component: (a: number, b: number, c: number) => [number, number];
-  readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_calculate_acf: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_calculate_acf_se: (a: number, b: number, c: number) => [number, number];
-  readonly partial_kj: (a: number, b: number, c: number, d: number) => number;
-  readonly autocorrelation_calculate_pacf: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_calculate_pacf_se: (a: number, b: number, c: number) => [number, number];
-  readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
-  readonly mse: (a: number, b: number, c: number, d: number) => number;
-  readonly rmse: (a: number, b: number, c: number, d: number) => number;
-  readonly mae: (a: number, b: number, c: number, d: number) => number;
-  readonly mpe: (a: number, b: number, c: number, d: number) => number;
-  readonly mape: (a: number, b: number, c: number, d: number) => number;
-  readonly decomposition_calculate_centered_moving_average: (a: number) => [number, number];
+  readonly smoothing_calculate_ses: (a: number, b: number) => [number, number];
+  readonly smoothing_calculate_des: (a: number, b: number) => [number, number];
+  readonly smoothing_calculate_holt: (a: number, b: number, c: number) => [number, number];
+  readonly smoothing_calculate_winter: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly decomposition_calculate_multiplicative_trend_component: (a: number, b: number, c: number, d: number, e: number) => [number, number];
   readonly decomposition_linear_trend: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_exponential_trend: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
+  readonly first_difference: (a: number, b: number) => [number, number];
+  readonly second_difference: (a: number, b: number) => [number, number];
+  readonly seasonal_difference: (a: number, b: number, c: number) => [number, number];
+  readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
+  readonly decomposition_calculate_centered_moving_average: (a: number) => [number, number];
   readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
   readonly __wbg_autocorrelation_free: (a: number, b: number) => void;
   readonly autocorrelation_new: (a: number, b: number, c: number, d: number, e: number) => number;
@@ -188,13 +188,13 @@ export interface InitOutput {
   readonly autocorrelation_set_lb: (a: number, b: number, c: number) => void;
   readonly autocorrelation_set_df_lb: (a: number, b: number, c: number) => void;
   readonly autocorrelation_set_pvalue_lb: (a: number, b: number, c: number) => void;
-  readonly autocorrelation_calculate_ljung_box: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_pvalue_ljung_box: (a: number, b: number, c: number) => [number, number];
-  readonly autocorrelation_df_ljung_box: (a: number) => [number, number];
-  readonly autocorrelation_autocorelate: (a: number, b: number, c: number, d: number) => void;
-  readonly first_difference: (a: number, b: number) => [number, number];
-  readonly second_difference: (a: number, b: number) => [number, number];
-  readonly seasonal_difference: (a: number, b: number, c: number) => [number, number];
+  readonly __wbg_univariateanalysis_free: (a: number, b: number) => void;
+  readonly univariateanalysis_new: (a: any, b: any, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any, k: any) => [number, number, number];
+  readonly univariateanalysis_get_results: (a: number) => [number, number, number];
+  readonly univariateanalysis_get_formatted_results: (a: number) => [number, number, number];
+  readonly univariateanalysis_get_all_errors: (a: number) => any;
+  readonly univariateanalysis_get_all_log: (a: number) => [number, number, number];
+  readonly univariateanalysis_clear_errors: (a: number) => any;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_exn_store: (a: number) => void;

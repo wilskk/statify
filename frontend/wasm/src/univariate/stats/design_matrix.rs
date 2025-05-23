@@ -41,6 +41,7 @@ pub struct DesignMatrixInfo {
     pub term_column_indices: HashMap<String, (usize, usize)>,
     pub intercept_column: Option<usize>,
     pub term_names: Vec<String>,
+    pub case_indices_to_keep: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -80,6 +81,7 @@ pub fn create_design_response_weights(
             term_column_indices: HashMap::new(),
             intercept_column: None,
             term_names: Vec::new(),
+            case_indices_to_keep: Vec::new(),
         });
     }
 
@@ -130,21 +132,12 @@ pub fn create_design_response_weights(
             term_column_indices: HashMap::new(),
             intercept_column: None,
             term_names: Vec::new(),
+            case_indices_to_keep: Vec::new(),
         });
     }
 
     let y_nalgebra = DVector::from_vec(y_values);
     let w_nalgebra_opt = wls_weights.map(DVector::from_vec);
-
-    web_sys::console::log_1(
-        &format!("create_design_response_weights: n_samples_effective = {}", n_samples_effective).into()
-    );
-    web_sys::console::log_1(
-        &format!(
-            "create_design_response_weights: y_nalgebra (first 5 rows): {:?}",
-            y_nalgebra.rows(0, n_samples_effective.min(5))
-        ).into()
-    );
 
     let model_terms = generate_model_design_terms(data, config)?;
     let mut x_matrix_cols: Vec<DVector<f64>> = Vec::new();
@@ -170,7 +163,7 @@ pub fn create_design_response_weights(
                 continue;
             }
         } else if config.main.covar.as_ref().map_or(false, |c| c.contains(term_name)) {
-            let mut cov_values_filtered: Vec<f64> = Vec::new();
+            let mut cov_values_filtered: Vec<f64> = Vec::with_capacity(case_indices_to_keep.len());
             if let Some(cov_data_set_option) = &data.covariate_data {
                 if let Some(cov_data_set) = cov_data_set_option.get(0) {
                     for &idx_to_keep in &case_indices_to_keep {
@@ -184,52 +177,97 @@ pub fn create_design_response_weights(
                             } else {
                                 return Err(
                                     format!(
-                                        "Covariate '{}' not found in record {}",
+                                        "Covariate '{}' not found in record {} for original case {}",
                                         term_name,
+                                        idx_to_keep,
                                         idx_to_keep
                                     )
                                 );
                             }
                         } else {
                             return Err(
-                                format!("Record index {} out of bounds for covariate data", idx_to_keep)
+                                format!("Record index {} out of bounds for covariate data (original case index)", idx_to_keep)
                             );
                         }
                     }
                 } else {
                     return Err(format!("No data found for covariate '{}'", term_name));
                 }
+            } else {
+                return Err(
+                    format!("Covariate data structure (covariate_data) is None, but covariate '{}' was specified.", term_name)
+                );
             }
             if !cov_values_filtered.is_empty() {
                 term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            // Interaction term using new factor_utils function
-            let interaction_rows = factor_utils::create_interaction_design_matrix(data, term_name)?;
-            if !interaction_rows.is_empty() && !interaction_rows[0].is_empty() {
-                for j_col in 0..interaction_rows[0].len() {
-                    // Iterate over columns of the interaction term
-                    let column_data: Vec<f64> = interaction_rows
-                        .iter()
-                        .map(|row| row[j_col])
-                        .collect();
-                    if !column_data.is_empty() {
-                        term_matrix_cols.push(DVector::from_vec(column_data));
+            // Interaction term
+            let interaction_rows_unfiltered = factor_utils::create_interaction_design_matrix(
+                data,
+                term_name
+            )?;
+            if
+                !interaction_rows_unfiltered.is_empty() &&
+                !interaction_rows_unfiltered[0].is_empty()
+            {
+                for j_col in 0..interaction_rows_unfiltered[0].len() {
+                    let mut column_data_filtered: Vec<f64> = Vec::with_capacity(
+                        case_indices_to_keep.len()
+                    );
+                    for &idx_to_keep in &case_indices_to_keep {
+                        if idx_to_keep < interaction_rows_unfiltered.len() {
+                            column_data_filtered.push(
+                                interaction_rows_unfiltered[idx_to_keep][j_col]
+                            );
+                        } else {
+                            return Err(
+                                format!(
+                                    "Original case index {} out of bounds for unfiltered interaction term rows (len {}) for term '{}'",
+                                    idx_to_keep,
+                                    interaction_rows_unfiltered.len(),
+                                    term_name
+                                )
+                            );
+                        }
+                    }
+                    if !column_data_filtered.is_empty() {
+                        term_matrix_cols.push(DVector::from_vec(column_data_filtered));
                     }
                 }
             }
         } else {
-            // Main effect (factor) using new factor_utils function
-            let main_effect_rows = factor_utils::create_main_effect_design_matrix(data, term_name)?;
-            if !main_effect_rows.is_empty() && !main_effect_rows[0].is_empty() {
-                for j_col in 0..main_effect_rows[0].len() {
-                    // Iterate over columns of the main effect term (k-1 dummies)
-                    let column_data: Vec<f64> = main_effect_rows
-                        .iter()
-                        .map(|row| row[j_col])
-                        .collect();
-                    if !column_data.is_empty() {
-                        term_matrix_cols.push(DVector::from_vec(column_data));
+            // Main effect (factor)
+            let main_effect_rows_unfiltered = factor_utils::create_main_effect_design_matrix(
+                data,
+                term_name
+            )?;
+            if
+                !main_effect_rows_unfiltered.is_empty() &&
+                !main_effect_rows_unfiltered[0].is_empty()
+            {
+                for j_col in 0..main_effect_rows_unfiltered[0].len() {
+                    let mut column_data_filtered: Vec<f64> = Vec::with_capacity(
+                        case_indices_to_keep.len()
+                    );
+                    for &idx_to_keep in &case_indices_to_keep {
+                        if idx_to_keep < main_effect_rows_unfiltered.len() {
+                            column_data_filtered.push(
+                                main_effect_rows_unfiltered[idx_to_keep][j_col]
+                            );
+                        } else {
+                            return Err(
+                                format!(
+                                    "Original case index {} out of bounds for unfiltered main effect rows (len {}) for term '{}'",
+                                    idx_to_keep,
+                                    main_effect_rows_unfiltered.len(),
+                                    term_name
+                                )
+                            );
+                        }
+                    }
+                    if !column_data_filtered.is_empty() {
+                        term_matrix_cols.push(DVector::from_vec(column_data_filtered));
                     }
                 }
             }
@@ -284,28 +322,6 @@ pub fn create_design_response_weights(
         }
     }
 
-    web_sys::console::log_1(
-        &format!("create_design_response_weights: p_parameters = {}", p_parameters).into()
-    );
-    web_sys::console::log_1(
-        &format!("create_design_response_weights: r_x_rank = {}", r_x_rank).into()
-    );
-    web_sys::console::log_1(
-        &format!("create_design_response_weights: x_nalgebra = {:?}", x_nalgebra).into()
-    );
-    web_sys::console::log_1(
-        &format!(
-            "create_design_response_weights: term_column_indices = {:?}",
-            term_column_map
-        ).into()
-    );
-    web_sys::console::log_1(
-        &format!(
-            "create_design_response_weights: intercept_column = {:?}",
-            intercept_col_idx
-        ).into()
-    );
-
     Ok(DesignMatrixInfo {
         x: x_nalgebra,
         y: y_nalgebra,
@@ -316,6 +332,7 @@ pub fn create_design_response_weights(
         term_column_indices: term_column_map,
         intercept_column: intercept_col_idx,
         term_names: final_term_names,
+        case_indices_to_keep,
     })
 }
 
@@ -368,25 +385,9 @@ pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMa
         }
         let w_diag = DMatrix::from_diagonal(w_vec);
         let ztwz = z.transpose() * w_diag * z;
-        web_sys::console::log_1(
-            &format!(
-                "create_cross_product_matrix: ZTWZ (weighted) (dims {}x{}): {:?}",
-                ztwz.nrows(),
-                ztwz.ncols(),
-                ztwz
-            ).into()
-        );
         Ok(ztwz)
     } else {
         let ztz = z.transpose() * z;
-        web_sys::console::log_1(
-            &format!(
-                "create_cross_product_matrix: ZTZ (unweighted) (dims {}x{}): {:?}",
-                ztz.nrows(),
-                ztz.ncols(),
-                ztz
-            ).into()
-        );
         Ok(ztz)
     }
 }
@@ -457,15 +458,6 @@ pub fn perform_sweep_and_extract_results(
         });
     }
 
-    web_sys::console::log_1(
-        &format!(
-            "perform_sweep_and_extract_results: Input ZTWZ (dims {}x{}): {:?}",
-            ztwz_matrix.nrows(),
-            ztwz_matrix.ncols(),
-            ztwz_matrix
-        ).into()
-    );
-
     let total_dims = ztwz_matrix.nrows();
     if total_dims != p_params_in_model + 1 {
         return Err(
@@ -493,15 +485,6 @@ pub fn perform_sweep_and_extract_results(
     }
     let mut is_param_aliased: Vec<bool> = vec![false; p_params_in_model];
     let epsilon = 1e-12;
-
-    web_sys::console::log_1(
-        &format!(
-            "perform_sweep_and_extract_results: Initial c_matrix (dims {}x{}): {:?}",
-            c_matrix.nrows(),
-            c_matrix.ncols(),
-            c_matrix
-        ).into()
-    );
 
     for k in 0..p_params_in_model {
         let pivot_candidate = c_matrix[(k, k)];
@@ -562,15 +545,6 @@ pub fn perform_sweep_and_extract_results(
         swept_k_flags[k] = !swept_k_flags[k];
     }
 
-    web_sys::console::log_1(
-        &format!(
-            "perform_sweep_and_extract_results: c_matrix after sweep (dims {}x{}): {:?}",
-            c_matrix.nrows(),
-            c_matrix.ncols(),
-            c_matrix
-        ).into()
-    );
-
     let s_rss = c_matrix[(p_params_in_model, p_params_in_model)];
 
     let mut final_g_inv = DMatrix::zeros(p_params_in_model, p_params_in_model);
@@ -594,23 +568,6 @@ pub fn perform_sweep_and_extract_results(
             }
         }
     }
-
-    web_sys::console::log_1(
-        &format!(
-            "perform_sweep_and_extract_results: final_g_inv (dims {}x{}): {:?}",
-            final_g_inv.nrows(),
-            final_g_inv.ncols(),
-            final_g_inv
-        ).into()
-    );
-    web_sys::console::log_1(
-        &format!(
-            "perform_sweep_and_extract_results: final_beta_hat (len {}): {:?}",
-            final_beta_hat.len(),
-            final_beta_hat
-        ).into()
-    );
-    web_sys::console::log_1(&format!("perform_sweep_and_extract_results: s_rss: {}", s_rss).into());
 
     Ok(SweptMatrixInfo {
         g_inv: final_g_inv,

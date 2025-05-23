@@ -20,9 +20,6 @@ pub fn calculate_parameter_estimates(
 
     let design_info = create_design_response_weights(data, config)?;
 
-    web_sys::console::log_1(&format!("Design Matrix X:\n{:?}", design_info.x).into());
-    web_sys::console::log_1(&format!("Response Vector Y:\n{:?}", design_info.y).into());
-
     if design_info.n_samples == 0 {
         return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
     }
@@ -41,23 +38,12 @@ pub fn calculate_parameter_estimates(
 
     let beta_hat_vec = &swept_info.beta_hat;
     let g_inv_matrix = &swept_info.g_inv;
-    web_sys::console::log_1(
-        &format!("g_inv_matrix in calculate_parameter_estimates: {:?}", g_inv_matrix).into()
-    ); // Log g_inv_matrix
     let rss = swept_info.s_rss;
-    web_sys::console::log_1(&format!("RSS (Residual Sum of Squares): {:?}", rss).into());
 
     let n_samples = design_info.n_samples;
-    web_sys::console::log_1(&format!("n_samples (Number of samples): {:?}", n_samples).into());
     let r_x_rank = design_info.r_x_rank;
-    web_sys::console::log_1(
-        &format!("p_parameters: {}, r_x_rank: {}", design_info.p_parameters, r_x_rank).into()
-    );
 
     let df_error_val = if n_samples > r_x_rank { (n_samples - r_x_rank) as f64 } else { 0.0 };
-    web_sys::console::log_1(
-        &format!("df_error_val (Degrees of freedom for error): {:?}", df_error_val).into()
-    );
 
     if df_error_val < 0.0 {
         return Err(
@@ -67,7 +53,6 @@ pub fn calculate_parameter_estimates(
     let df_error_usize = df_error_val as usize;
 
     let mse = if df_error_val > 0.0 { rss / df_error_val } else { f64::NAN };
-    web_sys::console::log_1(&format!("MSE (Mean Squared Error): {:?}", mse).into());
     let mut estimates = Vec::new();
     let sig_level = config.options.sig_level;
     let sig_level_opt = Some(sig_level);
@@ -204,8 +189,6 @@ pub fn calculate_parameter_estimates(
         let param_name = &param_names[i];
         let beta_val = beta_hat_vec.get(i).cloned().unwrap_or(0.0);
         let g_ii = g_inv_matrix.get((i, i)).cloned().unwrap_or(0.0); // g_ii for this parameter
-
-        web_sys::console::log_1(&format!("Param: {}, g_ii: {}", param_name, g_ii).into()); // Log param_name and g_ii
 
         // Determine if parameter is redundant based on g_ii (from G inverse of X\'WX)
         // A very small or NaN g_ii indicates redundancy/collinearity.
