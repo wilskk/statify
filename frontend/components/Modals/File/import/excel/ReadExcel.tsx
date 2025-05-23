@@ -16,6 +16,7 @@ import { HotTable } from "@handsontable/react";
 import { FileIcon, InfoIcon, ExternalLinkIcon, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReadExcelProps {
     onClose: () => void;
@@ -239,170 +240,141 @@ const ReadExcel: FC<ReadExcelProps> = ({ onClose, onBack, fileName, fileContent 
 
     return (
         <>
-            <div className="border-b px-6 py-4 flex items-center">
+            <div className="border-b border-border px-6 py-4 flex items-center">
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={onBack}
-                    className="mr-2 -ml-2 text-gray-500 hover:text-black"
+                    className="mr-2 -ml-2 text-muted-foreground hover:text-foreground"
                 >
                     <ArrowLeft size={16} />
                 </Button>
                 <div>
-                    <DialogTitle className="text-lg font-medium">Read Excel File</DialogTitle>
+                    <DialogTitle className="text-lg font-medium text-popover-foreground">Read Excel File</DialogTitle>
                     <div className="flex items-center mt-1">
-                        <FileIcon size={16} className="mr-2 text-gray-600" />
-                        <span className="text-sm truncate max-w-xs">{fileName}</span>
+                        <FileIcon size={16} className="mr-2 text-muted-foreground" />
+                        <span className="text-sm truncate max-w-xs text-muted-foreground">{fileName}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 p-6">
-                {/* Left column - Selection options */}
-                <div>
-                    <h3 className="text-sm font-medium mb-3">Worksheet Selection</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm mb-1">Worksheet:</label>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-6">
+                {/* Left Column: Options */}
+                <div className="space-y-4">
+                    <div>
+                        <Label htmlFor="worksheet" className="text-sm font-medium text-popover-foreground">Worksheet:</Label>
+                        <div className="relative mt-1">
                             <select
+                                id="worksheet"
                                 value={worksheet}
                                 onChange={(e) => handleWorksheetChange(e.target.value)}
-                                className="w-full px-3 py-2 border rounded text-sm"
+                                className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background"
+                                disabled={!workbook}
                             >
-                                {workbook && workbook.SheetNames.map((sheetName: string, index: number) => (
-                                    <option key={index} value={sheetName}>{sheetName}</option>
+                                {workbook?.SheetNames.map((name: string) => (
+                                    <option key={name} value={name}>{name}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm mb-1">Cell Range:</label>
-                            <input
-                                type="text"
-                                value={range}
-                                onChange={(e) => handleRangeChange(e.target.value)}
-                                className="w-full px-3 py-2 border rounded text-sm"
-                                placeholder="e.g. A1:Z100"
-                            />
+                            {/* You might want to use a ChevronDownIcon here like in ReadCSV.tsx if preferred */}
                         </div>
                     </div>
 
-                    <h3 className="text-sm font-medium mt-6 mb-3">Import Options</h3>
-                    <div className="space-y-3">
-                        <div className="flex items-start space-x-2">
-                            <Checkbox
-                                id="first-line"
-                                checked={firstLineContains}
-                                onCheckedChange={(checked) => handleFirstLineChange(checked === true)}
-                            />
-                            <Label htmlFor="first-line" className="text-sm cursor-pointer">
-                                Read variable names from first row
-                            </Label>
-                        </div>
-
-                        <div className="flex items-start space-x-2">
-                            <Checkbox
-                                id="ignore-hidden"
-                                checked={ignoreHidden}
-                                onCheckedChange={(checked) => setIgnoreHidden(checked === true)}
-                            />
-                            <Label htmlFor="ignore-hidden" className="text-sm cursor-pointer">
-                                Ignore hidden rows and columns
-                            </Label>
-                        </div>
-
-                        <div className="flex items-start space-x-2">
-                            <Checkbox
-                                id="remove-leading"
-                                checked={removeLeading}
-                                onCheckedChange={(checked) => setRemoveLeading(checked === true)}
-                            />
-                            <Label htmlFor="remove-leading" className="text-sm cursor-pointer">
-                                Remove leading spaces from string values
-                            </Label>
-                        </div>
-
-                        <div className="flex items-start space-x-2">
-                            <Checkbox
-                                id="remove-trailing"
-                                checked={removeTrailing}
-                                onCheckedChange={(checked) => setRemoveTrailing(checked === true)}
-                            />
-                            <Label htmlFor="remove-trailing" className="text-sm cursor-pointer">
-                                Remove trailing spaces from string values
-                            </Label>
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
-                            {error}
-                        </div>
-                    )}
-                </div>
-
-                {/* Right column - Data preview */}
-                <div>
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium">Data Preview</h3>
-                        <ExternalLinkIcon size={14} className="text-gray-500" />
-                    </div>
-
-                    <div className="border rounded overflow-hidden h-64">
-                        <HotTable
-                            data={data}
-                            colHeaders={columnHeaders.length > 0 ? columnHeaders : true}
-                            rowHeaders={true}
-                            width="100%"
-                            height="100%"
-                            licenseKey="non-commercial-and-evaluation"
-                            className="excel-preview"
-                            readOnly={true}
-                            manualColumnResize={true}
-                            contextMenu={false}
-                            disableVisualSelection={true}
+                    <div>
+                        <Label htmlFor="range" className="text-sm font-medium text-popover-foreground">Read a specific range of data:</Label>
+                        <input
+                            type="text"
+                            id="range"
+                            value={range}
+                            onChange={(e) => handleRangeChange(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 text-sm rounded border border-input focus:border-ring focus:outline-none focus:ring-1"
+                            placeholder="e.g., A1:D34"
+                            disabled={!workbook}
                         />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            If not specified, all data from the selected worksheet will be read.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="firstLineExcel" checked={firstLineContains} onCheckedChange={(checked) => handleFirstLineChange(Boolean(checked))} />
+                            <Label htmlFor="firstLineExcel" className="text-sm font-medium text-popover-foreground">First line contains variable names</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="removeLeadingExcel" checked={removeLeading} onCheckedChange={(checked) => setRemoveLeading(Boolean(checked))} />
+                            <Label htmlFor="removeLeadingExcel" className="text-sm font-medium text-popover-foreground">Remove leading spaces from string values</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="removeTrailingExcel" checked={removeTrailing} onCheckedChange={(checked) => setRemoveTrailing(Boolean(checked))} />
+                            <Label htmlFor="removeTrailingExcel" className="text-sm font-medium text-popover-foreground">Remove trailing spaces from string values</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="ignoreHiddenExcel" checked={ignoreHidden} onCheckedChange={(checked) => setIgnoreHidden(Boolean(checked))} />
+                            <Label htmlFor="ignoreHiddenExcel" className="text-sm font-medium text-popover-foreground">Ignore hidden rows and columns</Label>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <InfoIcon size={14} className="text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>This option is currently not implemented.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Data Preview */}
+                <div className="space-y-2">
+                    <Label className="text-sm font-medium text-popover-foreground">Data Preview (max 100 rows, 50 columns):</Label>
+                    <div className="border border-border rounded overflow-hidden handsontable-container" style={{ height: '300px' }}>
+                        {workbook && worksheet && (
+                            <HotTable
+                                data={data}
+                                colHeaders={firstLineContains ? columnHeaders : true}
+                                rowHeaders={true}
+                                width="100%"
+                                height="100%"
+                                licenseKey="non-commercial-and-evaluation" // Ensure this is appropriate for your use case
+                                readOnly
+                                manualColumnResize
+                                manualRowResize
+                                className="htMiddle htCenter"
+                            />
+                        )}
+                        {!workbook && <p className="p-4 text-sm text-muted-foreground">Select a file to see preview.</p>}
                     </div>
                 </div>
             </div>
 
-            <div className="flex items-center p-2 border-t bg-gray-50 text-xs text-gray-500">
-                <InfoIcon size={14} className="mr-1" />
-                <span>Preview displays first 100 rows and 50 columns of the selected range</span>
-            </div>
+            {error && (
+                <div className="px-6 pb-4 text-sm text-destructive">
+                    {error}
+                </div>
+            )}
 
-            <DialogFooter className="p-4 flex justify-end gap-2 border-t">
+            <DialogFooter className="border-t border-border px-6 py-4 flex justify-between">
                 <Button
-                    onClick={handleOk}
-                    className="bg-black text-white hover:bg-gray-800"
-                    disabled={isProcessing}
-                >
-                    {isProcessing ? "Processing..." : "OK"}
-                </Button>
-                <Button
-                    variant="outline"
+                    variant="link"
                     onClick={handleReset}
-                    className="bg-white text-black border"
-                    disabled={isProcessing}
+                    className="text-primary hover:text-primary/90 px-0"
+                    disabled={isProcessing || !workbook}
                 >
-                    Reset
+                    Reset to Default
                 </Button>
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="bg-white text-black border"
-                    disabled={isProcessing}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    variant="outline"
-                    onClick={() => alert("Help functionality not implemented")}
-                    className="bg-white text-black border"
-                    disabled={isProcessing}
-                >
-                    Help
-                </Button>
+                <div className="flex space-x-2">
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isProcessing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleOk} disabled={isProcessing || !workbook}>
+                        OK
+                    </Button>
+                </div>
             </DialogFooter>
         </>
     );

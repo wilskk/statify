@@ -13,23 +13,23 @@ import ExportExcel from "@/components/Modals/File/export/excel/ExportExcel";
 
 export const modalStyles = {
     // Containers
-    dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
-    dialogHeader: "bg-[#F7F7F7] px-6 py-5 border-b border-[#E6E6E6] h-16",
+    dialogContent: "bg-popover p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
+    dialogHeader: "bg-muted px-6 py-5 border-b border-border h-16",
     dialogBody: "px-6 py-6",
-    dialogFooter: "bg-[#F7F7F7] px-6 py-5 border-t border-[#E6E6E6] h-16",
+    dialogFooter: "bg-muted px-6 py-5 border-t border-border h-16",
 
     // Typography
-    dialogTitle: "text-lg font-semibold text-black",
-    dialogDescription: "text-sm text-[#888888]",
+    dialogTitle: "text-lg font-semibold text-popover-foreground",
+    dialogDescription: "text-sm text-muted-foreground",
 
     // Buttons
-    primaryButton: "bg-black text-white hover:opacity-90 h-8",
-    secondaryButton: "border-[#CCCCCC] text-black hover:bg-[#F7F7F7] h-8",
+    primaryButton: "bg-primary text-primary-foreground hover:opacity-90 h-8",
+    secondaryButton: "border-border text-secondary-foreground hover:bg-accent h-8",
 
     // Form elements
     formGroup: "space-y-2 mb-6",
-    label: "text-[#444444] text-xs font-medium",
-    input: "h-10 border-[#CCCCCC] focus:border-black"
+    label: "text-foreground text-xs font-medium",
+    input: "h-10 border-input focus:border-ring"
 };
 
 interface FileModalsProps {

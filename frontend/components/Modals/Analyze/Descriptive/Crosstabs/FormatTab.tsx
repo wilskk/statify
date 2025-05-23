@@ -13,7 +13,7 @@ const FormatTab: FC<FormatTabProps> = ({
                                        }) => {
     return (
         <div className="p-6">
-            <div className="border border-[#E6E6E6] rounded-md p-6">
+            <div className="bg-card border border-border rounded-md p-6">
                 <div className="text-sm font-medium mb-4">Row Order</div>
                 <RadioGroup
                     value={rowOrder}
@@ -24,7 +24,6 @@ const FormatTab: FC<FormatTabProps> = ({
                         <RadioGroupItem
                             value="ascending"
                             id="ascending"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="ascending" className="text-sm ml-2 cursor-pointer">
                             Ascending
@@ -35,7 +34,6 @@ const FormatTab: FC<FormatTabProps> = ({
                         <RadioGroupItem
                             value="descending"
                             id="descending"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="descending" className="text-sm ml-2 cursor-pointer">
                             Descending
@@ -43,7 +41,7 @@ const FormatTab: FC<FormatTabProps> = ({
                     </div>
                 </RadioGroup>
 
-                <div className="mt-4 text-xs text-[#888888]">
+                <div className="mt-4 text-xs text-muted-foreground">
                     <p>Determines the sort order of values for categorical row variables in the crosstabulation.</p>
                 </div>
             </div>

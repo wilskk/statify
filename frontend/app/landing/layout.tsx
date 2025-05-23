@@ -5,7 +5,7 @@ export default function LandingLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="bg-black text-white min-h-screen overflow-y-auto">
+        <div className="bg-background text-foreground min-h-screen overflow-y-auto">
             {children}
         </div>
     );

@@ -72,15 +72,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-[#444444] mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-[#444444] mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-[#444444] mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-[#444444] mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-[#444444] mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -164,8 +164,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 className={`
                     flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
                     ${isDisabled
-                    ? 'border-slate-200 text-slate-300 cursor-not-allowed'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-100 hover:border-slate-400'}
+                    ? 'border-border text-muted-foreground/50 cursor-not-allowed'
+                    : 'border-input text-foreground hover:bg-accent hover:border-primary'}
                 `}
                 onClick={() => !isDisabled && handleArrowButtonClick(targetListId)}
                 disabled={isDisabled}
@@ -334,89 +334,71 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleNextLayer = () => {
-        const currentLayerVars = layerVariablesMap[currentLayerIndex] || [];
-
-        if (currentLayerVars.length > 0) {
-            if (currentLayerIndex < totalLayers) {
-                setCurrentLayerIndex(currentLayerIndex + 1);
-            } else {
-                setTotalLayers(totalLayers + 1);
-                setCurrentLayerIndex(currentLayerIndex + 1);
-            }
+        // Allow adding a new layer if currently at the last layer
+        if (currentLayerIndex === totalLayers) {
+            setTotalLayers(totalLayers + 1);
         }
+        setCurrentLayerIndex(currentLayerIndex + 1);
     };
 
     const currentLayerVariables = layerVariablesMap[currentLayerIndex] || [];
 
     const renderVariableList = (variables: Variable[], source: 'available' | 'row' | 'column' | 'layer', height: string) => (
         <div
-            className={`border p-2 rounded-md w-full overflow-y-auto overflow-x-hidden transition-colors relative ${
-                isDraggingOver === source
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-[#E6E6E6]"
-            }`}
+            className={`
+                border rounded-md overflow-y-auto overflow-x-hidden
+                ${isDraggingOver === source ? 'border-primary bg-primary/10' : 'border-border bg-background'}
+            `}
             style={{ height }}
             onDragOver={(e) => handleDragOver(e, source)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, source)}
         >
-            {variables.length === 0 && source !== 'available' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#888888] pointer-events-none p-2">
-                    <MoveHorizontal size={18} className="mb-1" />
-                    <p className="text-xs text-center">Drop variables here</p>
+            {variables.length === 0 && !isDraggingOver && (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-xs text-muted-foreground">List is empty</p>
                 </div>
             )}
-            {variables.length === 0 && source === 'available' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#888888] pointer-events-none p-4">
-                    <p className="text-sm text-center">All variables used</p>
+            {variables.map((variable, index) => (
+                <div
+                    key={variable.tempId || variable.columnIndex}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, variable, source)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleItemDragOver(e, index, source)}
+                    onClick={() => handleVariableSelect(variable, source)}
+                    onDoubleClick={() => handleVariableDoubleClick(variable, source)}
+                    className={`
+                        flex items-center p-2 cursor-grab border-b last:border-b-0
+                        ${highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
+                        ? 'bg-accent border-primary' // Keep border-primary for selected item
+                        : 'border-border hover:bg-accent'}
+                        ${draggedItem?.variable.columnIndex === variable.columnIndex && draggedItem.source === source ? 'opacity-50' : ''}
+                    `}
+                >
+                    {dragOverIndex === index && draggedItem && draggedItem.source === source && (
+                        <div className="absolute left-0 right-0 h-1 bg-primary rounded -top-[2px]" />
+                    )}
+                    <GripVertical size={14} className="text-muted-foreground mr-2 flex-shrink-0 cursor-grab" />
+                    {getVariableIcon(variable)}
+                    <span className="text-xs text-foreground select-none truncate" title={getDisplayName(variable)}>
+                        {getDisplayName(variable)}
+                    </span>
+                    {dragOverIndex === index && draggedItem && draggedItem.source === source && index === variables.length -1 && (
+                         <div className="absolute left-0 right-0 h-1 bg-primary rounded -bottom-[2px]" />
+                    )}
+                </div>
+            ))}
+            {isDraggingOver === source && variables.length > 0 && dragOverIndex === null && (
+                <div className="p-2 border-t border-dashed border-primary">
+                     <p className="text-xs text-center text-primary">Drop here to add to list</p>
                 </div>
             )}
-
-            <div className={`space-y-0.5 ${getAnimationClass(source)}`}>
-                {variables.map((variable, index) => {
-                    const isSameListDrag = draggedItem?.source === source;
-                    const isDraggingThis = draggedItem?.variable.columnIndex === variable.columnIndex && isSameListDrag;
-                    const currentDragOverIndex = dragOverIndex;
-                    const isDropTarget = isSameListDrag && currentDragOverIndex === index && draggedItem;
-                    const showBottomLine = isSameListDrag && currentDragOverIndex === index + 1 && draggedItem;
-
-                    return (
-                        <TooltipProvider key={variable.columnIndex}>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div
-                                        className={`flex items-center p-1 cursor-grab border rounded-md group relative
-                                                ${isDraggingThis ? "opacity-40 bg-[#FAFAFA]" : "hover:bg-[#F5F5F5]"}
-                                                ${isDropTarget ? "border-t-[3px] border-t-[#888888] pt-0.5" : ""}
-                                            ${highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                        }`}
-                                        onClick={() => handleVariableSelect(variable, source)}
-                                        onDoubleClick={() => handleVariableDoubleClick(variable, source)}
-                                        draggable={true}
-                                        onDragStart={(e) => handleDragStart(e, variable, source)}
-                                        onDragEnd={handleDragEnd}
-                                        onDragOver={(e) => handleItemDragOver(e, index, source)}
-                                        onDragLeave={() => { setDragOverIndex(null); }}
-                                        onDrop={(e) => { e.stopPropagation(); handleDrop(e, source, index); }}
-                                    >
-                                        <div className="flex items-center w-full">
-                                            <GripVertical size={14} className="text-[#AAAAAA] mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                            {getVariableIcon(variable)}
-                                            <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                        </div>
-                                        {showBottomLine && (<div className="absolute left-0 right-0 -bottom-0.5 h-0.5 bg-[#888888] z-10"></div>)}
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                    <p className="text-xs">{getDisplayName(variable)}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    );
-                })}
-            </div>
+             {isDraggingOver === source && variables.length === 0 && (
+                 <div className="p-2 h-full flex items-center justify-center">
+                    <p className="text-xs text-center text-primary">Drop here to add to list</p>
+                </div>
+            )}
         </div>
     );
 

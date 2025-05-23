@@ -5,6 +5,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import {useResultStore} from "@/stores/useResultStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { useRouter } from 'next/navigation';
+import { createSavFile, downloadBlobAsFile } from '@/services/api';
 
 export type FileActionType =
     | "New"
@@ -120,29 +121,9 @@ export const useFileActions = () => {
                 });
 
                 try {
-                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api';
-                    const response = await fetch(`${backendUrl}/sav/create`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ data: transformedData, variables: transformedVariables }),
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || "Gagal membuat file .sav");
-                    }
-
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "data.sav";
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
+                    const savFileData = { data: transformedData, variables: transformedVariables };
+                    const blob = await createSavFile(savFileData);
+                    downloadBlobAsFile(blob, "data.sav");
                 } catch (error) {
                     console.error(`Error during ${actionType} action:`, error);
                     alert(`Terjadi kesalahan saat menyimpan file .sav (${actionType}). Error: ${error instanceof Error ? error.message : String(error)}`);

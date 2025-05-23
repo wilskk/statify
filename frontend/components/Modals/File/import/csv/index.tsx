@@ -62,7 +62,7 @@ const ImportCSVModal: React.FC<ImportCSVModalProps> = ({ onClose, props }) => {
     };
 
     return (
-        <DialogContent className="p-0 bg-white border border-[#E6E6E6] rounded overflow-hidden">
+        <DialogContent className="p-0 bg-popover border-border rounded overflow-hidden">
             {stage === "select" ? (
                 <ImportCSV
                     onClose={onClose}

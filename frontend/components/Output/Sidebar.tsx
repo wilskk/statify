@@ -78,24 +78,24 @@ const SidebarMenuItem: React.FC<{
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="ml-auto h-6 w-6 flex-shrink-0 text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="ml-auto h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <Trash2 size={14} />
                 </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="sm:max-w-[425px] bg-white text-black border border-black/10 rounded-lg p-4 shadow-lg">
+            <AlertDialogContent className="sm:max-w-[425px] bg-popover text-popover-foreground border-border rounded-lg p-4 shadow-lg">
                 <AlertDialogHeader className="pb-2">
-                    <AlertDialogTitle className="text-lg font-semibold text-black">Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription className="text-sm text-gray-600 pt-1">
+                    <AlertDialogTitle className="text-lg font-semibold text-popover-foreground">Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-sm text-muted-foreground pt-1">
                         This action cannot be undone. This will permanently delete the {item.type} &quot;{item.title}&quot;
                         {item.type === 'log' && ' and all its associated analytics and statistics.'}
                         {item.type === 'analytic' && ' and all its associated statistics.'}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="pt-3 sm:justify-end">
-                    <AlertDialogCancel className="border border-gray-300 hover:bg-gray-100 text-black h-8 px-3 text-sm">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-black hover:bg-gray-800 text-white h-8 px-3 text-sm">Delete</AlertDialogAction>
+                    <AlertDialogCancel className="border border-border hover:bg-accent text-accent-foreground h-8 px-3 text-sm">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-8 px-3 text-sm">Delete</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -105,7 +105,7 @@ const SidebarMenuItem: React.FC<{
         <div className="flex flex-col group">
             {hasChildren ? (
                 <div className={cn(
-                    "flex items-center text-sm text-gray-700 rounded group relative hover:bg-gray-100",
+                    "flex items-center text-sm text-foreground rounded group relative hover:bg-accent",
                     { "pl-3 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
                 )}
                     style={{ paddingLeft: `${paddingLeft}px` }}>
@@ -126,7 +126,7 @@ const SidebarMenuItem: React.FC<{
                 </div>
             ) : (
                 <div className={cn(
-                    "flex items-center text-sm text-gray-700 rounded group relative hover:bg-gray-100",
+                    "flex items-center text-sm text-foreground rounded group relative hover:bg-accent",
                     { "pl-6 pr-1 py-1": depth > 0, "py-2 px-3 pr-1": depth === 0 }
                 )}
                      style={{ paddingLeft: `${paddingLeft}px` }}>
@@ -248,11 +248,11 @@ const Sidebar: React.FC = () => {
     return (
         <div
             className={cn(
-                "bg-white border-r transition-all duration-300 flex flex-col h-full",
+                "bg-background border-r border-border transition-all duration-300 flex flex-col h-full",
                 isOpen ? "w-64" : "w-20"
             )}
         >
-            <div className="flex items-center justify-between p-3 border-b flex-shrink-0">
+            <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
                 {isOpen && <h1 className="text-md font-semibold truncate">Result</h1>}
                 <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => setIsOpen(!isOpen)}>
                     <ChevronRight

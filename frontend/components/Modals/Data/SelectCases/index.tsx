@@ -22,7 +22,8 @@ import {
     Ruler,
     BarChartHorizontal,
     CornerDownRight,
-    AlertCircle
+    AlertCircle,
+    Info
 } from "lucide-react";
 
 import SelectCasesIfCondition from "./SelectCasesIfCondition";
@@ -91,15 +92,15 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -451,27 +452,23 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-3">
+            <DialogContent className="max-w-[650px] p-3 bg-popover border border-border">
                 <DialogHeader className="p-0 mb-2">
-                    <DialogTitle>Select Cases</DialogTitle>
+                    <DialogTitle className="text-popover-foreground">Select Cases</DialogTitle>
                 </DialogHeader>
                 <Separator className="my-0" />
 
                 <div className="grid grid-cols-9 gap-4 py-2">
                     <div className="col-span-3">
-                        <Label className="text-xs font-semibold mb-1">Variables:</Label>
-                        <div className="border p-2 rounded-md h-[420px] overflow-y-auto overflow-x-hidden">
+                        <Label className="text-xs font-semibold mb-1 text-popover-foreground">Variables:</Label>
+                        <div className="border border-border p-2 rounded-md h-[420px] overflow-y-auto overflow-x-hidden bg-card">
                             <div className="space-y-1">
                                 {storeVariables.map((variable) => (
                                     <TooltipProvider key={variable.columnIndex}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <div
-                                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-gray-100 ${
-                                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'available'
-                                                            ? "bg-gray-200 border-gray-500"
-                                                            : "border-gray-300"
-                                                    }`}
+                                                    className={`flex items-center p-1 cursor-pointer border rounded-md ${highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'available' ? "bg-primary border-primary text-primary-foreground" : "border-border hover:bg-accent text-card-foreground"}`}
                                                     onClick={() => handleVariableSelect(variable.columnIndex, 'available')}
                                                     onDoubleClick={() => handleVariableDoubleClick(variable.columnIndex, 'available')}
                                                 >
@@ -492,256 +489,244 @@ const SelectCases: FC<SelectCasesProps> = ({ onClose }) => {
                     </div>
 
                     <div className="col-span-6">
-                        <div className="border rounded-md p-3 mb-3">
-                            <div className="text-sm font-medium mb-2">Select</div>
+                        <div className="border border-border rounded-md p-3 mb-3 bg-card">
+                            <div className="text-sm font-medium mb-2 text-card-foreground">Select</div>
 
                             <div className="space-y-2">
-                                <label className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-card-foreground">
                                     <input
                                         type="radio"
-                                        name="selectOption"
+                                        name="selectCasesOption"
+                                        className="accent-primary"
                                         checked={selectOption === "all"}
                                         onChange={() => setSelectOption("all")}
-                                        className="w-4 h-4"
                                     />
-                                    <span className="text-sm">All cases</span>
+                                    <span>All cases</span>
                                 </label>
 
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        name="selectOption"
-                                        checked={selectOption === "condition"}
-                                        onChange={() => setSelectOption("condition")}
-                                        className="w-4 h-4"
-                                    />
-                                    <span className="text-sm">If condition is satisfied</span>
-                                </label>
-
-                                <div className="pl-6">
+                                <div className="flex items-center space-x-2">
+                                    <label className="flex items-center space-x-2 text-card-foreground flex-grow">
+                                        <input
+                                            type="radio"
+                                            name="selectCasesOption"
+                                            className="accent-primary"
+                                            checked={selectOption === "condition"}
+                                            onChange={() => setSelectOption("condition")}
+                                        />
+                                        <span>If condition is satisfied</span>
+                                    </label>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-7 text-xs"
-                                        disabled={selectOption !== "condition"}
+                                        className="text-xs h-7"
                                         onClick={handleIfButtonClick}
+                                        disabled={selectOption !== "condition"}
                                     >
                                         If...
                                     </Button>
                                 </div>
+                                {selectOption === "condition" && conditionExpression && (
+                                    <p className="text-xs ml-6 text-muted-foreground">
+                                        Condition: <span className="font-semibold text-primary">{conditionExpression}</span>
+                                    </p>
+                                )}
 
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        name="selectOption"
-                                        checked={selectOption === "random"}
-                                        onChange={() => setSelectOption("random")}
-                                        className="w-4 h-4"
-                                    />
-                                    <span className="text-sm">Random sample of cases</span>
-                                </label>
-
-                                <div className="pl-6">
+                                <div className="flex items-center space-x-2">
+                                    <label className="flex items-center space-x-2 text-card-foreground flex-grow">
+                                        <input
+                                            type="radio"
+                                            name="selectCasesOption"
+                                            className="accent-primary"
+                                            checked={selectOption === "random"}
+                                            onChange={() => setSelectOption("random")}
+                                        />
+                                        <span>Random sample of cases</span>
+                                    </label>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-7 text-xs"
-                                        disabled={selectOption !== "random"}
+                                        className="text-xs h-7"
                                         onClick={handleSampleButtonClick}
+                                        disabled={selectOption !== "random"}
                                     >
                                         Sample...
                                     </Button>
                                 </div>
+                                {selectOption === "random" && randomSampleConfig && (
+                                    <p className="text-xs ml-6 text-muted-foreground">
+                                        Sample: {randomSampleConfig.sampleType === "approximate" ? `Approx. ${randomSampleConfig.percentage}%` : `Exactly ${randomSampleConfig.exactCount} from first ${randomSampleConfig.fromFirstCount || 'all'}`}
+                                    </p>
+                                )}
 
-                                <label className="flex items-center space-x-2">
-                                    <input
-                                        type="radio"
-                                        name="selectOption"
-                                        checked={selectOption === "time"}
-                                        onChange={() => setSelectOption("time")}
-                                        className="w-4 h-4"
-                                    />
-                                    <span className="text-sm">Based on time or case range</span>
-                                </label>
-
-                                <div className="pl-6">
+                                <div className="flex items-center space-x-2">
+                                    <label className="flex items-center space-x-2 text-card-foreground flex-grow">
+                                        <input
+                                            type="radio"
+                                            name="selectCasesOption"
+                                            className="accent-primary"
+                                            checked={selectOption === "time"}
+                                            onChange={() => setSelectOption("time")}
+                                        />
+                                        <span>Based on time or case range</span>
+                                    </label>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-7 text-xs"
-                                        disabled={selectOption !== "time"}
+                                        className="text-xs h-7"
                                         onClick={handleRangeButtonClick}
+                                        disabled={selectOption !== "time"}
                                     >
                                         Range...
                                     </Button>
                                 </div>
+                                {selectOption === "time" && rangeConfig && (
+                                    <p className="text-xs ml-6 text-muted-foreground">
+                                        Range: {rangeConfig.firstCase || 'Start'} to {rangeConfig.lastCase || 'End'}
+                                    </p>
+                                )}
 
-                                <label className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-card-foreground">
                                     <input
                                         type="radio"
-                                        name="selectOption"
+                                        name="selectCasesOption"
+                                        className="accent-primary"
                                         checked={selectOption === "variable"}
                                         onChange={() => setSelectOption("variable")}
-                                        className="w-4 h-4"
                                     />
-                                    <span className="text-sm">Use filter variable:</span>
+                                    <span>Use filter variable:</span>
+                                    <span className={`font-semibold truncate ${filterVariable ? 'text-primary' : 'text-muted-foreground'}`}>
+                                        {filterVariable ? getDisplayName(filterVariable) : "(None selected)"}
+                                    </span>
                                 </label>
-
-                                <div className="pl-6 flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 w-7 p-0 flex items-center justify-center"
-                                        disabled={selectOption !== "variable" || !highlightedVariable}
-                                        onClick={handleTransferClick}
-                                    >
-                                        <CornerDownRight size={16} />
-                                    </Button>
-                                    <Input
-                                        className="h-7 text-xs"
-                                        value={filterVariable?.name || ""}
-                                        readOnly
-                                        disabled={selectOption !== "variable"}
-                                    />
-                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs h-7 ml-6 w-24 flex items-center justify-center"
+                                    onClick={handleTransferClick}
+                                    disabled={selectOption !== "variable" || !highlightedVariable}
+                                >
+                                    <CornerDownRight size={14} className="mr-1" /> Transfer
+                                </Button>
                             </div>
                         </div>
 
-                        <div className="border rounded-md p-3">
-                            <div className="text-sm font-medium mb-2">Output</div>
-
+                        <div className="border border-border rounded-md p-3 bg-card">
+                            <div className="text-sm font-medium mb-2 text-card-foreground">Output</div>
                             <div className="space-y-2">
-                                <label className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-card-foreground">
                                     <input
                                         type="radio"
                                         name="outputOption"
+                                        className="accent-primary"
+                                        value="filter"
                                         checked={outputOption === "filter"}
                                         onChange={() => setOutputOption("filter")}
-                                        className="w-4 h-4"
                                     />
-                                    <span className="text-sm">Filter out unselected cases</span>
+                                    <span>Filter out unselected cases</span>
                                 </label>
-
-                                <label className="flex items-center space-x-2">
+                                <label className="flex items-center space-x-2 text-card-foreground">
                                     <input
                                         type="radio"
                                         name="outputOption"
+                                        className="accent-primary"
+                                        value="copy"
                                         checked={outputOption === "copy"}
                                         onChange={() => setOutputOption("copy")}
-                                        className="w-4 h-4"
                                     />
-                                    <span className="text-sm">Copy selected cases to a new dataset</span>
+                                    <span>Copy selected cases to a new dataset</span>
                                 </label>
-
-                                <div className="pl-6 flex items-center gap-2">
-                                    <span className="text-xs">Dataset name:</span>
-                                    <Input
-                                        className="h-7 text-xs"
-                                        value={newDatasetName}
-                                        onChange={(e) => setNewDatasetName(e.target.value)}
-                                        disabled={outputOption !== "copy"}
-                                    />
-                                </div>
-
-                                <label className="flex items-center space-x-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Dataset name"
+                                    className="h-8 text-sm mt-1 ml-6"
+                                    value={newDatasetName}
+                                    onChange={(e) => setNewDatasetName(e.target.value)}
+                                    disabled={outputOption !== "copy"}
+                                />
+                                <label className="flex items-center space-x-2 text-card-foreground">
                                     <input
                                         type="radio"
                                         name="outputOption"
+                                        className="accent-primary"
+                                        value="delete"
                                         checked={outputOption === "delete"}
                                         onChange={() => setOutputOption("delete")}
-                                        className="w-4 h-4"
                                     />
-                                    <span className="text-sm">Delete unselected cases</span>
+                                    <span>Delete unselected cases</span>
                                 </label>
                             </div>
                         </div>
+
+                        <p className="text-xs mt-3 text-muted-foreground">
+                            Current Status: <span className="font-semibold text-popover-foreground">{currentStatus}</span>
+                        </p>
                     </div>
                 </div>
 
-                <div className="text-xs text-gray-600 mt-2">
-                    Current Status: {currentStatus}
-                </div>
-
-                <DialogFooter className="flex justify-center space-x-2 mt-2 p-0">
-                    <Button
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleConfirm}
-                    >
-                        OK
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleReset}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={handleHelp}
-                    >
-                        Help
-                    </Button>
+                <DialogFooter className="flex justify-between items-center p-3 border-t border-border bg-muted">
+                    <div className="flex items-center">
+                        <Button variant="link" size="sm" className="text-xs p-0 h-auto text-muted-foreground hover:text-foreground" onClick={handleHelp}>
+                            <Info size={14} className="mr-1"/> Help
+                        </Button>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={handlePaste}>Paste</Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleReset}>Reset</Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={onClose}>Cancel</Button>
+                        <Button size="sm" className="text-xs h-7" onClick={handleConfirm}>OK</Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
 
-            {ifConditionDialogOpen && (
-                <SelectCasesIfCondition
-                    variables={storeVariables}
-                    onClose={() => setIfConditionDialogOpen(false)}
-                    onContinue={handleIfConditionContinue}
-                />
-            )}
-
-            {randomSampleDialogOpen && (
-                <SelectCasesRandomSample
-                    onClose={() => setRandomSampleDialogOpen(false)}
-                    onContinue={handleRandomSampleContinue}
-                />
-            )}
-
-            {rangeDialogOpen && (
-                <SelectCasesRange
-                    onClose={() => setRangeDialogOpen(false)}
-                    onContinue={handleRangeContinue}
-                />
-            )}
-
+            {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[450px] p-3">
-                    <DialogHeader className="p-0 mb-2">
-                        <DialogTitle>Statify</DialogTitle>
+                <DialogContent className="sm:max-w-[425px] bg-popover border-border">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Error</DialogTitle>
                     </DialogHeader>
-                    <div className="flex gap-4">
-                        <AlertCircle className="h-10 w-10 text-blue-500" />
-                        <div>
-                            <p className="text-sm mt-2">{errorMessage}</p>
-                        </div>
+                    <div className="flex items-start space-x-3 py-4">
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-popover-foreground">
+                            {errorMessage}
+                        </p>
                     </div>
-
-                    <DialogFooter className="flex justify-center mt-4">
-                        <Button
-                            size="sm"
-                            className="text-xs h-7"
-                            onClick={() => setErrorDialogOpen(false)}
-                        >
-                            OK
-                        </Button>
+                    <DialogFooter>
+                        <Button onClick={() => setErrorDialogOpen(false)}>OK</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Sub-dialogs for If, Random Sample, Range */}
+            {ifConditionDialogOpen && (
+                <Dialog open={ifConditionDialogOpen} onOpenChange={setIfConditionDialogOpen}>
+                    <SelectCasesIfCondition
+                        variables={storeVariables}
+                        onClose={() => setIfConditionDialogOpen(false)}
+                        onContinue={handleIfConditionContinue}
+                        initialExpression={conditionExpression}
+                    />
+                </Dialog>
+            )}
+
+            {randomSampleDialogOpen && (
+                <Dialog open={randomSampleDialogOpen} onOpenChange={setRandomSampleDialogOpen}>
+                    <SelectCasesRandomSample
+                        onClose={() => setRandomSampleDialogOpen(false)}
+                        onContinue={handleRandomSampleContinue}
+                        initialConfig={randomSampleConfig}
+                    />
+                </Dialog>
+            )}
+
+            {rangeDialogOpen && (
+                <Dialog open={rangeDialogOpen} onOpenChange={setRangeDialogOpen}>
+                    <SelectCasesRange
+                        onClose={() => setRangeDialogOpen(false)}
+                        onContinue={handleRangeContinue}
+                        initialConfig={rangeConfig}
+                    />
+                </Dialog>
+            )}
         </>
     );
 };

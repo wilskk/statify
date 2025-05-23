@@ -38,7 +38,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     id="descriptives"
                     checked={showDescriptives}
                     onCheckedChange={(checked) => setShowDescriptives(checked as boolean)}
-                    className="border-[#CCCCCC] h-4 w-4"
+                    className="h-4 w-4"
                 />
                 <Label htmlFor="descriptives" className="text-sm font-medium cursor-pointer">
                     Descriptives
@@ -55,7 +55,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         id="confidenceInterval"
                         value={confidenceInterval}
                         onChange={(e) => setConfidenceInterval(e.target.value)}
-                        className="h-8 text-sm w-16 border-[#CCCCCC]"
+                        className="h-8 text-sm w-16"
                         disabled={!showDescriptives}
                     />
                     <span className="ml-1 text-sm">%</span>
@@ -68,7 +68,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     id="mEstimators"
                     checked={showMEstimators}
                     onCheckedChange={(checked) => setShowMEstimators(checked as boolean)}
-                    className="border-[#CCCCCC] h-4 w-4"
+                    className="h-4 w-4"
                 />
                 <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
                     M-estimators
@@ -81,7 +81,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     id="outliers"
                     checked={showOutliers}
                     onCheckedChange={(checked) => setShowOutliers(checked as boolean)}
-                    className="border-[#CCCCCC] h-4 w-4"
+                    className="h-4 w-4"
                 />
                 <Label htmlFor="outliers" className="text-sm font-medium cursor-pointer">
                     Outliers
@@ -94,7 +94,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                     id="percentiles"
                     checked={showPercentiles}
                     onCheckedChange={(checked) => setShowPercentiles(checked as boolean)}
-                    className="border-[#CCCCCC] h-4 w-4"
+                    className="h-4 w-4"
                 />
                 <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
                     Percentiles

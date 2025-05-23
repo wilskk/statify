@@ -176,15 +176,15 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
      const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -867,41 +867,41 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Identify Unusual Cases</DialogTitle>
+            <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Identify Unusual Cases</DialogTitle>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                    <div className="border-b border-border flex-shrink-0">
+                        <TabsList className="bg-muted rounded-none h-9 p-0">
                             <TabsTrigger
                                 value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                             >
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
                                 value="output"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                             >
                                 Output
                             </TabsTrigger>
                             <TabsTrigger
                                 value="save"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                             >
                                 Save
                             </TabsTrigger>
                             <TabsTrigger
                                 value="missingValues"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                             >
                                 Missing Values
                             </TabsTrigger>
                             <TabsTrigger
                                 value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                             >
                                 Options
                             </TabsTrigger>
@@ -990,10 +990,10 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                     <div className="flex justify-end space-x-3">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={handleConfirm}
                         >
                             OK
@@ -1006,21 +1006,22 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
                         </Button> */}
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="h-8 px-4"
                             onClick={handleReset}
                         >
                             Reset
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="h-8 px-4"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="h-8 px-4"
+                            onClick={() => alert("Help for Unusual Cases")}
                         >
                             Help
                         </Button>
