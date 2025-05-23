@@ -1,9 +1,35 @@
+/// This module implements the design matrix creation and statistical computations for linear models.
+///
+/// # Statistical Background
+///
+/// The statistical analysis is based on the Gauss-Jordan method of matrix inversion, which is
+/// implemented through the sweep operation. Key matrices in this process include:
+///
+/// - X: Design matrix containing the predictor variables
+/// - Y: Response vector containing the dependent variable
+/// - W: Optional weight matrix (diagonal) for weighted least squares
+/// - Z: Combined matrix [X Y]
+/// - Z'WZ: Cross-product matrix that forms the basis of the sweep operation
+///
+/// After sweeping the first p rows and columns of Z'WZ, we obtain:
+///
+/// ```text
+/// [  -G    B̂  ]
+/// [  B̂'    S  ]
+/// ```
+///
+/// where:
+/// - G is the p×p symmetric g₂ general inverse of X'WX
+/// - B̂ is the p×r matrix of parameter estimates
+/// - S is the symmetric r×r matrix of residual sums of squares and cross-products
+///
+/// This implementation is based on Algorithm AS 178 by M.R.B. Clarke (1982) and includes
+/// detection of collinearity among the predictor variables.
 use nalgebra::{ DMatrix, DVector };
 use std::collections::HashMap;
-
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
-use crate::univariate::stats::common::{ extract_numeric_value, data_value_to_string };
-use crate::univariate::stats::factor_utils;
+
+use super::core::*;
 
 pub struct DesignMatrixInfo {
     pub x: DMatrix<f64>,
@@ -19,8 +45,11 @@ pub struct DesignMatrixInfo {
 
 #[derive(Debug)]
 pub struct SweptMatrixInfo {
+    /// G: p×p symmetric g₂ general inverse of X'WX (after negation of swept result)
     pub g_inv: DMatrix<f64>,
+    /// B̂: p×r matrix of parameter estimates
     pub beta_hat: DVector<f64>,
+    /// S: symmetric r×r matrix of residual sums of squares and cross-products
     pub s_rss: f64,
 }
 
@@ -107,12 +136,25 @@ pub fn create_design_response_weights(
     let y_nalgebra = DVector::from_vec(y_values);
     let w_nalgebra_opt = wls_weights.map(DVector::from_vec);
 
-    let model_terms = factor_utils::generate_model_design_terms(data, config)?;
+    web_sys::console::log_1(
+        &format!("create_design_response_weights: n_samples_effective = {}", n_samples_effective).into()
+    );
+    web_sys::console::log_1(
+        &format!(
+            "create_design_response_weights: y_nalgebra (first 5 rows): {:?}",
+            y_nalgebra.rows(0, n_samples_effective.min(5))
+        ).into()
+    );
+
+    let model_terms = generate_model_design_terms(data, config)?;
     let mut x_matrix_cols: Vec<DVector<f64>> = Vec::new();
     let mut term_column_map: HashMap<String, (usize, usize)> = HashMap::new();
     let mut current_col_idx = 0;
     let mut intercept_col_idx: Option<usize> = None;
     let mut final_term_names: Vec<String> = Vec::new();
+
+    // Use factor_utils for matrix generation
+    use crate::univariate::stats::factor_utils;
 
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
@@ -123,7 +165,7 @@ pub fn create_design_response_weights(
             if config.model.intercept {
                 let intercept_vec = DVector::from_element(n_samples_effective, 1.0);
                 term_matrix_cols.push(intercept_vec);
-                intercept_col_idx = Some(current_col_idx);
+                // intercept_col_idx will be set based on the actual column index later if intercept is added
             } else {
                 continue;
             }
@@ -162,37 +204,33 @@ pub fn create_design_response_weights(
                 term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            let interaction_matrix_res = factor_utils::create_interaction_design_matrix(
-                data,
-                term_name
-            )?;
-            if !interaction_matrix_res.is_empty() {
-                let ncols = interaction_matrix_res[0].len();
-                for j in 0..ncols {
-                    let column_vec: DVector<f64> = DVector::from_vec(
-                        interaction_matrix_res
-                            .iter()
-                            .map(|row| row[j])
-                            .collect()
-                    );
-                    term_matrix_cols.push(column_vec);
+            // Interaction term using new factor_utils function
+            let interaction_rows = factor_utils::create_interaction_design_matrix(data, term_name)?;
+            if !interaction_rows.is_empty() && !interaction_rows[0].is_empty() {
+                for j_col in 0..interaction_rows[0].len() {
+                    // Iterate over columns of the interaction term
+                    let column_data: Vec<f64> = interaction_rows
+                        .iter()
+                        .map(|row| row[j_col])
+                        .collect();
+                    if !column_data.is_empty() {
+                        term_matrix_cols.push(DVector::from_vec(column_data));
+                    }
                 }
             }
         } else {
-            let main_effect_matrix_res = factor_utils::create_main_effect_design_matrix(
-                data,
-                term_name
-            )?;
-            if !main_effect_matrix_res.is_empty() {
-                let ncols = main_effect_matrix_res[0].len();
-                for j in 0..ncols {
-                    let column_vec: DVector<f64> = DVector::from_vec(
-                        main_effect_matrix_res
-                            .iter()
-                            .map(|row| row[j])
-                            .collect()
-                    );
-                    term_matrix_cols.push(column_vec);
+            // Main effect (factor) using new factor_utils function
+            let main_effect_rows = factor_utils::create_main_effect_design_matrix(data, term_name)?;
+            if !main_effect_rows.is_empty() && !main_effect_rows[0].is_empty() {
+                for j_col in 0..main_effect_rows[0].len() {
+                    // Iterate over columns of the main effect term (k-1 dummies)
+                    let column_data: Vec<f64> = main_effect_rows
+                        .iter()
+                        .map(|row| row[j_col])
+                        .collect();
+                    if !column_data.is_empty() {
+                        term_matrix_cols.push(DVector::from_vec(column_data));
+                    }
                 }
             }
         }
@@ -232,6 +270,42 @@ pub fn create_design_response_weights(
     let p_parameters = x_nalgebra.ncols();
     let r_x_rank = if p_parameters > 0 { x_nalgebra.rank(1e-10) } else { 0 };
 
+    // Update intercept_col_idx if intercept was added and is the first term
+    if
+        config.model.intercept &&
+        x_nalgebra.ncols() > 0 &&
+        model_terms.get(0) == Some(&"Intercept".to_string())
+    {
+        if let Some((start, end)) = term_column_map.get("Intercept") {
+            if *start == 0 && *end == 0 {
+                // Ensure it's a single column at the start
+                intercept_col_idx = Some(0);
+            }
+        }
+    }
+
+    web_sys::console::log_1(
+        &format!("create_design_response_weights: p_parameters = {}", p_parameters).into()
+    );
+    web_sys::console::log_1(
+        &format!("create_design_response_weights: r_x_rank = {}", r_x_rank).into()
+    );
+    web_sys::console::log_1(
+        &format!("create_design_response_weights: x_nalgebra = {:?}", x_nalgebra).into()
+    );
+    web_sys::console::log_1(
+        &format!(
+            "create_design_response_weights: term_column_indices = {:?}",
+            term_column_map
+        ).into()
+    );
+    web_sys::console::log_1(
+        &format!(
+            "create_design_response_weights: intercept_column = {:?}",
+            intercept_col_idx
+        ).into()
+    );
+
     Ok(DesignMatrixInfo {
         x: x_nalgebra,
         y: y_nalgebra,
@@ -245,6 +319,28 @@ pub fn create_design_response_weights(
     })
 }
 
+/// Creates the cross-product matrix Z'WZ where Z = [X Y].
+///
+/// This function constructs the matrix Z'WZ that is central to the Gauss-Jordan sweep operation.
+/// Z is formed by concatenating the design matrix X and the response vector Y:
+/// Z = [X Y]
+///
+/// The resulting Z'WZ matrix has the structure:
+/// ```text
+/// [  X'WX    X'WY  ]
+/// [  Y'WX    Y'WY  ]
+/// ```
+///
+/// When Z'WZ is swept on its first p rows and columns (where p is the number of parameters),
+/// it produces the matrices G, B̂, and S as described in the perform_sweep_and_extract_results function.
+///
+/// # Parameters
+///
+/// * `design_info` - Contains the design matrix X, response vector Y, and optional weights W
+///
+/// # Returns
+///
+/// The Z'WZ matrix which will be used as input to the sweep operation
 pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMatrix<f64>, String> {
     let x = &design_info.x;
     let y = &design_info.y;
@@ -271,131 +367,255 @@ pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMa
             return Err("Weight vector length mismatch for Z'WZ.".to_string());
         }
         let w_diag = DMatrix::from_diagonal(w_vec);
-        Ok(z.transpose() * w_diag * z)
+        let ztwz = z.transpose() * w_diag * z;
+        web_sys::console::log_1(
+            &format!(
+                "create_cross_product_matrix: ZTWZ (weighted) (dims {}x{}): {:?}",
+                ztwz.nrows(),
+                ztwz.ncols(),
+                ztwz
+            ).into()
+        );
+        Ok(ztwz)
     } else {
-        Ok(z.transpose() * z)
+        let ztz = z.transpose() * z;
+        web_sys::console::log_1(
+            &format!(
+                "create_cross_product_matrix: ZTZ (unweighted) (dims {}x{}): {:?}",
+                ztz.nrows(),
+                ztz.ncols(),
+                ztz
+            ).into()
+        );
+        Ok(ztz)
     }
 }
 
+/// Performs the sweep operation on a Z'WZ matrix and extracts the results.
+///
+/// # The Sweep Operation
+///
+/// The Sweep operation transforms the Z'WZ matrix (where Z = [X Y]) into a form that
+/// directly provides parameter estimates, the g₂ inverse, and residual sums of squares.
+///
+/// After sweeping the first p rows and columns of Z'WZ, the resulting matrix has the form:
+/// ```text
+/// [  -G    B̂  ]
+/// [  B̂'    S  ]
+/// ```
+/// where:
+/// - G is a p×p symmetric g₂ general inverse of X'WX
+/// - B̂ is a p×r matrix of parameter estimates
+/// - S is a symmetric r×r matrix of residual sums of squares and cross-products
+///
+/// # Algorithm
+///
+/// This implementation is based on Algorithm AS 178: "The Gauss-Jordan Sweep Operator
+/// with Detection of Collinearity" by M.R.B. Clarke (1982) published in the Journal of
+/// the Royal Statistical Society. Series C (Applied Statistics).
+///
+/// For each row/column k being swept:
+/// 1. If the pivot element c[k,k] is near zero, the parameter is likely collinear
+/// 2. Otherwise, perform the standard sweep operation:
+///    - c[k,k] = -1/c[k,k]
+///    - For other elements in row k: c[k,j] = c[k,j]/d
+///    - For other elements in column k: c[i,k] = c[i,k]/d
+///    - For all other elements: c[i,j] = c[i,j] + c[i,k] * c[k,j] * d
+///
+/// # Parameters
+///
+/// * `ztwz_matrix` - The Z'WZ matrix where Z = [X Y]
+/// * `p_params_in_model` - The number of parameters p in the model (columns of X)
+///
+/// # Returns
+///
+/// A `SweptMatrixInfo` containing:
+/// - g_inv: The G matrix (negated from the direct sweep result)
+/// - beta_hat: The B̂ matrix of parameter estimates
+/// - s_rss: The S matrix (in this implementation, just the first element of S which is the residual sum of squares)
+///
+/// # References
+///
+/// - Clarke, M.R.B. (1982) "Algorithm AS 178: The Gauss-Jordan Sweep Operator with Detection of Collinearity"
+/// - Ridout, M.S. and Cobby, J.M. (1989) "Remark AS R78: A Remark on Algorithm AS 178"
 pub fn perform_sweep_and_extract_results(
     ztwz_matrix: &DMatrix<f64>,
     p_params_in_model: usize
 ) -> Result<SweptMatrixInfo, String> {
-    if ztwz_matrix.nrows() != ztwz_matrix.ncols() {
-        return Err("Z'WZ matrix must be square for SWEEP.".to_string());
-    }
-    if p_params_in_model == 0 && ztwz_matrix.nrows() > 0 {
-        // Only Y, no X parameters
-        if ztwz_matrix.nrows() == 1 && ztwz_matrix.ncols() == 1 {
-            // Should be Y'Y
-            return Ok(SweptMatrixInfo {
-                g_inv: DMatrix::zeros(0, 0), // No G_inv
-                beta_hat: DVector::zeros(0), // No Beta
-                s_rss: ztwz_matrix[(0, 0)], // This is Y'Y (uncorrected SS for Y)
-            });
+    if p_params_in_model == 0 {
+        let s_rss = if ztwz_matrix.nrows() == 1 && ztwz_matrix.ncols() == 1 {
+            ztwz_matrix[(0, 0)]
+        } else if ztwz_matrix.nrows() > 0 && ztwz_matrix.ncols() > 0 {
+            ztwz_matrix[(0, 0)]
         } else {
-            return Err("Z'WZ matrix has unexpected dimensions for Y-only model.".to_string());
-        }
+            0.0
+        };
+        return Ok(SweptMatrixInfo {
+            g_inv: DMatrix::zeros(0, 0),
+            beta_hat: DVector::zeros(0),
+            s_rss,
+        });
     }
-    if p_params_in_model >= ztwz_matrix.ncols() {
-        // p_params_in_model should be less than total cols (p+r)
+
+    web_sys::console::log_1(
+        &format!(
+            "perform_sweep_and_extract_results: Input ZTWZ (dims {}x{}): {:?}",
+            ztwz_matrix.nrows(),
+            ztwz_matrix.ncols(),
+            ztwz_matrix
+        ).into()
+    );
+
+    let total_dims = ztwz_matrix.nrows();
+    if total_dims != p_params_in_model + 1 {
         return Err(
             format!(
-                "Number of parameters to sweep ({}) is too large for Z'WZ matrix ({}x{}).",
-                p_params_in_model,
+                "Z'WZ matrix dimensions ({}x{}) inconsistent with p_params_in_model ({}). Expected {}x{}.",
                 ztwz_matrix.nrows(),
-                ztwz_matrix.ncols()
+                ztwz_matrix.ncols(),
+                p_params_in_model,
+                p_params_in_model + 1,
+                p_params_in_model + 1
             )
         );
     }
+    if ztwz_matrix.ncols() != total_dims {
+        return Err(
+            format!("Z'WZ matrix is not square ({}x{}).", ztwz_matrix.nrows(), ztwz_matrix.ncols())
+        );
+    }
 
-    let mut c = ztwz_matrix.clone_owned();
-    let mut sweep_successful_for_all_p = true;
+    let mut c_matrix = ztwz_matrix.clone_owned();
+    let mut swept_k_flags: Vec<bool> = vec![false; p_params_in_model];
+    let mut original_diagonals: Vec<f64> = Vec::with_capacity(p_params_in_model);
+    for k in 0..p_params_in_model {
+        original_diagonals.push(c_matrix[(k, k)]);
+    }
+    let mut is_param_aliased: Vec<bool> = vec![false; p_params_in_model];
+    let epsilon = 1e-12;
+
+    web_sys::console::log_1(
+        &format!(
+            "perform_sweep_and_extract_results: Initial c_matrix (dims {}x{}): {:?}",
+            c_matrix.nrows(),
+            c_matrix.ncols(),
+            c_matrix
+        ).into()
+    );
 
     for k in 0..p_params_in_model {
-        if c[(k, k)].abs() < 1e-12 {
-            // Diagonal element is zero or very small, parameter k is redundant or aliased.
-            // Set column k and row k to zero (except c[k,k] which remains as is or becomes 1/epsilon if pivot).
-            // This is a simplified handling. True G2 inverse would require more complex algorithm for aliasing.
-            // For now, if pivot is zero, we can't proceed with standard sweep for this param.
-            // Mark as not successful and subsequent calculations will need to handle this (e.g. beta for this param is 0).
-            // Or, skip sweeping this parameter and ensure its corresponding beta is 0 and G_inv entries are 0.
-            // For simplicity, let's try to zero out its influence but this isn't a full G2 inverse.
-            // A more robust sweep handles this by not pivoting on zero and recognizing aliasing.
+        let pivot_candidate = c_matrix[(k, k)];
+        let s_k = original_diagonals[k];
 
-            // If we simply skip sweeping, the G_inv will not be correct for g2 properties.
-            // Let's signal that full rank sweep wasn't possible.
-            // For now, this implementation assumes pivots are non-zero. If a zero pivot is encountered,
-            // it indicates either a problem with X or the need for a more advanced sweep/g2 inverse.
-            // For the purpose of GLM as described, a full rank X (or X'WX) is often assumed for parameter estimates.
-            // If X is not full rank, some parameters are not uniquely estimable (aliased).
-            // The SWEEP on X'X should produce a g2 inverse. If a pivot is zero, that part of g2 is zero.
-
-            // For this implementation, we will proceed, but the resulting G_inv may not be a proper g2 if pivots are zero.
-            // This case indicates linear dependency. GLM results might show these params as aliased or zeroed out.
-            // No operation if pivot is zero to avoid division by zero. Beta for this will be effectively zero if C(k,j) remains unchanged.
-            // G_inv(k,k) will also be zero if C(k,k) was zero. This aligns with some g2 properties for non-estimable params.
-            sweep_successful_for_all_p = false; // Indicate potential rank deficiency
-            // Continue to sweep other parameters if possible.
-            // If c[k,k] is zero, the standard SWEEP formulas below would divide by zero.
-            // We can skip this pivot, effectively zeroing out its contribution.
-            for i in 0..c.nrows() {
-                if i != k {
-                    c[(i, k)] = 0.0;
-                }
-            }
-            for j in 0..c.ncols() {
-                if j != k {
-                    c[(k, j)] = 0.0;
-                }
-            }
-            // c[(k,k)] remains 0.0
-            continue; // Skip standard sweep for this k if pivot is zero
+        if pivot_candidate.abs() <= epsilon * s_k.abs() {
+            is_param_aliased[k] = true;
+            continue;
         }
 
-        let d = c[(k, k)];
-        c[(k, k)] = -1.0 / d;
+        let is_inconsistent =
+            (swept_k_flags[k] && pivot_candidate > epsilon) ||
+            (!swept_k_flags[k] && pivot_candidate < -epsilon);
+        if is_inconsistent {
+            is_param_aliased[k] = true;
+            continue;
+        }
 
-        for i in 0..c.nrows() {
-            if i != k {
-                c[(i, k)] /= d;
-            }
+        let pivot_val = c_matrix[(k, k)];
+
+        let mut old_col_k_vals = DVector::zeros(total_dims);
+        let mut old_row_k_vals = DVector::zeros(total_dims);
+        for i in 0..total_dims {
+            old_col_k_vals[i] = c_matrix[(i, k)];
         }
-        for j in 0..c.ncols() {
-            if j != k {
-                c[(k, j)] /= d;
-            }
+        for j in 0..total_dims {
+            old_row_k_vals[j] = c_matrix[(k, j)];
         }
-        for i in 0..c.nrows() {
-            if i != k {
-                for j in 0..c.ncols() {
-                    if j != k {
-                        c[(i, j)] += c[(i, k)] * c[(k, j)] * d;
-                    }
+
+        for i in 0..total_dims {
+            if i == k {
+                continue;
+            }
+            for j in 0..total_dims {
+                if j == k {
+                    continue;
                 }
+                c_matrix[(i, j)] -= (old_col_k_vals[i] * old_row_k_vals[j]) / pivot_val;
+            }
+        }
+
+        for j in 0..total_dims {
+            if j == k {
+                continue;
+            }
+            c_matrix[(k, j)] /= pivot_val;
+        }
+
+        for i in 0..total_dims {
+            if i == k {
+                continue;
+            }
+            c_matrix[(i, k)] /= pivot_val;
+        }
+
+        c_matrix[(k, k)] = -1.0 / pivot_val;
+
+        swept_k_flags[k] = !swept_k_flags[k];
+    }
+
+    web_sys::console::log_1(
+        &format!(
+            "perform_sweep_and_extract_results: c_matrix after sweep (dims {}x{}): {:?}",
+            c_matrix.nrows(),
+            c_matrix.ncols(),
+            c_matrix
+        ).into()
+    );
+
+    let s_rss = c_matrix[(p_params_in_model, p_params_in_model)];
+
+    let mut final_g_inv = DMatrix::zeros(p_params_in_model, p_params_in_model);
+    let mut final_beta_hat = DVector::zeros(p_params_in_model);
+
+    for i in 0..p_params_in_model {
+        if !is_param_aliased[i] {
+            final_beta_hat[i] = c_matrix[(i, p_params_in_model)];
+            for j in 0..p_params_in_model {
+                if !is_param_aliased[j] {
+                    final_g_inv[(i, j)] = -c_matrix[(i, j)];
+                } else {
+                    final_g_inv[(i, j)] = 0.0;
+                }
+            }
+        } else {
+            final_beta_hat[i] = 0.0;
+            for r in 0..p_params_in_model {
+                final_g_inv[(i, r)] = 0.0;
+                final_g_inv[(r, i)] = 0.0;
             }
         }
     }
 
-    let mut g_inv_final = c.view((0, 0), (p_params_in_model, p_params_in_model)).into_owned();
-    if p_params_in_model > 0 {
-        // Avoid negating an empty matrix if p_params_in_model is 0
-        g_inv_final.neg_mut(); // Store G = -(-G)
-    }
-
-    let beta_hat_final = c
-        .view((0, p_params_in_model), (p_params_in_model, ztwz_matrix.ncols() - p_params_in_model))
-        .column(0)
-        .into_owned();
-    let s_rss_final = c.view(
-        (p_params_in_model, p_params_in_model),
-        (ztwz_matrix.nrows() - p_params_in_model, ztwz_matrix.ncols() - p_params_in_model)
-    )[(0, 0)]; // Assuming S_rss is a scalar at the bottom right of the p_params_in_model sweep
+    web_sys::console::log_1(
+        &format!(
+            "perform_sweep_and_extract_results: final_g_inv (dims {}x{}): {:?}",
+            final_g_inv.nrows(),
+            final_g_inv.ncols(),
+            final_g_inv
+        ).into()
+    );
+    web_sys::console::log_1(
+        &format!(
+            "perform_sweep_and_extract_results: final_beta_hat (len {}): {:?}",
+            final_beta_hat.len(),
+            final_beta_hat
+        ).into()
+    );
+    web_sys::console::log_1(&format!("perform_sweep_and_extract_results: s_rss: {}", s_rss).into());
 
     Ok(SweptMatrixInfo {
-        g_inv: g_inv_final,
-        beta_hat: beta_hat_final,
-        s_rss: s_rss_final,
+        g_inv: final_g_inv,
+        beta_hat: final_beta_hat,
+        s_rss,
     })
 }
 
@@ -409,8 +629,6 @@ pub fn create_l_matrix_for_term(
 
     let num_cols_for_term = term_end_col - term_start_col + 1;
     if num_cols_for_term == 0 {
-        // This implies the term, though named, has no actual columns in X (e.g., fully aliased and removed during X construction).
-        // Return an empty L matrix (0 rows), which should result in 0 df and 0 SS for this term.
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 

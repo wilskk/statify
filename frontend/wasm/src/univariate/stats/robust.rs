@@ -232,7 +232,31 @@ pub fn calculate_robust_parameter_estimates(
             });
         }
 
-        Ok(ParameterEstimates { estimates })
+        // Add notes about the robust estimation method used
+        let mut notes = Vec::new();
+
+        // Determine which HC method was used
+        let hc_method = if config.options.hc0 {
+            "HC0 (White's original estimator)"
+        } else if config.options.hc1 {
+            "HC1 (Finite sample correction)"
+        } else if config.options.hc2 {
+            "HC2 (Leverage adjustment)"
+        } else if config.options.hc3 {
+            "HC3 (Secondary leverage adjustment)"
+        } else if config.options.hc4 {
+            "HC4 (Cribari-Neto adjustment)"
+        } else {
+            "HC3 (Secondary leverage adjustment)" // Default
+        };
+
+        notes.push(format!("a. Robust standard errors calculated using {} method", hc_method));
+        notes.push(format!("b. Computed using alpha = {:.2}", config.options.sig_level));
+        if config.options.obs_power {
+            notes.push("c. Observed Power is computed using alpha = .05".to_string());
+        }
+
+        Ok(ParameterEstimates { estimates, notes })
     } else {
         Err("Matrix inversion failed in robust standard errors calculation".to_string())
     }

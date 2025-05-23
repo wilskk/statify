@@ -77,6 +77,7 @@ pub struct TestEffectEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParameterEstimates {
     pub estimates: Vec<ParameterEstimateEntry>,
+    pub notes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

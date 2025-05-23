@@ -735,45 +735,78 @@ fn generate_build_custom_terms_from_factors_model(
 /// Helper function to create design matrix for a main effect
 pub fn create_main_effect_design_matrix(
     data: &AnalysisData,
-    factor: &str
+    factor_name: &str
 ) -> Result<Vec<Vec<f64>>, String> {
-    let levels = common::get_factor_levels(data, factor)?;
     let n_total = common::count_total_cases(data);
-
     if n_total == 0 {
         return Ok(Vec::new());
     }
-    if levels.is_empty() {
-        return Ok(vec![Vec::new(); n_total]); // N x 0 matrix
-    }
-    let num_cols = levels.len();
-    let factor_sources_map = common::map_factors_to_datasets(data, &[factor.to_string()]);
 
-    populate_design_matrix_rows(
-        data,
-        n_total,
-        num_cols,
-        |dep_set_idx, rec_idx_in_set, current_row_values| {
+    let mut levels = common::get_factor_levels(data, factor_name)?;
+    if levels.is_empty() {
+        // Factor has no levels or doesn't exist, return N x 0 matrix
+        return Ok(vec![Vec::new(); n_total]);
+    }
+    levels.sort(); // Ensure consistent order, last level will be reference
+
+    let num_dummy_cols = if levels.len() > 1 { levels.len() - 1 } else { 0 };
+
+    if num_dummy_cols == 0 {
+        // If only one level, or no levels that lead to dummy variables (e.g. after k-1 logic)
+        // This factor contributes no columns to the design matrix for its main effect in a k-1 scheme.
+        // (Its effect is absorbed by the intercept if it's the only level present for all observations).
+        // Return N x 0 matrix.
+        return Ok(vec![Vec::new(); n_total]);
+    }
+
+    let mut design_matrix_rows: Vec<Vec<f64>> = vec![vec![0.0; num_dummy_cols]; n_total];
+    let reference_level = levels.last().unwrap(); // Last sorted level is reference
+
+    // Map factor name to its data source for efficient lookup
+    let factor_sources_map = common::map_factors_to_datasets(data, &[factor_name.to_string()]);
+
+    let mut current_row_idx = 0;
+    for (dep_set_idx, dep_record_set) in data.dependent_data.iter().enumerate() {
+        for (rec_idx_in_dep_set, _dep_record) in dep_record_set.iter().enumerate() {
+            if current_row_idx >= n_total {
+                break; // Should not happen
+            }
+
             if
-                let Some(level_str) = common::get_record_factor_value_string(
+                let Some(record_level_str) = common::get_record_factor_value_string(
                     data,
                     &factor_sources_map,
-                    factor,
+                    factor_name,
                     dep_set_idx,
-                    rec_idx_in_set
+                    rec_idx_in_dep_set
                 )
             {
-                for (j, lvl) in levels.iter().enumerate() {
-                    if j < current_row_values.len() {
-                        // Ensure we don't write out of bounds
-                        current_row_values[j] = if *lvl == level_str { 1.0 } else { 0.0 };
+                // Iterate through the levels that will form columns (all except reference)
+                for k_col_idx in 0..num_dummy_cols {
+                    let level_for_this_col = &levels[k_col_idx];
+                    if record_level_str == *level_for_this_col {
+                        design_matrix_rows[current_row_idx][k_col_idx] = 1.0;
+                    } else {
+                        // For standard dummy coding (0/1), if it's not this level, it's 0.
+                        // The reference level implicitly has 0s in all these k-1 columns.
+                        // No explicit -1 for reference level in these columns for this scheme.
+                        design_matrix_rows[current_row_idx][k_col_idx] = 0.0;
                     }
                 }
+            } else {
+                // Factor value not found for this record. Row will remain all zeros for this factor's columns.
+                // This implies this observation will not contribute to differentiating these factor levels.
+                // This might be fine if missing data handling means this row is effectively excluded later
+                // or if 0 is the desired encoding for missing factor values in the model.
+                // For now, they remain 0.0.
             }
-            // If factor value not found, row remains 0.0s as initialized by populate_design_matrix_rows
-            Ok(())
+            current_row_idx += 1;
         }
-    )
+        if current_row_idx >= n_total {
+            break;
+        }
+    }
+    Ok(design_matrix_rows)
 }
 
 /// Helper function to create design matrix for an interaction term
@@ -781,79 +814,133 @@ pub fn create_interaction_design_matrix(
     data: &AnalysisData,
     interaction_term: &str
 ) -> Result<Vec<Vec<f64>>, String> {
-    let term_factors = parse_interaction_term(interaction_term);
-    if term_factors.is_empty() {
+    let factors_in_interaction = parse_interaction_term(interaction_term);
+    if factors_in_interaction.is_empty() {
         let n_total = common::count_total_cases(data);
-        return Ok(vec![Vec::new(); n_total]);
+        return Ok(vec![Vec::new(); n_total]); // N x 0 matrix
     }
-
-    let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
-    for factor in &term_factors {
-        let levels = common::get_factor_levels(data, factor)?;
-        if levels.is_empty() {
-            let n_total = common::count_total_cases(data);
-            return Ok(vec![Vec::new(); n_total]);
-        }
-        factor_levels_map.insert(factor.clone(), levels);
-    }
-
-    let factor_levels_for_combinations: Vec<(String, Vec<String>)> = term_factors
-        .iter()
-        .map(|f_name| (f_name.clone(), factor_levels_map.get(f_name).unwrap().clone()))
-        .collect();
-
-    let mut level_combinations = Vec::new();
-    let mut current_combo_gen = HashMap::new();
-    generate_level_combinations(
-        &factor_levels_for_combinations,
-        &mut current_combo_gen,
-        0,
-        &mut level_combinations
-    );
 
     let n_total = common::count_total_cases(data);
     if n_total == 0 {
         return Ok(Vec::new());
     }
-    if level_combinations.is_empty() {
+
+    // Get dummy-coded columns for each factor in the interaction
+    let mut factor_dummy_cols_map: HashMap<String, Vec<Vec<f64>>> = HashMap::new();
+    let mut term_column_counts: Vec<usize> = Vec::new();
+
+    for factor_name in &factors_in_interaction {
+        // Use the modified create_main_effect_design_matrix which returns k-1 dummy columns
+        let main_effect_dummy_cols = create_main_effect_design_matrix(data, factor_name)?;
+
+        if main_effect_dummy_cols.is_empty() && n_total > 0 {
+            // This factor has no levels or only one level, so it produces no dummy columns.
+            // An interaction involving such a factor will also produce no columns.
+            return Ok(vec![Vec::new(); n_total]); // N x 0 matrix
+        }
+        if !main_effect_dummy_cols.is_empty() && main_effect_dummy_cols.len() != n_total {
+            return Err(
+                format!(
+                    "Row count mismatch for factor '{}' ({} rows) in interaction term '{}'. Expected {} rows.",
+                    factor_name,
+                    main_effect_dummy_cols.len(),
+                    interaction_term,
+                    n_total
+                )
+            );
+        }
+
+        let num_cols_for_this_factor = if main_effect_dummy_cols.is_empty() {
+            0
+        } else {
+            main_effect_dummy_cols[0].len()
+        };
+        term_column_counts.push(num_cols_for_this_factor);
+        factor_dummy_cols_map.insert(factor_name.clone(), main_effect_dummy_cols);
+    }
+
+    if term_column_counts.iter().any(|&count| count == 0) && factors_in_interaction.len() > 0 {
+        // If any factor has 0 dummy columns (e.g., only one level), the interaction has 0 columns.
         return Ok(vec![Vec::new(); n_total]);
     }
-    let num_cols = level_combinations.len();
-    let factor_sources_map = common::map_factors_to_datasets(data, &term_factors);
 
-    populate_design_matrix_rows(
-        data,
-        n_total,
-        num_cols,
-        move |dep_set_idx, rec_idx_in_set, current_row_values| {
-            for (col_idx, current_level_combo) in level_combinations.iter().enumerate() {
-                if col_idx < current_row_values.len() {
-                    let mut all_factors_match = true;
-                    for (factor_name_in_combo, expected_level) in current_level_combo {
-                        match
-                            common::get_record_factor_value_string(
-                                data,
-                                &factor_sources_map,
-                                factor_name_in_combo,
-                                dep_set_idx,
-                                rec_idx_in_set
-                            )
-                        {
-                            Some(actual_level_string) if actual_level_string == *expected_level => {
-                                // Match
-                            }
-                            _ => {
-                                all_factors_match = false;
-                                break;
-                            }
-                        }
-                    }
-                    current_row_values[col_idx] = if all_factors_match { 1.0 } else { 0.0 };
+    let total_interaction_cols = term_column_counts
+        .iter()
+        .filter(|&&c| c > 0)
+        .product();
+    if total_interaction_cols == 0 && !factors_in_interaction.is_empty() {
+        return Ok(vec![Vec::new(); n_total]);
+    }
+
+    let mut final_interaction_matrix_rows: Vec<Vec<f64>> =
+        vec![vec![0.0; total_interaction_cols]; n_total];
+
+    // Helper to get column indices for each factor for a given interaction column
+    let mut current_col_indices: Vec<usize> = vec![0; factors_in_interaction.len()];
+
+    for final_col_idx in 0..total_interaction_cols {
+        // Calculate the value for each row for this specific interaction column
+        for row_idx in 0..n_total {
+            let mut product_for_this_row_and_col = 1.0;
+            let mut some_factor_contributed_zero = false;
+
+            for (factor_idx, factor_name) in factors_in_interaction.iter().enumerate() {
+                let factor_cols = factor_dummy_cols_map.get(factor_name).unwrap();
+                let specific_dummy_col_idx_for_this_factor = current_col_indices[factor_idx];
+
+                if factor_cols.is_empty() || factor_cols[row_idx].is_empty() {
+                    // This can happen if a factor had 0 dummy columns initially
+                    product_for_this_row_and_col = 0.0;
+                    some_factor_contributed_zero = true;
+                    break;
+                }
+                if specific_dummy_col_idx_for_this_factor >= factor_cols[row_idx].len() {
+                    return Err(
+                        format!(
+                            "Internal error: Column index out of bounds for factor '{}' in interaction '{}' during product formation.",
+                            factor_name,
+                            interaction_term
+                        )
+                    );
+                }
+
+                product_for_this_row_and_col *=
+                    factor_cols[row_idx][specific_dummy_col_idx_for_this_factor];
+                if product_for_this_row_and_col == 0.0 {
+                    some_factor_contributed_zero = true; // Optimization: if product is already zero, no need to multiply further for this row
+                    break;
                 }
             }
-            Ok(())
+            final_interaction_matrix_rows[row_idx][final_col_idx] = if some_factor_contributed_zero {
+                0.0
+            } else {
+                product_for_this_row_and_col
+            };
         }
-    )
+
+        // Increment current_col_indices for the next interaction column (like odometer)
+        if total_interaction_cols > 0 {
+            // only increment if there are columns to prevent panic on empty
+            let mut factor_to_inc = factors_in_interaction.len() - 1;
+            loop {
+                current_col_indices[factor_to_inc] += 1;
+                if
+                    current_col_indices[factor_to_inc] < term_column_counts[factor_to_inc] ||
+                    factor_to_inc == 0
+                {
+                    break;
+                }
+                current_col_indices[factor_to_inc] = 0;
+                if factor_to_inc == 0 {
+                    // Should not be reached if total_interaction_cols > 0 and logic is correct
+                    break;
+                }
+                factor_to_inc -= 1;
+            }
+        }
+    }
+
+    Ok(final_interaction_matrix_rows)
 }
 
 /// Helper function to create contrast-coded design matrix for a main effect
