@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -19,6 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ContainerType } from "@/types/ui";
 
 export enum GoToMode {
     CASE = "case",
@@ -30,14 +32,15 @@ interface GoToModalProps {
     defaultMode?: GoToMode;
     variables?: string[];
     totalCases?: number;
+    containerType?: ContainerType;
 }
 
-const GoToModal: React.FC<GoToModalProps> = ({
-                                                 onClose,
-                                                 defaultMode = GoToMode.CASE,
-                                                 variables = ["DATE_", "HOUR_", "MINUTE_", "NAME_", "ID_"],
-                                                 totalCases = 1000,
-                                             }) => {
+const GoToContent: React.FC<Omit<GoToModalProps, 'containerType'>> = ({
+    onClose,
+    defaultMode = GoToMode.CASE,
+    variables = ["DATE_", "HOUR_", "MINUTE_", "NAME_", "ID_"],
+    totalCases = 1000,
+}) => {
     const [activeTab, setActiveTab] = useState<string>(
         defaultMode === GoToMode.VARIABLE ? "variable" : "case"
     );
@@ -60,12 +63,10 @@ const GoToModal: React.FC<GoToModalProps> = ({
         const value = e.target.value;
         setCaseNumber(value);
 
-        if (value === "") {
-            setCaseError("Case number is required");
-        } else if (parseInt(value) < 1) {
-            setCaseError("Case number must be at least 1");
+        if (value === "" || !/^[1-9][0-9]*$/.test(value)) {
+            setCaseError("Case number must be a positive integer.");
         } else if (parseInt(value) > totalCases) {
-            setCaseError(`Case number must not exceed ${totalCases}`);
+            setCaseError(`Case number must not exceed ${totalCases}.`);
         } else {
             setCaseError("");
         }
@@ -73,72 +74,62 @@ const GoToModal: React.FC<GoToModalProps> = ({
 
     const handleGo = () => {
         if (activeTab === "case") {
-            if (caseNumber === "" || parseInt(caseNumber) < 1 || parseInt(caseNumber) > totalCases) {
-                setCaseError(`Please enter a valid case number (1-${totalCases})`);
+            if (caseNumber === "" || !/^[1-9][0-9]*$/.test(caseNumber) || parseInt(caseNumber) > totalCases) {
+                setCaseError(`Please enter a valid case number (1-${totalCases}).`);
                 return;
             }
             console.log(`Go to case number: ${caseNumber}`);
-            onClose();
         } else {
             if (!selectedVariable) {
-                setVariableError("Please select a variable");
+                setVariableError("Please select a variable.");
                 return;
             }
             console.log(`Go to variable: ${selectedVariable}`);
-            onClose();
         }
+        onClose();
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            handleGo();
-        } else if (e.key === "Escape") {
-            onClose();
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+            const targetElement = e.target as HTMLElement;
+            if (targetElement.tagName === 'INPUT' || targetElement.tagName === 'SELECT' || targetElement.closest('[role="tabpanel"]')) {
+                handleGo();
+            }
         }
     };
 
     const sortedVariables = [...variables].sort();
 
     return (
-        <DialogContent
-            className="max-w-xs p-0 overflow-hidden"
-            onKeyDown={handleKeyDown}
-        >
-            <DialogHeader className="px-4 pt-4 pb-2 border-b border-gray-200">
-                <DialogTitle className="text-lg font-semibold">Go To</DialogTitle>
-                <DialogDescription className="text-xs text-gray-600">
-                    Navigate directly to a specific case or variable
-                </DialogDescription>
-            </DialogHeader>
-
-            <div className="px-4 py-3">
+        <>
+            <div className="p-6 overflow-y-auto flex-grow">
                 <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
                     className="w-full"
                 >
-                    <TabsList className="grid grid-cols-2 mb-3 bg-gray-100 h-8">
+                    <TabsList className="grid grid-cols-2 mb-4 bg-muted h-9">
                         <TabsTrigger
                             value="case"
-                            className="data-[state=active]:bg-black data-[state=active]:text-white text-sm transition-all duration-200"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm transition-colors duration-150"
                         >
                             Case
                         </TabsTrigger>
                         <TabsTrigger
                             value="variable"
-                            className="data-[state=active]:bg-black data-[state=active]:text-white text-sm transition-all duration-200"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm transition-colors duration-150"
                         >
                             Variable
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="case" className="mt-0 space-y-3">
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between items-center">
-                                <Label htmlFor="case-number" className="text-sm font-medium">
+                    <TabsContent value="case" className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-baseline">
+                                <Label htmlFor="case-number" className="text-xs font-medium text-muted-foreground">
                                     Go to case number:
                                 </Label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                     Total: {totalCases}
                                 </span>
                             </div>
@@ -149,35 +140,25 @@ const GoToModal: React.FC<GoToModalProps> = ({
                                 max={totalCases}
                                 value={caseNumber}
                                 onChange={handleCaseNumberChange}
-                                className={`h-8 text-sm bg-white border-gray-300 focus:border-black focus:ring-0 ${
-                                    caseError ? "border-black border-l-4" : ""
-                                }`}
+                                className={`h-9 text-sm ${caseError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                                 aria-invalid={!!caseError}
-                                aria-describedby={caseError ? "case-error" : undefined}
+                                aria-describedby={caseError ? "case-error-message" : undefined}
                             />
                             {caseError && (
-                                <p id="case-error" className="text-xs text-black font-medium">
+                                <p id="case-error-message" className="text-xs text-destructive pt-1">
                                     {caseError}
                                 </p>
                             )}
                         </div>
-                        <div className="flex justify-end">
-                            <Button
-                                onClick={handleGo}
-                                className="h-8 text-sm bg-black text-white hover:bg-gray-800 transition-all duration-150"
-                            >
-                                Go
-                            </Button>
-                        </div>
                     </TabsContent>
 
-                    <TabsContent value="variable" className="mt-0 space-y-3">
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between items-center">
-                                <Label htmlFor="variable-select" className="text-sm font-medium">
+                    <TabsContent value="variable" className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-baseline">
+                                <Label htmlFor="variable-select" className="text-xs font-medium text-muted-foreground">
                                     Go to variable:
                                 </Label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                     {sortedVariables.length} variables
                                 </span>
                             </div>
@@ -190,11 +171,9 @@ const GoToModal: React.FC<GoToModalProps> = ({
                             >
                                 <SelectTrigger
                                     id="variable-select"
-                                    className={`h-8 text-sm bg-white border-gray-300 focus:border-black focus:ring-0 ${
-                                        variableError ? "border-black border-l-4" : ""
-                                    }`}
+                                    className={`h-9 text-sm w-full ${variableError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                                     aria-invalid={!!variableError}
-                                    aria-describedby={variableError ? "variable-error" : undefined}
+                                    aria-describedby={variableError ? "variable-error-message" : undefined}
                                 >
                                     <SelectValue placeholder="Select a variable" />
                                 </SelectTrigger>
@@ -207,40 +186,61 @@ const GoToModal: React.FC<GoToModalProps> = ({
                                 </SelectContent>
                             </Select>
                             {variableError && (
-                                <p id="variable-error" className="text-xs text-black font-medium">
+                                <p id="variable-error-message" className="text-xs text-destructive pt-1">
                                     {variableError}
                                 </p>
                             )}
-                        </div>
-                        <div className="flex justify-end">
-                            <Button
-                                onClick={handleGo}
-                                className="h-8 text-sm bg-black text-white hover:bg-gray-800 transition-all duration-150"
-                            >
-                                Go
-                            </Button>
                         </div>
                     </TabsContent>
                 </Tabs>
             </div>
 
-            <DialogFooter className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-between gap-2">
-                <Button
-                    variant="outline"
-                    onClick={() => alert("Help dialog here")}
-                    className="h-8 text-xs border-gray-300 hover:bg-gray-100 hover:text-black"
-                >
-                    Help
-                </Button>
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className="h-8 text-xs border-gray-300 hover:bg-gray-100 hover:text-black"
-                >
-                    Cancel
-                </Button>
-            </DialogFooter>
-        </DialogContent>
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => alert("Help for Go To")}>Help</Button>
+                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                <Button onClick={handleGo} disabled={(activeTab === 'case' && !!caseError) || (activeTab === 'variable' && !!variableError && !selectedVariable) || (activeTab === 'case' && !caseNumber)}>Go</Button>
+            </div>
+        </>
+    );
+};
+
+const GoToModal: React.FC<GoToModalProps> = ({
+    onClose,
+    defaultMode = GoToMode.CASE,
+    variables,
+    totalCases,
+    containerType = "dialog",
+}) => {
+    if (containerType === "sidebar") {
+        return (
+            <div className="flex flex-col h-full bg-background text-foreground">
+                <GoToContent
+                    onClose={onClose}
+                    defaultMode={defaultMode}
+                    variables={variables}
+                    totalCases={totalCases}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-xs p-0 flex flex-col max-h-[85vh] bg-background text-foreground">
+                <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
+                    <DialogTitle className="text-lg font-semibold">Go To</DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">
+                        Navigate to a specific case or variable.
+                    </DialogDescription>
+                </DialogHeader>
+                <GoToContent
+                    onClose={onClose}
+                    defaultMode={defaultMode}
+                    variables={variables}
+                    totalCases={totalCases}
+                />
+            </DialogContent>
+        </Dialog>
     );
 };
 

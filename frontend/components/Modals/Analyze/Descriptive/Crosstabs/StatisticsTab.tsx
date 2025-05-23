@@ -36,6 +36,7 @@ interface StatisticsTabProps {
     setMcNemar: (value: boolean) => void;
     setCochranMantelHaenszel: (value: boolean) => void;
     setCommonOddsRatio: (value: string) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
@@ -70,7 +71,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                                                    setRisk,
                                                    setMcNemar,
                                                    setCochranMantelHaenszel,
-                                                   setCommonOddsRatio
+                                                   setCommonOddsRatio,
+                                                   containerType = "dialog"
                                                }) => {
     return (
         <div className="p-6">

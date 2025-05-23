@@ -2,6 +2,7 @@
 
 import React, { FC, useState, useEffect } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -53,9 +54,11 @@ export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'va
 
 interface AggregateDataProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
+// Main content component that's agnostic of container type
+const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal } = useModal();
     const { variables } = useVariableStore();
     const { data, updateBulkCells } = useDataStore();
@@ -493,105 +496,101 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-0">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold text-foreground">Aggregate Data</DialogTitle>
-                </DialogHeader>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList className="bg-muted rounded-none h-9 p-0">
+                        <TabsTrigger
+                            value="variables"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="options"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-border flex-shrink-0">
-                        <TabsList className="bg-muted rounded-none h-9 p-0">
-                            <TabsTrigger
-                                value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
-                            >
-                                Variables
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
-                            >
-                                Options
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        breakVariables={breakVariables}
+                        aggregatedVariables={aggregatedVariables}
+                        highlightedVariable={highlightedVariable}
+                        breakName={breakName}
+                        setBreakName={setBreakName}
+                        handleVariableSelect={handleVariableSelect}
+                        handleVariableDoubleClick={handleVariableDoubleClick}
+                        handleAggregatedVariableSelect={handleAggregatedVariableSelect}
+                        handleAggregatedDoubleClick={handleAggregatedDoubleClick}
+                        handleTopArrowClick={handleTopArrowClick}
+                        handleBottomArrowClick={handleBottomArrowClick}
+                        handleFunctionClick={handleFunctionClick}
+                        handleNameLabelClick={handleNameLabelClick}
+                        getDisplayName={getDisplayName}
+                        // Props for DnD functionality
+                        moveToBreak={moveToBreak}
+                        moveFromBreak={moveFromBreak}
+                        moveToAggregated={moveToAggregated}
+                        moveFromAggregated={moveFromAggregated}
+                        reorderBreakVariables={reorderBreakVariables}
+                        reorderAggregatedVariables={reorderAggregatedVariables}
+                        containerType={containerType}
+                    />
+                </TabsContent>
 
-                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                        <VariablesTab
-                            availableVariables={availableVariables}
-                            breakVariables={breakVariables}
-                            aggregatedVariables={aggregatedVariables}
-                            highlightedVariable={highlightedVariable}
-                            breakName={breakName}
-                            setBreakName={setBreakName}
-                            handleVariableSelect={handleVariableSelect}
-                            handleVariableDoubleClick={handleVariableDoubleClick}
-                            handleAggregatedVariableSelect={handleAggregatedVariableSelect}
-                            handleAggregatedDoubleClick={handleAggregatedDoubleClick}
-                            handleTopArrowClick={handleTopArrowClick}
-                            handleBottomArrowClick={handleBottomArrowClick}
-                            handleFunctionClick={handleFunctionClick}
-                            handleNameLabelClick={handleNameLabelClick}
-                            getDisplayName={getDisplayName}
-                            // Props for DnD functionality
-                            moveToBreak={moveToBreak}
-                            moveFromBreak={moveFromBreak}
-                            moveToAggregated={moveToAggregated}
-                            moveFromAggregated={moveFromAggregated}
-                            reorderBreakVariables={reorderBreakVariables}
-                            reorderAggregatedVariables={reorderAggregatedVariables}
-                        />
-                    </TabsContent>
+                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                    <OptionsTab
+                        isAlreadySorted={isAlreadySorted}
+                        setIsAlreadySorted={setIsAlreadySorted}
+                        sortBeforeAggregating={sortBeforeAggregating}
+                        setSortBeforeAggregating={setSortBeforeAggregating}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+            </Tabs>
 
-                    <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                        <OptionsTab
-                            isAlreadySorted={isAlreadySorted}
-                            setIsAlreadySorted={setIsAlreadySorted}
-                            sortBeforeAggregating={sortBeforeAggregating}
-                            setSortBeforeAggregating={setSortBeforeAggregating}
-                        />
-                    </TabsContent>
-                </Tabs>
-
-                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                    <div className="flex justify-end space-x-3">
-                        <Button
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                            onClick={handleConfirm}
-                        >
-                            OK
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                            onClick={() => console.log("Paste clicked")}
-                        >
-                            Paste
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                            onClick={handleReset}
-                        >
-                            Reset
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                            onClick={onClose}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                            onClick={() => console.log("Help clicked")}
-                        >
-                            Help
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
+                        onClick={handleConfirm}
+                    >
+                        OK
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        onClick={() => console.log("Paste clicked")}
+                    >
+                        Paste
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        onClick={() => console.log("Help clicked")}
+                    >
+                        Help
+                    </Button>
+                </div>
+            </div>
 
             <FunctionDialog
                 open={functionDialogOpen}
@@ -632,4 +631,33 @@ const AggregateData: FC<AggregateDataProps> = ({ onClose }) => {
     );
 };
 
-export default AggregateData;
+// Main component that handles different container types
+const Aggregate: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }) => {
+    // If sidebar mode, use a div container without header (header is provided by SidebarContainer)
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <AggregateContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[650px] p-0">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground">Aggregate Data</DialogTitle>
+                </DialogHeader>
+
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <AggregateContent onClose={onClose} containerType={containerType} />
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+export default Aggregate;

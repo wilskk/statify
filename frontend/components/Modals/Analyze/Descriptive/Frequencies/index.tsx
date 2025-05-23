@@ -2,8 +2,8 @@
 import React, { useState, FC, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
+    Dialog,
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -37,7 +37,7 @@ interface FrequenciesModalProps {
 }
 
 // Main content component that's agnostic of container type
-const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose }) => {
+const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<string>("variables");
     const { showFrequencyTables, setShowFrequencyTables } = useFrequencyTablesOption(true);
 
@@ -121,6 +121,7 @@ const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose }) => {
                         reorderVariables={reorderVariables}
                         showFrequencyTables={showFrequencyTables}
                         setShowFrequencyTables={setShowFrequencyTables}
+                        containerType={containerType}
                     />
                 </TabsContent>
 
@@ -166,6 +167,7 @@ const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose }) => {
                         setSkewnessChecked={statisticsSettings.setSkewnessChecked}
                         kurtosisChecked={statisticsSettings.kurtosisChecked}
                         setKurtosisChecked={statisticsSettings.setKurtosisChecked}
+                        containerType={containerType}
                     />
                 </TabsContent>
 
@@ -179,6 +181,7 @@ const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose }) => {
                         setChartValues={chartsSettings.setChartValues}
                         showNormalCurve={chartsSettings.showNormalCurve}
                         setShowNormalCurve={chartsSettings.setShowNormalCurve}
+                        containerType={containerType}
                     />
                 </TabsContent>
             </Tabs>
@@ -226,25 +229,26 @@ const Frequencies: FC<FrequenciesModalProps> = ({ onClose, containerType = "dial
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <FrequenciesContent onClose={onClose} />
+                    <FrequenciesContent onClose={onClose} containerType={containerType} />
                 </div>
             </div>
         );
     }
 
-    // For dialog mode, use DialogContent
+    // For dialog mode, use Dialog and DialogContent
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
-            </DialogHeader>
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
+                </DialogHeader>
 
-            <div className="flex-grow flex flex-col overflow-hidden">
-                <FrequenciesContent onClose={onClose} />
-            </div>
-        </DialogContent>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <FrequenciesContent onClose={onClose} containerType={containerType} />
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 
 export default Frequencies;
-export { FrequenciesContent };

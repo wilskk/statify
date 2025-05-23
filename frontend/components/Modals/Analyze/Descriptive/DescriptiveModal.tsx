@@ -45,17 +45,17 @@ export const DescriptiveModal: React.FC<DescriptiveModalProps> = ({
             case ModalType.Descriptive:
                 return <Descriptive onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.Explore:
-                return <Explore onClose={onClose} {...props} />;
+                return <Explore onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.Frequencies:
-                return <Frequencies onClose={onClose} {...props} />;
+                return <Frequencies onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.Crosstabs:
-                return <Crosstabs onClose={onClose} {...props} />;
+                return <Crosstabs onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.Ratio:
-                return <Ratio onClose={onClose} {...props} />;
+                return <Ratio onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.PPPlots:
-                return <PPPlots onClose={onClose} {...props} />;
+                return <PPPlots onClose={onClose} containerType={containerType} {...props} />;
             case ModalType.QQPlots:
-                return <QQPlots onClose={onClose} {...props} />;
+                return <QQPlots onClose={onClose} containerType={containerType} {...props} />;
             default:
                 return null;
         }

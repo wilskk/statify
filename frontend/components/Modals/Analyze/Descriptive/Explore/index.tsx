@@ -31,9 +31,11 @@ import PlotsTab from "./PlotsTab";
 
 interface ExploreModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
+// Main content component that's agnostic of container type
+const ExploreContent: FC<ExploreModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
     const [factorVariables, setFactorVariables] = useState<Variable[]>([]);
@@ -289,89 +291,133 @@ const ExploreModal: FC<ExploreModalProps> = ({ onClose }) => {
     };
 
     return (
+        <>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger value="plots">Plots</TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        dependentVariables={dependentVariables}
+                        factorVariables={factorVariables}
+                        labelVariable={labelVariable}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToDependentVariables={moveToDependentVariables}
+                        moveToFactorVariables={moveToFactorVariables}
+                        moveToLabelVariable={moveToLabelVariable}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                        errorMsg={errorMsg}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+
+                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
+                    <StatisticsTab
+                        confidenceInterval={confidenceInterval}
+                        setConfidenceInterval={setConfidenceInterval}
+                        showDescriptives={showDescriptives}
+                        setShowDescriptives={setShowDescriptives}
+                        showMEstimators={showMEstimators}
+                        setShowMEstimators={setShowMEstimators}
+                        showOutliers={showOutliers}
+                        setShowOutliers={setShowOutliers}
+                        showPercentiles={showPercentiles}
+                        setShowPercentiles={setShowPercentiles}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+
+                <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
+                    <PlotsTab
+                        boxplotOption={boxplotOption}
+                        setBoxplotOption={setBoxplotOption}
+                        showStemAndLeaf={showStemAndLeaf}
+                        setShowStemAndLeaf={setShowStemAndLeaf}
+                        showHistogram={showHistogram}
+                        setShowHistogram={setShowHistogram}
+                        showNormalityPlots={showNormalityPlots}
+                        setShowNormalityPlots={setShowNormalityPlots}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+            </Tabs>
+
+            {errorMsg && (
+                <div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-t border-destructive/20">
+                    {errorMsg}
+                </div>
+            )}
+
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        onClick={handleExplore}
+                        disabled={isCalculating}
+                    >
+                        {isCalculating ? "Processing..." : "OK"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleReset}
+                        disabled={isCalculating}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isCalculating}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleHelp}
+                        disabled={isCalculating}
+                    >
+                        Help
+                    </Button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const Explore: FC<ExploreModalProps> = ({ onClose, containerType = "dialog" }) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <ExploreContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-xl font-semibold">Explore</DialogTitle>
                 </DialogHeader>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-border flex-shrink-0">
-                        <TabsList>
-                            <TabsTrigger value="variables">Variables</TabsTrigger>
-                            <TabsTrigger value="statistics">Statistics</TabsTrigger>
-                            <TabsTrigger value="plots">Plots</TabsTrigger>
-                        </TabsList>
-                    </div>
-
-                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                        <VariablesTab
-                            availableVariables={availableVariables}
-                            dependentVariables={dependentVariables}
-                            factorVariables={factorVariables}
-                            labelVariable={labelVariable}
-                            highlightedVariable={highlightedVariable}
-                            setHighlightedVariable={setHighlightedVariable}
-                            moveToDependentVariables={moveToDependentVariables}
-                            moveToFactorVariables={moveToFactorVariables}
-                            moveToLabelVariable={moveToLabelVariable}
-                            moveToAvailableVariables={moveToAvailableVariables}
-                            reorderVariables={reorderVariables}
-                            errorMsg={errorMsg}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                        <StatisticsTab
-                            confidenceInterval={confidenceInterval}
-                            setConfidenceInterval={setConfidenceInterval}
-                            showDescriptives={showDescriptives}
-                            setShowDescriptives={setShowDescriptives}
-                            showMEstimators={showMEstimators}
-                            setShowMEstimators={setShowMEstimators}
-                            showOutliers={showOutliers}
-                            setShowOutliers={setShowOutliers}
-                            showPercentiles={showPercentiles}
-                            setShowPercentiles={setShowPercentiles}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
-                        <PlotsTab
-                            boxplotOption={boxplotOption}
-                            setBoxplotOption={setBoxplotOption}
-                            showStemAndLeaf={showStemAndLeaf}
-                            setShowStemAndLeaf={setShowStemAndLeaf}
-                            showHistogram={showHistogram}
-                            setShowHistogram={setShowHistogram}
-                            showNormalityPlots={showNormalityPlots}
-                            setShowNormalityPlots={setShowNormalityPlots}
-                        />
-                    </TabsContent>
-                </Tabs>
-
-                {errorMsg && (
-                    <div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-t border-destructive/20">
-                        {errorMsg}
-                    </div>
-                )}
-
-                <DialogFooter className="px-6 py-3 border-t border-border bg-muted flex-shrink-0">
-                    <div className="flex items-center space-x-2">
-                        <Button variant="ghost" onClick={handleHelp}>Help</Button>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" onClick={handlePaste} disabled={isCalculating}>Paste</Button>
-                        <Button variant="outline" onClick={handleReset} disabled={isCalculating}>Reset</Button>
-                        <Button variant="outline" onClick={onClose} disabled={isCalculating}>Cancel</Button>
-                        <Button onClick={handleExplore} disabled={isCalculating}>
-                            {isCalculating ? "Processing..." : "OK"}
-                        </Button>
-                    </div>
-                </DialogFooter>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <ExploreContent onClose={onClose} containerType={containerType} />
+                </div>
             </DialogContent>
         </Dialog>
     );
 };
 
-export default ExploreModal;
+export default Explore;

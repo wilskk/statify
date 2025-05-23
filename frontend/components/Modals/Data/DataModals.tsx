@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
+import { ContainerType } from "@/types/ui";
 import DefineVariableProperties from "@/components/Modals/Data/DefineVarProps";
 import DefineDateTime from "@/components/Modals/Data/DefineDateTime";
 import SortCases from "@/components/Modals/Data/SortCases";
@@ -35,41 +36,59 @@ interface DataModalsProps {
     modalType: ModalType;
     onClose: () => void;
     props?: any;
+    containerType?: ContainerType;
 }
 
-export const DataModals: React.FC<DataModalsProps> = ({ modalType, onClose, props }) => {
-    switch (modalType) {
-        case ModalType.DefineVarProps:
-            return <DefineVariableProperties onClose={onClose} {...props} />;
-        case ModalType.VarPropsEditor:
-            return <PropertiesEditor onClose={onClose} {...props} />;
-        case ModalType.DefineDateTime:
-            return <DefineDateTime onClose={onClose} {...props} />;
-        case ModalType.SortCases:
-            return <SortCases onClose={onClose} {...props} />;
-        case ModalType.SortVars:
-            return <SortVariables onClose={onClose} {...props} />;
-        case ModalType.Transpose:
-            return <Transpose onClose={onClose} {...props} />;
-        case ModalType.Restructure:
-            return <Restructure onClose={onClose} {...props} />;
-        case ModalType.Aggregate:
-            return <Aggregate onClose={onClose} {...props} />;
-        case ModalType.WeightCases:
-            return <WeightCases onClose={onClose} {...props} />;
-        case ModalType.DuplicateCases:
-            return <DuplicateCases onClose={onClose} {...props} />;
-        case ModalType.SetMeasurementLevel:
-            return <SetMeasurementLevel onClose={onClose} {...props} />;
-        case ModalType.SelectCases:
-            return <SelectCases onClose={onClose} {...props} />;
-        case ModalType.UnusualCases:
-            return <UnusualCases onClose={onClose} {...props} />;
-        case ModalType.DefineValidationRules:
-            return <DefineValidationRules onClose={onClose} {...props} />;
-        default:
-            return null;
+export const DataModals: React.FC<DataModalsProps> = ({ 
+    modalType, 
+    onClose, 
+    props,
+    containerType = "dialog" 
+}) => {
+    // Render the appropriate component based on modalType and containerType
+    const renderComponent = () => {
+        switch (modalType) {
+            case ModalType.DefineVarProps:
+                return <DefineVariableProperties onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.VarPropsEditor:
+                return <PropertiesEditor onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.DefineDateTime:
+                return <DefineDateTime onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.SortCases:
+                return <SortCases onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.SortVars:
+                return <SortVariables onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.Transpose:
+                return <Transpose onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.Restructure:
+                return <Restructure onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.Aggregate:
+                return <Aggregate onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.WeightCases:
+                return <WeightCases onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.DuplicateCases:
+                return <DuplicateCases onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.SetMeasurementLevel:
+                return <SetMeasurementLevel onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.SelectCases:
+                return <SelectCases onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.UnusualCases:
+                return <UnusualCases onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.DefineValidationRules:
+                return <DefineValidationRules onClose={onClose} containerType={containerType} {...props} />;
+            default:
+                return null;
+        }
+    };
+
+    // If sidebar mode, just return the component
+    if (containerType === "sidebar") {
+        return renderComponent();
     }
+
+    // For dialog mode, just return the component as is
+    // Each individual modal will handle its own dialog wrapping
+    return renderComponent();
 };
 
 export const isDataModal = (type: ModalType): boolean => {

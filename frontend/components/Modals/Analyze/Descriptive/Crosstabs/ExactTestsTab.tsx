@@ -15,6 +15,7 @@ interface ExactTestsTabProps {
     setMonteCarloSamples: (value: string) => void;
     setTimeLimit: (value: string) => void;
     setUseTimeLimit: (value: boolean) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const ExactTestsTab: FC<ExactTestsTabProps> = ({
@@ -27,7 +28,8 @@ const ExactTestsTab: FC<ExactTestsTabProps> = ({
                                                    setConfidenceLevel,
                                                    setMonteCarloSamples,
                                                    setTimeLimit,
-                                                   setUseTimeLimit
+                                                   setUseTimeLimit,
+                                                   containerType = "dialog"
                                                }) => {
     return (
         <div className="p-6">

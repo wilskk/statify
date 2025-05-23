@@ -40,6 +40,7 @@ interface VariablesTabProps {
     setDisplayClusteredBarCharts: (value: boolean) => void;
     setSuppressTables: (value: boolean) => void;
     setDisplayLayerVariables: (value: boolean) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -63,7 +64,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                  reorderVariables,
                                                  setDisplayClusteredBarCharts,
                                                  setSuppressTables,
-                                                 setDisplayLayerVariables
+                                                 setDisplayLayerVariables,
+                                                 containerType = "dialog"
                                              }) => {
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, source: 'available' | 'row' | 'column' | 'layer' } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'row' | 'column' | 'layer' | null>(null);

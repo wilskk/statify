@@ -18,9 +18,14 @@ import VariableListManager, { TargetListConfig } from "@/components/Common/Varia
 
 interface WeightCasesModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
+// Content component separated from container logic
+const WeightCasesContent: React.FC<WeightCasesModalProps> = ({ 
+    onClose,
+    // containerType prop is no longer needed here as parent will handle chrome
+}) => {
     const { variables } = useVariableStore();
     const meta = useMetaStore((state) => state.meta);
     const setMeta = useMetaStore((state) => state.setMeta);
@@ -143,89 +148,86 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-md p-3">
-                <DialogHeader className="p-0 mb-2">
-                    <DialogTitle>Weight Cases</DialogTitle>
-                </DialogHeader>
-                <Separator className="my-0" />
+            {/* DialogHeader and Separator are removed from here, will be handled by parent */}
+            
+            {/* Main content area with standardized padding and scrolling */}
+            <div className="p-6 overflow-y-auto flex-grow">
+                <div className="flex items-start space-x-4 mb-4">
+                    <div className="space-y-2 flex-1">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="weightMethod"
+                                className="w-3 h-3"
+                                checked={weightMethod === "none"}
+                                onChange={() => {
+                                    // Move any frequency variables back to available
+                                    if (frequencyVariables.length > 0) {
+                                        setAvailableVariables(prev =>
+                                            [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
+                                        );
+                                        setFrequencyVariables([]);
+                                    }
+                                }}
+                            />
+                            <span className="text-xs">Do not weight cases</span>
+                        </label>
 
-                <div className="py-2">
-                    <div className="flex items-start space-x-4 mb-4">
-                        <div className="space-y-2 flex-1">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="weightMethod"
-                                    className="w-3 h-3"
-                                    checked={weightMethod === "none"}
-                                    onChange={() => {
-                                        // Move any frequency variables back to available
-                                        if (frequencyVariables.length > 0) {
-                                            setAvailableVariables(prev =>
-                                                [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
-                                            );
-                                            setFrequencyVariables([]);
-                                        }
-                                    }}
-                                />
-                                <span className="text-xs">Do not weight cases</span>
-                            </label>
-
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="weightMethod"
-                                    className="w-3 h-3"
-                                    checked={weightMethod === "byVariable"}
-                                    onChange={() => {
-                                        // If no variable is selected yet, encourage selection
-                                        if (frequencyVariables.length === 0) {
-                                            // We don't need to do anything here, as the user will select a variable
-                                            // which will automatically set the weight method to "byVariable"
-                                        }
-                                    }}
-                                />
-                                <span className="text-xs">Weight cases by variable</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Use VariableListManager for drag & drop functionality */}
-                    <VariableListManager
-                        availableVariables={availableVariables}
-                        targetLists={targetLists}
-                        variableIdKey="tempId"
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        onMoveVariable={handleMoveVariable}
-                        onReorderVariable={handleReorderVariable}
-                        showArrowButtons={true}
-                        availableListHeight={"12rem"}
-                    />
-
-                    <div className="border border-border p-2 rounded-md bg-muted mt-4 flex items-center">
-                        <InfoIcon className="text-muted-foreground h-4 w-4 flex-shrink-0 mr-2" />
-                        <div className="text-xs text-foreground">
-                            <span className="font-semibold">Current Status:</span> {currentStatus}
-                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="weightMethod"
+                                className="w-3 h-3"
+                                checked={weightMethod === "byVariable"}
+                                onChange={() => {
+                                    // If no variable is selected yet, encourage selection
+                                    if (frequencyVariables.length === 0) {
+                                        // We don't need to do anything here, as the user will select a variable
+                                        // which will automatically set the weight method to "byVariable"
+                                    }
+                                }}
+                            />
+                            <span className="text-xs">Weight cases by variable</span>
+                        </label>
                     </div>
                 </div>
 
-                <DialogFooter className="flex justify-center space-x-2 mt-4 p-0">
-                    <Button size="sm" className="text-xs h-7" onClick={handleSave}>
-                        OK
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={handleReset}>
-                        Reset
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => alert("Help dialog here")}>
-                        Help
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
+                {/* Use VariableListManager for drag & drop functionality */}
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey="tempId"
+                    highlightedVariable={highlightedVariable}
+                    setHighlightedVariable={setHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariable}
+                    showArrowButtons={true}
+                    availableListHeight={"12rem"}
+                />
+
+                <div className="border border-border p-2 rounded-md bg-muted mt-4 flex items-center">
+                    <InfoIcon className="text-muted-foreground h-4 w-4 flex-shrink-0 mr-2" />
+                    <div className="text-xs text-foreground">
+                        <span className="font-semibold">Current Status:</span> {currentStatus}
+                    </div>
+                </div>
+            </div>
+
+            {/* Standardized action buttons footer */}
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-3">
+                <Button onClick={handleSave}>
+                    OK
+                </Button>
+                <Button variant="outline" onClick={handleReset}>
+                    Reset
+                </Button>
+                <Button variant="outline" onClick={onClose}>
+                    Cancel
+                </Button>
+                <Button variant="outline" onClick={() => alert("Help dialog here")}>
+                    Help
+                </Button>
+            </div>
 
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-sm p-3">
@@ -251,6 +253,43 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                 </DialogContent>
             </Dialog>
         </>
+    );
+};
+
+// Main component that handles different container types
+const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                {/* Sidebar Header should be handled by SidebarContainer */}
+                {/* <div className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <h2 className="text-xl font-semibold">Weight Cases</h2>
+                </div> */}
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <WeightCasesContent onClose={onClose} /> 
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent with standardized structure
+    return (
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                {/* Dialog Header */}
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Weight Cases</DialogTitle>
+                </DialogHeader>
+                {/* Content Wrapper */}
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <WeightCasesContent onClose={onClose} /> 
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

@@ -36,9 +36,14 @@ import OptionsTab from "./OptionsTab";
 
 interface IdentifyUnusualCasesProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
+// Content component separated from container logic
+const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
     const { closeModal } = useModalStore();
     const { variables } = useVariableStore();
     const { data, updateBulkCells } = useDataStore();
@@ -866,167 +871,195 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ onClose }) => {
      };
 
     return (
+        <>
+            {/* The main Dialog component (or its instantiation context) should provide the title "Unusual Cases".
+                 This content component will only add a header if it's in a sidebar. */}
+            {/* {containerType === "sidebar" && (
+                <div className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <h2 className="text-xl font-semibold">Identify Unusual Cases</h2>
+                </div>
+            )} */}
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList className="bg-muted rounded-none h-9 p-0">
+                        <TabsTrigger
+                            value="variables"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="output"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Output
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="save"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Save
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="missingValues"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Missing Values
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="options"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        analysisVariables={analysisVariables}
+                        caseIdentifierVariable={caseIdentifierVariable}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        moveToAnalysisVariables={moveToAnalysisVariables}
+                        moveToCaseIdentifierVariable={moveToCaseIdentifierVariable}
+                        reorderVariables={reorderVariables}
+                        errorMsg={errorMsg}
+                    />
+                </TabsContent>
+
+                <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
+                    <OutputTab
+                        showUnusualCasesList={showUnusualCasesList}
+                        setShowUnusualCasesList={setShowUnusualCasesList}
+                        peerGroupNorms={peerGroupNorms}
+                        setPeerGroupNorms={setPeerGroupNorms}
+                        anomalyIndices={anomalyIndices}
+                        setAnomalyIndices={setAnomalyIndices}
+                        reasonOccurrence={reasonOccurrence}
+                        setReasonOccurrence={setReasonOccurrence}
+                        caseProcessed={caseProcessed}
+                        setCaseProcessed={setCaseProcessed}
+                    />
+                </TabsContent>
+
+                <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
+                    <SaveTab
+                        saveAnomalyIndex={saveAnomalyIndex}
+                        setSaveAnomalyIndex={setSaveAnomalyIndex}
+                        anomalyIndexName={anomalyIndexName}
+                        setAnomalyIndexName={setAnomalyIndexName}
+                        savePeerGroups={savePeerGroups}
+                        setSavePeerGroups={setSavePeerGroups}
+                        peerGroupsRootName={peerGroupsRootName}
+                        setPeerGroupsRootName={setPeerGroupsRootName}
+                        saveReasons={saveReasons}
+                        setSaveReasons={setSaveReasons}
+                        reasonsRootName={reasonsRootName}
+                        setReasonsRootName={setReasonsRootName}
+                        replaceExisting={replaceExisting}
+                        setReplaceExisting={setReplaceExisting}
+                        exportFilePath={exportFilePath}
+                        setExportFilePath={setExportFilePath}
+                    />
+                </TabsContent>
+
+                <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
+                    <MissingValuesTab
+                        missingValuesOption={missingValuesOption}
+                        setMissingValuesOption={setMissingValuesOption}
+                        useProportionMissing={useProportionMissing}
+                        setUseProportionMissing={setUseProportionMissing}
+                    />
+                </TabsContent>
+
+                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                    <OptionsTab
+                        identificationCriteria={identificationCriteria}
+                        setIdentificationCriteria={setIdentificationCriteria}
+                        percentageValue={percentageValue}
+                        setPercentageValue={setPercentageValue}
+                        fixedNumber={fixedNumber}
+                        setFixedNumber={setFixedNumber}
+                        useMinimumValue={useMinimumValue}
+                        setUseMinimumValue={setUseMinimumValue}
+                        cutoffValue={cutoffValue}
+                        setCutoffValue={setCutoffValue}
+                        minPeerGroups={minPeerGroups}
+                        setMinPeerGroups={setMinPeerGroups}
+                        maxPeerGroups={maxPeerGroups}
+                        setMaxPeerGroups={setMaxPeerGroups}
+                        maxReasons={maxReasons}
+                        setMaxReasons={setMaxReasons}
+                    />
+                </TabsContent>
+            </Tabs>
+
+            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
+                        onClick={handleConfirm}
+                    >
+                        OK
+                    </Button>
+                    {/* <Button
+                        variant="outline"
+                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                    >
+                        Paste
+                    </Button> */}
+                    <Button
+                        variant="outline"
+                        className="h-8 px-4"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="h-8 px-4"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="h-8 px-4"
+                        onClick={() => alert("Help for Unusual Cases")}
+                    >
+                        Help
+                    </Button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <UnusualCasesContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-xl font-semibold">Identify Unusual Cases</DialogTitle>
-                </DialogHeader>
-
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-border flex-shrink-0">
-                        <TabsList className="bg-muted rounded-none h-9 p-0">
-                            <TabsTrigger
-                                value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Variables
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="output"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Output
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="save"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Save
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="missingValues"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Missing Values
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Options
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
-
-                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
-                        <VariablesTab
-                            availableVariables={availableVariables}
-                            analysisVariables={analysisVariables}
-                            caseIdentifierVariable={caseIdentifierVariable}
-                            highlightedVariable={highlightedVariable}
-                            setHighlightedVariable={setHighlightedVariable}
-                            moveToAvailableVariables={moveToAvailableVariables}
-                            moveToAnalysisVariables={moveToAnalysisVariables}
-                            moveToCaseIdentifierVariable={moveToCaseIdentifierVariable}
-                            reorderVariables={reorderVariables}
-                            errorMsg={errorMsg}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
-                        <OutputTab
-                            showUnusualCasesList={showUnusualCasesList}
-                            setShowUnusualCasesList={setShowUnusualCasesList}
-                            peerGroupNorms={peerGroupNorms}
-                            setPeerGroupNorms={setPeerGroupNorms}
-                            anomalyIndices={anomalyIndices}
-                            setAnomalyIndices={setAnomalyIndices}
-                            reasonOccurrence={reasonOccurrence}
-                            setReasonOccurrence={setReasonOccurrence}
-                            caseProcessed={caseProcessed}
-                            setCaseProcessed={setCaseProcessed}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
-                        <SaveTab
-                            saveAnomalyIndex={saveAnomalyIndex}
-                            setSaveAnomalyIndex={setSaveAnomalyIndex}
-                            anomalyIndexName={anomalyIndexName}
-                            setAnomalyIndexName={setAnomalyIndexName}
-                            savePeerGroups={savePeerGroups}
-                            setSavePeerGroups={setSavePeerGroups}
-                            peerGroupsRootName={peerGroupsRootName}
-                            setPeerGroupsRootName={setPeerGroupsRootName}
-                            saveReasons={saveReasons}
-                            setSaveReasons={setSaveReasons}
-                            reasonsRootName={reasonsRootName}
-                            setReasonsRootName={setReasonsRootName}
-                            replaceExisting={replaceExisting}
-                            setReplaceExisting={setReplaceExisting}
-                            exportFilePath={exportFilePath}
-                            setExportFilePath={setExportFilePath}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
-                        <MissingValuesTab
-                            missingValuesOption={missingValuesOption}
-                            setMissingValuesOption={setMissingValuesOption}
-                            useProportionMissing={useProportionMissing}
-                            setUseProportionMissing={setUseProportionMissing}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                        <OptionsTab
-                            identificationCriteria={identificationCriteria}
-                            setIdentificationCriteria={setIdentificationCriteria}
-                            percentageValue={percentageValue}
-                            setPercentageValue={setPercentageValue}
-                            fixedNumber={fixedNumber}
-                            setFixedNumber={setFixedNumber}
-                            useMinimumValue={useMinimumValue}
-                            setUseMinimumValue={setUseMinimumValue}
-                            cutoffValue={cutoffValue}
-                            setCutoffValue={setCutoffValue}
-                            minPeerGroups={minPeerGroups}
-                            setMinPeerGroups={setMinPeerGroups}
-                            maxPeerGroups={maxPeerGroups}
-                            setMaxPeerGroups={setMaxPeerGroups}
-                            maxReasons={maxReasons}
-                            setMaxReasons={setMaxReasons}
-                        />
-                    </TabsContent>
-                </Tabs>
-
-                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                    <div className="flex justify-end space-x-3">
-                        <Button
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                            onClick={handleConfirm}
-                        >
-                            OK
-                        </Button>
-                        {/* <Button
-                            variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        >
-                            Paste
-                        </Button> */}
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            onClick={handleReset}
-                        >
-                            Reset
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            onClick={onClose}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            onClick={() => alert("Help for Unusual Cases")}
-                        >
-                            Help
-                        </Button>
-                    </div>
-                </DialogFooter>
+                <UnusualCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>
     );

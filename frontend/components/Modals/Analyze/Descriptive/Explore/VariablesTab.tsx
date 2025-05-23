@@ -22,6 +22,7 @@ interface VariablesTabProps {
     reorderVariables: (source: 'dependent' | 'factor', variables: Variable[]) => void; // Only dependent/factor reorderable
 
     errorMsg: string | null;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -36,7 +37,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToFactorVariables,
     moveToLabelVariable,
     reorderVariables,
-    errorMsg
+    errorMsg,
+    containerType = "dialog"
 }) => {
 
     // --- Adapt props for VariableListManager ---

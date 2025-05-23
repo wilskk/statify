@@ -36,6 +36,7 @@ interface CellsTabProps {
     setAdjustedStandardizedResiduals: (value: boolean) => void;
     // Update the function signature to match the expected type
     setNonintegerWeights: (value: NonintegerWeightsType) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const CellsTab: FC<CellsTabProps> = ({
@@ -64,7 +65,8 @@ const CellsTab: FC<CellsTabProps> = ({
                                          setUnstandardizedResiduals,
                                          setStandardizedResiduals,
                                          setAdjustedStandardizedResiduals,
-                                         setNonintegerWeights
+                                         setNonintegerWeights,
+                                         containerType = "dialog"
                                      }) => {
     return (
         <div className="p-6">

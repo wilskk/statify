@@ -18,6 +18,7 @@ interface PlotsTabProps {
     // Removed: spreadVsLevelOption, setSpreadVsLevelOption
     // Removed: transformationPower, setTransformationPower
     // Removed: displayOption, setDisplayOption
+    containerType?: "dialog" | "sidebar";
 }
 
 const PlotsTab: FC<PlotsTabProps> = ({
@@ -30,6 +31,7 @@ const PlotsTab: FC<PlotsTabProps> = ({
     showNormalityPlots,
     setShowNormalityPlots,
     // Removed destructured props for deleted sections
+    containerType = "dialog"
 }) => {
     return (
         <div>

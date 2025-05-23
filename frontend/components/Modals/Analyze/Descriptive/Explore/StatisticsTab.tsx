@@ -16,6 +16,7 @@ interface StatisticsTabProps {
     setShowOutliers: React.Dispatch<React.SetStateAction<boolean>>;
     showPercentiles: boolean;
     setShowPercentiles: React.Dispatch<React.SetStateAction<boolean>>;
+    containerType?: "dialog" | "sidebar";
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
@@ -29,6 +30,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     setShowOutliers,
     showPercentiles,
     setShowPercentiles,
+    containerType = "dialog"
 }) => {
     return (
         <div className="space-y-4">

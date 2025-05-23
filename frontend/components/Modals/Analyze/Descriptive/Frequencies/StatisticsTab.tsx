@@ -63,6 +63,8 @@ interface StatisticsTabProps {
     setSkewnessChecked: Dispatch<SetStateAction<boolean>>;
     kurtosisChecked: boolean;
     setKurtosisChecked: Dispatch<SetStateAction<boolean>>;
+
+    containerType?: "dialog" | "sidebar";
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
@@ -87,7 +89,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     maxChecked, setMaxChecked,
     seMeanChecked, setSeMeanChecked,
     skewnessChecked, setSkewnessChecked,
-    kurtosisChecked, setKurtosisChecked
+    kurtosisChecked, setKurtosisChecked,
+    containerType = "dialog"
 }) => {
     // Remove internal state for statistics options
     // const [percentileValues, setPercentileValues] = useState<string[]>([]);
@@ -99,6 +102,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     // Keep alert state internal to this component
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
+    const [inlineAlertMessage, setInlineAlertMessage] = useState<string | null>(null); // For sidebar alerts
 
     // Remove internal state for individual checkboxes
     // const [quartilesChecked, setQuartilesChecked] = useState(false);
@@ -136,27 +140,35 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         return true;
     };
 
+    const showAlert = (title: string, description: string) => {
+        if (containerType === "sidebar") {
+            setInlineAlertMessage(`${title}: ${description}`);
+        } else {
+            setAlertMessage({ title, description });
+            setAlertOpen(true);
+        }
+    };
+
     // Update percentile handlers to use props
     const handleAddPercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (!currentPercentileInput) return; // Use prop state
 
         // Validate the percentile value is between 0-100
         if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Invalid percentile",
-                description: "Percentile must be a number between 0 and 100"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Invalid percentile",
+                "Percentile must be a number between 0 and 100"
+            );
             return;
         }
 
         // Check for duplicates
         if (percentileValues.includes(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Duplicate percentile",
-                description: "This percentile value already exists"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Duplicate percentile",
+                "This percentile value already exists"
+            );
             return;
         }
 
@@ -165,6 +177,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleChangePercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (!selectedPercentileItem || !currentPercentileInput) return; // Use prop states
 
         // Skip if no actual change
@@ -176,21 +189,19 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
         // Validate the percentile value is between 0-100
         if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Invalid percentile",
-                description: "Percentile must be a number between 0 and 100"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Invalid percentile",
+                "Percentile must be a number between 0 and 100"
+            );
             return;
         }
 
         // Check if the new value would create a duplicate
         if (percentileValues.includes(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Duplicate percentile",
-                description: "This percentile value already exists"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Duplicate percentile",
+                "This percentile value already exists"
+            );
             return;
         }
 
@@ -204,6 +215,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleRemovePercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (selectedPercentileItem) { // Use prop state
             setPercentileValues(percentileValues.filter(p => p !== selectedPercentileItem)); // Use prop setter & state
             setSelectedPercentileItem(null); // Use prop setter
@@ -213,17 +225,25 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
     return (
         <div className={`grid ${isMobile && isPortrait ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
-            <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
-                        <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction>OK</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {containerType === "dialog" && (
+                <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
+                            <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction onClick={() => setAlertOpen(false)}>OK</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            {containerType === "sidebar" && inlineAlertMessage && (
+                <div className="col-span-full p-2 mb-2 text-sm text-destructive-foreground bg-destructive rounded-md">
+                    {inlineAlertMessage}
+                     <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
+                </div>
+            )}
 
             <div className="border border-border rounded-md p-4 space-y-3 bg-card">
                 <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>

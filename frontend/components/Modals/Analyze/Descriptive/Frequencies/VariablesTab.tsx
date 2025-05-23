@@ -14,6 +14,7 @@ interface VariablesTabProps {
     reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
     showFrequencyTables: boolean;
     setShowFrequencyTables: React.Dispatch<React.SetStateAction<boolean>>;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -26,6 +27,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     reorderVariables = () => { console.warn("reorderVariables not implemented upstream"); },
     showFrequencyTables,
     setShowFrequencyTables,
+    containerType = "dialog"
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
@@ -37,7 +39,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'selected',
             title: 'Variable(s):',
             variables: selectedVariables,
-            height: 'calc(100% - 40px)', // Adjusted height to accommodate footer
+            height: '300px', // Changed to fixed height
             draggableItems: true,
             droppable: true
         }

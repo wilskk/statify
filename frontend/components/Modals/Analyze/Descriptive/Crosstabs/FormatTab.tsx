@@ -5,11 +5,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 interface FormatTabProps {
     rowOrder: 'ascending' | 'descending';
     setRowOrder: (value: 'ascending' | 'descending') => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const FormatTab: FC<FormatTabProps> = ({
                                            rowOrder,
-                                           setRowOrder
+                                           setRowOrder,
+                                           containerType = "dialog"
                                        }) => {
     return (
         <div className="p-6">

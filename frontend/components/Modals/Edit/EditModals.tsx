@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
+import { ContainerType } from "@/types/ui";
 import { FindAndReplaceModal, FindReplaceMode } from "@/components/Modals/Edit/FindReplace/FindReplace";
 import GoToModal, { GoToMode } from "@/components/Modals/Edit/GoTo/GoTo";
 
@@ -23,15 +24,22 @@ interface EditModalsProps {
     modalType: ModalType;
     onClose: () => void;
     props?: any;
+    containerType?: ContainerType;
 }
 
-export const EditModals: React.FC<EditModalsProps> = ({ modalType, onClose, props }) => {
+export const EditModals: React.FC<EditModalsProps> = ({ 
+    modalType, 
+    onClose, 
+    props,
+    containerType = "dialog"
+}) => {
     switch (modalType) {
         case ModalType.Find:
             return (
                 <FindAndReplaceModal
                     onClose={onClose}
                     defaultTab={FindReplaceMode.FIND}
+                    containerType={containerType}
                     {...props}
                 />
             );
@@ -40,6 +48,7 @@ export const EditModals: React.FC<EditModalsProps> = ({ modalType, onClose, prop
                 <FindAndReplaceModal
                     onClose={onClose}
                     defaultTab={FindReplaceMode.REPLACE}
+                    containerType={containerType}
                     {...props}
                 />
             );
@@ -48,6 +57,7 @@ export const EditModals: React.FC<EditModalsProps> = ({ modalType, onClose, prop
                 <GoToModal
                     onClose={onClose}
                     defaultMode={GoToMode.CASE}
+                    containerType={containerType}
                     {...props}
                 />
             );
@@ -56,6 +66,7 @@ export const EditModals: React.FC<EditModalsProps> = ({ modalType, onClose, prop
                 <GoToModal
                     onClose={onClose}
                     defaultMode={GoToMode.VARIABLE}
+                    containerType={containerType}
                     {...props}
                 />
             );

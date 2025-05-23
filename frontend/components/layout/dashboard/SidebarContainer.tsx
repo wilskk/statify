@@ -5,6 +5,10 @@ import { useModal, ModalType } from "@/hooks/useModal";
 import { X } from "lucide-react";
 import { ContainerType } from "@/types/ui";
 import { DescriptiveModal, isDescriptiveModal } from "@/components/Modals/Analyze/Descriptive/DescriptiveModal";
+import { isDataModal } from "@/components/Modals/Data/DataModals";
+import { DataModals } from "@/components/Modals/Data/DataModals";
+import { isFileModal } from "@/components/Modals/File/FileModals";
+import { FileModals } from "@/components/Modals/File/FileModals";
 
 // Helper function to format modal title from ModalType
 const formatModalTitle = (type: ModalType): string => {
@@ -24,10 +28,34 @@ const SidebarContainer: React.FC = () => {
 
   // Render modal content based on type
   const renderSidebarContent = () => {
-    // For now, we'll focus on supporting Descriptive modal first
+    // Check for Descriptive modal types
     if (isDescriptiveModal(currentModal.type)) {
       return (
         <DescriptiveModal
+          modalType={currentModal.type}
+          onClose={closeModal}
+          props={currentModal.props}
+          containerType="sidebar"
+        />
+      );
+    }
+    
+    // Check for Data modal types
+    if (isDataModal(currentModal.type)) {
+      return (
+        <DataModals
+          modalType={currentModal.type}
+          onClose={closeModal}
+          props={currentModal.props}
+          containerType="sidebar"
+        />
+      );
+    }
+    
+    // Check for File modal types
+    if (isFileModal(currentModal.type)) {
+      return (
+        <FileModals
           modalType={currentModal.type}
           onClose={closeModal}
           props={currentModal.props}

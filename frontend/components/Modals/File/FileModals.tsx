@@ -1,14 +1,15 @@
 // components/Modals/File/FileModals.tsx
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
-import ImportCSVModal from "@/components/Modals/File/import/csv";
-import ImportExcelModal from "@/components/Modals/File/import/excel";
-import OpenData from "@/components/Modals/File/open/OpenData";
+import { ContainerType } from "@/types/ui";
+import { ImportCsv as ImportCsvModal } from "@/components/Modals/File/ImportCsv";
+import { ImportExcelModal } from "@/components/Modals/File/ImportExcel";
+import { OpenSavFileModal } from "@/components/Modals/File/OpenSavFile";
 // import OpenOutput from "@/components/Modals/File/Open/OpenOutput";
-import PrintModal from "@/components/Modals/File/print/Print";
+import { PrintModal } from "@/components/Modals/File/Print";
 // import PrintPreviewModal from "@/components/Modals/File/Print/PrintPreview";
-import ExportCSV from "@/components/Modals/File/export/csv/ExportCSV";
-import ExportExcel from "@/components/Modals/File/export/excel/ExportExcel";
+import { ExportCsv as ExportCSVModal } from "@/components/Modals/File/ExportCsv";
+import { ExportExcelModal } from "@/components/Modals/File/ExportExcelModal";
 // import ExitModal from "@/components/Modals/File/Exit";
 
 export const modalStyles = {
@@ -36,31 +37,49 @@ interface FileModalsProps {
     modalType: ModalType;
     onClose: () => void;
     props?: any;
+    containerType?: ContainerType;
 }
 
-export const FileModals: React.FC<FileModalsProps> = ({ modalType, onClose, props }) => {
-    switch (modalType) {
-        case ModalType.ImportCSV:
-            return <ImportCSVModal onClose={onClose} {...props} />;
-        case ModalType.ImportExcel:
-            return <ImportExcelModal onClose={onClose} {...props} />;
-        case ModalType.OpenData:
-            return <OpenData onClose={onClose} {...props} />;
-        // case ModalType.OpenOutput:
-        //     return <OpenOutput onClose={onClose} {...props} />;
-        // case ModalType.PrintPreview:
-        //     return <PrintPreviewModal onClose={onClose} {...props} />;
-        case ModalType.Print:
-            return <PrintModal onClose={onClose} {...props} />;
-        case ModalType.ExportCSV:
-            return <ExportCSV onClose={onClose} {...props} />;
-        case ModalType.ExportExcel:
-            return <ExportExcel onClose={onClose} {...props} />;
-        // case ModalType.Exit:
-        //     return <ExitModal onClose={onClose} {...props} />;
-        default:
-            return null;
+export const FileModals: React.FC<FileModalsProps> = ({ 
+    modalType, 
+    onClose, 
+    props,
+    containerType = "dialog" 
+}) => {
+    // Render the appropriate component based on modalType and containerType
+    const renderComponent = () => {
+        switch (modalType) {
+            case ModalType.ImportCSV:
+                return <ImportCsvModal onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.ImportExcel:
+                return <ImportExcelModal onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.OpenData:
+                return <OpenSavFileModal onClose={onClose} containerType={containerType} {...props} />;
+            // case ModalType.OpenOutput:
+            //     return <OpenOutput onClose={onClose} containerType={containerType} {...props} />;
+            // case ModalType.PrintPreview:
+            //     return <PrintPreviewModal onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.Print:
+                return <PrintModal onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.ExportCSV:
+                return <ExportCSVModal onClose={onClose} containerType={containerType} {...props} />;
+            case ModalType.ExportExcel:
+                return <ExportExcelModal onClose={onClose} containerType={containerType} {...props} />;
+            // case ModalType.Exit:
+            //     return <ExitModal onClose={onClose} containerType={containerType} {...props} />;
+            default:
+                return null;
+        }
+    };
+
+    // If sidebar mode, just return the component
+    if (containerType === "sidebar") {
+        return renderComponent();
     }
+
+    // For dialog mode, just return the component as is
+    // Each individual modal will handle its own dialog wrapping
+    return renderComponent();
 };
 
 // utils/modalCategories.ts
