@@ -48,7 +48,7 @@ import {
 import {
     TimeSeriesModal,
     isTimeSeriesModal,
-} from "./Analyze/TimeSeriesNew/TimeSeriesModal";
+} from "./Analyze/TimeSeries/TimeSeriesModal";
 
 const ModalContainer: React.FC = () => {
     const { modals, closeModal } = useModal();

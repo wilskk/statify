@@ -21,7 +21,7 @@ import { optionHook } from "./hook/optionHook";
 import { timeHook } from "./hook/timeHook";
 import { analyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
-import OptionTab from "../Decomposition/OptionTab";
+import OptionTab from "./OptionTab";
 import TimeTab from "./TimeTab";
 
 interface DecompositionProps {

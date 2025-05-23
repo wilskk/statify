@@ -2,11 +2,11 @@
 
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
-import Smoothing from "@/components/Modals/Analyze/TimeSeriesNew/Smoothing";
-import Decomposition from "@/components/Modals/Analyze/TimeSeriesNew/Decomposition";
-import Autocorrelation from "@/components/Modals/Analyze/TimeSeriesNew/Autocorrelation";
-import UnitRootTest from "@/components/Modals/Analyze/TimeSeriesNew/UnitRootTest";
-import BoxJenkinsModel from "@/components/Modals/Analyze/TimeSeriesNew/BoxJenkinsModel";
+import Smoothing from "@/components/Modals/Analyze/TimeSeries/Smoothing";
+import Decomposition from "@/components/Modals/Analyze/TimeSeries/Decomposition";
+import Autocorrelation from "@/components/Modals/Analyze/TimeSeries/Autocorrelation";
+import UnitRootTest from "@/components/Modals/Analyze/TimeSeries/UnitRootTest";
+import BoxJenkinsModel from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
