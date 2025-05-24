@@ -567,6 +567,7 @@ fn generate_non_cust_terms(
 ) -> Result<(), String> {
     let mut factors_for_interaction = Vec::new();
 
+    // Add main effects for Fixed Factors and collect them for interaction generation
     if let Some(fix_factors) = &config.main.fix_factor {
         for factor_name in fix_factors {
             if !terms.contains(factor_name) {
@@ -575,16 +576,18 @@ fn generate_non_cust_terms(
             factors_for_interaction.push(factor_name.clone());
         }
     }
+
+    // Add main effects for Random Factors and collect them for interaction generation
     if let Some(random_factors) = &config.main.rand_factor {
         for factor_name in random_factors {
             if !terms.contains(factor_name) {
                 terms.push(factor_name.clone());
             }
-            factors_for_interaction.push(factor_name.clone());
+            factors_for_interaction.push(factor_name.clone()); // Add to interaction list
         }
     }
 
-    // Add covariates as main effects only
+    // Add Covariates as main effects ONLY (not added to factors_for_interaction)
     if let Some(covariates) = &config.main.covar {
         for covar_name in covariates {
             if !terms.contains(covar_name) {
@@ -593,8 +596,9 @@ fn generate_non_cust_terms(
         }
     }
 
-    // Add all possible interaction terms among fixed and random factors only
+    // Add all possible interaction terms among Fixed and Random factors
     if factors_for_interaction.len() > 1 {
+        // generate_interaction_terms produces 2-way, 3-way, ..., up to N-way interactions.
         terms.extend(generate_interaction_terms(&factors_for_interaction));
     }
 

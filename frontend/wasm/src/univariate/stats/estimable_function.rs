@@ -119,18 +119,31 @@ fn generate_all_row_parameter_names_sorted(
 
     for term_name in model_terms {
         if term_name.contains('*') {
-            // Check if it's an interaction of fixed factors or fixed factors and covariates
             let factors_in_term = factor_utils::parse_interaction_term(term_name);
-            let is_fixed_interaction = factors_in_term
-                .iter()
-                .all(
-                    |f_name|
-                        config.main.fix_factor.as_ref().map_or(false, |ff| ff.contains(f_name)) ||
-                        config.main.covar.as_ref().map_or(false, |cv| cv.contains(f_name))
-                );
 
-            if !is_fixed_interaction {
-                continue; // Skip if it involves factors not in fixed or covariates (e.g. random, though not handled here)
+            // Interactions should only be between fixed and/or random factors.
+            // Covariates are main effects only.
+            let is_valid_factor_interaction = factors_in_term.iter().all(|f_name| {
+                let is_fixed = config.main.fix_factor
+                    .as_ref()
+                    .map_or(false, |ff| ff.contains(f_name));
+                let is_random = config.main.rand_factor
+                    .as_ref()
+                    .map_or(false, |rf| rf.contains(f_name));
+                is_fixed || is_random
+            });
+
+            if !is_valid_factor_interaction {
+                // This term might be an interaction involving a variable not defined as a fixed or random factor,
+                // or an interaction incorrectly including a covariate if term generation was flawed.
+                // For robust display, we should probably try to get levels if they exist,
+                // or log an error/skip if it's truly unhandleable here.
+                // Given factor_utils should now prevent covariate interactions, this path implies
+                // an interaction term with non-factor components, which is an issue.
+                // For now, strict skip if not a pure factor interaction.
+                // Consider if an error should be returned:
+                // return Err(format!("Interaction term '{}' contains non-factor components or invalid configuration.", term_name));
+                continue;
             }
 
             let order = factors_in_term.len();
@@ -138,53 +151,27 @@ fn generate_all_row_parameter_names_sorted(
             sorted_factors_for_term_key.sort();
             let canonical_term_key = sorted_factors_for_term_key.join("*");
 
-            let mut level_sets: Vec<(&String, Vec<String>)> = Vec::new();
+            let mut level_sets: Vec<(&String, &Vec<String>)> = Vec::new(); // Corrected: removed extra >
             for factor_name_key in &sorted_factors_for_term_key {
-                // For covariates in interactions, they don't have multiple levels like factors.
-                // Their "level" is effectively just their presence.
-                // The `factor_levels_map` for a covariate will be empty or have a placeholder.
-                // If it's a covariate, we treat it as having one implicit "level" (itself).
-                // The `generate_all_row_parameter_names_sorted` is for *display names* including all levels.
-                // An interaction term like `[factorA=1]*covariateB` is what we expect.
-                if config.main.covar.as_ref().map_or(false, |cv| cv.contains(factor_name_key)) {
-                    // Create a dummy level list for covariate to make combination logic work
-                    // This part is tricky: an interaction with a covariate A*X usually means specific levels of A multiplied by X.
-                    // The all_row_parameters should list [A=1]*X, [A=2]*X. Not [A=1]*[X=cov_value].
-                    // The current BTreeMap approach for param_parts_for_display might need adjustment for cov interactions.
-                    // For now, let's assume generate_model_design_terms handles covariates in interactions appropriately
-                    // and factor_levels_map has what we need.
-                    // If a covariate is part of an interaction, its name is used directly.
-                    // The `generate_all_row_parameter_names_sorted` is for *display names* including all levels.
-                    // An interaction term like `[factorA=1]*covariateB` is what we expect.
-                    if let Some(levels) = factor_levels_map.get(factor_name_key) {
-                        if levels.is_empty() {
-                            // Covariate likely has empty levels in map
-                            // For product terms like [lowup=1]*AGE, AGE is just AGE.
-                            // The BTreeMap construction for display string needs to handle this:
-                            // if it's a covariate, don't add [cov=level], just cov.
-                            // This makes the combination logic below complex.
-                            // For now, let's stick to the assumption that `factor_levels_map` and `combo_loop` structure works.
-                            // This might require covariates to have a single dummy level in factor_levels_map if they are part of an interaction term.
-                            level_sets.push((factor_name_key, vec![factor_name_key.clone()])); // Treat covariate name as its only level for combination
-                        } else {
-                            level_sets.push((factor_name_key, levels.clone()));
-                        }
-                    } else {
+                // All components are now assumed to be factors (fixed or random)
+                if let Some(levels_for_key) = factor_levels_map.get(factor_name_key) {
+                    if levels_for_key.is_empty() {
+                        // A factor in an interaction term must have levels.
                         return Err(
                             format!(
-                                "Levels/Info not found for {} in interaction term {}",
+                                "Factor '{}' in interaction '{}' has no defined levels.",
                                 factor_name_key,
                                 term_name
                             )
                         );
                     }
-                } else if let Some(levels) = factor_levels_map.get(factor_name_key) {
-                    // It's a fixed factor
-                    level_sets.push((factor_name_key, levels.clone()));
+                    level_sets.push((factor_name_key, levels_for_key));
                 } else {
+                    // This implies a factor name in an interaction term wasn't found in factor_levels_map,
+                    // which should be populated for all fixed and random factors.
                     return Err(
                         format!(
-                            "Levels not found for factor {} in interaction term {}",
+                            "Levels not found for factor '{}' (part of interaction '{}') in factor_levels_map.",
                             factor_name_key,
                             term_name
                         )
@@ -200,39 +187,34 @@ fn generate_all_row_parameter_names_sorted(
             let mut term_level_combinations = Vec::new();
 
             'combo_loop: loop {
-                let mut param_parts_for_display = BTreeMap::new();
-                let mut display_parts_collected = Vec::new();
-
-                for (idx, (factor_name, levels)) in level_sets.iter().enumerate() {
-                    let level_to_display = &levels[current_combination_indices[idx]];
-                    if config.main.covar.as_ref().map_or(false, |cv| cv.contains(factor_name)) {
-                        // If it's a covariate, use its name directly as a part of the interaction string
-                        // And ensure it's sorted correctly with other factor parts.
-                        param_parts_for_display.insert(
-                            factor_name.to_string(),
-                            factor_name.to_string()
-                        ); // Store raw name for sorting key
-                    } else {
-                        param_parts_for_display.insert(
-                            factor_name.to_string(),
-                            format!("[{}={}]", factor_name, level_to_display)
-                        );
-                    }
+                let mut param_parts_for_display = BTreeMap::new(); // BTreeMap for sorted order of parts within the name
+                // Build map of {factor_name: "[factor_name=level]"}
+                for (idx, (factor_name, levels_ref)) in level_sets.iter().enumerate() {
+                    let level_to_display = &levels_ref[current_combination_indices[idx]];
+                    param_parts_for_display.insert(
+                        factor_name.to_string(),
+                        format!("[{}={}]", factor_name, level_to_display)
+                    );
                 }
 
-                // Collect sorted display parts
-                for factor_name_key in &sorted_factors_for_term_key {
-                    // Iterate in sorted factor order
-                    if let Some(part_display_name) = param_parts_for_display.get(factor_name_key) {
-                        if
-                            config.main.covar
-                                .as_ref()
-                                .map_or(false, |cv| cv.contains(factor_name_key))
-                        {
-                            display_parts_collected.push(factor_name_key.to_string()); // Use raw covariate name
-                        } else {
-                            display_parts_collected.push(part_display_name.clone());
-                        }
+                // Collect parts in the canonical order of factors for the term
+                let mut display_parts_collected = Vec::new();
+                for factor_name_key_in_canonical_term in &sorted_factors_for_term_key {
+                    if
+                        let Some(part_display_name) = param_parts_for_display.get(
+                            factor_name_key_in_canonical_term
+                        )
+                    {
+                        display_parts_collected.push(part_display_name.clone());
+                    } else {
+                        // Should not happen if param_parts_for_display was built correctly from sorted_factors_for_term_key components
+                        return Err(
+                            format!(
+                                "Display part missing for factor '{}' in interaction '{}'.",
+                                factor_name_key_in_canonical_term,
+                                term_name
+                            )
+                        );
                     }
                 }
                 term_level_combinations.push(display_parts_collected.join("*"));
