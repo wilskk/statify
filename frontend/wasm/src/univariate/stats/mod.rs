@@ -11,6 +11,7 @@ pub mod estimable_function;
 pub mod factor_utils;
 pub mod generate_plots;
 pub mod heteroscedasticity;
+pub mod hypothesis_matrix;
 pub mod lack_of_fit;
 pub mod levene_test;
 pub mod matrix_utils;

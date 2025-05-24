@@ -65,7 +65,18 @@ pub fn calculate_parameter_estimates(
     if let Some(fixed_factors) = &config.main.fix_factor {
         for factor in fixed_factors {
             let mut levels = get_factor_levels(data, factor)?;
-            levels.sort(); // Ensure levels are sorted
+            levels.sort_by(|a, b| {
+                // Natural sort
+                let a_num = a.parse::<f64>();
+                let b_num = b.parse::<f64>();
+                match (a_num, b_num) {
+                    (Ok(a_val), Ok(b_val)) =>
+                        a_val.partial_cmp(&b_val).unwrap_or(std::cmp::Ordering::Equal),
+                    (Ok(_), Err(_)) => std::cmp::Ordering::Less, // numbers come before non-numbers
+                    (Err(_), Ok(_)) => std::cmp::Ordering::Greater, // non-numbers come after numbers
+                    (Err(_), Err(_)) => a.cmp(b), // both non-numbers, sort alphabetically
+                }
+            });
             factor_levels_map.insert(factor.clone(), levels);
         }
     }
@@ -74,7 +85,18 @@ pub fn calculate_parameter_estimates(
         for factor in random_factors {
             if !factor_levels_map.contains_key(factor) {
                 let mut levels = get_factor_levels(data, factor)?;
-                levels.sort();
+                levels.sort_by(|a, b| {
+                    // Natural sort
+                    let a_num = a.parse::<f64>();
+                    let b_num = b.parse::<f64>();
+                    match (a_num, b_num) {
+                        (Ok(a_val), Ok(b_val)) =>
+                            a_val.partial_cmp(&b_val).unwrap_or(std::cmp::Ordering::Equal),
+                        (Ok(_), Err(_)) => std::cmp::Ordering::Less,
+                        (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
+                        (Err(_), Err(_)) => a.cmp(b),
+                    }
+                });
                 factor_levels_map.insert(factor.clone(), levels);
             }
         }

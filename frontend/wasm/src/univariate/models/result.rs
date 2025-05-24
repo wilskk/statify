@@ -60,6 +60,7 @@ pub struct TestsBetweenSubjectsEffects {
     pub source: HashMap<String, TestEffectEntry>,
     pub r_squared: f64,
     pub adjusted_r_squared: f64,
+    pub notes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

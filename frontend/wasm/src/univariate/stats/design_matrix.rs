@@ -58,6 +58,7 @@ pub fn create_design_response_weights(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<DesignMatrixInfo, String> {
+    // Log key config fields before generating model terms
     let dep_var_name = config.main.dep_var
         .as_ref()
         .ok_or_else(|| "Dependent variable not specified.".to_string())?;
@@ -146,7 +147,6 @@ pub fn create_design_response_weights(
     let mut intercept_col_idx: Option<usize> = None;
     let mut final_term_names: Vec<String> = Vec::new();
 
-    // Use factor_utils for matrix generation
     use crate::univariate::stats::factor_utils;
 
     for term_name in &model_terms {
@@ -158,7 +158,6 @@ pub fn create_design_response_weights(
             if config.model.intercept {
                 let intercept_vec = DVector::from_element(n_samples_effective, 1.0);
                 term_matrix_cols.push(intercept_vec);
-                // intercept_col_idx will be set based on the actual column index later if intercept is added
             } else {
                 continue;
             }
@@ -202,7 +201,6 @@ pub fn create_design_response_weights(
                 term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            // Interaction term
             let interaction_rows_unfiltered = factor_utils::create_interaction_design_matrix(
                 data,
                 config,
@@ -238,7 +236,6 @@ pub fn create_design_response_weights(
                 }
             }
         } else {
-            // Main effect (factor)
             let main_effect_rows_unfiltered = factor_utils::create_main_effect_design_matrix(
                 data,
                 term_name
@@ -585,14 +582,18 @@ pub fn create_l_matrix_for_term(
         .get(term_name)
         .ok_or_else(|| format!("Term '{}' not found in design matrix column map.", term_name))?;
 
-    let num_cols_for_term = term_end_col - term_start_col + 1;
+    let current_term_start_col = *term_start_col; // Dereference here to ensure we have the value
+    let current_term_end_col = *term_end_col; // Dereference here
+
+    let num_cols_for_term = current_term_end_col - current_term_start_col + 1;
     if num_cols_for_term == 0 {
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 
     let mut l_matrix = DMatrix::zeros(num_cols_for_term, design_info.p_parameters);
     for i in 0..num_cols_for_term {
-        l_matrix[(i, term_start_col + i)] = 1.0;
+        l_matrix[(i, current_term_start_col + i)] = 1.0;
     }
+
     Ok(l_matrix)
 }

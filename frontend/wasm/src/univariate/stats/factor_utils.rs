@@ -959,15 +959,19 @@ pub fn create_interaction_design_matrix(
                     break;
                 }
                 current_col_indices[factor_to_inc] = 0;
-                if factor_to_inc == 0 {
+                if factor_to_inc == 0 && factors_in_interaction.len() > 1 {
+                    // Added check for len > 1 to prevent panic on single factor term that shouldn't reach here
                     // Should not be reached if total_interaction_cols > 0 and logic is correct
                     break;
                 }
                 factor_to_inc -= 1;
+                if factor_to_inc >= factors_in_interaction.len() {
+                    // Safeguard against underflow if factor_to_inc becomes very small
+                    break;
+                }
             }
         }
     }
-
     Ok(final_interaction_matrix_rows)
 }
 
