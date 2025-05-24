@@ -101,7 +101,15 @@ pub struct ConfidenceInterval {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralEstimableFunction {
-    pub matrix: Vec<Vec<i32>>,
+    pub estimable_function: GeneralEstimableFunctionEntry,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneralEstimableFunctionEntry {
+    pub parameter: Vec<String>,
+    pub l_label: Vec<String>,
+    pub l_matrix: Vec<Vec<i32>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

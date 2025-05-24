@@ -397,7 +397,7 @@ pub fn get_design_matrix_cols_for_term(
         }
         single_col_matrix
     } else if term_name.contains('*') {
-        create_interaction_design_matrix(data, term_name)?
+        create_interaction_design_matrix(data, config, term_name)?
     } else {
         create_main_effect_design_matrix(data, term_name)?
     };
@@ -537,6 +537,13 @@ pub fn generate_model_design_terms(
                 }
             }
         }
+        if let Some(random_factors) = &config.main.rand_factor {
+            for factor in random_factors {
+                if !terms.contains(factor) {
+                    terms.push(factor.clone());
+                }
+            }
+        }
         if let Some(covariates) = &config.main.covar {
             for covar in covariates {
                 if !terms.contains(covar) {
@@ -558,20 +565,39 @@ fn generate_non_cust_terms(
     config: &UnivariateConfig,
     terms: &mut Vec<String>
 ) -> Result<(), String> {
+    let mut factors_for_interaction = Vec::new();
+
     if let Some(fix_factors) = &config.main.fix_factor {
-        for factor in fix_factors {
-            terms.push(factor.clone());
-        }
-        if fix_factors.len() > 1 {
-            // Assuming generate_interaction_terms is accessible, e.g., from common or factor_utils
-            terms.extend(generate_interaction_terms(fix_factors));
+        for factor_name in fix_factors {
+            if !terms.contains(factor_name) {
+                terms.push(factor_name.clone());
+            }
+            factors_for_interaction.push(factor_name.clone());
         }
     }
+    if let Some(random_factors) = &config.main.rand_factor {
+        for factor_name in random_factors {
+            if !terms.contains(factor_name) {
+                terms.push(factor_name.clone());
+            }
+            factors_for_interaction.push(factor_name.clone());
+        }
+    }
+
+    // Add covariates as main effects only
     if let Some(covariates) = &config.main.covar {
-        for covar in covariates {
-            terms.push(covar.clone());
+        for covar_name in covariates {
+            if !terms.contains(covar_name) {
+                terms.push(covar_name.clone());
+            }
         }
     }
+
+    // Add all possible interaction terms among fixed and random factors only
+    if factors_for_interaction.len() > 1 {
+        terms.extend(generate_interaction_terms(&factors_for_interaction));
+    }
+
     Ok(())
 }
 
@@ -580,38 +606,38 @@ fn generate_custom_terms(
     config: &UnivariateConfig,
     terms: &mut Vec<String>
 ) -> Result<(), String> {
+    // Add main effects from factors_model. These are candidates for interactions.
     if let Some(factors_model) = &config.model.factors_model {
+        for factor_name in factors_model {
+            if !terms.contains(factor_name) {
+                terms.push(factor_name.clone());
+            }
+        }
+
+        // Generate interactions based on build_term_method using ONLY factors_model components
         match config.model.build_term_method {
             crate::univariate::models::config::BuildTermMethod::MainEffects => {
-                for factor in factors_model {
-                    terms.push(factor.clone());
-                }
+                // Main effects from factors_model already added above.
             }
             crate::univariate::models::config::BuildTermMethod::Interaction => {
-                for factor in factors_model {
-                    terms.push(factor.clone());
-                }
                 if factors_model.len() > 1 {
                     terms.extend(generate_interaction_terms(factors_model));
                 }
             }
             crate::univariate::models::config::BuildTermMethod::All2Way => {
-                add_main_effects(factors_model, terms);
                 if factors_model.len() > 1 {
                     add_n_way_interactions(factors_model, 2, terms);
                 }
             }
             crate::univariate::models::config::BuildTermMethod::All3Way => {
-                add_main_effects(factors_model, terms);
                 if factors_model.len() > 1 {
-                    add_n_way_interactions(factors_model, 2, terms);
+                    add_n_way_interactions(factors_model, 2, terms); // Assuming N-way includes lower ways or they are added separately
                 }
                 if factors_model.len() > 2 {
                     add_n_way_interactions(factors_model, 3, terms);
                 }
             }
             crate::univariate::models::config::BuildTermMethod::All4Way => {
-                add_main_effects(factors_model, terms);
                 if factors_model.len() > 1 {
                     add_n_way_interactions(factors_model, 2, terms);
                 }
@@ -623,7 +649,6 @@ fn generate_custom_terms(
                 }
             }
             crate::univariate::models::config::BuildTermMethod::All5Way => {
-                add_main_effects(factors_model, terms);
                 if factors_model.len() > 1 {
                     add_n_way_interactions(factors_model, 2, terms);
                 }
@@ -639,9 +664,13 @@ fn generate_custom_terms(
             }
         }
     }
-    if let Some(cov_model) = &config.model.cov_model {
-        for term in cov_model.split_whitespace() {
-            terms.push(term.to_string());
+
+    // Add covariates from cov_model as main effects only
+    if let Some(cov_model_str) = &config.model.cov_model {
+        for term_name in cov_model_str.split_whitespace() {
+            if !terms.contains(&term_name.to_string()) {
+                terms.push(term_name.to_string());
+            }
         }
     }
     Ok(())
@@ -812,6 +841,7 @@ pub fn create_main_effect_design_matrix(
 /// Helper function to create design matrix for an interaction term
 pub fn create_interaction_design_matrix(
     data: &AnalysisData,
+    config: &UnivariateConfig,
     interaction_term: &str
 ) -> Result<Vec<Vec<f64>>, String> {
     let factors_in_interaction = parse_interaction_term(interaction_term);
@@ -825,42 +855,36 @@ pub fn create_interaction_design_matrix(
         return Ok(Vec::new());
     }
 
+    // Validate that no covariates are part of an interaction term string by this point
+    for factor_name in &factors_in_interaction {
+        if config.main.covar.as_ref().map_or(false, |c| c.contains(factor_name)) {
+            return Err(
+                format!(
+                    "Error: Covariate '{}' found in interaction term '{}'. Covariates should only be main effects.",
+                    factor_name,
+                    interaction_term
+                )
+            );
+        }
+    }
+
     // Get dummy-coded columns for each factor in the interaction
     let mut factor_dummy_cols_map: HashMap<String, Vec<Vec<f64>>> = HashMap::new();
     let mut term_column_counts: Vec<usize> = Vec::new();
 
     for factor_name in &factors_in_interaction {
-        // Use the modified create_main_effect_design_matrix which returns k-1 dummy columns
-        let main_effect_dummy_cols = create_main_effect_design_matrix(data, factor_name)?;
+        let component_cols = create_main_effect_design_matrix(data, factor_name)?;
 
-        if main_effect_dummy_cols.is_empty() && n_total > 0 {
+        if component_cols.is_empty() && n_total > 0 {
             // This factor has no levels or only one level, so it produces no dummy columns.
-            // An interaction involving such a factor will also produce no columns.
-            return Ok(vec![Vec::new(); n_total]); // N x 0 matrix
+            return Ok(vec![Vec::new(); n_total]);
         }
-        if !main_effect_dummy_cols.is_empty() && main_effect_dummy_cols.len() != n_total {
-            return Err(
-                format!(
-                    "Row count mismatch for factor '{}' ({} rows) in interaction term '{}'. Expected {} rows.",
-                    factor_name,
-                    main_effect_dummy_cols.len(),
-                    interaction_term,
-                    n_total
-                )
-            );
-        }
-
-        let num_cols_for_this_factor = if main_effect_dummy_cols.is_empty() {
-            0
-        } else {
-            main_effect_dummy_cols[0].len()
-        };
-        term_column_counts.push(num_cols_for_this_factor);
-        factor_dummy_cols_map.insert(factor_name.clone(), main_effect_dummy_cols);
+        term_column_counts.push(component_cols[0].len());
+        factor_dummy_cols_map.insert(factor_name.clone(), component_cols);
     }
 
-    if term_column_counts.iter().any(|&count| count == 0) && factors_in_interaction.len() > 0 {
-        // If any factor has 0 dummy columns (e.g., only one level), the interaction has 0 columns.
+    if term_column_counts.iter().any(|&count| count == 0) && !factors_in_interaction.is_empty() {
+        // If any component has 0 columns (e.g., only one level), the interaction has 0 columns.
         return Ok(vec![Vec::new(); n_total]);
     }
 

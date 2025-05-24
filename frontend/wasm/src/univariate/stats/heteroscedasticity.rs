@@ -5,7 +5,6 @@ use crate::univariate::models::{
 };
 use nalgebra::{ DMatrix, DVector };
 use std::collections::{ HashMap, HashSet };
-use web_sys::console; // Add this for logging
 
 use super::core::*;
 
@@ -99,9 +98,7 @@ fn create_white_aux_matrix(
     config: &UnivariateConfig,
     n_obs: usize
 ) -> Result<DMatrix<f64>, String> {
-    console::log_1(&"[create_white_aux_matrix] Entry".into());
     if n_obs == 0 {
-        console::log_1(&"[create_white_aux_matrix] n_obs is 0, returning empty matrix".into());
         return Ok(DMatrix::zeros(0, 0));
     }
 
@@ -119,9 +116,6 @@ fn create_white_aux_matrix(
             if !hashes_set.contains(&hash_repr) {
                 hashes_set.insert(hash_repr);
                 cols_list.push(col);
-                // console::log_1(&format!("[create_white_aux_matrix] Added column: {}, Total aux_cols: {}", col_name, cols_list.len()).into());
-            } else {
-                // console::log_1(&format!("[create_white_aux_matrix] Skipped duplicate column: {}", col_name).into());
             }
         }
     };
@@ -129,12 +123,6 @@ fn create_white_aux_matrix(
     // 1. Add intercept
     let intercept_col = DVector::from_element(n_obs, 1.0);
     try_add_col("Intercept", intercept_col, &mut aux_cols, &mut existing_col_hashes);
-    console::log_1(
-        &format!(
-            "[create_white_aux_matrix] After adding intercept, aux_cols: {}",
-            aux_cols.len()
-        ).into()
-    );
 
     // Collect original non-intercept predictor columns and their original indices
     let mut original_non_intercept_predictors: Vec<(usize, DVector<f64>)> = Vec::new();
@@ -146,16 +134,8 @@ fn create_white_aux_matrix(
             try_add_col(&format!("OrigPred_{}", j), col, &mut aux_cols, &mut existing_col_hashes);
         }
     }
-    console::log_1(
-        &format!(
-            "[create_white_aux_matrix] Added {} original non-intercept predictors. Total aux_cols: {}",
-            original_non_intercept_predictors.len(),
-            aux_cols.len()
-        ).into()
-    );
 
     if original_non_intercept_predictors.is_empty() {
-        console::log_1(&"[create_white_aux_matrix] No original non-intercept predictors.".into());
         if !aux_cols.is_empty() {
             return Ok(DMatrix::from_columns(&aux_cols));
         } else {
@@ -177,22 +157,11 @@ fn create_white_aux_matrix(
             squared_terms_added += 1;
         }
     }
-    console::log_1(
-        &format!(
-            "[create_white_aux_matrix] Added {} squared terms. Total aux_cols: {}",
-            squared_terms_added,
-            aux_cols.len()
-        ).into()
-    );
 
     // 4. Add unique cross-product terms ONLY if continuous variables were present (i.e., squared terms were added)
     //    If only factor variables are present, their interactions are typically already handled by the original design matrix if it's a full model.
-    //    This adjustment helps match SPSS White test df for factor-only models where original X effectively serves as White's Z.
     let mut cp_terms_added = 0;
     if squared_terms_added > 0 {
-        console::log_1(
-            &"[create_white_aux_matrix] Continuous variables present, attempting to add cross-products.".into()
-        );
         for i in 0..original_non_intercept_predictors.len() {
             for k in i + 1..original_non_intercept_predictors.len() {
                 let (orig_idx1, predictor1) = &original_non_intercept_predictors[i];
@@ -210,18 +179,7 @@ fn create_white_aux_matrix(
                 }
             }
         }
-    } else {
-        console::log_1(
-            &"[create_white_aux_matrix] No continuous variables (no squared terms added), skipping cross-products for White test.".into()
-        );
     }
-    console::log_1(
-        &format!(
-            "[create_white_aux_matrix] Added {} cross-product terms. Final aux_cols: {}",
-            cp_terms_added,
-            aux_cols.len()
-        ).into()
-    );
 
     if aux_cols.is_empty() {
         Ok(DMatrix::zeros(n_obs, 0))
@@ -250,27 +208,15 @@ pub fn calculate_heteroscedasticity_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<HeteroscedasticityTests, String> {
-    console::log_1(&"[calc_hetero_tests] Entry V3".into());
-
     let design_info = create_design_response_weights(data, config).map_err(|e|
         format!("Failed to create design matrix for main model: {}", e)
     )?;
-    console::log_1(
-        &format!(
-            "[calc_hetero_tests] design_info.n_samples: {}, design_info.p_parameters: {}",
-            design_info.n_samples,
-            design_info.p_parameters
-        ).into()
-    );
 
     if design_info.n_samples == 0 {
         return Err("No data for main model fitting in heteroscedasticity tests.".to_string());
     }
     let p_parameters_main_model_slopes =
         design_info.p_parameters - (if design_info.intercept_column.is_some() { 1 } else { 0 });
-    console::log_1(
-        &format!("[calc_hetero_tests] p_parameters_main_model_slopes: {}", p_parameters_main_model_slopes).into()
-    );
 
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e|
         format!("Failed to create Z'WZ matrix for main model: {}", e)
@@ -289,9 +235,6 @@ pub fn calculate_heteroscedasticity_tests(
         .map(|e| e.powi(2))
         .collect();
     let y_aux_for_tests = DVector::from_vec(squared_residuals_data);
-    console::log_1(
-        &format!("[calc_hetero_tests] y_aux_for_tests length: {}", y_aux_for_tests.len()).into()
-    );
 
     let mut white_test_result = None;
     let mut bp_test_result = None;
@@ -300,7 +243,6 @@ pub fn calculate_heteroscedasticity_tests(
 
     // --- White Test --- (Correctly matches df=11 for factor-only models now)
     if config.options.white_test {
-        console::log_1(&"[calc_hetero_tests] Starting White Test calculation".into());
         if p_parameters_main_model_slopes == 0 {
             white_test_result = Some(WhiteTest {
                 statistic: 0.0,
@@ -313,13 +255,6 @@ pub fn calculate_heteroscedasticity_tests(
         } else {
             match create_white_aux_matrix(&design_info, config, n_obs) {
                 Ok(z_white) => {
-                    console::log_1(
-                        &format!(
-                            "[calc_hetero_tests] White Test: z_white.ncols: {}, z_white.nrows: {}",
-                            z_white.ncols(),
-                            z_white.nrows()
-                        ).into()
-                    );
                     if z_white.ncols() > 0 && z_white.nrows() == n_obs {
                         if z_white.ncols() <= 1 {
                             white_test_result = Some(WhiteTest {
@@ -335,22 +270,8 @@ pub fn calculate_heteroscedasticity_tests(
                                 Ok(
                                     (r_sq_aux, _ess, _rss, k_total_aux_white, _df_res_aux_white),
                                 ) => {
-                                    console::log_1(
-                                        &format!(
-                                            "[calc_hetero_tests] White Test OLS: r_sq_aux: {}, k_total_aux_white: {}",
-                                            r_sq_aux,
-                                            k_total_aux_white
-                                        ).into()
-                                    );
                                     let lm_statistic_white = (n_obs as f64) * r_sq_aux;
                                     let df_chi_sq_white = k_total_aux_white.saturating_sub(1);
-                                    console::log_1(
-                                        &format!(
-                                            "[calc_hetero_tests] White Test: lm_statistic: {}, df: {}",
-                                            lm_statistic_white,
-                                            df_chi_sq_white
-                                        ).into()
-                                    );
                                     if df_chi_sq_white > 0 {
                                         let p_value_white = calculate_chi_sq_significance(
                                             lm_statistic_white,
@@ -376,9 +297,6 @@ pub fn calculate_heteroscedasticity_tests(
                                     }
                                 }
                                 Err(e) => {
-                                    console::log_1(
-                                        &format!("[calc_hetero_tests] White Test OLS Error: {}", e).into()
-                                    );
                                     white_test_result = Some(WhiteTest {
                                         statistic: f64::NAN,
                                         df: 0,
@@ -391,9 +309,6 @@ pub fn calculate_heteroscedasticity_tests(
                             }
                         }
                     } else {
-                        console::log_1(
-                            &"[calc_hetero_tests] White Test: Z_white was empty or mismatched.".into()
-                        );
                         white_test_result = Some(WhiteTest {
                             statistic: f64::NAN,
                             df: 0,
@@ -405,9 +320,6 @@ pub fn calculate_heteroscedasticity_tests(
                     }
                 }
                 Err(e) => {
-                    console::log_1(
-                        &format!("[calc_hetero_tests] White Test create_white_aux_matrix Error: {}", e).into()
-                    );
                     white_test_result = Some(WhiteTest {
                         statistic: f64::NAN,
                         df: 0,
@@ -418,9 +330,6 @@ pub fn calculate_heteroscedasticity_tests(
             }
         }
     }
-    console::log_1(
-        &format!("[calc_hetero_tests] White Test Result: {:?}", white_test_result).into()
-    );
 
     // --- Auxiliary matrix Z_pred = [intercept, y_hat] ---
     // This is used for specific versions of BP and F-test to match reference images.
@@ -450,44 +359,19 @@ pub fn calculate_heteroscedasticity_tests(
     } else {
         None
     };
-    console::log_1(
-        &format!(
-            "[calc_hetero_tests] z_pred_matrix_option.is_some(): {}, ncols: {}",
-            z_pred_matrix_option.is_some(),
-            z_pred_matrix_option.as_ref().map_or(0, |m| m.ncols())
-        ).into()
-    );
 
     // --- Breusch-Pagan Test (Using Z_pred = [intercept, y_hat], specific formula ESS_aux / (2 * (RSS_main_mle)^2)) ---
     if config.options.brusch_pagan {
-        console::log_1(
-            &"[calc_hetero_tests] Starting Breusch-Pagan Test (on Z_pred, specific formula)".into()
-        );
         if let Some(z_p) = &z_pred_matrix_option {
             if z_p.ncols() >= 2 {
-                // Need intercept and y_hat
                 match run_simple_ols(&y_aux_for_tests, z_p) {
                     Ok((_r_sq_aux, ess_aux, _rss_aux, k_total_aux, _df_res_aux)) => {
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] BP Test (on Z_pred) OLS: ess_aux: {}, k_total_aux: {}",
-                                ess_aux,
-                                k_total_aux
-                            ).into()
-                        );
                         let rss_main_model = swept_info.s_rss;
                         let sigma_sq_mle_main = if n_obs > 0 {
                             rss_main_model / (n_obs as f64)
                         } else {
                             f64::NAN
                         };
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] BP Test (on Z_pred): rss_main_model: {}, sigma_sq_mle_main: {}",
-                                rss_main_model,
-                                sigma_sq_mle_main
-                            ).into()
-                        );
 
                         if sigma_sq_mle_main.is_nan() || sigma_sq_mle_main.abs() < 1e-12 {
                             bp_test_result = Some(BPTest {
@@ -501,13 +385,6 @@ pub fn calculate_heteroscedasticity_tests(
                         } else {
                             let bp_statistic_val = ess_aux / (2.0 * sigma_sq_mle_main.powi(2));
                             let df_chi_sq_bp_val = k_total_aux.saturating_sub(1);
-                            console::log_1(
-                                &format!(
-                                    "[calc_hetero_tests] BP Test (on Z_pred): bp_statistic: {}, df: {}",
-                                    bp_statistic_val,
-                                    df_chi_sq_bp_val
-                                ).into()
-                            );
 
                             if df_chi_sq_bp_val > 0 {
                                 let p_value_bp_val = calculate_chi_sq_significance(
@@ -535,9 +412,6 @@ pub fn calculate_heteroscedasticity_tests(
                         }
                     }
                     Err(e) => {
-                        console::log_1(
-                            &format!("[calc_hetero_tests] BP Test (on Z_pred) OLS Error: {}", e).into()
-                        );
                         bp_test_result = Some(BPTest {
                             statistic: f64::NAN,
                             df: 0,
@@ -557,9 +431,6 @@ pub fn calculate_heteroscedasticity_tests(
                 });
             }
         } else {
-            console::log_1(
-                &"[calc_hetero_tests] BP Test (on Z_pred): z_pred_matrix_option was None.".into()
-            );
             bp_test_result = Some(BPTest {
                 statistic: f64::NAN,
                 df: 0,
@@ -570,35 +441,15 @@ pub fn calculate_heteroscedasticity_tests(
             });
         }
     }
-    console::log_1(
-        &format!("[calc_hetero_tests] BP Test (on Z_pred) Result: {:?}", bp_test_result).into()
-    );
 
     // --- F-Test (Using Z_pred = [intercept, y_hat]) ---
     if config.options.f_test {
-        console::log_1(&"[calc_hetero_tests] Starting F-Test (on Z_pred)".into());
         if let Some(z_p) = &z_pred_matrix_option {
             if z_p.ncols() >= 2 {
-                // Need intercept and y_hat
                 match run_simple_ols(&y_aux_for_tests, z_p) {
                     Ok((r_sq_aux, _ess, _rss, k_total_aux, df_res_aux)) => {
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] F-Test (on Z_pred) OLS: r_sq_aux: {}, k_total_aux: {}, df_res_aux: {}",
-                                r_sq_aux,
-                                k_total_aux,
-                                df_res_aux
-                            ).into()
-                        );
                         let df1_f = k_total_aux.saturating_sub(1);
                         let df2_f = df_res_aux;
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] F-Test (on Z_pred): df1: {}, df2: {}",
-                                df1_f,
-                                df2_f
-                            ).into()
-                        );
 
                         if df1_f > 0 && df2_f > 0 {
                             let f_statistic_val =
@@ -628,9 +479,6 @@ pub fn calculate_heteroscedasticity_tests(
                         }
                     }
                     Err(e) => {
-                        console::log_1(
-                            &format!("[calc_hetero_tests] F-Test (on Z_pred) OLS Error: {}", e).into()
-                        );
                         f_test_kb_result = Some(FTest {
                             statistic: f64::NAN,
                             df1: 0,
@@ -652,9 +500,6 @@ pub fn calculate_heteroscedasticity_tests(
                 });
             }
         } else {
-            console::log_1(
-                &"[calc_hetero_tests] F-Test (on Z_pred): z_pred_matrix_option was None.".into()
-            );
             f_test_kb_result = Some(FTest {
                 statistic: f64::NAN,
                 df1: 0,
@@ -666,35 +511,16 @@ pub fn calculate_heteroscedasticity_tests(
             });
         }
     }
-    console::log_1(
-        &format!("[calc_hetero_tests] F-Test (on Z_pred) Result: {:?}", f_test_kb_result).into()
-    );
 
     // --- Modified Breusch-Pagan Test (N*R-sq version, using Z_pred = [intercept, y_hat]) ---
     // This matches the reference image for "Modified Breusch-Pagan Test" and is already correct.
     if config.options.mod_brusch_pagan {
-        console::log_1(&"[calc_hetero_tests] Starting Modified BP Test (N*R-sq on Z_pred)".into());
         if let Some(z_p) = &z_pred_matrix_option {
             if z_p.ncols() >= 2 {
-                // Need intercept and y_hat
                 match run_simple_ols(&y_aux_for_tests, z_p) {
                     Ok((r_sq_aux, _ess, _rss, k_total_aux, _df_res_aux)) => {
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] ModBP (N*R-sq on Z_pred) OLS: r_sq_aux: {}, k_total_aux: {}",
-                                r_sq_aux,
-                                k_total_aux
-                            ).into()
-                        );
                         let lm_statistic_modbp = (n_obs as f64) * r_sq_aux;
                         let df_chi_sq_modbp = k_total_aux.saturating_sub(1);
-                        console::log_1(
-                            &format!(
-                                "[calc_hetero_tests] ModBP (N*R-sq on Z_pred): lm_statistic: {}, df: {}",
-                                lm_statistic_modbp,
-                                df_chi_sq_modbp
-                            ).into()
-                        );
 
                         if df_chi_sq_modbp > 0 {
                             let p_value_modbp = calculate_chi_sq_significance(
@@ -721,9 +547,6 @@ pub fn calculate_heteroscedasticity_tests(
                         }
                     }
                     Err(e) => {
-                        console::log_1(
-                            &format!("[calc_hetero_tests] ModBP (N*R-sq on Z_pred) OLS Error: {}", e).into()
-                        );
                         modified_bp_test_result = Some(ModifiedBPTest {
                             statistic: f64::NAN,
                             df: 0,
@@ -745,9 +568,6 @@ pub fn calculate_heteroscedasticity_tests(
                 });
             }
         } else {
-            console::log_1(
-                &"[calc_hetero_tests] ModBP (N*R-sq on Z_pred): z_pred_matrix_option was None.".into()
-            );
             modified_bp_test_result = Some(ModifiedBPTest {
                 statistic: f64::NAN,
                 df: 0,
@@ -758,12 +578,6 @@ pub fn calculate_heteroscedasticity_tests(
             });
         }
     }
-    console::log_1(
-        &format!(
-            "[calc_hetero_tests] ModBP (N*R-sq on Z_pred) Result: {:?}",
-            modified_bp_test_result
-        ).into()
-    );
 
     Ok(HeteroscedasticityTests {
         white: white_test_result,

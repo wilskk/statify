@@ -176,16 +176,16 @@ function getFloat64ArrayMemory0() {
     return cachedFloat64ArrayMemory0;
 }
 
+function getArrayF64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
 function passArrayF64ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 8, 8) >>> 0;
     getFloat64ArrayMemory0().set(arg, ptr / 8);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
-}
-
-function getArrayF64FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 
 let cachedUint32ArrayMemory0 = null;
@@ -207,12 +207,6 @@ function passArray32ToWasm0(arg, malloc) {
     getUint32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
-}
-
-function takeFromExternrefTable0(idx) {
-    const value = wasm.__wbindgen_export_4.get(idx);
-    wasm.__externref_table_dealloc(idx);
-    return value;
 }
 
 function passArrayJsValueToWasm0(array, malloc) {
@@ -356,6 +350,12 @@ export function seasonal_difference(data, season) {
     var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v2;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_export_4.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
 }
 
 const AutocorrelationFinalization = (typeof FinalizationRegistry === 'undefined')
@@ -590,6 +590,30 @@ export class Autocorrelation {
      * @param {Float64Array} autocorrelate
      * @returns {Float64Array}
      */
+    calculate_pacf(autocorrelate) {
+        const ptr0 = passArrayF64ToWasm0(autocorrelate, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.autocorrelation_calculate_pacf(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * @param {Float64Array} partial_autocorelate
+     * @returns {Float64Array}
+     */
+    calculate_pacf_se(partial_autocorelate) {
+        const ptr0 = passArrayF64ToWasm0(partial_autocorelate, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.autocorrelation_calculate_pacf_se(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v2;
+    }
+    /**
+     * @param {Float64Array} autocorrelate
+     * @returns {Float64Array}
+     */
     calculate_ljung_box(autocorrelate) {
         const ptr0 = passArrayF64ToWasm0(autocorrelate, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
@@ -627,30 +651,6 @@ export class Autocorrelation {
         const ptr0 = passStringToWasm0(difference, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.autocorrelation_autocorelate(this.__wbg_ptr, ptr0, len0, seasonally);
-    }
-    /**
-     * @param {Float64Array} autocorrelate
-     * @returns {Float64Array}
-     */
-    calculate_pacf(autocorrelate) {
-        const ptr0 = passArrayF64ToWasm0(autocorrelate, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.autocorrelation_calculate_pacf(this.__wbg_ptr, ptr0, len0);
-        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v2;
-    }
-    /**
-     * @param {Float64Array} partial_autocorelate
-     * @returns {Float64Array}
-     */
-    calculate_pacf_se(partial_autocorelate) {
-        const ptr0 = passArrayF64ToWasm0(partial_autocorelate, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.autocorrelation_calculate_pacf_se(this.__wbg_ptr, ptr0, len0);
-        var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v2;
     }
 }
 
@@ -973,6 +973,80 @@ export class Smoothing {
         wasm.__wbg_smoothing_free(ptr, 0);
     }
     /**
+     * @param {number} distance
+     * @returns {Float64Array}
+     */
+    calculate_sma(distance) {
+        const ret = wasm.smoothing_calculate_sma(this.__wbg_ptr, distance);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} distance
+     * @returns {Float64Array}
+     */
+    calculate_dma(distance) {
+        const ret = wasm.smoothing_calculate_dma(this.__wbg_ptr, distance);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} distance
+     * @returns {Float64Array}
+     */
+    calculate_wma(distance) {
+        const ret = wasm.smoothing_calculate_wma(this.__wbg_ptr, distance);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} alpha
+     * @returns {Float64Array}
+     */
+    calculate_ses(alpha) {
+        const ret = wasm.smoothing_calculate_ses(this.__wbg_ptr, alpha);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} alpha
+     * @returns {Float64Array}
+     */
+    calculate_des(alpha) {
+        const ret = wasm.smoothing_calculate_des(this.__wbg_ptr, alpha);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} alpha
+     * @param {number} beta
+     * @returns {Float64Array}
+     */
+    calculate_holt(alpha, beta) {
+        const ret = wasm.smoothing_calculate_holt(this.__wbg_ptr, alpha, beta);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
+     * @param {number} alpha
+     * @param {number} beta
+     * @param {number} gamma
+     * @param {number} period
+     * @returns {Float64Array}
+     */
+    calculate_winter(alpha, beta, gamma, period) {
+        const ret = wasm.smoothing_calculate_winter(this.__wbg_ptr, alpha, beta, gamma, period);
+        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+        return v1;
+    }
+    /**
      * @param {Float64Array} forecast
      * @returns {any}
      */
@@ -1081,80 +1155,6 @@ export class Smoothing {
         const ptr0 = passStringToWasm0(time_header, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.smoothing_set_time_header(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @param {number} distance
-     * @returns {Float64Array}
-     */
-    calculate_sma(distance) {
-        const ret = wasm.smoothing_calculate_sma(this.__wbg_ptr, distance);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} distance
-     * @returns {Float64Array}
-     */
-    calculate_dma(distance) {
-        const ret = wasm.smoothing_calculate_dma(this.__wbg_ptr, distance);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} distance
-     * @returns {Float64Array}
-     */
-    calculate_wma(distance) {
-        const ret = wasm.smoothing_calculate_wma(this.__wbg_ptr, distance);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} alpha
-     * @returns {Float64Array}
-     */
-    calculate_ses(alpha) {
-        const ret = wasm.smoothing_calculate_ses(this.__wbg_ptr, alpha);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} alpha
-     * @returns {Float64Array}
-     */
-    calculate_des(alpha) {
-        const ret = wasm.smoothing_calculate_des(this.__wbg_ptr, alpha);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} alpha
-     * @param {number} beta
-     * @returns {Float64Array}
-     */
-    calculate_holt(alpha, beta) {
-        const ret = wasm.smoothing_calculate_holt(this.__wbg_ptr, alpha, beta);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @param {number} alpha
-     * @param {number} beta
-     * @param {number} gamma
-     * @param {number} period
-     * @returns {Float64Array}
-     */
-    calculate_winter(alpha, beta, gamma, period) {
-        const ret = wasm.smoothing_calculate_winter(this.__wbg_ptr, alpha, beta, gamma, period);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
     }
 }
 
@@ -1307,9 +1307,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_entries_3265d4158b33e5dc = function(arg0) {
         const ret = Object.entries(arg0);
         return ret;
-    };
-    imports.wbg.__wbg_error_524f506f44df1645 = function(arg0) {
-        console.error(arg0);
     };
     imports.wbg.__wbg_getRandomValues_b8f5dbd5f3995a9e = function() { return handleError(function (arg0, arg1) {
         arg0.getRandomValues(arg1);
@@ -1482,9 +1479,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_versions_c01dfd4722a88165 = function(arg0) {
         const ret = arg0.versions;
         return ret;
-    };
-    imports.wbg.__wbg_warn_4ca3906c248c47c4 = function(arg0) {
-        console.warn(arg0);
     };
     imports.wbg.__wbindgen_as_number = function(arg0) {
         const ret = +arg0;

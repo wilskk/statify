@@ -205,6 +205,7 @@ pub fn create_design_response_weights(
             // Interaction term
             let interaction_rows_unfiltered = factor_utils::create_interaction_design_matrix(
                 data,
+                config,
                 term_name
             )?;
             if
