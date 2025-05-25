@@ -1,5 +1,6 @@
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
-use super::common::{ extract_numeric_from_record, calculate_mean };
+
+use super::core::*;
 
 /// Perform bootstrap analysis
 pub fn perform_bootstrap_analysis(

@@ -5,12 +5,7 @@ use crate::univariate::models::{
     result::SavedVariables,
 };
 
-use super::core::{
-    extract_numeric_from_record,
-    get_factor_levels,
-    data_value_to_string,
-    matrix_inverse,
-};
+use super::core::{ extract_numeric_from_record, get_factor_levels, data_value_to_string };
 
 /// Save variables as requested in the configuration
 pub fn save_variables(

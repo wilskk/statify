@@ -259,6 +259,73 @@ fn generate_all_row_parameter_names_sorted(
     Ok(all_params)
 }
 
+// Helper function to generate L labels dynamically based on model structure
+fn generate_l_labels(
+    model_terms: &Vec<String>,
+    factor_levels_map: &HashMap<String, Vec<String>>
+) -> Vec<String> {
+    let mut l_labels = Vec::new();
+    let mut l_counter = 1;
+
+    // Add L1 for intercept if present
+    if model_terms.contains(&"Intercept".to_string()) {
+        l_labels.push(format!("L{}", l_counter));
+        l_counter += 1;
+    }
+
+    // Add L labels for main effects
+    for term in model_terms {
+        if !term.contains('*') && term != "Intercept" {
+            if let Some(levels) = factor_levels_map.get(term) {
+                for _ in levels {
+                    l_labels.push(format!("L{}", l_counter));
+                    l_counter += 1;
+                }
+            }
+        }
+    }
+
+    // Add L labels for interactions
+    for term in model_terms {
+        if term.contains('*') {
+            let factors = factor_utils::parse_interaction_term(term);
+            let mut total_combinations = 1;
+            for factor in &factors {
+                if let Some(levels) = factor_levels_map.get(factor) {
+                    total_combinations *= levels.len();
+                }
+            }
+            for _ in 0..total_combinations {
+                l_labels.push(format!("L{}", l_counter));
+                l_counter += 1;
+            }
+        }
+    }
+
+    l_labels
+}
+
+// Helper function to parse parameter names dynamically
+fn parse_parameter_name(param_str: &str) -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
+
+    // Handle intercept case
+    if param_str == "Intercept" {
+        map.insert("Intercept".to_string(), "Intercept".to_string());
+        return map;
+    }
+
+    // Handle main effects and interactions
+    for part in param_str.split('*') {
+        let part = part.trim_matches(|c| (c == '[' || c == ']'));
+        if let Some((factor, level)) = part.split_once('=') {
+            map.insert(factor.trim().to_string(), level.trim().to_string());
+        }
+    }
+
+    map
+}
+
 /// Calculate general estimable functions.
 /// This table shows, for each parameter in the model, its estimate, standard error,
 /// t-test, confidence interval, and related statistics.
@@ -510,53 +577,16 @@ pub fn calculate_general_estimable_function(
         &factor_levels_map
     )?;
 
-    // L-COLUMN LABELS (L1, L2, etc.)
-    let l_col_labels = if
-        estimable_beta_param_names.len() == 12 &&
-        config.main.fix_factor
-            .as_ref()
-            .map_or(
-                false,
-                |ff|
-                    ff.contains(&"lowup".to_string()) &&
-                    ff.contains(&"section".to_string()) &&
-                    ff.contains(&"gender".to_string())
-            ) &&
-        model_terms_for_betas
-            .iter()
-            .any(
-                |term|
-                    term.contains("lowup") &&
-                    term.contains("section") &&
-                    term.contains("gender") &&
-                    term.matches('*').count() == 2
-            )
-    {
-        vec![
-            "L1".to_string(),
-            "L2".to_string(),
-            "L4".to_string(),
-            "L5".to_string(),
-            "L7".to_string(),
-            "L9".to_string(),
-            "L10".to_string(),
-            "L15".to_string(),
-            "L19".to_string(),
-            "L21".to_string(),
-            "L25".to_string(),
-            "L27".to_string()
-        ]
-    } else {
-        (0..estimable_beta_param_names.len()).map(|i| format!("L{}", i + 1)).collect()
-    };
+    // Replace the hardcoded L labels with dynamic generation
+    let l_labels = generate_l_labels(&model_terms_for_betas, &factor_levels_map);
 
     // L-MATRIX POPULATION
     let mut l_matrix_values: Vec<Vec<i32>> = Vec::new();
     for row_param_str in &all_row_parameter_names {
-        let mut current_row_coeffs: Vec<i32> = vec![0; l_col_labels.len()]; // Initialize with zeros
-        let parsed_row_param_map = parse_parameter_string_to_btreemap(row_param_str);
+        let mut current_row_coeffs: Vec<i32> = vec![0; l_labels.len()]; // Initialize with zeros
+        let parsed_row_param_map = parse_parameter_name(row_param_str);
 
-        for (l_col_idx, _l_col_label_str) in l_col_labels.iter().enumerate() {
+        for (l_col_idx, _l_col_label_str) in l_labels.iter().enumerate() {
             if l_col_idx >= estimable_beta_param_names.len() {
                 continue; // Should not happen if l_col_labels is same length as estimable_beta_param_names
             }
@@ -653,7 +683,7 @@ pub fn calculate_general_estimable_function(
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
         parameter: all_row_parameter_names,
-        l_label: l_col_labels,
+        l_label: l_labels,
         l_matrix: l_matrix_values,
     };
 

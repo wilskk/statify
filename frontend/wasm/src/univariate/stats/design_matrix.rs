@@ -1,34 +1,33 @@
-/// This module implements the design matrix creation and statistical computations for linear models.
+/// Modul ini mengimplementasikan pembuatan matriks desain dan perhitungan statistik untuk model linear.
 ///
-/// # Statistical Background
+/// # Latar Belakang Statistik
 ///
-/// The statistical analysis is based on the Gauss-Jordan method of matrix inversion, which is
-/// implemented through the sweep operation. Key matrices in this process include:
+/// Analisis statistik didasarkan pada metode Gauss-Jordan untuk inversi matriks, yang
+/// diimplementasikan melalui operasi sweep. Matriks-matriks kunci dalam proses ini meliputi:
 ///
-/// - X: Design matrix containing the predictor variables
-/// - Y: Response vector containing the dependent variable
-/// - W: Optional weight matrix (diagonal) for weighted least squares
-/// - Z: Combined matrix [X Y]
-/// - Z'WZ: Cross-product matrix that forms the basis of the sweep operation
+/// - X: Matriks desain yang berisi variabel prediktor
+/// - Y: Vektor respons yang berisi variabel dependen
+/// - W: Matriks bobot opsional (diagonal) untuk kuadrat terkecil tertimbang
+/// - Z: Matriks gabungan [X Y]
+/// - Z'WZ: Matriks hasil perkalian silang yang menjadi dasar operasi sweep
 ///
-/// After sweeping the first p rows and columns of Z'WZ, we obtain:
+/// Setelah melakukan sweep pada p baris dan kolom pertama dari Z'WZ, kita memperoleh:
 ///
 /// ```text
 /// [  -G    B̂  ]
 /// [  B̂'    S  ]
 /// ```
 ///
-/// where:
-/// - G is the p×p symmetric g₂ general inverse of X'WX
-/// - B̂ is the p×r matrix of parameter estimates
-/// - S is the symmetric r×r matrix of residual sums of squares and cross-products
+/// dimana:
+/// - G adalah invers umum g₂ simetris p×p dari X'WX
+/// - B̂ adalah matriks p×r dari estimasi parameter
+/// - S adalah matriks simetris r×r dari jumlah kuadrat dan perkalian silang residual
 ///
-/// This implementation is based on Algorithm AS 178 by M.R.B. Clarke (1982) and includes
-/// detection of collinearity among the predictor variables.
+/// Implementasi ini didasarkan pada Algoritma AS 178 oleh M.R.B. Clarke (1982) dan mencakup
+/// deteksi kolinearitas di antara variabel prediktor.
 use nalgebra::{ DMatrix, DVector };
 use std::collections::HashMap;
 use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
-
 use super::core::*;
 
 pub struct DesignMatrixInfo {
@@ -54,11 +53,30 @@ pub struct SweptMatrixInfo {
     pub s_rss: f64,
 }
 
+/// Membuat matriks desain, vektor respons, dan bobot dari data analisis.
+///
+/// # Parameter
+///
+/// * `data` - Data analisis yang berisi variabel dependen dan kovariat
+/// * `config` - Konfigurasi untuk analisis univariat
+///
+/// # Hasil
+///
+/// `DesignMatrixInfo` yang berisi:
+/// - x: Matriks desain
+/// - y: Vektor respons
+/// - w: Vektor bobot opsional
+/// - n_samples: Jumlah sampel
+/// - p_parameters: Jumlah parameter
+/// - r_x_rank: Rank dari matriks desain
+/// - term_column_indices: Peta indeks kolom untuk setiap istilah
+/// - intercept_column: Indeks kolom untuk intercept (jika ada)
+/// - term_names: Nama-nama istilah dalam model
+/// - case_indices_to_keep: Indeks kasus yang digunakan dalam analisis
 pub fn create_design_response_weights(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<DesignMatrixInfo, String> {
-    // Log key config fields before generating model terms
     let dep_var_name = config.main.dep_var
         .as_ref()
         .ok_or_else(|| "Dependent variable not specified.".to_string())?;
@@ -87,37 +105,23 @@ pub fn create_design_response_weights(
     }
 
     for (i, record) in data.dependent_data[0].iter().enumerate() {
-        if let Some(dep_val_enum) = record.values.get(dep_var_name) {
-            if let Some(dep_val) = extract_numeric_value(dep_val_enum) {
-                if let Some(wls_var_name) = &config.main.wls_weight {
-                    if let Some(wls_val_enum) = record.values.get(wls_var_name) {
-                        if let Some(wls_val) = extract_numeric_value(wls_val_enum) {
-                            if wls_val > 0.0 {
-                                y_values.push(dep_val);
-                                wls_weights.as_mut().unwrap().push(wls_val);
-                                case_indices_to_keep.push(i);
-                            }
-                        } else {
-                            return Err(format!("Non-numeric WLS weight for case {}", i));
-                        }
-                    } else {
-                        return Err(
-                            format!(
-                                "WLS weight variable '{}' not found for case {}",
-                                wls_var_name,
-                                i
-                            )
-                        );
+        if let Some(dep_val) = extract_numeric_from_record(record, dep_var_name) {
+            if let Some(wls_var_name) = &config.main.wls_weight {
+                if let Some(wls_val) = extract_numeric_from_record(record, wls_var_name) {
+                    if wls_val > 0.0 {
+                        y_values.push(dep_val);
+                        wls_weights.as_mut().unwrap().push(wls_val);
+                        case_indices_to_keep.push(i);
                     }
                 } else {
-                    y_values.push(dep_val);
-                    case_indices_to_keep.push(i);
+                    return Err(format!("Non-numeric WLS weight for case {}", i));
                 }
             } else {
-                return Err(format!("Non-numeric dependent variable value for case {}", i));
+                y_values.push(dep_val);
+                case_indices_to_keep.push(i);
             }
         } else {
-            return Err(format!("Dependent variable '{}' not found for case {}", dep_var_name, i));
+            return Err(format!("Non-numeric dependent variable value for case {}", i));
         }
     }
 
@@ -140,14 +144,23 @@ pub fn create_design_response_weights(
     let y_nalgebra = DVector::from_vec(y_values);
     let w_nalgebra_opt = wls_weights.map(DVector::from_vec);
 
-    let model_terms = generate_model_design_terms(data, config)?;
+    // Generate model terms using existing functions
+    let mut model_terms = Vec::new();
+    if config.model.intercept {
+        model_terms.push("Intercept".to_string());
+    }
+
+    if config.model.non_cust {
+        model_terms.extend(generate_non_cust_terms(config)?);
+    } else if config.model.custom || config.model.build_custom_term {
+        model_terms.extend(generate_custom_terms(config)?);
+    }
+
     let mut x_matrix_cols: Vec<DVector<f64>> = Vec::new();
     let mut term_column_map: HashMap<String, (usize, usize)> = HashMap::new();
     let mut current_col_idx = 0;
     let mut intercept_col_idx: Option<usize> = None;
     let mut final_term_names: Vec<String> = Vec::new();
-
-    use crate::univariate::stats::factor_utils;
 
     for term_name in &model_terms {
         final_term_names.push(term_name.clone());
@@ -167,21 +180,10 @@ pub fn create_design_response_weights(
                 if let Some(cov_data_set) = cov_data_set_option.get(0) {
                     for &idx_to_keep in &case_indices_to_keep {
                         if let Some(record) = cov_data_set.get(idx_to_keep) {
-                            if let Some(val_enum) = record.values.get(term_name) {
-                                cov_values_filtered.push(
-                                    extract_numeric_value(val_enum).ok_or_else(||
-                                        format!("Non-numeric covariate '{}'", term_name)
-                                    )?
-                                );
+                            if let Some(val) = extract_numeric_from_record(record, term_name) {
+                                cov_values_filtered.push(val);
                             } else {
-                                return Err(
-                                    format!(
-                                        "Covariate '{}' not found in record {} for original case {}",
-                                        term_name,
-                                        idx_to_keep,
-                                        idx_to_keep
-                                    )
-                                );
+                                return Err(format!("Non-numeric covariate '{}'", term_name));
                             }
                         } else {
                             return Err(
@@ -201,73 +203,53 @@ pub fn create_design_response_weights(
                 term_matrix_cols.push(DVector::from_vec(cov_values_filtered));
             }
         } else if term_name.contains('*') {
-            let interaction_rows_unfiltered = factor_utils::create_interaction_design_matrix(
-                data,
-                config,
-                term_name
-            )?;
-            if
-                !interaction_rows_unfiltered.is_empty() &&
-                !interaction_rows_unfiltered[0].is_empty()
-            {
-                for j_col in 0..interaction_rows_unfiltered[0].len() {
-                    let mut column_data_filtered: Vec<f64> = Vec::with_capacity(
-                        case_indices_to_keep.len()
-                    );
-                    for &idx_to_keep in &case_indices_to_keep {
-                        if idx_to_keep < interaction_rows_unfiltered.len() {
-                            column_data_filtered.push(
-                                interaction_rows_unfiltered[idx_to_keep][j_col]
-                            );
-                        } else {
-                            return Err(
-                                format!(
-                                    "Original case index {} out of bounds for unfiltered interaction term rows (len {}) for term '{}'",
-                                    idx_to_keep,
-                                    interaction_rows_unfiltered.len(),
-                                    term_name
-                                )
-                            );
-                        }
+            let factors = parse_interaction_term(term_name);
+            let mut interaction_rows = Vec::new();
+
+            // Get all possible combinations of factor levels
+            let mut factor_levels = Vec::new();
+            for factor in &factors {
+                let levels = get_factor_levels(data, factor)?;
+                factor_levels.push((factor.clone(), levels));
+            }
+
+            let mut level_combinations = Vec::new();
+            generate_level_combinations(
+                &factor_levels,
+                &mut HashMap::new(),
+                0,
+                &mut level_combinations
+            );
+
+            // Create design matrix rows for each combination
+            for combo in &level_combinations {
+                let mut row = vec![0.0; n_samples_effective];
+                for (i, record) in data.dependent_data[0].iter().enumerate() {
+                    if matches_combination(record, combo) {
+                        row[i] = 1.0;
                     }
-                    if !column_data_filtered.is_empty() {
-                        term_matrix_cols.push(DVector::from_vec(column_data_filtered));
-                    }
+                }
+                interaction_rows.push(row);
+            }
+
+            if !interaction_rows.is_empty() {
+                for row in interaction_rows {
+                    term_matrix_cols.push(DVector::from_vec(row));
                 }
             }
         } else {
-            let main_effect_rows_unfiltered = factor_utils::create_main_effect_design_matrix(
-                data,
-                term_name
-            )?;
-            if
-                !main_effect_rows_unfiltered.is_empty() &&
-                !main_effect_rows_unfiltered[0].is_empty()
-            {
-                for j_col in 0..main_effect_rows_unfiltered[0].len() {
-                    let mut column_data_filtered: Vec<f64> = Vec::with_capacity(
-                        case_indices_to_keep.len()
-                    );
-                    for &idx_to_keep in &case_indices_to_keep {
-                        if idx_to_keep < main_effect_rows_unfiltered.len() {
-                            column_data_filtered.push(
-                                main_effect_rows_unfiltered[idx_to_keep][j_col]
-                            );
-                        } else {
-                            return Err(
-                                format!(
-                                    "Original case index {} out of bounds for unfiltered main effect rows (len {}) for term '{}'",
-                                    idx_to_keep,
-                                    main_effect_rows_unfiltered.len(),
-                                    term_name
-                                )
-                            );
+            // Handle main effects
+            let levels = get_factor_levels(data, term_name)?;
+            for level in levels {
+                let mut row = vec![0.0; n_samples_effective];
+                for (i, record) in data.dependent_data[0].iter().enumerate() {
+                    if let Some(value) = record.values.get(term_name) {
+                        if data_value_to_string(value) == level {
+                            row[i] = 1.0;
                         }
                     }
-                    if !column_data_filtered.is_empty() {
-                        term_matrix_cols.push(DVector::from_vec(column_data_filtered));
-                    }
                 }
+                term_matrix_cols.push(DVector::from_vec(row));
             }
         }
 
@@ -334,28 +316,28 @@ pub fn create_design_response_weights(
     })
 }
 
-/// Creates the cross-product matrix Z'WZ where Z = [X Y].
+/// Membuat matriks hasil perkalian silang Z'WZ dimana Z = [X Y].
 ///
-/// This function constructs the matrix Z'WZ that is central to the Gauss-Jordan sweep operation.
-/// Z is formed by concatenating the design matrix X and the response vector Y:
+/// Fungsi ini membangun matriks Z'WZ yang menjadi pusat operasi sweep Gauss-Jordan.
+/// Z dibentuk dengan menggabungkan matriks desain X dan vektor respons Y:
 /// Z = [X Y]
 ///
-/// The resulting Z'WZ matrix has the structure:
+/// Matriks Z'WZ yang dihasilkan memiliki struktur:
 /// ```text
 /// [  X'WX    X'WY  ]
 /// [  Y'WX    Y'WY  ]
 /// ```
 ///
-/// When Z'WZ is swept on its first p rows and columns (where p is the number of parameters),
-/// it produces the matrices G, B̂, and S as described in the perform_sweep_and_extract_results function.
+/// Ketika Z'WZ di-sweep pada p baris dan kolom pertama (dimana p adalah jumlah parameter),
+/// menghasilkan matriks G, B̂, dan S seperti yang dijelaskan dalam fungsi perform_sweep_and_extract_results.
 ///
-/// # Parameters
+/// # Parameter
 ///
-/// * `design_info` - Contains the design matrix X, response vector Y, and optional weights W
+/// * `design_info` - Berisi matriks desain X, vektor respons Y, dan bobot opsional W
 ///
-/// # Returns
+/// # Hasil
 ///
-/// The Z'WZ matrix which will be used as input to the sweep operation
+/// Matriks Z'WZ yang akan digunakan sebagai input untuk operasi sweep
 pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMatrix<f64>, String> {
     let x = &design_info.x;
     let y = &design_info.y;
@@ -390,53 +372,53 @@ pub fn create_cross_product_matrix(design_info: &DesignMatrixInfo) -> Result<DMa
     }
 }
 
-/// Performs the sweep operation on a Z'WZ matrix and extracts the results.
+/// Melakukan operasi sweep pada matriks Z'WZ dan mengekstrak hasilnya.
 ///
-/// # The Sweep Operation
+/// # Operasi Sweep
 ///
-/// The Sweep operation transforms the Z'WZ matrix (where Z = [X Y]) into a form that
-/// directly provides parameter estimates, the g₂ inverse, and residual sums of squares.
+/// Operasi Sweep mengubah matriks Z'WZ (dimana Z = [X Y]) menjadi bentuk yang
+/// langsung memberikan estimasi parameter, invers g₂, dan jumlah kuadrat residual.
 ///
-/// After sweeping the first p rows and columns of Z'WZ, the resulting matrix has the form:
+/// Setelah melakukan sweep pada p baris dan kolom pertama dari Z'WZ, matriks yang dihasilkan memiliki bentuk:
 /// ```text
 /// [  -G    B̂  ]
 /// [  B̂'    S  ]
 /// ```
-/// where:
-/// - G is a p×p symmetric g₂ general inverse of X'WX
-/// - B̂ is a p×r matrix of parameter estimates
-/// - S is a symmetric r×r matrix of residual sums of squares and cross-products
+/// dimana:
+/// - G adalah invers umum g₂ simetris p×p dari X'WX
+/// - B̂ adalah matriks p×r dari estimasi parameter
+/// - S adalah matriks simetris r×r dari jumlah kuadrat dan perkalian silang residual
 ///
-/// # Algorithm
+/// # Algoritma
 ///
-/// This implementation is based on Algorithm AS 178: "The Gauss-Jordan Sweep Operator
-/// with Detection of Collinearity" by M.R.B. Clarke (1982) published in the Journal of
+/// Implementasi ini didasarkan pada Algoritma AS 178: "Operator Sweep Gauss-Jordan
+/// dengan Deteksi Kolinearitas" oleh M.R.B. Clarke (1982) yang diterbitkan dalam Journal of
 /// the Royal Statistical Society. Series C (Applied Statistics).
 ///
-/// For each row/column k being swept:
-/// 1. If the pivot element c[k,k] is near zero, the parameter is likely collinear
-/// 2. Otherwise, perform the standard sweep operation:
+/// Untuk setiap baris/kolom k yang di-sweep:
+/// 1. Jika elemen pivot c[k,k] mendekati nol, parameter kemungkinan kolinear
+/// 2. Jika tidak, lakukan operasi sweep standar:
 ///    - c[k,k] = -1/c[k,k]
-///    - For other elements in row k: c[k,j] = c[k,j]/d
-///    - For other elements in column k: c[i,k] = c[i,k]/d
-///    - For all other elements: c[i,j] = c[i,j] + c[i,k] * c[k,j] * d
+///    - Untuk elemen lain dalam baris k: c[k,j] = c[k,j]/d
+///    - Untuk elemen lain dalam kolom k: c[i,k] = c[i,k]/d
+///    - Untuk semua elemen lainnya: c[i,j] = c[i,j] + c[i,k] * c[k,j] * d
 ///
-/// # Parameters
+/// # Parameter
 ///
-/// * `ztwz_matrix` - The Z'WZ matrix where Z = [X Y]
-/// * `p_params_in_model` - The number of parameters p in the model (columns of X)
+/// * `ztwz_matrix` - Matriks Z'WZ dimana Z = [X Y]
+/// * `p_params_in_model` - Jumlah parameter p dalam model (kolom dari X)
 ///
-/// # Returns
+/// # Hasil
 ///
-/// A `SweptMatrixInfo` containing:
-/// - g_inv: The G matrix (negated from the direct sweep result)
-/// - beta_hat: The B̂ matrix of parameter estimates
-/// - s_rss: The S matrix (in this implementation, just the first element of S which is the residual sum of squares)
+/// `SweptMatrixInfo` yang berisi:
+/// - g_inv: Matriks G (dinegasikan dari hasil sweep langsung)
+/// - beta_hat: Matriks B̂ dari estimasi parameter
+/// - s_rss: Matriks S (dalam implementasi ini, hanya elemen pertama dari S yang merupakan jumlah kuadrat residual)
 ///
-/// # References
+/// # Referensi
 ///
-/// - Clarke, M.R.B. (1982) "Algorithm AS 178: The Gauss-Jordan Sweep Operator with Detection of Collinearity"
-/// - Ridout, M.S. and Cobby, J.M. (1989) "Remark AS R78: A Remark on Algorithm AS 178"
+/// - Clarke, M.R.B. (1982) "Algoritma AS 178: Operator Sweep Gauss-Jordan dengan Deteksi Kolinearitas"
+/// - Ridout, M.S. dan Cobby, J.M. (1989) "Catatan AS R78: Catatan tentang Algoritma AS 178"
 pub fn perform_sweep_and_extract_results(
     ztwz_matrix: &DMatrix<f64>,
     p_params_in_model: usize
@@ -574,6 +556,19 @@ pub fn perform_sweep_and_extract_results(
     })
 }
 
+/// Membuat matriks L untuk istilah tertentu dalam model.
+///
+/// Matriks L digunakan untuk menghitung estimasi dan pengujian hipotesis untuk
+/// istilah tertentu dalam model. Matriks ini memiliki dimensi (jumlah kolom istilah) × (jumlah parameter total).
+///
+/// # Parameter
+///
+/// * `design_info` - Informasi matriks desain yang berisi peta kolom istilah
+/// * `term_name` - Nama istilah yang akan dibuat matriks L-nya
+///
+/// # Hasil
+///
+/// Matriks L yang sesuai dengan istilah yang ditentukan, atau error jika istilah tidak ditemukan
 pub fn create_l_matrix_for_term(
     design_info: &DesignMatrixInfo,
     term_name: &str
@@ -596,4 +591,47 @@ pub fn create_l_matrix_for_term(
     }
 
     Ok(l_matrix)
+}
+
+/// Create groups from design matrix for Levene test
+pub fn create_groups_from_design_matrix(
+    design_info: &DesignMatrixInfo,
+    data: &[f64],
+    indices: &[usize]
+) -> Vec<Vec<f64>> {
+    let mut groups: Vec<Vec<f64>> = Vec::new();
+    let mut group_indices: Vec<Vec<usize>> = Vec::new();
+
+    // Initialize groups based on design matrix
+    for i in 0..design_info.x.nrows() {
+        let mut found_group = false;
+        for (_group_idx, group) in group_indices.iter_mut().enumerate() {
+            if design_info.x.row(i) == design_info.x.row(group[0]) {
+                group.push(i);
+                found_group = true;
+                break;
+            }
+        }
+        if !found_group {
+            group_indices.push(vec![i]);
+        }
+    }
+
+    // Map indices to actual data values
+    for group in group_indices {
+        let mut group_data = Vec::new();
+        for &idx in &group {
+            if idx < indices.len() {
+                let original_idx = indices[idx];
+                if original_idx < data.len() {
+                    group_data.push(data[original_idx]);
+                }
+            }
+        }
+        if !group_data.is_empty() {
+            groups.push(group_data);
+        }
+    }
+
+    groups
 }

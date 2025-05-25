@@ -1,3 +1,4 @@
+pub mod basic_math;
 pub mod between_subjects_effects;
 pub mod bootstrap;
 pub mod common;
@@ -14,7 +15,6 @@ pub mod heteroscedasticity;
 pub mod hypothesis_matrix;
 pub mod lack_of_fit;
 pub mod levene_test;
-pub mod matrix_utils;
 pub mod parameter_estimates;
 pub mod posthoc;
 pub mod robust;

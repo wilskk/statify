@@ -63,7 +63,7 @@ pub struct TestsBetweenSubjectsEffects {
     pub notes: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestEffectEntry {
     pub sum_of_squares: f64,
     pub df: usize,
@@ -73,6 +73,21 @@ pub struct TestEffectEntry {
     pub partial_eta_squared: f64,
     pub noncent_parameter: f64,
     pub observed_power: f64,
+}
+
+impl TestEffectEntry {
+    pub fn empty_effect(df: usize) -> Self {
+        TestEffectEntry {
+            sum_of_squares: 0.0,
+            df,
+            mean_square: 0.0,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: 0.0,
+            noncent_parameter: 0.0,
+            observed_power: 0.0,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

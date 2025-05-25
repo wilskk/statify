@@ -169,137 +169,12 @@ pub fn calculate_parameter_estimates(
 
     // C. Generate `actual_beta_names` (corresponds to `estimable_beta_param_names` from estimable_function.rs)
     // This list will map directly to beta_hat_vec and g_inv_matrix.
-    let mut actual_beta_names = vec![String::new(); design_info.p_parameters];
-    let mut col_offset = 0;
+    let actual_beta_names = generate_parameter_names(
+        &sorted_model_terms,
+        &factor_levels_map,
+        config
+    );
 
-    for term_name in &sorted_model_terms {
-        if let Some((_start_idx, end_idx)) = design_info.term_column_indices.get(term_name) {
-            let num_cols_for_term = end_idx - _start_idx + 1;
-
-            if term_name == "Intercept" {
-                if num_cols_for_term == 1 && col_offset < actual_beta_names.len() {
-                    actual_beta_names[col_offset] = "Intercept".to_string();
-                    col_offset += 1;
-                }
-            } else if config.main.covar.as_ref().map_or(false, |covars| covars.contains(term_name)) {
-                if num_cols_for_term == 1 && col_offset < actual_beta_names.len() {
-                    actual_beta_names[col_offset] = term_name.clone();
-                    col_offset += 1;
-                }
-            } else if term_name.contains('*') {
-                // Interaction Term
-                let factors_in_interaction = factor_utils::parse_interaction_term(term_name);
-                // Covariates should not be in interaction terms based on recent factor_utils changes.
-                // If they are, factor_utils::create_interaction_design_matrix would have errored.
-
-                let mut sorted_factors_for_beta_name = factors_in_interaction.clone();
-                sorted_factors_for_beta_name.sort(); // Sort for canonical name construction
-
-                let mut level_indices = vec![0; sorted_factors_for_beta_name.len()];
-                let num_non_ref_levels_per_factor: Vec<usize> = sorted_factors_for_beta_name
-                    .iter()
-                    .map(|f_name| {
-                        // Assuming covariates are NOT in sorted_factors_for_beta_name for interactions
-                        factor_levels_map.get(f_name).map_or(0, |l| l.len().saturating_sub(1))
-                    })
-                    .collect();
-
-                let mut generated_for_this_term = 0;
-                if num_cols_for_term > 0 {
-                    // Only loop if there are columns for this term
-                    'interaction_param_loop: loop {
-                        if
-                            generated_for_this_term >= num_cols_for_term ||
-                            col_offset >= actual_beta_names.len()
-                        {
-                            break;
-                        }
-                        let mut current_raw_parts_for_name = Vec::new();
-                        for (f_idx, f_name) in sorted_factors_for_beta_name.iter().enumerate() {
-                            if let Some(levels) = factor_levels_map.get(f_name) {
-                                if
-                                    num_non_ref_levels_per_factor[f_idx] > 0 &&
-                                    level_indices[f_idx] < num_non_ref_levels_per_factor[f_idx]
-                                {
-                                    current_raw_parts_for_name.push(
-                                        format!("[{}={}]", f_name, levels[level_indices[f_idx]])
-                                    );
-                                } else {
-                                    // This combination would involve a reference level or is out of bounds for non-ref levels
-                                    current_raw_parts_for_name.clear(); // Invalidate this attempt
-                                    break;
-                                }
-                            } else {
-                                // Should not happen if factor_levels_map is comprehensive
-                                current_raw_parts_for_name.clear();
-                                break;
-                            }
-                        }
-
-                        if current_raw_parts_for_name.len() == sorted_factors_for_beta_name.len() {
-                            // All parts successfully generated (non-reference levels)
-                            // No need to sort current_raw_parts_for_name again as sorted_factors_for_beta_name was sorted
-                            actual_beta_names[col_offset] = current_raw_parts_for_name.join("*");
-                            col_offset += 1;
-                            generated_for_this_term += 1;
-                        }
-
-                        // Increment level_indices (odometer logic)
-                        if sorted_factors_for_beta_name.is_empty() {
-                            break 'interaction_param_loop;
-                        }
-                        let mut factor_to_inc = sorted_factors_for_beta_name.len() - 1;
-                        loop {
-                            if num_non_ref_levels_per_factor[factor_to_inc] == 0 {
-                                // Skip factors with no non-ref levels (e.g. single level)
-                                if factor_to_inc == 0 {
-                                    break 'interaction_param_loop;
-                                }
-                                factor_to_inc -= 1;
-                                continue;
-                            }
-                            level_indices[factor_to_inc] += 1;
-                            if
-                                level_indices[factor_to_inc] <
-                                num_non_ref_levels_per_factor[factor_to_inc]
-                            {
-                                break; // No carry
-                            }
-                            level_indices[factor_to_inc] = 0; // Reset current and carry
-                            if factor_to_inc == 0 {
-                                break 'interaction_param_loop;
-                            } // All combinations generated
-                            factor_to_inc -= 1;
-                        }
-                    }
-                }
-            } else {
-                // Main Effect Factor (Fixed or Random)
-                if let Some(levels) = factor_levels_map.get(term_name) {
-                    for i in 0..num_cols_for_term {
-                        // Iterate for the actual number of columns for this term
-                        if
-                            col_offset < actual_beta_names.len() &&
-                            i < levels.len().saturating_sub(1)
-                        {
-                            actual_beta_names[col_offset] = format!(
-                                "[{}={}]",
-                                term_name,
-                                levels[i]
-                            );
-                            col_offset += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // Fill any remaining empty names with generic ones (should ideally not happen if logic is perfect)
-    for i in 0..actual_beta_names.len() {
-        if actual_beta_names[i].is_empty() {
-            actual_beta_names[i] = format!("InternalBeta{}", i + 1);
-        }
-    }
     // --- End: Replicate logic from estimable_function.rs for parameter naming ---
 
     // --- Start: Replicate generate_all_row_parameter_names_sorted and helpers ---
@@ -623,11 +498,10 @@ pub fn calculate_parameter_estimates(
                     (*beta_val - t_crit * std_err, *beta_val + t_crit * std_err)
                 };
                 let non_cent_param = if t_val.is_nan() { f64::NAN } else { t_val.abs() };
-                let power_alpha = 0.05;
                 let obs_power = if t_val.is_nan() || df_error_usize == 0 {
                     f64::NAN
                 } else {
-                    calculate_observed_power_t(t_val.abs(), df_error_usize, Some(power_alpha))
+                    calculate_observed_power_t(t_val.abs(), df_error_usize, sig_level_opt)
                 };
                 let partial_eta_sq_val = if t_val.is_nan() {
                     f64::NAN
@@ -724,7 +598,77 @@ pub fn calculate_parameter_estimates(
     note_letter = ((note_letter as u8) + 1) as char;
 
     // Add note about observed power calculation
-    notes.push(format!("{}. Observed Power is computed using alpha = .05", note_letter));
+    notes.push(
+        format!(
+            "{}. Observed Power (for t-tests) is computed using alpha = {:.2} for its critical value.",
+            note_letter,
+            sig_level
+        )
+    );
 
     Ok(ParameterEstimates { estimates, notes })
+}
+
+// Helper function to generate parameter names dynamically
+fn generate_parameter_names(
+    model_terms: &Vec<String>,
+    factor_levels_map: &HashMap<String, Vec<String>>,
+    config: &UnivariateConfig
+) -> Vec<String> {
+    let mut param_names = Vec::new();
+
+    // Add intercept if present
+    if config.model.intercept && model_terms.contains(&"Intercept".to_string()) {
+        param_names.push("Intercept".to_string());
+    }
+
+    // Add main effects
+    for term in model_terms {
+        if !term.contains('*') && term != "Intercept" {
+            if let Some(levels) = factor_levels_map.get(term) {
+                for level in levels {
+                    param_names.push(format!("[{}={}]", term, level));
+                }
+            }
+        }
+    }
+
+    // Add interactions
+    for term in model_terms {
+        if term.contains('*') {
+            let factors = factor_utils::parse_interaction_term(term);
+            let mut level_combinations = Vec::new();
+
+            // Generate all possible level combinations
+            let mut current_indices = vec![0; factors.len()];
+            'outer: loop {
+                let mut combination = Vec::new();
+                for (i, factor) in factors.iter().enumerate() {
+                    if let Some(levels) = factor_levels_map.get(factor) {
+                        combination.push(format!("[{}={}]", factor, levels[current_indices[i]]));
+                    }
+                }
+                level_combinations.push(combination.join("*"));
+
+                // Increment indices
+                let mut i = factors.len() - 1;
+                loop {
+                    if let Some(levels) = factor_levels_map.get(&factors[i]) {
+                        current_indices[i] += 1;
+                        if current_indices[i] < levels.len() {
+                            break;
+                        }
+                        current_indices[i] = 0;
+                    }
+                    if i == 0 {
+                        break 'outer;
+                    }
+                    i -= 1;
+                }
+            }
+            param_names.extend(level_combinations);
+        }
+    }
+
+    param_names
 }

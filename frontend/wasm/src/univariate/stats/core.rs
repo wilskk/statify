@@ -1,3 +1,4 @@
+pub use crate::univariate::stats::basic_math::*;
 pub use crate::univariate::stats::between_subjects_effects::*;
 pub use crate::univariate::stats::bootstrap::*;
 pub use crate::univariate::stats::common::*;
@@ -10,9 +11,9 @@ pub use crate::univariate::stats::estimable_function::*;
 pub use crate::univariate::stats::factor_utils::*;
 pub use crate::univariate::stats::generate_plots::*;
 pub use crate::univariate::stats::heteroscedasticity::*;
+pub use crate::univariate::stats::hypothesis_matrix::*;
 pub use crate::univariate::stats::lack_of_fit::*;
 pub use crate::univariate::stats::levene_test::*;
-pub use crate::univariate::stats::matrix_utils::*;
 pub use crate::univariate::stats::parameter_estimates::*;
 pub use crate::univariate::stats::posthoc::*;
 pub use crate::univariate::stats::robust::*;
