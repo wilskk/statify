@@ -119,7 +119,6 @@ pub fn calculate_tests_between_subjects_effects(
                     &swept_info.beta_hat,
                     &swept_info.g_inv,
                     &swept_info_full_model_option,
-                    config,
                     data
                 ),
         })?;

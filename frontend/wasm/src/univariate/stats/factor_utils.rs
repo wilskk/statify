@@ -321,7 +321,7 @@ pub fn generate_all_row_parameter_names_sorted(
     let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
 
     // Extract unique factor names from design_info.term_names
-    let mut unique_factors = std::collections::HashSet::new();
+    let mut unique_factors = HashSet::new();
     for term in &design_info.term_names {
         if term == "Intercept" {
             continue;

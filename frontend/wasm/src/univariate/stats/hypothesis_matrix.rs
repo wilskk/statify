@@ -1,12 +1,11 @@
-use std::collections::HashSet;
-use std::collections::HashMap;
+use std::collections::{ HashMap, HashSet };
 
 use nalgebra::{ DMatrix };
 
-use crate::univariate::models::result::DesignMatrixInfo;
-use crate::univariate::models::result::SweptMatrixInfo;
-use crate::univariate::models::AnalysisData;
-use crate::univariate::models::UnivariateConfig;
+use crate::univariate::models::{
+    data::AnalysisData,
+    result::{ DesignMatrixInfo, SweptMatrixInfo },
+};
 
 use super::core::*;
 

@@ -1,23 +1,29 @@
+use std::collections::HashMap;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{ GeneralEstimableFunction, GeneralEstimableFunctionEntry },
+    result::{ DesignMatrixInfo, GeneralEstimableFunction, GeneralEstimableFunctionEntry },
 };
-use std::collections::BTreeSet;
 
 use super::core::*;
 
 /// Calculate general estimable functions.
-/// This table shows, for each parameter in the model, its estimate, standard error,
-/// t-test, confidence interval, and related statistics.
-/// Redundant parameters are set to zero.
+/// This table shows, for each non-redundant parameter in the model, a linear combination
+/// (L-vector) that estimates it, potentially as a contrast against a reference level.
 pub fn calculate_general_estimable_function(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<GeneralEstimableFunction, String> {
-    let design_info = create_design_response_weights(data, config)?;
+    // create_design_response_weights should now return DesignMatrixInfo
+    let design_info: DesignMatrixInfo = create_design_response_weights(data, config)?;
 
-    if design_info.n_samples == 0 || (design_info.p_parameters == 0 && !config.model.intercept) {
+    if
+        design_info.n_samples == 0 ||
+        (design_info.p_parameters == 0 &&
+            design_info.intercept_column.is_none() &&
+            !config.model.intercept)
+    {
+        // Adjusted condition slightly if p_parameters might include intercept implicitly
         return Ok(GeneralEstimableFunction {
             estimable_function: GeneralEstimableFunctionEntry {
                 parameter: Vec::new(),
@@ -28,116 +34,187 @@ pub fn calculate_general_estimable_function(
         });
     }
 
-    // Get all row parameter names and L labels
+    // `all_row_parameter_names` are the names of the model parameters (β).
+    // These correspond to the columns of the design matrix X and the L-matrix.
+    // Their order must match the columns of design_info.x.
     let all_row_parameter_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
-    let l_labels = generate_l_labels(&design_info);
-
-    // L-MATRIX POPULATION
-    let mut l_matrix_values: Vec<Vec<i32>> = Vec::new();
-    for row_param_str in &all_row_parameter_names {
-        let mut current_row_coeffs: Vec<i32> = vec![0; l_labels.len()]; // Initialize with zeros
-        let parsed_row_param_map = parse_parameter_name(row_param_str, &design_info);
-
-        for (l_col_idx, _l_col_label_str) in l_labels.iter().enumerate() {
-            if l_col_idx >= design_info.term_names.len() {
-                continue;
-            }
-            let defining_beta_param_str = &design_info.term_names[l_col_idx];
-            let parsed_defining_beta_map = parse_parameter_name(
-                defining_beta_param_str,
-                &design_info
-            );
-
-            let mut cell_coeff = 0;
-            if row_param_str.as_str() == defining_beta_param_str.as_str() {
-                cell_coeff = 1;
-            } else {
-                // Check if the row parameter represents a reference level for the defining_beta_param
-                let row_factors = parsed_row_param_map.keys().cloned().collect::<BTreeSet<_>>();
-                let defining_factors = parsed_defining_beta_map
-                    .keys()
-                    .cloned()
-                    .collect::<BTreeSet<_>>();
-
-                if
-                    row_factors == defining_factors &&
-                    !parsed_row_param_map.contains_key("Intercept")
-                {
-                    // Must be same term type
-                    let mut term_contribution = 1;
-
-                    for factor_name_key in defining_factors {
-                        let level_in_row = parsed_row_param_map.get(&factor_name_key).unwrap();
-                        let level_in_defining = parsed_defining_beta_map
-                            .get(&factor_name_key)
-                            .unwrap();
-
-                        if
-                            config.main.covar
-                                .as_ref()
-                                .map_or(false, |cv| cv.contains(&factor_name_key))
-                        {
-                            if level_in_row != level_in_defining {
-                                term_contribution = 0;
-                                break;
-                            }
-                        } else {
-                            // It's a fixed factor
-                            if level_in_row == level_in_defining {
-                                // No change, it's the non-reference level of the beta param
-                            } else {
-                                term_contribution = 0; // Different level
-                                break;
-                            }
-                        }
-                    }
-                    cell_coeff = term_contribution;
-                }
-            }
-            current_row_coeffs[l_col_idx] = cell_coeff;
-        }
-        l_matrix_values.push(current_row_coeffs);
+    if all_row_parameter_names.is_empty() {
+        // Simplified check, as p_parameters should reflect this
+        return Ok(GeneralEstimableFunction {
+            estimable_function: GeneralEstimableFunctionEntry {
+                parameter: Vec::new(),
+                l_label: Vec::new(),
+                l_matrix: Vec::new(),
+            },
+            notes: vec!["No parameters in the model.".to_string()],
+        });
     }
 
-    let mut notes = Vec::new();
-    let design_note_string = generate_design_string(&design_info);
-    notes.push(format!("a. Design: {}", design_note_string));
-
-    let mut note_letter = 'b';
-
     // Get redundancy info from parameter_estimates
-    let param_estimates = calculate_parameter_estimates(data, config)?;
-    let is_redundant_vec: Vec<bool> = param_estimates.estimates
+    // `param_estimates.estimates` must align with `all_row_parameter_names` by index.
+    let param_estimates_result = calculate_parameter_estimates(data, config)?; // Pass design_info if needed
+    let is_redundant_vec: Vec<bool> = param_estimates_result.estimates
         .iter()
         .map(|e| e.is_redundant)
         .collect();
 
-    // Filter l_matrix and generate l_labels for non-redundant parameters
-    let mut filtered_l_matrix = Vec::new();
-    let mut filtered_l_labels = Vec::new();
-    let mut l_label_counter = 1;
-    for (i, l_row) in l_matrix_values.iter().enumerate() {
-        if i < is_redundant_vec.len() && !is_redundant_vec[i] {
-            filtered_l_matrix.push(l_row.clone());
-            filtered_l_labels.push(format!("L{}", l_label_counter));
-            l_label_counter += 1;
+    if is_redundant_vec.len() != all_row_parameter_names.len() {
+        return Err(
+            format!(
+                "Mismatch between parameter names ({}) and redundancy information ({}). Ensure alignment. Parameter names: {:?}, Redundancy count: {}",
+                all_row_parameter_names.len(),
+                is_redundant_vec.len(),
+                all_row_parameter_names,
+                is_redundant_vec.len()
+            )
+        );
+    }
+
+    // --- Build Term-to-Reference-Parameter Map ---
+    let mut term_to_ref_param_name: HashMap<String, String> = HashMap::new();
+
+    // Helper to find the reference parameter for a given term.
+    // A term (e.g., "age", "treatment") maps to a range of columns in the design matrix.
+    // The parameters for this term are the names in `all_row_parameter_names` at these column indices.
+    let find_ref_param_for_term = |
+        term_key: &String,
+        design_matrix_info: &DesignMatrixInfo,
+        all_params: &Vec<String>, // These are all_row_parameter_names
+        redundancy_flags: &Vec<bool>
+    | -> Option<String> {
+        if let Some(&(start_col, end_col)) = design_matrix_info.term_column_indices.get(term_key) {
+            // Collect parameter names and their original indices for this term
+            let mut term_params_with_indices: Vec<(String, usize)> = (start_col..end_col) // Assuming end_col is exclusive
+                .filter_map(|col_idx| {
+                    if col_idx < all_params.len() {
+                        Some((all_params[col_idx].clone(), col_idx))
+                    } else {
+                        None // Should not happen if column indices are valid
+                    }
+                })
+                .collect();
+
+            // Sort parameters alphabetically by name to get a consistent "first"
+            term_params_with_indices.sort_by(|a, b| a.0.cmp(&b.0));
+
+            // Prefer the first non-redundant parameter (based on sorted name)
+            for (p_name, original_idx) in &term_params_with_indices {
+                if *original_idx < redundancy_flags.len() && !redundancy_flags[*original_idx] {
+                    return Some(p_name.clone());
+                }
+            }
+            // If all parameters for this term are redundant, pick the first one (alphabetically)
+            // as a structural reference. Its L-vector might be filtered out later if it's redundant.
+            if !term_params_with_indices.is_empty() {
+                return Some(term_params_with_indices[0].0.clone());
+            }
+        }
+        None
+    };
+
+    // Populate for terms listed in design_info.term_names.
+    // design_info.term_names should not include "Intercept" if it's handled by intercept_column.
+    // Or, if "Intercept" is a term, this loop should handle it or filter it out if needed.
+    // Typically, "Intercept" doesn't have a "reference parameter" in the same way.
+    for term_name in &design_info.term_names {
+        if term_name == "Intercept" && design_info.intercept_column.is_some() {
+            // Skip if intercept is handled separately
+            continue;
+        }
+        if
+            let Some(ref_param) = find_ref_param_for_term(
+                term_name,
+                &design_info,
+                &all_row_parameter_names,
+                &is_redundant_vec
+            )
+        {
+            term_to_ref_param_name.insert(term_name.clone(), ref_param);
         }
     }
 
-    let any_beta_param_redundant = is_redundant_vec.iter().any(|&x| x);
+    // --- L-MATRIX POPULATION ---
+    let mut l_matrix_values: Vec<Vec<i32>> =
+        vec![vec![0; all_row_parameter_names.len()]; all_row_parameter_names.len()];
 
-    if any_beta_param_redundant {
-        notes.push(
-            format!("{}. One or more parameters in the model design may be redundant.", note_letter)
+    let param_name_to_col_idx: HashMap<String, usize> = all_row_parameter_names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| (name.clone(), i))
+        .collect();
+
+    for (current_param_idx, current_param_name) in all_row_parameter_names.iter().enumerate() {
+        // current_param_idx is the row index in l_matrix_values we are populating,
+        // and also the column index in the design matrix for current_param_name.
+
+        if let Some(current_param_col_in_l) = param_name_to_col_idx.get(current_param_name) {
+            l_matrix_values[current_param_idx][*current_param_col_in_l] = 1;
+        } else {
+            continue;
+        }
+
+        // Check if this parameter is the intercept
+        let is_intercept_param = design_info.intercept_column.map_or(
+            false,
+            |ic_idx| ic_idx == current_param_idx
         );
-        note_letter = ((note_letter as u8) + 1) as char;
+        if is_intercept_param || current_param_name == "Intercept" {
+            // Double check by name for safety
+            // Intercept is estimated directly. Default assignment (1 at its own column) is correct.
+        } else {
+            // Determine the "owning term" for current_param_name.
+            let mut owning_term_key: Option<String> = None;
+            for (term_key, &(start_col, end_col)) in &design_info.term_column_indices {
+                if current_param_idx >= start_col && current_param_idx < end_col {
+                    // current_param_idx is its column index
+                    owning_term_key = Some(term_key.clone());
+                    break;
+                }
+            }
+
+            if let Some(term_key) = owning_term_key {
+                if let Some(ref_param_for_term) = term_to_ref_param_name.get(&term_key) {
+                    if current_param_name != ref_param_for_term {
+                        if
+                            let Some(ref_param_col_in_l) =
+                                param_name_to_col_idx.get(ref_param_for_term)
+                        {
+                            if *ref_param_col_in_l != current_param_idx {
+                                // Ensure not same parameter
+                                l_matrix_values[current_param_idx][*ref_param_col_in_l] = -1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    let n_samples = design_info.n_samples;
-    let r_x_rank = design_info.r_x_rank;
-    let df_error_val = if n_samples > r_x_rank { (n_samples - r_x_rank) as f64 } else { 0.0 };
-    if df_error_val == 0.0 && design_info.p_parameters > 0 {
-        notes.push(format!("{}. Degrees of freedom for error are 0.", note_letter));
+    // --- Filter L-matrix rows based on parameter redundancy ---
+    let mut filtered_l_matrix: Vec<Vec<i32>> = Vec::new();
+    let mut filtered_l_labels: Vec<String> = Vec::new();
+
+    for (param_idx, l_row_candidate) in l_matrix_values.iter().enumerate() {
+        // The L-vector at l_matrix_values[param_idx] was constructed "for" all_row_parameter_names[param_idx].
+        // Only include it if that parameter is not redundant.
+        if param_idx < is_redundant_vec.len() && !is_redundant_vec[param_idx] {
+            filtered_l_matrix.push(l_row_candidate.clone());
+            filtered_l_labels.push(format!("L{}", param_idx + 1));
+        }
+    }
+
+    // --- Prepare Notes ---
+    let mut notes = Vec::new();
+    let design_note_string = generate_design_string(&design_info);
+    notes.push(format!("a. Design: {}", design_note_string));
+
+    let any_beta_param_redundant = is_redundant_vec.iter().any(|&x| x);
+    if any_beta_param_redundant {
+        notes.push(
+            format!(
+                "b. One or more parameters in the model design may be redundant. L-functions are provided for non-redundant parameters."
+            )
+        );
     }
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
