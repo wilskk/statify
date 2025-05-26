@@ -81,7 +81,7 @@ export function useOptionHook(
                 );
             case 'holt':
                 return (
-                    <div className="flex flex-row gap-2">
+                    <div className="flex sm:flex-row flex-col gap-4">
                         <InputRow 
                             label="alpha" 
                             id="par1" 
@@ -105,7 +105,7 @@ export function useOptionHook(
             case 'winter':
                 return (
                     <div className="flex flex-col gap-2">
-                        <div className="flex flex-row gap-2">
+                        <div className="flex sm:flex-row flex-col gap-4">
                             <InputRow 
                                 label="alpha" 
                                 id="par1" 
@@ -135,8 +135,8 @@ export function useOptionHook(
                             />
                         </div>
                         <div className="flex flex-col mt-2 gap-2">
-                            <label className="w-full text-sm font-semibold">note:</label>
-                            <label className="w-full text-sm font-semibold">winters method need time spesification with periodicity</label>
+                            <label className="w-full text-sm font-semibold">note: winters method need time spesification with periodicity</label>
+                            {/* <label className="w-full text-sm font-semibold"></label> */}
                         </div>
                     </div>
                 );

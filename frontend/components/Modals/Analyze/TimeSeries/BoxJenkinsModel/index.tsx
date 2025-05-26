@@ -17,11 +17,11 @@ import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { useTimeHook } from "./hook/timeHook";
+import { useTimeHook } from "../timeSeriesTimeHook";
 import { useAnalyzeHook } from "./hook/analyzeHook";
 import { useOptionHook } from "./hook/optionHook";
 import VariablesTab from "./VariablesTab";
-import TimeTab from "./TimeTab";
+import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 
 interface BoxJenkinsModelProps {

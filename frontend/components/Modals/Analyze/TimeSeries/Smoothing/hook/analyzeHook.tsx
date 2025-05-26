@@ -21,7 +21,7 @@ export function useAnalyzeHook(
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { addVariable, variables } = useVariableStore();
     const { updateBulkCells } = useDataStore();
-    const { getTypeDate, getYear, getWeek, getDay, setTypeDate } = useTimeSeriesStore();
+    const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName} = useTimeSeriesStore();
 
     const validateInputs = () => {
         if (storeVariables.length === 0) {
@@ -32,6 +32,18 @@ export function useAnalyzeHook(
         }
         if (selectedPeriod[1] === "Not Dated") {
             return "Please select another time specification.";
+        } 
+        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
+            return "5 Work days only available on weekdays (Monday to Friday).";
+        }
+        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
+            return "6 Work days only available on weekdays (Monday to Saturday).";
+        }
+        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
+            return "Work hours only available between 8:00 and 15:00."; 
+        }
+        if (getHour() < 0 || getHour() > 23) {
+            return "Hour must be between 0 and 23.";
         }
         return null;
     };
@@ -69,28 +81,6 @@ export function useAnalyzeHook(
         try {
             const { dataValues, dataVarDef } = prepareData();
 
-            // Tentukan startDate sesuai periode waktu
-            let startDate: number;
-            switch (getTypeDate()) {
-                case "y":
-                case "ys":
-                case "yq":
-                case "ym":
-                startDate = getYear();
-                break;
-                case "wwd5":
-                case "wwd6":
-                case "wd":
-                startDate = getWeek();
-                break;
-                case "dwh":
-                case "dh":
-                startDate = getDay();
-                break;
-                default:
-                startDate = 0;
-            }
-
             // Jalankan smoothing
             const [
                 descriptionTable,
@@ -103,7 +93,10 @@ export function useAnalyzeHook(
                 parameters,
                 parseInt(selectedPeriod[0]),
                 getTypeDate(),
-                startDate,
+                getHour(),
+                getDay(),
+                getMonth(),
+                getYear(),
                 selectedMethod[0]
             );
 
@@ -175,7 +168,24 @@ export function useAnalyzeHook(
         dataVarDef: Variable
     ) => {
         const newVarIndex = variables.length; // Assuming new variable is added at the end
-        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}_${parameters.join("_")}`;
+        let paramString = "";
+        switch(selectedMethod[0]){
+            case "sma":
+            case "dma":
+            case "ses":
+            case "des":
+                paramString = parameters[0]?.toString();
+                break;
+            case "holt":
+                paramString = `${parameters[0]}_${parameters[1]}`;
+                break;
+            case "winter":
+                paramString = `${parameters[0]}_${parameters[1]}_${parameters[2]}`;
+                break;
+            default:
+                paramString = "_";
+        }
+        const newVarName = `${dataVarDef.name} ${selectedMethod[0]}_${paramString}`;
         const newVarLabel = `${dataVarDef.label || dataVarDef.name} (${selectedMethod[0]})`;
 
         const smoothingVariable: Partial<Variable> = {

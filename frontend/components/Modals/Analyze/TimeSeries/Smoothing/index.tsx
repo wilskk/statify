@@ -19,11 +19,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
 import { useOptionHook } from "./hook/optionHook";
-import { useTimeHook } from "./hook/timeHook";
+import { useTimeHook } from "../timeSeriesTimeHook";
 import { useAnalyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
-import TimeTab from "./TimeTab";
+import TimeTab from "../TimeSeriesTimeTab";
 
 interface SmoothingProps {
     onClose: () => void;
@@ -194,7 +194,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose }) => {
 
             </Tabs>
 
-            {combinedError && <div className="px-6 py-2 text-red-600 text-center">{combinedError}</div>}
+            {combinedError && <div className="text-red-600 text-center">{combinedError}</div>}
 
             <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">

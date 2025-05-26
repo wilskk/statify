@@ -47,7 +47,7 @@ const OptionTab: FC<OptionTabProps> = ({
 }) => {
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 border-2 p-4 rounded-md w-[270px]">
+            <div className="flex flex-col gap-4 border-2 p-4 rounded-md w-full">
                 <label className="w-[100px] font-semibold">Method:</label>
                 <RadioGroup
                     value={selectedMethod[0]}
@@ -69,7 +69,7 @@ const OptionTab: FC<OptionTabProps> = ({
                 </RadioGroup>
             </div>
 
-            <div className="border-2 rounded-md w-[420px] pb-2">
+            <div className="border-2 rounded-md w-full pb-2">
                 <div className="mt-4 ml-4">
                     <label className="font-semibold">Unit Root Test Options:</label>
                 </div>
@@ -80,7 +80,7 @@ const OptionTab: FC<OptionTabProps> = ({
                     <RadioGroup
                         value={selectedDifference[0]}
                         onValueChange={handleDifferenceChange}
-                        className="flex flex-row gap-4"
+                        className="flex sm:flex-row flex-col gap-4"
                     >
                         {differences.map((difference) => (
                             <div key={difference.value} className="flex flex-row items-center space-x-2">
@@ -103,7 +103,7 @@ const OptionTab: FC<OptionTabProps> = ({
                     <RadioGroup
                         value={selectedEquation[0]}
                         onValueChange={handleEquationChange}
-                        className="flex flex-row gap-4"
+                        className="flex sm:flex-row flex-col gap-4"
                     >
                         {equations.map((equation) => (
                             <div key={equation.value} className="flex flex-row items-center space-x-2">

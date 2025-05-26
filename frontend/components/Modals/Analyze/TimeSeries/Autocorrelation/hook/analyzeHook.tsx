@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Variable } from "@/types/Variable";
 import { useResultStore } from "@/stores/useResultStore";
+import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
 import { handleAutocorrelation } from "../analyze/analyze";
 
 export function useAnalyzeHook(
@@ -16,6 +17,7 @@ export function useAnalyzeHook(
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
 
     const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName } = useTimeSeriesStore();
 
     const validateInputs = () => {
         if (!storeVariable.length) {
@@ -24,7 +26,19 @@ export function useAnalyzeHook(
         if (selectedPeriod[0] === '0' && seasonally) {
             return "Please select a time specification with periodicity.";
         }
-            return null;
+        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
+            return "5 Work days only available on weekdays (Monday to Friday).";
+        }
+        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
+            return "6 Work days only available on weekdays (Monday to Saturday).";
+        }
+        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
+            return "Work hours only available between 8:00 and 15:00."; 
+        }
+        if (getHour() < 0 || getHour() > 23) {
+            return "Hour must be between 0 and 23.";
+        }
+        return null;
     };
 
     const prepareData = () => {

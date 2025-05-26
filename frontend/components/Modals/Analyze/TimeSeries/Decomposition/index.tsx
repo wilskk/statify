@@ -18,11 +18,11 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
 import { useOptionHook } from "./hook/optionHook";
-import { useTimeHook } from "./hook/timeHook";
+import { useTimeHook } from "../timeSeriesTimeHook";
 import { useAnalyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
-import TimeTab from "./TimeTab";
+import TimeTab from "../TimeSeriesTimeTab";
 
 interface DecompositionProps {
     onClose: () => void;

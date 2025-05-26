@@ -1,5 +1,5 @@
 import init, {Smoothing} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleSmoothing(
     data: (number)[], 
@@ -7,7 +7,10 @@ export async function handleSmoothing(
     pars: (number)[], 
     periodicity: (number),
     typeDate: (string),
-    startDate: (number),
+    startHour: (number),
+    startDay: (number),
+    startMonth: (number),
+    startYear: (number),
     method: string): 
 Promise<[string, number[], string, string]> {
     await init(); // Inisialisasi WebAssembly
@@ -100,7 +103,7 @@ Promise<[string, number[], string, string]> {
         }
         let smoothingArray = Array.from(smoothingValue);
         let smoothingRound = smoothingArray.map(value => Number(parseFloat(value.toString()).toFixed(3)));
-        let dateArray = await generateDate(periodicity, typeDate, startDate, smoothingArray.length);
+        let dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, smoothingArray.length);
         let descriptionJSON = JSON.stringify({
             tables: [
                 {

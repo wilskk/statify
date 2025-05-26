@@ -29,7 +29,7 @@ const OptionTab: FC<OptionTabProps> = ({
     inputSelectedDecompositionMethod,
 }) => {
     return(
-        <div className="border-2 rounded-md w-[370px] p-4 flex flex-col gap-4">
+        <div className="border-2 rounded-md w-full p-4 flex flex-col gap-4">
             <label className="font-semibold">Decomposition Method</label>
             
             <RadioGroup

@@ -30,7 +30,7 @@ const OptionTab: FC<OptionTabProps> = ({
 }) => {
     return (
         <div className="flex flex-col gap-4">
-            <div className="border-2 rounded-md w-[420px] pb-2">
+            <div className="border-2 rounded-md w-full pb-4">
                 <div className="mt-4 ml-4">
                     <label className="font-semibold">Autocorrelation Options:</label>
                 </div>
@@ -69,7 +69,7 @@ const OptionTab: FC<OptionTabProps> = ({
                     <RadioGroup
                         value={selectedDifference[0]}
                         onValueChange={handleSelectedDifference}
-                        className="flex flex-row gap-4"
+                        className="flex sm:flex-row flex-col gap-4"
                     >
                         {differences.map((difference) => (
                             <div key={difference.value} className="flex flex-row items-center space-x-2">

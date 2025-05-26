@@ -21,12 +21,27 @@ export function useAnalyzeHook(
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { addVariable, variables } = useVariableStore();
     const { updateBulkCells } = useDataStore();
-    const { getTypeDate, getYear, getWeek, getDay, setTypeDate } = useTimeSeriesStore();
+    const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName } = useTimeSeriesStore();
 
     const validateInputs = () => {
-        if (storeVariables.length === 0) return "Please select at least one variable.";
-        if (!selectedTrendedMethod[0]) return "Please select a method.";
-        if (selectedPeriod[0] === "0") return "Selected time specification doesn't have periodicity.";
+        if (storeVariables.length === 0) 
+            return "Please select at least one variable.";
+        if (!selectedTrendedMethod[0]) 
+            return "Please select a method.";
+        if (selectedPeriod[0] === "0") 
+            return "Selected time specification doesn't have periodicity.";
+        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
+            return "5 Work days only available on weekdays (Monday to Friday).";
+        }
+        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
+            return "6 Work days only available on weekdays (Monday to Saturday).";
+        }
+        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
+            return "Work hours only available between 8:00 and 15:00."; 
+        }
+        if (getHour() < 0 || getHour() > 23) {
+            return "Hour must be between 0 and 23.";
+        }
         return null;
     };
 
@@ -74,21 +89,6 @@ export function useAnalyzeHook(
                 throw new Error("Data length is not a multiple of the periodicity.");
             }
 
-            let startDate: number;
-            switch (getTypeDate()) {
-                case 'y': case 'ys': case 'yq': case 'ym':
-                    startDate = getYear();
-                    break;
-                case 'wwd5': case 'wwd6': case 'wd':
-                    startDate = getWeek();
-                    break;
-                case 'dwh': case 'dh':
-                    startDate = getDay();
-                    break;
-                default:
-                    startDate = 0;
-            };
-
             const results = await handleDecomposition(
                 dataValues,
                 dataVarDef.name,
@@ -97,7 +97,10 @@ export function useAnalyzeHook(
                 Number(selectedPeriod[0]),
                 selectedPeriod[1],
                 getTypeDate(),
-                startDate
+                getHour(),
+                getDay(),
+                getMonth(),
+                getYear()
             );
 
             // Process and save results - implement similar to your existing logic here

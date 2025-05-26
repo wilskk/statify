@@ -50,7 +50,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'selected',
             title: 'Variable(s):',
             variables: selectedVariables,
-            height: '300px',
+            height: '100px',
             draggableItems: true,
             droppable: true
         }

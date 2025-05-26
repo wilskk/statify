@@ -1,5 +1,5 @@
 import init, {Arima} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleBoxJenkinsModel(
     data: (number)[], 
@@ -8,7 +8,10 @@ export async function handleBoxJenkinsModel(
     forecasting: boolean,
     period: number,
     typeDate: string,
-    startDate: number,
+    startHour: number,
+    startDay: number,
+    startMonth: number,
+    startYear: number
 ):Promise<[string, number[], string, string, string, number[], string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
@@ -31,7 +34,7 @@ export async function handleBoxJenkinsModel(
         let selCritValue = Array.from(arima.selection_criteria());
 
         // Description Table
-        let dateArray = await generateDate(period, typeDate, startDate, data.length);
+        let dateArray = await generateDate(typeDate, startHour, startDay, startMonth, startYear, data.length);
         let descriptionJSON = JSON.stringify({
             tables: [
                 {

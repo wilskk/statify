@@ -22,7 +22,7 @@ export function useAnalyzeHook(
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { addVariable, variables } = useVariableStore();
     const { updateBulkCells } = useDataStore();
-    const { getTypeDate, getYear, getWeek, getDay, setTypeDate } = useTimeSeriesStore();
+    const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName } = useTimeSeriesStore();
 
     const validateInputs = () => {
         if (!storeVariables.length) {
@@ -30,6 +30,18 @@ export function useAnalyzeHook(
         }
         if (selectedPeriod[1] === "Not Dated") {
             return "Please select another time specification.";
+        }
+        if ((getDayName() === "Saturday" || getDayName() === "Sunday") && getTypeDate() === "wwd5") {
+            return "5 Work days only available on weekdays (Monday to Friday).";
+        }
+        if (getDayName() === "Sunday" && getTypeDate() === "wwd6") {
+            return "6 Work days only available on weekdays (Monday to Saturday).";
+        }
+        if ((getHour() < 8 || getHour() > 15) && getTypeDate() === "dwh") {
+            return "Work hours only available between 8:00 and 15:00."; 
+        }
+        if (getHour() < 0 || getHour() > 23) {
+            return "Hour must be between 0 and 23.";
         }
         return null;
     };
@@ -170,27 +182,6 @@ export function useAnalyzeHook(
                 throw new Error("Data length is less than 20 observations.");
             }
 
-            let startDate: number;
-            switch (getTypeDate()) {
-                case "y":
-                case "ys":
-                case "yq":
-                case "ym":
-                    startDate = getYear();
-                    break;
-                case "wwd5":
-                case "wwd6":
-                case "wd":
-                    startDate = getWeek();
-                    break;
-                case "dwh":
-                case "dh":
-                    startDate = getDay();
-                    break;
-                default:
-                    startDate = 0;
-            }
-
             const results = await handleBoxJenkinsModel(
                 dataValues,
                 dataVarDef.name,
@@ -198,7 +189,10 @@ export function useAnalyzeHook(
                 checkedForecasting,
                 Number(selectedPeriod[0]),
                 getTypeDate(),
-                startDate
+                getHour(),
+                getDay(),
+                getMonth(),
+                getYear(),
             );
 
             await processResults(results, dataVarDef);

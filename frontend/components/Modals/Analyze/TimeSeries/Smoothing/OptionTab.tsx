@@ -21,11 +21,11 @@ const OptionTab: FC<OptionTabProps> = ({
     handleSelectedMethod,
 }) => {
     return(
-        <div className="border-2 rounded-md w-[420px] pb-2">
-            <div className="mt-4 ml-4">
+        <div className="w-full p-4 rounded-md border-2">
+            <div>
                 <label className="font-semibold">Smoothing Method</label>
             </div>
-            <div className="w-full pl-4 border-0 rounded-t-md flex flex-row gap-4 mt-4">
+            <div className="w-3/4 border-0 rounded-t-md flex flex-row gap-4 mt-4">
                 <div className="flex items-center">
                     <Label className="font-semibold">method:</Label>
                 </div>
@@ -42,7 +42,7 @@ const OptionTab: FC<OptionTabProps> = ({
                     </SelectContent>
                 </Select>
             </div>
-            <div className="flex flex-col gap-2 p-2 ml-2 mt-2">
+            <div className="mt-4">
                 {inputParameters(selectedMethod[0])}
             </div>
         </div>

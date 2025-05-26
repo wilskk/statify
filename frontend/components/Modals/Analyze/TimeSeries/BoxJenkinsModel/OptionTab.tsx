@@ -20,12 +20,12 @@ const OptionTab: FC<OptionTabProps> = ({
     handleMaOrder,
 }) => {
     return(
-        <div className="border-2 rounded-md w-[420px] flex flex-col gap-4 py-4">
+        <div className="border-2 rounded-md w-full flex flex-col gap-4 py-4">
             <div className="ml-4">
                 <label className="font-semibold">Parameter Order</label>
             </div>
 
-            <div className="flex flex-row ml-4 mt-2">
+            <div className="flex sm:flex-row flex-col gap-4 ml-4 mt-2">
                 {/* AR Order */}
                 <div className="flex flex-row gap-4 ml-4">
                     <div className="flex items-center">
