@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 use nalgebra::{ DMatrix };
 
+use crate::univariate::models::result::DesignMatrixInfo;
+use crate::univariate::models::result::SweptMatrixInfo;
 use crate::univariate::models::AnalysisData;
 use crate::univariate::models::UnivariateConfig;
 
@@ -364,50 +366,86 @@ pub fn construct_type_iii_l_matrix(
         }
     }
 
-    // Extract rows for term_of_interest from this modified H to form L_intermediate
+    // Extract rows for term_of_interest from this modified H to form L_intermediate (Step 3 of image)
+    // Step 3 of image: Apply Gaussian elimination using pivots from the F columns
+    let mut h_matrix_step3 = h_matrix.clone(); // Work on a copy
+
     let (term_start_col_idx, term_end_col_idx) = design_info.term_column_indices
         .get(term_of_interest)
         .ok_or_else(|| format!("Term '{}' not found for Type III L.", term_of_interest))?;
-    let num_param_f = term_end_col_idx - term_start_col_idx + 1;
-    if num_param_f == 0 {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-    let l_intermediate = h_matrix.rows(*term_start_col_idx, num_param_f).clone_owned();
 
-    // Step 3: Extract a basis (linearly independent rows) from l_intermediate
-    let rank = l_intermediate.rank(1e-8);
-    if rank == 0 {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-    if l_intermediate.nrows() == 0 {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-    let mut l_step3_rows: Vec<nalgebra::RowDVector<f64>> = Vec::with_capacity(rank);
-    for i in 0..l_intermediate.nrows() {
-        if l_step3_rows.len() == rank {
-            break;
-        }
-        let current_row = l_intermediate.row(i).into_owned();
-        let mut temp_rows = l_step3_rows.clone();
-        temp_rows.push(current_row.clone());
-        if DMatrix::from_rows(&temp_rows).rank(1e-8) > l_step3_rows.len() {
-            l_step3_rows.push(current_row);
-        }
-    }
-    if l_step3_rows.is_empty() {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-    let l_basis = DMatrix::from_rows(&l_step3_rows);
+    let f_col_indices: Vec<usize> = (*term_start_col_idx..=*term_end_col_idx).collect();
 
-    // Step 4: Partition rows into G0 (F-cols all 0) and G1 (F-cols not all 0), then orthogonalize G1 against G0
+    for &col_idx in &f_col_indices {
+        // Find pivot row (first row with nonzero entry in this column) *in the current state of the matrix*
+        let mut pivot_row_idx = None;
+        for r in 0..h_matrix_step3.nrows() {
+            // Check if this row has already been used as a pivot row (is zeroed out)
+            let row_is_zeroed = h_matrix_step3
+                .row(r)
+                .iter()
+                .all(|&x| x.abs() < 1e-12);
+
+            if !row_is_zeroed && h_matrix_step3[(r, col_idx)].abs() > 1e-10 {
+                pivot_row_idx = Some(r);
+                break;
+            }
+        }
+
+        if let Some(pivot) = pivot_row_idx {
+            let pivot_val = h_matrix_step3[(pivot, col_idx)];
+            if pivot_val.abs() > 1e-10 {
+                // Divide pivot row by pivot value
+                let pivot_row_vals = h_matrix_step3.row(pivot).clone_owned();
+                for c in 0..h_matrix_step3.ncols() {
+                    h_matrix_step3[(pivot, c)] /= pivot_val;
+                }
+                // Zero out the rest of the column
+                for r in 0..h_matrix_step3.nrows() {
+                    if r != pivot {
+                        let factor = h_matrix_step3[(r, col_idx)];
+                        for c in 0..h_matrix_step3.ncols() {
+                            h_matrix_step3[(r, c)] -= factor * h_matrix_step3[(pivot, c)];
+                        }
+                    }
+                }
+                // Set the entire pivot row to zero (as per step 2d logic applied to step 3)
+                for c in 0..h_matrix_step3.ncols() {
+                    h_matrix_step3[(pivot, c)] = 0.0;
+                }
+            }
+        }
+    }
+
+    // After processing all F columns, remove 0 rows from the resulting matrix (Step 3 continued)
+    let mut rows_after_step3_elimination = Vec::new();
+    for i in 0..h_matrix_step3.nrows() {
+        if
+            h_matrix_step3
+                .row(i)
+                .iter()
+                .any(|&x| x.abs() > 1e-12)
+        {
+            rows_after_step3_elimination.push(h_matrix_step3.row(i).clone_owned());
+        }
+    }
+
+    if rows_after_step3_elimination.is_empty() {
+        return Ok(DMatrix::zeros(0, design_info.p_parameters));
+    }
+
+    let l_matrix_step3_result = DMatrix::from_rows(&rows_after_step3_elimination);
+
+    // Step 4: Partition rows into G0 and G1, then orthogonalize G1 against G0 (using result from modified Step 3)
     let (term_start_col_idx, term_end_col_idx) = design_info.term_column_indices
         .get(term_of_interest)
-        .ok_or_else(|| format!("Term '{}' not found for Type III L.", term_of_interest))?;
+        .ok_or_else(|| format!("Term '{}' not found for Type III L.", term_of_interest))?; // Re-get indices for clarity
     let f_col_range = *term_start_col_idx..=*term_end_col_idx;
+
     let mut g0_rows = Vec::new();
     let mut g1_rows = Vec::new();
-    for i in 0..l_basis.nrows() {
-        let row = l_basis.row(i);
+    for i in 0..l_matrix_step3_result.nrows() {
+        let row = l_matrix_step3_result.row(i);
         let is_g0 = f_col_range.clone().all(|j| row[j].abs() < 1e-10);
         if is_g0 {
             g0_rows.push(row.clone_owned());
@@ -427,7 +465,7 @@ pub fn construct_type_iii_l_matrix(
         }
         // Only keep if not zero after orthogonalization
         if row.iter().any(|&x| x.abs() > 1e-10) {
-            g1_orth.push(row);
+            g1_orth.push(row); // Push as RowDVector
         }
     }
     // Combine G1_orth and G0 as final L-matrix
@@ -436,7 +474,7 @@ pub fn construct_type_iii_l_matrix(
     if l_final_rows.is_empty() {
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
-    Ok(DMatrix::from_rows(&l_final_rows))
+    Ok(DMatrix::from_rows(&l_final_rows)) // Convert back to DMatrix
 }
 
 /// Constructs the L-matrix for Type IV Sum of Squares for a given term.
@@ -488,11 +526,6 @@ pub fn construct_type_iv_l_matrix(
     // For each row of L, for each effect containing F, for each parameter column, adjust coefficients.
     let mut l_matrix_type_iv = l_matrix_base_type_iv.clone();
 
-    // Get the dependent variable name from config
-    let dep_var_name = config.main.dep_var
-        .as_ref()
-        .ok_or_else(|| "Dependent variable name not found in config.".to_string())?;
-
     for row_idx in 0..l_matrix_type_iv.nrows() {
         for &effect_name in &effects_containing_f {
             if let Some((start, end)) = design_info.term_column_indices.get(effect_name) {
@@ -534,10 +567,7 @@ pub fn construct_type_iv_l_matrix(
                             let mut combo = HashMap::new();
                             for factor_name in &effect_factors {
                                 if let Some(val) = record.values.get(factor_name) {
-                                    combo.insert(
-                                        factor_name.clone(),
-                                        crate::univariate::stats::common::data_value_to_string(val)
-                                    );
+                                    combo.insert(factor_name.clone(), data_value_to_string(val));
                                 } else {
                                     // This factor should be present if effect_name was parsed correctly.
                                     return Err(
@@ -557,34 +587,31 @@ pub fn construct_type_iv_l_matrix(
                             // Count N(level F): number of non-missing cells for this level of F in the context of the containing effect combination represented by this column.
                             let mut n_level_f_in_effect_context = 0;
 
-                            for records_group in &data.dependent_data {
-                                for record in records_group {
-                                    // Check if record matches the represented combination AND has a non-missing DV
-                                    let matches_represented_combo = matches_combination(
-                                        record,
-                                        &combo
-                                    );
-                                    // Check if the record's level for term_of_interest matches the one represented by the column
-                                    let matches_f_level_for_record = if
-                                        let Some(val) = record.values.get(term_of_interest)
-                                    {
-                                        crate::univariate::stats::common::data_value_to_string(
-                                            val
-                                        ) == *f_level_str
-                                    } else {
-                                        false
-                                    };
+                            // Create a record for matching
+                            let mut record = HashMap::new();
+                            for (factor_name, level) in &combo {
+                                record.insert(factor_name.clone(), level.clone());
+                            }
 
-                                    // A record contributes to N(level F) for this column if it matches the combo *and* the F level *and* has a non-missing DV
-                                    if matches_represented_combo && matches_f_level_for_record {
-                                        if
-                                            let Some(_) = extract_numeric_from_record(
-                                                record,
-                                                dep_var_name
-                                            )
-                                        {
-                                            n_level_f_in_effect_context += 1;
-                                        }
+                            // Get the factor values for the term of interest
+                            if
+                                let Some(factor_values) = get_numeric_values_from_source(
+                                    Some(&data.fix_factor_data_defs),
+                                    Some(&data.fix_factor_data),
+                                    term_of_interest,
+                                    "Fixed factor"
+                                ).ok()
+                            {
+                                // Get matching rows
+                                let matching_rows = matches_combination(&record, data);
+
+                                // Count matches where factor level matches
+                                for factor_val in factor_values {
+                                    if
+                                        matching_rows.contains(&factor_val) &&
+                                        factor_val.to_string() == *f_level_str
+                                    {
+                                        n_level_f_in_effect_context += 1;
                                     }
                                 }
                             }
@@ -597,7 +624,7 @@ pub fn construct_type_iv_l_matrix(
                                 l_matrix_type_iv[(row_idx, col_idx)] = 0.0;
                             }
                         } else {
-                            // If term_of_interest (F) is not a simple factor directly in the combination (e.g., F is an interaction term itself)
+                            // If term_of_interest (F) is not a simple factor directly in the combination
                             // or extraction failed, we cannot determine the specific F level for adjustment based on this combo.
                             // Set to 0 as a conservative approach.
                             l_matrix_type_iv[(row_idx, col_idx)] = 0.0;

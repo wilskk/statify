@@ -35,7 +35,7 @@ impl KMeansClusterAnalysis {
         let mut error_collector = ErrorCollector::default();
 
         // Initialize function logger
-        let mut logger = FunctionLogger::default();
+        let logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let target_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(target_data) {

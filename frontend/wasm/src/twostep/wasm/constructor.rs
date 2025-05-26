@@ -35,7 +35,7 @@ impl TwoStepClusterAnalysis {
         let mut error_collector = ErrorCollector::default();
 
         // Initialize function logger
-        let mut logger = FunctionLogger::default();
+        let logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let categorical_data: Vec<Vec<DataRecord>> = match

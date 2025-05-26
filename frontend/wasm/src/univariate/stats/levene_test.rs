@@ -35,7 +35,16 @@ pub fn calculate_levene_test(
         return Err("No dependent variables found for Levene's test".to_string());
     }
 
-    let design_string = generate_design_string(config);
+    // Create design matrix info for the first dependent variable to get the design string
+    let mut temp_config = config.clone();
+    temp_config.main.dep_var = Some(dep_vars[0].clone());
+    let design_info = match create_design_response_weights(data, &temp_config) {
+        Ok(info) => info,
+        Err(_) => {
+            return Err("Failed to create design matrix".to_string());
+        }
+    };
+    let design_string = generate_design_string(&design_info);
 
     let results: Vec<LeveneTest> = dep_vars
         .into_par_iter()

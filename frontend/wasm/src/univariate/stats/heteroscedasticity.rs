@@ -1,10 +1,10 @@
 use crate::univariate::models::{
     config::UnivariateConfig,
-    data::{ AnalysisData },
-    result::{ BPTest, FTest, HeteroscedasticityTests, ModifiedBPTest, WhiteTest },
+    data::AnalysisData,
+    result::{ BPTest, DesignMatrixInfo, FTest, HeteroscedasticityTests, ModifiedBPTest, WhiteTest },
 };
 use nalgebra::{ DMatrix, DVector };
-use std::collections::{ HashMap, HashSet };
+use std::collections::HashSet;
 
 use super::core::*;
 

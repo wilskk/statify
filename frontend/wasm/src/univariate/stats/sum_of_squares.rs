@@ -1,5 +1,9 @@
 use nalgebra::{ DMatrix, DVector };
-use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
+use crate::univariate::models::{
+    config::UnivariateConfig,
+    data::AnalysisData,
+    result::{ DesignMatrixInfo, SweptMatrixInfo },
+};
 
 use super::core::*;
 

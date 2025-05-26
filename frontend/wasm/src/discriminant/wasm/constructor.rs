@@ -36,7 +36,7 @@ impl DiscriminantAnalysis {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
 
-        let mut logger = FunctionLogger::default();
+        let logger = FunctionLogger::default();
 
         // Parse input data using serde_wasm_bindgen
         let group_data: Vec<Vec<DataRecord>> = match serde_wasm_bindgen::from_value(group_data) {

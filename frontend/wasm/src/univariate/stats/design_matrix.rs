@@ -26,32 +26,13 @@
 /// Implementasi ini didasarkan pada Algoritma AS 178 oleh M.R.B. Clarke (1982) dan mencakup
 /// deteksi kolinearitas di antara variabel prediktor.
 use nalgebra::{ DMatrix, DVector };
-use std::collections::HashMap;
-use crate::univariate::models::{ config::UnivariateConfig, data::AnalysisData };
+use std::{ clone, collections::HashMap };
+use crate::univariate::models::{
+    config::UnivariateConfig,
+    data::AnalysisData,
+    result::{ DesignMatrixInfo, SweptMatrixInfo },
+};
 use super::core::*;
-
-pub struct DesignMatrixInfo {
-    pub x: DMatrix<f64>,
-    pub y: DVector<f64>,
-    pub w: Option<DVector<f64>>,
-    pub n_samples: usize,
-    pub p_parameters: usize,
-    pub r_x_rank: usize,
-    pub term_column_indices: HashMap<String, (usize, usize)>,
-    pub intercept_column: Option<usize>,
-    pub term_names: Vec<String>,
-    pub case_indices_to_keep: Vec<usize>,
-}
-
-#[derive(Debug)]
-pub struct SweptMatrixInfo {
-    /// G: p×p symmetric g₂ general inverse of X'WX (after negation of swept result)
-    pub g_inv: DMatrix<f64>,
-    /// B̂: p×r matrix of parameter estimates
-    pub beta_hat: DVector<f64>,
-    /// S: symmetric r×r matrix of residual sums of squares and cross-products
-    pub s_rss: f64,
-}
 
 /// Membuat matriks desain, vektor respons, dan bobot dari data analisis.
 ///
@@ -223,13 +204,10 @@ pub fn create_design_response_weights(
 
             // Create design matrix rows for each combination
             for combo in &level_combinations {
-                let mut row = vec![0.0; n_samples_effective];
-                for (i, record) in data.dependent_data[0].iter().enumerate() {
-                    if matches_combination(record, combo) {
-                        row[i] = 1.0;
-                    }
+                let row = matches_combination(combo, data);
+                if !row.is_empty() {
+                    interaction_rows.push(row);
                 }
-                interaction_rows.push(row);
             }
 
             if !interaction_rows.is_empty() {
@@ -240,15 +218,12 @@ pub fn create_design_response_weights(
         } else {
             // Handle main effects
             let levels = get_factor_levels(data, term_name)?;
+
+            // Create columns for ALL levels observed in the data for this factor
             for level in levels {
-                let mut row = vec![0.0; n_samples_effective];
-                for (i, record) in data.dependent_data[0].iter().enumerate() {
-                    if let Some(value) = record.values.get(term_name) {
-                        if data_value_to_string(value) == level {
-                            row[i] = 1.0;
-                        }
-                    }
-                }
+                let mut combo = HashMap::new();
+                combo.insert(term_name.clone(), level);
+                let row = matches_combination(&combo, data);
                 term_matrix_cols.push(DVector::from_vec(row));
             }
         }
@@ -288,7 +263,6 @@ pub fn create_design_response_weights(
     let p_parameters = x_nalgebra.ncols();
     let r_x_rank = if p_parameters > 0 { x_nalgebra.rank(1e-10) } else { 0 };
 
-    // Update intercept_col_idx if intercept was added and is the first term
     if
         config.model.intercept &&
         x_nalgebra.ncols() > 0 &&
@@ -296,7 +270,6 @@ pub fn create_design_response_weights(
     {
         if let Some((start, end)) = term_column_map.get("Intercept") {
             if *start == 0 && *end == 0 {
-                // Ensure it's a single column at the start
                 intercept_col_idx = Some(0);
             }
         }
@@ -554,43 +527,6 @@ pub fn perform_sweep_and_extract_results(
         beta_hat: final_beta_hat,
         s_rss,
     })
-}
-
-/// Membuat matriks L untuk istilah tertentu dalam model.
-///
-/// Matriks L digunakan untuk menghitung estimasi dan pengujian hipotesis untuk
-/// istilah tertentu dalam model. Matriks ini memiliki dimensi (jumlah kolom istilah) × (jumlah parameter total).
-///
-/// # Parameter
-///
-/// * `design_info` - Informasi matriks desain yang berisi peta kolom istilah
-/// * `term_name` - Nama istilah yang akan dibuat matriks L-nya
-///
-/// # Hasil
-///
-/// Matriks L yang sesuai dengan istilah yang ditentukan, atau error jika istilah tidak ditemukan
-pub fn create_l_matrix_for_term(
-    design_info: &DesignMatrixInfo,
-    term_name: &str
-) -> Result<DMatrix<f64>, String> {
-    let (term_start_col, term_end_col) = design_info.term_column_indices
-        .get(term_name)
-        .ok_or_else(|| format!("Term '{}' not found in design matrix column map.", term_name))?;
-
-    let current_term_start_col = *term_start_col; // Dereference here to ensure we have the value
-    let current_term_end_col = *term_end_col; // Dereference here
-
-    let num_cols_for_term = current_term_end_col - current_term_start_col + 1;
-    if num_cols_for_term == 0 {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-
-    let mut l_matrix = DMatrix::zeros(num_cols_for_term, design_info.p_parameters);
-    for i in 0..num_cols_for_term {
-        l_matrix[(i, current_term_start_col + i)] = 1.0;
-    }
-
-    Ok(l_matrix)
 }
 
 /// Create groups from design matrix for Levene test

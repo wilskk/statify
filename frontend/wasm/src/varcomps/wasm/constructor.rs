@@ -38,7 +38,7 @@ impl VarianceComponentsAnalysis {
         let mut error_collector = ErrorCollector::default();
 
         // Initialize function logger
-        let mut logger = FunctionLogger::default();
+        let logger = FunctionLogger::default();
 
         // Parse dependent data
         let dependent_data: Vec<Vec<DataRecord>> = match

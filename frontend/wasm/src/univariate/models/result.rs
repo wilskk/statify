@@ -1,5 +1,6 @@
 use serde::{ Deserialize, Serialize };
 use std::collections::{ HashMap, BTreeMap };
+use nalgebra::{ DMatrix, DVector };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateResult {
@@ -18,6 +19,30 @@ pub struct UnivariateResult {
     pub robust_parameter_estimates: Option<ParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DesignMatrixInfo {
+    pub x: DMatrix<f64>,
+    pub y: DVector<f64>,
+    pub w: Option<DVector<f64>>,
+    pub n_samples: usize,
+    pub p_parameters: usize,
+    pub r_x_rank: usize,
+    pub term_column_indices: HashMap<String, (usize, usize)>,
+    pub intercept_column: Option<usize>,
+    pub term_names: Vec<String>,
+    pub case_indices_to_keep: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SweptMatrixInfo {
+    /// G: p×p symmetric g₂ general inverse of X'WX (after negation of swept result)
+    pub g_inv: DMatrix<f64>,
+    /// B̂: p×r matrix of parameter estimates
+    pub beta_hat: DVector<f64>,
+    /// S: symmetric r×r matrix of residual sums of squares and cross-products
+    pub s_rss: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

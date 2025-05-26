@@ -4,6 +4,7 @@ use crate::univariate::models::{
     data::{ AnalysisData, DataValue },
     result::SavedVariables,
 };
+use nalgebra::DMatrix;
 
 use super::core::{ extract_numeric_from_record, get_factor_levels, data_value_to_string };
 
@@ -142,7 +143,18 @@ pub fn save_variables(
     }
 
     // Calculate (X'WX)^-1
-    let xtx_inv = matrix_inverse(&xtx)?;
+    let xtx_matrix = DMatrix::from_vec(p, p, xtx.into_iter().flatten().collect());
+    let xtx_inv = match xtx_matrix.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("Matrix is not invertible".to_string());
+        }
+    };
+    let xtx_inv: Vec<Vec<f64>> = xtx_inv
+        .as_slice()
+        .chunks(p)
+        .map(|chunk| chunk.to_vec())
+        .collect();
 
     // Calculate X'WY
     let mut xty = vec![0.0; p];

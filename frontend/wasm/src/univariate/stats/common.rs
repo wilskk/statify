@@ -1,7 +1,4 @@
-use crate::univariate::models::{
-    data::{ AnalysisData, DataRecord, DataValue },
-    config::UnivariateConfig,
-};
+use crate::univariate::models::{ data::{ AnalysisData, DataRecord, DataValue } };
 
 /// Mengekstrak nilai numerik dari field bernama dalam record.
 pub fn extract_numeric_from_record(record: &DataRecord, field_name: &str) -> Option<f64> {
@@ -32,7 +29,7 @@ pub fn data_value_to_string(value: &DataValue) -> String {
 }
 
 /// Fungsi pembantu untuk mendapatkan nilai numerik dari sumber data tertentu
-fn get_numeric_values_from_source(
+pub fn get_numeric_values_from_source(
     data_defs_option: Option<&Vec<Vec<crate::univariate::models::data::VariableDefinition>>>,
     data_records_option: Option<&Vec<Vec<DataRecord>>>,
     variable_name: &str,
@@ -118,21 +115,4 @@ pub fn apply_weights(values: &[f64], weights: &[f64]) -> Vec<f64> {
         .zip(weights.iter())
         .map(|(v, w)| v * w.sqrt())
         .collect()
-}
-
-/// Menerapkan bobot ke analisis jika WLS ditentukan
-pub(super) fn apply_wls_to_analysis(
-    data: &AnalysisData,
-    config: &UnivariateConfig,
-    values: &[f64]
-) -> Result<Vec<f64>, String> {
-    if let Some(wls_weight) = &config.main.wls_weight {
-        let weights = get_wls_weights(data, wls_weight)?;
-        if weights.len() != values.len() {
-            return Err("WLS weights length does not match data length".to_string());
-        }
-        Ok(apply_weights(values, &weights))
-    } else {
-        Ok(values.to_vec())
-    }
 }
