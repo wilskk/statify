@@ -132,6 +132,7 @@ pub struct ParameterEstimateEntry {
     pub partial_eta_squared: f64,
     pub noncent_parameter: f64,
     pub observed_power: f64,
+    pub is_redundant: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

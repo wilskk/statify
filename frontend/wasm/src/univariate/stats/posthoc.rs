@@ -524,6 +524,7 @@ pub fn calculate_posthoc_tests(
                         partial_eta_squared,
                         noncent_parameter,
                         observed_power,
+                        is_redundant: false,
                     });
                 }
             }

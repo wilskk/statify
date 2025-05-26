@@ -229,6 +229,7 @@ pub fn calculate_robust_parameter_estimates(
                 } else {
                     0.0
                 },
+                is_redundant: false,
             });
         }
 

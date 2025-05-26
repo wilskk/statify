@@ -70,8 +70,6 @@ pub fn calculate_parameter_estimates(
     // Track aliased terms
     let mut term_is_aliased_map: HashMap<String, bool> = HashMap::new();
 
-    web_sys::console::log_1(&format!("all_parameter_names: {:?}", all_parameter_names).into());
-
     // Process each parameter
     for param_name in &all_parameter_names {
         let (
@@ -196,6 +194,7 @@ pub fn calculate_parameter_estimates(
             partial_eta_squared: final_partial_eta_sq,
             noncent_parameter: final_non_cent_param,
             observed_power: final_obs_power,
+            is_redundant: is_redundant_param,
         });
     }
 

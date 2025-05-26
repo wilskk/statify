@@ -1,32 +1,5 @@
-/// Modul ini mengimplementasikan pembuatan matriks desain dan perhitungan statistik untuk model linear.
-///
-/// # Latar Belakang Statistik
-///
-/// Analisis statistik didasarkan pada metode Gauss-Jordan untuk inversi matriks, yang
-/// diimplementasikan melalui operasi sweep. Matriks-matriks kunci dalam proses ini meliputi:
-///
-/// - X: Matriks desain yang berisi variabel prediktor
-/// - Y: Vektor respons yang berisi variabel dependen
-/// - W: Matriks bobot opsional (diagonal) untuk kuadrat terkecil tertimbang
-/// - Z: Matriks gabungan [X Y]
-/// - Z'WZ: Matriks hasil perkalian silang yang menjadi dasar operasi sweep
-///
-/// Setelah melakukan sweep pada p baris dan kolom pertama dari Z'WZ, kita memperoleh:
-///
-/// ```text
-/// [  -G    B̂  ]
-/// [  B̂'    S  ]
-/// ```
-///
-/// dimana:
-/// - G adalah invers umum g₂ simetris p×p dari X'WX
-/// - B̂ adalah matriks p×r dari estimasi parameter
-/// - S adalah matriks simetris r×r dari jumlah kuadrat dan perkalian silang residual
-///
-/// Implementasi ini didasarkan pada Algoritma AS 178 oleh M.R.B. Clarke (1982) dan mencakup
-/// deteksi kolinearitas di antara variabel prediktor.
 use nalgebra::{ DMatrix, DVector };
-use std::{ clone, collections::HashMap };
+use std::collections::HashMap;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,

@@ -2,7 +2,7 @@
 use std::collections::{ HashMap };
 use std::hash::{ Hash, Hasher };
 use std::collections::hash_map::DefaultHasher;
-use nalgebra::{ DMatrix, DVector, RowDVector };
+use nalgebra::RowDVector;
 
 use crate::univariate::models::{
     config::UnivariateConfig,

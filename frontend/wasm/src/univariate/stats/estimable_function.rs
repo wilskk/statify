@@ -3,7 +3,7 @@ use crate::univariate::models::{
     data::AnalysisData,
     result::{ GeneralEstimableFunction, GeneralEstimableFunctionEntry },
 };
-use std::collections::{ HashMap, BTreeSet };
+use std::collections::BTreeSet;
 
 use super::core::*;
 
@@ -103,15 +103,28 @@ pub fn calculate_general_estimable_function(
     let design_note_string = generate_design_string(&design_info);
     notes.push(format!("a. Design: {}", design_note_string));
 
-    let ztwz_matrix = create_cross_product_matrix(&design_info)?;
-    let swept_info = perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)?;
-    let g_inv_matrix = &swept_info.g_inv;
     let mut note_letter = 'b';
 
-    let any_beta_param_redundant = (0..design_info.p_parameters).any(|i| {
-        let g_ii = g_inv_matrix.get((i, i)).cloned().unwrap_or(0.0);
-        g_ii.abs() < 1e-9 || g_ii.is_nan()
-    });
+    // Get redundancy info from parameter_estimates
+    let param_estimates = calculate_parameter_estimates(data, config)?;
+    let is_redundant_vec: Vec<bool> = param_estimates.estimates
+        .iter()
+        .map(|e| e.is_redundant)
+        .collect();
+
+    // Filter l_matrix and generate l_labels for non-redundant parameters
+    let mut filtered_l_matrix = Vec::new();
+    let mut filtered_l_labels = Vec::new();
+    let mut l_label_counter = 1;
+    for (i, l_row) in l_matrix_values.iter().enumerate() {
+        if i < is_redundant_vec.len() && !is_redundant_vec[i] {
+            filtered_l_matrix.push(l_row.clone());
+            filtered_l_labels.push(format!("L{}", l_label_counter));
+            l_label_counter += 1;
+        }
+    }
+
+    let any_beta_param_redundant = is_redundant_vec.iter().any(|&x| x);
 
     if any_beta_param_redundant {
         notes.push(
@@ -129,8 +142,8 @@ pub fn calculate_general_estimable_function(
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
         parameter: all_row_parameter_names,
-        l_label: l_labels,
-        l_matrix: l_matrix_values,
+        l_label: filtered_l_labels,
+        l_matrix: filtered_l_matrix,
     };
 
     Ok(GeneralEstimableFunction {

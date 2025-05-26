@@ -172,6 +172,7 @@ pub fn calculate_emmeans(
                 } else {
                     0.0
                 },
+                is_redundant: false,
             });
         }
 
@@ -249,6 +250,7 @@ pub fn calculate_emmeans(
                         } else {
                             0.0
                         },
+                        is_redundant: false,
                     });
                 }
             }

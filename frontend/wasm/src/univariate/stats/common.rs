@@ -11,6 +11,36 @@ pub fn extract_numeric_from_record(record: &DataRecord, field_name: &str) -> Opt
     })
 }
 
+/// Menggabungkan semua record dari dependent, fixed, random, dan covariate data
+pub fn collect_all_records(data: &AnalysisData) -> Vec<&DataRecord> {
+    let mut records = Vec::new();
+    for set in &data.dependent_data {
+        for rec in set {
+            records.push(rec);
+        }
+    }
+    for set in &data.fix_factor_data {
+        for rec in set {
+            records.push(rec);
+        }
+    }
+    if let Some(random_sets) = &data.random_factor_data {
+        for set in random_sets {
+            for rec in set {
+                records.push(rec);
+            }
+        }
+    }
+    if let Some(cov_sets) = &data.covariate_data {
+        for set in cov_sets {
+            for rec in set {
+                records.push(rec);
+            }
+        }
+    }
+    records
+}
+
 /// Mengkonversi DataValue ke representasi String
 pub fn data_value_to_string(value: &DataValue) -> String {
     match value {

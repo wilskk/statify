@@ -78,28 +78,12 @@ pub fn calculate_tests_between_subjects_effects(
         df_model_overall
     );
 
-    // Calculate effects based on SS method
-    let model_terms_to_process: Vec<String> = if config.model.intercept {
-        let mut terms = vec!["Intercept".to_string()];
-        terms.extend(
-            design_info.term_names
-                .iter()
-                .filter(|t| **t != "Intercept")
-                .cloned()
-        );
-        terms
-    } else {
-        design_info.term_names
-            .iter()
-            .filter(|t| **t != "Intercept")
-            .cloned()
-            .collect()
-    };
+    let all_model_terms_in_design = &design_info.term_names; // This list includes all terms initially considered for the design matrix
+    web_sys::console::log_1(
+        &format!("all_model_terms_in_design: {:?}", all_model_terms_in_design).into()
+    );
 
-    for term_name in model_terms_to_process {
-        // Pass the original list of all terms to construct_type_iii_l_matrix if needed
-        let all_model_terms_in_design = &design_info.term_names; // This list includes all terms initially considered for the design matrix
-
+    for term_name in all_model_terms_in_design {
         let (ss_term, df_term) = (match config.model.sum_of_square_method {
             SumOfSquaresMethod::TypeI =>
                 calculate_type_i_ss(
@@ -180,8 +164,6 @@ pub fn calculate_tests_between_subjects_effects(
         },
     })
 }
-
-// Helper functions
 
 fn create_empty_results(
     design_info: &DesignMatrixInfo
@@ -269,33 +251,6 @@ fn calculate_r_squared_metrics(
     };
 
     (current_r_squared, current_adj_r_squared)
-}
-
-fn calculate_intercept_entry(
-    design_info: &DesignMatrixInfo,
-    ms_error: f64,
-    df_error: usize
-) -> TestEffectEntry {
-    let sum_y = design_info.y.iter().sum::<f64>();
-    let ss_intercept = if design_info.n_samples > 0 {
-        sum_y.powi(2) / (design_info.n_samples as f64)
-    } else {
-        0.0
-    };
-    let df_intercept = 1;
-    let ms_intercept = ss_intercept;
-    let f_intercept = if ms_error > 1e-9 { ms_intercept / ms_error } else { f64::NAN };
-    let sig_intercept = calculate_f_significance(df_intercept, df_error, f_intercept);
-    TestEffectEntry {
-        sum_of_squares: ss_intercept,
-        df: df_intercept,
-        mean_square: ms_intercept,
-        f_value: f_intercept,
-        significance: sig_intercept,
-        partial_eta_squared: f64::NAN,
-        noncent_parameter: f64::NAN,
-        observed_power: f64::NAN,
-    }
 }
 
 fn add_model_summary_entries(
