@@ -562,7 +562,6 @@ pub fn construct_type_iv_l_matrix(
     term_of_interest: &str,
     all_model_terms: &[String],
     swept_info: &Option<SweptMatrixInfo>,
-    config: &UnivariateConfig, // Added config parameter to get dep_var_name
     data: &AnalysisData // Keep data parameter for cell counting
 ) -> Result<DMatrix<f64>, String> {
     // 1. Perform Type III steps 1, 2, and 3.
