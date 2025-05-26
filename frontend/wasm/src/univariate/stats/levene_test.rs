@@ -87,7 +87,21 @@ pub fn calculate_levene_test(
                 (residuals.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
             };
 
-            let groups = create_groups_from_design_matrix(&design_info, &data_for_levene, &indices);
+            let mut groups = create_groups_from_design_matrix(
+                &design_info,
+                &data_for_levene,
+                &indices
+            );
+            // Filter out groups with N <= 1 if there are no covariates (SPSS behavior)
+            if
+                config.main.covar.is_none() ||
+                config.main.covar.as_ref().map_or(true, |c| c.is_empty())
+            {
+                groups = groups
+                    .into_iter()
+                    .filter(|g| g.len() > 1)
+                    .collect();
+            }
             if groups.is_empty() {
                 return None;
             }

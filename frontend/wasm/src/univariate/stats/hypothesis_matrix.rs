@@ -63,6 +63,7 @@ pub fn construct_type_i_l_matrix(
 
     // Step 2: SWEEP L0 on columns for effects before F_j.
     let mut l0_swept = sweep_matrix_on_columns(l0, &cols_before_fj);
+
     // Step 3: Set columns and rows of (swept) L0 for effects before F_j to 0.
     for &col_idx in &cols_before_fj {
         if col_idx < l0_swept.ncols() {
@@ -257,28 +258,14 @@ pub fn construct_type_ii_l_matrix(
 /// and removes rows that become entirely zero *during its operations*.
 /// This is suitable for Step 3 of Type III L-matrix construction.
 fn eliminate_columns(matrix: &mut DMatrix<f64>, col_indices: &[usize]) {
-    use wasm_bindgen::JsValue;
-    use web_sys::console;
-
     if matrix.nrows() == 0 {
         return;
     }
 
     let mut preserved_rows = vec![true; matrix.nrows()];
-    // processed_cols is not used in the current logic, but kept if it was intended for future use
-    // let mut processed_cols = vec![false; matrix.ncols()];
 
     for &col_idx in col_indices {
         if col_idx >= matrix.ncols() {
-            console::log_1(
-                &JsValue::from_str(
-                    &format!(
-                        "eliminate_columns - Warning: col_idx {} is out of bounds ({} cols)",
-                        col_idx,
-                        matrix.ncols()
-                    )
-                )
-            );
             continue;
         }
         // Find the first non-zero element in this column among preserved rows
@@ -294,17 +281,6 @@ fn eliminate_columns(matrix: &mut DMatrix<f64>, col_indices: &[usize]) {
             let pivot_val = matrix[(pivot, col_idx)];
             // Ensure pivot_val is substantially non-zero before dividing
             if pivot_val.abs() > 1e-10 {
-                console::log_1(
-                    &JsValue::from_str(
-                        &format!(
-                            "eliminate_columns - Processing pivot row {} for col {}, val {:.4e}",
-                            pivot,
-                            col_idx,
-                            pivot_val
-                        )
-                    )
-                );
-
                 // Divide pivot row
                 for c in 0..matrix.ncols() {
                     matrix[(pivot, c)] /= pivot_val;
@@ -331,25 +307,7 @@ fn eliminate_columns(matrix: &mut DMatrix<f64>, col_indices: &[usize]) {
                         }
                     }
                 }
-                // processed_cols[col_idx] = true; // Mark column as processed
-            } else {
-                console::log_1(
-                    &JsValue::from_str(
-                        &format!(
-                            "eliminate_columns - Skipping col {} due to near-zero pivot value {:.4e} in selected pivot row {}",
-                            col_idx,
-                            pivot_val,
-                            pivot
-                        )
-                    )
-                );
             }
-        } else {
-            console::log_1(
-                &JsValue::from_str(
-                    &format!("eliminate_columns - No suitable pivot found for col {}", col_idx)
-                )
-            );
         }
     }
 
@@ -375,11 +333,7 @@ pub fn construct_type_iii_l_matrix(
     term_of_interest: &str,
     all_model_terms: &[String],
     swept_info: &Option<SweptMatrixInfo>
-    // parse_interaction_term_fn: fn(&str) -> Vec<String> // Pass as argument or ensure it's in scope
 ) -> Result<DMatrix<f64>, String> {
-    use wasm_bindgen::JsValue;
-    use web_sys::console;
-
     // Step 0: Validate input
     let g_inv = swept_info
         .as_ref()
@@ -387,27 +341,24 @@ pub fn construct_type_iii_l_matrix(
         .g_inv.clone();
 
     if design_info.p_parameters == 0 {
-        console::log_1(&"p_parameters == 0, returning empty L matrix.".into());
         return Ok(DMatrix::zeros(0, 0));
     }
 
     if g_inv.nrows() != design_info.p_parameters || g_inv.ncols() != design_info.p_parameters {
-        let err_msg = format!(
-            "G_inv dimensions ({},{}) do not match p_parameters ({}) for Type III L-matrix.",
-            g_inv.nrows(),
-            g_inv.ncols(),
-            design_info.p_parameters
+        return Err(
+            format!(
+                "G_inv dimensions ({},{}) do not match p_parameters ({}) for Type III L-matrix.",
+                g_inv.nrows(),
+                g_inv.ncols(),
+                design_info.p_parameters
+            )
         );
-        console::log_1(&err_msg.clone().into());
-        return Err(err_msg);
     }
 
     let x_matrix = &design_info.x;
     let w_matrix: DMatrix<f64> = if let Some(w_vec) = &design_info.w {
         if w_vec.len() != design_info.n_samples {
-            let err_msg = "Weight vector length mismatch for Type III L-matrix.".to_string();
-            console::log_1(&err_msg.clone().into());
-            return Err(err_msg);
+            return Err("Weight vector length mismatch for Type III L-matrix.".to_string());
         }
         DMatrix::from_diagonal(w_vec)
     } else {
@@ -417,20 +368,10 @@ pub fn construct_type_iii_l_matrix(
     // Step 1: H = (X'WX)^- X'WX
     let xt_w = x_matrix.transpose() * &w_matrix;
     let xt_w_x = &xt_w * x_matrix;
-    let h_initial = &g_inv * xt_w_x; // Renamed to h_initial to clarify stages
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 1 - Initial H matrix ({}x{}): {:?}",
-                h_initial.nrows(),
-                h_initial.ncols(),
-                h_initial
-            )
-        )
-    );
+    let h_initial = &g_inv * xt_w_x;
 
     // Step 2: Zero out columns for effects not containing F (term_of_interest) by row operations (2a-2d)
-    let factors_in_f_set: HashSet<_> = parse_interaction_term(term_of_interest) // Assuming parse_interaction_term is available
+    let factors_in_f_set: HashSet<_> = parse_interaction_term(term_of_interest)
         .into_iter()
         .collect();
     let mut cols_to_zero_in_step2: Vec<usize> = Vec::new();
@@ -445,18 +386,6 @@ pub fn construct_type_iii_l_matrix(
         let f_is_subset_of_other = factors_in_f_set.is_subset(&factors_other);
         let will_zero = !f_is_subset_of_other;
 
-        console::log_1(
-            &JsValue::from_str(
-                &format!(
-                    "Step 2 - Term evaluation: F='{}', Other='{}', F_is_subset_of_Other: {}, Will_zero_cols_of_Other: {}",
-                    term_of_interest,
-                    other_term,
-                    f_is_subset_of_other,
-                    will_zero
-                )
-            )
-        );
-
         if will_zero {
             if let Some((start, end)) = design_info.term_column_indices.get(other_term) {
                 for i in *start..=*end {
@@ -468,29 +397,11 @@ pub fn construct_type_iii_l_matrix(
     cols_to_zero_in_step2.sort_unstable();
     cols_to_zero_in_step2.dedup();
 
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 2 - Columns to zero (effects not containing F): {:?}",
-                cols_to_zero_in_step2
-            )
-        )
-    );
-
     let mut h_after_step2 = h_initial.clone();
 
     if h_after_step2.nrows() > 0 {
         for &col_idx_to_zero in &cols_to_zero_in_step2 {
             if col_idx_to_zero >= h_after_step2.ncols() {
-                console::log_1(
-                    &JsValue::from_str(
-                        &format!(
-                            "Step 2 - Warning: col_idx_to_zero {} is out of bounds for H matrix ({} cols)",
-                            col_idx_to_zero,
-                            h_after_step2.ncols()
-                        )
-                    )
-                );
                 continue;
             }
 
@@ -512,16 +423,6 @@ pub fn construct_type_iii_l_matrix(
 
             if let Some(pivot_r) = pivot_r_opt {
                 let pivot_val = h_after_step2[(pivot_r, col_idx_to_zero)];
-                console::log_1(
-                    &JsValue::from_str(
-                        &format!(
-                            "Step 2 - Processing col_idx_to_zero: {}. Found pivot at row {}, value: {:.4e}",
-                            col_idx_to_zero,
-                            pivot_r,
-                            pivot_val
-                        )
-                    )
-                );
 
                 if pivot_val.abs() > 1e-10 {
                     for c_idx in 0..h_after_step2.ncols() {
@@ -539,41 +440,11 @@ pub fn construct_type_iii_l_matrix(
                             }
                         }
                     }
-                    console::log_1(
-                        &JsValue::from_str(&format!("Step 2d - Zeroing out pivot row {}", pivot_r))
-                    );
                     h_after_step2.row_mut(pivot_r).fill(0.0);
-                } else {
-                    console::log_1(
-                        &JsValue::from_str(
-                            &format!(
-                                "Step 2 - Skipping col_idx_to_zero: {} due to near-zero pivot value: {:.4e} in selected pivot row {}",
-                                col_idx_to_zero,
-                                pivot_val,
-                                pivot_r
-                            )
-                        )
-                    );
                 }
-            } else {
-                console::log_1(
-                    &JsValue::from_str(
-                        &format!("Step 2 - No suitable pivot found for col_idx_to_zero: {} (column might be already zero or all potential pivot rows are zero)", col_idx_to_zero)
-                    )
-                );
             }
         }
     }
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 2 - H after applying 2a-2d for cols_not_containing_F ({}x{}): {:?}",
-                h_after_step2.nrows(),
-                h_after_step2.ncols(),
-                h_after_step2
-            )
-        )
-    );
 
     // Step 3: Gaussian elimination on columns of F (term_of_interest) using 2a, 2b, 2c.
     // Then remove all 0 rows.
@@ -584,29 +455,10 @@ pub fn construct_type_iii_l_matrix(
         )?;
 
     let f_col_indices: Vec<usize> = (*f_start..=*f_end).collect();
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 3 - F_col_indices (for term '{}'): {:?}",
-                term_of_interest,
-                f_col_indices
-            )
-        )
-    );
 
     let mut h_for_f_elimination = h_after_step2.clone();
 
     eliminate_columns(&mut h_for_f_elimination, &f_col_indices);
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 3 - Matrix after F-column elimination by eliminate_columns ({}x{}): {:?}",
-                h_for_f_elimination.nrows(),
-                h_for_f_elimination.ncols(),
-                h_for_f_elimination
-            )
-        )
-    );
 
     // Explicitly remove ALL zero rows from the result, as per documentation Step 3.
     let mut nonzero_rows_step3 = Vec::new();
@@ -632,21 +484,7 @@ pub fn construct_type_iii_l_matrix(
         DMatrix::zeros(0, design_info.p_parameters)
     };
 
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 3 - Matrix after explicit zero row removal (l_matrix_step3 {}x{}): {:?}",
-                l_matrix_step3.nrows(),
-                l_matrix_step3.ncols(),
-                l_matrix_step3
-            )
-        )
-    );
-
     if l_matrix_step3.nrows() == 0 {
-        console::log_1(
-            &"Step 3 - All rows zero after F-column elimination and cleanup, returning empty L.".into()
-        );
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 
@@ -654,15 +492,6 @@ pub fn construct_type_iii_l_matrix(
     // Then orthogonalize G1 with respect to G0.
     let mut g0_rows = Vec::new();
     let mut g1_rows = Vec::new();
-
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 4 - Starting G0/G1 separation with {} rows from l_matrix_step3",
-                l_matrix_step3.nrows()
-            )
-        )
-    );
 
     for i in 0..l_matrix_step3.nrows() {
         let row_view = l_matrix_step3.row(i);
@@ -672,16 +501,6 @@ pub fn construct_type_iii_l_matrix(
             .sum();
 
         let is_g0 = f_col_sum_abs < 1e-10;
-        console::log_1(
-            &JsValue::from_str(
-                &format!(
-                    "Step 4 - Row {}: f_col_sum_abs = {:.2e}, is_g0 = {}",
-                    i,
-                    f_col_sum_abs,
-                    is_g0
-                )
-            )
-        );
 
         if is_g0 {
             g0_rows.push(row_view.clone_owned());
@@ -689,11 +508,6 @@ pub fn construct_type_iii_l_matrix(
             g1_rows.push(row_view.clone_owned());
         }
     }
-    console::log_1(
-        &JsValue::from_str(
-            &format!("Step 4 - G0 rows: {}, G1 rows: {}", g0_rows.len(), g1_rows.len())
-        )
-    );
 
     let mut normalized_g0_basis = Vec::new();
     for g0_row_vec in &g0_rows {
@@ -707,28 +521,14 @@ pub fn construct_type_iii_l_matrix(
             normalized_g0_basis.push(normalized_row);
         }
     }
-    console::log_1(
-        &JsValue::from_str(
-            &format!("Step 4b - Normalized G0 basis rows: {}", normalized_g0_basis.len())
-        )
-    );
 
     let mut g1_orth_rows: Vec<nalgebra::RowDVector<f64>> = Vec::new();
     for mut g1_row_vec in g1_rows {
-        console::log_1(
-            &JsValue::from_str(&format!("Step 4c - Orthogonalizing G1 row: {:?}", g1_row_vec))
-        );
         for g0_basis_row in &normalized_g0_basis {
             // Correct way to compute scalar projection: (u * v^T)
             // g1_row_vec is 1xN, g0_basis_row.transpose() is Nx1. Result is 1x1 matrix.
             let projection_matrix = &g1_row_vec * g0_basis_row.transpose();
             let dot_product = projection_matrix[(0, 0)];
-
-            console::log_1(
-                &JsValue::from_str(
-                    &format!("Step 4c - Dot product with G0 basis row: {:.4e}", dot_product)
-                )
-            );
 
             if dot_product.abs() > 1e-10 {
                 for i in 0..g1_row_vec.ncols() {
@@ -744,34 +544,14 @@ pub fn construct_type_iii_l_matrix(
             .sum();
         if norm_sq.sqrt() > 1e-10 {
             g1_orth_rows.push(g1_row_vec);
-        } else {
-            console::log_1(
-                &JsValue::from_str(
-                    &format!("Step 4c - G1 row became zero after orthogonalization, discarding.")
-                )
-            );
         }
     }
-    console::log_1(&JsValue::from_str(&format!("Step 4c - G1_orth rows: {}", g1_orth_rows.len())));
 
     if g1_orth_rows.is_empty() {
-        console::log_1(
-            &"Step 5 - Final L matrix (from G1_orth) is empty. Returning zero matrix.".into()
-        );
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
 
     let l_final = DMatrix::from_rows(&g1_orth_rows);
-    // console::log_1(&JsValue::from_str(&format!("Step 5 - Final L matrix ({}x{}): {:?}", l_final.nrows(), l_final.ncols(), l_final))); // Commented out for debugging
-    console::log_1(
-        &JsValue::from_str(
-            &format!(
-                "Step 5 - Successfully created L_final matrix ({}x{})",
-                l_final.nrows(),
-                l_final.ncols()
-            )
-        )
-    ); // Safer log
     Ok(l_final)
 }
 
