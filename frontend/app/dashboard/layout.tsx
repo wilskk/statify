@@ -4,60 +4,93 @@
 import "@/app/globals.css";
 import Header from "@/components/layout/dashboard/Header";
 import Footer from "@/components/layout/dashboard/Footer";
-import React, { useState } from "react"; // Removed unused useEffect and useRef
+import React, { useState, lazy, Suspense } from "react";
 import DataLoader from "@/components/ui/DataLoader";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useMobile } from "@/hooks/useMobile";
-import { useModalStore } from "@/stores/useModalStore";
-import SidebarContainer from "@/components/layout/dashboard/SidebarContainer";
-// Import ModalContainer for mobile dialogs
-import ModalContainer from "@/components/Modals/ModalContainer"; 
+import { useModal } from "@/hooks/useModal";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
-// Default sidebar width percentage
-const DEFAULT_SIDEBAR_WIDTH = 35;
-const MIN_SIDEBAR_WIDTH = 20;
-const MAX_SIDEBAR_WIDTH = 70;
+// Lazy load ModalManager untuk performa yang lebih baik
+const ModalManager = lazy(() => import("@/components/Modals/ModalManager"));
 
+// Komponen fallback saat ModalManager sedang dimuat
+const ModalLoading = () => (
+  <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary"></div>
+  </div>
+);
+
+// Pengaturan lebar sidebar
+const DEFAULT_SIDEBAR_WIDTH = 30; // Persentase default lebar sidebar
+const MIN_SIDEBAR_WIDTH = 0;      // Tidak ada lebar minimum sidebar
+const MAX_SIDEBAR_WIDTH = 60;     // Persentase maksimum lebar sidebar
+
+/**
+ * DashboardLayout - Layout utama untuk halaman dashboard
+ * 
+ * Layout ini menangani:
+ * - Tampilan header dan footer
+ * - Tampilan konten utama dashboard
+ * - Manajemen sidebar untuk modal (pada desktop)
+ * - Manajemen dialog modal (pada mobile)
+ * - Responsivitas antara tampilan desktop dan mobile
+ */
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { isMobile } = useMobile(); // Get isMobile from the hook
-    const modals = useModalStore((state) => state.modals);
+    const { isMobile } = useMobile(); // Deteksi device mobile
+    const { modals } = useModal();
     const hasOpenModal = modals.length > 0;
     
-    // Stores the current or last known width of the sidebar when it's open.
+    // State untuk mengingat lebar sidebar ketika terbuka
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
 
-    // Key to force ResizablePanelGroup re-mount on major state changes (mobile/desktop, sidebar open/closed)
-    // This ensures defaultSize is correctly applied during transitions.
+    // Key untuk memaksa ResizablePanelGroup re-mount saat perubahan state
+    // Ini memastikan defaultSize diterapkan dengan benar selama transisi
     const desktopPanelGroupKey = isMobile ? 'mobile' : (hasOpenModal ? 'desktop-sidebar-open' : 'desktop-sidebar-closed');
+
+    // ID modal teratas untuk filter tampilan
+    const topModalId = modals.length > 0 ? modals[modals.length - 1].id : null;
+
+    // Filter untuk hanya menampilkan modal teratas
+    const showOnlyTopModal = (modalId: string) => {
+        return topModalId === modalId;
+    };
 
     return (
         <>
             <DataLoader />
 
-            <div className="h-screen w-full flex flex-col">
+            <div className="h-screen w-full flex flex-col dashboard-layout">
                 <header className="flex-shrink-0 z-50">
                    <Header />
                 </header>
-                <main className="flex-grow overflow-hidden relative bg-muted">
+                <main className="flex-grow overflow-hidden relative bg-muted w-full">
                     {isMobile ? (
-                        // Mobile View: Main content takes full width, modals are standard dialogs.
+                        // Tampilan Mobile: Konten utama penuh lebar, modal sebagai dialog
                         <div className="h-full overflow-y-auto hide-scrollbar-x">
                             <LoadingOverlay>
                                 {children}
                             </LoadingOverlay>
-                            {/* Render ModalContainer for dialogs on mobile if a modal is open */}
-                            {hasOpenModal && <ModalContainer containerType="dialog" />}
+                            {/* Render modal sebagai dialog di mobile */}
+                            {hasOpenModal && (
+                                <Suspense fallback={<ModalLoading />}>
+                                    <ModalManager 
+                                        customFilter={showOnlyTopModal} 
+                                        containerType="dialog" 
+                                    />
+                                </Suspense>
+                            )}
                         </div>
                     ) : (
-                        // Desktop View: Resizable panel group for main content and sidebar.
+                        // Tampilan Desktop: Panel yang dapat diubah ukurannya untuk konten utama dan sidebar
                         <ResizablePanelGroup 
                             direction="horizontal"
-                            key={desktopPanelGroupKey} 
+                            key={desktopPanelGroupKey}
+                            className="overflow-hidden w-full"
                         >
                             <ResizablePanel 
                                 defaultSize={hasOpenModal ? (100 - sidebarWidth) : 100}
@@ -66,22 +99,22 @@ export default function DashboardLayout({
                                 order={1}
                                 className="transition-all duration-300 ease-in-out"
                             >
-                                <div className="h-full overflow-y-auto hide-scrollbar-x">
+                                <div className="h-full overflow-y-auto overflow-x-hidden w-full">
                                     <LoadingOverlay>
                                         {children}
                                     </LoadingOverlay>
                                 </div>
                             </ResizablePanel>
                             
-                            {/* Handle is only rendered when the sidebar is active */} 
+                            {/* Handle hanya ditampilkan ketika sidebar aktif */} 
                             {hasOpenModal && <ResizableHandle withHandle className="bg-border" />}
                             
                             <ResizablePanel 
-                                defaultSize={hasOpenModal ? sidebarWidth : 0} // Collapses if no modal
+                                defaultSize={hasOpenModal ? sidebarWidth : 0} // Collapse jika tidak ada modal
                                 minSize={hasOpenModal ? MIN_SIDEBAR_WIDTH : 0} 
                                 maxSize={hasOpenModal ? MAX_SIDEBAR_WIDTH : 0}
                                 onResize={(size) => {
-                                    // Only allow resizing and state update if the sidebar is supposed to be open
+                                    // Hanya izinkan resize dan update state jika sidebar seharusnya terbuka
                                     if (hasOpenModal) {
                                         setSidebarWidth(size);
                                     }
@@ -89,11 +122,19 @@ export default function DashboardLayout({
                                 collapsible={true}
                                 collapsedSize={0}
                                 order={2}
-                                // className={!hasOpenModal ? "min-w-0 w-0" : "transition-all duration-300 ease-in-out"} // Optional: for smoother transitions. Removed direct w-0 styling.
-                                className="transition-all duration-300 ease-in-out" // Optional: for smoother visual transitions
+                                className="transition-all duration-300 ease-in-out"
                             >
-                                {/* Render SidebarContainer only if there's a modal to avoid empty space processing */} 
-                                {hasOpenModal && <SidebarContainer />}
+                                {/* Render modal sebagai sidebar panel di desktop */}
+                                {hasOpenModal && (
+                                    <Suspense fallback={<ModalLoading />}>
+                                        <div className="h-full w-full resize-content">
+                                            <ModalManager 
+                                                customFilter={showOnlyTopModal} 
+                                                containerType="sidebar" 
+                                            />
+                                        </div>
+                                    </Suspense>
+                                )}
                             </ResizablePanel>
                         </ResizablePanelGroup>
                     )}

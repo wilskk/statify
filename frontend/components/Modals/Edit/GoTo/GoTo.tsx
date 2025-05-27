@@ -20,22 +20,21 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ContainerType } from "@/types/ui";
+import { BaseModalProps } from "@/types/modalTypes";
+import { X } from "lucide-react";
 
 export enum GoToMode {
     CASE = "case",
     VARIABLE = "variable",
 }
 
-interface GoToModalProps {
-    onClose: () => void;
+interface GoToModalProps extends BaseModalProps {
     defaultMode?: GoToMode;
     variables?: string[];
     totalCases?: number;
-    containerType?: ContainerType;
 }
 
-const GoToContent: React.FC<Omit<GoToModalProps, 'containerType'>> = ({
+const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & { onClose: () => void }> = ({
     onClose,
     defaultMode = GoToMode.CASE,
     variables = ["DATE_", "HOUR_", "MINUTE_", "NAME_", "ID_"],
@@ -178,7 +177,7 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'containerType'>> = ({
                                     <SelectValue placeholder="Select a variable" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[200px]">
-                                    {sortedVariables.map((variable) => (
+                                    {sortedVariables.map((variable: string) => (
                                         <SelectItem key={variable} value={variable}>
                                             {variable}
                                         </SelectItem>
@@ -210,10 +209,21 @@ const GoToModal: React.FC<GoToModalProps> = ({
     variables,
     totalCases,
     containerType = "dialog",
+    ...props
 }) => {
     if (containerType === "sidebar") {
         return (
             <div className="flex flex-col h-full bg-background text-foreground">
+                <div className="flex justify-between items-center border-b p-4 shrink-0">
+                    <h2 className="text-xl font-semibold">Go To</h2>
+                    <button 
+                        onClick={onClose}
+                        className="rounded-full p-1.5 hover:bg-muted transition-colors flex-shrink-0"
+                        aria-label="Close"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
                 <GoToContent
                     onClose={onClose}
                     defaultMode={defaultMode}

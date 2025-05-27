@@ -14,7 +14,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ContainerType } from "@/types/ui";
+import { BaseModalProps } from "@/types/modalTypes";
+import { X } from "lucide-react";
 
 export enum FindReplaceMode {
     FIND = "find",
@@ -26,14 +27,13 @@ enum TabType {
     REPLACE = "replace",
 }
 
-interface FindAndReplaceModalProps {
-    onClose: () => void;
+// Interface extending BaseModalProps for type safety with our modal system
+interface FindAndReplaceModalProps extends BaseModalProps {
     columns?: string[];
     defaultTab?: FindReplaceMode;
-    containerType?: ContainerType;
 }
 
-const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerType'>> = ({
+const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'onClose' | 'containerType'> & { onClose: () => void }> = ({
     onClose,
     columns = ["MINUTE_", "HOUR_", "DATE_", "NAME_"],
     defaultTab = FindReplaceMode.FIND,
@@ -96,7 +96,7 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerT
                                 <SelectValue placeholder="Select column" />
                             </SelectTrigger>
                             <SelectContent>
-                                {columns.map((col) => (
+                                {columns.map((col: string) => (
                                     <SelectItem key={col} value={col}>
                                         {col}
                                     </SelectItem>
@@ -204,12 +204,28 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
     if (containerType === "sidebar") {
         return (
             <div className="flex flex-col h-full bg-background">
+                <div className="flex justify-between items-center border-b p-4 shrink-0">
+                    <h2 className="text-xl font-semibold">Find and Replace</h2>
+                    <button 
+                        onClick={onClose}
+                        className="rounded-full p-1.5 hover:bg-muted transition-colors flex-shrink-0"
+                        aria-label="Close"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+                <FindAndReplaceContent
+                    onClose={onClose}
+                    columns={columns}
+                    defaultTab={defaultTab}
+                    {...props}
+                />
             </div>
         );
     }
 
     return (
-        <Dialog open={true} onOpenChange={onClose}>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-md p-0 flex flex-col max-h-[85vh]">
                 <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
                     <DialogTitle className="text-lg font-semibold">Find and Replace</DialogTitle>

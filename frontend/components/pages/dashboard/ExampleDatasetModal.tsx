@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useModalStore, ModalType } from "@/stores/useModalStore";
 import { Button } from '@/components/ui/button';
 import { File, Database, Loader2 } from 'lucide-react';
-import { useDataStore, DataRow } from '@/stores/useDataStore';
+import { useDataStore } from '@/stores/useDataStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable, ValueLabel, MissingValuesSpec, MissingRange } from '@/types/Variable';
@@ -13,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { uploadSavFile, API_BASE_URL, handleApiResponse, getApiUrl } from '@/services/api';
+import { DataRow } from '@/types/Data';
 
 const exampleSavFiles = [
     { name: 'tcm_kpi_upd.sav', path: '/exampleData/tcm_kpi_upd.sav' },
@@ -172,17 +172,18 @@ const convertSavMissingToSpec = (savMissing: any): MissingValuesSpec | null => {
     return null;
 };
 
-export const ExampleDatasetModal = () => {
-    const { modals, closeModal } = useModalStore();
+interface ExampleDatasetModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+export const ExampleDatasetModal: React.FC<ExampleDatasetModalProps> = ({ isOpen, onClose }) => {
     const { setDataAndSync, resetData } = useDataStore();
     const { setMeta: setProjectMeta, resetMeta: resetProjectMeta } = useMetaStore();
     const { overwriteVariables, resetVariables, setVariables } = useVariableStore();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const currentModal = modals[modals.length - 1];
-    const isModalOpen = currentModal?.type === ModalType.ExampleDataset;
 
     const parseCSV = (content: string): Promise<DataRow[]> => {
         return new Promise((resolve, reject) => {
@@ -387,7 +388,7 @@ export const ExampleDatasetModal = () => {
             }
 
             setIsLoading(false);
-            closeModal();
+            onClose();
             router.push('/dashboard/data');
 
         } catch (err: any) {
@@ -397,10 +398,6 @@ export const ExampleDatasetModal = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleClose = () => {
-        closeModal();
     };
 
     const renderFileList = (files: { name: string; path: string }[]) => (
@@ -420,10 +417,10 @@ export const ExampleDatasetModal = () => {
         </div>
     );
 
-    if (!isModalOpen) return null;
+    if (!isOpen) return null;
 
     return (
-        <Dialog open={isModalOpen} onOpenChange={handleClose}>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-[525px] bg-popover text-popover-foreground">
                 <DialogHeader>
                     <DialogTitle className="flex items-center">
