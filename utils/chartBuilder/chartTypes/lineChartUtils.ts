@@ -7,6 +7,90 @@ interface ChartData {
 }
 
 // Fungsi untuk membuat line chart
+// export const createLineChart = (
+//   data: { category: string; value: number }[],
+//   width: number,
+//   height: number,
+//   useAxis: boolean = true
+// ) => {
+//   console.log("Creating chart with data:", data);
+
+//   // Menentukan margin hanya jika axis digunakan
+//   const marginTop = useAxis ? 30 : 0;
+//   const marginRight = useAxis ? 30 : 0;
+//   const marginBottom = useAxis ? 30 : 0;
+//   const marginLeft = useAxis ? 30 : 0;
+
+//   // Menentukan skala untuk sumbu X dan Y
+//   const x = d3
+//     .scaleBand()
+//     .domain(data.map((d) => d.category))
+//     .range([marginLeft, width - marginRight])
+//     .padding(0.1);
+
+//   const y = d3
+//     .scaleLinear()
+//     // .domain([0, d3.max(data, (d) => d.value) as number])
+//     .domain([d3.min(data, (d) => d.value)!, d3.max(data, (d) => d.value)!])
+//     .range([height - marginBottom, marginTop]);
+
+//   // Membuat elemen SVG baru di dalam DOM
+//   const svg = d3
+//     .create("svg")
+//     .attr("width", width + marginLeft + marginRight)
+//     .attr("height", height + marginTop + marginBottom)
+//     .attr("viewBox", [
+//       0,
+//       0,
+//       width + marginLeft + marginRight,
+//       height + marginTop + marginBottom,
+//     ])
+//     .attr("style", "max-width: 100%; height: auto;");
+
+//   // Mendeklarasikan generator garis
+//   const line = d3
+//     .line<{ category: string; value: number }>()
+//     .x((d) => x(d.category)! + x.bandwidth() / 2)
+//     .y((d) => y(d.value)!)
+//     .curve(d3.curveLinear);
+
+//   // Menambahkan path untuk garis
+//   svg
+//     .append("path")
+//     .attr("fill", "none")
+//     .attr("stroke", "steelblue")
+//     .attr("stroke-width", 1.5)
+//     .attr("d", line(data));
+
+//   // Jika axis digunakan, tambahkan sumbu X dan Y
+//   if (useAxis) {
+//     // X-Axis (Horizontal)
+//     svg
+//       .append("g")
+//       .attr("transform", `translate(0, ${height - marginBottom})`)
+//       .call(d3.axisBottom(x).tickSizeOuter(0));
+
+//     // Y-Axis (Vertical)
+//     svg
+//       .append("g")
+//       .attr("transform", `translate(${marginLeft}, 0)`)
+//       .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(2)))
+//       .call((g: any) => g.select(".domain").remove())
+//       .call((g: any) =>
+//         g
+//           .append("text")
+//           .attr("x", -marginLeft)
+//           .attr("y", 10)
+//           .attr("fill", "currentColor")
+//           .attr("text-anchor", "start")
+//           .text("↑ Value")
+//       );
+//   }
+
+//   // Mengembalikan node SVG
+//   return svg.node();
+// };
+
 export const createLineChart = (
   data: { category: string; value: number }[],
   width: number,
@@ -15,13 +99,32 @@ export const createLineChart = (
 ) => {
   console.log("Creating chart with data:", data);
 
-  // Menentukan margin hanya jika axis digunakan
+  // Mengukur panjang label secara dinamis
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = "10px sans-serif"; // Pastikan font ini sesuai dengan font axis
+
+  // Menghitung panjang label X secara dinamis
+  const maxXLabelWidth =
+    d3.max(data, (d) => ctx.measureText(d.category).width) ?? 0;
+  const yTicks = d3
+    .scaleLinear()
+    .domain([0, d3.max(data, (d) => d.value)!])
+    .ticks(5);
+  const maxYLabelWidth =
+    d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
+
+  // Menentukan apakah rotasi diperlukan
+  const needRotateX = maxXLabelWidth > width / data.length;
+
+  // Menyesuaikan margin berdasarkan apakah rotasi diperlukan
+  const marginBottom = useAxis
+    ? (needRotateX ? maxXLabelWidth * 0.7 : 20) + 10
+    : 0;
+  const marginLeft = useAxis ? maxYLabelWidth + 30 : 0;
   const marginTop = useAxis ? 30 : 0;
   const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
 
-  // Menentukan skala untuk sumbu X dan Y
+  // Skala X dan Y
   const x = d3
     .scaleBand()
     .domain(data.map((d) => d.category))
@@ -30,10 +133,10 @@ export const createLineChart = (
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(data, (d) => d.value) as number])
+    .domain([d3.min(data, (d) => d.value)!, d3.max(data, (d) => d.value)!])
     .range([height - marginBottom, marginTop]);
 
-  // Membuat elemen SVG baru di dalam DOM
+  // Membuat elemen SVG
   const svg = d3
     .create("svg")
     .attr("width", width + marginLeft + marginRight)
@@ -61,19 +164,26 @@ export const createLineChart = (
     .attr("stroke-width", 1.5)
     .attr("d", line(data));
 
-  // Jika axis digunakan, tambahkan sumbu X dan Y
   if (useAxis) {
     // X-Axis (Horizontal)
-    svg
+    const xAxis = svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
       .call(d3.axisBottom(x).tickSizeOuter(0));
+
+    // Rotasi label X jika perlu
+    if (needRotateX) {
+      xAxis
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
+    }
 
     // Y-Axis (Vertical)
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
+      .call(d3.axisLeft(y).tickFormat((y) => (+y).toFixed(2)))
       .call((g: any) => g.select(".domain").remove())
       .call((g: any) =>
         g
@@ -86,7 +196,6 @@ export const createLineChart = (
       );
   }
 
-  // Mengembalikan node SVG
   return svg.node();
 };
 

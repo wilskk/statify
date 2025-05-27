@@ -11,15 +11,116 @@ interface StackedAreaChartInput {
   [key: string]: number | string;
 }
 
+// export const createAreaChart = (
+//   data: { category: string; value: number }[], // Data dengan category sebagai string dan value sebagai angka
+//   width: number,
+//   height: number,
+//   useAxis: boolean = true
+// ) => {
+//   console.log("Creating area chart with data:", data);
+
+//   // Filter data untuk menghilangkan item dengan category atau value yang tidak valid
+//   const validData = data.filter(
+//     (d) =>
+//       d.category &&
+//       !Number.isNaN(d.value) &&
+//       d.value !== null &&
+//       d.value !== undefined
+//   );
+
+//   console.log("Filtered valid data:", validData);
+
+//   // Menentukan margin hanya jika axis digunakan
+//   const marginTop = useAxis ? 30 : 0;
+//   const marginRight = useAxis ? 30 : 0;
+//   const marginBottom = useAxis ? 30 : 0;
+//   const marginLeft = useAxis ? 40 : 0;
+
+//   // Menentukan skala untuk sumbu X dan Y
+//   const x = d3
+//     .scaleBand() // scaleBand untuk kategori
+//     .domain(validData.map((d) => d.category))
+//     .range([marginLeft, width - marginRight])
+//     .padding(0.2);
+
+//   const y = d3
+//     .scaleLinear()
+//     .domain([0, d3.max(validData, (d) => d.value) as number])
+//     .range([height - marginBottom, marginTop]);
+
+//   // Generator untuk area chart
+//   const area = d3
+//     .area<{ category: string; value: number }>()
+//     .x((d) => x(d.category)! + x.bandwidth() / 2)
+//     .y0(y(0))
+//     .y1((d) => y(d.value));
+
+//   // Membuat elemen SVG baru di dalam DOM
+//   const svg = d3
+//     .create("svg")
+//     .attr("width", width + marginLeft + marginRight)
+//     .attr("height", height + marginTop + marginBottom)
+//     .attr("viewBox", [
+//       0,
+//       0,
+//       width + marginLeft + marginRight,
+//       height + marginTop + marginBottom,
+//     ]) // ViewBox untuk responsif
+//     .attr("style", "max-width: 100%; height: auto;");
+
+//   // Menambahkan path untuk area chart
+//   svg.append("path").datum(validData).attr("fill", "steelblue").attr("d", area);
+
+//   // Jika axis digunakan, tambahkan sumbu X dan Y
+//   if (useAxis) {
+//     // X-Axis (Horizontal)
+//     svg
+//       .append("g")
+//       .attr("transform", `translate(0, ${height - marginBottom})`)
+//       .call(
+//         d3
+//           .axisBottom(x)
+//           .ticks(width / 80)
+//           .tickSizeOuter(0)
+//       );
+
+//     // Y-Axis (Vertical)
+//     svg
+//       .append("g")
+//       .attr("transform", `translate(${marginLeft}, 0)`)
+//       .call(d3.axisLeft(y).ticks(height / 40))
+//       .call((g) => g.select(".domain").remove())
+//       .call((g) =>
+//         g
+//           .selectAll(".tick line")
+//           .clone()
+//           .attr("x2", width - marginLeft - marginRight)
+//           .attr("stroke-opacity", 0.1)
+//       )
+//       .call((g) =>
+//         g
+//           .append("text")
+//           .attr("x", -marginLeft)
+//           .attr("y", 10)
+//           .attr("fill", "currentColor")
+//           .attr("text-anchor", "start")
+//           .text("↑ Value")
+//       );
+//   }
+
+//   // Mengembalikan node SVG
+//   return svg.node();
+// };
+
 export const createAreaChart = (
-  data: { category: string; value: number }[], // Data dengan category sebagai string dan value sebagai angka
+  data: { category: string; value: number }[],
   width: number,
   height: number,
   useAxis: boolean = true
 ) => {
   console.log("Creating area chart with data:", data);
 
-  // Filter data untuk menghilangkan item dengan category atau value yang tidak valid
+  // Filter data
   const validData = data.filter(
     (d) =>
       d.category &&
@@ -30,32 +131,37 @@ export const createAreaChart = (
 
   console.log("Filtered valid data:", validData);
 
-  // Menentukan margin hanya jika axis digunakan
+  // Hitung margin secara dinamis
+  const maxYValue = d3.max(validData, (d) => d.value) ?? 0;
+  const maxCategoryLength = d3.max(validData, (d) => d.category.length) ?? 0;
+
   const marginTop = useAxis ? 30 : 0;
   const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 40 : 0;
+  const marginLeft = useAxis ? String(Math.ceil(maxYValue)).length * 7 + 10 : 0;
+  const marginBottom =
+    useAxis && (maxCategoryLength > 10 || validData.length > 10) ? 50 : 0;
 
-  // Menentukan skala untuk sumbu X dan Y
+  // Skala X dan Y
   const x = d3
-    .scaleBand() // scaleBand untuk kategori
+    .scaleBand()
     .domain(validData.map((d) => d.category))
     .range([marginLeft, width - marginRight])
     .padding(0.2);
 
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(validData, (d) => d.value) as number])
+    .domain([0, maxYValue * 1.1]) // tambah 10% padding atas
+    .nice()
     .range([height - marginBottom, marginTop]);
 
-  // Generator untuk area chart
+  // Area generator
   const area = d3
     .area<{ category: string; value: number }>()
     .x((d) => x(d.category)! + x.bandwidth() / 2)
     .y0(y(0))
     .y1((d) => y(d.value));
 
-  // Membuat elemen SVG baru di dalam DOM
+  // SVG
   const svg = d3
     .create("svg")
     .attr("width", width + marginLeft + marginRight)
@@ -65,26 +171,30 @@ export const createAreaChart = (
       0,
       width + marginLeft + marginRight,
       height + marginTop + marginBottom,
-    ]) // ViewBox untuk responsif
-    .attr("style", "max-width: 100%; height: auto;");
+    ])
+    .attr("style", "max-width: 100%; height: auto; overflow: visible;");
 
-  // Menambahkan path untuk area chart
+  // Area path
   svg.append("path").datum(validData).attr("fill", "steelblue").attr("d", area);
 
-  // Jika axis digunakan, tambahkan sumbu X dan Y
+  // Axis
   if (useAxis) {
-    // X-Axis (Horizontal)
-    svg
+    // X Axis
+    const xAxis = svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .ticks(width / 80)
-          .tickSizeOuter(0)
-      );
+      .call(d3.axisBottom(x).tickSizeOuter(0));
 
-    // Y-Axis (Vertical)
+    if (maxCategoryLength > 10 || validData.length > 10) {
+      xAxis
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-0.8em")
+        .attr("dy", "0.15em")
+        .attr("transform", "rotate(-40)");
+    }
+
+    // Y Axis
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
@@ -100,15 +210,14 @@ export const createAreaChart = (
       .call((g) =>
         g
           .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
+          .attr("x", -marginLeft + 5)
+          .attr("y", marginTop - 10)
           .attr("fill", "currentColor")
           .attr("text-anchor", "start")
           .text("↑ Value")
       );
   }
 
-  // Mengembalikan node SVG
   return svg.node();
 };
 
@@ -137,7 +246,7 @@ export const createStackedAreaChart = (
   const margin = {
     top: useAxis ? 20 : 0,
     right: useAxis ? 20 : 0,
-    bottom: useAxis ? 50 : 0,
+    bottom: useAxis ? 120 : 0,
     left: useAxis ? 60 : 0,
   };
 
@@ -268,7 +377,7 @@ export const createStackedAreaChart = (
     svg
       .append("text")
       .attr("x", margin.left + innerWidth / 2)
-      .attr("y", height - margin.bottom / 2)
+      .attr("y", height - margin.bottom / 2 - 15)
       .attr("text-anchor", "middle")
       .attr("font-size", "12px")
       .text("Category");
@@ -328,12 +437,16 @@ export const createStackedAreaChart = (
     //     .attr("dy", "0.35em")
     //     .text(subcategory);
     // });
+    // Tambahkan legenda
     const legend = svg
       .append("g")
       .attr("font-family", "sans-serif")
       .attr("font-size", 10)
       .attr("text-anchor", "start")
-      .attr("transform", `translate(${innerWidth + 20}, ${margin.top})`);
+      .attr(
+        "transform",
+        `translate(${margin.left}, ${height - margin.bottom + 50})`
+      );
 
     const legendItemSize = 15;
     const legendSpacing = 4;
@@ -343,7 +456,9 @@ export const createStackedAreaChart = (
         .append("g")
         .attr(
           "transform",
-          `translate(0, ${i * (legendItemSize + legendSpacing)})`
+          `translate(${(i % 5) * (legendItemSize + 100)}, ${
+            Math.floor(i / 5) * (legendItemSize + legendSpacing)
+          })`
         );
 
       legendRow

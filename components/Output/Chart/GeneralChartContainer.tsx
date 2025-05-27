@@ -4,7 +4,7 @@ import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 // Define type untuk data chart
 interface ChartData {
   chartType: string;
-  chartData: any[]; // Bisa lebih spesifik, misalnya tipe data untuk chart tertentu
+  chartData: any[];
   config: {
     width: number;
     height: number;
@@ -143,8 +143,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 useAxis
               );
               break;
-            case "Grouped Bar Chart":
-              chartNode = chartUtils.createGroupedBarChart(
+            case "Clustered Bar Chart":
+              chartNode = chartUtils.createClusteredBarChart(
                 chartDataPoints,
                 width,
                 height,
@@ -368,6 +368,31 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height
+              );
+              break;
+            case "Density Chart":
+              chartNode = chartUtils.createDensityChart(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Violin Plot":
+              chartNode = chartUtils.createViolinPlot(
+                chartDataPoints,
+                width,
+                height,
+                useAxis
+              );
+              break;
+            case "Stem And Leaf Plot":
+              chartNode = chartUtils.createStemAndLeafPlot(
+                chartDataPoints as unknown as { [stem: string]: number[] },
+
+                width,
+                height,
+                useAxis
               );
               break;
 

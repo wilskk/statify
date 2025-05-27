@@ -33,8 +33,9 @@ export const createHistogram = (
 
   console.log("Creating histogram with valid data:", validData);
 
-  // Menentukan jumlah bins secara dinamis berdasarkan ukuran data dan rentang nilai
-  const thresholds = Math.max(5, Math.ceil(validData.length / 5));
+  // Menentukan jumlah bins
+  const thresholds = Math.ceil(1 + 3.3 * Math.log10(validData.length));
+
   // Membuat bins dari data yang valid
   const bins = d3
     .bin()

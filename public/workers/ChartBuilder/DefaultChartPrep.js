@@ -185,16 +185,12 @@ self.onmessage = function (event) {
         throw new Error("Salah satu variabel tidak ditemukan.");
       }
 
-      const frequencyMap = data.reduce((acc, row) => {
-        const key = row[xIndex];
-        const yValue = parseFloat(row[yIndex]);
-
-        if (!isNaN(yValue)) {
-          acc[key] = (acc[key] || 0) + yValue;
-        }
-
-        return acc;
-      }, {});
+      const chartData = data
+        .filter((row) => !isNaN(parseFloat(row[yIndex])))
+        .map((row) => ({
+          x: Number(row[xIndex]),
+          y: parseFloat(row[yIndex]),
+        }));
 
       const chartJSON = {
         charts: [
@@ -208,10 +204,7 @@ self.onmessage = function (event) {
               description: `Total ${yVariable} per ${xVariable} in the dataset`,
               notes: chartMetadata.note || null,
             },
-            chartData: Object.keys(frequencyMap).map((key) => ({
-              x: Number(key),
-              y: frequencyMap[key],
-            })),
+            chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
@@ -236,16 +229,12 @@ self.onmessage = function (event) {
         throw new Error("Salah satu variabel tidak ditemukan.");
       }
 
-      const frequencyMap = data.reduce((acc, row) => {
-        const key = row[xIndex];
-        const yValue = parseFloat(row[yIndex]);
-
-        if (!isNaN(yValue)) {
-          acc[key] = (acc[key] || 0) + yValue;
-        }
-
-        return acc;
-      }, {});
+      const chartData = data
+        .filter((row) => !isNaN(parseFloat(row[yIndex])))
+        .map((row) => ({
+          x: Number(row[xIndex]),
+          y: parseFloat(row[yIndex]),
+        }));
 
       const chartJSON = {
         charts: [
@@ -259,10 +248,7 @@ self.onmessage = function (event) {
               description: `Total ${yVariable} per ${xVariable} in the dataset`,
               notes: chartMetadata.note || null,
             },
-            chartData: Object.keys(frequencyMap).map((key) => ({
-              x: Number(key),
-              y: frequencyMap[key],
-            })),
+            chartData: chartData,
             chartConfig: {
               width: chartConfig.width || 600,
               height: chartConfig.height || 400,
@@ -2701,6 +2687,172 @@ self.onmessage = function (event) {
         ],
       };
 
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Density Chart") {
+      const yVariable = yVariables[0]; // Y variable untuk histogram
+
+      // Cari indeks variabel Y dalam array variables
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (yIndex === -1) {
+        throw new Error("Variabel Y tidak ditemukan.");
+      }
+
+      // Ambil data untuk variabel Y
+      const validData = data.reduce((acc, row) => {
+        const yValue = parseFloat(row[yIndex]); // Nilai untuk Y (misalnya 20, 40, dst.)
+
+        // Validasi apakah yValue adalah angka dan tidak NaN
+        if (!isNaN(yValue) && yValue !== 0) {
+          acc.push(yValue); // Tambahkan nilai Y yang valid
+        }
+
+        return acc;
+      }, []);
+
+      // Output data untuk histogram
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                value: yVariable, // Nama variabel Y
+              },
+              description: `Density Plot for ${yVariable} values in the dataset`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: validData, // Data valid yang akan digunakan untuk histogram
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              uselegend: chartConfig.legend ?? true,
+              useAxis: chartConfig.useAxis ?? true,
+              title: chartConfig.title ?? `${yVariable} Distribution`,
+            },
+          },
+        ],
+      };
+
+      // Kirim hasil ke main thread
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Violin Plot") {
+      const xVariable = xVariables[0];
+      const yVariable = yVariables[0];
+
+      const xIndex = variables.findIndex((v) => v.name === xVariable);
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (xIndex === -1 || yIndex === -1) {
+        throw new Error("Salah satu variabel tidak ditemukan.");
+      }
+
+      const frequencyMap = data.reduce((acc, row) => {
+        let key = row[xIndex]; // Kategori (misalnya "A" atau "B")
+        const yValue = parseFloat(row[yIndex]); // Nilai (misalnya 20, 40, dst.)
+
+        if (key === null || key === undefined || key === "") {
+          key = "unknown"; // Ganti kategori kosong dengan 'unknown'
+        }
+
+        if (!isNaN(yValue)) {
+          // Pastikan format data yang benar
+          acc.push({ category: key, value: yValue });
+        }
+
+        return acc;
+      }, []);
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                category: xVariable,
+                value: yVariable,
+              },
+              description: `Total ${yVariable} per ${xVariable} in the dataset`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: frequencyMap,
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              useAxis: chartConfig.useAxis ?? true,
+              useLegend: chartConfig.useLegend ?? true,
+              title: chartConfig.title || `${yVariable} Distribution`,
+            },
+          },
+        ],
+      };
+
+      self.postMessage({ success: true, chartJSON });
+    } else if (chartType === "Stem And Leaf Plot") {
+      const yVariable = yVariables[0]; // Variabel Y
+
+      // Cari indeks variabel Y dalam array variables
+      const yIndex = variables.findIndex((v) => v.name === yVariable);
+
+      if (yIndex === -1) {
+        throw new Error("Variabel Y tidak ditemukan.");
+      }
+
+      // Ambil data untuk variabel Y
+      const validData = data.reduce((acc, row) => {
+        const yValue = parseFloat(row[yIndex]);
+
+        // Validasi apakah yValue adalah angka dan bukan NaN
+        if (!isNaN(yValue)) {
+          acc.push(yValue);
+        }
+
+        return acc;
+      }, []);
+
+      // Buat data stem-and-leaf
+      const stemLeafData = validData.reduce((acc, value) => {
+        const stem = Math.floor(value / 10).toString();
+        const leaf = Math.floor(value % 10); // Pastikan leaf juga bilangan bulat
+
+        if (!acc[stem]) acc[stem] = [];
+        acc[stem].push(leaf);
+
+        return acc;
+      }, {});
+
+      // Sort leaf values untuk setiap stem
+      for (const stem in stemLeafData) {
+        stemLeafData[stem].sort((a, b) => a - b);
+      }
+
+      const chartJSON = {
+        charts: [
+          {
+            chartType: chartType,
+            chartMetadata: {
+              axisInfo: {
+                value: yVariable,
+              },
+              description: `Stem and Leaf Plot for ${yVariable}`,
+              notes: chartMetadata.note || null,
+            },
+            chartData: stemLeafData,
+            chartConfig: {
+              width: chartConfig.width || 600,
+              height: chartConfig.height || 400,
+              chartColor: chartConfig.chartColor || ["#4682B4"],
+              uselegend: chartConfig.legend ?? false,
+              useAxis: chartConfig.useAxis ?? false,
+              title: chartConfig.title ?? `${yVariable} Stem and Leaf Plot`,
+            },
+          },
+        ],
+      };
+
+      // Kirim hasil ke main thread
       self.postMessage({ success: true, chartJSON });
     } else {
       // Implementasi untuk jenis chart lain

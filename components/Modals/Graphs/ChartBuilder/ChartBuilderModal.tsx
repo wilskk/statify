@@ -31,7 +31,6 @@ interface ChartBuilderModalProps {
 
 const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [chartType, setChartType] = useState<ChartType>("Vertical Bar Chart");
-  // const { variables, loadVariables } = useVariableStore();
   const [sideVariables, setSideVariables] = useState<string[]>([]);
   const [side2Variables, setSide2Variables] = useState<string[]>([]);
   const [bottomVariables, setBottomVariables] = useState<string[]>([]);
@@ -46,7 +45,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { addStatistic, addLog, addAnalytic } = useResultStore();
-  // const { data, loadData } = useDataStore(); // Mengambil data dari store
   const [showResult, setShowResult] = useState(false);
 
   const variables = useVariableStore.getState().variables;
@@ -59,13 +57,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   useEffect(() => {
     console.log("Updated Bottom Variables:", bottomVariables);
   }, [bottomVariables]);
-
-  // useEffect(() => {
-  //   // Memuat data jika belum dimuat
-  //   if (data.length === 0) {
-  //     loadData();
-  //   }
-  // }, [data, loadData]);
 
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
@@ -169,7 +160,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         closeVariables
       )
     ) {
-      return; // Jangan lanjutkan jika validasi gagal
+      return;
     }
 
     setIsCalculating(true);
@@ -276,7 +267,7 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     highVariables: string[],
     closeVariables: string[]
   ) => {
-    const chartConfig = chartVariableConfig[chartType]; // Ambil konfigurasi untuk chartType yang dipilih
+    const chartConfig = chartVariableConfig[chartType];
 
     // Validasi untuk side (sumbu Y)
     if (

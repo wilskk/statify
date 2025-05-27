@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useDataStore } from "@/stores/useDataStore"; // Mengambil data dari useDataStore
-import { useVariableStore } from "@/stores/useVariableStore"; // Mengambil variabel dari useVariableStore
+import { useDataStore } from "@/stores/useDataStore";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
-import * as d3 from "d3"; // Mengimpor D3.js
+import * as d3 from "d3";
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import clsx from "clsx";
@@ -87,9 +87,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   const [chartData, setChartData] = useState(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  // const { data } = useDataStore(); // Mengambil data dari useDataStore
-  // const { variables } = useVariableStore(); // Mengambil variabel dari useVariableStore
-  const svgRef = useRef<SVGSVGElement | null>(null); // Referensi untuk elemen SVG
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   const variables = useVariableStore.getState().variables;
@@ -108,7 +106,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       : modalState.type === "side2"
       ? side2Variables
       : modalState.type === "bottom"
-      ? side2Variables
+      ? bottomVariables
       : modalState.type === "bottom2"
       ? bottom2Variables
       : modalState.type === "color"
@@ -121,7 +119,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       ? highVariables
       : modalState.type === "close"
       ? closeVariables
-      : []; // default empty array if no match found
+      : [];
 
   // Fungsi untuk membuka modal
   const handleOpenModal = (
@@ -167,7 +165,8 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       return;
     }
 
-    const config = chartVariableConfig[chartType]; // Ambil konfigurasi chartType saat ini
+    // Ambil konfigurasi chartType saat ini
+    const config = chartVariableConfig[chartType];
 
     if (dropZone === "side" && config.side.max > 0) {
       if (sideVariables.length >= config.side.max) {
@@ -1201,7 +1200,9 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   useaxis
                 )
               : chartUtils.createVerticalBarChart2(
-                  chartData,
+                  chartData.filter(
+                    (d) => d.category !== "" && d.value != null && d.value !== 0
+                  ),
                   width,
                   height,
                   useaxis
@@ -1285,7 +1286,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           break;
         }
 
-        case "Grouped Bar Chart": {
+        case "Clustered Bar Chart": {
           const formattedData =
             chartData.length === 0
               ? [
@@ -1302,7 +1303,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   value: d.value,
                 }));
 
-          chartNode = chartUtils.createGroupedBarChart(
+          chartNode = chartUtils.createClusteredBarChart(
             formattedData,
             width,
             height,
@@ -1317,23 +1318,31 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
               ? chartUtils.createLineChart(
                   [
                     // Default data jika tidak ada variabel yang dipilih
-                    { category: "2023-01-01", value: 10 },
-                    { category: "2023-01-02", value: 30 },
-                    { category: "2023-01-03", value: 55 },
-                    { category: "2023-01-04", value: 60 },
-                    { category: "2023-01-05", value: 70 },
-                    { category: "2023-01-06", value: 90 },
-                    { category: "2023-01-07", value: 55 },
-                    { category: "2023-01-08", value: 30 },
-                    { category: "2023-01-09", value: 50 },
-                    { category: "2023-01-10", value: 20 },
-                    { category: "2023-01-11", value: 25 },
+                    { category: "Jan", value: 10 },
+                    { category: "Feb", value: 30 },
+                    { category: "Mar", value: 55 },
+                    { category: "Apr", value: 60 },
+                    { category: "Mei", value: 70 },
+                    { category: "Jun", value: 90 },
+                    { category: "Jul", value: 55 },
+                    { category: "Agu", value: 30 },
+                    { category: "Sep", value: 50 },
+                    { category: "Okt", value: 20 },
+                    { category: "Nov", value: 25 },
+                    { category: "Des", value: 5 },
                   ],
                   width,
                   height,
                   useaxis
                 )
-              : chartUtils.createLineChart(chartData, width, height, useaxis);
+              : chartUtils.createLineChart(
+                  chartData.filter(
+                    (d) => d.category !== "" && d.value != null && d.value !== 0
+                  ),
+                  width,
+                  height,
+                  useaxis
+                );
           break;
 
         case "Multiple Line Chart": {
@@ -1411,17 +1420,18 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
               ? chartUtils.createAreaChart(
                   [
                     // Default data jika tidak ada variabel yang dipilih
-                    { category: "2023-01-01", value: 10 },
-                    { category: "2023-01-02", value: 30 },
-                    { category: "2023-01-03", value: 55 },
-                    { category: "2023-01-04", value: 60 },
-                    { category: "2023-01-05", value: 70 },
-                    { category: "2023-01-06", value: 90 },
-                    { category: "2023-01-07", value: 55 },
-                    { category: "2023-01-08", value: 30 },
-                    { category: "2023-01-09", value: 50 },
-                    { category: "2023-01-10", value: 20 },
-                    { category: "2023-01-11", value: 25 },
+                    { category: "Jan", value: 10 },
+                    { category: "Feb", value: 30 },
+                    { category: "Mar", value: 55 },
+                    { category: "Apr", value: 60 },
+                    { category: "Mei", value: 70 },
+                    { category: "Jun", value: 90 },
+                    { category: "Jul", value: 55 },
+                    { category: "Agu", value: 30 },
+                    { category: "Sep", value: 50 },
+                    { category: "Okt", value: 20 },
+                    { category: "Nov", value: 25 },
+                    { category: "Des", value: 5 },
                   ],
                   width,
                   height,
@@ -1465,7 +1475,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { x: 95, y: 75 },
                 ]
               : chartData.map((d) => ({
-                  x: parseFloat(d.category) || 0, // Parse category as number safely
+                  x: parseFloat(d.category), // Parse category as number safely
                   y: d.value, // Tetap gunakan value sebagai y
                 }));
 
@@ -1497,7 +1507,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { x: 95, y: 75 },
                 ]
               : chartData.map((d) => ({
-                  x: parseFloat(d.category) || 0, // Parse category as number safely
+                  x: parseFloat(d.category), // Parse category as number safely
                   y: d.value, // Tetap gunakan value sebagai y
                 }));
 
@@ -1523,22 +1533,40 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "B", value: 70 },
                   { category: "B", value: 90 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category, // Gunakan category untuk mengganti x
-                  value: d.value, // Gunakan value untuk mengganti y
-                }));
+              : chartData
+                  .filter((d) => d.category !== "")
+                  .map((d) => ({
+                    category: d.category,
+                    value: d.value,
+                  }));
 
           // Memanggil fungsi untuk membuat BoxPlot
           chartNode = chartUtils.createBoxplot(
-            boxPlotData, // Data untuk Box Plot
+            boxPlotData,
             width,
             height,
-            useaxis // Pilihan untuk menampilkan sumbu
+            useaxis
           );
           break;
 
-        case "Error Bar Chart": // Menambahkan case baru untuk BoxPlot
-          // Ambil data box plot jika tidak ada data default
+        case "Error Bar Chart":
+          // Fungsi deviasi standar
+          const calculateError = (values: number[]): number => {
+            if (values.length <= 1) return 0;
+
+            const mean =
+              values.reduce((sum: number, v: number) => sum + v, 0) /
+              values.length;
+            const variance =
+              values.reduce(
+                (sum: number, v: number) => sum + Math.pow(v - mean, 2),
+                0
+              ) /
+              (values.length - 1);
+            return Math.sqrt(variance);
+          };
+
+          // Kalau chartData kosong, pakai default
           const errorBardata =
             chartData.length === 0
               ? [
@@ -1549,18 +1577,25 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "E", value: 20, error: 3 },
                   { category: "F", value: 90, error: 7 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category, // Gunakan category untuk mengganti x
-                  value: d.value, // Gunakan value untuk mengganti y
-                  error: 2,
-                }));
+              : (() => {
+                  // Ambil semua value
+                  const values = chartData.map((d) => d.value);
+                  // Hitung deviasi standar
+                  const error = calculateError(values);
+                  // Map data dengan error deviasi
+                  return chartData.map((d) => ({
+                    category: d.category,
+                    value: d.value,
+                    error: error,
+                  }));
+                })();
 
-          // Memanggil fungsi untuk membuat BoxPlot
+          // Memanggil fungsi untuk membuat Error Bar Chart
           chartNode = chartUtils.createErrorBarChart(
-            errorBardata, // Data untuk Box Plot
+            errorBardata,
             width,
             height,
-            useaxis // Pilihan untuk menampilkan sumbu
+            useaxis
           );
           break;
 
@@ -1621,7 +1656,8 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "B", x: 5.0, y: 3.3 },
                 ]
               : chartData
-                  // .filter((d) => d.x !== undefined && d.y !== undefined) // Pastikan x dan y ada
+
+                  .filter((d) => d.category !== "")
                   .map((d) => ({
                     x: Number(d.category) || 0, // Gunakan nilai default jika undefined
                     y: Number(d.value) || 0,
@@ -1637,23 +1673,28 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           break;
 
         case "Dot Plot":
-          chartNode =
+          const dotPlotData =
             chartData.length === 0
-              ? chartUtils.createDotPlot(
-                  [
-                    // Default data jika tidak ada variabel yang dipilih
-                    { category: "A", value: 10 },
-                    { category: "B", value: 40 },
-                    { category: "C", value: 45 },
-                    { category: "D", value: 55 },
-                    { category: "E", value: 70 },
-                    { category: "F", value: 75 },
-                  ],
-                  width,
-                  height,
-                  useaxis
-                )
-              : chartUtils.createDotPlot(chartData, width, height, useaxis);
+              ? [
+                  { category: "A", value: 10 },
+                  { category: "B", value: 40 },
+                  { category: "C", value: 45 },
+                  { category: "D", value: 55 },
+                  { category: "E", value: 70 },
+                  { category: "F", value: 75 },
+                ]
+              : chartData
+                  .filter((d) => d.category !== "")
+                  .map((d) => ({
+                    category: d.category,
+                    value: d.value,
+                  }));
+          chartNode = chartUtils.createDotPlot(
+            dotPlotData,
+            width,
+            height,
+            useaxis
+          );
           break;
 
         case "Population Pyramid": {
@@ -1753,12 +1794,14 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "C", subcategory: "A2", value: 40, error: 1 },
                   { category: "C", subcategory: "A3", value: 49, error: 3 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category || "", // Gunakan category untuk mengganti x
-                  subcategory: String(d.color || ""),
-                  value: d.value, // Gunakan value untuk mengganti y
-                  error: 2,
-                }));
+              : chartData
+                  .filter((d) => d.category !== "")
+                  .map((d) => ({
+                    category: d.category, // Gunakan category untuk mengganti x
+                    subcategory: String(d.color || ""),
+                    value: d.value, // Gunakan value untuk mengganti y
+                    error: 2,
+                  }));
 
           // Memanggil fungsi untuk membuat BoxPlot
           chartNode = chartUtils.createClusteredErrorBarChart(
@@ -1930,12 +1973,14 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "Nov", high: 115, low: 65, close: 95 },
                   { category: "Dec", high: 105, low: 55, close: 85 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.bottom_0 || "unknown",
-                  high: d.high_0 || null,
-                  low: d.low_0 || null,
-                  close: d.close_0 || null,
-                }));
+              : chartData
+                  .filter((d) => d.bottom_0 !== "")
+                  .map((d) => ({
+                    category: d.bottom_0,
+                    high: d.high_0 || null,
+                    low: d.low_0 || null,
+                    close: d.close_0 || null,
+                  }));
           // Memanggil fungsi untuk membuat BoxPlot
           chartNode = chartUtils.createSimpleRangeBar(
             simpleRangeBarData, // Data untuk Box Plot
@@ -2021,13 +2066,15 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                     close: 55,
                   },
                 ]
-              : chartData.map((d) => ({
-                  category: d.bottom_0 || "unknown",
-                  subcategory: String(d.color || "unknown"),
-                  high: d.high_0 || 0,
-                  low: d.low_0 || 0,
-                  close: d.close_0 || 0,
-                }));
+              : chartData
+                  .filter((d) => d.bottom_0 !== "")
+                  .map((d) => ({
+                    category: d.bottom_0 || "unknown",
+                    subcategory: String(d.color || "unknown"),
+                    high: d.high_0 || 0,
+                    low: d.low_0 || 0,
+                    close: d.close_0 || 0,
+                  }));
           // Memanggil fungsi untuk membuat BoxPlot
           chartNode = chartUtils.createClusteredRangeBar(
             clusteredRangeBarData, // Data untuk Box Plot
@@ -2055,12 +2102,14 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "Nov", high: 115, low: 65, close: 95 },
                   { category: "Dec", high: 105, low: 55, close: 85 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.bottom_0 || "unknown",
-                  high: d.high_0 || 0,
-                  low: d.low_0 || 0,
-                  close: d.close_0 || 0,
-                }));
+              : chartData
+                  .filter((d) => d.bottom_0 !== "")
+                  .map((d) => ({
+                    category: d.bottom_0 || "unknown",
+                    high: d.high_0 || 0,
+                    low: d.low_0 || 0,
+                    close: d.close_0 || 0,
+                  }));
           // Memanggil fungsi untuk membuat BoxPlot
           chartNode = chartUtils.createHighLowCloseChart(
             highLowCloseBarData, // Data untuk Box Plot
@@ -2227,91 +2276,91 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                     bars: { nilaiA: 50 },
                     lines: { nilaiB1: 45, nilaiB2: 115 },
                   },
-                  {
-                    category: "NTB",
-                    bars: { nilaiA: 35 },
-                    lines: { nilaiB1: 30, nilaiB2: 105 },
-                  },
-                  {
-                    category: "NTT",
-                    bars: { nilaiA: 40 },
-                    lines: { nilaiB1: 35, nilaiB2: 120 },
-                  },
-                  {
-                    category: "Kalimantan Barat",
-                    bars: { nilaiA: 70 },
-                    lines: { nilaiB1: 65, nilaiB2: 140 },
-                  },
-                  {
-                    category: "Kalteng",
-                    bars: { nilaiA: 55 },
-                    lines: { nilaiB1: 45, nilaiB2: 100 },
-                  },
-                  {
-                    category: "Kalimantan Selatan",
-                    bars: { nilaiA: 60 },
-                    lines: { nilaiB1: 50, nilaiB2: 125 },
-                  },
-                  {
-                    category: "Kalimantan Timur",
-                    bars: { nilaiA: 75 },
-                    lines: { nilaiB1: 55, nilaiB2: 130 },
-                  },
-                  {
-                    category: "Kalimantan Utara",
-                    bars: { nilaiA: 65 },
-                    lines: { nilaiB1: 40, nilaiB2: 110 },
-                  },
-                  {
-                    category: "Sulut",
-                    bars: { nilaiA: 30 },
-                    lines: { nilaiB1: 20, nilaiB2: 90 },
-                  },
-                  {
-                    category: "Sulawesi Tengah",
-                    bars: { nilaiA: 45 },
-                    lines: { nilaiB1: 35, nilaiB2: 115 },
-                  },
-                  {
-                    category: "Sulawesi Selatan",
-                    bars: { nilaiA: 70 },
-                    lines: { nilaiB1: 60, nilaiB2: 135 },
-                  },
-                  {
-                    category: "Sulawesi Tenggara",
-                    bars: { nilaiA: 55 },
-                    lines: { nilaiB1: 45, nilaiB2: 120 },
-                  },
-                  {
-                    category: "Gorontalo",
-                    bars: { nilaiA: 25 },
-                    lines: { nilaiB1: 30, nilaiB2: 100 },
-                  },
-                  {
-                    category: "Sulawesi Barat",
-                    bars: { nilaiA: 35 },
-                    lines: { nilaiB1: 25, nilaiB2: 105 },
-                  },
-                  {
-                    category: "Maluku",
-                    bars: { nilaiA: 40 },
-                    lines: { nilaiB1: 50, nilaiB2: 115 },
-                  },
-                  {
-                    category: "Maluku Utara",
-                    bars: { nilaiA: 60 },
-                    lines: { nilaiB1: 45, nilaiB2: 120 },
-                  },
-                  {
-                    category: "Papua",
-                    bars: { nilaiA: 65 },
-                    lines: { nilaiB1: 35, nilaiB2: 130 },
-                  },
-                  {
-                    category: "Papua Barat",
-                    bars: { nilaiA: 70 },
-                    lines: { nilaiB1: 30, nilaiB2: 135 },
-                  },
+                  // {
+                  //   category: "NTB",
+                  //   bars: { nilaiA: 35 },
+                  //   lines: { nilaiB1: 30, nilaiB2: 105 },
+                  // },
+                  // {
+                  //   category: "NTT",
+                  //   bars: { nilaiA: 40 },
+                  //   lines: { nilaiB1: 35, nilaiB2: 120 },
+                  // },
+                  // {
+                  //   category: "Kalimantan Barat",
+                  //   bars: { nilaiA: 70 },
+                  //   lines: { nilaiB1: 65, nilaiB2: 140 },
+                  // },
+                  // {
+                  //   category: "Kalteng",
+                  //   bars: { nilaiA: 55 },
+                  //   lines: { nilaiB1: 45, nilaiB2: 100 },
+                  // },
+                  // {
+                  //   category: "Kalimantan Selatan",
+                  //   bars: { nilaiA: 60 },
+                  //   lines: { nilaiB1: 50, nilaiB2: 125 },
+                  // },
+                  // {
+                  //   category: "Kalimantan Timur",
+                  //   bars: { nilaiA: 75 },
+                  //   lines: { nilaiB1: 55, nilaiB2: 130 },
+                  // },
+                  // {
+                  //   category: "Kalimantan Utara",
+                  //   bars: { nilaiA: 65 },
+                  //   lines: { nilaiB1: 40, nilaiB2: 110 },
+                  // },
+                  // {
+                  //   category: "Sulut",
+                  //   bars: { nilaiA: 30 },
+                  //   lines: { nilaiB1: 20, nilaiB2: 90 },
+                  // },
+                  // {
+                  //   category: "Sulawesi Tengah",
+                  //   bars: { nilaiA: 45 },
+                  //   lines: { nilaiB1: 35, nilaiB2: 115 },
+                  // },
+                  // {
+                  //   category: "Sulawesi Selatan",
+                  //   bars: { nilaiA: 70 },
+                  //   lines: { nilaiB1: 60, nilaiB2: 135 },
+                  // },
+                  // {
+                  //   category: "Sulawesi Tenggara",
+                  //   bars: { nilaiA: 55 },
+                  //   lines: { nilaiB1: 45, nilaiB2: 120 },
+                  // },
+                  // {
+                  //   category: "Gorontalo",
+                  //   bars: { nilaiA: 25 },
+                  //   lines: { nilaiB1: 30, nilaiB2: 100 },
+                  // },
+                  // {
+                  //   category: "Sulawesi Barat",
+                  //   bars: { nilaiA: 35 },
+                  //   lines: { nilaiB1: 25, nilaiB2: 105 },
+                  // },
+                  // {
+                  //   category: "Maluku",
+                  //   bars: { nilaiA: 40 },
+                  //   lines: { nilaiB1: 50, nilaiB2: 115 },
+                  // },
+                  // {
+                  //   category: "Maluku Utara",
+                  //   bars: { nilaiA: 60 },
+                  //   lines: { nilaiB1: 45, nilaiB2: 120 },
+                  // },
+                  // {
+                  //   category: "Papua",
+                  //   bars: { nilaiA: 65 },
+                  //   lines: { nilaiB1: 35, nilaiB2: 130 },
+                  // },
+                  // {
+                  //   category: "Papua Barat",
+                  //   bars: { nilaiA: 70 },
+                  //   lines: { nilaiB1: 30, nilaiB2: 135 },
+                  // },
                 ]
               : [];
 
@@ -2382,7 +2431,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           break;
 
         case "Summary Point Plot":
-          const statistics = "median";
+          const statistics = "mean";
           chartNode =
             chartData.length === 0
               ? chartUtils.createSummaryPointPlot(
@@ -2407,6 +2456,89 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   height,
                   useaxis
                 );
+          break;
+
+        case "Stem And Leaf Plot":
+          const stemLeafData =
+            chartData.length === 0
+              ? {
+                  "1": [2, 5],
+                  "2": [1, 2, 4],
+                  "3": [1, 5, 6, 7],
+                  "4": [2, 6, 7, 8, 9],
+                  "5": [2, 3, 4, 5, 6, 7, 11],
+                  "6": [1, 1, 1, 8, 9],
+                }
+              : chartData.reduce((acc: Record<string, number[]>, d) => {
+                  const value = Number(d.value);
+                  if (isNaN(value)) return acc;
+
+                  const stem = Math.floor(value / 10).toString();
+                  const leaf = value % 10;
+
+                  if (!acc[stem]) acc[stem] = [];
+                  acc[stem].push(leaf);
+
+                  return acc;
+                }, {});
+
+          chartNode = chartUtils.createStemAndLeafPlot(
+            stemLeafData,
+            width,
+            height,
+            useaxis
+          );
+          break;
+
+        case "Violin Plot":
+          chartNode =
+            chartData.length === 0
+              ? chartUtils.createViolinPlot(
+                  [
+                    { category: "A", value: 10 },
+                    { category: "A", value: 15 },
+                    { category: "A", value: 20 },
+                    { category: "A", value: 18 },
+                    { category: "A", value: 12 },
+                    { category: "B", value: 5 },
+                    { category: "B", value: 8 },
+                    { category: "B", value: 6 },
+                    { category: "B", value: 9 },
+                    { category: "B", value: 4 },
+                    { category: "C", value: 22 },
+                    { category: "C", value: 25 },
+                    { category: "C", value: 24 },
+                    { category: "C", value: 23 },
+                    { category: "C", value: 26 },
+                  ],
+                  width,
+                  height
+                )
+              : chartUtils.createViolinPlot(
+                  chartData.filter(
+                    (d) => d.category !== "" && d.value != null && d.value !== 0
+                  ),
+                  width,
+                  height
+                );
+          break;
+
+        case "Density Chart":
+          chartNode =
+            chartData.length === 0
+              ? chartUtils.createDensityChart(
+                  Array.from({ length: 100 }, () =>
+                    Math.round(d3.randomNormal(500, 100)())
+                  ),
+                  width,
+                  height
+                )
+              : chartUtils.createDensityChart(
+                  chartData.map((d) => d.value).filter((v) => !isNaN(v)), // 👈 filter NaN
+                  width,
+                  height
+                );
+
           break;
 
         // case "Word Cloud": // Menambahkan case baru untuk WordCloud

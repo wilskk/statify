@@ -107,7 +107,7 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       color: { min: 0, max: 0 },
       filter: { min: 0, max: 0 },
     },
-    "Grouped Bar Chart": {
+    "Clustered Bar Chart": {
       side: { min: 1, max: Infinity },
       bottom: { min: 1, max: 1 },
       color: { min: 0, max: 0 },
@@ -236,11 +236,17 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       color: { min: 0, max: 0 },
       side2: { min: 1, max: 1 },
     },
+    // "Vertical Bar & Line Chart2": {
+    //   side: { min: 1, max: Infinity },
+    //   bottom: { min: 1, max: 1 },
+    //   color: { min: 0, max: 0 },
+    //   side2: { min: 1, max: Infinity },
+    // },
     "Vertical Bar & Line Chart2": {
-      side: { min: 1, max: Infinity },
-      bottom: { min: 1, max: 1 },
+      side: { min: 0, max: 0 },
+      bottom: { min: 0, max: 0 },
       color: { min: 0, max: 0 },
-      side2: { min: 1, max: Infinity },
+      side2: { min: 0, max: 0 },
     },
     "Dual Axes Scatter Plot": {
       side: { min: 1, max: 1 },
@@ -284,5 +290,23 @@ export const chartVariableConfig: Record<ChartType, ChartVariableRequirements> =
       bottom: { min: 1, max: 1 },
       color: { min: 1, max: 1 },
       bottom2: { min: 1, max: 1 },
+    },
+    "Violin Plot": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 1, max: 1 },
+      color: { min: 0, max: 0 },
+      side2: { min: 0, max: 0 },
+    },
+    "Density Chart": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 0, max: 0 },
+      color: { min: 0, max: 0 },
+      bottom2: { min: 0, max: 0 },
+    },
+    "Stem And Leaf Plot": {
+      side: { min: 1, max: 1 },
+      bottom: { min: 0, max: 0 },
+      color: { min: 0, max: 0 },
+      bottom2: { min: 0, max: 0 },
     },
   };

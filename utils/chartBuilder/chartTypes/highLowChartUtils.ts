@@ -402,7 +402,12 @@ export const createClusteredRangeBar = (
           .attr("text-anchor", "start")
           .text("↑ Value")
       );
-    // Tambahkan legenda
+
+    // Menambahkan legenda
+    const legendItemWidth = 19;
+    const legendItemHeight = 19;
+    const labelOffset = 5;
+
     const legend = svg
       .append("g")
       .attr("font-family", "sans-serif")
@@ -411,11 +416,13 @@ export const createClusteredRangeBar = (
       .selectAll("g")
       .data(subcategories)
       .join("g")
-      .attr("transform", (d, i) => `translate(${width - 100},${i * 20})`);
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
+      .attr(
+        "transform",
+        (d, i) =>
+          `translate(${i * (legendItemWidth + 30) + 20},${
+            height - marginBottom + 20
+          })`
+      );
 
     legend
       .append("rect")
@@ -851,6 +858,40 @@ export const createDifferenceArea = (
         .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
         .y((d) => y(d.value0))(filteredData)
     );
+
+  if (useAxis) {
+    // Tambahkan legenda
+    const legend = svg
+      .append("g")
+      .attr(
+        "transform",
+        `translate(${width - marginRight - 100}, ${marginTop})`
+      );
+
+    const legendItems = [
+      { color: colors.above, label: "Value1 > Value0" },
+      { color: colors.below, label: "Value0 > Value1" },
+    ];
+
+    legendItems.forEach((item, index) => {
+      const g = legend
+        .append("g")
+        .attr("transform", `translate(0, ${index * 20})`);
+
+      g.append("rect")
+        .attr("width", 12)
+        .attr("height", 12)
+        .attr("fill", item.color)
+        .attr("fill-opacity", 0.7);
+
+      g.append("text")
+        .attr("x", 16)
+        .attr("y", 6)
+        .attr("dy", "0.35em")
+        .text(item.label)
+        .style("font", "10px sans-serif");
+    });
+  }
 
   return svg.node();
 };
