@@ -71,7 +71,7 @@ const TimeTab: FC<TimeTabProps> = ({
                             getTypeDate() === 'y' ? `${getYear()}` : 
                             getTypeDate() === 'ys' ? `Semester 1 in ${getYear()}` : 
                             getTypeDate() === 'yq' ? `Quartal 1 in ${getYear()}` : 
-                            getTypeDate() === 'ym' ? `${months[getMonth()]} ${getYear()}` : 
+                            getTypeDate() === 'ym' ? `${months[getMonth()-1]} ${getYear()}` : 
                             getTypeDate() === 'wwd5' ? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()}` : 
                             getTypeDate() === 'wwd6' ? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()}` : 
                             getTypeDate() === 'wd' ? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()}` : 
