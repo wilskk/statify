@@ -1,7 +1,6 @@
 import React, { FC } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTimeSeriesStore } from "@/stores/useTimeSeriesStore";
-import { format } from "date-fns";
 
 interface PeriodOption {
     value: string;
@@ -79,9 +78,9 @@ const TimeTab: FC<TimeTabProps> = ({
                             getTypeDate() === 'wwd6' ? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()}` : 
                             getTypeDate() === 'wd' ? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()}` : 
                             getTypeDate() === 'dwh' && getHour() < 10? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at 0${getHour()}:00` : 
-                            getTypeDate() === 'dwh'? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at 0${getHour()}:00` : 
+                            getTypeDate() === 'dwh'? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at ${getHour()}:00` : 
                             getTypeDate() === 'dh' && getHour() < 10? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at 0${getHour()}:00` : 
-                            getTypeDate() === 'dh'? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at 0${getHour()}:00` : 
+                            getTypeDate() === 'dh'? `${getDayName()}, ${getDay()} ${months[getMonth()-1]} ${getYear()} at ${getHour()}:00` : 
                             '00:00'
                         }
                     </label>

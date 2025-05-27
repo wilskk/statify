@@ -22,7 +22,15 @@ type AnalysisType =
     | "Discriminant"
     | "NearestNeighbor"
     | "ROCCurve"
-    | "ROCAnalysis";
+    | "ROCAnalysis"
+    // Time Series
+    | "TimeSeriesTime"
+    | "Smoothing"
+    | "Decomposition"
+    | "AutoCorrelation"
+    | "UnitRootTest"
+    | "BoxJenkinsModel"
+    ;
 
 const DB_NAME = "Statify";
 const STORE_NAME = "AnalysisForm";
