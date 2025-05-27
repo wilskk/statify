@@ -1,15 +1,16 @@
 use wasm_bindgen::prelude::*;
 
-use crate::univariate::models::config::ContrastMethod;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::UnivariateResult,
 };
 use crate::univariate::stats::core;
-use crate::univariate::utils::converter::format_result;
-use crate::univariate::utils::log::FunctionLogger;
-use crate::univariate::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::univariate::utils::{
+    converter::{ format_result, string_to_js_error },
+    error::ErrorCollector,
+    log::FunctionLogger,
+};
 
 pub fn run_analysis(
     data: &AnalysisData,
@@ -28,7 +29,7 @@ pub fn run_analysis(
     // Step 1: Basic processing summary (always executed)
     logger.add_log("basic_processing_summary");
     let mut processing_summary = None;
-    match core::basic_processing_summary(data, config) {
+    match core::basic_processing_summary(&data, config) {
         Ok(summary) => {
             // Store the summary in the result
             processing_summary = Some(summary);
@@ -42,7 +43,7 @@ pub fn run_analysis(
     let mut descriptive_statistics = None;
     if config.options.desc_stats {
         logger.add_log("calculate_descriptive_statistics");
-        match core::calculate_descriptive_statistics(data, config) {
+        match core::calculate_descriptive_statistics(&data, config) {
             Ok(stats) => {
                 descriptive_statistics = Some(stats);
             }
@@ -57,7 +58,7 @@ pub fn run_analysis(
     let mut levene_test = None;
     if config.options.homogen_test {
         logger.add_log("calculate_levene_test");
-        match core::calculate_levene_test(data, config) {
+        match core::calculate_levene_test(&data, config) {
             Ok(test) => {
                 levene_test = Some(test);
             }
@@ -77,7 +78,7 @@ pub fn run_analysis(
         config.options.f_test
     {
         logger.add_log("calculate_heteroscedasticity_tests");
-        match core::calculate_heteroscedasticity_tests(data, config) {
+        match core::calculate_heteroscedasticity_tests(&data, config) {
             Ok(tests) => {
                 heteroscedasticity_tests = Some(tests);
             }
@@ -91,7 +92,7 @@ pub fn run_analysis(
     // Step 4: Tests of Between-Subjects Effects (ANOVA)
     let mut tests_of_between_subjects_effects = None;
     logger.add_log("calculate_tests_between_subjects_effects");
-    match core::calculate_tests_between_subjects_effects(data, config) {
+    match core::calculate_tests_between_subjects_effects(&data, config) {
         Ok(tests) => {
             tests_of_between_subjects_effects = Some(tests);
         }
@@ -104,7 +105,7 @@ pub fn run_analysis(
     let mut parameter_estimates = None;
     if config.options.param_est {
         logger.add_log("calculate_parameter_estimates");
-        match core::calculate_parameter_estimates(data, config) {
+        match core::calculate_parameter_estimates(&data, config) {
             Ok(estimates) => {
                 parameter_estimates = Some(estimates);
             }
@@ -119,7 +120,7 @@ pub fn run_analysis(
     let mut lack_of_fit_tests = None;
     if config.options.lack_of_fit {
         logger.add_log("calculate_lack_of_fit_tests");
-        match core::calculate_lack_of_fit_tests(data, config) {
+        match core::calculate_lack_of_fit_tests(&data, config) {
             Ok(tests) => {
                 lack_of_fit_tests = Some(tests);
             }
@@ -134,7 +135,7 @@ pub fn run_analysis(
     let mut spread_vs_level_plots = None;
     if config.options.spr_vs_level {
         logger.add_log("calculate_spread_vs_level_plots");
-        match core::calculate_spread_vs_level_plots(data, config) {
+        match core::calculate_spread_vs_level_plots(&data, config) {
             Ok(plots) => {
                 spread_vs_level_plots = Some(plots);
             }
@@ -148,7 +149,7 @@ pub fn run_analysis(
     // Step 8: Bootstrap analysis if requested
     if config.bootstrap.perform_boot_strapping {
         logger.add_log("perform_bootstrap_analysis");
-        match core::perform_bootstrap_analysis(data, config) {
+        match core::perform_bootstrap_analysis(&data, config) {
             Ok(_) => {}
             Err(e) => {
                 error_collector.add_error("perform_bootstrap_analysis", &e);
@@ -161,7 +162,7 @@ pub fn run_analysis(
     let mut posthoc_tests = None;
     if config.posthoc.src_list.is_some() && !config.posthoc.src_list.as_ref().unwrap().is_empty() {
         logger.add_log("calculate_posthoc_tests");
-        match core::calculate_posthoc_tests(data, config) {
+        match core::calculate_posthoc_tests(&data, config) {
             Ok(tests) => {
                 posthoc_tests = Some(tests);
             }
@@ -176,7 +177,7 @@ pub fn run_analysis(
     let mut emmeans = None;
     if config.emmeans.target_list.as_ref().map_or(false, |v| !v.is_empty()) {
         logger.add_log("calculate_emmeans");
-        match core::calculate_emmeans(data, config) {
+        match core::calculate_emmeans(&data, config) {
             Ok(means) => {
                 emmeans = Some(means);
             }
@@ -190,7 +191,7 @@ pub fn run_analysis(
     let mut robust_parameter_estimates = None;
     if config.options.param_est_rob_std_err {
         logger.add_log("calculate_robust_parameter_estimates");
-        match core::calculate_robust_parameter_estimates(data, config) {
+        match core::calculate_robust_parameter_estimates(&data, config) {
             Ok(estimates) => {
                 robust_parameter_estimates = Some(estimates);
             }
@@ -205,7 +206,7 @@ pub fn run_analysis(
     let mut plots = None;
     if config.plots.line_chart_type || config.plots.bar_chart_type {
         logger.add_log("generate_plots");
-        match core::generate_plots(data, config) {
+        match core::generate_plots(&data, config) {
             Ok(plot_data) => {
                 plots = Some(plot_data);
             }
@@ -226,7 +227,7 @@ pub fn run_analysis(
         config.save.cooks_d
     {
         logger.add_log("save_variables");
-        match core::save_variables(data, config) {
+        match core::save_variables(&data, config) {
             Ok(vars) => {
                 saved_variables = Some(vars);
             }
@@ -241,27 +242,12 @@ pub fn run_analysis(
     let mut general_estimable_function = None;
     if config.options.general_fun {
         logger.add_log("calculate_general_estimable_function");
-        match core::calculate_general_estimable_function(data, config) {
+        match core::calculate_general_estimable_function(&data, config) {
             Ok(gef) => {
                 general_estimable_function = Some(gef);
             }
             Err(e) => {
                 error_collector.add_error("calculate_general_estimable_function", &e);
-                // Continue execution despite errors
-            }
-        }
-    }
-
-    // Calculate contrast coefficients
-    let mut contrast_coefficients = None;
-    if config.contrast.contrast_method != ContrastMethod::None {
-        logger.add_log("calculate_contrast_coefficients");
-        match core::calculate_contrast_coefficients(data, config) {
-            Ok(coefs) => {
-                contrast_coefficients = Some(coefs);
-            }
-            Err(e) => {
-                error_collector.add_error("calculate_contrast_coefficients", &e);
                 // Continue execution despite errors
             }
         }
@@ -276,7 +262,7 @@ pub fn run_analysis(
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
-        contrast_coefficients,
+        contrast_coefficients: None, // We no longer need to store contrast coefficients since we're using processed data
         lack_of_fit_tests,
         spread_vs_level_plots,
         posthoc_tests,

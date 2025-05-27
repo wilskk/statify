@@ -152,12 +152,20 @@ pub struct GeneralEstimableFunctionEntry {
     pub parameter: Vec<String>,
     pub l_label: Vec<String>,
     pub l_matrix: Vec<Vec<i32>>,
+    pub contrast_information: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastCoefficients {
+    pub entries: Vec<ContrastCoefficientsEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastCoefficientsEntry {
     pub parameter: Vec<String>,
-    pub coefficients: Vec<f64>,
+    pub l_label: Vec<String>,
+    pub coefficients: Vec<Vec<f64>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

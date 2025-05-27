@@ -2,7 +2,7 @@ pub use crate::univariate::stats::basic_math::*;
 pub use crate::univariate::stats::between_subjects_effects::*;
 pub use crate::univariate::stats::bootstrap::*;
 pub use crate::univariate::stats::common::*;
-pub use crate::univariate::stats::contrast_coefficients::*;
+pub use crate::univariate::stats::contrast_coefficient::*;
 pub use crate::univariate::stats::descriptive_statistics::*;
 pub use crate::univariate::stats::distribution_utils::*;
 pub use crate::univariate::stats::design_matrix::*;

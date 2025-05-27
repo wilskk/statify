@@ -2,7 +2,7 @@ pub mod basic_math;
 pub mod between_subjects_effects;
 pub mod bootstrap;
 pub mod common;
-pub mod contrast_coefficients;
+pub mod contrast_coefficient;
 pub mod core;
 pub mod descriptive_statistics;
 pub mod distribution_utils;
