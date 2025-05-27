@@ -1,15 +1,14 @@
 // discriminant-analysis-output.ts
 import { DiscriminantFinalResultType } from "@/models/classify/discriminant/discriminant-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultDiscriminant({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: DiscriminantFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

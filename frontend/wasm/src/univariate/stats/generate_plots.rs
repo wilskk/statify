@@ -11,7 +11,7 @@ use super::core::{
     calculate_mean,
     calculate_std_deviation,
     calculate_t_critical,
-    extract_dependent_value,
+    extract_numeric_from_record,
     get_factor_levels,
     data_value_to_string,
 };
@@ -59,7 +59,7 @@ pub fn generate_plots(
                         let record_level = record.values.get(factor).map(data_value_to_string);
 
                         if record_level.as_deref() == Some(level) {
-                            if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                            if let Some(value) = extract_numeric_from_record(record, &dep_var_name) {
                                 values.push(value);
                             }
                         }
@@ -92,7 +92,10 @@ pub fn generate_plots(
                     if config.plots.confidence_interval {
                         // Use confidence interval
                         let df = values.len() - 1;
-                        let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
+                        let t_critical = calculate_t_critical(
+                            Some(config.options.sig_level / 2.0),
+                            df
+                        );
                         let ci_width = std_error * t_critical;
 
                         error_bars.push(ConfidenceInterval {
@@ -140,7 +143,7 @@ pub fn generate_plots(
 
                 for records in &data.dependent_data {
                     for record in records {
-                        if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                        if let Some(value) = extract_numeric_from_record(record, &dep_var_name) {
                             all_values.push(value);
                         }
                     }
@@ -183,7 +186,12 @@ pub fn generate_plots(
                                 Some(f2_level);
 
                             if f1_match && f2_match {
-                                if let Some(value) = extract_dependent_value(record, &dep_var_name) {
+                                if
+                                    let Some(value) = extract_numeric_from_record(
+                                        record,
+                                        &dep_var_name
+                                    )
+                                {
                                     values.push(value);
                                 }
                             }
@@ -214,8 +222,8 @@ pub fn generate_plots(
                             // Use confidence interval
                             let df = values.len() - 1;
                             let t_critical = calculate_t_critical(
-                                df,
-                                config.options.sig_level / 2.0
+                                Some(config.options.sig_level / 2.0),
+                                df
                             );
                             let ci_width = std_error * t_critical;
 

@@ -1,15 +1,14 @@
 // roc-analysis-output.ts
 import { RocAnalysisFinalResultType } from "@/models/classify/roc-analysis/roc-analysis-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultROCAnalysis({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: RocAnalysisFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

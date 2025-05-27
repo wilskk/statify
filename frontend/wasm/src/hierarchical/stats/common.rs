@@ -1,8 +1,8 @@
-// stats_utils.rs
 use statrs::statistics::{ Data, Distribution, Max, Min };
 use std::collections::HashMap;
 use crate::hierarchical::models::{ config::ClusterConfig, data::{ AnalysisData, DataValue } };
 
+// Struktur untuk menyimpan statistik deskriptif data
 pub struct DataStats {
     pub mean: f64,
     pub std_dev: f64,
@@ -12,6 +12,7 @@ pub struct DataStats {
     pub abs_max: f64,
 }
 
+// Menghitung statistik deskriptif dari sekumpulan nilai
 pub fn calculate_statistics(values: &[f64]) -> DataStats {
     if values.is_empty() {
         return DataStats {
@@ -25,7 +26,7 @@ pub fn calculate_statistics(values: &[f64]) -> DataStats {
     }
 
     let data = Data::new(values.to_vec());
-    // Safely unwrap Option values with defaults
+    // Unwrap nilai Option dengan aman menggunakan nilai default
     let mean = data.mean().unwrap_or(0.0);
     let std_dev = data.std_dev().unwrap_or(1.0);
     let min = data.min();
@@ -46,6 +47,7 @@ pub fn calculate_statistics(values: &[f64]) -> DataStats {
     }
 }
 
+// Mengekstrak nilai numerik dari kasus untuk variabel yang ditentukan
 pub fn extract_numeric_values(case: &HashMap<String, DataValue>, variables: &[String]) -> Vec<f64> {
     variables
         .iter()
@@ -55,13 +57,14 @@ pub fn extract_numeric_values(case: &HashMap<String, DataValue>, variables: &[St
         .collect()
 }
 
-// Updated extract_case_label function that produces labels in the format "{case_number} {label_value}"
+// Fungsi untuk mengekstraksi label kasus
+// Menghasilkan label dalam format "{case_number} {label_value}"
 pub fn extract_case_label(data: &AnalysisData, config: &ClusterConfig, case_idx: usize) -> String {
     let case_number = case_idx + 1;
     let mut label_value = String::new();
 
     if let Some(label_var) = &config.main.label_cases {
-        // Try to find the label in label data
+        // Coba temukan label dalam data label
         for dataset in &data.label_data {
             if case_idx < dataset.len() {
                 if let Some(value) = dataset[case_idx].values.get(label_var) {
@@ -82,14 +85,16 @@ pub fn extract_case_label(data: &AnalysisData, config: &ClusterConfig, case_idx:
     }
 
     if label_value.is_empty() {
-        // If no label value was found, just use the case number
+        // Jika tidak ditemukan nilai label, gunakan nomor kasus saja
         format!("Case {}", case_number)
     } else {
-        // Format as "{case_number} {label_value}"
+        // Format sebagai "{case_number} {label_value}"
         format!("{}: {}", case_number, label_value)
     }
 }
 
+// Implementasi berbagai fungsi pengukuran jarak/kesamaan
+// Jarak Euclidean
 pub fn euclidean_distance(v1: &[f64], v2: &[f64]) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -98,6 +103,7 @@ pub fn euclidean_distance(v1: &[f64], v2: &[f64]) -> f64 {
         .sqrt()
 }
 
+// Jarak Euclidean kuadrat
 pub fn squared_euclidean_distance(v1: &[f64], v2: &[f64]) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -105,6 +111,7 @@ pub fn squared_euclidean_distance(v1: &[f64], v2: &[f64]) -> f64 {
         .sum()
 }
 
+// Jarak Manhattan (city block)
 pub fn manhattan_distance(v1: &[f64], v2: &[f64]) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -112,6 +119,7 @@ pub fn manhattan_distance(v1: &[f64], v2: &[f64]) -> f64 {
         .sum()
 }
 
+// Jarak Chebyshev
 pub fn chebyshev_distance(v1: &[f64], v2: &[f64]) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -119,6 +127,7 @@ pub fn chebyshev_distance(v1: &[f64], v2: &[f64]) -> f64 {
         .fold(0.0, f64::max)
 }
 
+// Jarak Minkowski
 pub fn minkowski_distance(v1: &[f64], v2: &[f64], p: f64) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -127,6 +136,7 @@ pub fn minkowski_distance(v1: &[f64], v2: &[f64], p: f64) -> f64 {
         .powf(1.0 / p)
 }
 
+// Jarak dengan power kustom
 pub fn power_distance(v1: &[f64], v2: &[f64], p: f64, r: f64) -> f64 {
     v1.iter()
         .zip(v2.iter())
@@ -135,6 +145,7 @@ pub fn power_distance(v1: &[f64], v2: &[f64], p: f64, r: f64) -> f64 {
         .powf(1.0 / r)
 }
 
+// Kesamaan cosine
 pub fn cosine_similarity(v1: &[f64], v2: &[f64]) -> f64 {
     let dot_product: f64 = v1
         .iter()
@@ -160,6 +171,7 @@ pub fn cosine_similarity(v1: &[f64], v2: &[f64]) -> f64 {
     }
 }
 
+// Jarak korelasi
 pub fn correlation_distance(v1: &[f64], v2: &[f64]) -> f64 {
     let n = v1.len() as f64;
     if n == 0.0 {
@@ -169,7 +181,7 @@ pub fn correlation_distance(v1: &[f64], v2: &[f64]) -> f64 {
     let data1 = Data::new(v1.to_vec());
     let data2 = Data::new(v2.to_vec());
 
-    // Safely unwrap Option values with defaults
+    // Unwrap nilai Option dengan aman menggunakan nilai default
     let mean1 = data1.mean().unwrap_or(0.0);
     let mean2 = data2.mean().unwrap_or(0.0);
 
@@ -192,34 +204,35 @@ pub fn correlation_distance(v1: &[f64], v2: &[f64]) -> f64 {
     }
 }
 
+// Menghitung tabel kontingensi untuk ukuran binary
 pub fn compute_contingency_table(
     values1: &[f64],
     values2: &[f64],
     config: &ClusterConfig
 ) -> (f64, f64, f64, f64) {
-    let mut a = 0.0; // Both present
-    let mut b = 0.0; // Present in values1, absent in values2
-    let mut c = 0.0; // Absent in values1, present in values2
-    let mut d = 0.0; // Both absent
+    let mut a = 0.0; // Keduanya hadir
+    let mut b = 0.0; // Hadir di values1, tidak ada di values2
+    let mut c = 0.0; // Tidak ada di values1, hadir di values2
+    let mut d = 0.0; // Keduanya tidak ada
 
     let present_val = config.method.present as f64;
     let absent_val = config.method.absent as f64;
 
     for (&val1, &val2) in values1.iter().zip(values2.iter()) {
         if val1 == present_val && val2 == present_val {
-            // Both present
+            // Keduanya hadir
             a += 1.0;
         } else if val1 == present_val && val2 == absent_val {
-            // Present in values1, absent in values2
+            // Hadir di values1, tidak ada di values2
             b += 1.0;
         } else if val1 == absent_val && val2 == present_val {
-            // Absent in values1, present in values2
+            // Tidak ada di values1, hadir di values2
             c += 1.0;
         } else if val1 == absent_val && val2 == absent_val {
-            // Both absent
+            // Keduanya tidak ada
             d += 1.0;
         } else {
-            d += 1.0; // Default to both absent if values are not recognized
+            d += 1.0; // Default ke keduanya tidak ada jika nilai tidak dikenali
         }
     }
 

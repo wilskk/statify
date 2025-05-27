@@ -6,6 +6,7 @@ use crate::varcomps::models::{
     result::VarianceComponentsResult,
 };
 use crate::varcomps::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::varcomps::utils::log::FunctionLogger;
 use crate::varcomps::wasm::function;
 
 #[wasm_bindgen]
@@ -14,6 +15,7 @@ pub struct VarianceComponentsAnalysis {
     data: AnalysisData,
     result: Option<VarianceComponentsResult>,
     error_collector: ErrorCollector,
+    logger: FunctionLogger,
 }
 
 #[wasm_bindgen]
@@ -34,6 +36,9 @@ impl VarianceComponentsAnalysis {
     ) -> Result<VarianceComponentsAnalysis, JsValue> {
         // Initialize error collector
         let mut error_collector = ErrorCollector::default();
+
+        // Initialize function logger
+        let logger = FunctionLogger::default();
 
         // Parse dependent data
         let dependent_data: Vec<Vec<DataRecord>> = match
@@ -197,11 +202,17 @@ impl VarianceComponentsAnalysis {
             data,
             result: None,
             error_collector,
+            logger,
         };
 
         // Run the analysis
         match
-            function::run_analysis(&analysis.data, &analysis.config, &mut analysis.error_collector)
+            function::run_analysis(
+                &analysis.data,
+                &analysis.config,
+                &mut analysis.error_collector,
+                &mut analysis.logger
+            )
         {
             Ok(result) => {
                 analysis.result = result;
@@ -226,6 +237,10 @@ impl VarianceComponentsAnalysis {
 
     pub fn get_all_errors(&self) -> JsValue {
         function::get_all_errors(&self.error_collector)
+    }
+
+    pub fn get_all_log(&self) -> Result<JsValue, JsValue> {
+        function::get_all_log(&self.logger)
     }
 
     pub fn clear_errors(&mut self) -> JsValue {

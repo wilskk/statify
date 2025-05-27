@@ -1,15 +1,14 @@
 // factor-analysis-output.ts
 import { FactorFinalResultType } from "@/models/dimension-reduction/factor/factor-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultFactorAnalysis({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: FactorFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

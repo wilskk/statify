@@ -1,15 +1,38 @@
+//! Canonical discriminant functions calculation.
+//!
+//! This module implements the computation of canonical discriminant functions,
+//! which are linear combinations of the original variables that maximize
+//! the separation between groups.
+
 use std::collections::HashMap;
 use nalgebra::DMatrix;
 use rayon::prelude::*;
 
-use crate::discriminant::{
-    models::result::EigenDescription,
-    stats::stepwise::stepwise_statistics::calculate_stepwise_statistics,
+use crate::discriminant::models::{
+    result::{ CanonicalFunctions, EigenDescription },
+    AnalysisData,
+    DiscriminantConfig,
 };
-use super::core::{ calculate_pooled_within_matrix, extract_analyzed_dataset, AnalyzedDataset };
 
-use crate::discriminant::models::{ result::CanonicalFunctions, AnalysisData, DiscriminantConfig };
+use super::core::{
+    calculate_pooled_within_matrix,
+    calculate_stepwise_statistics,
+    extract_analyzed_dataset,
+    AnalyzedDataset,
+    EPSILON,
+};
 
+/// Calculate eigenvalues and eigenvectors for discriminant functions
+///
+/// This function solves the eigenvalue problem to find the discriminant functions
+/// that maximize the separation between groups.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// An EigenDescription containing eigenvalues, eigenvectors, and related statistics
 pub fn calculate_eigen_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -63,7 +86,6 @@ pub fn calculate_eigen_statistics(
         .collect();
 
     // Flatten the eigenvectors matrix into a single vector for storage
-    // We'll need to reshape it later when we use it
     let flat_eigenvectors: Vec<f64> = eigenvectors
         .iter()
         .flat_map(|vec| vec.iter().copied())
@@ -82,6 +104,17 @@ pub fn calculate_eigen_statistics(
     })
 }
 
+/// Calculate canonical discriminant functions
+///
+/// This function calculates the coefficients for the canonical discriminant functions
+/// and the function values at group centroids.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A CanonicalFunctions object containing coefficients and function values
 pub fn calculate_canonical_functions(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -105,7 +138,6 @@ pub fn calculate_canonical_functions(
     let num_functions = std::cmp::min(dataset.num_groups - 1, variables_to_use.len());
 
     // Reshape the flat eigenvectors back to the original matrix form
-    // Assuming eigenvectors was originally a matrix with dimensions [num_variables × num_functions]
     let num_variables = variables_to_use.len();
     let mut eigenvectors = Vec::with_capacity(num_variables);
 
@@ -150,6 +182,18 @@ pub fn calculate_canonical_functions(
     })
 }
 
+/// Solve the eigenvalue problem for discriminant analysis
+///
+/// This function solves the eigenvalue problem (T-W)V = λWV to find the eigenvalues
+/// and eigenvectors that define the discriminant functions.
+///
+/// # Parameters
+/// * `pooled_within` - The pooled within-groups covariance matrix
+/// * `between_groups` - The between-groups covariance matrix
+/// * `num_functions` - The number of discriminant functions to calculate
+///
+/// # Returns
+/// A tuple containing (eigenvalues, eigenvectors)
 pub fn solve_eigenvalue_problem(
     pooled_within: &DMatrix<f64>,
     between_groups: &DMatrix<f64>,
@@ -164,7 +208,7 @@ pub fn solve_eigenvalue_problem(
             // If Cholesky fails, add a small regularization to the diagonal
             let mut regularized = pooled_within.clone();
             for i in 0..n {
-                regularized[(i, i)] += 1e-10;
+                regularized[(i, i)] += EPSILON;
             }
             regularized
                 .clone()
@@ -177,15 +221,19 @@ pub fn solve_eigenvalue_problem(
 
                     let mut d_inv_sqrt = DMatrix::zeros(n, n);
                     for i in 0..n {
-                        if d[i] > 1e-10 {
+                        if d[i] > EPSILON {
                             d_inv_sqrt[(i, i)] = 1.0 / d[i].sqrt();
-                        } else {
-                            d_inv_sqrt[(i, i)] = 0.0;
                         }
                     }
 
                     let pseudo_chol = v.clone() * d_inv_sqrt * v.transpose();
-                    nalgebra::Cholesky::new(pseudo_chol).unwrap()
+                    nalgebra::Cholesky
+                        ::new(pseudo_chol)
+                        .unwrap_or_else(||
+                            panic!(
+                                "Failed to compute Cholesky decomposition even with regularization"
+                            )
+                        )
                 })
         }
     };
@@ -219,19 +267,15 @@ pub fn solve_eigenvalue_problem(
     }
 
     // Transform eigenvectors back to original problem
-    for func_idx in 0..num_functions {
-        if func_idx < indices.len() {
-            let idx = indices[func_idx];
-            let transformed_eigenvector = eigenvectors_matrix.column(idx);
+    for func_idx in 0..num_functions.min(indices.len()) {
+        let idx = indices[func_idx];
+        let transformed_eigenvector = eigenvectors_matrix.column(idx);
 
-            // v = W^(-1/2) * transformed_v
-            let original_eigenvector = &w_inv_sqrt * transformed_eigenvector;
+        // v = W^(-1/2) * transformed_v
+        let original_eigenvector = &w_inv_sqrt * transformed_eigenvector;
 
-            for var_idx in 0..n {
-                if var_idx < eigenvectors.len() && func_idx < eigenvectors[var_idx].len() {
-                    eigenvectors[var_idx][func_idx] = original_eigenvector[var_idx];
-                }
-            }
+        for var_idx in 0..n {
+            eigenvectors[var_idx][func_idx] = original_eigenvector[var_idx];
         }
     }
 
@@ -241,6 +285,16 @@ pub fn solve_eigenvalue_problem(
     (eigenvalues, eigenvectors)
 }
 
+/// Calculate the between-groups covariance matrix
+///
+/// This matrix represents the variance and covariance between group means.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `variables` - The variables to include in the matrix
+///
+/// # Returns
+/// The between-groups covariance matrix
 fn calculate_between_groups_matrix(
     dataset: &AnalyzedDataset,
     variables: &[String]
@@ -291,6 +345,20 @@ fn calculate_between_groups_matrix(
     between_groups
 }
 
+/// Process discriminant coefficients
+///
+/// This function calculates the unstandardized and standardized coefficients
+/// for the discriminant functions.
+///
+/// # Parameters
+/// * `eigenvectors` - Eigenvectors from the eigenvalue problem
+/// * `variables` - Variables in the model
+/// * `pooled_within` - Pooled within-groups covariance matrix
+/// * `overall_means` - Overall means for each variable
+/// * `num_functions` - Number of discriminant functions
+///
+/// # Returns
+/// A tuple of (unstandardized coefficients, standardized coefficients)
 pub fn process_discriminant_coefficients(
     eigenvectors: &[Vec<f64>],
     variables: &[String],
@@ -332,7 +400,7 @@ pub fn process_discriminant_coefficients(
                     if
                         var_idx < eigenvectors.len() &&
                         func_idx < eigenvectors[var_idx].len() &&
-                        std_dev > 0.0
+                        std_dev > EPSILON
                     {
                         eigenvectors[var_idx][func_idx] * std_dev
                     } else {
@@ -370,6 +438,16 @@ pub fn process_discriminant_coefficients(
     (coefficients, standardized_coefficients)
 }
 
+/// Get variables selected by stepwise procedure
+///
+/// This function retrieves the variables selected by the stepwise procedure.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A vector of selected variable names
 pub fn get_stepwise_selected_variables(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -406,6 +484,19 @@ pub fn get_stepwise_selected_variables(
     }
 }
 
+/// Calculate function values at group centroids
+///
+/// This function evaluates the discriminant functions at the centroid
+/// (mean) of each group.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+/// * `eigenvectors` - Eigenvectors from the eigenvalue problem
+/// * `variables` - Variables in the model
+/// * `num_functions` - Number of discriminant functions
+///
+/// # Returns
+/// A hashmap of group names to function values
 pub fn calculate_function_at_group_centroids(
     dataset: &AnalyzedDataset,
     eigenvectors: &[Vec<f64>],
@@ -464,10 +555,20 @@ pub fn calculate_function_at_group_centroids(
     function_at_centroids
 }
 
+/// Calculate variance percentages for discriminant functions
+///
+/// This function calculates the percentage of variance explained by each
+/// discriminant function and the cumulative percentage.
+///
+/// # Parameters
+/// * `eigenvalues` - Eigenvalues from the eigenvalue problem
+///
+/// # Returns
+/// A tuple of (variance percentages, cumulative percentages)
 pub fn calculate_variance_percentages(eigenvalues: &[f64]) -> (Vec<f64>, Vec<f64>) {
     let total_eigenvalue: f64 = eigenvalues.iter().sum();
 
-    let variance_percentage: Vec<f64> = if total_eigenvalue > 0.0 {
+    let variance_percentage: Vec<f64> = if total_eigenvalue > EPSILON {
         eigenvalues
             .iter()
             .map(|&eigen| (100.0 * eigen) / total_eigenvalue)

@@ -8,12 +8,7 @@ export async function analyzeKNN({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: KNNAnalysisType) {
-    await init();
-
     const TargetVariable = configData.main.DepVar
         ? [configData.main.DepVar]
         : [];
@@ -62,6 +57,7 @@ export async function analyzeKNN({
 
     console.log("configData", configData);
 
+    await init();
     // const knn = new KNNAnalysis(
     //     slicedDataForTarget,
     //     slicedDataForFeatures,
@@ -89,9 +85,6 @@ export async function analyzeKNN({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultNearestNeighbor({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

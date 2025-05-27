@@ -316,44 +316,44 @@ fn count_categories_for_var(
 pub fn parse_variable_scaling_info(
     var_pattern: &str
 ) -> Result<(String, ScalingLevel, usize, usize), String> {
-    // Split the pattern into variable name and scaling info
+    // Split variable name and scaling info
     let parts: Vec<&str> = var_pattern.split('(').collect();
     if parts.len() != 2 {
-        return Err(format!("Invalid variable pattern: {}", var_pattern));
+        return Err(format!("Invalid variable pattern: '{}'", var_pattern));
     }
 
     let var_name = parts[0].trim().to_string();
     let scaling_info = parts[1].trim().trim_end_matches(')');
-
-    // Extract the min and max values (the last two numeric parts)
-    let all_parts: Vec<&str> = scaling_info.split_whitespace().collect();
+    let mut all_parts: Vec<&str> = scaling_info.split_whitespace().collect();
 
     if all_parts.len() < 3 {
-        return Err(format!("Invalid scaling info format: {}", scaling_info));
+        return Err(format!("Invalid scaling info format: '{}'", scaling_info));
     }
 
-    // The last two elements should be min and max
-    let min_str = all_parts[all_parts.len() - 2];
-    let max_str = all_parts[all_parts.len() - 1];
+    // Pop max and min from the end
+    let max_str = all_parts.pop().unwrap();
+    let min_str = all_parts.pop().unwrap();
 
-    // Everything before the min/max is the scaling level
-    let binding = all_parts[..all_parts.len() - 2].join(" ");
-    let scaling_level_str = binding.trim();
+    // Remaining is scaling level
+    let scaling_level_str = all_parts.join(" ").to_lowercase();
 
-    // Parse scaling level
-    let scaling_level = match scaling_level_str {
-        "Ordinal" => ScalingLevel::Ordinal,
-        "Single Nominal" => ScalingLevel::Single,
-        "Multiple Nominal" => ScalingLevel::Multiple,
-        "Discrete Numeric" => ScalingLevel::Discrete,
+    let scaling_level = match scaling_level_str.as_str() {
+        "ordinal" => ScalingLevel::Ordinal,
+        "single nominal" => ScalingLevel::Single,
+        "multiple nominal" => ScalingLevel::Multiple,
+        "discrete numeric" => ScalingLevel::Discrete,
         _ => {
             return Err(format!("Unknown scaling level: '{}'", scaling_level_str));
         }
     };
 
     // Parse min and max
-    let min = min_str.parse::<usize>().map_err(|_| format!("Invalid minimum value: {}", min_str))?;
-    let max = max_str.parse::<usize>().map_err(|_| format!("Invalid maximum value: {}", max_str))?;
+    let min = min_str
+        .parse::<usize>()
+        .map_err(|_| format!("Invalid minimum value: '{}'", min_str))?;
+    let max = max_str
+        .parse::<usize>()
+        .map_err(|_| format!("Invalid maximum value: '{}'", max_str))?;
 
     Ok((var_name, scaling_level, min, max))
 }

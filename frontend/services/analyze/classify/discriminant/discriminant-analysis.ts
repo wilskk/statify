@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { DiscriminantAnalysisType } from "@/models/classify/discriminant/discriminant-worker";
-import init from "@/wasm/pkg/wasm";
+// import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
 import { resultDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis-output";
 import { transformDiscriminantResult } from "./discriminant-analysis-formatter";
 
@@ -8,12 +8,7 @@ export async function analyzeDiscriminant({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: DiscriminantAnalysisType) {
-    await init();
-
     const GroupingVariable = configData.main.GroupingVariable
         ? [configData.main.GroupingVariable]
         : [];
@@ -45,6 +40,7 @@ export async function analyzeDiscriminant({
     const varDefsForSelection = getVarDefs(variables, SelectionVariable);
     console.log(configData);
 
+    // await init();
     // const da = new DiscriminantAnalysis(
     //     slicedDataForGrouping,
     //     slicedDataForIndependent,
@@ -57,7 +53,7 @@ export async function analyzeDiscriminant({
 
     // const results = da.get_formatted_results();
 
-    // const executed = da.get_executed_functions();
+    // const executed = da.get_all_log();
     // const errors = da.get_all_errors();
 
     // console.log("executed", executed);
@@ -71,9 +67,6 @@ export async function analyzeDiscriminant({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultDiscriminant({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

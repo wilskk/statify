@@ -6,12 +6,7 @@ export async function analyzeRepeatedMeasures({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: RepeatedMeasuresAnalysisType) {
-    await init();
-
     const SubjectVariables = configData.main.SubVar || [];
     const FactorsVariables = configData.main.FactorsVar || [];
     const CovariateVariables = configData.main.Covariates || [];
@@ -40,6 +35,7 @@ export async function analyzeRepeatedMeasures({
 
     console.log(configData);
 
+    await init();
     // const repeatedMeasure = new RepeatedMeasureAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,
@@ -64,10 +60,7 @@ export async function analyzeRepeatedMeasures({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultRepeatedMeasureAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
+    // await resultRepeatedMeasures({
     //     formattedResult: formattedResults ?? [],
     // });
 }

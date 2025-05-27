@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { UnivariateAnalysisType } from "@/models/general-linear-model/univariate/univariate-worker";
-import init from "@/wasm/pkg/wasm";
+import init, { UnivariateAnalysis } from "@/wasm/pkg/wasm";
 import { transformUnivariateResult } from "./univariate-analysis-formatter";
 import { resultUnivariateAnalysis } from "./univariate-analysis-output";
 
@@ -8,12 +8,7 @@ export async function analyzeUnivariate({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: UnivariateAnalysisType) {
-    await init();
-
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
     const CovariateVariables = configData.main.Covar || [];
@@ -60,36 +55,34 @@ export async function analyzeUnivariate({
 
     console.log(configData);
 
-    // const univariate = new UnivariateAnalysis(
-    //     slicedDataForDependent,
-    //     slicedDataForFixFactor,
-    //     slicedDataForRandomFactor,
-    //     slicedDataForCovariate,
-    //     slicedDataForWlsWeight,
-    //     varDefsForDependent,
-    //     varDefsForFixFactor,
-    //     varDefsForRandomFactor,
-    //     varDefsForCovariate,
-    //     varDefsForWlsWeight,
-    //     configData
-    // );
+    await init();
+    const univariate = new UnivariateAnalysis(
+        slicedDataForDependent,
+        slicedDataForFixFactor,
+        slicedDataForRandomFactor,
+        slicedDataForCovariate,
+        slicedDataForWlsWeight,
+        varDefsForDependent,
+        varDefsForFixFactor,
+        varDefsForRandomFactor,
+        varDefsForCovariate,
+        varDefsForWlsWeight,
+        configData
+    );
 
-    // const results = univariate.get_formatted_results();
-    // const error = univariate.get_all_errors();
+    const results = univariate.get_formatted_results();
+    const error = univariate.get_all_errors();
 
-    // console.log("Results", results);
-    // console.log(error);
+    console.log("Results", results);
+    console.log(error);
 
-    // const formattedResults = transformUnivariateResult(results);
-    // console.log("formattedResults", formattedResults);
+    const formattedResults = transformUnivariateResult(results);
+    console.log("formattedResults", formattedResults);
 
     /*
      * 🎉 Final Result Process 🎯
      * */
     // await resultUnivariateAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

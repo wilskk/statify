@@ -6,12 +6,7 @@ export async function analyzeOptScaCatpca({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaCatpcaAnalysisType) {
-    await init();
-
     const AnalysisVariables = configData.main.AnalysisVars || [];
     const SupplementVariables = configData.main.SuppleVars || [];
     const LabelingVariables = configData.main.LabelingVars || [];
@@ -40,6 +35,7 @@ export async function analyzeOptScaCatpca({
 
     console.log(configData);
 
+    await init();
     // const catpca = new OptScaAnalysis(
     //     slicedDataForAnalysis,
     //     slicedDataForSupplement,
