@@ -3897,8 +3897,8 @@ export const createStemAndLeafPlot = (
       .text(leafText);
   });
 
-  if (useaxis && sortedKeys.length > 0 && data[sortedKeys[0]]?.length > 0) {
-    const firstStem = sortedKeys[0];
+  if (useaxis && sortedKeys.length > 0 && data[sortedKeys[1]]?.length > 0) {
+    const firstStem = sortedKeys[1];
     const firstLeaf = data[firstStem][0];
     const defaultKeyText = `Key: ${firstStem} | ${firstLeaf} = ${firstStem}${firstLeaf}`;
 
