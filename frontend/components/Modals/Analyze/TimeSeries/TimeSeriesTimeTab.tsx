@@ -11,7 +11,6 @@ interface PeriodOption {
 interface TimeTabProps{
     periods: PeriodOption[],
     selectedPeriod: [string, string],
-    initialType: string,
     handleSelectedPeriod: (id: string) => void,
     inputPeriods: (period: string) => React.ReactNode
 }
@@ -24,7 +23,6 @@ const months = [
 const TimeTab: FC<TimeTabProps> = ({
     periods,
     selectedPeriod,
-    initialType,
     handleSelectedPeriod,
     inputPeriods,
 })  => {

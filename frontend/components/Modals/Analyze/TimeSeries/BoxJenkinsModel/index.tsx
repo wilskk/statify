@@ -189,7 +189,6 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose }) => {
                     <TimeTab
                         periods={periods}
                         selectedPeriod={selectedPeriod}
-                        initialType={initialType}
                         handleSelectedPeriod={handleSelectedPeriod}
                         inputPeriods={inputPeriods}
                     />

@@ -24,7 +24,7 @@ type AnalysisType =
     | "ROCCurve"
     | "ROCAnalysis"
     // Time Series
-    | "TimeSeriesTime"
+    | "TimeSeriesStore"
     | "Smoothing"
     | "Decomposition"
     | "AutoCorrelation"

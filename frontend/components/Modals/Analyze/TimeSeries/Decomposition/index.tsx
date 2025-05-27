@@ -188,7 +188,6 @@ const Decomposition: FC<DecompositionProps> = ({ onClose }) => {
                     <TimeTab
                         periods={periods}
                         selectedPeriod={selectedPeriod}
-                        initialType={initialType}
                         handleSelectedPeriod={handleSelectedPeriod}
                         inputPeriods={inputPeriods}
                     />

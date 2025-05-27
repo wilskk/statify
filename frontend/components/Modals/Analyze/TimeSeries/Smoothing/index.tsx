@@ -186,7 +186,6 @@ const Smoothing: FC<SmoothingProps> = ({ onClose }) => {
                     <TimeTab
                         periods={periods}
                         selectedPeriod={selectedPeriod}
-                        initialType={initialType}
                         handleSelectedPeriod={handleSelectedPeriod}
                         inputPeriods={inputPeriods}
                     />
