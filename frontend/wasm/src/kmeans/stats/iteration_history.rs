@@ -67,7 +67,7 @@ pub fn generate_iteration_history(
         }
 
         // Calculate changes for each cluster and find maximum
-        let mut changes = HashMap::new();
+        let mut changes = Vec::with_capacity(num_clusters);
         let mut max_change: f64 = 0.0;
 
         for i in 0..num_clusters {
@@ -75,7 +75,7 @@ pub fn generate_iteration_history(
                 .map(|j| (new_centers[i][j] - current_centers[i][j]).abs())
                 .fold(0.0, |max_val, change| (max_val as f64).max(change));
 
-            changes.insert(format!("{}", i + 1), cluster_change);
+            changes.push((format!("{}", i + 1), cluster_change));
             max_change = max_change.max(cluster_change);
         }
 

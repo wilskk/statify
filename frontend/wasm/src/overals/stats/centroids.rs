@@ -95,10 +95,6 @@ pub fn calculate_centroids(
                             // For multiple nominal, projected centroids equal category centroids
                             projected_centroids = category_centroids.clone();
                         }
-                        _ => {
-                            // Fallback
-                            projected_centroids = category_centroids.clone();
-                        }
                     }
 
                     centroid_result.centroids.insert(

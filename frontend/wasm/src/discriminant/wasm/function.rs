@@ -7,17 +7,16 @@ use crate::discriminant::models::{
 };
 use crate::discriminant::stats::core;
 use crate::discriminant::utils::format_result;
+use crate::discriminant::utils::log::FunctionLogger;
 use crate::discriminant::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,
     config: &DiscriminantConfig,
-    error_collector: &mut ErrorCollector
+    error_collector: &mut ErrorCollector,
+    logger: &mut FunctionLogger
 ) -> Result<Option<DiscriminantResult>, JsValue> {
     web_sys::console::log_1(&"Starting discriminant analysis".into());
-
-    // Initialize result with executed functions tracking
-    let mut executed_functions = Vec::new();
 
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
@@ -26,7 +25,7 @@ pub fn run_analysis(
     web_sys::console::log_1(&format!("Data: {:?}", data).into());
 
     // Step 1: Basic processing summary (always executed)
-    executed_functions.push("basic_processing_summary".to_string());
+    logger.add_log("basic_processing_summary");
     let processing_summary = match core::basic_processing_summary(data, config) {
         Ok(summary) => summary,
         Err(e) => {
@@ -34,6 +33,8 @@ pub fn run_analysis(
             return Err(string_to_js_error(e));
         }
     };
+
+    web_sys::console::log_1(&format!("Processing Summary: {:?}", processing_summary).into());
 
     // Filter Data
     let filtered_data = match core::filter_valid_cases(data, config) {
@@ -48,7 +49,7 @@ pub fn run_analysis(
 
     // Step 2: Group statistics if requested
     let mut group_statistics = None;
-    executed_functions.push("calculate_group_statistics".to_string());
+    logger.add_log("calculate_group_statistics");
     match core::calculate_group_statistics(&filtered_data, config) {
         Ok(stats) => {
             group_statistics = Some(stats);
@@ -63,7 +64,7 @@ pub fn run_analysis(
     // Step 3: Equality tests if requested
     let mut equality_tests = None;
     if config.statistics.anova {
-        executed_functions.push("calculate_equality_tests".to_string());
+        logger.add_log("calculate_equality_tests");
         match core::calculate_equality_tests(&filtered_data, config) {
             Ok(tests) => {
                 equality_tests = Some(tests);
@@ -76,26 +77,10 @@ pub fn run_analysis(
         };
     }
 
-    // Step 4: Box's M test if requested
-    let mut box_m_test = None;
-    if config.statistics.box_m {
-        executed_functions.push("calculate_box_m_test".to_string());
-        match core::calculate_box_m_test(&filtered_data, config) {
-            Ok(test) => {
-                box_m_test = Some(test);
-                web_sys::console::log_1(&format!("Box M: {:?}", box_m_test).into());
-            }
-            Err(e) => {
-                error_collector.add_error("calculate_box_m_test", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
     // Step 5: Pooled matrices if requested
     let mut pooled_matrices = None;
     if config.statistics.wg_correlation || config.statistics.wg_covariance {
-        executed_functions.push("calculate_pooled_matrices".to_string());
+        logger.add_log("calculate_pooled_matrices");
         match core::calculate_pooled_matrices(&filtered_data, config) {
             Ok(matrices) => {
                 pooled_matrices = Some(matrices);
@@ -111,7 +96,7 @@ pub fn run_analysis(
     // Step 6: Covariance matrices if requested
     let mut covariance_matrices = None;
     if config.statistics.sg_covariance || config.statistics.total_covariance {
-        executed_functions.push("calculate_covariance_matrices".to_string());
+        logger.add_log("calculate_covariance_matrices");
         match core::calculate_covariance_matrices(&filtered_data, config) {
             Ok(matrices) => {
                 covariance_matrices = Some(matrices);
@@ -128,8 +113,9 @@ pub fn run_analysis(
 
     // Step 7: Log determinants if Box's M test is requested
     let mut log_determinants = None;
+    let mut box_m_test = None;
     if config.statistics.box_m {
-        executed_functions.push("calculate_log_determinants".to_string());
+        logger.add_log("calculate_log_determinants");
         match core::calculate_log_determinants(&filtered_data, config) {
             Ok(determinants) => {
                 log_determinants = Some(determinants);
@@ -141,6 +127,18 @@ pub fn run_analysis(
                 error_collector.add_error("calculate_log_determinants", &e);
                 // Continue execution despite errors for non-critical functions
             }
+        }
+
+        logger.add_log("calculate_box_m_test");
+        match core::calculate_box_m_test(&filtered_data, config) {
+            Ok(test) => {
+                box_m_test = Some(test);
+                web_sys::console::log_1(&format!("Box M: {:?}", box_m_test).into());
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_box_m_test", &e);
+                // Continue execution despite errors for non-critical functions
+            }
         };
     }
 
@@ -150,7 +148,7 @@ pub fn run_analysis(
 
     if config.main.stepwise {
         // Stepwise statistics
-        executed_functions.push("calculate_stepwise_statistics".to_string());
+        logger.add_log("calculate_stepwise_statistics");
         match core::calculate_stepwise_statistics(&filtered_data, config) {
             Ok(statistics) => {
                 stepwise_statistics = Some(statistics);
@@ -166,7 +164,7 @@ pub fn run_analysis(
     }
 
     // Eigen Values
-    executed_functions.push("calculate_eigen_values".to_string());
+    logger.add_log("calculate_eigen_values");
     let eigen_description = match core::calculate_eigen_statistics(&filtered_data, config) {
         Ok(values) => {
             web_sys::console::log_1(&format!("Eigen Values: {:?}", values).into());
@@ -179,7 +177,7 @@ pub fn run_analysis(
     };
 
     // Wilks' Lambda test
-    executed_functions.push("calculate_wilks_lambda_test".to_string());
+    logger.add_log("calculate_wilks_lambda_test");
     match core::calculate_wilks_lambda_test(&filtered_data, config) {
         Ok(test) => {
             wilks_lambda_test = Some(test);
@@ -192,7 +190,7 @@ pub fn run_analysis(
     }
 
     // Step 9: Calculate canonical functions (always executed)
-    executed_functions.push("calculate_canonical_functions".to_string());
+    logger.add_log("calculate_canonical_functions");
     let canonical_functions = match core::calculate_canonical_functions(&filtered_data, config) {
         Ok(functions) => {
             web_sys::console::log_1(&format!("Canonical Functions: {:?}", functions).into());
@@ -205,7 +203,7 @@ pub fn run_analysis(
     };
 
     // Step 10: Calculate structure matrix
-    executed_functions.push("calculate_structure_matrix".to_string());
+    logger.add_log("calculate_structure_matrix");
     let structure_matrix = match core::calculate_structure_matrix(&filtered_data, config) {
         Ok(matrix) => {
             web_sys::console::log_1(&format!("Structure Matrix: {:?}", matrix).into());
@@ -221,7 +219,7 @@ pub fn run_analysis(
     let mut classification_function_coefficients = None;
     let mut prior_probabilities = None;
     if config.classify.summary {
-        executed_functions.push("calculate_prior_probabilities".to_string());
+        logger.add_log("calculate_prior_probabilities");
         match core::calculate_prior_probabilities(&filtered_data, config) {
             Ok(probabilities) => {
                 prior_probabilities = Some(probabilities);
@@ -234,7 +232,7 @@ pub fn run_analysis(
                 // Continue execution despite errors for non-critical functions
             }
         }
-        executed_functions.push("calculate_summary_classification".to_string());
+        logger.add_log("calculate_summary_classification");
         match core::calculate_summary_classification(&filtered_data, config) {
             Ok(functions) => {
                 classification_function_coefficients = Some(functions);
@@ -254,7 +252,7 @@ pub fn run_analysis(
 
     let mut casewise_statistics = None;
     if config.classify.case {
-        executed_functions.push("Casewise Statistics".to_string());
+        logger.add_log("Casewise Statistics");
         match core::calculate_casewise_statistics(&filtered_data, config) {
             Ok(stats) => {
                 casewise_statistics = Some(stats);
@@ -271,7 +269,7 @@ pub fn run_analysis(
 
     let mut classification_results = None;
     if config.classify.leave {
-        executed_functions.push("calculate_classification_results".to_string());
+        logger.add_log("calculate_classification_results");
         match core::calculate_classification_results(&filtered_data, config) {
             Ok(results) => {
                 web_sys::console::log_1(&format!("Classification Results: {:?}", results).into());
@@ -279,62 +277,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_classification_results", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 12: Bootstrap analysis if requested and not in stepwise mode
-    if config.bootstrap.perform_boot_strapping && !config.main.stepwise {
-        executed_functions.push("perform_bootstrap_analysis".to_string());
-        match core::perform_bootstrap_analysis(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("perform_bootstrap_analysis", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 13: Generate plots if requested
-    if config.classify.combine || config.classify.sep_grp || config.classify.terr {
-        executed_functions.push("generate_plots".to_string());
-        match core::generate_plots(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("generate_plots", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 14: Save results if requested
-    if
-        config.save.predicted ||
-        config.save.discriminant ||
-        config.save.probabilities ||
-        (config.save.xml_file.is_some() && !config.save.xml_file.as_ref().unwrap().is_empty())
-    {
-        executed_functions.push("save_model_results".to_string());
-        match core::save_model_results(&filtered_data, config) {
-            Ok(_) => {}
-            Err(e) => {
-                error_collector.add_error("save_model_results", &e);
-                // Continue execution despite errors for non-critical functions
-            }
-        };
-    }
-
-    // Step 15: Generate discriminant histograms
-    let mut discriminant_histograms = None;
-    if config.classify.combine || config.classify.sep_grp {
-        executed_functions.push("generate_discriminant_histograms".to_string());
-        match core::generate_discriminant_histograms(&filtered_data, config) {
-            Ok(histograms) => {
-                discriminant_histograms = Some(histograms);
-            }
-            Err(e) => {
-                error_collector.add_error("generate_discriminant_histograms", &e);
                 // Continue execution despite errors for non-critical functions
             }
         };
@@ -358,8 +300,7 @@ pub fn run_analysis(
         casewise_statistics,
         prior_probabilities,
         classification_function_coefficients,
-        discriminant_histograms,
-        executed_functions,
+        discriminant_histograms: None,
     };
 
     Ok(Some(result))
@@ -376,18 +317,10 @@ pub fn get_formatted_results(result: &Option<DiscriminantResult>) -> Result<JsVa
     format_result(result)
 }
 
-pub fn get_executed_functions(result: &Option<DiscriminantResult>) -> Result<JsValue, JsValue> {
-    match result {
-        Some(result) => Ok(serde_wasm_bindgen::to_value(&result.executed_functions).unwrap()),
-        None => Err(string_to_js_error("No analysis has been performed".to_string())),
-    }
-}
-
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {
     JsValue::from_str(&error_collector.get_error_summary())
 }
 
-pub fn clear_errors(error_collector: &mut ErrorCollector) -> JsValue {
-    error_collector.clear();
-    JsValue::from_str("Error collector cleared")
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
+    Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }

@@ -90,23 +90,27 @@ export function transformHierClusResult(data: any): ResultJson {
         data.proximity_matrix.distances &&
         data.proximity_matrix.distances.length > 0
     ) {
-        // Extract unique case names to build header
-        const caseNames = new Set<string>();
+        // Extract unique case names to build header while preserving original order
+        const caseNames: string[] = [];
         data.proximity_matrix.distances.forEach((entry: any) => {
-            caseNames.add(entry.case1);
-            caseNames.add(entry.case2);
+            if (!caseNames.includes(entry.case1)) {
+                caseNames.push(entry.case1);
+            }
+            if (!caseNames.includes(entry.case2)) {
+                caseNames.push(entry.case2);
+            }
         });
 
-        const uniqueCases = Array.from(caseNames).sort();
+        const uniqueCases = caseNames; // No sorting, preserve original order
 
         const table: Table = {
             key: "proximity_matrix",
             title: "Proximity Matrix",
             columnHeaders: [
                 { header: "Case", key: "case" },
-                ...uniqueCases.map((caseName, index) => ({
-                    header: `${index + 1}:${caseName}`,
-                    key: `case_${index}`,
+                ...uniqueCases.map((caseName) => ({
+                    header: caseName, // Removed the index prefix
+                    key: `case_${caseName}`, // Using case name as key instead of index
                 })),
             ],
             rows: [],
@@ -118,12 +122,12 @@ export function transformHierClusResult(data: any): ResultJson {
         });
 
         // Build distance matrix
-        uniqueCases.forEach((caseName, rowIndex) => {
+        uniqueCases.forEach((caseName) => {
             const rowData: any = {
-                rowHeader: [`${rowIndex + 1}:${caseName}`],
+                rowHeader: [caseName], // Removed the index prefix
             };
 
-            uniqueCases.forEach((otherCase, colIndex) => {
+            uniqueCases.forEach((otherCase) => {
                 // Find the appropriate distance entry
                 let distanceValue: number | null = null;
 
@@ -142,7 +146,7 @@ export function transformHierClusResult(data: any): ResultJson {
                     }
                 }
 
-                rowData[`case_${colIndex}`] =
+                rowData[`case_${otherCase}`] = // Using case name instead of index
                     distanceValue !== null
                         ? formatDisplayNumber(distanceValue)
                         : null;

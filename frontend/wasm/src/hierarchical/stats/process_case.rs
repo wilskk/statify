@@ -1,10 +1,10 @@
-// process_case.rs
 use crate::hierarchical::models::{
     config::ClusterConfig,
     data::{ AnalysisData, DataValue },
     result::CaseProcessingSummary,
 };
 
+// Fungsi utama untuk memproses kasus dan menghitung statistik
 pub fn process_cases(
     data: &AnalysisData,
     config: &ClusterConfig
@@ -17,7 +17,7 @@ pub fn process_cases(
         (0, 0, 0)
     };
 
-    // Calculate percentages
+    // Menghitung persentase
     let valid_percent = if total_cases > 0 {
         ((valid_cases as f64) / (total_cases as f64)) * 100.0
     } else {
@@ -40,6 +40,7 @@ pub fn process_cases(
     })
 }
 
+// Memproses kasus untuk clustering kasus
 fn process_case_clustering(
     data: &AnalysisData,
     config: &ClusterConfig
@@ -52,10 +53,10 @@ fn process_case_clustering(
     let mut valid_cases = 0;
     let mut missing_cases = 0;
 
-    // Check each case
+    // Memeriksa setiap kasus
     for case_idx in 0..total_cases {
         let is_valid = if let Some(vars) = &config.main.variables {
-            // Case is valid if all variables have data
+            // Kasus valid jika semua variabel memiliki data
             vars.iter().all(|var| {
                 data.cluster_data
                     .iter()
@@ -74,7 +75,7 @@ fn process_case_clustering(
                     })
             })
         } else {
-            true // No variables specified, assume all cases are valid
+            true // Tidak ada variabel yang ditentukan, asumsikan semua kasus valid
         };
 
         if is_valid {
@@ -87,19 +88,20 @@ fn process_case_clustering(
     Ok((total_cases, valid_cases, missing_cases))
 }
 
+// Memproses kasus untuk clustering variabel
 fn process_variable_clustering(
     data: &AnalysisData,
     config: &ClusterConfig
 ) -> Result<(usize, usize, usize), String> {
-    // For variable clustering, count variables
+    // Untuk clustering variabel, hitung variabel
     if let Some(vars) = &config.main.variables {
         let total_vars = vars.len();
 
-        // Count variables with sufficient non-missing data
+        // Hitung variabel dengan data non-missing yang cukup
         let valid_vars = vars
             .iter()
             .filter(|&var| {
-                // A variable is valid if it has data for at least some cases
+                // Variabel valid jika memiliki data untuk setidaknya beberapa kasus
                 data.cluster_data
                     .iter()
                     .any(|dataset| {

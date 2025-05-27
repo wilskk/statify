@@ -1,15 +1,14 @@
 // nearest-neighbor-analysis-output.ts
 import { KNNFinalResultType } from "@/models/classify/nearest-neighbor/nearest-neighbor-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultNearestNeighbor({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: KNNFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

@@ -6,18 +6,17 @@ use crate::roc_analysis::models::{
     result::ROCAnalysisResult,
 };
 use crate::roc_analysis::utils::converter::format_result;
+use crate::roc_analysis::utils::log::{ FunctionLogger };
 use crate::roc_analysis::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::roc_analysis::stats::core;
 
 pub fn run_analysis(
     data: &AnalysisData,
     config: &RocConfig,
-    error_collector: &mut ErrorCollector
+    error_collector: &mut ErrorCollector,
+    logger: &mut FunctionLogger
 ) -> Result<Option<ROCAnalysisResult>, JsValue> {
     web_sys::console::log_1(&"Starting ROC Analysis".into());
-
-    // Initialize result with executed functions tracking
-    let mut executed_functions = Vec::new();
 
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
@@ -26,7 +25,7 @@ pub fn run_analysis(
     web_sys::console::log_1(&format!("Data: {:?}", data).into());
 
     // Step 1: Case Processing Summary (always executed)
-    executed_functions.push("case_processing_summary".to_string());
+    logger.add_log("case_processing_summary");
     let mut case_processing_summary = None;
     match core::calculate_case_processing_summary(data, config) {
         Ok(summary) => {
@@ -41,7 +40,7 @@ pub fn run_analysis(
     // Step 2: ROC Curve Coordinates if ROC Curve is requested
     let mut coordinates_roc = None;
     if config.display.roc_curve {
-        executed_functions.push("calculate_roc_coordinates".to_string());
+        logger.add_log("calculate_roc_coordinates");
         match core::calculate_roc_coordinates(data, config) {
             Ok(coords) => {
                 coordinates_roc = Some(coords);
@@ -57,7 +56,7 @@ pub fn run_analysis(
     // Step 3: Precision-Recall Curve Coordinates if PRC is requested
     let mut coordinates_precision_recall = None;
     if config.display.prc {
-        executed_functions.push("calculate_precision_recall_coordinates".to_string());
+        logger.add_log("calculate_precision_recall_coordinates");
         match core::calculate_precision_recall_coordinates(data, config) {
             Ok(coords) => {
                 coordinates_precision_recall = Some(coords);
@@ -77,7 +76,7 @@ pub fn run_analysis(
 
     // Step 4: Calculate Area Under ROC Curve
     let mut area_under_roc_curve = None;
-    executed_functions.push("calculate_area_under_roc_curve".to_string());
+    logger.add_log("calculate_area_under_roc_curve");
     match core::calculate_area_under_roc_curve(data, config) {
         Ok(area) => {
             area_under_roc_curve = Some(area);
@@ -94,7 +93,7 @@ pub fn run_analysis(
     // Step 5: Overall Model Quality if requested
     let mut overall_model_quality = None;
     if config.display.overall {
-        executed_functions.push("calculate_overall_model_quality".to_string());
+        logger.add_log("calculate_overall_model_quality");
         match core::calculate_overall_model_quality(data, config) {
             Ok(quality) => {
                 overall_model_quality = Some(quality);
@@ -112,7 +111,7 @@ pub fn run_analysis(
     // Step 6: Classifier Evaluation Metrics if requested
     let mut classifier_evaluation_metrics = None;
     if config.display.eval_metrics {
-        executed_functions.push("calculate_classifier_evaluation_metrics".to_string());
+        logger.add_log("calculate_classifier_evaluation_metrics");
         match core::calculate_classifier_evaluation_metrics(data, config) {
             Ok(metrics) => {
                 classifier_evaluation_metrics = Some(metrics);
@@ -154,18 +153,10 @@ pub fn get_formatted_results(result: &Option<ROCAnalysisResult>) -> Result<JsVal
     format_result(result)
 }
 
-pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {
-    match result {
-        Some(functions) => Ok(serde_wasm_bindgen::to_value(functions).unwrap()),
-        None => Err(string_to_js_error("No analysis has been performed".to_string())),
-    }
-}
-
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {
     JsValue::from_str(&error_collector.get_error_summary())
 }
 
-pub fn clear_errors(error_collector: &mut ErrorCollector) -> JsValue {
-    error_collector.clear();
-    JsValue::from_str("Error collector cleared")
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
+    Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }

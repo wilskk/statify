@@ -1,332 +1,231 @@
-// casewise_statistics.rs
 use std::collections::HashMap;
 
 use crate::discriminant::models::{
     result::{ CanonicalFunctions, CasewiseStatistics, HighestGroupStatistics },
     AnalysisData,
     DiscriminantConfig,
-    DataValue,
 };
+
 use super::core::{
     calculate_canonical_functions,
     calculate_eigen_statistics,
-    calculate_p_value_from_chi_square,
+    calculate_prior_probabilities,
     extract_analyzed_dataset,
-    AnalyzedDataset,
+    extract_case_values,
+    extract_record_groups,
 };
 
+/// Calculate detailed statistics for each case
+///
+/// This function computes detailed statistics for each case, including
+/// actual group, predicted group, probabilities, and discriminant scores.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A CasewiseStatistics object with detailed results for each case
 pub fn calculate_casewise_statistics(
     data: &AnalysisData,
     config: &DiscriminantConfig
 ) -> Result<CasewiseStatistics, String> {
     web_sys::console::log_1(&"Executing calculate_casewise_statistics".into());
 
+    // Check if casewise results are requested
+    if !config.classify.case {
+        return Err("Casewise statistics not requested in configuration".to_string());
+    }
+
     // Extract analyzed dataset
-    let dataset = match extract_analyzed_dataset(data, config) {
-        Ok(ds) => {
-            web_sys::console::log_1(
-                &format!("Dataset extracted with {} groups", ds.group_labels.len()).into()
-            );
-            ds
-        }
-        Err(e) => {
-            return Err(format!("Dataset extraction failed: {}", e));
-        }
-    };
+    let dataset = extract_analyzed_dataset(data, config)?;
+    let independent_variables = &config.main.independent_variables;
 
-    if dataset.group_labels.is_empty() {
-        return Err("No valid group labels found".to_string());
-    }
+    // Extract record groups mapping
+    let record_groups = extract_record_groups(data, &config.main.grouping_variable);
 
-    web_sys::console::log_1(&format!("Group labels: {:?}", dataset.group_labels).into());
-
-    // Determine which variables to use
-    let independent_variables = if config.main.stepwise {
-        // In a stepwise analysis, we would get the selected variables
-        // Since we don't have the implementation, we'll use all for now
-        config.main.independent_variables.clone()
-    } else {
-        config.main.independent_variables.clone()
-    };
-
-    if independent_variables.is_empty() {
-        return Err("No independent variables selected".to_string());
-    }
-
-    web_sys::console::log_1(&format!("Using variables: {:?}", independent_variables).into());
-
-    // Get eigenvalues and canonical functions
-    let eigen_stats = match calculate_eigen_statistics(data, config) {
-        Ok(stats) => {
-            web_sys::console::log_1(
-                &format!("Found {} eigenvalues", stats.eigenvalue.len()).into()
-            );
-            stats
-        }
-        Err(e) => {
-            return Err(format!("Eigen statistics calculation failed: {}", e));
-        }
-    };
-
-    if eigen_stats.eigenvalue.is_empty() {
-        return Err("No eigenvalues found".to_string());
-    }
-
+    // Calculate discriminant functions and get eigenvalues
+    let canonical_functions = calculate_canonical_functions(data, config)?;
+    let eigen_stats = calculate_eigen_statistics(data, config)?;
     let num_functions = eigen_stats.eigenvalue.len();
 
-    // Calculate discriminant functions
-    let canonical_functions = match calculate_canonical_functions(data, config) {
-        Ok(cf) => {
-            web_sys::console::log_1(&"Canonical functions calculated successfully".into());
-            cf
-        }
-        Err(e) => {
-            return Err(format!("Canonical function calculation failed: {}", e));
-        }
-    };
-
-    // Get number of cases to process (apply limit if configured)
-    let limit_cases = if config.classify.limit {
-        config.classify.limit_value.unwrap_or(100) as usize
-    } else {
-        usize::MAX
-    };
-
-    // Prepare vectors for results
+    // Initialize result structures
     let mut case_number = Vec::new();
     let mut actual_group = Vec::new();
     let mut predicted_group = Vec::new();
 
-    // Prepare highest group statistics
+    // Highest group statistics
     let mut highest_p_value = Vec::new();
     let mut highest_df = Vec::new();
     let mut highest_p_g_equals_d = Vec::new();
     let mut highest_squared_mahalanobis_distance = Vec::new();
     let mut highest_group = Vec::new();
 
-    // Prepare second highest group statistics
+    // Second highest group statistics
     let mut second_p_value = Vec::new();
     let mut second_df = Vec::new();
     let mut second_p_g_equals_d = Vec::new();
     let mut second_squared_mahalanobis_distance = Vec::new();
     let mut second_group = Vec::new();
 
-    // Prepare discriminant scores
-    let mut discriminant_scores: HashMap<String, Vec<f64>> = HashMap::new();
-    for i in 0..num_functions {
-        discriminant_scores.insert(format!("Function {}", i + 1), Vec::new());
-    }
+    // Discriminant scores
+    let mut discriminant_scores: HashMap<String, Vec<f64>> = (1..=num_functions)
+        .map(|i| (format!("Function {}", i), Vec::new()))
+        .collect();
 
-    // Process cases in their original order
+    // Calculate prior probabilities using the existing function
+    let prior_probs = calculate_prior_probabilities(data, config)?;
+
+    // Limit processing to requested number of cases if specified
+    let limit = if config.classify.limit {
+        config.classify.limit_value.unwrap_or(i32::MAX) as usize
+    } else {
+        usize::MAX
+    };
+
+    // Process each case
+    let mut case_idx = 0;
     let mut processed_cases = 0;
 
-    // Process all cases in their original order from the data
-    for (group_idx, group_data) in data.group_data.iter().enumerate() {
-        if processed_cases >= limit_cases {
-            break;
-        }
-
-        web_sys::console::log_1(
-            &format!("Processing group {} with {} cases", group_idx, group_data.len()).into()
-        );
-
-        for (case_idx, record) in group_data.iter().enumerate() {
-            if processed_cases >= limit_cases {
+    for group_idx in 0..data.group_data.len() {
+        for (case_i, case) in data.group_data[group_idx].iter().enumerate() {
+            // Check if we've reached the limit
+            if processed_cases >= limit {
                 break;
             }
 
-            // Get the group value directly from the record
-            let group_name = match record.values.get(&config.main.grouping_variable) {
-                Some(DataValue::Number(num)) => num.to_string(),
-                Some(DataValue::Text(text)) => text.clone(),
+            case_idx += 1;
+
+            // Get actual group
+            let actual_group_name = match record_groups.get(&(group_idx * 1000 + case_i)) {
+                Some(name) if dataset.group_labels.contains(name) => name.clone(),
                 _ => {
-                    web_sys::console::log_1(
-                        &format!("Record at index {} missing group value, skipping", case_idx).into()
-                    );
                     continue;
-                }
+                } // Skip cases without valid group
             };
 
-            if !dataset.group_labels.contains(&group_name) {
-                web_sys::console::log_1(
-                    &format!("Group '{}' not in group_labels, skipping", group_name).into()
-                );
-                continue;
-            }
-
-            // Get values for all variables for this case
-            let mut case_values = Vec::with_capacity(independent_variables.len());
-
-            // For each independent variable
-            for (var_idx, var_name) in independent_variables.iter().enumerate() {
-                if var_idx >= data.independent_data.len() {
-                    web_sys::console::log_1(
-                        &format!("Variable index {} out of bounds, skipping case", var_idx).into()
-                    );
-                    continue;
-                }
-
-                // Get the record from the appropriate independent data array
-                if case_idx < data.independent_data[var_idx].len() {
-                    if
-                        let Some(DataValue::Number(value)) =
-                            data.independent_data[var_idx][case_idx].values.get(var_name)
-                    {
-                        case_values.push(*value);
-                    } else {
-                        web_sys::console::log_1(
-                            &format!(
-                                "Missing value for var {} in case {}, skipping",
-                                var_name,
-                                case_idx
-                            ).into()
-                        );
-                        continue;
-                    }
-                } else {
-                    web_sys::console::log_1(
-                        &format!(
-                            "Case index {} out of bounds for var {}, skipping",
-                            case_idx,
-                            var_name
-                        ).into()
-                    );
-                    continue;
-                }
-            }
-
-            // Skip if we don't have all values
+            // Extract case values
+            let case_values = extract_case_values(case, independent_variables);
             if case_values.len() != independent_variables.len() {
-                web_sys::console::log_1(
-                    &format!(
-                        "Case {} has {} values, expected {}, skipping",
-                        case_idx,
-                        case_values.len(),
-                        independent_variables.len()
-                    ).into()
-                );
                 continue;
             }
 
-            web_sys::console::log_1(
-                &format!(
-                    "Processing case {} in group {}: values = {:?}",
-                    case_idx,
-                    group_name,
-                    case_values
-                ).into()
-            );
-
-            // Calculate discriminant function scores for this case
-            let scores = calculate_discriminant_scores(
+            // Calculate discriminant scores
+            let disc_scores = calculate_discriminant_scores(
                 &case_values,
                 &canonical_functions,
-                &independent_variables,
+                independent_variables,
                 num_functions
             );
 
-            // Calculate group probabilities and Mahalanobis distances
-            let (probs, mahalanobis_distances) = calculate_group_probabilities(
-                &scores,
-                &canonical_functions,
-                &dataset,
-                config
-            );
-
-            // Find highest probability group without reordering
-            let mut highest_idx = 0;
-            let mut highest_prob = f64::MIN;
-            let mut highest_dist = f64::MAX;
-
-            for (i, ((grp, prob), &dist)) in probs
-                .iter()
-                .zip(mahalanobis_distances.iter())
-                .enumerate() {
-                if *prob > highest_prob {
-                    highest_idx = i;
-                    highest_prob = *prob;
-                    highest_dist = dist;
-                }
-            }
-
-            // Find second highest probability group without reordering
-            let mut second_idx = if probs.len() > 1 {
-                if highest_idx == 0 { 1 } else { 0 }
-            } else {
-                highest_idx
-            };
-            let mut second_prob = f64::MIN;
-            let mut second_dist = f64::MAX;
-
-            for (i, ((grp, prob), &dist)) in probs
-                .iter()
-                .zip(mahalanobis_distances.iter())
-                .enumerate() {
-                if i != highest_idx && *prob > second_prob {
-                    second_idx = i;
-                    second_prob = *prob;
-                    second_dist = dist;
-                }
-            }
-
-            let highest_grp = if highest_idx < probs.len() {
-                probs[highest_idx].0.clone()
-            } else {
-                "".to_string()
-            };
-            let second_grp = if second_idx < probs.len() {
-                probs[second_idx].0.clone()
-            } else {
-                "".to_string()
-            };
-
-            // Add case data - preserve original case number
-            case_number.push(case_idx + 1); // 1-based case numbering
-            actual_group.push(group_name.clone());
-            predicted_group.push(highest_grp.clone());
-
-            // Add highest group data
-            highest_group.push(highest_grp);
-            highest_squared_mahalanobis_distance.push(highest_dist);
-            highest_p_g_equals_d.push(highest_prob);
-
-            // Calculate p-value for chi-square distribution
-            let p_value = calculate_p_value_from_chi_square(highest_dist, num_functions);
-            highest_p_value.push(p_value);
-            highest_df.push(num_functions);
-
-            // Add second highest group data
-            second_group.push(second_grp);
-            second_squared_mahalanobis_distance.push(second_dist);
-            second_p_g_equals_d.push(second_prob);
-
-            // Calculate p-value for chi-square distribution
-            let p_value = calculate_p_value_from_chi_square(second_dist, num_functions);
-            second_p_value.push(p_value);
-            second_df.push(num_functions);
-
-            // Add discriminant scores
-            for i in 0..num_functions {
+            // Store discriminant scores
+            for (func_idx, score) in disc_scores.iter().enumerate() {
                 if
-                    let Some(function_scores) = discriminant_scores.get_mut(
-                        &format!("Function {}", i + 1)
+                    let Some(scores) = discriminant_scores.get_mut(
+                        &format!("Function {}", func_idx + 1)
                     )
                 {
-                    if i < scores.len() {
-                        function_scores.push(scores[i]);
-                    } else {
-                        function_scores.push(0.0);
-                    }
+                    scores.push(*score);
                 }
             }
+
+            // Calculate probabilities and Mahalanobis distances for each group
+            let mut group_probs = Vec::new();
+            let mut group_distances = Vec::new();
+
+            for (group_idx, group_name) in dataset.group_labels.iter().enumerate() {
+                // Get group centroid
+                let centroid = disc_scores
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        canonical_functions.function_at_centroids
+                            .get(group_name)
+                            .map_or(0.0, |c| *c.get(i).unwrap_or(&0.0))
+                    })
+                    .collect::<Vec<f64>>();
+
+                // Calculate squared Mahalanobis distance
+                let mut d2 = 0.0;
+                for i in 0..disc_scores.len() {
+                    d2 += (disc_scores[i] - centroid[i]).powi(2);
+                }
+
+                group_distances.push((group_idx, d2));
+
+                // Calculate posterior probability using priors from prior_probabilities.rs
+                let prior = if group_idx < prior_probs.prior_probabilities.len() {
+                    prior_probs.prior_probabilities[group_idx]
+                } else {
+                    1.0 / (dataset.num_groups as f64)
+                };
+
+                let log_prior = prior.ln();
+                let log_prob = log_prior - 0.5 * d2;
+                group_probs.push((group_idx, log_prob));
+            }
+
+            // Sort by probability (descending)
+            group_probs.sort_by(|(_, a), (_, b)|
+                b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal)
+            );
+
+            // Normalize probabilities
+            let max_log_prob = group_probs[0].1;
+            let mut sum_exp = 0.0;
+
+            for (_, log_prob) in &mut group_probs {
+                *log_prob = (*log_prob - max_log_prob).exp();
+                sum_exp += *log_prob;
+            }
+
+            if sum_exp > 0.0 {
+                for (_, prob) in &mut group_probs {
+                    *prob /= sum_exp;
+                }
+            }
+
+            // Get highest and second highest groups
+            let highest = &group_probs[0];
+            let second = if group_probs.len() > 1 { &group_probs[1] } else { highest };
+
+            // Find corresponding distances
+            let highest_dist = group_distances
+                .iter()
+                .find(|(idx, _)| *idx == highest.0)
+                .unwrap().1;
+            let second_dist = group_distances
+                .iter()
+                .find(|(idx, _)| *idx == second.0)
+                .unwrap().1;
+
+            // Add case information
+            case_number.push(case_idx);
+            actual_group.push(actual_group_name);
+            predicted_group.push(dataset.group_labels[highest.0].clone());
+
+            // Highest group statistics
+            highest_p_value.push(highest_dist);
+            highest_df.push(num_functions);
+            highest_p_g_equals_d.push(highest.1);
+            highest_squared_mahalanobis_distance.push(highest_dist);
+            highest_group.push(dataset.group_labels[highest.0].clone());
+
+            // Second highest group statistics
+            second_p_value.push(second_dist);
+            second_df.push(num_functions);
+            second_p_g_equals_d.push(second.1);
+            second_squared_mahalanobis_distance.push(second_dist);
+            second_group.push(dataset.group_labels[second.0].clone());
 
             processed_cases += 1;
         }
+
+        if processed_cases >= limit {
+            break;
+        }
     }
 
-    web_sys::console::log_1(&format!("Processed {} cases total", processed_cases).into());
-
-    // Create and return the result
     Ok(CasewiseStatistics {
         case_number,
         actual_group,
@@ -349,20 +248,33 @@ pub fn calculate_casewise_statistics(
     })
 }
 
+/// Calculate discriminant scores for a case
+///
+/// Helper function to calculate discriminant scores for a case.
+///
+/// # Parameters
+/// * `case_values` - Values of the independent variables for the case
+/// * `canonical_functions` - Canonical discriminant functions
+/// * `variables` - Names of the independent variables
+/// * `num_functions` - Number of discriminant functions
+///
+/// # Returns
+/// A vector of discriminant scores for the case
 fn calculate_discriminant_scores(
     case_values: &[f64],
     canonical_functions: &CanonicalFunctions,
     variables: &[String],
     num_functions: usize
 ) -> Vec<f64> {
-    let mut scores = vec![0.0; num_functions];
+    // Initialize scores
+    let mut discriminant_scores = vec![0.0; num_functions];
 
-    // Calculate scores using coefficients
+    // Calculate function values
     for (var_idx, var_name) in variables.iter().enumerate() {
         if let Some(coefs) = canonical_functions.coefficients.get(var_name) {
             for func_idx in 0..num_functions {
                 if func_idx < coefs.len() && var_idx < case_values.len() {
-                    scores[func_idx] += case_values[var_idx] * coefs[func_idx];
+                    discriminant_scores[func_idx] += case_values[var_idx] * coefs[func_idx];
                 }
             }
         }
@@ -371,91 +283,9 @@ fn calculate_discriminant_scores(
     // Add constants
     if let Some(constants) = canonical_functions.coefficients.get("(Constant)") {
         for func_idx in 0..num_functions.min(constants.len()) {
-            scores[func_idx] += constants[func_idx];
+            discriminant_scores[func_idx] += constants[func_idx];
         }
     }
 
-    scores
-}
-
-fn calculate_group_probabilities(
-    scores: &[f64],
-    canonical_functions: &CanonicalFunctions,
-    dataset: &AnalyzedDataset,
-    config: &DiscriminantConfig
-) -> (Vec<(String, f64)>, Vec<f64>) {
-    let num_groups = dataset.group_labels.len();
-    let num_functions = scores.len();
-
-    let mut probabilities = Vec::with_capacity(num_groups);
-    let mut mahalanobis_distances = Vec::with_capacity(num_groups);
-
-    // Calculate prior probabilities
-    let priors: HashMap<String, f64> = if config.classify.all_group_equal {
-        dataset.group_labels
-            .iter()
-            .map(|label| (label.clone(), 1.0 / (num_groups as f64)))
-            .collect()
-    } else {
-        // Calculate based on group sizes
-        let total_cases = dataset.total_cases as f64;
-        dataset.group_labels
-            .iter()
-            .map(|group| {
-                let group_size = dataset.group_data
-                    .values()
-                    .next()
-                    .and_then(|g| g.get(group))
-                    .map_or(0, |v| v.len()) as f64;
-
-                let prior = if total_cases > 0.0 {
-                    group_size / total_cases
-                } else {
-                    1.0 / (num_groups as f64)
-                };
-
-                (group.clone(), prior)
-            })
-            .collect()
-    };
-
-    // Calculate squared Mahalanobis distance to each group centroid
-    for group in &dataset.group_labels {
-        if let Some(centroid) = canonical_functions.function_at_centroids.get(group) {
-            // Calculate squared distance to this centroid
-            let mut distance = 0.0;
-            for i in 0..num_functions {
-                if i < centroid.len() && i < scores.len() {
-                    distance += (scores[i] - centroid[i]).powi(2);
-                }
-            }
-
-            mahalanobis_distances.push(distance);
-
-            // Calculate posterior probability (using Bayes' theorem)
-            let prior = priors
-                .get(group)
-                .copied()
-                .unwrap_or(1.0 / (num_groups as f64));
-
-            // Store group and probability for this case
-            probabilities.push((group.clone(), prior * (-0.5 * distance).exp()));
-        } else {
-            mahalanobis_distances.push(f64::MAX);
-            probabilities.push((group.clone(), 0.0));
-        }
-    }
-
-    // Normalize probabilities
-    let sum_probs: f64 = probabilities
-        .iter()
-        .map(|(_, p)| *p)
-        .sum();
-    if sum_probs > 0.0 {
-        for (_, prob) in &mut probabilities {
-            *prob /= sum_probs;
-        }
-    }
-
-    (probabilities, mahalanobis_distances)
+    discriminant_scores
 }

@@ -75,5 +75,10 @@ pub fn calculate_anova(data: &ProcessedData, config: &ClusterConfig) -> Result<A
         });
     }
 
-    Ok(ANOVATable { clusters: anova_clusters })
+    Ok(ANOVATable {
+        clusters: anova_clusters,
+        note: Some(
+            "The F tests should be used only for descriptive purposes because the clusters have been chosen to maximize the differences among cases in different clusters. The observed significance levels are not corrected for this and thus cannot be interpreted as tests of the hypothesis that the cluster means are equal.".to_string()
+        ),
+    })
 }

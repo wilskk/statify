@@ -38,7 +38,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("transform_data", &e);
-                return Err(string_to_js_error(e));
             }
         }
     }
@@ -70,7 +69,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("proximity_matrix", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }
@@ -86,7 +84,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("agglomeration_schedule", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }
@@ -102,7 +99,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("dendrogram", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }
@@ -114,7 +110,7 @@ pub fn run_analysis(
 
         match core::generate_icicle_plot(&analysis_data, config) {
             Ok(plot) => {
-                web_sys::console::log_1(&format!("Icicle Plot generated").into());
+                web_sys::console::log_1(&format!("Icicle Plot: {:?}", plot).into());
                 icicle_plot = Some(plot);
             }
             Err(e) => {
@@ -160,7 +156,6 @@ pub fn run_analysis(
     Ok(Some(result))
 }
 
-// Utility functions remain unchanged
 pub fn get_results(result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),

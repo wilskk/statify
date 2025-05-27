@@ -1,17 +1,29 @@
-use crate::discriminant::stats::core::AnalyzedDataset;
+//! Implementation of variable selection methods for discriminant analysis.
+//!
+//! This module provides implementations of different methods for
+//! computing F-to-enter and F-to-remove statistics in stepwise discriminant analysis.
 
-use super::{
-    matrix_calculations::{
-        calculate_min_f_ratio,
-        calculate_min_mahalanobis_distance,
-        calculate_raos_v,
-        calculate_total_unexplained_variation,
-    },
-    statistical_tests::{ calculate_overall_wilks_lambda, calculate_univariate_f },
-    stepwise_statistics::MethodType,
+use super::core::{
+    calculate_min_f_ratio,
+    calculate_min_mahalanobis_distance,
+    calculate_overall_wilks_lambda,
+    calculate_raos_v,
+    calculate_total_unexplained_variation,
+    calculate_univariate_f,
+    AnalyzedDataset,
+    MethodType,
 };
 
 /// Calculate F-to-enter for a variable based on the selected method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `method_type` - The method to use
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 pub fn calculate_variable_f_to_enter(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -30,6 +42,15 @@ pub fn calculate_variable_f_to_enter(
 }
 
 /// Calculate F-to-remove for a variable based on the selected method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `method_type` - The method to use
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 pub fn calculate_variable_f_to_remove(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -47,7 +68,18 @@ pub fn calculate_variable_f_to_remove(
     }
 }
 
-// Calculate F-to-enter using Wilks' lambda method
+/// Calculate F-to-enter using Wilks' lambda method
+///
+/// This method minimizes Wilks' lambda by selecting the variable
+/// that produces the greatest reduction in lambda.
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 fn calculate_f_to_enter_wilks(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -80,7 +112,15 @@ fn calculate_f_to_enter_wilks(
     (f_value, new_wilks)
 }
 
-// Calculate F-to-remove using Wilks' lambda method
+/// Calculate F-to-remove using Wilks' lambda method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 fn calculate_f_to_remove_wilks(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -115,7 +155,18 @@ fn calculate_f_to_remove_wilks(
     (f_value, reduced_wilks)
 }
 
-// Calculate F-to-enter using Unexplained Variance method
+/// Calculate F-to-enter using Unexplained Variance method
+///
+/// This method minimizes the total unexplained variation
+/// between groups.
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 fn calculate_f_to_enter_unexplained(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -157,7 +208,15 @@ fn calculate_f_to_enter_unexplained(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-remove using Unexplained Variance method
+/// Calculate F-to-remove using Unexplained Variance method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 fn calculate_f_to_remove_unexplained(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -204,7 +263,18 @@ fn calculate_f_to_remove_unexplained(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-enter using Mahalanobis Distance method
+/// Calculate F-to-enter using Mahalanobis Distance method
+///
+/// This method maximizes the minimum Mahalanobis distance
+/// between any two groups.
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 fn calculate_f_to_enter_mahalanobis(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -240,7 +310,15 @@ fn calculate_f_to_enter_mahalanobis(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-remove using Mahalanobis Distance method
+/// Calculate F-to-remove using Mahalanobis Distance method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 fn calculate_f_to_remove_mahalanobis(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -285,7 +363,17 @@ fn calculate_f_to_remove_mahalanobis(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-enter using Smallest F Ratio method
+/// Calculate F-to-enter using Smallest F Ratio method
+///
+/// This method maximizes the minimum F ratio between any two groups.
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 fn calculate_f_to_enter_fratio(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -316,7 +404,15 @@ fn calculate_f_to_enter_fratio(
     (min_f_ratio, wilks_lambda)
 }
 
-// Calculate F-to-remove using Smallest F Ratio method
+/// Calculate F-to-remove using Smallest F Ratio method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 fn calculate_f_to_remove_fratio(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -358,7 +454,18 @@ fn calculate_f_to_remove_fratio(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-enter using Rao's V method
+/// Calculate F-to-enter using Rao's V method
+///
+/// This method maximizes Rao's V (Lawley-Hotelling Trace),
+/// which measures the separation between group means.
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-enter, Wilks' lambda)
 fn calculate_f_to_enter_raos(
     variable: &str,
     dataset: &AnalyzedDataset,
@@ -397,7 +504,15 @@ fn calculate_f_to_enter_raos(
     (f_value, wilks_lambda)
 }
 
-// Calculate F-to-remove using Rao's V method
+/// Calculate F-to-remove using Rao's V method
+///
+/// # Parameters
+/// * `variable` - The variable to test
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+///
+/// # Returns
+/// A tuple of (F-to-remove, Wilks' lambda)
 fn calculate_f_to_remove_raos(
     variable: &str,
     dataset: &AnalyzedDataset,

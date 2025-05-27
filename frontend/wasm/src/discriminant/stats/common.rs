@@ -1,37 +1,68 @@
+//! Core functionality and data structures for discriminant analysis.
+//!
+//! This module contains the foundational elements used across the discriminant
+//! analysis implementation, including data extraction, statistical calculations,
+//! and utility functions.
+
 use nalgebra::{ DMatrix, SVD };
 use statrs::distribution::{ ChiSquared, ContinuousCDF, FisherSnedecor };
 use std::collections::HashMap;
+use rayon::prelude::*;
+
 use crate::discriminant::models::{ AnalysisData, DataRecord, DataValue, DiscriminantConfig };
 
-// AnalyzedDataset struct to consolidate extracted data
+/// Constants for numerical stability
+pub const EPSILON: f64 = 1e-10;
+pub const TOLERANCE_THRESHOLD: f64 = 0.001;
+
+/// Analyzed dataset structure to consolidate extracted data
 #[derive(Debug, Clone)]
 pub struct AnalyzedDataset {
+    /// Variable values organized by variable name, group, and observations
     pub group_data: HashMap<String, HashMap<String, Vec<f64>>>,
+    /// List of group labels found in the data
     pub group_labels: Vec<String>,
+    /// Mean values for each variable in each group
     pub group_means: HashMap<String, HashMap<String, f64>>,
+    /// Overall mean values for each variable
     pub overall_means: HashMap<String, f64>,
+    /// Number of distinct groups
     pub num_groups: usize,
+    /// Total number of cases across all groups
     pub total_cases: usize,
 }
 
-// Consolidated grouped data extraction with caching
+/// Extract and prepare data for discriminant analysis
+///
+/// This function takes the raw analysis data and configuration, and returns
+/// a structured dataset ready for discriminant analysis computations.
 pub fn extract_analyzed_dataset(
     data: &AnalysisData,
     config: &DiscriminantConfig
 ) -> Result<AnalyzedDataset, String> {
+    // Extract configuration parameters
     let independent_variables = &config.main.independent_variables;
     let grouping_variable = &config.main.grouping_variable;
     let min_range = config.define_range.min_range;
     let max_range = config.define_range.max_range;
 
-    // Extract grouped data
-    let (group_data, group_labels, total_cases) = extract_grouped_data(
-        data,
-        grouping_variable,
-        independent_variables,
-        min_range,
-        max_range
-    )?;
+    web_sys::console::log_1(
+        &format!("Extracting dataset with {} variables", independent_variables.len()).into()
+    );
+
+    // Extract grouped data with proper error handling
+    let (group_data, group_labels, total_cases) = match
+        extract_grouped_data(data, grouping_variable, independent_variables, min_range, max_range)
+    {
+        Ok(result) => result,
+        Err(e) => {
+            return Err(format!("Failed to extract grouped data: {}", e));
+        }
+    };
+
+    if group_labels.is_empty() {
+        return Err("No valid groups found after filtering".to_string());
+    }
 
     let num_groups = group_labels.len();
 
@@ -49,7 +80,49 @@ pub fn extract_analyzed_dataset(
     })
 }
 
-// Extract grouped data from analysis data
+pub fn filter_dataset(dataset: &AnalyzedDataset, include_vars: &[String]) -> AnalyzedDataset {
+    // 1. Filter group_data: masukkan variable yang ada include_vars
+    let filtered_group_data: HashMap<String, HashMap<String, Vec<f64>>> = dataset.group_data
+        .iter()
+        .filter(|(var, _)| include_vars.contains(var))
+        .map(|(var, groups)| (var.clone(), groups.clone()))
+        .collect();
+
+    // 2. Filter group_means dengan kunci yang sama
+    let filtered_group_means: HashMap<String, HashMap<String, f64>> = dataset.group_means
+        .iter()
+        .map(|(group_id, var_map)| {
+            let filtered_vars = var_map
+                .iter()
+                .filter(|(var, _)| include_vars.contains(var))
+                .map(|(var, val)| (var.clone(), *val))
+                .collect();
+            (group_id.clone(), filtered_vars)
+        })
+        .collect();
+
+    // 3. Filter overall_means
+    let filtered_overall_means: HashMap<String, f64> = dataset.overall_means
+        .iter()
+        .filter(|(var, _)| include_vars.contains(var))
+        .map(|(var, &m)| (var.clone(), m))
+        .collect();
+
+    // 4. Sisakan group_labels, num_groups, total_cases apa adanya
+    AnalyzedDataset {
+        group_data: filtered_group_data,
+        group_labels: dataset.group_labels.clone(),
+        group_means: filtered_group_means,
+        overall_means: filtered_overall_means,
+        num_groups: dataset.num_groups,
+        total_cases: dataset.total_cases,
+    }
+}
+
+/// Extract grouped data from analysis data
+///
+/// This function extracts and organizes the data into groups based on the grouping variable,
+/// while applying filtering based on range constraints.
 pub fn extract_grouped_data(
     data: &AnalysisData,
     grouping_variable: &str,
@@ -146,7 +219,9 @@ pub fn extract_grouped_data(
     Ok((variable_values, group_labels, total_cases))
 }
 
-// Calculate group means for all variables
+/// Calculate group means for all variables
+///
+/// Computes the mean value of each variable for each group in the dataset.
 pub fn calculate_group_means(
     group_data: &HashMap<String, HashMap<String, Vec<f64>>>,
     group_labels: &[String],
@@ -154,51 +229,70 @@ pub fn calculate_group_means(
 ) -> HashMap<String, HashMap<String, f64>> {
     let mut group_means = HashMap::new();
 
-    for group_label in group_labels {
-        let mut means = HashMap::new();
+    // Process groups in parallel for better performance
+    let group_mean_results: Vec<(String, HashMap<String, f64>)> = group_labels
+        .par_iter()
+        .map(|group_label| {
+            let mut means = HashMap::new();
 
-        for var_name in variables {
-            let mean = group_data
-                .get(var_name)
-                .and_then(|g| g.get(group_label))
-                .filter(|values| !values.is_empty())
-                .map_or(0.0, |values| calculate_mean(values));
+            for var_name in variables {
+                let mean = group_data
+                    .get(var_name)
+                    .and_then(|g| g.get(group_label))
+                    .filter(|values| !values.is_empty())
+                    .map_or(0.0, |values| calculate_mean(values));
 
-            means.insert(var_name.clone(), mean);
-        }
+                means.insert(var_name.clone(), mean);
+            }
 
-        group_means.insert(group_label.clone(), means);
+            (group_label.clone(), means)
+        })
+        .collect();
+
+    // Combine parallel results
+    for (group_label, means) in group_mean_results {
+        group_means.insert(group_label, means);
     }
 
     group_means
 }
 
-// Calculate overall means for all variables
+/// Calculate overall means for all variables
+///
+/// Computes the overall mean value for each variable across all groups.
 pub fn calculate_overall_means(
     group_data: &HashMap<String, HashMap<String, Vec<f64>>>,
     group_labels: &[String],
     variables: &[String]
 ) -> HashMap<String, f64> {
-    let mut overall_means = HashMap::new();
+    // Process variables in parallel
+    let overall_mean_results: Vec<(String, f64)> = variables
+        .par_iter()
+        .map(|var_name| {
+            let mut all_values = Vec::new();
 
-    for var_name in variables {
-        let mut all_values = Vec::new();
-
-        for group_label in group_labels {
-            if let Some(values) = group_data.get(var_name).and_then(|g| g.get(group_label)) {
-                all_values.extend(values);
+            for group_label in group_labels {
+                if let Some(values) = group_data.get(var_name).and_then(|g| g.get(group_label)) {
+                    all_values.extend(values);
+                }
             }
-        }
 
-        let mean = if !all_values.is_empty() { calculate_mean(&all_values) } else { 0.0 };
+            let mean = if !all_values.is_empty() { calculate_mean(&all_values) } else { 0.0 };
 
-        overall_means.insert(var_name.clone(), mean);
+            (var_name.clone(), mean)
+        })
+        .collect();
+
+    // Combine parallel results
+    let mut overall_means = HashMap::new();
+    for (var_name, mean) in overall_mean_results {
+        overall_means.insert(var_name, mean);
     }
 
     overall_means
 }
 
-// Extract numeric values from DataRecord by field name
+/// Extract numeric values from DataRecord by field name
 pub fn extract_values_by_name(records: &[DataRecord], field_name: &str) -> Vec<f64> {
     records
         .iter()
@@ -212,39 +306,7 @@ pub fn extract_values_by_name(records: &[DataRecord], field_name: &str) -> Vec<f
         .collect()
 }
 
-// Extract values from a specific variable index from group data
-pub fn extract_values_by_index(
-    group_data: &[Vec<DataRecord>],
-    var_idx: usize,
-    variables: &[String]
-) -> Vec<f64> {
-    if var_idx >= variables.len() {
-        return Vec::new();
-    }
-
-    let var_name = &variables[var_idx];
-
-    group_data
-        .iter()
-        .flat_map(|group| extract_values_by_name(group, var_name))
-        .collect()
-}
-
-// Extract all variable values for a specific group
-pub fn extract_group_values(
-    group: &[DataRecord],
-    var_idx: usize,
-    variables: &[String]
-) -> Vec<f64> {
-    if var_idx >= variables.len() {
-        return Vec::new();
-    }
-
-    let var_name = &variables[var_idx];
-    extract_values_by_name(group, var_name)
-}
-
-// Extract all variable values from a single case
+/// Extract all variable values from a single case
 pub fn extract_case_values(record: &DataRecord, variables: &[String]) -> Vec<f64> {
     variables
         .iter()
@@ -258,7 +320,7 @@ pub fn extract_case_values(record: &DataRecord, variables: &[String]) -> Vec<f64
         .collect()
 }
 
-// Calculate mean of values
+/// Calculate mean of values
 pub fn calculate_mean(values: &[f64]) -> f64 {
     if values.is_empty() {
         return 0.0;
@@ -266,7 +328,7 @@ pub fn calculate_mean(values: &[f64]) -> f64 {
     values.iter().sum::<f64>() / (values.len() as f64)
 }
 
-// Calculate variance with optional pre-calculated mean
+/// Calculate variance with optional pre-calculated mean
 pub fn calculate_variance(values: &[f64], mean: Option<f64>) -> f64 {
     if values.len() <= 1 {
         return 0.0;
@@ -279,12 +341,12 @@ pub fn calculate_variance(values: &[f64], mean: Option<f64>) -> f64 {
         .sum::<f64>() / ((values.len() - 1) as f64)
 }
 
-// Calculate standard deviation with optional pre-calculated mean
+/// Calculate standard deviation with optional pre-calculated mean
 pub fn calculate_std_dev(values: &[f64], mean: Option<f64>) -> f64 {
     calculate_variance(values, mean).sqrt()
 }
 
-// Calculate covariance between two sets of values
+/// Calculate covariance between two sets of values
 pub fn calculate_covariance(
     values1: &[f64],
     values2: &[f64],
@@ -305,7 +367,7 @@ pub fn calculate_covariance(
         .sum::<f64>() / ((values1.len() - 1) as f64)
 }
 
-// Calculate correlation coefficient
+/// Calculate correlation coefficient
 pub fn calculate_correlation(values1: &[f64], values2: &[f64]) -> f64 {
     if values1.len() <= 1 || values1.len() != values2.len() {
         return 0.0;
@@ -317,58 +379,96 @@ pub fn calculate_correlation(values1: &[f64], values2: &[f64]) -> f64 {
     let std_dev1 = calculate_std_dev(values1, Some(mean1));
     let std_dev2 = calculate_std_dev(values2, Some(mean2));
 
-    if std_dev1 <= 0.0 || std_dev2 <= 0.0 {
+    if std_dev1 <= EPSILON || std_dev2 <= EPSILON {
         return 0.0;
     }
 
     calculate_covariance(values1, values2, Some(mean1), Some(mean2)) / (std_dev1 * std_dev2)
 }
 
-// Calculate log determinant of a matrix
+/// Calculate log determinant of a matrix
 pub fn calculate_log_determinant(matrix: &DMatrix<f64>) -> f64 {
     let svd = SVD::new(matrix.clone(), false, false);
 
     svd.singular_values
         .iter()
-        .filter(|&v| *v > 1e-10)
+        .filter(|&v| *v > EPSILON)
         .map(|v| v.ln())
         .sum()
 }
 
-// Calculate rank and log determinant of a matrix
+/// Calculate rank and log determinant of a matrix
 pub fn calculate_rank_and_log_det(matrix: &DMatrix<f64>) -> (i32, f64) {
     let svd = SVD::new(matrix.clone(), false, false);
     let singular_values = &svd.singular_values;
 
     let max_val = singular_values.iter().fold(0.0, |max, &v| (max as f64).max(v));
-    let epsilon = 1e-10 * max_val;
+    let threshold = EPSILON * max_val;
 
     let rank = singular_values
         .iter()
-        .filter(|&v| *v > epsilon)
+        .filter(|&v| *v > threshold)
         .count() as i32;
+
     let log_det = singular_values
         .iter()
-        .filter(|&v| *v > epsilon)
+        .filter(|&v| *v > threshold)
         .map(|v| v.ln())
         .sum();
 
     (rank, log_det)
 }
 
-// Calculate p-value from F statistic
+/// Calculate p-value from F statistic with enhanced error handling
+///
+/// # Parameters
+/// * `f_value` - The F statistic
+/// * `df1` - Numerator degrees of freedom
+/// * `df2` - Denominator degrees of freedom
+///
+/// # Returns
+/// The p-value (1-tailed)
 pub fn calculate_p_value_from_f(f_value: f64, df1: f64, df2: f64) -> f64 {
-    if f_value <= 0.0 || df1 <= 0.0 || df2 <= 0.0 {
+    // Extensive error checking for numerical stability
+    if f_value.is_nan() {
         return 1.0;
     }
 
+    if f_value <= 0.0 {
+        return 1.0;
+    }
+
+    if df1 <= 0.0 {
+        return 1.0;
+    }
+
+    if df2 <= 0.0 {
+        return 1.0;
+    }
+
+    // Handle extreme F values that might cause numerical issues
+    if f_value > 1000000.0 {
+        return 0.0;
+    }
+
+    // Calculate p-value using the F distribution
     match FisherSnedecor::new(df1, df2) {
-        Ok(dist) => dist.sf(f_value),
-        Err(_) => 1.0,
+        Ok(dist) => {
+            let p_value = dist.sf(f_value);
+
+            // Handle potential NaN results
+            if p_value.is_nan() {
+                1.0
+            } else {
+                // Enforce bounds of p-value (should be between 0 and 1)
+                p_value.max(0.0).min(1.0)
+            }
+        }
+        Err(e) => { 1.0 }
     }
 }
 
-// Calculate p-value from chi-square statistic
+/// Calculate p-value from chi-square statistic
 pub fn calculate_p_value_from_chi_square(chi_square: f64, df: usize) -> f64 {
     if chi_square <= 0.0 || df == 0 {
         return 1.0;
@@ -380,7 +480,7 @@ pub fn calculate_p_value_from_chi_square(chi_square: f64, df: usize) -> f64 {
     }
 }
 
-// Filter valid cases based on config
+/// Filter valid cases based on config
 pub fn filter_valid_cases(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -416,7 +516,7 @@ pub fn filter_valid_cases(
                     .filter(|&&idx| {
                         if idx < sel_group.len() {
                             match sel_group[idx].values.get(selection_var) {
-                                Some(DataValue::Number(val)) => (val - set_value).abs() < 1e-10,
+                                Some(DataValue::Number(val)) => (val - set_value).abs() < EPSILON,
                                 Some(DataValue::Text(s)) => s == &set_value.to_string(),
                                 _ => false,
                             }

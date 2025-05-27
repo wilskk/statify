@@ -1,17 +1,32 @@
+//! Variable selection for discriminant analysis.
+//!
+//! This module implements variable selection algorithms and criteria
+//! for discriminant analysis.
+
 use rayon::prelude::*;
 
-use crate::discriminant::{
-    models::{ result::{ VariableInAnalysis, VariableNotInAnalysis }, DiscriminantConfig },
-    stats::core::{ AnalyzedDataset, calculate_p_value_from_f },
+use crate::discriminant::models::{
+    result::{ VariableInAnalysis, VariableNotInAnalysis },
+    DiscriminantConfig,
 };
 
-use super::{
-    method_implementations::{ calculate_variable_f_to_enter, calculate_variable_f_to_remove },
-    statistical_tests::calculate_tolerance,
-    stepwise_statistics::MethodType,
+use super::core::{
+    calculate_p_value_from_f,
+    calculate_tolerance,
+    calculate_variable_f_to_enter,
+    calculate_variable_f_to_remove,
+    AnalyzedDataset,
+    MethodType,
+    TOLERANCE_THRESHOLD,
 };
 
-// Determine the method type from config
+/// Determine the method type from configuration
+///
+/// # Parameters
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// The method type to use for variable selection
 pub fn determine_method_type(config: &DiscriminantConfig) -> MethodType {
     match true {
         _ if config.method.wilks => MethodType::Wilks,
@@ -23,7 +38,19 @@ pub fn determine_method_type(config: &DiscriminantConfig) -> MethodType {
     }
 }
 
-// Analyze variables not in the model - parallelized
+/// Analyze variables not in the model
+///
+/// This function calculates statistics for variables not yet included
+/// in the discriminant model, to determine which should be entered next.
+///
+/// # Parameters
+/// * `variables` - Variables not in the model
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A vector of VariableNotInAnalysis with statistics for each variable
 pub fn analyze_variables_not_in_model(
     variables: &[String],
     dataset: &AnalyzedDataset,
@@ -44,7 +71,7 @@ pub fn analyze_variables_not_in_model(
             );
 
             // Tolerance check
-            if tolerance < 0.001 {
+            if tolerance < TOLERANCE_THRESHOLD {
                 return None;
             }
 
@@ -80,7 +107,19 @@ pub fn analyze_variables_not_in_model(
     variables_not_in_analysis
 }
 
-// Analyze variables in the model - parallelized
+/// Analyze variables in the model
+///
+/// This function calculates statistics for variables already included
+/// in the discriminant model, to determine which should be removed.
+///
+/// # Parameters
+/// * `variables` - Variables in the model
+/// * `dataset` - The analyzed dataset
+/// * `method_type` - The method to use for variable selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A vector of VariableInAnalysis with statistics for each variable
 pub fn analyze_variables_in_model(
     variables: &[String],
     dataset: &AnalyzedDataset,
@@ -127,7 +166,20 @@ pub fn analyze_variables_in_model(
     variables_in_analysis
 }
 
-// Find the best variable to enter the model with caching
+/// Find the best variable to enter the model
+///
+/// This function identifies the variable that should be entered into
+/// the model next, based on the selected method.
+///
+/// # Parameters
+/// * `variables` - Variables not in the model
+/// * `dataset` - The analyzed dataset
+/// * `current_variables` - Variables currently in the model
+/// * `method_type` - The method to use for variable selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A tuple of (optional variable name, statistics)
 pub fn find_best_variable_to_enter(
     variables: &[String],
     dataset: &AnalyzedDataset,
@@ -183,7 +235,19 @@ pub fn find_best_variable_to_enter(
     best_candidate.map(|best| (Some(best.variable.clone()), best)).unwrap_or((None, default_result))
 }
 
-// Find the worst variable to remove from the model with caching
+/// Find the worst variable to remove from the model
+///
+/// This function identifies the variable that should be removed from
+/// the model, based on the selected method.
+///
+/// # Parameters
+/// * `variables` - Variables in the model
+/// * `dataset` - The analyzed dataset
+/// * `method_type` - The method to use for variable selection
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A tuple of (optional variable name, statistics)
 pub fn find_worst_variable_to_remove(
     variables: &[String],
     dataset: &AnalyzedDataset,
