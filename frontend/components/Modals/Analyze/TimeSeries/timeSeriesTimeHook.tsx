@@ -37,62 +37,62 @@ export function useTimeHook(
         initialPeriod?.label || "Not Dated",
     ]);
 
-    // const [isLoaded, setIsLoaded] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
 
-    // // Load data from IndexedDB on mount
-    // useEffect(() => {
-    //     const loadData = async () => {
-    //         try {
-    //             const saved = await getFormData("TimeSeriesStore");
-    //             if (saved) {
-    //                 // Load selectedPeriod
-    //                 if (saved.selectedPeriod) {
-    //                     setSelectedPeriod(saved.selectedPeriod);
-    //                     const period = periods.find(p => 
-    //                         p.value === saved.selectedPeriod[0] && 
-    //                         p.label === saved.selectedPeriod[1]
-    //                     );
-    //                     if (period) {
-    //                         setTypeDate(period.id as any);
-    //                     }
-    //                 }
+    // Load data from IndexedDB on mount
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const saved = await getFormData("TimeSeriesStore");
+                if (saved) {
+                    // Load selectedPeriod
+                    if (saved.selectedPeriod) {
+                        setSelectedPeriod(saved.selectedPeriod);
+                        const period = periods.find(p => 
+                            p.value === saved.selectedPeriod[0] && 
+                            p.label === saved.selectedPeriod[1]
+                        );
+                        if (period) {
+                            setTypeDate(period.id as any);
+                        }
+                    }
                     
-    //                 // Load other time values
-    //                 if (saved.year !== undefined) setYear(saved.year);
-    //                 if (saved.month !== undefined) setMonth(saved.month);
-    //                 if (saved.day !== undefined) setDay(saved.day);
-    //                 if (saved.hour !== undefined) setHour(saved.hour);
-    //             } else {
-    //                 // Use store defaults if no saved data
-    //                 const initialType = getTypeDate();
-    //                 const initialPeriod = periods.find((p) => p.id === initialType);
-    //                 if (initialPeriod) {
-    //                     setSelectedPeriod([initialPeriod.value, initialPeriod.label]);
-    //                 }
-    //             }
-    //         } catch (err) {
-    //             console.error("Failed to load time data:", err);
-    //         } finally {
-    //             setIsLoaded(true);
-    //         }
-    //     };
-    //     loadData();
-    // }, [setTypeDate, setYear, setMonth, setDay, setHour, getTypeDate]);
+                    // Load other time values
+                    if (saved.year !== undefined) setYear(saved.year);
+                    if (saved.month !== undefined) setMonth(saved.month);
+                    if (saved.day !== undefined) setDay(saved.day);
+                    if (saved.hour !== undefined) setHour(saved.hour);
+                } else {
+                    // Use store defaults if no saved data
+                    const initialType = getTypeDate();
+                    const initialPeriod = periods.find((p) => p.id === initialType);
+                    if (initialPeriod) {
+                        setSelectedPeriod([initialPeriod.value, initialPeriod.label]);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load time data:", err);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+        loadData();
+    }, [setTypeDate, setYear, setMonth, setDay, setHour, getTypeDate]);
 
-    // // Save to IndexedDB whenever relevant state changes (but only after initial load)
-    // useEffect(() => {
-    //     if (!isLoaded) return;
+    // Save to IndexedDB whenever relevant state changes (but only after initial load)
+    useEffect(() => {
+        if (!isLoaded) return;
 
-    //     const dataToSave = {
-    //         selectedPeriod,
-    //         year: getYear(),
-    //         month: getMonth(),
-    //         day: getDay(),
-    //         hour: getHour(),
-    //     };
+        const dataToSave = {
+            selectedPeriod,
+            year: getYear(),
+            month: getMonth(),
+            day: getDay(),
+            hour: getHour(),
+        };
         
-    //     saveFormData("TimeSeriesStore", dataToSave).catch(console.error);
-    // }, [selectedPeriod, getYear(), getMonth(), getDay(), getHour(), isLoaded]);
+        saveFormData("TimeSeriesStore", dataToSave).catch(console.error);
+    }, [selectedPeriod, getYear(), getMonth(), getDay(), getHour(), isLoaded]);
 
     function handleSelectedPeriod(id: string) {
         const period = periods.find((p) => p.id === id);
@@ -106,24 +106,24 @@ export function useTimeHook(
         }
     }
 
-    function resetTime() {
-        const p = periods.find((p) => p.id === getTypeDate());
-        setSelectedPeriod(["0", "Not Dated"]);
-        setTypeDate("nd");
-    }
-
     // function resetTime() {
-    //     clearFormData("TimeSeriesStore")
-    //     .then(() => {
-    //         setSelectedPeriod(["0", "Not Dated"]);
-    //         setTypeDate("nd");
-    //         setYear(1900);
-    //         setMonth(1);
-    //         setDay(1);
-    //         setHour(0);
-    //     })
-    //     .catch((e) => console.error("Failed to clear time data:", e));
+    //     const p = periods.find((p) => p.id === getTypeDate());
+    //     setSelectedPeriod(["0", "Not Dated"]);
+    //     setTypeDate("nd");
     // }
+
+    function resetTime() {
+        clearFormData("TimeSeriesStore")
+        .then(() => {
+            setSelectedPeriod(["0", "Not Dated"]);
+            setTypeDate("nd");
+            setYear(2025);
+            setMonth(1);
+            setDay(1);
+            setHour(0);
+        })
+        .catch((e) => console.error("Failed to clear time data:", e));
+    }
 
     function inputPeriods(period: string) {
         switch (period) {
