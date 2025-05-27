@@ -1,0 +1,116 @@
+import React, { FC, useCallback } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import type { Variable } from "@/types/Variable";
+import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+
+interface VariablesTabProps {
+    availableVariables: Variable[];
+    selectedVariables: Variable[];
+    highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
+    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'selected' } | null>>;
+    moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
+    moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
+    reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
+    showFrequencyTables: boolean;
+    setShowFrequencyTables: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const VariablesTab: FC<VariablesTabProps> = ({
+    availableVariables,
+    selectedVariables,
+    highlightedVariable,
+    setHighlightedVariable,
+    moveToSelectedVariables,
+    moveToAvailableVariables,
+    reorderVariables = () => { console.warn("reorderVariables not implemented upstream"); },
+    showFrequencyTables,
+    setShowFrequencyTables,
+}) => {
+
+    // --- Adapt props for VariableListManager ---
+
+    // 1. Configure the target list(s)
+    const targetLists: TargetListConfig[] = [
+        {
+            id: 'selected',
+            title: 'Selected Variables:',
+            variables: selectedVariables,
+            height: '18rem', // Replaced 300px with 18rem (Tailwind h-72)
+            draggableItems: true, // Allow reordering within selected
+            droppable: true
+        }
+    ];
+
+    // 2. Adapt highlightedVariable state
+    // Map internal state {tempId, source} to manager's {id, source}
+    const managerHighlightedVariable = highlightedVariable
+        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
+        : null;
+
+    // Adapt setHighlightedVariable to map back from manager's format
+    const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
+        if (value && (value.source === 'available' || value.source === 'selected')) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'selected' });
+        } else {
+            setHighlightedVariable(null);
+        }
+    }, [setHighlightedVariable]);
+
+    // 3. Create onMoveVariable callback
+    const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        if (toListId === 'selected') {
+            moveToSelectedVariables(variable, targetIndex);
+        } else if (toListId === 'available') {
+            moveToAvailableVariables(variable, targetIndex);
+        }
+    }, [moveToSelectedVariables, moveToAvailableVariables]);
+
+    // 4. Create onReorderVariable callback
+    const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
+        if (listId === 'selected' && reorderVariables) {
+             // Assuming reorderVariables still expects the source 'selected'
+            reorderVariables('selected', variables);
+        }
+        // Note: Reordering 'available' list is not typically needed/supported by this component's logic
+    }, [reorderVariables]);
+
+    // 5. Create footer rendering function
+    const renderSelectedFooter = useCallback((listId: string) => {
+        if (listId === 'selected') {
+            return (
+                <div className="mt-2">
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="frequencyTables"
+                            checked={showFrequencyTables}
+                            onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
+                            className="mr-2 h-4 w-4"
+                        />
+                        <Label htmlFor="frequencyTables" className="text-sm cursor-pointer">
+                            Display frequency tables
+                        </Label>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    }, [showFrequencyTables, setShowFrequencyTables]);
+
+    // --- Render the manager component ---
+    return (
+        <VariableListManager
+            availableVariables={availableVariables}
+            targetLists={targetLists}
+            variableIdKey="tempId" // Standardize on tempId
+            highlightedVariable={managerHighlightedVariable}
+            setHighlightedVariable={setManagerHighlightedVariable}
+            onMoveVariable={handleMoveVariable}
+            onReorderVariable={handleReorderVariables}
+            // Using default getVariableIcon and getDisplayName
+            renderListFooter={renderSelectedFooter}
+        />
+    );
+};
+
+export default VariablesTab;
