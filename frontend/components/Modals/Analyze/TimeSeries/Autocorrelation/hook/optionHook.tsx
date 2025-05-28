@@ -1,10 +1,5 @@
-import { useState } from "react";
-
-interface PeriodOption {
-    value: string;
-    label: string;
-    id: string;
-}
+import { useState, useEffect } from "react";
+import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 interface DifferenceOption {
     value: string;
@@ -23,6 +18,52 @@ export function useOptionHook(
     const [selectedDifference, setSelectedDifference] = useState<string[]>(['level', 'level']);
     const [maximumLag, setMaximumLag] = useState<number>(16);
     const [seasonally, setSeasonally] = useState<boolean>(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load data from IndexedDB on mount
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const saved = await getFormData("UnitRootTest");
+                if (saved) {
+                    // Load selectedDifference
+                    if (saved.selectedDifference) {
+                        setSelectedDifference(saved.selectedDifference);
+                        const difference = differences.find(d => 
+                            d.value === saved.selectedDifference[0] && 
+                            d.label === saved.selectedDifference[1]
+                        );
+                    }
+                    // Load maximumLag
+                    if (saved.maximumLag !== undefined) {setMaximumLag(saved.maximumLag);}
+                    // Load seasonally
+                    if (saved.seasonally !== undefined) {setSeasonally(saved.seasonally);}
+                } else {
+                    // Use store defaults if no saved data
+                    setSelectedDifference(['level', 'level']);
+                    setMaximumLag(16);
+                    setSeasonally(false);
+                }
+                setIsLoaded(true);
+            } catch (error) {
+                console.error("Failed to load data:", error);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+        loadData();
+    }, [setSelectedDifference, setMaximumLag, setSeasonally]);
+
+    // Save to IndexedDB whenever relevant state changes (but only after initial load)
+    useEffect(() => {
+        if (!isLoaded) return;
+        const dataToSave = {
+            selectedDifference,
+            maximumLag,
+            seasonally,
+        };
+        saveFormData("UnitRootTest", dataToSave).catch(console.error);
+    }, [selectedDifference, maximumLag, seasonally, isLoaded]);
 
     function handleSelectedDifference (value: string){
         const difference = differences.find(d => d.value === value);
@@ -39,9 +80,16 @@ export function useOptionHook(
     };
 
     const resetOptions = () => {
-        setSelectedDifference(['level', 'level']);
-        setMaximumLag(16);
-        setSeasonally(false);
+        // setSelectedDifference(['level', 'level']);
+        // setMaximumLag(16);
+        // setSeasonally(false);
+        clearFormData("Autocorrelation")
+        .then(() => {
+            setSelectedDifference(['level', 'level']);
+            setMaximumLag(16);
+            setSeasonally(false);
+        })
+        .catch((e) => console.error("Failed to clear time data:", e));
     };
 
     return {

@@ -1,16 +1,7 @@
 import React, { FC, useCallback, useMemo } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Variable } from "@/types/Variable";
-import {
-    Shapes,
-    Ruler,
-    BarChartHorizontal,
-    MoveHorizontal,
-    GripVertical,
-    InfoIcon
-} from "lucide-react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
 interface VariablesTabProps {

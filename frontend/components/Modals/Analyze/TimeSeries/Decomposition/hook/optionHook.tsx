@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 interface DecompositionMethod {
     value: string;
@@ -28,11 +29,56 @@ export function useOptionHook(
         'additive',
         'additive',
     ]);
-
     const [selectedTrendedMethod, setSelectedTrendedMethod] = useState<string[]>([
         'linear',
         'Linear'
     ]);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load data from IndexedDB on mount
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const saved = await getFormData("Decomposition");
+                if (saved) {
+                    // Load selectedPeriod
+                    if (saved.selectedDecompositionMethod) {
+                        setSelectedDecompositionMethod(saved.selectedDecompositionMethod);
+                        const method = decompositionMethods.find(p => 
+                            p.value === saved.selectedDecompositionMethod[0] && 
+                            p.label === saved.selectedDecompositionMethod[1]
+                        );
+                    }
+                    if (saved.selectedTrendedMethod) {
+                        setSelectedTrendedMethod(saved.selectedTrendedMethod);
+                        const method = trendedMethods.find(p => 
+                            p.value === saved.selectedTrendedMethod[0] && 
+                            p.label === saved.selectedTrendedMethod[1]
+                        );
+                    }
+                } else {
+                    // Use store defaults if no saved data
+                    setSelectedDecompositionMethod(['additive', 'additive']);
+                    setSelectedTrendedMethod(['linear', 'Linear']);
+                }
+            } catch (err) {
+                console.error("Failed to load time data:", err);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+        loadData();
+    }, [setSelectedDecompositionMethod, setSelectedTrendedMethod]);
+
+    // Save to IndexedDB whenever relevant state changes (but only after initial load)
+    useEffect(() => {
+        if (!isLoaded) return;
+        const dataToSave = {
+            selectedDecompositionMethod,
+            selectedTrendedMethod,
+        };
+        saveFormData("Decomposition", dataToSave).catch(console.error);
+    }, [selectedDecompositionMethod, selectedTrendedMethod, isLoaded]);
 
     function handleSelectedDecompositionMethod(method: string) {
         setSelectedDecompositionMethod([
@@ -80,8 +126,14 @@ export function useOptionHook(
     }
 
     function resetOptions() {
-        setSelectedDecompositionMethod(['additive', 'additive']);
-        setSelectedTrendedMethod(['linear', 'Linear']);
+        // setSelectedDecompositionMethod(['additive', 'additive']);
+        // setSelectedTrendedMethod(['linear', 'Linear']);
+        clearFormData("Decomposition")
+        .then(() => {
+            setSelectedDecompositionMethod(['additive', 'additive']);
+            setSelectedTrendedMethod(['linear', 'Linear']);
+        })
+        .catch((e) => console.error("Failed to clear time data:", e));
     }
 
     return {

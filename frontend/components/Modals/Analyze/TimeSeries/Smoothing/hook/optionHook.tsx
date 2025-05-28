@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { InputRow } from "../../TimeSeriesInput";
+import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 type MethodParameters = {
     [key: string]: number[];
@@ -31,25 +32,74 @@ const methods: SmoothingMethod[] = [
 ];
 
 export function useOptionHook(
-    initialMethod: SmoothingMethod = { value: "sma", label: "Simple Moving Average" }
     ) {
+    const initialMethod = methods[0]; // Default to the first method
     const [selectedMethod, setSelectedMethod] = useState<[string, string]>([
         initialMethod.value,
         initialMethod.label,
     ]);
     const [parameters, setParameters] = useState<number[]>(defaultParameters[initialMethod.value]);
+    const [isLoaded, setIsLoaded] = useState(false);
 
+    // Load data from IndexedDB on mount
     useEffect(() => {
-        if (selectedMethod[0] && defaultParameters[selectedMethod[0]]) {
-        setParameters([...defaultParameters[selectedMethod[0]]]);
-        } else {
-        setParameters([]);
-        }
-    }, [selectedMethod]);
+        const loadData = async () => {
+            try {
+                const saved = await getFormData("Smoothing");
+                if (saved) {
+                    // Load selectedPeriod
+                    if (saved.selectedMethod) {
+                        setSelectedMethod(saved.selectedMethod);
+                        const method = methods.find(p => 
+                            p.value === saved.selectedMethod[0] && 
+                            p.label === saved.selectedMethod[1]
+                        );
+                    }
+                    if (saved.parameter1 !== undefined || saved.parameter2 !== undefined || saved.parameter3 !== undefined) {
+                        // Load dari individual parameters
+                        const loadedParams = [
+                            saved.parameter1 ?? 0,
+                            saved.parameter2 ?? 0,
+                            saved.parameter3 ?? 0
+                        ];
+                        setParameters(loadedParams);
+                    }
+                } else {
+                    // Use store defaults if no saved data
+                    setSelectedMethod([methods[0].value, methods[0].label]);
+                    setParameters(defaultParameters[methods[0].value]);
+                }
+            } catch (err) {
+                console.error("Failed to load time data:", err);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+        loadData();
+    }, [setSelectedMethod, setParameters]);
+
+    // Save to IndexedDB whenever relevant state changes (but only after initial load)
+    useEffect(() => {
+        if (!isLoaded) return;
+        const dataToSave = {
+            selectedMethod,
+            parameter1: parameters[0],
+            parameter2: parameters[1],
+            parameter3: parameters[2], // Default to 0 if not used
+        };
+        saveFormData("Smoothing", dataToSave).catch(console.error);
+    }, [selectedMethod, parameters, isLoaded]);
 
     function handleSelectedMethod(value: string, methods: SmoothingMethod[]) {
         const methodLabel = methods.find((m) => m.value === value)?.label || "";
         setSelectedMethod([value, methodLabel]);
+        
+        // Set parameters sesuai method yang dipilih
+        if (defaultParameters[value]) {
+            setParameters([...defaultParameters[value]]);
+        } else {
+            setParameters([0, 0, 0]);
+        }
     }
 
     // Prepare input parameters UI based on selected method
@@ -155,8 +205,14 @@ export function useOptionHook(
     }
 
     function resetOptions() {
-        setSelectedMethod(["sma", "Simple Moving Average"]);
-        setParameters(defaultParameters["sma"]);
+        // setSelectedMethod(["sma", "Simple Moving Average"]);
+        // setParameters(defaultParameters["sma"]);
+        clearFormData("Smoothing")
+        .then(() => {
+            setSelectedMethod(["sma", "Simple Moving Average"]);
+            setParameters(defaultParameters["sma"]);
+        })
+        .catch((e) => console.error("Failed to clear time data:", e));
     }
 
     return {
@@ -166,7 +222,6 @@ export function useOptionHook(
         inputParameters,
         setSelectedMethod,
         handleSelectedMethod,
-        handleInputChange,
         resetOptions,
     };
 }

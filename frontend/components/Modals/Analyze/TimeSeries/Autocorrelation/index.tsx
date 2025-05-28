@@ -1,18 +1,8 @@
 "use client";
 
 import React, { FC, useState, useEffect } from "react";
-import {
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter
-} from "@/components/ui/dialog";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger
-} from "@/components/ui/tabs";
+import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -23,9 +13,15 @@ import { useAnalyzeHook } from "./hook/analyzeHook";
 import VariablesTab from "./VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
+import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 interface AutocorrelationProps {
     onClose: () => void;
+}
+
+interface VariableState {
+    availableVariables: Variable[];
+    selectedVariables: Variable[];
 }
 
 const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
@@ -69,10 +65,68 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
         onClose
     );
     const combinedError = errorMsg || analysisError;
+    const [isLoaded, setIsLoaded] = useState(false);
 
+    // Load saved state from IndexedDB on component mount
     useEffect(() => {
-            setAvailableVariables(variables.filter(v => v.name !== ""));
+        const loadSavedState = async () => {
+            try {
+                const savedData = await getFormData("Autocorrelation", "variables");
+                const filteredVariables = variables.filter(v => v.name !== "");
+                
+                if (savedData && savedData.availableVariables && savedData.selectedVariables) {
+                    // Validate that saved variables still exist in current variable store
+                    const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
+                        filteredVariables.some(v => v.columnIndex === savedVar.columnIndex)
+                    );
+                    const validSelectedVars = savedData.selectedVariables.filter((savedVar: Variable) =>
+                        filteredVariables.some(v => v.columnIndex === savedVar.columnIndex)
+                    );
+                    
+                    // Get variables that weren't in saved state
+                    const savedColumnIndexes = [...validAvailableVars, ...validSelectedVars].map(v => v.columnIndex);
+                    const newVariables = filteredVariables.filter(v => 
+                        !savedColumnIndexes.includes(v.columnIndex)
+                    );
+                    
+                    setAvailableVariables([...validAvailableVars, ...newVariables]);
+                    setSelectedVariables(validSelectedVars);
+                } else {
+                    // No saved state, use all variables as available
+                    setAvailableVariables(filteredVariables);
+                    setSelectedVariables([]);
+                }
+            } catch (error) {
+                console.error("Failed to load saved variable state:", error);
+                // Fallback to default state
+                setAvailableVariables(variables.filter(v => v.name !== ""));
+                setSelectedVariables([]);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+
+        loadSavedState();
     }, [variables]);
+
+    // Save state to IndexedDB whenever variables change
+    useEffect(() => {
+        if (!isLoaded) return; // Don't save during initial load
+        
+        const saveState = async () => {
+            try {
+                const stateToSave: VariableState = {
+                    availableVariables,
+                    selectedVariables
+                };
+                await saveFormData("Autocorrelation", stateToSave, "variables");
+            } catch (error) {
+                console.error("Failed to save variable state:", error);
+            }
+        };
+
+        saveState();
+    }, [availableVariables, selectedVariables, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
@@ -122,10 +176,14 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose }) => {
     };
 
     const handleReset = () => {
-        resetOptions();
-        resetTime();
-        reorderVariables('available', variables.filter(v => v.name !== ""));
-        setSelectedVariables([]);
+        clearFormData("Autocorrelation")
+        .then(() => {
+            resetOptions();
+            resetTime();
+            reorderVariables('available', variables.filter(v => v.name !== ""));
+            setSelectedVariables([]);
+        })
+        .catch((e) => console.error("Failed to clear time data:", e));
     }
 
     return (

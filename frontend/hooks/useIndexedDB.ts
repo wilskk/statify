@@ -27,7 +27,7 @@ type AnalysisType =
     | "TimeSeriesStore"
     | "Smoothing"
     | "Decomposition"
-    | "AutoCorrelation"
+    | "Autocorrelation"
     | "UnitRootTest"
     | "BoxJenkinsModel"
     ;
