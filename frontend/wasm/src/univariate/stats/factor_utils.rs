@@ -1,4 +1,4 @@
-use std::collections::{ HashMap, HashSet, BTreeMap };
+use std::collections::{ HashMap, HashSet };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -6,6 +6,54 @@ use crate::univariate::models::{
     result::DesignMatrixInfo,
 };
 use super::core::*;
+
+/// Parsing istilah interaksi (misalnya, "A*B") menjadi vektor nama faktor
+/// Menangani istilah interaksi (A*B) dan istilah nesting (A(B) atau A WITHIN B)
+pub fn parse_interaction_term(term: &str) -> Vec<String> {
+    term.split('*')
+        .map(|s| s.trim().to_string())
+        .collect()
+}
+
+/// Parse parameter names dynamically using design matrix info
+pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
+    let mut factors = HashMap::new();
+    if param_str == "Intercept" {
+        factors.insert("Intercept".to_string(), "Intercept".to_string());
+        return factors;
+    }
+    param_str.split('*').for_each(|part| {
+        let clean_part = part.trim_matches(|c| (c == '[' || c == ']'));
+        if let Some((factor, level)) = clean_part.split_once('=') {
+            factors.insert(factor.to_string(), level.to_string());
+        }
+    });
+
+    factors
+}
+
+/// Fungsi pembantu untuk menemukan tanda kurung tutup yang sesuai
+pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut depth = 0;
+
+    for i in open_pos..chars.len() {
+        match chars[i] {
+            '(' => {
+                depth += 1;
+            }
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
 
 pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<String>, String> {
     let mut level_set = HashSet::new();
@@ -114,76 +162,6 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
     }
 
     row
-}
-
-/// Membangun baris L-matrix berbasis parameter aktif (1/-1/0)
-pub fn matches_construct_l_matrix(
-    parameter_names: &Vec<String>,
-    active_params: &HashMap<String, i32>
-) -> Vec<i32> {
-    let mut l_vec = vec![0; parameter_names.len()];
-
-    // Regular case for non-Intercept parameters
-    for i in 0..parameter_names.len() {
-        let p = &parameter_names[i];
-
-        // Check each active parameter
-        for (active_key, active_val) in active_params {
-            if p == active_key || p.starts_with(&format!("{}", active_key)) {
-                // Look ahead to find the last matching parameter
-                let mut last_match_idx = i;
-                for j in i + 1..parameter_names.len() {
-                    let next_p = &parameter_names[j];
-                    if next_p == active_key || next_p.starts_with(&format!("{}", active_key)) {
-                        last_match_idx = j;
-                    } else {
-                        break;
-                    }
-                }
-
-                // Only set value for the last matching parameter
-                if last_match_idx == i {
-                    l_vec[i] = *active_val;
-                } else {
-                    l_vec[i] = 0;
-                }
-                break;
-            }
-        }
-    }
-
-    l_vec
-}
-
-/// Parsing istilah interaksi (misalnya, "A*B") menjadi vektor nama faktor
-/// Menangani istilah interaksi (A*B) dan istilah nesting (A(B) atau A WITHIN B)
-pub fn parse_interaction_term(term: &str) -> Vec<String> {
-    term.split('*')
-        .map(|s| s.trim().to_string())
-        .collect()
-}
-
-/// Fungsi pembantu untuk menemukan tanda kurung tutup yang sesuai
-pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
-    let chars: Vec<char> = text.chars().collect();
-    let mut depth = 0;
-
-    for i in open_pos..chars.len() {
-        match chars[i] {
-            '(' => {
-                depth += 1;
-            }
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(i);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    None
 }
 
 /// Helper function to generate lower order terms recursively
@@ -473,34 +451,4 @@ pub fn generate_all_row_parameter_names_sorted(
     }
 
     Ok(all_params)
-}
-
-/// Parse parameter names dynamically using design matrix info
-pub fn parse_parameter_name(
-    param_str: &str,
-    design_info: &DesignMatrixInfo
-) -> BTreeMap<String, String> {
-    let mut map = BTreeMap::new();
-
-    // Handle intercept case
-    if param_str == "Intercept" {
-        map.insert("Intercept".to_string(), "Intercept".to_string());
-        return map;
-    }
-
-    // Handle main effects and interactions
-    for part in param_str.split('*') {
-        let part = part.trim_matches(|c| (c == '[' || c == ']'));
-        if let Some((factor, level)) = part.split_once('=') {
-            let factor = factor.trim().to_string();
-            let level = level.trim().to_string();
-
-            // Verify that this factor exists in the design matrix terms
-            if design_info.term_names.contains(&factor) {
-                map.insert(factor, level);
-            }
-        }
-    }
-
-    map
 }
