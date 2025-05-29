@@ -38,7 +38,7 @@ interface DuplicateCasesProps {
 const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal } = useModalStore();
     const { variables, addVariable } = useVariableStore();
-    const { data, updateBulkCells, setDataAndSync } = useDataStore();
+    const { data, updateCells, setDataAndSync } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Prepare variables with tempId if they don't have it
@@ -172,7 +172,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
             col: primaryVarIndex,
             value
         }));
-        await updateBulkCells(primaryUpdates);
+        await updateCells(primaryUpdates);
 
         if (sequentialCount) {
             const sequenceVarIndex = primaryVarIndex + 1;
@@ -194,7 +194,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                 col: sequenceVarIndex,
                 value
             }));
-            await updateBulkCells(sequenceUpdates);
+            await updateCells(sequenceUpdates);
         }
     };
 

@@ -61,7 +61,7 @@ interface AggregateDataProps {
 const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal } = useModal();
     const { variables } = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
     const { setStatisticProgress } = useModalStore();
 
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -489,7 +489,7 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
             totalVarCount++;
         }
 
-        await updateBulkCells(bulkUpdates);
+        await updateCells(bulkUpdates);
         setStatisticProgress(false);
         closeModal();
     };

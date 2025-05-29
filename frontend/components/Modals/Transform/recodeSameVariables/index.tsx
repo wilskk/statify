@@ -265,7 +265,7 @@ const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
 
                 // Jika ada perubahan, terapkan ke datastore
                 if (updates.length > 0) {
-                    await dataStore.updateBulkCells(updates);
+                    await dataStore.updateCells(updates);
                 }
             }
 

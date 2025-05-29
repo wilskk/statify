@@ -46,7 +46,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
 }) => {
     const { closeModal } = useModalStore();
     const { variables } = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // --- State for Variables ---
@@ -812,7 +812,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
              }
 
              // Update cell data
-             await updateBulkCells(dataUpdates);
+             await updateCells(dataUpdates);
 
              // Wait for worker to complete *after* dataset updates are done
              await workerPromise;

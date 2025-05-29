@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useModalStore, ModalType } from "@/stores/useModalStore";
+import { useModalStore } from "@/stores/useModalStore";
 import { Variable } from "@/types/Variable";
 import {
     Shapes,
@@ -39,7 +39,7 @@ interface SelectCasesProps {
 const SelectCasesContent: FC<SelectCasesProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal, openModal } = useModalStore();
     const { variables, addVariable, updateVariable } = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
 
     const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available'} | null>(null);
@@ -251,7 +251,7 @@ const SelectCasesContent: FC<SelectCasesProps> = ({ onClose, containerType = "di
         }));
 
         if (existingFilterVar) {
-            await updateBulkCells(updates);
+            await updateCells(updates);
         } else {
             const newVarIndex = variables.length;
             await addVariable({
@@ -269,7 +269,7 @@ const SelectCasesContent: FC<SelectCasesProps> = ({ onClose, containerType = "di
                 ],
             });
 
-            await updateBulkCells(updates);
+            await updateCells(updates);
         }
     };
 
@@ -376,7 +376,7 @@ const SelectCasesContent: FC<SelectCasesProps> = ({ onClose, containerType = "di
                 ],
             });
 
-            await updateBulkCells(updates);
+            await updateCells(updates);
             success = true;
         } else if (selectOption === "condition") {
             success = await applyConditionFilter();
@@ -407,11 +407,9 @@ const SelectCasesContent: FC<SelectCasesProps> = ({ onClose, containerType = "di
                     if (rowsToDelete.length > 0) {
                         // Sort in descending order
                         rowsToDelete.sort((a, b) => b - a);
-
-                        // Delete rows one by one
-                        for (const rowIndex of rowsToDelete) {
-                            await useDataStore.getState().deleteRow(rowIndex);
-                        }
+                        
+                        // Use deleteRows instead of looping through each row
+                        await useDataStore.getState().deleteRows(rowsToDelete);
                     }
 
                     setCurrentStatus(`Deleted ${rowsToDelete.length} unselected cases`);

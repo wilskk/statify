@@ -43,11 +43,11 @@ export const useTableUpdates = ({
     // Zustand store access
     const {
         data,
-        addRow,
-        addColumn,
-        deleteRow,
-        deleteColumn,
-        updateBulkCells,
+        addRows,
+        addColumns,
+        deleteRows,
+        deleteColumns,
+        updateCells,
     } = useDataStore();
 
     const {
@@ -127,7 +127,7 @@ export const useTableUpdates = ({
 
         if (cellUpdates.length > 0) {
             try {
-                await updateBulkCells(cellUpdates);
+                await updateCells(cellUpdates);
 
                 if (maxColIndex > -1) {
                     console.log(`[processCellUpdates] Calling ensureCompleteVariables up to index: ${maxColIndex}`);
@@ -139,7 +139,7 @@ export const useTableUpdates = ({
                 // TODO: Add user feedback
             }
         }
-    }, [variables, updateBulkCells, ensureCompleteVariables]); // Dependencies: variables for type checking, store actions
+    }, [variables, updateCells, ensureCompleteVariables]); // Dependencies: variables for type checking, store actions
 
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;
@@ -157,7 +157,8 @@ export const useTableUpdates = ({
             switch (operation.type) {
                 case 'ADD_ROW_AND_UPDATE': {
                     const { changes, newActualRows, newActualCols } = operation.payload;
-                    await addRow(); // Only add row data
+                    // Add the row using addRows with a single index
+                    await addRows([newActualRows - 1]); // Use newActualRows - 1 as the index to add
                     // Variables are not added here, ensureMatrixDimensions handles cols
                     await processCellUpdates({ changes, targetStateRows: newActualRows, targetStateCols: newActualCols });
                     break;
@@ -168,18 +169,44 @@ export const useTableUpdates = ({
                     if (newVariables && newVariables.length > 0) {
                         await addMultipleVariables(newVariables);
                     }
-                    // Then process cell updates (which includes ensureMatrixDimensions for data cols)
+                    
+                    // Calculate which columns need to be added
+                    if (newActualCols > actualNumCols) {
+                        const columnsToAdd = [];
+                        for (let i = actualNumCols; i < newActualCols; i++) {
+                            columnsToAdd.push(i);
+                        }
+                        if (columnsToAdd.length > 0) {
+                            await addColumns(columnsToAdd);
+                        }
+                    }
+                    
+                    // Then process cell updates
                     await processCellUpdates({ changes, targetStateRows: newActualRows, targetStateCols: newActualCols });
                     break;
                 }
                 case 'ADD_ROW_COL_AND_UPDATE': {
                     const { changes, newActualRows, newActualCols, newVariables } = operation.payload;
-                    await addRow(); // Add row data
+                    // Add row data using addRows with a single index
+                    await addRows([newActualRows - 1]); // Use newActualRows - 1 as the index to add
+                    
                     // Add multiple variables
                     if (newVariables && newVariables.length > 0) {
                         await addMultipleVariables(newVariables);
                     }
-                    // Then process cell updates (which includes ensureMatrixDimensions for data cols)
+                    
+                    // Calculate which columns need to be added
+                    if (newActualCols > actualNumCols) {
+                        const columnsToAdd = [];
+                        for (let i = actualNumCols; i < newActualCols; i++) {
+                            columnsToAdd.push(i);
+                        }
+                        if (columnsToAdd.length > 0) {
+                            await addColumns(columnsToAdd);
+                        }
+                    }
+                    
+                    // Then process cell updates
                     await processCellUpdates({ changes, targetStateRows: newActualRows, targetStateCols: newActualCols });
                     break;
                 }
@@ -208,7 +235,7 @@ export const useTableUpdates = ({
                 queueMicrotask(processPendingOperations);
             }
         }
-    }, [processCellUpdates, addRow, addMultipleVariables]); // Update dependencies
+    }, [processCellUpdates, addRows, addColumns, addMultipleVariables]); // Update dependencies
 
     // --- Handsontable Event Handlers ---
 
@@ -480,12 +507,12 @@ export const useTableUpdates = ({
 
     const handleAfterRemoveRow = useCallback((index: number, amount: number, physicalRows: number[], source?: Handsontable.ChangeSource) => {
         console.log('After Remove Row', { index, amount, physicalRows, source });
-        // This should ideally be handled by the context menu logic calling deleteRow directly
+        // This should ideally be handled by the context menu logic calling deleteRows directly
     }, []);
 
     const handleAfterRemoveCol = useCallback((index: number, amount: number, physicalCols: number[], source?: Handsontable.ChangeSource) => {
         console.log('After Remove Col', { index, amount, physicalCols, source });
-        // This should ideally be handled by the context menu logic calling deleteColumn directly
+        // This should ideally be handled by the context menu logic calling deleteColumns directly
     }, []);
 
     const handleAfterColumnResize = useCallback((newSize: number, currentColumn: number, isDoubleClick: boolean) => {

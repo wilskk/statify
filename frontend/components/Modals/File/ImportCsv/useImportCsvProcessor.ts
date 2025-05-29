@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDataStore } from "@/stores/useDataStore";
+import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { 
     CSVProcessingOptions, 
@@ -14,7 +14,7 @@ interface ProcessCSVParams {
 }
 
 export const useImportCsvProcessor = () => { // Renamed hook
-    const { updateCell, resetData, addRow } = useDataStore(); // Added addRow
+    const { updateCells, resetData, addRows } = useDataStore();
     const { resetVariables, addVariable } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     
@@ -35,17 +35,26 @@ export const useImportCsvProcessor = () => { // Renamed hook
                 await addVariable(variable);
             }
             
-            // Add data to store
+            // Prepare to add rows in bulk if needed
+            if (result.data.length > 0) {
+                // Create row indices array for all rows to add
+                const rowIndices = Array.from({ length: result.data.length }, (_, i) => i);
+                await addRows(rowIndices);
+            }
+            
+            // Add data to store using bulk update
+            const allUpdates: CellUpdate[] = [];
             result.data.forEach((row, rowIndex) => {
-                // Ensure row exists if needed, though processCSVContent should handle data structure
-                // For example, if using addRow from scratch:
-                // addRow(row); 
-                // Or if updating cells in pre-existing rows (ensure rows are created):
-                // if (rowIndex >= data.length) { addRow(); } // Simplified example
                 row.forEach((value, colIndex) => {
-                    updateCell(rowIndex, colIndex, value);
+                    // Collect all updates in a single array
+                    allUpdates.push({ row: rowIndex, col: colIndex, value });
                 });
             });
+            
+            // Apply all updates at once
+            if (allUpdates.length > 0) {
+                await updateCells(allUpdates);
+            }
             
             return result;
         } catch (error) {

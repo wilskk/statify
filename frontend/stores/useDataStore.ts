@@ -24,21 +24,25 @@ export interface DataStoreState {
     loadData: () => Promise<void>;
     resetData: () => Promise<void>;
 
-    updateCell: (row: number, col: number, value: string | number) => Promise<void>;
-    updateBulkCells: (updates: CellUpdate[]) => Promise<void>;
-
     setDataAndSync: (newData: DataRow[]) => Promise<void>;
     applyDiffAndSync: (newData: DataRow[], oldData: DataRow[]) => Promise<void>;
     saveData: () => Promise<void>;
 
+    updateCell: (row: number, col: number, value: string | number) => Promise<void>;
+    updateCells: (updates: CellUpdate[]) => Promise<void>;
+
     addRow: (index?: number) => Promise<void>;
-    addBulkRows: (indices: number[]) => Promise<void>;
+    addRows: (indices: number[]) => Promise<void>;
+
     addColumn: (index?: number) => Promise<void>;
-    addBulkColumns: (indices: number[]) => Promise<void>;
+    addColumns: (indices: number[]) => Promise<void>;
+
     deleteRow: (index: number) => Promise<void>;
-    deleteBulkRows: (indices: number[]) => Promise<void>;
+    deleteRows: (indices: number[]) => Promise<void>;
+
     deleteColumn: (index: number) => Promise<void>;
-    deleteBulkColumns: (indices: number[]) => Promise<void>;
+    deleteColumns: (indices: number[]) => Promise<void>;
+
     sortData: (columnIndex: number, direction: 'asc' | 'desc') => Promise<void>;
     swapRows: (row1: number, row2: number) => Promise<void>;
     swapColumns: (col1: number, col2: number) => Promise<void>;
@@ -53,7 +57,7 @@ export interface DataStoreState {
 }
 
 // Define the initial state explicitly with the correct type
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateBulkCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addBulkRows' | 'addColumn' | 'addBulkColumns' | 'deleteRow' | 'deleteBulkRows' | 'deleteColumn' | 'deleteBulkColumns' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setDataAndSync' | 'applyDiffAndSync' | 'saveData' | 'addRow' | 'addRows' | 'addColumn' | 'addColumns' | 'deleteRow' | 'deleteRows' | 'deleteColumn' | 'deleteColumns' | 'sortData' | 'swapRows' | 'swapColumns' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
     data: [],
     isLoading: false,
     error: null,
@@ -165,10 +169,10 @@ export const useDataStore = create<DataStoreState>()(
             },
 
             updateCell: async (row, col, value) => {
-                return await get().updateBulkCells([{ row, col, value }]);
+                return await get().updateCells([{ row, col, value }]);
             },
 
-            updateBulkCells: async (updates) => {
+            updateCells: async (updates) => {
                 if (!updates || updates.length === 0) {
                      return;
                 }
@@ -210,7 +214,7 @@ export const useDataStore = create<DataStoreState>()(
                             }
                         } else {
                             // This error check is still valid, should not happen if ensure is correct
-                            console.error(`[updateBulkCells] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
+                            console.error(`[updateCells] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
                         }
                     });
 
@@ -229,14 +233,14 @@ export const useDataStore = create<DataStoreState>()(
                     await dataService.applyBulkUpdates(validUpdatesForPotentialChange);
                     
                     // Clear related error on success
-                    set(state => { if(state.error?.source === 'updateBulkCells') state.error = null; });
+                    set(state => { if(state.error?.source === 'updateCells') state.error = null; });
                 } catch (error: any) {
-                    console.error("[updateBulkCells] DB transaction failed:", error);
+                    console.error("[updateCells] DB transaction failed:", error);
                     // Rollback state using the copy made *before* the 'set' call
                     set((state) => {
                         state.data = oldDataCopy;
                         state.lastUpdated = new Date(); // Reflect rollback time
-                        state.error = { message: "Bulk update failed, state rolled back", source: "updateBulkCells", originalError: error };
+                        state.error = { message: "Bulk update failed, state rolled back", source: "updateCells", originalError: error };
                     });
                 }
             },
@@ -393,7 +397,7 @@ export const useDataStore = create<DataStoreState>()(
                 }
             },
 
-            addBulkRows: async (indices: number[]) => {
+            addRows: async (indices: number[]) => {
                 if (!indices || indices.length === 0) return;
                 
                 // Sort indices in descending order to avoid shifting problems
@@ -419,11 +423,13 @@ export const useDataStore = create<DataStoreState>()(
                         finalData = state.data;
                     });
                     
-                    // Use the service to add the rows
-                    await dataService.addBulkRows(indices);
+                    // Use the service to add each row individually since addRows doesn't exist
+                    for (const index of sortedIndices) {
+                        await dataService.addRow(index);
+                    }
                     
                     // Clear any errors on success
-                    set(state => { if(state.error?.source === 'addBulkRows') state.error = null; });
+                    set(state => { if(state.error?.source === 'addRows') state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to add bulk rows:", error);
                     // Rollback state on error
@@ -432,7 +438,7 @@ export const useDataStore = create<DataStoreState>()(
                         state.lastUpdated = new Date();
                         state.error = { 
                             message: error.message || "Failed to add bulk rows", 
-                            source: "addBulkRows",
+                            source: "addRows",
                             originalError: error
                         };
                     });
@@ -476,7 +482,7 @@ export const useDataStore = create<DataStoreState>()(
                 }
             },
 
-            addBulkColumns: async (indices: number[]) => {
+            addColumns: async (indices: number[]) => {
                 if (!indices || indices.length === 0) return;
                 
                 // Sort indices in descending order to avoid shifting problems
@@ -501,11 +507,13 @@ export const useDataStore = create<DataStoreState>()(
                         finalData = state.data;
                     });
                     
-                    // Use the service to add the columns
-                    await dataService.addBulkColumns(indices);
+                    // Use the service to add each column individually since addColumns doesn't exist
+                    for (const colIndex of sortedIndices) {
+                        await dataService.addColumn(colIndex);
+                    }
                     
                     // Clear any errors on success
-                    set(state => { if(state.error?.source === 'addBulkColumns') state.error = null; });
+                    set(state => { if(state.error?.source === 'addColumns') state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to add bulk columns:", error);
                     // Rollback state on error
@@ -514,7 +522,7 @@ export const useDataStore = create<DataStoreState>()(
                         state.lastUpdated = new Date();
                         state.error = { 
                             message: error.message || "Failed to add bulk columns", 
-                            source: "addBulkColumns",
+                            source: "addColumns",
                             originalError: error
                         };
                     });
@@ -561,7 +569,7 @@ export const useDataStore = create<DataStoreState>()(
                 }
             },
 
-            deleteBulkRows: async (indices: number[]) => {
+            deleteRows: async (indices: number[]) => {
                 if (!indices || indices.length === 0) return;
                 
                 const oldData = get().data;
@@ -572,7 +580,7 @@ export const useDataStore = create<DataStoreState>()(
                         set(state => { 
                             state.error = { 
                                 message: `Invalid row index ${index} for deletion`,
-                                source: "deleteBulkRows" 
+                                source: "deleteRows" 
                             }; 
                         });
                         return;
@@ -599,10 +607,12 @@ export const useDataStore = create<DataStoreState>()(
                     });
                     
                     // Use the service to delete the rows
-                    await dataService.deleteBulkRows(indices);
+                    for (const index of sortedIndices) {
+                        await dataService.deleteRow(index);
+                    }
                     
                     // Clear any errors on success
-                    set(state => { if(state.error?.source === 'deleteBulkRows') state.error = null; });
+                    set(state => { if(state.error?.source === 'deleteRows') state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to delete bulk rows:", error);
                     // Rollback state on error
@@ -611,7 +621,7 @@ export const useDataStore = create<DataStoreState>()(
                         state.lastUpdated = new Date();
                         state.error = { 
                             message: error.message || "Failed to delete bulk rows", 
-                            source: "deleteBulkRows",
+                            source: "deleteRows",
                             originalError: error
                         };
                     });
@@ -665,7 +675,7 @@ export const useDataStore = create<DataStoreState>()(
                 }
             },
 
-            deleteBulkColumns: async (indices: number[]) => {
+            deleteColumns: async (indices: number[]) => {
                 if (!indices || indices.length === 0) return;
                 
                 const oldData = get().data;
@@ -679,7 +689,7 @@ export const useDataStore = create<DataStoreState>()(
                         set(state => { 
                             state.error = { 
                                 message: `Invalid column index ${index} for deletion`,
-                                source: "deleteBulkColumns" 
+                                source: "deleteColumns" 
                             }; 
                         });
                         return;
@@ -712,10 +722,12 @@ export const useDataStore = create<DataStoreState>()(
                     });
                     
                     // Use the service to delete the columns
-                    await dataService.deleteBulkColumns(indices);
+                    for (const index of sortedIndices) {
+                        await dataService.deleteColumn(index);
+                    }
                     
                     // Clear any errors on success
-                    set(state => { if(state.error?.source === 'deleteBulkColumns') state.error = null; });
+                    set(state => { if(state.error?.source === 'deleteColumns') state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to delete bulk columns:", error);
                     // Rollback state on error
@@ -724,7 +736,7 @@ export const useDataStore = create<DataStoreState>()(
                         state.lastUpdated = new Date();
                         state.error = { 
                             message: error.message || "Failed to delete bulk columns", 
-                            source: "deleteBulkColumns",
+                            source: "deleteColumns",
                             originalError: error
                         };
                     });
@@ -905,7 +917,7 @@ export const useDataStore = create<DataStoreState>()(
                     if (issueMessage) issues.push({ row, message: issueMessage });
                     if (correctedValue !== undefined && correctedValue !== originalValue) updates.push({ row, col: columnIndex, value: correctedValue });
                 }
-                if (updates.length > 0) await get().updateBulkCells(updates);
+                if (updates.length > 0) await get().updateCells(updates);
                 return { isValid, issues };
             },
 

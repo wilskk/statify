@@ -35,7 +35,7 @@ interface DefineDateTimeProps {
 const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
     const { meta, setMeta } = useMetaStore();
     const { variables, addVariable, resetVariables } = useVariableStore();
-    const { updateBulkCells, data } = useDataStore();
+    const { updateCells, data } = useDataStore();
 
     const [casesAreOptions] = useState<string[]>([
         "Years",
@@ -89,7 +89,7 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
             variables,
             addVariable,
             resetVariables,
-            updateBulkCells,
+            updateCells,
             getMaxRow(data)
         );
 

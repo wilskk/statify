@@ -31,7 +31,7 @@ export const useDescriptivesAnalysis = ({
 }: DescriptivesAnalysisProps): DescriptivesAnalysisResult => {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { addLog, addAnalytic, addStatistic } = useResultStore();
-    const { updateCell, updateBulkCells, ensureColumns } = useDataStore();
+    const { updateCells, ensureColumns } = useDataStore();
     const { addMultipleVariables } = useVariableStore();
     
     // Use the data fetching hook
@@ -137,14 +137,14 @@ export const useDescriptivesAnalysis = ({
 
         // Update the data cells in bulk
         if (bulkCellUpdates.length > 0) {
-            await updateBulkCells(bulkCellUpdates);
+            await updateCells(bulkCellUpdates);
         }
         
         console.log(`Created ${newVariables.length} new Z-score variables and updated ${bulkCellUpdates.length} cells.`);
         
         // Return jumlah variabel yang dibuat
         return newVariables.length;
-    }, [ensureColumns, updateBulkCells, addMultipleVariables]);
+    }, [ensureColumns, updateCells, addMultipleVariables]);
 
     /**
      * Jalankan analisis deskriptif
