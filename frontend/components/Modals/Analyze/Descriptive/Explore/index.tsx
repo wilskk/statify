@@ -2,9 +2,7 @@
 import React, { useState, useEffect, FC } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,19 +21,15 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
+import { BaseModalProps } from "@/types/modalTypes";
 
 // Import the Tab components
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import PlotsTab from "./PlotsTab";
 
-interface ExploreModalProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
-
 // Main content component that's agnostic of container type
-const ExploreContent: FC<ExploreModalProps> = ({ onClose, containerType = "dialog" }) => {
+const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [dependentVariables, setDependentVariables] = useState<Variable[]>([]);
     const [factorVariables, setFactorVariables] = useState<Variable[]>([]);
@@ -392,13 +386,13 @@ const ExploreContent: FC<ExploreModalProps> = ({ onClose, containerType = "dialo
 };
 
 // Main component that handles different container types
-const Explore: FC<ExploreModalProps> = ({ onClose, containerType = "dialog" }) => {
+const Explore: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <ExploreContent onClose={onClose} containerType={containerType} />
+                    <ExploreContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
@@ -406,17 +400,15 @@ const Explore: FC<ExploreModalProps> = ({ onClose, containerType = "dialog" }) =
 
     // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-xl font-semibold">Explore</DialogTitle>
-                </DialogHeader>
+        <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-xl font-semibold">Explore</DialogTitle>
+            </DialogHeader>
 
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <ExploreContent onClose={onClose} containerType={containerType} />
-                </div>
-            </DialogContent>
-        </Dialog>
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <ExploreContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 

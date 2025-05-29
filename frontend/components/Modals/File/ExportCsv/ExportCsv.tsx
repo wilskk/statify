@@ -1,11 +1,6 @@
 "use client";
 
 import React, { FC } from "react";
-import {
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,49 +8,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, InfoIcon, HelpCircle } from "lucide-react";
-import { UseExportCsvOptions, useExportCsv } from "./useExportCsv"; // Corrected import path
+import { UseExportCsvOptions, useExportCsv } from "./useExportCsv";
 
-interface ExportCsvModalProps extends UseExportCsvOptions { // Changed to ExportCsvModalProps
+interface ExportCsvProps extends UseExportCsvOptions {
     onClose: () => void;
     containerType?: "dialog" | "sidebar";
-    // Props from useExportCsv hook
-    exportOptions: ReturnType<typeof useExportCsv>['exportOptions'];
-    isExporting: ReturnType<typeof useExportCsv>['isExporting'];
-    handleChange: ReturnType<typeof useExportCsv>['handleChange'];
-    handleFilenameChange: ReturnType<typeof useExportCsv>['handleFilenameChange'];
-    handleExport: ReturnType<typeof useExportCsv>['handleExport'];
 }
 
-const ExportCsv: FC<ExportCsvModalProps> = ({ 
+const ExportCsv: FC<ExportCsvProps> = ({ 
     onClose,
-    containerType = "dialog",
-    exportOptions,
-    isExporting,
-    handleChange,
-    handleFilenameChange,
-    handleExport,
+    containerType,
+    ...hookOptions 
 }) => {
-    return (
-        <>
-            {containerType === "dialog" && (
-                <DialogHeader className="mb-6">
-                    <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Export Data to CSV</DialogTitle>
-                    <DialogDescription className="text-muted-foreground mt-2">
-                        Configure options and download your dataset as a Comma Separated Values (CSV) file.
-                    </DialogDescription>
-                </DialogHeader>
-            )}
-            {containerType === "sidebar" && (
-                <div className="px-6 py-4 border-b border-border flex-shrink-0 mb-6">
-                    <h2 className="text-xl font-semibold">Export Data to CSV</h2>
-                    <p className="text-muted-foreground text-sm mt-2">
-                        Configure options and download your dataset as a CSV file.
-                    </p>
-                </div>
-            )}
+    const {
+        exportOptions,
+        isExporting,
+        handleChange,
+        handleFilenameChange,
+        handleExport,
+    } = useExportCsv(hookOptions);
 
+    console.log("[ExportCsv UI] Rendering with containerType:", containerType);
+
+    return (
+        <div className="flex flex-col h-full">
             <TooltipProvider delayDuration={200}>
-                <div className="mb-6 space-y-5 px-6">
+                <div className="mb-6 space-y-5 px-6 pt-6 flex-grow overflow-y-auto">
                     <div className="space-y-2">
                         <Label htmlFor="filename" className="block text-sm font-medium text-popover-foreground">File Name</Label>
                         <Input
@@ -165,33 +143,35 @@ const ExportCsv: FC<ExportCsvModalProps> = ({
                 </div>
             </TooltipProvider>
 
-            <div className="flex items-center py-3 text-xs text-muted-foreground border-t border-border mt-4 px-6">
-                <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                <span>CSV is a common format for data exchange. Ensure compatibility with the target application.</span>
+            <div className="mt-auto flex-shrink-0">
+                <div className="flex items-center py-3 text-xs text-muted-foreground border-t border-border mt-4 px-6">
+                    <InfoIcon size={14} className="mr-2 flex-shrink-0" />
+                    <span>CSV is a common format for data exchange. Ensure compatibility with the target application.</span>
+                </div>
+    
+                <div className={`px-6 py-4 border-t border-border mt-2 flex justify-end gap-3`}>
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isExporting}
+                        className="min-w-[80px]"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="min-w-[100px]"
+                    >
+                        {isExporting ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        {isExporting ? "Exporting..." : "Export"}
+                    </Button>
+                </div>
             </div>
-
-            <div className={`px-6 py-4 ${containerType === "sidebar" ? "border-t border-border" : ""} mt-2 flex justify-end gap-3`}>
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    disabled={isExporting}
-                    className="min-w-[80px]"
-                >
-                    Cancel
-                </Button>
-                <Button
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="min-w-[100px]"
-                >
-                    {isExporting ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {isExporting ? "Exporting..." : "Export CSV"}
-                </Button>
-            </div>
-        </>
+        </div>
     );
 };
 
-export default ExportCsv; // Renamed export 
+export default ExportCsv; 

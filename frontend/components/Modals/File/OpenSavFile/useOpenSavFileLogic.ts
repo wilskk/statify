@@ -1,17 +1,45 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
-import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useMetaStore } from "@/stores/useMetaStore";
-import { Variable, ValueLabel, MissingValuesSpec, MissingRange, spssDateTypes } from "@/types/Variable";
+import { Variable, ValueLabel, MissingValuesSpec, MissingRange, spssDateTypes, VariableType } from "@/types/Variable";
 import { uploadSavFile } from "@/services/api";
 import { spssSecondsToDateString } from "@/lib/spssDateConverter";
-import { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "./OpenSavFile.types";
-import { mapSPSSTypeToInterface } from "./utils/spssFormatUtils";
 
+export interface UseOpenSavFileLogicProps {
+    onClose: () => void;
+}
+
+export interface UseOpenSavFileLogicOutput {
+    file: File | null;
+    isLoading: boolean;
+    error: string | null;
+    isMobile: boolean;
+    isPortrait: boolean;
+    handleFileChange: (selectedFile: File | null) => void;
+    clearError: () => void;
+    handleSubmit: () => Promise<void>;
+    handleModalClose: () => void; 
+}
+
+// ========================= UTILITIES =========================
+// Moved from utils/spssFormatUtils.ts
+export const mapSPSSTypeToInterface = (formatType: string): VariableType => {
+    const typeMap: { [key: string]: VariableType } = {
+        "F": "NUMERIC", "COMMA": "COMMA", "E": "SCIENTIFIC", "DATE": "DATE",
+        "ADATE": "ADATE", "EDATE": "EDATE", "SDATE": "SDATE", "JDATE": "JDATE",
+        "QYR": "QYR", "MOYR": "MOYR", "WKYR": "WKYR", "DATETIME": "DATETIME",
+        "TIME": "TIME", "DTIME": "DTIME", "WKDAY": "WKDAY", "MONTH": "MONTH",
+        "DOLLAR": "DOLLAR", "A": "STRING", "CCA": "CCA", "CCB": "CCB",
+        "CCC": "CCC", "CCD": "CCD", "CCE": "CCE"
+    };
+    return typeMap[formatType] || "NUMERIC"; // Default to NUMERIC if unknown
+};
+
+// ========================= HOOK LOGIC =========================
+// Main logic hook
 export const useOpenSavFileLogic = ({
-    isOpen,
     onClose,
 }: UseOpenSavFileLogicProps): UseOpenSavFileLogicOutput => {
     const [file, setFile] = useState<File | null>(null);
@@ -19,18 +47,9 @@ export const useOpenSavFileLogic = ({
     const [error, setError] = useState<string | null>(null);
 
     const { isMobile, isPortrait } = useMobile();
-    const { closeModal } = useModal(); 
     const { overwriteVariables, resetVariables } = useVariableStore();
     const { setDataAndSync, resetData } = useDataStore();
     const { setMeta: setProjectMeta } = useMetaStore();
-
-    useEffect(() => {
-        if (!isOpen) {
-            setFile(null);
-            setIsLoading(false);
-            setError(null);
-        }
-    }, [isOpen]);
 
     const handleFileChange = useCallback((selectedFile: File | null) => {
         setFile(selectedFile);
@@ -170,7 +189,6 @@ export const useOpenSavFileLogic = ({
             });
             
             onClose();
-            // closeModal(); // This might be called if it is part of a global modal system.
 
         } catch (err: any) {
             console.error("Error opening .sav file:", err);

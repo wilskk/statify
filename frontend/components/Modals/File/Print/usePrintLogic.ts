@@ -22,7 +22,6 @@ import {
 } from "./utils/pdfTableHelpers";
 
 export const usePrintLogic = ({
-    isOpen,
     onClose,
 }: UsePrintLogicProps): UsePrintLogicOutput => {
     const [fileName, setFileName] = useState<string>("");
@@ -43,16 +42,6 @@ export const usePrintLogic = ({
     const availableData: DataRow[] = useMemo(() => dataStore.data || [], [dataStore.data]);
     const availableVariables: Variable[] = useMemo(() => variableStore.variables || [], [variableStore.variables]);
     const logs: Log[] = useMemo(() => resultStore.logs || [], [resultStore.logs]);
-
-    useEffect(() => {
-        if (!isOpen) {
-            // Optional: Reset state when modal is closed
-            // setFileName("");
-            // setSelectedOptions({ data: true, variable: true, result: true });
-            // setPaperSize("a4");
-            setIsGenerating(false);
-        }
-    }, [isOpen]);
 
     const handlePrint = useCallback(async (): Promise<void> => {
         if (isGenerating) return;
@@ -252,6 +241,6 @@ export const usePrintLogic = ({
         isMobile,
         isPortrait,
         handlePrint,
-        handleModalClose,
+        handleModalClose
     };
 }; 

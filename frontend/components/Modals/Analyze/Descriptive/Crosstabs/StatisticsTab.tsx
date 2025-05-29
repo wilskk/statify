@@ -2,78 +2,43 @@ import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-
-interface StatisticsTabProps {
-    chiSquare: boolean;
-    correlations: boolean;
-    contingencyCoefficient: boolean;
-    phiAndCramersV: boolean;
-    lambda: boolean;
-    uncertaintyCoefficient: boolean;
-    gamma: boolean;
-    somersD: boolean;
-    kendallTauB: boolean;
-    kendallTauC: boolean;
-    eta: boolean;
-    kappa: boolean;
-    risk: boolean;
-    mcNemar: boolean;
-    cochranMantelHaenszel: boolean;
-    commonOddsRatio: string;
-    setChiSquare: (value: boolean) => void;
-    setCorrelations: (value: boolean) => void;
-    setContingencyCoefficient: (value: boolean) => void;
-    setPhiAndCramersV: (value: boolean) => void;
-    setLambda: (value: boolean) => void;
-    setUncertaintyCoefficient: (value: boolean) => void;
-    setGamma: (value: boolean) => void;
-    setSomersD: (value: boolean) => void;
-    setKendallTauB: (value: boolean) => void;
-    setKendallTauC: (value: boolean) => void;
-    setEta: (value: boolean) => void;
-    setKappa: (value: boolean) => void;
-    setRisk: (value: boolean) => void;
-    setMcNemar: (value: boolean) => void;
-    setCochranMantelHaenszel: (value: boolean) => void;
-    setCommonOddsRatio: (value: string) => void;
-    containerType?: "dialog" | "sidebar";
-}
+import { StatisticsTabProps } from "./types";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
-                                                   chiSquare,
-                                                   correlations,
-                                                   contingencyCoefficient,
-                                                   phiAndCramersV,
-                                                   lambda,
-                                                   uncertaintyCoefficient,
-                                                   gamma,
-                                                   somersD,
-                                                   kendallTauB,
-                                                   kendallTauC,
-                                                   eta,
-                                                   kappa,
-                                                   risk,
-                                                   mcNemar,
-                                                   cochranMantelHaenszel,
-                                                   commonOddsRatio,
-                                                   setChiSquare,
-                                                   setCorrelations,
-                                                   setContingencyCoefficient,
-                                                   setPhiAndCramersV,
-                                                   setLambda,
-                                                   setUncertaintyCoefficient,
-                                                   setGamma,
-                                                   setSomersD,
-                                                   setKendallTauB,
-                                                   setKendallTauC,
-                                                   setEta,
-                                                   setKappa,
-                                                   setRisk,
-                                                   setMcNemar,
-                                                   setCochranMantelHaenszel,
-                                                   setCommonOddsRatio,
-                                                   containerType = "dialog"
-                                               }) => {
+    chiSquare,
+    correlations,
+    contingencyCoefficient,
+    phiAndCramersV,
+    lambda,
+    uncertaintyCoefficient,
+    gamma,
+    somersD,
+    kendallTauB,
+    kendallTauC,
+    eta,
+    kappa,
+    risk,
+    mcNemar,
+    cochranMantelHaenszel,
+    commonOddsRatio,
+    setChiSquare,
+    setCorrelations,
+    setContingencyCoefficient,
+    setPhiAndCramersV,
+    setLambda,
+    setUncertaintyCoefficient,
+    setGamma,
+    setSomersD,
+    setKendallTauB,
+    setKendallTauC,
+    setEta,
+    setKappa,
+    setRisk,
+    setMcNemar,
+    setCochranMantelHaenszel,
+    setCommonOddsRatio,
+    containerType = "dialog"
+}) => {
     return (
         <div className="p-6">
             <div className="grid grid-cols-2 gap-6">

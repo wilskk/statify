@@ -1,4 +1,5 @@
 import type { Variable } from "@/types/Variable";
+import { BaseModalProps } from "@/types/modalTypes";
 
 // === Statistics Options ===
 export interface PercentileOptions {
@@ -47,14 +48,13 @@ export interface ChartOptions {
 }
 
 // === Analysis Params ===
-export interface FrequenciesAnalysisParams {
+export interface FrequenciesAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
     selectedVariables: Variable[];
     showFrequencyTables: boolean;
     showStatistics: boolean;
     statisticsOptions: StatisticsOptions | null;
     showCharts: boolean;
     chartOptions: ChartOptions | null;
-    onClose: () => void;
 }
 
 // === Results Types ===

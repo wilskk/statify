@@ -17,56 +17,32 @@ import {
     ArrowBigLeft
 } from "lucide-react";
 import type { Variable } from "@/types/Variable";
-
-interface VariablesTabProps {
-    availableVariables: Variable[];
-    rowVariables: Variable[];
-    columnVariables: Variable[];
-    layerVariablesMap: Record<number, Variable[]>;
-    currentLayerIndex: number;
-    totalLayers: number;
-    highlightedVariable: {id: string, source: 'available' | 'row' | 'column' | 'layer'} | null;
-    displayClusteredBarCharts: boolean;
-    suppressTables: boolean;
-    displayLayerVariables: boolean;
-    setHighlightedVariable: (value: {id: string, source: 'available' | 'row' | 'column' | 'layer'} | null) => void;
-    setCurrentLayerIndex: (value: number) => void;
-    setTotalLayers: (value: number) => void;
-    moveToRowVariables: (variable: Variable) => void;
-    moveToColumnVariables: (variable: Variable) => void;
-    moveToLayerVariables: (variable: Variable) => void;
-    moveToAvailableVariables: (variable: Variable, source: 'row' | 'column' | 'layer') => void;
-    reorderVariables: (source: 'available' | 'row' | 'column' | 'layer', variables: Variable[]) => void;
-    setDisplayClusteredBarCharts: (value: boolean) => void;
-    setSuppressTables: (value: boolean) => void;
-    setDisplayLayerVariables: (value: boolean) => void;
-    containerType?: "dialog" | "sidebar";
-}
+import { VariablesTabProps, VariableHighlight } from "./types";
 
 const VariablesTab: FC<VariablesTabProps> = ({
-                                                 availableVariables,
-                                                 rowVariables,
-                                                 columnVariables,
-                                                 layerVariablesMap,
-                                                 currentLayerIndex,
-                                                 totalLayers,
-                                                 highlightedVariable,
-                                                 displayClusteredBarCharts,
-                                                 suppressTables,
-                                                 displayLayerVariables,
-                                                 setHighlightedVariable,
-                                                 setCurrentLayerIndex,
-                                                 setTotalLayers,
-                                                 moveToRowVariables,
-                                                 moveToColumnVariables,
-                                                 moveToLayerVariables,
-                                                 moveToAvailableVariables,
-                                                 reorderVariables,
-                                                 setDisplayClusteredBarCharts,
-                                                 setSuppressTables,
-                                                 setDisplayLayerVariables,
-                                                 containerType = "dialog"
-                                             }) => {
+    availableVariables,
+    rowVariables,
+    columnVariables,
+    layerVariablesMap,
+    currentLayerIndex,
+    totalLayers,
+    highlightedVariable,
+    displayClusteredBarCharts,
+    suppressTables,
+    displayLayerVariables,
+    setHighlightedVariable,
+    setCurrentLayerIndex,
+    setTotalLayers,
+    moveToRowVariables,
+    moveToColumnVariables,
+    moveToLayerVariables,
+    moveToAvailableVariables,
+    reorderVariables,
+    setDisplayClusteredBarCharts,
+    setSuppressTables,
+    setDisplayLayerVariables,
+    containerType = "dialog"
+}) => {
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, source: 'available' | 'row' | 'column' | 'layer' } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'row' | 'column' | 'layer' | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);

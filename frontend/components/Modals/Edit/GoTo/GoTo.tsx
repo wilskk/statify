@@ -214,16 +214,6 @@ const GoToModal: React.FC<GoToModalProps> = ({
     if (containerType === "sidebar") {
         return (
             <div className="flex flex-col h-full bg-background text-foreground">
-                <div className="flex justify-between items-center border-b p-4 shrink-0">
-                    <h2 className="text-xl font-semibold">Go To</h2>
-                    <button 
-                        onClick={onClose}
-                        className="rounded-full p-1.5 hover:bg-muted transition-colors flex-shrink-0"
-                        aria-label="Close"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
                 <GoToContent
                     onClose={onClose}
                     defaultMode={defaultMode}
@@ -234,23 +224,15 @@ const GoToModal: React.FC<GoToModalProps> = ({
         );
     }
 
+    // When containerType is "dialog", ModalRenderer now provides the Dialog shell.
+    // GoToModal should only render its specific content.
     return (
-        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-xs p-0 flex flex-col max-h-[85vh] bg-background text-foreground">
-                <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
-                    <DialogTitle className="text-lg font-semibold">Go To</DialogTitle>
-                    <DialogDescription className="text-xs text-muted-foreground">
-                        Navigate to a specific case or variable.
-                    </DialogDescription>
-                </DialogHeader>
-                <GoToContent
-                    onClose={onClose}
-                    defaultMode={defaultMode}
-                    variables={variables}
-                    totalCases={totalCases}
-                />
-            </DialogContent>
-        </Dialog>
+        <GoToContent
+            onClose={onClose}
+            defaultMode={defaultMode}
+            variables={variables}
+            totalCases={totalCases}
+        />
     );
 };
 

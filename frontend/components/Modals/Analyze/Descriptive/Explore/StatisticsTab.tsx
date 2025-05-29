@@ -3,21 +3,7 @@ import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-
-// Props interface for StatisticsTab
-interface StatisticsTabProps {
-    showDescriptives: boolean;
-    setShowDescriptives: React.Dispatch<React.SetStateAction<boolean>>;
-    confidenceInterval: string;
-    setConfidenceInterval: React.Dispatch<React.SetStateAction<string>>;
-    showMEstimators: boolean;
-    setShowMEstimators: React.Dispatch<React.SetStateAction<boolean>>;
-    showOutliers: boolean;
-    setShowOutliers: React.Dispatch<React.SetStateAction<boolean>>;
-    showPercentiles: boolean;
-    setShowPercentiles: React.Dispatch<React.SetStateAction<boolean>>;
-    containerType?: "dialog" | "sidebar";
-}
+import { StatisticsTabProps } from "./types";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
     showDescriptives,

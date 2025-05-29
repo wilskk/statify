@@ -3,41 +3,28 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-
-interface ExactTestsTabProps {
-    exactTestMethod: 'asymptotic' | 'monteCarlo' | 'exact';
-    confidenceLevel: string;
-    monteCarloSamples: string;
-    timeLimit: string;
-    useTimeLimit: boolean;
-    setExactTestMethod: (value: 'asymptotic' | 'monteCarlo' | 'exact') => void;
-    setConfidenceLevel: (value: string) => void;
-    setMonteCarloSamples: (value: string) => void;
-    setTimeLimit: (value: string) => void;
-    setUseTimeLimit: (value: boolean) => void;
-    containerType?: "dialog" | "sidebar";
-}
+import { ExactTestsTabProps } from "./types";
 
 const ExactTestsTab: FC<ExactTestsTabProps> = ({
-                                                   exactTestMethod,
-                                                   confidenceLevel,
-                                                   monteCarloSamples,
-                                                   timeLimit,
-                                                   useTimeLimit,
-                                                   setExactTestMethod,
-                                                   setConfidenceLevel,
-                                                   setMonteCarloSamples,
-                                                   setTimeLimit,
-                                                   setUseTimeLimit,
-                                                   containerType = "dialog"
-                                               }) => {
+    exactTestMethod,
+    confidenceLevel,
+    monteCarloSamples,
+    timeLimit,
+    useTimeLimit,
+    setExactTestMethod,
+    setConfidenceLevel,
+    setMonteCarloSamples,
+    setTimeLimit,
+    setUseTimeLimit,
+    containerType = "dialog"
+}) => {
     return (
         <div className="p-6">
             <div className="bg-card border border-border rounded-md p-6">
                 <div className="text-sm font-medium mb-4">Exact Tests Method</div>
                 <RadioGroup
                     value={exactTestMethod}
-                    onValueChange={(value) => setExactTestMethod(value as 'asymptotic' | 'monteCarlo' | 'exact')}
+                    onValueChange={(value) => setExactTestMethod(value as typeof exactTestMethod)}
                     className="space-y-4"
                 >
                     <div className="flex items-center">

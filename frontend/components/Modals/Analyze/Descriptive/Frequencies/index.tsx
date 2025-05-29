@@ -2,7 +2,6 @@
 import React, { useState, FC, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -20,6 +19,7 @@ import {
     useFrequenciesAnalysis
 } from "./hooks";
 import type { FrequenciesAnalysisParams } from "./types";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -31,13 +31,8 @@ const useFrequencyTablesOption = (initialValue = true) => {
     return { showFrequencyTables, setShowFrequencyTables };
 };
 
-interface FrequenciesModalProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
-
 // Main content component that's agnostic of container type
-const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose, containerType = "dialog" }) => {
+const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     const [activeTab, setActiveTab] = useState<string>("variables");
     const { showFrequencyTables, setShowFrequencyTables } = useFrequencyTablesOption(true);
 
@@ -223,13 +218,13 @@ const FrequenciesContent: FC<FrequenciesModalProps> = ({ onClose, containerType 
 };
 
 // Main component that handles different container types
-const Frequencies: FC<FrequenciesModalProps> = ({ onClose, containerType = "dialog" }) => {
+const Frequencies: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <FrequenciesContent onClose={onClose} containerType={containerType} />
+                    <FrequenciesContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
@@ -237,17 +232,15 @@ const Frequencies: FC<FrequenciesModalProps> = ({ onClose, containerType = "dial
 
     // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
-                </DialogHeader>
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
+            </DialogHeader>
 
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <FrequenciesContent onClose={onClose} containerType={containerType} />
-                </div>
-            </DialogContent>
-        </Dialog>
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <FrequenciesContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 

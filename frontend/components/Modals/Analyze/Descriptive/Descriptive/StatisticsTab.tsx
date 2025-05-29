@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DescriptiveStatisticsOptions, DisplayOrderType } from "./types";
 import { Dispatch, SetStateAction } from "react";
 
-interface StatisticsTabProps {
+export interface StatisticsTabProps {
     displayStatistics: DescriptiveStatisticsOptions;
     setDisplayStatistics: Dispatch<SetStateAction<DescriptiveStatisticsOptions>>;
     displayOrder: DisplayOrderType;

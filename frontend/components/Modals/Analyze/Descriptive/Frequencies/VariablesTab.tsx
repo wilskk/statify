@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
     highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;

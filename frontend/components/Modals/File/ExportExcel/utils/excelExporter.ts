@@ -1,144 +1,76 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
-import { DataRow } from "@/types/Data";
-import { Meta } from "@/stores/useMetaStore";
 import * as XLSX from 'xlsx';
-import { ExcelUtilOptions } from "../ExportExcel.types";
+import { DataRow } from '@/types/Data';
+import { Variable } from '@/types/Variable';
+// import { Meta } from '@/types/Meta'; // Assuming Meta might not be available or needed directly here for now
+import { ExcelUtilOptions } from '../ExportExcelModal.types';
 
-const applyHeaderStyle = (ws: XLSX.WorkSheet, range: XLSX.Range) => {
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellRef = XLSX.utils.encode_cell({ r: range.s.r, c: C });
-        if (!ws[cellRef]) continue;
-        ws[cellRef].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: "F7F7F7" } },
-            alignment: { vertical: "center" }
-        };
-    }
-};
-
-const getValueLabelMap = (values: ValueLabel[]): Map<string | number, string> => {
-    return new Map(values.map(vl => [vl.value, vl.label]));
-};
-
-const formatMissingSpecToString = (spec: MissingValuesSpec | null): string => {
-    if (!spec) {
-        return "";
-    }
-    const parts: string[] = [];
-    if (spec.range) {
-        const { min, max } = spec.range;
-        if (min !== undefined && max !== undefined) {
-            parts.push(`RANGE(${min} THRU ${max})`);
-        } else if (min !== undefined) {
-            parts.push(`RANGE(${min} THRU HIGHEST)`);
-        } else if (max !== undefined) {
-            parts.push(`RANGE(LOWEST THRU ${max})`);
-        }
-    }
-    if (spec.discrete && spec.discrete.length > 0) {
-        const discreteFormatted = spec.discrete.map(v => {
-            if (typeof v === 'string') {
-                 if (v === " ") return "'[SPACE]'";
-                 if (v.includes(';') || v.includes(' ') || !isNaN(Number(v))) {
-                    return JSON.stringify(v);
-                 }
-            }
-            return String(v);
-        });
-        parts.push(discreteFormatted.join('; '));
-    }
-    return parts.join('; ');
-};
-
+/**
+ * Generates an Excel Workbook object from data, variables, and metadata.
+ * @param data The array of data rows.
+ * @param variables The array of variable definitions.
+ * @param meta Optional metadata about the project or dataset.
+ * @param options Configuration options for Excel generation.
+ * @returns XLSX.WorkBook object.
+ */
 export const generateExcelWorkbook = (
     data: DataRow[],
     variables: Variable[],
-    metadata: Meta | null,
+    meta: any | null, // Using 'any' for meta if its type is uncertain
     options: ExcelUtilOptions
 ): XLSX.WorkBook => {
-    const {
-        includeHeaders,
-        includeVariablePropertiesSheet,
-        includeMetadataSheet,
-        includeDataLabels,
-        applyHeaderStyling
-    } = options;
-
     const wb = XLSX.utils.book_new();
 
-    const dataSheetData: any[][] = [];
-    const variableLabelMaps = includeDataLabels ? variables.map(v => getValueLabelMap(v.values)) : [];
-
-    if (includeHeaders && variables.length > 0) {
+    // Create Data Sheet
+    const dataSheetData = [];
+    if (options.includeHeaders) {
         dataSheetData.push(variables.map(v => v.name));
     }
-
     data.forEach(row => {
-        const processedRow = row.map((cell, colIndex) => {
-            if (includeDataLabels && colIndex < variables.length) {
-                const labelMap = variableLabelMaps[colIndex];
-                if (labelMap.has(cell)) {
-                    return labelMap.get(cell);
-                }
-            }
-            const variableType = variables[colIndex]?.type;
-            if (cell === "" || cell === null || cell === undefined) return null;
-            if (typeof cell === 'number') return cell;
-            if (typeof cell === 'string' && !isNaN(Number(cell)) && (variableType?.startsWith("NUMERIC") || ["COMMA", "DOT", "SCIENTIFIC"].includes(variableType || ''))) {
-                return Number(cell);
-            }
-            return cell;
-        });
-        dataSheetData.push(processedRow);
+        const dataRow = variables.map((variable, index) => row[variable.columnIndex] ?? (options.includeDataLabels ? "SYSMIS" : ""));
+        dataSheetData.push(dataRow);
     });
 
-    const wsData = XLSX.utils.aoa_to_sheet(dataSheetData);
-
-    if (includeHeaders && applyHeaderStyling && dataSheetData.length > 0) {
-        const dataRange = XLSX.utils.decode_range(wsData['!ref'] || "A1");
-        applyHeaderStyle(wsData, { s: { r: 0, c: dataRange.s.c }, e: { r: 0, c: dataRange.e.c } });
+    if (dataSheetData.length > 0) {
+        const wsData = XLSX.utils.aoa_to_sheet(dataSheetData);
+        XLSX.utils.book_append_sheet(wb, wsData, 'Data');
     }
 
-    XLSX.utils.book_append_sheet(wb, wsData, "Data");
-
-    if (includeVariablePropertiesSheet && variables.length > 0) {
-        const varSheetData: any[][] = [];
-        const varHeaders = [
-            "Index", "Name", "Type", "Label", "Width", "Decimals",
-            "Measure", "Align", "Role", "MissingValues", "ValueLabels"
+    // Create Variable Properties Sheet
+    if (options.includeVariablePropertiesSheet && variables.length > 0) {
+        const varSheetData = [
+            ['Index', 'Name', 'Type', 'Label', 'Measure', 'Width', 'Decimals', 'Values', 'Missing'] // Headers
         ];
-        varSheetData.push(varHeaders);
-
         variables.forEach(v => {
-            const valueLabelsString = v.values.map(vl => `${vl.value}=${JSON.stringify(vl.label)}`).join('; ');
-            const missingString = formatMissingSpecToString(v.missing);
+            const valueLabels = v.values.map(val => `${val.value}=${val.label}`).join(', ');
+            const missingValues = v.missing ? JSON.stringify(v.missing) : '';
             varSheetData.push([
-                v.columnIndex, v.name, v.type, v.label || "", v.width, v.decimals,
-                v.measure, v.align, v.role, missingString, valueLabelsString
+                v.columnIndex as any,
+                v.name,
+                v.type,
+                v.label || '',
+                v.measure,
+                v.width as any,
+                v.decimals as any,
+                valueLabels,
+                missingValues
             ]);
         });
-
-        const wsVar = XLSX.utils.aoa_to_sheet(varSheetData);
-        if (applyHeaderStyling && varSheetData.length > 0) {
-            const varRange = XLSX.utils.decode_range(wsVar['!ref'] || "A1");
-            applyHeaderStyle(wsVar, { s: { r: 0, c: varRange.s.c }, e: { r: 0, c: varRange.e.c } });
-        }
-        XLSX.utils.book_append_sheet(wb, wsVar, "Variable Definitions");
+        const wsVars = XLSX.utils.aoa_to_sheet(varSheetData);
+        XLSX.utils.book_append_sheet(wb, wsVars, 'VariableProperties');
     }
 
-    if (includeMetadataSheet && metadata && Object.keys(metadata).length > 0) {
-        const metaSheetData: any[][] = [["Property", "Value"]];
-        Object.entries(metadata).forEach(([key, value]) => {
-            const displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
-            metaSheetData.push([key, displayValue]);
-        });
-
-        const wsMeta = XLSX.utils.aoa_to_sheet(metaSheetData);
-        if (applyHeaderStyling && metaSheetData.length > 0) {
-            const metaRange = XLSX.utils.decode_range(wsMeta['!ref'] || "A1");
-            applyHeaderStyle(wsMeta, { s: { r: 0, c: metaRange.s.c }, e: { r: 0, c: metaRange.e.c } });
+    // Create Metadata Sheet
+    if (options.includeMetadataSheet && meta) {
+        const metaSheetData: any[][] = [['Property', 'Value']];
+        for (const key in meta) {
+            if (Object.prototype.hasOwnProperty.call(meta, key)) {
+                metaSheetData.push([key, typeof meta[key] === 'object' ? JSON.stringify(meta[key]) : meta[key]]);
+            }
         }
-        XLSX.utils.book_append_sheet(wb, wsMeta, "Metadata");
+        if (metaSheetData.length > 1) {
+            const wsMeta = XLSX.utils.aoa_to_sheet(metaSheetData);
+            XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
+        }
     }
 
     return wb;

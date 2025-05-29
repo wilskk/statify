@@ -1,4 +1,4 @@
-export { default as ImportCsv } from './ImportCsvContainer';
+export { default as ImportCsv } from './ImportCsv';
 
 // Export main presentation component if needed directly (though container is typical entry)
 // export { default as ImportCsvView } from './ImportCsv'; 

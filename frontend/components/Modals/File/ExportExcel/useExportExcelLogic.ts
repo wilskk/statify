@@ -8,7 +8,7 @@ import { generateExcelWorkbook } from "./utils/excelExporter";
 import { ExcelUtilOptions, ExportExcelLogicState, UseExportExcelLogicProps } from "./ExportExcel.types";
 import { DEFAULT_FILENAME } from "./ExportExcel.constants";
 
-export const useExportExcelModalLogic = ({ onClose }: UseExportExcelLogicProps) => {
+export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
     const { toast } = useToast();
     const { data } = useDataStore();
     const { variables } = useVariableStore();
@@ -34,62 +34,51 @@ export const useExportExcelModalLogic = ({ onClose }: UseExportExcelLogicProps) 
         handleChange("filename", sanitized);
     };
 
-    const handleExport = async () => {
-        if (!data || data.length === 0) {
+    const handleExport = async (): Promise<void> => {
+        if (!data.length || !variables.length) {
             toast({
-                title: "Export Failed",
-                description: "No data available to export.",
-                variant: "destructive",
-            });
-            return;
-        }
-        if (!exportOptions.filename.trim()) {
-            toast({
-                title: "Export Failed",
-                description: "Please enter a valid file name.",
-                variant: "destructive",
+                title: "No data to export",
+                description: "There is no data available to export to Excel.",
+                variant: "destructive"
             });
             return;
         }
 
-        startExportTransition(async () => {
-            try {
-                const optionsForUtil: ExcelUtilOptions = {
+        try {
+            startExportTransition(async () => {
+                // Map options to the format expected by the utility function
+                const utilOptions: ExcelUtilOptions = {
                     includeHeaders: exportOptions.includeHeaders,
                     includeVariablePropertiesSheet: exportOptions.includeVariableProperties,
                     includeMetadataSheet: exportOptions.includeMetadataSheet,
                     includeDataLabels: exportOptions.includeDataLabels,
-                    applyHeaderStyling: exportOptions.applyHeaderStyling,
+                    applyHeaderStyling: exportOptions.applyHeaderStyling
                 };
 
-                const wb = generateExcelWorkbook(data, variables, meta, optionsForUtil);
+                // Generate workbook from data
+                const workbook = generateExcelWorkbook(data, variables, meta, utilOptions);
 
-                const safeFileName = exportOptions.filename.trim();
-                const fileExtension = exportOptions.format;
-                const fullFileName = `${safeFileName}.${fileExtension}`;
+                // Generate safe filename
+                const filename = `${exportOptions.filename || DEFAULT_FILENAME}.${exportOptions.format}`;
 
-                XLSX.writeFile(wb, fullFileName, { bookType: fileExtension as XLSX.BookType });
+                // Create Excel file and trigger download
+                XLSX.writeFile(workbook, filename);
 
                 toast({
                     title: "Export Successful",
-                    description: `Data successfully exported to ${fullFileName}`,
+                    description: `Data successfully exported to ${filename}`,
                 });
 
                 onClose();
-
-            } catch (error) {
-                console.error("Export error:", error);
-                let description = "An error occurred during export. Please try again.";
-                if (error instanceof Error) {
-                    description = `Export failed: ${error.message}`;
-                }
-                toast({
-                    title: "Export Failed",
-                    description: description,
-                    variant: "destructive",
-                });
-            }
-        });
+            });
+        } catch (error) {
+            console.error("Export error:", error);
+            toast({
+                title: "Export Failed",
+                description: error instanceof Error ? error.message : "An unexpected error occurred during export.",
+                variant: "destructive"
+            });
+        }
     };
 
     return {
@@ -97,6 +86,6 @@ export const useExportExcelModalLogic = ({ onClose }: UseExportExcelLogicProps) 
         isExporting,
         handleChange,
         handleFilenameChange,
-        handleExport,
+        handleExport
     };
 }; 

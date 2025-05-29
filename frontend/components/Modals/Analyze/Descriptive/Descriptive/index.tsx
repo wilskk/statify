@@ -18,17 +18,13 @@ import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
 import { useDataFetching } from "./hooks/useDataFetching";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 
-interface DescriptivesProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
-
 // Komponen utama konten Descriptives yang agnostik terhadap container
-const DescriptiveContent: FC<DescriptivesProps> = ({ onClose }) => {
+const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "statistics">("variables");
     
     const {
@@ -155,13 +151,13 @@ const DescriptiveContent: FC<DescriptivesProps> = ({ onClose }) => {
 };
 
 // Komponen Descriptives yang menjadi titik masuk utama
-const Descriptives: FC<DescriptivesProps> = ({ onClose, containerType = "dialog" }) => {
+const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     // Render berdasarkan containerType
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <DescriptiveContent onClose={onClose} />
+                    <DescriptiveContent onClose={onClose} {...props} />
                 </div>
             </div>
         );
@@ -175,7 +171,7 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose, containerType = "dialog"
             </DialogHeader>
 
             <div className="flex-grow flex flex-col overflow-hidden">
-                <DescriptiveContent onClose={onClose} />
+                <DescriptiveContent onClose={onClose} {...props} />
             </div>
         </DialogContent>
     );

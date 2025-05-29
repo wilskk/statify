@@ -41,13 +41,25 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
     };
 
     return (
-        <>
+        <div className="flex flex-col h-full">
+            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+                <FileSpreadsheet size={18} className="mr-2.5 flex-shrink-0 text-primary" />
+                <div className="flex-grow overflow-hidden">
+                    <h3 className="font-semibold text-lg text-popover-foreground">
+                        Import Excel File
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        Select an Excel file (.xls, .xlsx) to import data.
+                    </p>
+                </div>
+            </div>
+
             <div className="p-6 flex-grow overflow-y-auto">
                 <div
                     className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${isMobile && isPortrait ? 'p-6' : 'p-8'} ${
                         error ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 bg-background hover:bg-muted/50"
                     }`}
-                    onClick={() => document.getElementById("excel-file-input-content-step")?.click()} // Changed ID to avoid collision
+                    onClick={() => document.getElementById("excel-file-input-content-step")?.click()}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                 >
@@ -61,7 +73,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                             : "or drag and drop here (.xls, .xlsx)"}
                     </p>
                     <input
-                        id="excel-file-input-content-step" // Changed ID
+                        id="excel-file-input-content-step"
                         type="file"
                         accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         onChange={handleFileChange}
@@ -95,6 +107,6 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                     Continue
                 </Button>
             </div>
-        </>
+        </div>
     );
 }; 

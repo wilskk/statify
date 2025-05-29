@@ -1,36 +1,42 @@
+// Default filename when no project name is set
+export const DEFAULT_FILENAME = "data_export";
+
+// Excel format options
 export const EXCEL_FORMATS = [
-    { value: "xlsx", label: "Excel (.xlsx)" },
-    { value: "xls", label: "Excel 97-2003 (.xls)" },
-    { value: "csv", label: "CSV (.csv) - Use Export CSV menu", disabled: true },
-    { value: "ods", label: "OpenDocument Spreadsheet (.ods)" },
+  { value: "xlsx", label: "Excel Workbook (*.xlsx)" },
+  { value: "xls", label: "Excel 97-2003 Workbook (*.xls)" }
 ];
 
+// Options for Excel export with tooltips
 export const EXCEL_OPTIONS_CONFIG = [
-    {
-        id: "includeHeaders",
-        label: "Include variable names as headers",
-        tooltip: "Adds variable names as the first row in the 'Data' sheet."
-    },
-    {
-        id: "includeVariableProperties",
-        label: "Include 'Variable Definitions' sheet",
-        tooltip: "Adds a separate sheet detailing variable properties (type, label, measure, etc.)."
-    },
-    {
-        id: "includeDataLabels",
-        label: "Apply value labels to data",
-        tooltip: "Replaces raw values with their defined labels (e.g., 1 becomes 'Yes') in the 'Data' sheet. Affects data cells only."
-    },
-    {
-        id: "includeMetadataSheet",
-        label: "Include 'Metadata' sheet",
-        tooltip: "Adds a separate sheet with project metadata (name, creation date, etc.)."
-    },
-    {
-        id: "applyHeaderStyling",
-        label: "Apply basic header styling",
-        tooltip: "Applies bold font and a light background fill to header rows in the sheets."
-    },
-];
-
-export const DEFAULT_FILENAME = "statify-export"; 
+  {
+    id: "excel-includeHeaders",
+    name: "includeHeaders",
+    label: "Include variable names as header row",
+    tooltip: "Adds variable names as the first row in the Excel file"
+  },
+  {
+    id: "excel-includeVarProps",
+    name: "includeVariableProperties",
+    label: "Include variable properties sheet",
+    tooltip: "Creates a separate sheet with metadata about each variable"
+  },
+  {
+    id: "excel-includeMetaSheet",
+    name: "includeMetadataSheet",
+    label: "Include metadata sheet (if available)",
+    tooltip: "Adds a sheet with dataset metadata if available"
+  },
+  {
+    id: "excel-applyHeaderStyling",
+    name: "applyHeaderStyling",
+    label: "Apply basic header styling",
+    tooltip: "Adds formatting to header rows to improve readability"
+  },
+  {
+    id: "excel-includeDataLabels",
+    name: "includeDataLabels",
+    label: "Represent missing data with SYSMIS text",
+    tooltip: "Shows 'SYSMIS' for missing values instead of leaving cells blank"
+  }
+]; 

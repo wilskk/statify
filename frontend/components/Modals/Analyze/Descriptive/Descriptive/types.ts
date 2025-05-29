@@ -1,6 +1,7 @@
 import type { Variable, VariableData } from '@/types/Variable';
 import type { Dispatch, SetStateAction } from 'react';
 import { ContainerType } from '@/types/ui';
+import { BaseModalProps } from '@/types/modalTypes';
 
 // ---------------------------------
 // Statistics Settings Types
@@ -159,13 +160,11 @@ export interface DescriptivesWorkerResult {
   cancelCalculation: () => void;
 }
 
-export interface DescriptivesAnalysisProps {
+export interface DescriptivesAnalysisProps extends Pick<BaseModalProps, 'onClose' | 'containerType'> {
   selectedVariables: Variable[];
   displayStatistics: DescriptiveStatisticsOptions;
   saveStandardized: boolean;
   displayOrder?: DisplayOrderType;
-  onClose: () => void;
-  containerType?: ContainerType;
 }
 
 export interface DescriptivesAnalysisResult {

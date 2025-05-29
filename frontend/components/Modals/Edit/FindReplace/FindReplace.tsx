@@ -203,17 +203,7 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
 }) => {
     if (containerType === "sidebar") {
         return (
-            <div className="flex flex-col h-full bg-background">
-                <div className="flex justify-between items-center border-b p-4 shrink-0">
-                    <h2 className="text-xl font-semibold">Find and Replace</h2>
-                    <button 
-                        onClick={onClose}
-                        className="rounded-full p-1.5 hover:bg-muted transition-colors flex-shrink-0"
-                        aria-label="Close"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+            <div className="flex flex-col h-full bg-background text-foreground">
                 <FindAndReplaceContent
                     onClose={onClose}
                     columns={columns}
@@ -225,19 +215,12 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
     }
 
     return (
-        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md p-0 flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
-                    <DialogTitle className="text-lg font-semibold">Find and Replace</DialogTitle>
-                </DialogHeader>
-                <FindAndReplaceContent
-                    onClose={onClose}
-                    columns={columns}
-                    defaultTab={defaultTab}
-                    {...props}
-                />
-            </DialogContent>
-        </Dialog>
+        <FindAndReplaceContent
+            onClose={onClose}
+            columns={columns}
+            defaultTab={defaultTab}
+            {...props}
+        />
     );
 };
 

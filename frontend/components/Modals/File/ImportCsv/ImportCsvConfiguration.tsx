@@ -2,7 +2,7 @@
 
 import React, { useState, FC, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { InfoIcon, ChevronDownIcon } from "lucide-react";
+import { InfoIcon, ChevronDownIcon, ArrowLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -126,7 +126,27 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({ // Ren
     };
 
     return (
-        <>
+        <div className="flex flex-col h-full">
+            {/* Internal Header for this configuration stage */}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
+                <div className="flex items-center flex-1 min-w-0">
+                    <Button variant="ghost" size="sm" onClick={onBack} className="mr-2 -ml-2 h-8 w-8 p-0">
+                        <ArrowLeft size={16} />
+                    </Button>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-semibold truncate" title={`Configure Import: ${fileName}`}>
+                            Configure Import: {fileName}
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Adjust settings for how the CSV data should be read.
+                        </p>
+                    </div>
+                </div>
+                {/* Optional: Add a spacer or other controls on the right if needed */}
+                 <div className="w-8"></div> {/* Spacer to balance the back button */}
+            </div>
+
+            {/* Main Content Area */}
             <div className="grid md:grid-cols-2 gap-x-6 gap-y-4 p-6 flex-grow overflow-y-auto">
                 <div className="space-y-4">
                     <div>
@@ -227,6 +247,6 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({ // Ren
                     </Button>
                 </div>
             </div>
-        </>
+        </div>
     );
 }; 

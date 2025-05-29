@@ -9,14 +9,7 @@ export interface SelectedOptions {
     result: boolean;
 }
 
-export interface PrintContainerProps {
-    isOpen: boolean;
-    onClose: () => void;
-    containerType?: ContainerType;
-}
-
 export interface UsePrintLogicProps {
-    isOpen: boolean;
     onClose: () => void;
 }
 
@@ -34,9 +27,10 @@ export interface UsePrintLogicOutput {
     handleModalClose: () => void;
 }
 
-// Props for the main presentational component PrintUI (the modal shell)
-export interface PrintUIProps extends UsePrintLogicOutput {
-    containerType: ContainerType;
+// Props for main PrintModal component
+export interface PrintProps {
+    onClose: () => void;
+    containerType?: string;
 }
 
 // Props for the options/content component (PrintOptions)

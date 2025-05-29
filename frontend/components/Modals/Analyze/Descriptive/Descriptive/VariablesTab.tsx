@@ -15,7 +15,7 @@ import { HighlightedVariableInfo } from "./types";
 import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
     highlightedVariable: HighlightedVariableInfo | null;

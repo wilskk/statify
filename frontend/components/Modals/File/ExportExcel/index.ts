@@ -1,17 +1,19 @@
-// 1. WAJIB: Ekspor Komponen Kontainer Utama
-export { default as ExportExcelModalContainer } from './ExportExcelContainer';
+// frontend/components/Modals/File/ExportExcel/index.ts
 
-// 2. WAJIB: Ekspor Komponen Presentasi (UI)
-export { default as ExportExcelModal } from './ExportExcel'; // Assuming ExportExcel.tsx is the UI component
+// 1. WAJIB: Ekspor Komponen Utama (yang sekarang adalah ExportExcel.tsx)
+export { default as ExportExcel } from './ExportExcel';
+
+// 2. WAJIB: Ekspor Komponen Presentasi (UI) - ini juga ExportExcel.tsx
+export { default as ExportExcelUI } from './ExportExcel'; // UI component
 
 // 3. WAJIB: Ekspor Custom Hook Utama
-export { useExportExcelModalLogic } from './useExportExcelLogic';
+export { useExportExcelLogic } from './useExportExcelLogic';
 
 // 4. WAJIB: Ekspor semua tipe dan antarmuka publik
 export * from './ExportExcel.types';
 
-// Export constants if they are part of the public API of this module
+// 5. WAJIB jika ada: Ekspor Konstanta spesifik fitur
 export * from './ExportExcel.constants';
 
-// Export utility functions if they are part of the public API of this module
-export { generateExcelWorkbook } from './utils/excelExporter'; 
+// 6. OPSIONAL: Ekspor Fungsi Utilitas
+export * from './utils/excelExporter'; 

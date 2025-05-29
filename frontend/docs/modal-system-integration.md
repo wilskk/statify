@@ -77,31 +77,165 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
 
 ### 2. Buat Komponen Modal
 
-Buat file modal di direktori yang sesuai dengan kategorinya:
+Buat file modal di direktori yang sesuai dengan kategorinya. Komponen modal harus bertanggung jawab atas tata letak dan padding internalnya sendiri, karena `ModalRenderer` menyediakan shell minimal (terutama untuk dialog, di mana `DialogContent` kini tidak memiliki padding default).
+
+**Struktur yang Direkomendasikan (mengikuti pola `GoTo.tsx`):**
+
+1.  **Komponen Konten Internal (misalnya, `YourModalContent.tsx` atau langsung di dalam file modal utama):**
+    *   Komponen ini berisi semua elemen UI inti (input, tombol, teks, dll.).
+    *   **PENTING**: Definisikan padding yang konsisten untuk konten ini (misalnya, menggunakan kelas Tailwind seperti `p-6` untuk area utama dan `px-6 py-4` untuk footer jika ada).
+    *   Komponen ini harus dirancang agar terlihat benar baik di dalam dialog maupun sidebar.
+
+2.  **Komponen Modal Utama (misalnya, `YourModal.tsx`):**
+    *   Menerima `BaseModalProps` (termasuk `onClose` dan `containerType`).
+    *   Berdasarkan `containerType`:
+        *   **Jika `containerType === "dialog"`**: Langsung render komponen Konten Internal Anda. `ModalRenderer` akan membungkusnya dengan `<Dialog>` dan `<DialogContent>` (yang sekarang tidak memiliki padding sendiri). Padding dari Konten Internal Anda akan diterapkan.
+        *   **Jika `containerType === "sidebar"`**: Buat elemen pembungkus dasar jika diperlukan (misalnya, `div` dengan `flex flex-col h-full`) untuk memastikan Konten Internal Anda mengisi ruang sidebar dengan benar. `ModalRenderer` menyediakan shell sidebar dasar dengan header. Render Konten Internal Anda di dalam pembungkus ini.
+
+**Contoh (`components/Modals/MyCategory/MyNewModal.tsx`):**
 
 ```tsx
-// components/Modals/Data/MyNewModal.tsx
+// components/Modals/MyCategory/MyNewModal.tsx
 import React from "react";
 import { BaseModalProps } from "@/types/modalTypes";
+// Asumsikan Anda memiliki Button, dll. dari library UI Anda
+
+// Ini adalah bagian konten inti dari modal Anda
+const MyNewModalContent: React.FC<Omit<BaseModalProps, 'containerType'>> = ({ 
+  onClose, 
+  ...props 
+}) => {
+  // props lainnya bisa di-destructure di sini jika spesifik untuk modal ini
+  
+  return (
+    <>
+      {/* Area Konten Utama dengan Padding */}
+      <div className="p-6 flex-grow overflow-auto">
+        {/* 
+          Ganti bagian ini dengan konten modal Anda yang sebenarnya.
+          Misalnya, form, informasi, dll.
+        */}
+        <h3 className="text-lg font-medium">Konten Modal Baru</h3>
+        <p className="text-sm text-muted-foreground mt-2">
+          Ini adalah isi dari modal baru Anda. Pastikan untuk mengatur semua elemen UI
+          dan logika yang diperlukan di sini.
+        </p>
+        <div className="mt-4">
+          {/* Contoh elemen interaktif */}
+          <label htmlFor="myInput" className="block text-sm font-medium text-gray-700">
+            Input Contoh:
+          </label>
+          <input
+            type="text"
+            id="myInput"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            placeholder="Ketik sesuatu..."
+          />
+        </div>
+      </div>
+
+      {/* Footer dengan Padding dan Tombol Aksi */}
+      <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
+        {/* Ganti dengan tombol yang relevan untuk modal Anda */}
+        <button 
+          type="button"
+          onClick={() => alert("Tombol Bantuan Diklik!")}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Bantuan
+        </button>
+        <button 
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Batal
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            alert("Aksi Utama Dilakukan!");
+            onClose(); // Tutup modal setelah aksi
+          }}
+          className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Simpan Perubahan
+        </button>
+      </div>
+    </>
+  );
+};
+
 
 const MyNewModal: React.FC<BaseModalProps> = ({ 
   onClose, 
-  containerType = "dialog",
+  containerType = "dialog", // Default ke dialog, tapi akan di-resolve oleh ModalRenderer
   ...props 
 }) => {
+  if (containerType === "sidebar") {
+    return (
+      <div className="flex flex-col h-full bg-background text-foreground">
+        {/* 
+          ModalRenderer akan menyediakan header untuk sidebar (judul, tombol close global).
+          MyNewModalContent akan mengisi sisa ruang.
+        */}
+        <MyNewModalContent onClose={onClose} {...props} />
+      </div>
+    );
+  }
+
+  // Untuk containerType === "dialog"
+  // ModalRenderer menyediakan <Dialog> dan <DialogContent> (tanpa padding).
+  // MyNewModalContent menyediakan paddingnya sendiri.
   return (
-    <FileModalTemplate
-      title="My New Modal"
-      onClose={onClose}
-      containerType={containerType}
-    >
-      <div>Modal content goes here</div>
-    </FileModalTemplate>
+    <MyNewModalContent onClose={onClose} {...props} />
   );
 };
 
 export default MyNewModal;
 ```
+
+**Penggunaan Template (misalnya `FileModalTemplate`):**
+
+Jika Anda menggunakan komponen template seperti `FileModalTemplate`, pastikan template tersebut juga mengikuti prinsip ini:
+*   Template harus menangani paddingnya sendiri secara internal, ATAU
+*   Template harus dirancang untuk membungkus konten yang sudah memiliki paddingnya sendiri.
+
+Contoh jika `FileModalTemplate` menangani shell dan Anda memasukkan konten:
+```tsx
+// components/Modals/Data/MyNewModalWithTemplate.tsx
+import React from "react";
+import { BaseModalProps } from "@/types/modalTypes";
+// import FileModalTemplate from "@/components/Modals/Templates/FileModalTemplate"; // Path contoh
+
+const MyNewModalWithTemplate: React.FC<BaseModalProps> = ({ 
+  onClose, 
+  containerType = "dialog", // Akan di-resolve oleh ModalRenderer
+  ...props 
+}) => {
+  // Konten spesifik untuk modal ini, yang mungkin perlu paddingnya sendiri
+  // jika FileModalTemplate tidak menyediakannya untuk area konten.
+  const modalSpecificContent = (
+    <div className="p-4"> {/* Padding di sini jika FileModalTemplate tidak memberi padding untuk slot konten */}
+      Konten spesifik modal saya.
+    </div>
+  );
+
+  return (
+    <FileModalTemplate // Asumsikan FileModalTemplate sudah adaptif terhadap containerType
+      title="My New Modal with Template"
+      onClose={onClose}
+      containerType={containerType} // Teruskan containerType ke template
+      // Props lain untuk FileModalTemplate
+    >
+      {modalSpecificContent}
+    </FileModalTemplate>
+  );
+};
+
+export default MyNewModalWithTemplate;
+```
+Penting untuk memeriksa implementasi `FileModalTemplate` untuk memastikan ia berintegrasi dengan benar dengan sistem padding yang baru.
 
 ### 3. Daftarkan di Registry
 

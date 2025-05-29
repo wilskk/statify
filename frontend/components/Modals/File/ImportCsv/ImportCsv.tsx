@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FC } from "react";
+import React, { useState, FC, useEffect } from "react";
 import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ImportCsvSelection } from "./ImportCsvSelection"; 
 import { ImportCsvConfiguration } from "./ImportCsvConfiguration";
@@ -20,6 +20,7 @@ const ImportCsv: FC<ImportCsvProps> = ({
 }) => {
     const [file, setFile] = useState<File | null>(null);
     const [stage, setStage] = useState<"select" | "configure">("select");
+    const [pendingConfigure, setPendingConfigure] = useState<boolean>(false);
 
     const {
         fileName,
@@ -30,19 +31,23 @@ const ImportCsv: FC<ImportCsvProps> = ({
         resetFileState
     } = useImportCsvFileReader();
 
+    // Effect to move to configure stage when file content is ready
+    useEffect(() => {
+        if (pendingConfigure && fileContent && !isFileReaderLoading) {
+            setStage("configure");
+            setPendingConfigure(false);
+        }
+    }, [fileContent, isFileReaderLoading, pendingConfigure]);
+
     const handleFileSelect = (selectedFile: File) => {
         setFile(selectedFile);
     };
 
     const handleContinueToConfigure = async () => {
         if (!file) return;
-        await readFile(file);
-        // Conditional stage change based on file content needs careful handling.
-        // Assuming readFile updates fileContent, then we check it.
-        // A more robust way might involve a callback or effect.
-        if (fileContent || (await new Promise(resolve => setTimeout(resolve, 0)), fileContent)) {
-             setStage("configure");
-        }
+        
+        setPendingConfigure(true);
+        readFile(file);
     };
 
     const handleBackToSelect = () => {
@@ -77,37 +82,21 @@ const ImportCsv: FC<ImportCsvProps> = ({
     };
 
     // This structure is for the presentation component. 
-    // The Dialog/Sidebar wrappers will be in the Container.
+    // The Dialog/Sidebar wrappers will be in the Container or handled by ModalRenderer.
+    // The custom DialogHeader has been removed. ModalRenderer will provide the main header.
+    // Title will be set by ModalRenderer via getModalTitle. 
+    // Stage-specific titles/back buttons should be part of the stage components (ImportCsvConfiguration).
     return (
-        <>
-            {containerType === "dialog" && (
-                <DialogHeader 
-                    className={`px-6 pt-5 pb-3 border-b border-border flex-shrink-0 ${ 
-                        stage === 'configure' ? 'flex flex-row items-center justify-between' : '' 
-                    }`}
-                >
-                    {stage === 'configure' && (
-                        <Button variant="ghost" size="sm" onClick={handleBackToSelect} className="mr-2 -ml-2 h-8 w-8 p-0">
-                            <ArrowLeft size={16} />
-                        </Button>
-                    )}
-                    <div className={`${stage === 'configure' ? 'flex-1 min-w-0' : ''}`}>
-                        <DialogTitle className={`text-lg font-semibold ${stage === 'configure' ? 'truncate' : ''}`}>
-                            {stage === "select" ? "Import CSV File" : `Configure Import: ${fileName}`}
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground mt-1">
-                            {stage === "select"
-                                ? "Select a CSV file to import for analysis."
-                                : "Adjust settings for how the CSV data should be read."}
-                        </DialogDescription>
-                    </div>
-                    {stage === 'configure' && <div className="w-8"></div>} {/* Spacer */}
-                </DialogHeader>
-            )}
-            <div className="flex-grow flex flex-col overflow-hidden p-6">
-                {renderContent()}
-            </div>
-        </>
+        // The outer <DialogHeader> specific to containerType === "dialog" is removed.
+        // The padding for the content area is preserved.
+        <div className="flex-grow flex flex-col overflow-hidden p-6 h-full">
+            {/* 
+                The h-full class is added to ensure this div tries to take available vertical space, 
+                especially important if child components like ImportCsvSelection or ImportCsvConfiguration 
+                are also using flex-grow or height utilities. 
+            */}
+            {renderContent()}
+        </div>
     );
 };
 

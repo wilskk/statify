@@ -3,7 +3,6 @@ import { useMobile } from "@/hooks/useMobile";
 import { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput } from "./ImportExcel.types";
 
 export const useImportExcelLogic = ({
-    isOpen,
     onClose,
 }: UseImportExcelLogicProps): UseImportExcelLogicOutput => {
     const [file, setFile] = useState<File | null>(null);
@@ -14,17 +13,6 @@ export const useImportExcelLogic = ({
     const [stage, setStage] = useState<ImportExcelStage>("select");
 
     const { isMobile, isPortrait } = useMobile();
-
-    useEffect(() => {
-        if (!isOpen) {
-            setFile(null);
-            setBinaryFileContent(null);
-            setFileName("");
-            setIsLoading(false);
-            setError(null);
-            setStage("select");
-        }
-    }, [isOpen]);
 
     const handleFileSelect = useCallback((selectedFile: File) => {
         setFile(selectedFile);

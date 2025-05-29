@@ -32,8 +32,24 @@ export enum ModalType {
   
   // Data modals - Operasi manipulasi dan pengaturan data
   DefineVarProps = "DefineVarProps",
+  VarPropsEditor = "VarPropsEditor",
+  SetMeasurementLevel = "SetMeasurementLevel",
+  DefineDateTime = "DefineDateTime",
+  DuplicateCases = "DuplicateCases",
+  UnusualCases = "UnusualCases",
   SortCases = "SortCases",
   SortVars = "SortVars",
+  Transpose = "Transpose",
+  Restructure = "Restructure",
+  Aggregate = "Aggregate",
+  MergeFiles = "MergeFiles",
+  SplitFile = "SplitFile",
+  WeightCases = "WeightCases",
+  MultipleResponse = "MultipleResponse",
+  NewCustomAttr = "NewCustomAttr",
+  SelectCases = "SelectCases",
+  DefineValidationRules = "DefineValidationRules",
+  Validate = "Validate",
   
   // Transform modals - Transformasi variabel dan data
   ComputeVariable = "ComputeVariable",
@@ -68,6 +84,15 @@ export enum ModalType {
   Autocorrelation = "Autocorrelation",
   UnitRootTest = "UnitRootTest",
   BoxJenkinsModel = "BoxJenkinsModel",
+
+  // Descriptive statistics modals
+  Descriptives = "Descriptives",
+  Explore = "Explore",
+  Frequencies = "Frequencies",
+  Crosstabs = "Crosstabs",
+  Ratio = "Ratio",
+  PPPlots = "PPPlots",
+  QQPlots = "QQPlots",
 }
 
 /**
@@ -97,10 +122,10 @@ export enum ModalCategory {
 export interface BaseModalProps {
   // Props wajib untuk semua modal
   onClose: () => void;
-  containerType?: "dialog" | "sidebar" | "auto";
+  containerType?: "dialog" | "sidebar";
   
   // Container override untuk memaksa tipe container tertentu
-  containerOverride?: "dialog" | "sidebar" | "auto";
+  containerOverride?: "dialog" | "sidebar";
   
   // Props opsional untuk modal tertentu
   isOpen?: boolean;                    // Untuk file modals
@@ -153,8 +178,24 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   
   // Data modals
   [ModalType.DefineVarProps]: ModalCategory.Data,
+  [ModalType.VarPropsEditor]: ModalCategory.Data,
+  [ModalType.SetMeasurementLevel]: ModalCategory.Data,
+  [ModalType.DefineDateTime]: ModalCategory.Data,
+  [ModalType.DuplicateCases]: ModalCategory.Data,
+  [ModalType.UnusualCases]: ModalCategory.Data,
   [ModalType.SortCases]: ModalCategory.Data,
   [ModalType.SortVars]: ModalCategory.Data,
+  [ModalType.Transpose]: ModalCategory.Data,
+  [ModalType.Restructure]: ModalCategory.Data,
+  [ModalType.Aggregate]: ModalCategory.Data,
+  [ModalType.MergeFiles]: ModalCategory.Data,
+  [ModalType.SplitFile]: ModalCategory.Data,
+  [ModalType.WeightCases]: ModalCategory.Data,
+  [ModalType.MultipleResponse]: ModalCategory.Data,
+  [ModalType.NewCustomAttr]: ModalCategory.Data,
+  [ModalType.SelectCases]: ModalCategory.Data,
+  [ModalType.DefineValidationRules]: ModalCategory.Data,
+  [ModalType.Validate]: ModalCategory.Data,
   
   // Transform modals
   [ModalType.ComputeVariable]: ModalCategory.Transform,
@@ -189,6 +230,15 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.Autocorrelation]: ModalCategory.TimeSeries,
   [ModalType.UnitRootTest]: ModalCategory.TimeSeries,
   [ModalType.BoxJenkinsModel]: ModalCategory.TimeSeries,
+
+  // Descriptive statistics modals
+  [ModalType.Descriptives]: ModalCategory.Analyze,
+  [ModalType.Explore]: ModalCategory.Analyze,
+  [ModalType.Frequencies]: ModalCategory.Analyze,
+  [ModalType.Crosstabs]: ModalCategory.Analyze,
+  [ModalType.Ratio]: ModalCategory.Analyze,
+  [ModalType.PPPlots]: ModalCategory.Analyze,
+  [ModalType.QQPlots]: ModalCategory.Analyze,
 };
 
 /**
@@ -202,7 +252,7 @@ export const isModalInCategory = (type: ModalType, category: ModalCategory): boo
   MODAL_CATEGORIES[type] === category;
 
 /**
- * isFileModal - Memeriksa apakah modal termasuk kategori File
+ * isFileModal - Memeriksa apakah modal adalah tipe File
  * 
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe File
@@ -211,32 +261,114 @@ export const isFileModal = (type: ModalType): boolean =>
   isModalInCategory(type, ModalCategory.File);
 
 /**
- * isDataModal - Memeriksa apakah modal termasuk kategori Data
+ * isDataModal - Memeriksa apakah modal adalah tipe Data
  * 
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe Data
  */
-export const isDataModal = (type: ModalType): boolean => 
+export const isDataModal = (type: ModalType): boolean =>
   isModalInCategory(type, ModalCategory.Data);
 
 /**
- * isEditModal - Memeriksa apakah modal termasuk kategori Edit
+ * isEditModal - Memeriksa apakah modal adalah tipe Edit
  * 
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe Edit
  */
-export const isEditModal = (type: ModalType): boolean => 
+export const isEditModal = (type: ModalType): boolean =>
   isModalInCategory(type, ModalCategory.Edit);
 
 /**
- * getModalTitle - Mendapatkan judul yang diformat dari tipe modal
+ * getModalTitle - Mendapatkan judul yang sesuai untuk modal
  * 
  * @param type - Tipe modal
- * @returns Judul yang diformat dengan baik untuk tampilan UI
+ * @returns Judul yang sesuai untuk modal tersebut
  */
-export const getModalTitle = (type: ModalType): string => {
-  return type.toString()
-    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-    .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
-    .trim();
-}; 
+export function getModalTitle(type: ModalType): string {
+  // Konversi dari enum ke format title case yang user-friendly
+  const rawTitle = type.toString()
+    .replace(/([A-Z])/g, ' $1')  // Add space before capital letters
+    .replace(/^./, str => str.toUpperCase()); // Capitalize first letter
+  
+  // Handle special cases
+  switch (type) {
+    case ModalType.ImportCSV:
+      return "Import CSV";
+    case ModalType.ExportCSV:
+      return "Export CSV";
+    case ModalType.ImportExcel:
+      return "Import Excel";
+    case ModalType.ExportExcel:
+      return "Export Excel";
+    case ModalType.GoToCase:
+      return "Go to Case";
+    case ModalType.GoToVariable:
+      return "Go to Variable";
+    case ModalType.DefineVarProps:
+      return "Define Variable Properties";
+    case ModalType.VarPropsEditor:
+      return "Variable Properties Editor";
+    case ModalType.SortVars:
+      return "Sort Variables";
+    case ModalType.ChartBuilderModal:
+      return "Chart Builder";
+    case ModalType.SimpleBarModal:
+      return "Bar Chart";
+    case ModalType.ModalAutomaticLinearModeling:
+      return "Automatic Linear Modeling";
+    case ModalType.ModalLinear:
+      return "Linear Regression";
+    case ModalType.ModalCurveEstimation:
+      return "Curve Estimation";
+    case ModalType.ModalBinaryLogistic:
+      return "Binary Logistic Regression";
+    case ModalType.ModalMultinomialLogistic:
+      return "Multinomial Logistic Regression";
+    case ModalType.ModalOrdinal:
+      return "Ordinal Regression";
+    case ModalType.ModalProbit:
+      return "Probit Analysis";
+    case ModalType.ModalNonlinear:
+      return "Nonlinear Regression";
+    case ModalType.ModalWeightEstimation:
+      return "Weight Estimation";
+    case ModalType.ModalTwoStageLeastSquares:
+      return "Two-Stage Least Squares";
+    case ModalType.ModalPartialLeastSquares:
+      return "Partial Least Squares";
+    case ModalType.ModalQuantiles:
+      return "Quantile Regression";
+    case ModalType.ModalOptimalScaling:
+      return "Optimal Scaling";
+    case ModalType.SetMeasurementLevel:
+      return "Set Measurement Level";
+    case ModalType.DefineDateTime:
+      return "Define Date and Time";
+    case ModalType.DuplicateCases:
+      return "Identify Duplicate Cases";  
+    case ModalType.UnusualCases:
+      return "Identify Unusual Cases";
+    case ModalType.Restructure:
+      return "Restructure Data";
+    case ModalType.Aggregate:
+      return "Aggregate Data";
+    case ModalType.MergeFiles:
+      return "Merge Files";
+    case ModalType.SplitFile:
+      return "Split File";
+    case ModalType.WeightCases:
+      return "Weight Cases";
+    case ModalType.MultipleResponse:
+      return "Multiple Response Sets";
+    case ModalType.NewCustomAttr:
+      return "New Custom Attribute";
+    case ModalType.SelectCases:
+      return "Select Cases";
+    case ModalType.DefineValidationRules:
+      return "Define Validation Rules";
+    case ModalType.Validate:
+      return "Validate Data";
+    default:
+      return rawTitle.trim();
+  }
+} 

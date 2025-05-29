@@ -8,104 +8,128 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, InfoIcon, HelpCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExportExcelModalComponentProps, ExportExcelLogicState } from "./ExportExcel.types";
+import { ExportExcelProps } from "./ExportExcel.types";
 import { EXCEL_FORMATS, EXCEL_OPTIONS_CONFIG } from "./ExportExcel.constants";
+import { useExportExcelLogic } from "./useExportExcelLogic";
 
-const ExportExcelModal: FC<ExportExcelModalComponentProps> = ({ 
+const ExportExcel: FC<ExportExcelProps> = ({ 
     onClose,
-    exportOptions,
-    isExporting,
-    onhandleChange,
-    onHandleFilenameChange,
-    onHandleExport
+    containerType
 }) => {
+    const {
+        exportOptions,
+        isExporting,
+        handleChange,
+        handleFilenameChange,
+        handleExport,
+    } = useExportExcelLogic({ onClose });
+
     return (
-        <>
-            <div className="p-6 overflow-y-auto flex-grow">
-                <TooltipProvider delayDuration={200}>
-                    <div className="space-y-5">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="filename" className="text-xs font-medium text-muted-foreground">File Name</Label>
-                            <Input
-                                id="filename"
-                                value={exportOptions.filename}
-                                onChange={(e) => onHandleFilenameChange(e.target.value)}
-                                className="w-full h-9"
-                                placeholder="Enter file name"
-                            />
-                        </div>
+        <div className="flex flex-col h-full">
+            <div className="p-6 space-y-5 flex-grow overflow-y-auto">
+                {/* File Name */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="excel-filename">File Name</Label>
+                    <Input
+                        id="excel-filename"
+                        value={exportOptions.filename}
+                        onChange={(e) => handleFilenameChange(e.target.value)}
+                        placeholder="Enter file name (e.g., excel_export)"
+                        disabled={isExporting}
+                    />
+                </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="format" className="text-xs font-medium text-muted-foreground">Format</Label>
-                            <Select
-                                value={exportOptions.format}
-                                onValueChange={(value) => onhandleChange("format", value as ExportExcelLogicState['format'])}
-                            >
-                                <SelectTrigger id="format" className="w-full h-9">
-                                    <SelectValue placeholder="Select format" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {EXCEL_FORMATS.map(format => (
-                                        <SelectItem key={format.value} value={format.value} disabled={format.disabled}>
-                                            {format.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-3 pt-2">
-                            <Label className="text-xs font-medium text-muted-foreground">Options (for Excel/ODS)</Label>
-                            {EXCEL_OPTIONS_CONFIG.map(option => (
-                                <div key={option.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={option.id}
-                                        checked={Boolean(exportOptions[option.id as keyof ExportExcelLogicState])}
-                                        onCheckedChange={(checked) => onhandleChange(option.id as keyof ExportExcelLogicState, Boolean(checked))}
-                                    />
-                                    <Label htmlFor={option.id} className="text-sm font-normal cursor-pointer flex items-center">
-                                        {option.label}
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <HelpCircle className="h-3.5 w-3.5 ml-1.5 text-muted-foreground cursor-help" />
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                                <p>{option.tooltip}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </Label>
-                                </div>
+                {/* Format */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="excel-format">Format</Label>
+                    <Select
+                        value={exportOptions.format}
+                        onValueChange={(value) => handleChange("format", value)}
+                        disabled={isExporting}
+                    >
+                        <SelectTrigger id="excel-format">
+                            <SelectValue placeholder="Select format" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EXCEL_FORMATS.map((format) => (
+                                <SelectItem key={format.value} value={format.value}>
+                                    {format.label}
+                                </SelectItem>
                             ))}
-                        </div>
-                    </div>
-                </TooltipProvider>
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                <div className="flex items-center py-3 text-xs text-muted-foreground border-t border-border mt-6">
-                    <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                    <span>XLSX is recommended for modern Excel. Use Export CSV for advanced CSV options.</span>
+                {/* Options */}
+                <div className="space-y-3">
+                    <Label className="text-sm font-medium">Options</Label>
+                    <div className="grid gap-3 pl-1">
+                        {EXCEL_OPTIONS_CONFIG.map((option) => (
+                            <div key={option.id} className="flex items-start space-x-2">
+                                <Checkbox
+                                    id={option.id}
+                                    checked={exportOptions[option.name as keyof typeof exportOptions] as boolean}
+                                    onCheckedChange={(checked) => 
+                                        handleChange(option.name as keyof typeof exportOptions, Boolean(checked))
+                                    }
+                                    disabled={isExporting}
+                                    className="mt-0.5"
+                                />
+                                <div className="flex items-center">
+                                    <Label 
+                                        htmlFor={option.id} 
+                                        className="font-normal cursor-pointer"
+                                    >
+                                        {option.label}
+                                    </Label>
+                                    {option.tooltip && (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <button className="ml-1.5 text-muted-foreground hover:text-foreground">
+                                                        <HelpCircle size={14} />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" className="max-w-[280px] text-xs">
+                                                    {option.tooltip}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
-
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
+            
+            {/* Footer */}
+            <div className="flex justify-end space-x-2 px-6 py-4 border-t border-border bg-muted flex-shrink-0">
                 <Button
                     variant="outline"
                     onClick={onClose}
                     disabled={isExporting}
-                    className="min-w-[80px] h-9"
+                    className="min-w-[80px]"
                 >
                     Cancel
                 </Button>
                 <Button
-                    onClick={onHandleExport}
+                    onClick={handleExport}
                     disabled={isExporting || !exportOptions.filename.trim()}
-                    className="min-w-[100px] h-9"
+                    className="min-w-[80px]"
                 >
-                    {isExporting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    {isExporting ? "Exporting..." : "Export"}
+                    {isExporting ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Exporting...
+                        </>
+                    ) : (
+                        "Export"
+                    )}
                 </Button>
             </div>
-        </>
+        </div>
     );
 };
 
-export default ExportExcelModal; 
+export default ExportExcel; 

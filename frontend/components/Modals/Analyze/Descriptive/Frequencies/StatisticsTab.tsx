@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMobile } from '@/hooks/useMobile';
 
-interface StatisticsTabProps {
+export interface StatisticsTabProps {
     showStatistics: boolean;
     setShowStatistics: Dispatch<SetStateAction<boolean>>;
 

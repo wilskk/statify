@@ -1,4 +1,3 @@
-// frontend/components/Modals/File/export/ExportExcelModal/ExportExcelModal.types.ts
 import { Variable } from "@/types/Variable";
 import { DataRow } from "@/types/Data";
 import { Meta } from "@/stores/useMetaStore";
@@ -13,33 +12,33 @@ export interface ExcelUtilOptions {
     applyHeaderStyling: boolean;
 }
 
-// State and options managed by the custom hook
+// Main state type for the Excel export logic
 export interface ExportExcelLogicState {
     filename: string;
-    format: "xlsx" | "xls" | "csv" | "ods"; // 'csv' might be disabled in UI but type allows
+    format: "xlsx" | "xls";
     includeHeaders: boolean;
-    includeVariableProperties: boolean; // Corresponds to includeVariablePropertiesSheet in util
+    includeVariableProperties: boolean;
     includeMetadataSheet: boolean;
     includeDataLabels: boolean;
     applyHeaderStyling: boolean;
 }
 
+// Props for the logic hook
 export interface UseExportExcelLogicProps {
     onClose: () => void;
 }
 
-// Props for the presentational component (ExportExcelModal.tsx)
-export interface ExportExcelModalComponentProps extends UseExportExcelLogicProps {
-    exportOptions: ExportExcelLogicState;
-    isExporting: boolean;
-    onhandleChange: (field: keyof ExportExcelLogicState, value: string | boolean) => void;
-    onHandleFilenameChange: (value: string) => void;
-    onHandleExport: () => void;
-    // containerType?: ContainerType; // This prop might not be needed directly by the presentational component if handled by container
-}
+// Props for the container component - AKAN DIHAPUS
+// export interface ExportExcelContainerProps {
+//     isOpen: boolean; // Diasumsikan tidak lagi dikontrol di sini
+//     onClose: () => void;
+//     containerType?: ContainerType;
+// }
 
-// Props for the container component (ExportExcelModalContainer.tsx)
-export interface ExportExcelModalContainerProps {
+// Props for the main/UI component
+// Mengganti nama dan menyederhanakan ExportExcelUIProps
+export interface ExportExcelProps {
     onClose: () => void;
-    containerType?: ContainerType;
+    containerType?: ContainerType; // Diterima dari ModalRenderer
+    // exportOptions, isExporting, dan handler akan datang dari hook internal
 } 

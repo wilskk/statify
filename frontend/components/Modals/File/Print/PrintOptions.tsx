@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import { PrintOptionsProps, PaperSize, SelectedOptions } from "./Print.types"; // Adjusted import path
 
 export const PrintOptions: React.FC<PrintOptionsProps> = ({
@@ -25,7 +25,25 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
     const isPrintDisabled = !Object.values(selectedOptions).some(Boolean) || isGenerating;
 
     return (
-        <>
+        <div className="flex flex-col h-full"> {/* Main wrapper for flex layout */}
+            {/* Internal Header for PrintOptions */}
+            <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
+                <Printer size={18} className="mr-2.5 flex-shrink-0 text-primary" />
+                <div className="flex-grow overflow-hidden">
+                    {/* 
+                        The main title "Print to PDF" will be rendered by ModalRenderer.
+                        This header provides context specifically for the options.
+                    */}
+                    <h3 className="font-semibold text-lg text-popover-foreground">
+                        Print Options
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        Configure options and select content to include in the PDF export.
+                    </p>
+                </div>
+            </div>
+
+            {/* Content Area with options */}
             <div className={`p-6 flex-grow overflow-y-auto ${isMobile ? 'space-y-5' : 'space-y-4'}`}>
                 {/* Filename */}
                 <div className={`${isMobile ? 'flex flex-col space-y-1.5' : 'grid grid-cols-4 items-center gap-4'}`}>
@@ -107,6 +125,6 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
                     {isGenerating ? "Generating PDF..." : "Print to PDF"}
                 </Button>
             </div>
-        </>
+        </div>
     );
 }; 

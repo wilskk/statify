@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { ModalType, BaseModalProps, getModalTitle } from "@/types/modalTypes";
 import { getModalComponent, getModalContainerType } from "./ModalRegistry";
@@ -39,39 +39,60 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
   
   // Determine container type based on device, preference, and override
   useEffect(() => {
-    /**
-     * Determines final container type with a clear priority order:
-     * 1. containerOverride (highest priority)
-     * 2. Registry preferences 
-     * 3. Requested container from props
-     * 4. Device-based defaults (lowest priority)
-     */
+    console.groupCollapsed(`[ModalRenderer] useEffect for ${modalType} - Determining Container`);
+    console.log(`Dependencies:`, { modalType, requestedContainer, containerOverride, isMobile });
+
     const determineContainerType = () => {
-      // Mobile devices always use dialog regardless of other settings
-      if (isMobile) return "dialog";
+      console.log(`Initial values: reqContainer=${requestedContainer}, override=${containerOverride}, mobile=${isMobile}`);
       
-      // 1. containerOverride has highest priority if provided
-      if (containerOverride) {
-        return containerOverride === "auto" ? "sidebar" : 
-               containerOverride === "sidebar" ? "sidebar" : "dialog";
+      // Special debug for ExportCSV modal
+      if (modalType === ModalType.ExportCSV) {
+        console.log(`ExportCSV Modal Debug - Processing with:`, {
+          requestedContainer,
+          containerOverride,
+          isMobile,
+        });
       }
       
-      // 2. Get preferred container from registry (already handles preferences)
-      return getModalContainerType(
+      if (isMobile) {
+        console.log('Decision: Mobile device, using "dialog".');
+        return "dialog";
+      }
+      
+      if (containerOverride) {
+        console.log(`Decision: Container override present ("${containerOverride}"), using it.`);
+        return containerOverride;
+      }
+      
+      const preferred = getModalContainerType(
         modalType,
-        requestedContainer === "auto" ? "sidebar" : requestedContainer,
-        isMobile
+        requestedContainer,
+        false // isMobile is false at this point
       );
+      console.log(`Decision: No override, preferred from registry: "${preferred}" (based on requested: "${requestedContainer}")`);
+      return preferred;
     };
 
-    // Set the container type
-    setFinalContainerType(determineContainerType());
+    const newFinalContainerType = determineContainerType();
+    console.log(`New final container type: "${newFinalContainerType}"`);
+    setFinalContainerType(newFinalContainerType);
     
+    console.groupEnd();
+
     // Handle window resize for responsiveness
-    const handleResize = () => setFinalContainerType(determineContainerType());
+    const handleResize = () => {
+      console.groupCollapsed(`[ModalRenderer] handleResize for ${modalType} - Re-determining Container`);
+      const resizedContainerType = determineContainerType();
+      console.log(`Resized final container type: "${resizedContainerType}"`);
+      setFinalContainerType(resizedContainerType);
+      console.groupEnd();
+    };
     
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      console.log(`[ModalRenderer] useEffect cleanup for ${modalType} - Removing resize listener.`);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [modalType, requestedContainer, containerOverride, isMobile]);
   
   // Render placeholder if no component is found
@@ -115,10 +136,11 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
           </button>
         </div>
         <div className="flex-grow overflow-y-auto overflow-x-auto min-w-0">
-          <div className="w-full min-w-0">
+          <div className="w-full min-w-0 h-full">
             <ModalComponent 
               onClose={onClose} 
               containerType="sidebar" 
+              id={id}
               {...props} 
             />
           </div>
@@ -128,13 +150,24 @@ const ModalRenderer: React.FC<ModalRendererProps> = ({
   }
   
   // Render as a dialog
+  const descriptionId = `modal-desc-${modalType}`;
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <ModalComponent 
-        onClose={onClose} 
-        containerType="dialog" 
-        {...props} 
-      />
+      <DialogContent 
+        className="sm:max-w-md p-0" 
+        aria-describedby={descriptionId}
+      >
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle>{getModalTitle(modalType)}</DialogTitle>
+          <DialogDescription id={descriptionId}>
+          </DialogDescription>
+        </DialogHeader>
+        <ModalComponent 
+          onClose={onClose} 
+          containerType="dialog" 
+          {...props} 
+        />
+      </DialogContent>
     </Dialog>
   );
 };

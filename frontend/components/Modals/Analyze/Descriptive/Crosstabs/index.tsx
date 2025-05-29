@@ -3,9 +3,7 @@
 import React, { useState, useEffect, FC } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,23 +16,25 @@ import {
 import { InfoIcon } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
+import { BaseModalProps } from "@/types/modalTypes";
+import { 
+    VariableHighlight, 
+    ExactTestMethodType, 
+    NonintegerWeightsType 
+} from "./types";
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
 import ExactTestsTab from "./ExactTestsTab";
 import StatisticsTab from "./StatisticsTab";
 import CellsTab from "./CellsTab";
+import FormatTab from "./FormatTab";
 
 // Types
 import type { Variable } from "@/types/Variable";
 
-interface CrosstabsModalProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
-
 // Main content component that's agnostic of container type
-const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "dialog" }) => {
+const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [rowVariables, setRowVariables] = useState<Variable[]>([]);
@@ -42,7 +42,7 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
     const [layerVariablesMap, setLayerVariablesMap] = useState<Record<number, Variable[]>>({ 1: [] });
     const [currentLayerIndex, setCurrentLayerIndex] = useState(1);
     const [totalLayers, setTotalLayers] = useState(1);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'row' | 'column' | 'layer'} | null>(null);
+    const [highlightedVariable, setHighlightedVariable] = useState<VariableHighlight>(null);
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
     const [displayLayerVariables, setDisplayLayerVariables] = useState(true);
 
     // Exact Tests state
-    const [exactTestMethod, setExactTestMethod] = useState<'asymptotic' | 'monteCarlo' | 'exact'>('asymptotic');
+    const [exactTestMethod, setExactTestMethod] = useState<ExactTestMethodType>('asymptotic');
     const [confidenceLevel, setConfidenceLevel] = useState("99");
     const [monteCarloSamples, setMonteCarloSamples] = useState("10000");
     const [timeLimit, setTimeLimit] = useState("5");
@@ -89,7 +89,10 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
     const [unstandardizedResiduals, setUnstandardizedResiduals] = useState(false);
     const [standardizedResiduals, setStandardizedResiduals] = useState(false);
     const [adjustedStandardizedResiduals, setAdjustedStandardizedResiduals] = useState(false);
-    const [nonintegerWeights, setNonintegerWeights] = useState<'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment'>('roundCell');
+    const [nonintegerWeights, setNonintegerWeights] = useState<NonintegerWeightsType>('roundCell');
+    
+    // Format state
+    const [rowOrder, setRowOrder] = useState<'ascending' | 'descending'>('ascending');
 
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -162,6 +165,9 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
         setStandardizedResiduals(false);
         setAdjustedStandardizedResiduals(false);
         setNonintegerWeights('roundCell');
+        
+        // Format state
+        setRowOrder('ascending');
     };
 
     // Helper function to ensure layer consistency
@@ -365,7 +371,9 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                                         },
                                         nonintegerWeights
                                     },
-                                    format: {}
+                                    format: {
+                                        rowOrder
+                                    }
                                 }
                             }),
                             components: "Cross Tabulation",
@@ -394,11 +402,12 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                         <TabsTrigger value="statistics">Statistics</TabsTrigger>
                         <TabsTrigger value="cells">Cells</TabsTrigger>
                         <TabsTrigger value="exact">Exact Tests</TabsTrigger>
+                        <TabsTrigger value="format">Format</TabsTrigger>
                     </TabsList>
                 </div>
 
                 <div className="flex-grow overflow-y-auto">
-                    <TabsContent value="variables" className="p-6">
+                    <TabsContent value="variables">
                         <VariablesTab
                             availableVariables={availableVariables}
                             rowVariables={rowVariables}
@@ -424,7 +433,7 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                             containerType={containerType}
                         />
                     </TabsContent>
-                    <TabsContent value="statistics" className="p-6">
+                    <TabsContent value="statistics">
                         <StatisticsTab
                             chiSquare={chiSquare} setChiSquare={setChiSquare}
                             correlations={correlations} setCorrelations={setCorrelations}
@@ -445,7 +454,7 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                             containerType={containerType}
                         />
                     </TabsContent>
-                    <TabsContent value="cells" className="p-6">
+                    <TabsContent value="cells">
                         <CellsTab
                             observedCounts={observedCounts} setObservedCounts={setObservedCounts}
                             expectedCounts={expectedCounts} setExpectedCounts={setExpectedCounts}
@@ -463,13 +472,20 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                             containerType={containerType}
                         />
                     </TabsContent>
-                    <TabsContent value="exact" className="p-6">
+                    <TabsContent value="exact">
                         <ExactTestsTab
                             exactTestMethod={exactTestMethod} setExactTestMethod={setExactTestMethod}
                             confidenceLevel={confidenceLevel} setConfidenceLevel={setConfidenceLevel}
                             monteCarloSamples={monteCarloSamples} setMonteCarloSamples={setMonteCarloSamples}
                             timeLimit={timeLimit} setTimeLimit={setTimeLimit}
                             useTimeLimit={useTimeLimit} setUseTimeLimit={setUseTimeLimit}
+                            containerType={containerType}
+                        />
+                    </TabsContent>
+                    <TabsContent value="format">
+                        <FormatTab
+                            rowOrder={rowOrder}
+                            setRowOrder={setRowOrder}
                             containerType={containerType}
                         />
                     </TabsContent>
@@ -502,7 +518,6 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
                     </Button>
                     <Button 
                         variant="outline"
-                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
                         disabled={isCalculating}
                     > 
                         Help
@@ -514,31 +529,29 @@ const CrosstabsContent: FC<CrosstabsModalProps> = ({ onClose, containerType = "d
 };
 
 // Main component that handles different container types
-const Crosstabs: FC<CrosstabsModalProps> = ({ onClose, containerType = "dialog" }) => {
+const Crosstabs: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <CrosstabsContent onClose={onClose} containerType={containerType} />
+                    <CrosstabsContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // For dialog mode, use Dialog and DialogContent
+    // For dialog mode, use DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-4xl h-[calc(100vh-8rem)] flex flex-col p-0 bg-popover text-popover-foreground">
-                <DialogHeader className="px-6 py-4 border-b border-border">
-                    <DialogTitle className="text-xl">Crosstabs</DialogTitle>
-                </DialogHeader>
+        <DialogContent className="max-w-4xl h-[calc(100vh-8rem)] flex flex-col p-0 bg-popover text-popover-foreground">
+            <DialogHeader className="px-6 py-4 border-b border-border">
+                <DialogTitle className="text-xl">Crosstabs</DialogTitle>
+            </DialogHeader>
 
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <CrosstabsContent onClose={onClose} containerType={containerType} />
-                </div>
-            </DialogContent>
-        </Dialog>
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <CrosstabsContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 

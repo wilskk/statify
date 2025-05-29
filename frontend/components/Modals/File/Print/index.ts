@@ -1,17 +1,18 @@
-// 1. WAJIB: Ekspor Komponen Kontainer Utama
-export { default as PrintModal } from './PrintContainer';
+// Export the main component
+export { PrintModal } from './Print';
+export { default } from './Print';
 
 // 2. WAJIB: Ekspor Komponen Presentasi (UI)
-export { PrintUI } from './Print';
+// export { PrintUI } from './Print'; // PrintUI sudah menjadi Print
 
-// 3. WAJIB: Ekspor Custom Hook Utama
+// Export the hook
 export { usePrintLogic } from './usePrintLogic';
 
-// 4. WAJIB: Ekspor semua tipe dan antarmuka publik
+// Export types
 export * from './Print.types';
 
-// Export options/step component if it's intended to be reusable or testable independently
+// Export options/step component
 export { PrintOptions } from './PrintOptions';
 
-// Export utility functions if they are part of the public API of this module
+// Export utility functions
 export * from './utils/pdfTableHelpers'; 

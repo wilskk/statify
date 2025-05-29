@@ -2,14 +2,14 @@ import { ContainerType } from "@/types/ui";
 
 export type ImportExcelStage = "select" | "configure";
 
-export interface ImportExcelContainerProps {
-    isOpen: boolean;
-    onClose: () => void;
-    containerType?: ContainerType;
-}
+// Dihapus karena container akan dihilangkan
+// export interface ImportExcelContainerProps {
+//     isOpen: boolean;
+//     onClose: () => void;
+//     containerType?: ContainerType;
+// }
 
 export interface UseImportExcelLogicProps {
-    isOpen: boolean;
     onClose: () => void;
 }
 
@@ -34,9 +34,10 @@ export interface UseImportExcelLogicOutput {
     setStage: React.Dispatch<React.SetStateAction<ImportExcelStage>>;
 }
 
-// Props for the main presentational component ImportExcelUI
-export interface ImportExcelUIProps extends UseImportExcelLogicOutput {
-    containerType: ContainerType;
+// Props untuk komponen utama ImportExcel (sebelumnya ImportExcelUIProps)
+export interface ImportExcelProps {
+    onClose: () => void; // Diteruskan ke hook dan digunakan oleh step
+    containerType: ContainerType; // Diterima dari ModalRenderer
 }
 
 // Props for the first step (file selection)

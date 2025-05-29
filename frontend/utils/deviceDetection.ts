@@ -40,22 +40,26 @@ export function isWideEnoughForSidebar(minWidth: number = 768): boolean {
  * @returns "dialog" | "sidebar" - Jenis container yang sesuai
  */
 export function getDeviceOptimalContainer(
-  preferredContainer: "dialog" | "sidebar" | "auto" = "sidebar"
+  preferredContainer: "dialog" | "sidebar" = "sidebar"
 ): "dialog" | "sidebar" {
   // Dialog lebih baik untuk perangkat mobile atau layar kecil
   // Sidebar lebih baik untuk desktop dan layar lebar
   
-  // Jika preferensi adalah "auto", pilih berdasarkan perangkat
-  if (preferredContainer === "auto") {
-    return isMobileDevice() ? "dialog" : "sidebar";
-  }
-  
-  // Explicit preference (dialog/sidebar) takes highest priority
+  // Explicit preference (dialog/sidebar) takes highest priority on non-mobile devices
   if (preferredContainer === "dialog" || preferredContainer === "sidebar") {
-    return preferredContainer;
+    // However, mobile always overrides to dialog unless it's already dialog
+    if (isMobileDevice()) {
+      return "dialog";
+    }
+    // If not mobile, and screen is too narrow for sidebar, force dialog
+    if (preferredContainer === "sidebar" && !isWideEnoughForSidebar()) {
+      return "dialog";
+    }
+    return preferredContainer; // Respect preference if on desktop and wide enough
   }
   
-  // Mobile selalu dialog kecuali preferensi eksplisit
+  // Fallback logic if preferredContainer was somehow not dialog or sidebar (should not happen with TS)
+  // Mobile selalu dialog
   if (isMobileDevice()) {
     return "dialog";
   }
@@ -65,6 +69,6 @@ export function getDeviceOptimalContainer(
     return "dialog";
   }
   
-  // Jika tidak, gunakan preferensi
-  return preferredContainer;
+  // Default ke sidebar untuk desktop dengan layar lebar jika tidak ada preferensi kuat
+  return "sidebar";
 } 

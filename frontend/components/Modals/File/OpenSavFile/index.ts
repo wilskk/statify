@@ -1,17 +1,14 @@
-// 1. WAJIB: Ekspor Komponen Kontainer Utama
-export { default as OpenSavFileModal } from './OpenSavFileContainer';
+// Main exports
+export { OpenSavFileModal } from './OpenSavFile';
+export { default } from './OpenSavFile';
+export { useOpenSavFileLogic, mapSPSSTypeToInterface } from './useOpenSavFileLogic';
 
-// 2. WAJIB: Ekspor Komponen Presentasi (UI)
-export { OpenSavFileUI } from './OpenSavFile';
+// Export types
+export type {
+  OpenSavFileProps
+} from './OpenSavFile';
 
-// 3. WAJIB: Ekspor Custom Hook Utama
-export { useOpenSavFileLogic } from './useOpenSavFileLogic';
-
-// 4. WAJIB: Ekspor semua tipe dan antarmuka publik
-export * from './OpenSavFile.types';
-
-// Export step component if it's intended to be reusable or testable independently
-export { OpenSavFileStep } from './OpenSavFileStep';
-
-// Export utility functions if they are part of the public API of this module
-export { mapSPSSTypeToInterface } from './utils/spssFormatUtils'; 
+export type {
+  UseOpenSavFileLogicProps,
+  UseOpenSavFileLogicOutput
+} from './useOpenSavFileLogic'; 

@@ -39,16 +39,19 @@ const ModalManager: React.FC<ModalManagerProps> = ({
   
   return (
     <>
-      {visibleModals.map((modal) => (
-        <ModalRenderer
-          key={modal.id}
-          id={modal.id}
-          modalType={modal.type}
-          onClose={() => closeModal(modal.id)}
-          containerType={containerType}
-          {...modal.props}
-        />
-      ))}
+      {visibleModals.map((modal) => {
+        console.log(`[ModalManager] Rendering modal: ${modal.type}, containerType: ${containerType}`);
+        return (
+          <ModalRenderer
+            key={modal.id}
+            id={modal.id}
+            modalType={modal.type}
+            onClose={() => closeModal(modal.id)}
+            containerType={containerType}
+            {...modal.props}
+          />
+        );
+      })}
     </>
   );
 };
