@@ -84,8 +84,6 @@ pub fn calculate_contrast_coefficients(
                     "Helmert" => ContrastMethod::Helmert,
                     "Repeated" => ContrastMethod::Repeated,
                     "Polynomial" => ContrastMethod::Polynomial,
-                    "Quadratic" => ContrastMethod::Polynomial, // Will use degree 2
-                    "Cubic" => ContrastMethod::Polynomial, // Will use degree 3
                     _ => {
                         return Err(format!("Unknown contrast method: {}", contrast_method_str));
                     }

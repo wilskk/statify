@@ -53,6 +53,8 @@ pub fn calculate_tests_between_subjects_effects(
             )
         )?;
 
+    web_sys::console::log_1(&format!("swept_info: {:?}", swept_info).into());
+
     let mut current_source_map: HashMap<String, TestEffectEntry> = HashMap::new();
 
     // Calculate basic statistics

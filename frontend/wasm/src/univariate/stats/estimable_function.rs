@@ -61,112 +61,113 @@ pub fn calculate_general_estimable_function(
     let mut l_counter = 1;
     let mut contrast_information: Vec<String> = Vec::new();
 
-    // Main effects
-    for term_name in &design_info.term_names {
-        if term_name == "Intercept" {
-            // Intercept
-            let mut active = HashMap::new();
-            active.insert("Intercept".to_string(), 1);
-            let l_vec = matches_construct_l_matrix(&all_row_parameter_names, &active, None, None);
-            l_matrix_values.push(l_vec);
-            l_labels.push(format!("L{}", l_counter));
-            contrast_information.push("Mean (Intercept)".to_string());
-            l_counter += 1;
-        } else if term_name.contains('*') {
-            // Interaction
-            let factors = parse_interaction_term(term_name);
-            let mut factor_levels = Vec::new();
-            for factor in &factors {
-                let levels = get_factor_levels(data, factor)?;
-                factor_levels.push((factor.clone(), levels));
-            }
-            let mut level_combinations = Vec::new();
-            generate_level_combinations(
-                &factor_levels,
-                &mut HashMap::new(),
-                0,
-                &mut level_combinations
-            );
-            if let Some(reference_combo) = level_combinations.first() {
-                for combo in level_combinations.iter().skip(1) {
-                    let mut active = HashMap::new();
-                    let target_param = factors
-                        .iter()
-                        .map(|f| format!("[{}={}]", f, combo.get(f).unwrap()))
-                        .collect::<Vec<_>>()
-                        .join("*");
-                    let reference_param = factors
-                        .iter()
-                        .map(|f| format!("[{}={}]", f, reference_combo.get(f).unwrap()))
-                        .collect::<Vec<_>>()
-                        .join("*");
-                    active.insert(target_param.clone(), -1);
-                    active.insert(reference_param.clone(), 1);
-
-                    // Create target and reference level maps for interactions
-                    let mut target_levels = HashMap::new();
-                    let mut reference_levels = HashMap::new();
-                    for factor in &factors {
-                        target_levels.insert(factor.clone(), combo.get(factor).unwrap().clone());
-                        reference_levels.insert(
-                            factor.clone(),
-                            reference_combo.get(factor).unwrap().clone()
-                        );
-                    }
-
-                    let l_vec = matches_construct_l_matrix(
-                        &all_row_parameter_names,
-                        &active,
-                        Some(&target_levels),
-                        Some(&reference_levels)
-                    );
-                    l_matrix_values.push(l_vec);
-                    l_labels.push(format!("L{}", l_counter));
-                    contrast_information.push(
-                        format!("{}: {} vs {}", term_name, target_param, reference_param)
-                    );
-                    l_counter += 1;
-                }
-            }
-        } else if !term_name.contains('*') {
-            // Main effect
-            if let Ok(levels) = get_factor_levels(data, term_name) {
-                if levels.len() > 1 {
-                    let reference_level = &levels[0];
-                    for level in levels.iter().skip(1) {
-                        let mut active = HashMap::new();
-                        active.insert(format!("[{}={}]", term_name, level), -1);
-                        active.insert(format!("[{}={}]", term_name, reference_level), 1);
-
-                        // Create target and reference level maps
-                        let mut target_levels = HashMap::new();
-                        target_levels.insert(term_name.clone(), level.clone());
-                        let mut reference_levels = HashMap::new();
-                        reference_levels.insert(term_name.clone(), reference_level.clone());
-
-                        let l_vec = matches_construct_l_matrix(
-                            &all_row_parameter_names,
-                            &active,
-                            Some(&target_levels),
-                            Some(&reference_levels)
-                        );
-                        l_matrix_values.push(l_vec);
-                        l_labels.push(format!("L{}", l_counter));
-                        contrast_information.push(
-                            format!(
-                                "{}: [{}={}] vs [{}={}]",
-                                term_name,
-                                term_name,
-                                level,
-                                term_name,
-                                reference_level
-                            )
-                        );
-                        l_counter += 1;
-                    }
-                }
+    // Get all unique factor names and their positions
+    let mut factor_positions: HashMap<String, usize> = HashMap::new();
+    let mut pos = 0;
+    for param in &all_row_parameter_names {
+        if param == "Intercept" {
+            continue;
+        }
+        for part in param.split('*') {
+            let (factor, _) = part
+                .trim_matches(|c| (c == '[' || c == ']'))
+                .split_once('=')
+                .unwrap();
+            if !factor_positions.contains_key(factor) {
+                factor_positions.insert(factor.to_string(), pos);
+                pos += 1;
             }
         }
+    }
+
+    // Process each parameter
+    for param in &all_row_parameter_names {
+        let mut active = HashMap::new();
+        let mut mu_parts = vec!['_'; factor_positions.len()];
+
+        if param == "Intercept" {
+            // Intercept
+            active.insert("Intercept".to_string(), 1);
+
+            // Find all main factors (those without *)
+            let main_factors: Vec<String> = all_row_parameter_names
+                .iter()
+                .filter(|p| !p.contains('*') && *p != "Intercept")
+                .cloned()
+                .collect();
+
+            // Group main factors by their base name and take the last level
+            let mut factor_groups: HashMap<String, Vec<String>> = HashMap::new();
+            for param in &main_factors {
+                if let Some((factor, _)) = param.split_once('=') {
+                    let factor = factor.trim_matches(|c| c == '[');
+                    factor_groups
+                        .entry(factor.to_string())
+                        .or_insert_with(Vec::new)
+                        .push(param.clone());
+                }
+            }
+
+            // For each group, take the last level and add to active params
+            for (_, levels) in factor_groups {
+                if let Some(last_level) = levels.last() {
+                    active.insert(last_level.clone(), 1);
+                }
+            }
+
+            contrast_information.push(format!("μ{}", "_".repeat(factor_positions.len())));
+        } else {
+            // Parse parameter into its components
+            let parts: Vec<(String, String)> = param
+                .split('*')
+                .map(|s| {
+                    let s = s.trim_matches(|c| (c == '[' || c == ']'));
+                    let (factor, level) = s.split_once('=').unwrap();
+                    (factor.to_string(), level.to_string())
+                })
+                .collect();
+
+            // Set mu notation parts
+            for (factor, level) in &parts {
+                if let Some(&pos) = factor_positions.get(factor) {
+                    mu_parts[pos] = level.chars().next().unwrap();
+                }
+            }
+
+            // Set active params
+            active.insert(param.clone(), -1);
+
+            // Find reference parameter (first level of first factor)
+            if let Some((first_factor, _)) = parts.first() {
+                if let Some(&first_pos) = factor_positions.get(first_factor) {
+                    let mut reference_parts = parts.clone();
+                    if
+                        let Some(first_level) = all_row_parameter_names
+                            .iter()
+                            .find(|p| p.starts_with(&format!("[{}=", first_factor)))
+                    {
+                        let (_, level) = first_level
+                            .trim_matches(|c| (c == '[' || c == ']'))
+                            .split_once('=')
+                            .unwrap();
+                        reference_parts[0] = (first_factor.clone(), level.to_string());
+                        let reference_param = reference_parts
+                            .iter()
+                            .map(|(f, l)| format!("[{}={}]", f, l))
+                            .collect::<Vec<_>>()
+                            .join("*");
+                        active.insert(reference_param, 1);
+                    }
+                }
+            }
+
+            contrast_information.push(format!("μ{}", mu_parts.iter().collect::<String>()));
+        }
+
+        let l_vec = matches_construct_l_matrix(&all_row_parameter_names, &active);
+        l_matrix_values.push(l_vec);
+        l_labels.push(format!("L{}", l_counter));
+        l_counter += 1;
     }
 
     console::log_1(&format!("L-matrix values: {:?}", l_matrix_values).into());

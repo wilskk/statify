@@ -119,157 +119,37 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
 /// Membangun baris L-matrix berbasis parameter aktif (1/-1/0)
 pub fn matches_construct_l_matrix(
     parameter_names: &Vec<String>,
-    active_params: &HashMap<String, i32>,
-    target_levels: Option<&HashMap<String, String>>,
-    reference_levels: Option<&HashMap<String, String>>
+    active_params: &HashMap<String, i32>
 ) -> Vec<i32> {
-    web_sys::console::log_1(&format!("Parameter names: {:?}", parameter_names).into());
-    web_sys::console::log_1(&format!("Active params: {:?}", active_params).into());
-    web_sys::console::log_1(&format!("Target levels: {:?}", target_levels).into());
-    web_sys::console::log_1(&format!("Reference levels: {:?}", reference_levels).into());
-
     let mut l_vec = vec![0; parameter_names.len()];
 
-    // Kumpulkan semua komponen target dan reference
-    let mut plus: HashSet<String> = HashSet::new();
-    let mut minus: HashSet<String> = HashSet::new();
+    // Regular case for non-Intercept parameters
+    for i in 0..parameter_names.len() {
+        let p = &parameter_names[i];
 
-    // Handle target and reference levels if provided
-    if let (Some(target), Some(reference)) = (target_levels, reference_levels) {
-        // Add target levels to plus set
-        for (factor, level) in target {
-            let param = format!("[{}={}]", factor, level);
-            plus.insert(param);
-        }
-
-        web_sys::console::log_1(&format!("Plus: {:?}", plus).into());
-
-        // Add reference levels to minus set
-        for (factor, level) in reference {
-            let param = format!("[{}={}]", factor, level);
-            minus.insert(param);
-        }
-
-        web_sys::console::log_1(&format!("Minus: {:?}", minus).into());
-
-        // Handle target and reference interactions
-        let target_inter = target
-            .iter()
-            .map(|(f, l)| format!("[{}={}]", f, l))
-            .collect::<Vec<_>>()
-            .join("*");
-        web_sys::console::log_1(&format!("Target interaction: {:?}", target_inter).into());
-
-        let reference_inter = reference
-            .iter()
-            .map(|(f, l)| format!("[{}={}]", f, l))
-            .collect::<Vec<_>>()
-            .join("*");
-        web_sys::console::log_1(&format!("Reference interaction: {:?}", reference_inter).into());
-
-        plus.insert(target_inter);
-        minus.insert(reference_inter);
-    }
-
-    // Handle active parameters
-    for (param, val) in active_params {
-        if param.contains('*') {
-            // Ini sel/parameter interaksi, pecah ke komponen
-            let parts: Vec<String> = param
-                .split('*')
-                .map(|s| s.to_string())
-                .collect();
-            web_sys::console::log_1(&format!("Parts: {:?}", parts).into());
-            if *val == 1 {
-                for p in &parts {
-                    plus.insert(p.clone());
-                }
-                plus.insert(param.clone());
-                web_sys::console::log_1(&format!("Plus: {:?}", plus).into());
-            } else if *val == -1 {
-                for p in &parts {
-                    minus.insert(p.clone());
-                }
-                minus.insert(param.clone());
-                web_sys::console::log_1(&format!("Minus: {:?}", minus).into());
-            }
-        } else {
-            if *val == 1 {
-                plus.insert(param.clone());
-                web_sys::console::log_1(&format!("Plus: {:?}", plus).into());
-            } else if *val == -1 {
-                minus.insert(param.clone());
-                web_sys::console::log_1(&format!("Minus: {:?}", minus).into());
-            }
-        }
-    }
-
-    // Set Intercept to 1 if it exists
-    if parameter_names.contains(&"Intercept".to_string()) {
-        l_vec[
-            parameter_names
-                .iter()
-                .position(|p| p == "Intercept")
-                .unwrap()
-        ] = 1;
-    }
-
-    // Set values for other parameters
-    for (i, p) in parameter_names.iter().enumerate() {
-        if p == "Intercept" {
-            continue; // Skip Intercept as it's already handled
-        }
-        let mut value = 0;
-        // Tambahkan nilai dari plus/minus set
-        if plus.contains(p) {
-            value = 1;
-        }
-        if minus.contains(p) {
-            value = -1;
-        }
-        // Tambahkan nilai dari active_params jika match persis ATAU match prefix dan faktor terakhir adalah level terakhir
+        // Check each active parameter
         for (active_key, active_val) in active_params {
-            if p == active_key {
-                value = *active_val;
-            } else if p.starts_with(&format!("{}*", active_key)) {
-                // Parse p menjadi pairs faktor=level
-                let pairs: Vec<(String, String)> = p
-                    .split('*')
-                    .filter_map(|s| {
-                        let s = s.trim_matches(|c| (c == '[' || c == ']'));
-                        let mut split = s.split('=');
-                        if let (Some(f), Some(l)) = (split.next(), split.next()) {
-                            Some((f.to_string(), l.to_string()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                // Cek hanya faktor terakhir
-                if let Some((last_factor, last_level)) = pairs.last() {
-                    // Cek di target_levels dan reference_levels
-                    let mut last_level_ref = None;
-                    if let Some(target) = target_levels {
-                        if let Some(tl) = target.get(last_factor) {
-                            last_level_ref = Some(tl);
-                        }
-                    }
-                    if last_level_ref.is_none() {
-                        if let Some(reference) = reference_levels {
-                            if let Some(rl) = reference.get(last_factor) {
-                                last_level_ref = Some(rl);
-                            }
-                        }
-                    }
-                    if let Some(last) = last_level_ref {
-                        if last_level == last {
-                            value = *active_val;
-                        }
+            if p == active_key || p.starts_with(&format!("{}", active_key)) {
+                // Look ahead to find the last matching parameter
+                let mut last_match_idx = i;
+                for j in i + 1..parameter_names.len() {
+                    let next_p = &parameter_names[j];
+                    if next_p == active_key || next_p.starts_with(&format!("{}", active_key)) {
+                        last_match_idx = j;
+                    } else {
+                        break;
                     }
                 }
+
+                // Only set value for the last matching parameter
+                if last_match_idx == i {
+                    l_vec[i] = *active_val;
+                } else {
+                    l_vec[i] = 0;
+                }
+                break;
             }
         }
-        l_vec[i] = value;
     }
 
     l_vec

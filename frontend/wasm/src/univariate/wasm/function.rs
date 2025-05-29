@@ -262,7 +262,7 @@ pub fn run_analysis(
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
-        contrast_coefficients: None, // We no longer need to store contrast coefficients since we're using processed data
+        contrast_coefficients: None,
         lack_of_fit_tests,
         spread_vs_level_plots,
         posthoc_tests,
