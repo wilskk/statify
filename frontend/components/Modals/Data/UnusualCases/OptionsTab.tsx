@@ -44,14 +44,14 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
     return (
         <>
             <div className="grid grid-cols-5 gap-6">
-                <div className="col-span-3 border border-[#E6E6E6] rounded-md p-6">
+                <div className="col-span-3 border border-border rounded-md p-6">
                     <div className="text-sm font-medium mb-4">Criteria for Identifying Unusual Cases</div>
 
                     <div className="space-y-4">
                         <RadioGroup value={identificationCriteria} onValueChange={setIdentificationCriteria} className="space-y-4">
                             <div>
                                 <div className="flex items-center">
-                                    <RadioGroupItem value="percentage" id="percentageCriteria" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
+                                    <RadioGroupItem value="percentage" id="percentageCriteria" className="mr-2" />
                                     <Label htmlFor="percentageCriteria" className="text-sm cursor-pointer">
                                         Percentage of cases with highest anomaly index values
                                     </Label>
@@ -65,7 +65,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                             id="percentageValue"
                                             value={percentageValue}
                                             onChange={(e) => setPercentageValue(e.target.value)}
-                                            className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                            className="h-8 text-sm w-24"
                                             disabled={identificationCriteria !== "percentage"}
                                         />
                                     </div>
@@ -74,7 +74,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
 
                             <div className="mt-4">
                                 <div className="flex items-center">
-                                    <RadioGroupItem value="fixed" id="fixedNumberCriteria" className="mr-2 border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black" />
+                                    <RadioGroupItem value="fixed" id="fixedNumberCriteria" className="mr-2" />
                                     <Label htmlFor="fixedNumberCriteria" className="text-sm cursor-pointer">
                                         Fixed number of cases with highest anomaly index values
                                     </Label>
@@ -88,7 +88,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                             id="fixedNumber"
                                             value={fixedNumber}
                                             onChange={(e) => setFixedNumber(e.target.value)}
-                                            className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                            className="h-8 text-sm w-24"
                                             disabled={identificationCriteria !== "fixed"}
                                         />
                                     </div>
@@ -102,7 +102,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                     id="useMinimumValue"
                                     checked={useMinimumValue}
                                     onCheckedChange={(checked) => setUseMinimumValue(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                 />
                                 <Label htmlFor="useMinimumValue" className="text-sm cursor-pointer">
                                     Identify only cases whose anomaly index value meets or exceeds a minimum value
@@ -117,7 +117,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                         id="cutoffValue"
                                         value={cutoffValue}
                                         onChange={(e) => setCutoffValue(e.target.value)}
-                                        className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                        className="h-8 text-sm w-24"
                                         disabled={!useMinimumValue}
                                     />
                                 </div>
@@ -126,7 +126,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="col-span-2 border border-[#E6E6E6] rounded-md p-6">
+                <div className="col-span-2 border border-border rounded-md p-6">
                     <div className="text-sm font-medium mb-4">Number of Peer Groups</div>
 
                     <div className="space-y-4">
@@ -138,7 +138,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                 id="minPeerGroups"
                                 value={minPeerGroups}
                                 onChange={(e) => setMinPeerGroups(e.target.value)}
-                                className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                className="h-8 text-sm w-24"
                             />
                         </div>
 
@@ -150,7 +150,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                 id="maxPeerGroups"
                                 value={maxPeerGroups}
                                 onChange={(e) => setMaxPeerGroups(e.target.value)}
-                                className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                className="h-8 text-sm w-24"
                             />
                         </div>
                     </div>
@@ -166,10 +166,10 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                         id="maxReasons"
                         value={maxReasons}
                         onChange={(e) => setMaxReasons(e.target.value)}
-                        className="h-8 text-sm w-24 border-[#CCCCCC] focus:border-black focus:ring-black"
+                        className="h-8 text-sm w-24"
                     />
                 </div>
-                <p className="text-xs mt-2 text-[#888888]">
+                <p className="text-xs mt-2 text-muted-foreground">
                     Specify the number of reasons reported in output and added to the active dataset if reason variables are saved. The value
                     is adjusted downward if it exceeds the number of analysis variables.
                 </p>

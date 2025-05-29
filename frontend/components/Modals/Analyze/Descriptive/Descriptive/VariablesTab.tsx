@@ -95,7 +95,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             id="saveStandardized"
                             checked={saveStandardized}
                             onCheckedChange={(checked) => setSaveStandardized(!!checked)}
-                            className="mr-2 border-slate-300 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                            className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
                         <Label htmlFor="saveStandardized" className="text-sm cursor-pointer">
                             Save standardized values as variables

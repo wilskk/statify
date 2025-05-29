@@ -21,11 +21,11 @@ export default function TestimonialsSection() {
     ];
 
     return (
-        <section id="testimonials" className="py-16 bg-[#F7F7F7]">
+        <section id="testimonials" className="py-16 bg-muted">
             <div className="container mx-auto px-4 md:px-8 max-w-6xl">
                 <div className="text-center mb-12">
-                    <h2 className="text-2xl font-semibold text-black mb-4">Testimoni Pengguna</h2>
-                    <p className="text-[#444444] max-w-2xl mx-auto text-base">
+                    <h2 className="text-2xl font-semibold text-foreground mb-4">Testimoni Pengguna</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto text-base">
                         Pengalaman pengguna Statify dari berbagai kalangan akademisi dan peneliti.
                     </p>
                 </div>
@@ -34,18 +34,18 @@ export default function TestimonialsSection() {
                     {testimonials.map((testimonial, index) => (
                         <Card
                             key={index}
-                            className="bg-white border border-[#E6E6E6] shadow-sm hover:shadow-md transition-shadow duration-200 h-full flex flex-col"
+                            className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-200 h-full flex flex-col"
                         >
                             <CardContent className="p-6 flex flex-col h-full">
                                 <div className="mb-4">
-                                    <Quote className="h-8 w-8 text-black opacity-20" />
+                                    <Quote className="h-8 w-8 text-foreground opacity-20" />
                                 </div>
-                                <blockquote className="text-[#444444] text-base mb-6 flex-grow">
+                                <blockquote className="text-muted-foreground text-base mb-6 flex-grow">
                                     {testimonial.quote}
                                 </blockquote>
-                                <div className="pt-4 border-t border-[#E6E6E6]">
-                                    <div className="font-semibold text-black text-base">{testimonial.name}</div>
-                                    <div className="text-[#888888] text-sm mt-1">{testimonial.role}</div>
+                                <div className="pt-4 border-t border-border">
+                                    <div className="font-semibold text-card-foreground text-base">{testimonial.name}</div>
+                                    <div className="text-muted-foreground text-sm mt-1">{testimonial.role}</div>
                                 </div>
                             </CardContent>
                         </Card>

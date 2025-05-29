@@ -55,12 +55,12 @@ export default function Footer() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [router]);
 
-    const tabStyle = "py-1 px-2.5 flex items-center gap-1.5 text-sm transition-colors";
-    const activeTabStyle = "bg-black text-white";
-    const inactiveTabStyle = "text-[#444444] hover:bg-[#F7F7F7]";
+    const tabStyle = "py-1 px-2.5 flex items-center gap-1.5 text-sm transition-colors rounded-md";
+    const activeTabStyle = "bg-primary text-primary-foreground ring-2 ring-primary/30";
+    const inactiveTabStyle = "text-muted-foreground hover:bg-accent hover:text-accent-foreground";
 
     return (
-        <footer className="w-full bg-white border-t border-[#E6E6E6] py-1 px-3 flex items-center justify-between flex-shrink-0">
+        <footer className="w-full bg-background border-t border-border py-1 px-3 flex items-center justify-between flex-shrink-0">
             <TooltipProvider>
                 <div className="flex items-center gap-1">
                     <Tooltip>
@@ -112,16 +112,18 @@ export default function Footer() {
                     </Tooltip>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-3">
                     {connectionStatus === 'offline' && (
-                        <span className="flex items-center text-[#888888]">
-                            <span className="inline-block w-2 h-2 rounded-full bg-[#888888] mr-1"></span>
-                            Offline mode
+                        <span className="flex items-center text-muted-foreground text-sm">
+                            <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground mr-1.5"></span>
+                            Offline
                         </span>
                     )}
 
                     {!isMobile && (
-                        <span className="text-[#888888] hidden md:inline">Current dataset: <span className="font-medium">sample_data</span></span>
+                        <span className="text-sm text-foreground/80 hidden md:inline">
+                            Current dataset: <span className="font-semibold text-foreground">sample_data</span>
+                        </span>
                     )}
                 </div>
             </TooltipProvider>

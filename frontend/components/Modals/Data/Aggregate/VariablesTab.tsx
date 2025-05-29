@@ -77,15 +77,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -149,8 +149,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 className={`
                     flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
                     ${isDisabled
-                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400'}
+                    ? 'border-border/50 text-muted-foreground/50 cursor-not-allowed'
+                    : 'border-border text-muted-foreground hover:bg-accent hover:border-ring'}
                 `}
                 onClick={() => !isDisabled && (targetListId === 'break' ? handleBreakArrowClick() : handleAggregatedArrowClick())}
                 disabled={isDisabled}

@@ -130,7 +130,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
             id: 'frequency',
             title: 'Weight cases by:',
             variables: frequencyVariables,
-            height: '80px',
+            height: '5rem',
             maxItems: 1, // Only allow one frequency variable
             draggableItems: false // No reordering needed
         }
@@ -143,7 +143,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[550px] p-3">
+            <DialogContent className="max-w-md p-3">
                 <DialogHeader className="p-0 mb-2">
                     <DialogTitle>Weight Cases</DialogTitle>
                 </DialogHeader>
@@ -200,12 +200,12 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
                         onMoveVariable={handleMoveVariable}
                         onReorderVariable={handleReorderVariable}
                         showArrowButtons={true}
-                        availableListHeight={"200px"}
+                        availableListHeight={"12rem"}
                     />
 
-                    <div className="border p-2 rounded-md bg-gray-50 mt-4 flex items-center">
-                        <InfoIcon className="text-gray-500 h-4 w-4 flex-shrink-0 mr-2" />
-                        <div className="text-xs text-gray-700">
+                    <div className="border border-border p-2 rounded-md bg-muted mt-4 flex items-center">
+                        <InfoIcon className="text-muted-foreground h-4 w-4 flex-shrink-0 mr-2" />
+                        <div className="text-xs text-foreground">
                             <span className="font-semibold">Current Status:</span> {currentStatus}
                         </div>
                     </div>
@@ -228,12 +228,12 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({ onClose }) => {
             </DialogContent>
 
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[450px] p-3">
+                <DialogContent className="max-w-sm p-3">
                     <DialogHeader className="p-0 mb-2">
                         <DialogTitle>IBM SPSS Statistics</DialogTitle>
                     </DialogHeader>
                     <div className="flex gap-4">
-                        <AlertCircle className="h-10 w-10 text-blue-500" />
+                        <AlertCircle className="h-10 w-10 text-primary" />
                         <div>
                             <p className="text-sm mt-2">{errorMessage}</p>
                         </div>

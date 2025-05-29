@@ -148,15 +148,15 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -191,7 +191,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                className="h-7 px-2 text-xs"
                                 onClick={() => moveVariableUp(selectedTempId)}
                                 disabled={sortByConfigs.indexOf(selectedConfig) === 0}
                             >
@@ -200,7 +200,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-2 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                className="h-7 px-2 text-xs"
                                 onClick={() => moveVariableDown(selectedTempId)}
                                 disabled={sortByConfigs.indexOf(selectedConfig) === sortByConfigs.length - 1}
                             >
@@ -216,7 +216,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                                 name="sortOrder"
                                 checked={selectedConfig.direction === "asc"}
                                 onChange={() => changeSortDirection(selectedTempId, 'asc')}
-                                className="border-[#CCCCCC]"
                             />
                             <span className="text-sm">Ascending</span>
                         </label>
@@ -226,7 +225,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                                 name="sortOrder"
                                 checked={selectedConfig.direction === "desc"}
                                 onChange={() => changeSortDirection(selectedTempId, 'desc')}
-                                className="border-[#CCCCCC]"
                             />
                             <span className="text-sm">Descending</span>
                         </label>
@@ -250,7 +248,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                             name="defaultSortOrder"
                             checked={defaultSortOrder === "asc"}
                             onChange={() => setDefaultSortOrder("asc")}
-                            className="border-[#CCCCCC]"
                         />
                         <span className="text-sm">Ascending</span>
                     </label>
@@ -260,7 +257,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                             name="defaultSortOrder"
                             checked={defaultSortOrder === "desc"}
                             onChange={() => setDefaultSortOrder("desc")}
-                            className="border-[#CCCCCC]"
                         />
                         <span className="text-sm">Descending</span>
                     </label>
@@ -318,15 +314,15 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
         id: 'sortBy',
         title: 'Sort By:',
         variables: getSortByVariables(),
-        height: '245px',
+        height: '15rem', // approx 240px, Tailwind h-60
         droppable: true,
         draggableItems: true
     };
 
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Sort Cases</DialogTitle>
+        <DialogContent className="max-w-lg p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-xl font-semibold">Sort Cases</DialogTitle>
             </DialogHeader>
 
             <div className="p-6 overflow-y-auto flex-grow">
@@ -344,21 +340,21 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                         getDisplayName={sortByConfigs.length > 0 ? getSortByDisplayName : getDisplayName}
                         renderListFooter={renderSortByListFooter}
                         showArrowButtons={true}
-                        availableListHeight="250px"
+                        availableListHeight="16rem" // approx 256px, Tailwind h-64
                     />
 
                     {/* Default sort order controls (when no variable is selected) */}
                     {renderDefaultSortOrderControls()}
 
                     {/* Save Options Section */}
-                    <div className="mt-2 border border-[#E6E6E6] p-4 rounded-md">
+                    <div className="mt-2 border border-border p-4 rounded-md">
                         <div className="space-y-4">
                             <div className="flex items-center">
                                 <Checkbox
                                     id="saveSortedData"
                                     checked={saveSortedData}
                                     onCheckedChange={(checked) => setSaveSortedData(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                 />
                                 <Label htmlFor="saveSortedData" className="text-sm cursor-pointer">
                                     Save file with sorted data
@@ -371,7 +367,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                                            className="h-8 text-xs"
                                             onClick={() => {
                                                 // In a real implementation, this would open a file picker
                                                 const fakeFile = "sorted_data.csv";
@@ -381,7 +377,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                                             File...
                                         </Button>
                                         {fileName && (
-                                            <span className="text-xs text-[#444444]">
+                                            <span className="text-xs text-muted-foreground">
                                                 Selected File: {fileName}
                                             </span>
                                         )}
@@ -392,7 +388,7 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                                             id="createIndex"
                                             checked={createIndex}
                                             onCheckedChange={(checked) => setCreateIndex(!!checked)}
-                                            className="mr-2 border-[#CCCCCC]"
+                                            className="mr-2"
                                         />
                                         <Label htmlFor="createIndex" className="text-sm cursor-pointer">
                                             Create an index
@@ -405,31 +401,31 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={handleOk}
                     >
                         OK
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={onClose}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={() => alert("Help dialog here")}
                     >
                         Help

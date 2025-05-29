@@ -29,7 +29,7 @@ const Navbar: React.FC = () => {
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 
   return (
-    <nav className="bg-white border-b border-[#E6E6E6]">
+    <nav className="bg-background border-b border-border">
       <div className="flex items-center justify-between px-3 py-1.5">
         {/* Desktop: Single Menubar ONLY */}
         <Menubar className={commonMenubarClasses}>
@@ -192,7 +192,7 @@ const Navbar: React.FC = () => {
             <MenubarTrigger disabled>Help</MenubarTrigger>
           </MenubarMenu>
         </Menubar>
-        <div className="text-sm font-semibold text-zinc-900">Statify</div>
+        <div className="font-sans text-lg font-semibold text-foreground">Statify</div>
       </div>
     </nav>
   );

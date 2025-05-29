@@ -34,14 +34,14 @@ const OutputTab: React.FC<OutputTabProps> = ({
                     id="unusualCasesList"
                     checked={showUnusualCasesList}
                     onCheckedChange={(checked) => setShowUnusualCasesList(!!checked)}
-                    className="mr-2 border-[#CCCCCC]"
+                    className="mr-2"
                 />
                 <Label htmlFor="unusualCasesList" className="text-sm cursor-pointer">
                     List of unusual cases and reasons why they are considered unusual
                 </Label>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-6">
+            <div className="border border-border rounded-md p-6">
                 <div className="text-sm font-medium mb-4">Summaries</div>
 
                 <div className="space-y-6">
@@ -51,13 +51,13 @@ const OutputTab: React.FC<OutputTabProps> = ({
                                 id="peerGroupNorms"
                                 checked={peerGroupNorms}
                                 onCheckedChange={(checked) => setPeerGroupNorms(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="peerGroupNorms" className="text-sm font-medium cursor-pointer">
                                 Peer group norms
                             </Label>
                         </div>
-                        <p className="text-xs mt-2 ml-6 text-[#888888]">
+                        <p className="text-xs mt-2 ml-6 text-muted-foreground">
                             Peer groups are groups of cases that have similar values for analysis variables. This option displays the
                             distributions of analysis variables by peer group.
                         </p>
@@ -69,13 +69,13 @@ const OutputTab: React.FC<OutputTabProps> = ({
                                 id="anomalyIndices"
                                 checked={anomalyIndices}
                                 onCheckedChange={(checked) => setAnomalyIndices(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="anomalyIndices" className="text-sm font-medium cursor-pointer">
                                 Anomaly indices
                             </Label>
                         </div>
-                        <p className="text-xs mt-2 ml-6 text-[#888888]">
+                        <p className="text-xs mt-2 ml-6 text-muted-foreground">
                             The anomaly index measures how unusual a case is with respect to its peer group. This option displays the
                             distribution of anomaly index values among unusual cases.
                         </p>
@@ -87,13 +87,13 @@ const OutputTab: React.FC<OutputTabProps> = ({
                                 id="reasonOccurrence"
                                 checked={reasonOccurrence}
                                 onCheckedChange={(checked) => setReasonOccurrence(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="reasonOccurrence" className="text-sm font-medium cursor-pointer">
                                 Reason occurrence by analysis variable
                             </Label>
                         </div>
-                        <p className="text-xs mt-2 ml-6 text-[#888888]">
+                        <p className="text-xs mt-2 ml-6 text-muted-foreground">
                             Reports how often each analysis variable was responsible for a case being considered unusual.
                         </p>
                     </div>
@@ -104,13 +104,13 @@ const OutputTab: React.FC<OutputTabProps> = ({
                                 id="caseProcessed"
                                 checked={caseProcessed}
                                 onCheckedChange={(checked) => setCaseProcessed(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="caseProcessed" className="text-sm font-medium cursor-pointer">
                                 Case processed
                             </Label>
                         </div>
-                        <p className="text-xs mt-2 ml-6 text-[#888888]">
+                        <p className="text-xs mt-2 ml-6 text-muted-foreground">
                             Summarizes the distribution of cases included and excluded from the analysis.
                         </p>
                     </div>

@@ -46,7 +46,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'analysis',
             title: 'Analysis Variables',
             variables: analysisVariables,
-            height: '205px',
+            height: '13rem', // approx 208px, Tailwind h-52
             draggableItems: true,
             droppable: true,
         },
@@ -54,7 +54,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'identifier',
             title: 'Case Identifier Variable',
             variables: caseIdentifierVariable ? [caseIdentifierVariable] : [],
-            height: '70px',
+            height: '4.5rem', // approx 72px, custom or Tailwind h-18
             maxItems: 1,
             draggableItems: false, // Cannot drag *from* or reorder within identifier list
             droppable: true,      // Can drop *into* identifier list
@@ -124,7 +124,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 onReorderVariable={handleReorderVariables}
             />
             {errorMsg && (
-                <div className="col-span-2 text-red-600 text-sm mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                <div className="col-span-2 text-destructive text-sm mt-3 p-2 bg-destructive/10 border border-destructive/30 rounded">
                     {errorMsg}
                 </div>
             )}

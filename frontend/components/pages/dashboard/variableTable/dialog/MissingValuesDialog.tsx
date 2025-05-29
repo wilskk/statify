@@ -341,7 +341,7 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={cn(
-                "bg-white flex flex-col",
+                "bg-card flex flex-col",
                 isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
             )}>
                 <DialogHeader className="px-6 py-4 flex-shrink-0">

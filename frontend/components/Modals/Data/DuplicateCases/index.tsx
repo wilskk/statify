@@ -277,15 +277,15 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -298,23 +298,23 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Identify Duplicate Cases</DialogTitle>
+            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground">Identify Duplicate Cases</DialogTitle>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                        <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                    <div className="border-b border-border flex-shrink-0">
+                        <TabsList className="bg-muted rounded-none h-9 p-0">
                             <TabsTrigger
                                 value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                             >
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
                                 value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
                             >
                                 Options
                             </TabsTrigger>
@@ -357,10 +357,10 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                     <div className="flex justify-end space-x-3">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={handleConfirm}
                             disabled={isProcessing}
                         >
@@ -368,7 +368,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             onClick={handleReset}
                             disabled={isProcessing}
                         >
@@ -376,7 +376,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             onClick={handleClose}
                             disabled={isProcessing}
                         >
@@ -384,7 +384,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             disabled={isProcessing}
                         >
                             Help
@@ -394,17 +394,17 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
             </DialogContent>
 
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[400px] p-6 bg-white border border-[#E6E6E6] shadow-md rounded-md">
+                <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
                     <DialogHeader className="mb-4">
-                        <DialogTitle className="text-[18px] font-semibold">IBM SPSS Statistics</DialogTitle>
+                        <DialogTitle className="text-[18px] font-semibold text-popover-foreground">IBM SPSS Statistics</DialogTitle>
                     </DialogHeader>
                     <div className="flex gap-4 items-start">
-                        <AlertCircle className="h-6 w-6 text-black flex-shrink-0 mt-0.5" />
-                        <p className="text-sm">{errorMessage}</p>
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-popover-foreground">{errorMessage}</p>
                     </div>
                     <DialogFooter className="mt-6">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={() => setErrorDialogOpen(false)}
                         >
                             OK

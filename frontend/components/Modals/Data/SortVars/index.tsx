@@ -171,12 +171,12 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
 
             <div className="mb-4">
                 <p className="font-semibold mb-2">Variable View Columns</p>
-                <ul className="border p-2 h-40 overflow-auto">
+                <ul className="border border-border p-2 h-40 overflow-auto">
                     {columns.map((col) => (
                         <li
                             key={col}
-                            className={`p-1 cursor-pointer hover:bg-gray-100 ${
-                                selectedColumn === col ? "bg-gray-200" : ""
+                            className={`p-1 cursor-pointer hover:bg-accent ${
+                                selectedColumn === col ? "bg-muted" : ""
                             }`}
                             onClick={() => handleSelectColumn(col)}
                         >
@@ -210,7 +210,7 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            <div className="mb-4 border p-2 rounded">
+            <div className="mb-4 border border-border p-2 rounded">
                 <label className="flex items-center gap-2 mb-2">
                     <input
                         type="checkbox"
@@ -226,7 +226,7 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                             type="text"
                             value={attributeName}
                             onChange={(e) => setAttributeName(e.target.value)}
-                            className="border p-1 w-full"
+                            className="border border-input p-1 w-full"
                             disabled={!savePreSortedOrder}
                         />
                     </div>
@@ -234,7 +234,7 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
             </div>
 
             <DialogFooter>
-                <Button variant="outline" onClick={handleOk}>
+                <Button onClick={handleOk}>
                     OK
                 </Button>
                 <Button variant="outline" onClick={handleReset}>
