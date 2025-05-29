@@ -56,7 +56,8 @@ fn get_coeffs_for_cell_mean(
 struct FactorDetail {
     name: String,
     levels: Vec<String>,
-    reference_level: String,
+    reference_level: String, // First level after sorting
+    pivot_level: String, // Last level after sorting
 }
 
 // Helper to generate all combinations of levels for a given list of factor names
@@ -94,9 +95,12 @@ fn generate_mu_notation(
     cell_levels: &HashMap<String, String>,
     ordered_factors: &[String]
 ) -> String {
+    // Create a BTreeMap for ordered iteration needed for mu_notation consistency
+    let ordered_cell_levels: std::collections::BTreeMap<_, _> = cell_levels.iter().collect();
+
     let mut notation = "μ".to_string();
     for factor_name in ordered_factors {
-        if let Some(level) = cell_levels.get(factor_name) {
+        if let Some(level) = ordered_cell_levels.get(factor_name) {
             notation.push_str(
                 &level
                     .chars()
@@ -178,6 +182,7 @@ pub fn calculate_general_estimable_function(
                     name: factor.clone(),
                     levels: Vec::new(),
                     reference_level: String::new(), // Will be set after all levels are collected
+                    pivot_level: String::new(), // Will be set after all levels are collected
                 }
             });
             if !entry.levels.contains(&level) {
@@ -186,24 +191,52 @@ pub fn calculate_general_estimable_function(
         }
     }
 
-    // Determine reference levels (e.g., first alphabetically/numerically)
+    // Determine reference levels (e.g., first alphabetically/numerically) and pivot levels (last)
     for detail in factor_details.values_mut() {
-        detail.levels.sort();
+        detail.levels.sort(); // Sort levels to ensure consistent first/last
         if let Some(first_level) = detail.levels.first() {
             detail.reference_level = first_level.clone();
         } else {
             return Err(format!("Factor {} has no levels defined.", detail.name));
         }
+        if let Some(last_level) = detail.levels.last() {
+            detail.pivot_level = last_level.clone();
+        } else {
+            // This case should be covered by the first_level check, but as a safeguard:
+            return Err(format!("Factor {} has no levels to determine a pivot level.", detail.name));
+        }
     }
     console::log_1(
         &format!("Factor processing order by appearance (v8): {:?}", all_factors_ordered).into()
     );
+    // Log factor details including pivot levels
+    for factor_name in &all_factors_ordered {
+        if let Some(detail) = factor_details.get(factor_name) {
+            console::log_1(
+                &format!(
+                    "Factor: {}, Levels: {:?}, Ref: {}, Pivot: {}",
+                    detail.name,
+                    detail.levels,
+                    detail.reference_level,
+                    detail.pivot_level
+                ).into()
+            );
+        }
+    }
 
     // Base map with all factors at their reference levels
     let base_all_ref_levels: HashMap<String, String> = all_factors_ordered
         .iter()
         .filter_map(|fname|
             factor_details.get(fname).map(|d| (fname.clone(), d.reference_level.clone()))
+        )
+        .collect();
+
+    // Create a base map with all factors at their PIVOT levels
+    let base_all_pivot_levels: HashMap<String, String> = all_factors_ordered
+        .iter()
+        .filter_map(|fname|
+            factor_details.get(fname).map(|d| (fname.clone(), d.pivot_level.clone()))
         )
         .collect();
 
@@ -224,83 +257,115 @@ pub fn calculate_general_estimable_function(
 
     // 1. Mean of the All-Reference-Levels Cell
     console::log_1(&"Generating mean of all-reference-levels cell...".into());
-    let l_vec_all_ref_mean = get_coeffs_for_cell_mean(
-        &base_all_ref_levels,
+    // Change to: Mean of the All-PIVOT-Levels Cell (like user's L1 examples)
+    console::log_1(&"Generating mean of all-PIVOT-levels cell (new logic)...".into());
+    let l_vec_all_pivot_mean = get_coeffs_for_cell_mean(
+        &base_all_pivot_levels,
         &all_model_param_names,
         &factor_details
     );
-    let mu_notation_all_ref = generate_mu_notation(&base_all_ref_levels, &all_factors_ordered);
+    let mu_notation_all_pivot = generate_mu_notation(&base_all_pivot_levels, &all_factors_ordered);
     add_l_vector_if_valid(
-        l_vec_all_ref_mean,
-        format!("Mean of reference cell {}", mu_notation_all_ref)
+        l_vec_all_pivot_mean,
+        format!("Mean of pivot cell {}", mu_notation_all_pivot)
     );
 
     // 2. Main Effects (k-1 per factor, others at REF)
-    console::log_1(&"Generating main effects (others at ref)...".into());
+    console::log_1(
+        &"Generating main effects (others at ref)...was, now Simple Main Effects vs Pivot (new logic)".into()
+    );
     for factor_of_interest_name in &all_factors_ordered {
         if let Some(detail_factor_of_interest) = factor_details.get(factor_of_interest_name) {
-            for non_ref_level in detail_factor_of_interest.levels
+            let pivot_level_for_factor_of_interest = &detail_factor_of_interest.pivot_level;
+
+            for non_pivot_level in detail_factor_of_interest.levels
                 .iter()
-                .filter(|l| *l != &detail_factor_of_interest.reference_level) {
-                let mut cell1_levels = base_all_ref_levels.clone();
-                cell1_levels.insert(factor_of_interest_name.clone(), non_ref_level.clone());
+                .filter(|l| *l != pivot_level_for_factor_of_interest) {
+                // Iterate non-pivot levels
 
-                let mut cell2_levels = base_all_ref_levels.clone(); // Already has factor_of_interest at its ref level
+                // Cell A: Factor of interest at non_pivot_level, others at their pivot_levels
+                let mut cell_a_levels = base_all_pivot_levels.clone();
+                cell_a_levels.insert(factor_of_interest_name.clone(), non_pivot_level.clone());
 
-                let coeffs1 = get_coeffs_for_cell_mean(
-                    &cell1_levels,
+                // Cell B: Factor of interest at its pivot_level, others at their pivot_levels
+                // This is essentially base_all_pivot_levels if the factor_of_interest is already at its pivot in base_all_pivot_levels,
+                // but to be explicit for clarity:
+                let mut cell_b_levels = base_all_pivot_levels.clone();
+                // No need to insert for factor_of_interest_name if base_all_pivot_levels already has it at pivot_level_for_factor_of_interest
+                // However, if we constructed cell_b_levels from scratch or a different base, we would do:
+                // cell_b_levels.insert(factor_of_interest_name.clone(), pivot_level_for_factor_of_interest.clone());
+
+                let coeffs_a = get_coeffs_for_cell_mean(
+                    // Coeffs for cell with factor_of_interest at non_pivot_level
+                    &cell_a_levels,
                     &all_model_param_names,
                     &factor_details
                 );
-                let coeffs2 = get_coeffs_for_cell_mean(
-                    &cell2_levels,
+                let coeffs_b = get_coeffs_for_cell_mean(
+                    // Coeffs for cell with factor_of_interest at pivot_level
+                    &cell_b_levels, // This is base_all_pivot_levels, where factor_of_interest is at its pivot level
                     &all_model_param_names,
                     &factor_details
                 );
-                let l_vec_me: Vec<i32> = coeffs1
+
+                // L-vector: coeffs_a - coeffs_b (NonPivot - Pivot)
+                let l_vec_sme: Vec<i32> = coeffs_a
                     .iter()
-                    .zip(coeffs2.iter())
-                    .map(|(a, b)| a - b)
+                    .zip(coeffs_b.iter())
+                    .map(|(val_non_pivot, val_pivot)| val_non_pivot - val_pivot)
                     .collect();
 
-                let mu1_notation = generate_mu_notation(&cell1_levels, &all_factors_ordered);
-                let mu2_notation = generate_mu_notation(&cell2_levels, &all_factors_ordered);
+                let mu_a_notation = generate_mu_notation(&cell_a_levels, &all_factors_ordered); // mu_NonPivot
+                let mu_b_notation = generate_mu_notation(&cell_b_levels, &all_factors_ordered); // mu_Pivot (all factors at pivot)
+
                 let desc = format!(
-                    "Main Effect {}({} vs {} | Others at Ref): {} - {}",
+                    "Simple Main Effect {}({} vs {} | Others at Pivot): {} - {}",
                     factor_of_interest_name,
-                    non_ref_level,
-                    detail_factor_of_interest.reference_level,
-                    mu1_notation,
-                    mu2_notation
+                    non_pivot_level, // Non-Pivot level
+                    pivot_level_for_factor_of_interest, // Pivot level
+                    mu_a_notation, // mu_NonPivot
+                    mu_b_notation // mu_Pivot
                 );
-                add_l_vector_if_valid(l_vec_me, desc);
+                add_l_vector_if_valid(l_vec_sme, desc);
             }
         }
     }
 
     // 3. N-way Interactions (non-involved factors at REF)
-    console::log_1(&"Generating N-way interactions (non-involved at ref)...".into());
+    // This will be changed to Simple N-way Interactions, non-involved at PIVOT
+    console::log_1(
+        &"Generating N-way interactions (non-involved at ref)... was, now non-involved at Pivot (new logic)".into()
+    );
     for k_interaction_way in 2..=all_factors_ordered.len() {
         for interacting_factors_names_tuple in all_factors_ordered
             .iter()
             .cloned()
             .combinations(k_interaction_way) {
+            // Base for this interaction: non-involved factors at their pivot levels.
+            let mut base_levels_for_interaction = base_all_pivot_levels.clone();
+            // Remove interacting factors from this base, as their levels will be set in the loop.
+            for f_name in &interacting_factors_names_tuple {
+                base_levels_for_interaction.remove(f_name);
+            }
+
             let mut level_choices_for_each_interacting_factor: Vec<Vec<String>> = Vec::new();
             let mut possible_interaction_levels = true;
             for factor_name_in_interaction in &interacting_factors_names_tuple {
                 if let Some(detail) = factor_details.get(factor_name_in_interaction) {
-                    let non_ref_levels = detail.levels
+                    // Levels to choose from for this factor in the interaction term are its NON-PIVOT levels.
+                    let non_pivot_levels = detail.levels
                         .iter()
-                        .filter(|l| *l != &detail.reference_level)
+                        .filter(|l| *l != &detail.pivot_level)
                         .cloned()
                         .collect::<Vec<_>>();
-                    if non_ref_levels.is_empty() {
+                    if non_pivot_levels.is_empty() {
+                        // This factor only has one level (which is its pivot level), so no interaction contrast can be formed with it.
                         possible_interaction_levels = false;
                         break;
                     }
-                    level_choices_for_each_interacting_factor.push(non_ref_levels);
+                    level_choices_for_each_interacting_factor.push(non_pivot_levels);
                 } else {
-                    possible_interaction_levels = false;
+                    possible_interaction_levels = false; // Should not happen
                     break;
                 }
             }
@@ -311,36 +376,37 @@ pub fn calculate_general_estimable_function(
                 continue;
             }
 
-            for specific_non_ref_levels_for_interaction_instance in level_choices_for_each_interacting_factor
+            for specific_non_pivot_levels_for_interaction_instance in level_choices_for_each_interacting_factor
                 .into_iter()
                 .multi_cartesian_product() {
                 let mut l_vec_interaction = vec![0i32; all_model_param_names.len()];
                 let mut contrast_description_terms: Vec<String> = Vec::new();
 
                 let interaction_term_name_str = interacting_factors_names_tuple.iter().join("*");
-                let interaction_levels_short_desc = interacting_factors_names_tuple
+
+                // Description of which non-pivot levels are chosen for this specific interaction L-vector
+                let interaction_levels_desc_parts: Vec<String> = interacting_factors_names_tuple
                     .iter()
-                    .zip(specific_non_ref_levels_for_interaction_instance.iter())
-                    .map(|(f, l)|
-                        format!(
-                            "{}={}",
-                            f.split('=').next().unwrap_or(f),
-                            l.chars().next().unwrap_or('L')
-                        )
-                    )
-                    .join(",");
+                    .zip(specific_non_pivot_levels_for_interaction_instance.iter())
+                    .map(|(f_name, non_pivot_level)| {
+                        let pivot_level = &factor_details.get(f_name.as_str()).unwrap().pivot_level;
+                        format!("{} ({} vs {})", f_name, non_pivot_level, pivot_level)
+                    })
+                    .collect();
+
                 let full_desc_prefix = format!(
-                    "Interaction {}({}) | Others at Ref",
-                    interaction_term_name_str,
-                    interaction_levels_short_desc
+                    "Interaction {} | Non-involved at Pivot",
+                    interaction_levels_desc_parts.join(", ")
                 );
 
+                // Loop to construct the 2^k_interaction_way terms for the interaction contrast
                 for i_term_construction in 0..1 << k_interaction_way {
+                    // Start with non-involved factors at PIVOT levels
                     let mut current_cell_levels_map: HashMap<
                         String,
                         String
-                    > = base_all_ref_levels.clone(); // Start with non-interacting factors at REF
-                    let mut num_ref_levels_in_this_term_for_interacting_factors = 0;
+                    > = base_levels_for_interaction.clone();
+                    let mut num_pivot_levels_for_interacting_factors_in_this_term = 0;
 
                     for (
                         idx_in_interaction,
@@ -349,13 +415,16 @@ pub fn calculate_general_estimable_function(
                         let factor_detail_for_interacting = factor_details
                             .get(interacting_factor_name)
                             .unwrap();
+
                         let level_for_this_interacting_factor_in_term = if
                             ((i_term_construction >> idx_in_interaction) & 1) == 1
                         {
-                            &specific_non_ref_levels_for_interaction_instance[idx_in_interaction]
+                            // This is the chosen NON-PIVOT level for this factor in this term
+                            &specific_non_pivot_levels_for_interaction_instance[idx_in_interaction]
                         } else {
-                            num_ref_levels_in_this_term_for_interacting_factors += 1;
-                            &factor_detail_for_interacting.reference_level
+                            // This is the PIVOT level for this factor in this term
+                            num_pivot_levels_for_interacting_factors_in_this_term += 1;
+                            &factor_detail_for_interacting.pivot_level
                         };
                         current_cell_levels_map.insert(
                             interacting_factor_name.clone(),
@@ -363,22 +432,39 @@ pub fn calculate_general_estimable_function(
                         );
                     }
 
-                    let current_cell_levels: HashMap<String, String> = current_cell_levels_map
-                        .into_iter()
-                        .collect();
+                    // Ensure all factors from all_factors_ordered are present for mu_notation
+                    // This might add factors not in base_levels_for_interaction or interacting_factors_names_tuple,
+                    // setting them to their pivot levels if not already set.
+                    // However, base_levels_for_interaction + interacting factors should cover all factors.
+                    // For safety/completeness for mu_notation, one might iterate all_factors_ordered and fill from current_cell_levels_map or pivot.
+                    // Current logic for mu_notation should handle it if current_cell_levels_map is complete for its scope.
+
                     let mu_term_notation = generate_mu_notation(
-                        &current_cell_levels,
+                        &current_cell_levels_map, // Pass the map directly
                         &all_factors_ordered
                     );
                     let cell_coeffs = get_coeffs_for_cell_mean(
-                        &current_cell_levels,
+                        &current_cell_levels_map, // Pass the map directly
                         &all_model_param_names,
                         &factor_details
                     );
-                    let sign = if num_ref_levels_in_this_term_for_interacting_factors % 2 == 0 {
-                        1i32
+
+                    // Sign is positive if an even number of interacting factors are at their PIVOT level for this term
+                    // (or, equivalently, an even number of factors are at their NON-PIVOT level, if k_interaction_way is even,
+                    // or odd number if k_interaction_way is odd. Standard is (sum of levels) % 2 for dummy coding based on 0/1,
+                    // here it's about number of factors at pivot vs non-pivot for the term construction sign).
+                    // The standard for Type III contrasts: sign is (-1)^(number of factors at non-primary levels for this term).
+                    // Here, primary level = pivot level. So, sign is (-1)^(number of factors at non-pivot levels).
+                    // Number of non-pivot levels = k_interaction_way - num_pivot_levels_for_interacting_factors_in_this_term
+                    let num_non_pivot_levels_for_interacting_factors_in_this_term =
+                        k_interaction_way - num_pivot_levels_for_interacting_factors_in_this_term;
+
+                    let sign = if
+                        num_non_pivot_levels_for_interacting_factors_in_this_term % 2 == 0
+                    {
+                        1i32 // Even number of non-pivot levels (or zero) -> positive term
                     } else {
-                        -1i32
+                        -1i32 // Odd number of non-pivot levels -> negative term
                     };
 
                     if sign == 1 {
@@ -391,6 +477,8 @@ pub fn calculate_general_estimable_function(
                         l_vec_interaction[j_coeff_idx] += sign * coeff_val;
                     }
                 }
+                // Sort the terms: positive first, then negative.
+                contrast_description_terms.sort_by_key(|k| k.starts_with('-'));
                 add_l_vector_if_valid(
                     l_vec_interaction,
                     format!("{}: {}", full_desc_prefix, contrast_description_terms.join(" "))
@@ -405,10 +493,10 @@ pub fn calculate_general_estimable_function(
         notes.push("b. One or more β parameters may be redundant.".to_string());
     }
     notes.push(
-        "c. Reference levels are first alphabetically/numerically for each factor independently.".to_string()
+        "c. Reference levels are first alphabetically/numerically; Pivot levels are last alphabetically/numerically for each factor.".to_string()
     );
     notes.push(
-        "d. L-vectors for main effects and interactions are defined with non-involved factors at their respective reference levels.".to_string()
+        "d. L-vectors for main effects and interactions are defined with non-involved factors at their respective pivot levels.".to_string()
     );
     notes.push(
         format!(
