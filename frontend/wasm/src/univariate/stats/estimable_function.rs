@@ -1,4 +1,5 @@
 use std::collections::{ HashMap, HashSet };
+use nalgebra::DMatrix;
 use itertools::Itertools;
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -7,16 +8,11 @@ use crate::univariate::models::{
         DesignMatrixInfo,
         GeneralEstimableFunction,
         GeneralEstimableFunctionEntry,
-        DescriptiveStatistics,
         StatsEntry,
     },
 };
-use crate::univariate::stats::factor_utils::parse_parameter_name;
-use web_sys::console;
-use nalgebra::{ DMatrix, DVector };
 
 use super::core::*;
-use super::descriptive_statistics::calculate_descriptive_statistics;
 
 // Helper to get coefficients for a specific cell mean
 fn get_coeffs_for_cell_mean(
@@ -32,7 +28,7 @@ fn get_coeffs_for_cell_mean(
         .map_or(true, |entry| (entry.n == 0 || entry.mean.abs() < 1e-9 || entry.mean.is_nan())); // Default to problematic if key not found
 
     if cell_is_problematic {
-        // console::log_1(&format!("Cell {:?} (key: '{}') has N=0 or mean=0/NaN. Returning all-zero coefficients.", cell_levels, lookup_key).into());
+        // Cell has N=0 or mean=0/NaN. Returning all-zero coefficients.
         return vec![0; all_model_param_names.len()];
     }
 
@@ -78,36 +74,6 @@ struct FactorDetail {
     levels: Vec<String>,
     reference_level: String, // First level after sorting
     pivot_level: String, // Last level after sorting
-}
-
-// Helper to generate all combinations of levels for a given list of factor names
-fn generate_level_combinations_for_factors(
-    factors_to_combine: &[String],
-    factor_details: &HashMap<String, FactorDetail> // Changed to HashMap
-) -> Vec<HashMap<String, String>> {
-    if factors_to_combine.is_empty() {
-        return vec![HashMap::new()];
-    }
-    let mut level_sets: Vec<Vec<(String, String)>> = Vec::new();
-    for factor_name in factors_to_combine {
-        if let Some(detail) = factor_details.get(factor_name) {
-            level_sets.push(
-                detail.levels
-                    .iter()
-                    .map(|l| (factor_name.clone(), l.clone()))
-                    .collect()
-            );
-        } else {
-            // This should not happen if factors_to_combine contains valid factor names
-            // Consider returning an Err or panicking in debug, for robustness.
-            return Vec::new();
-        }
-    }
-    level_sets
-        .into_iter()
-        .multi_cartesian_product()
-        .map(|combo_vec| combo_vec.into_iter().collect::<HashMap<String, String>>())
-        .collect()
 }
 
 // Helper to generate mu notation string from cell levels and ordered factors
@@ -158,9 +124,7 @@ pub fn calculate_general_estimable_function(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<GeneralEstimableFunction, String> {
-    console::log_1(
-        &"Starting calculate_general_estimable_function (v-cell_specific_zeroing)".into()
-    );
+    // Starting calculate_general_estimable_function
 
     let design_info: DesignMatrixInfo = create_design_response_weights(data, config)?;
 
@@ -206,24 +170,14 @@ pub fn calculate_general_estimable_function(
         let l_matrix_f64 = DMatrix::from_row_slice(1, l_vec_f64.len(), &l_vec_f64);
 
         if g_inv.ncols() != xtx.nrows() || l_matrix_f64.ncols() != g_inv.nrows() {
-            console::error_1(
-                &format!(
-                    "Dimension mismatch for estimability check: L({}x{}), G_inv({}x{}), XTX({}x{})",
-                    l_matrix_f64.nrows(),
-                    l_matrix_f64.ncols(),
-                    g_inv.nrows(),
-                    g_inv.ncols(),
-                    xtx.nrows(),
-                    xtx.ncols()
-                ).into()
-            );
+            // Dimension mismatch for estimability check
             return false; // Cannot perform check
         }
 
         let l_g_inv_xtx = l_matrix_f64 * g_inv * xtx;
 
         if l_g_inv_xtx.nrows() != 1 || l_g_inv_xtx.ncols() != l_coeffs_i32.len() {
-            console::error_1(&"Dimension mismatch for L_prime in estimability check.".into());
+            // Dimension mismatch for L_prime in estimability check.
             return false;
         }
 
@@ -254,9 +208,7 @@ pub fn calculate_general_estimable_function(
     // --- End Descriptive Statistics Setup ---
 
     let all_model_param_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
-    console::log_1(
-        &format!("all_model_param_names (v-g_inv_only): {:?}", all_model_param_names).into()
-    );
+    // all_model_param_names (v-g_inv_only): {:?}
 
     if all_model_param_names.is_empty() {
         return Ok(GeneralEstimableFunction {
@@ -326,9 +278,7 @@ pub fn calculate_general_estimable_function(
             factor_details.get(fname).map(|d| (fname.clone(), d.pivot_level.clone()))
         )
         .collect();
-    console::log_1(
-        &format!("Base_all_pivot_levels (standard definition): {:?}", base_all_pivot_levels).into()
-    );
+    // Base_all_pivot_levels (standard definition): {:?}
     // --- End Determine Effective Base All Pivot Levels ---
 
     let mut collected_l_functions: Vec<(usize, String, Vec<i32>, String)> = Vec::new();
@@ -341,30 +291,18 @@ pub fn calculate_general_estimable_function(
         expected_l_label: String
     | {
         if !is_estimable(&l_vec, &xtx_matrix, &g_inv_matrix, epsilon_estimability) {
-            console::log_1(
-                &format!(
-                    "L-vector for '{}' ({}) is NOT estimable. Skipping.",
-                    description,
-                    expected_l_label
-                ).into()
-            );
+            // L-vector for '{}' ({}) is NOT estimable. Skipping.
             return;
         }
         if l_vec.iter().all(|&x| x == 0) || !encountered_l_vectors.insert(l_vec.clone()) {
-            console::log_1(
-                &format!(
-                    "L-vector for '{}' ({}) is all zero or duplicate. Skipping.",
-                    description,
-                    expected_l_label
-                ).into()
-            );
+            // L-vector for '{}' ({}) is all zero or duplicate. Skipping.
             return;
         }
         collected_l_functions.push((expected_l_number, expected_l_label, l_vec, description));
     };
 
     // 1. Mean of the All-Pivot-Levels Cell (L1 / Intercept)
-    console::log_1(&"Generating L1 (Intercept)...".into());
+    // Generating L1 (Intercept)...
     let l_vec_l1 = get_coeffs_for_cell_mean(
         &base_all_pivot_levels,
         &all_model_param_names,
@@ -385,12 +323,12 @@ pub fn calculate_general_estimable_function(
             );
         }
         None => {
-            web_sys::console::error_1(&"'Intercept' parameter not found for L1 generation!".into());
+            return Err("'Intercept' parameter not found for L1 generation!".to_string());
         }
     }
 
     // 2. Main Effects
-    console::log_1(&"Generating Main Effects...".into());
+    // Generating Main Effects...
     for factor_of_interest_name in &all_factors_ordered {
         if let Some(detail_factor_of_interest) = factor_details.get(factor_of_interest_name) {
             let pivot_level_for_factor_of_interest = &detail_factor_of_interest.pivot_level;
@@ -400,7 +338,7 @@ pub fn calculate_general_estimable_function(
                 let mut cell_a_levels = base_all_pivot_levels.clone();
                 cell_a_levels.insert(factor_of_interest_name.clone(), non_pivot_level.clone());
 
-                let mut cell_b_levels = base_all_pivot_levels.clone();
+                let cell_b_levels = base_all_pivot_levels.clone();
                 // No need to insert for FoI in cell_b, it's already at its pivot from base_all_pivot_levels.
                 // base_all_pivot_levels has FoI at its pivot. If FoI is the only factor, cell_b is just {FoI:pivot}
 
@@ -444,9 +382,7 @@ pub fn calculate_general_estimable_function(
                         add_to_collection_if_valid(l_vec_sme, desc, l_num, l_label_str);
                     }
                     None => {
-                        web_sys::console::error_1(
-                            &format!("Main effect parameter not found: {}", param_to_find).into()
-                        );
+                        return Err(format!("Main effect parameter not found: {}", param_to_find));
                     }
                 }
             }
@@ -454,7 +390,7 @@ pub fn calculate_general_estimable_function(
     }
 
     // 3. N-way Interactions
-    console::log_1(&"Generating N-way Interactions...".into());
+    // Generating N-way Interactions...
     for k_interaction_way in 2..=all_factors_ordered.len() {
         for interacting_factors_names_tuple in all_factors_ordered
             .iter()
@@ -599,12 +535,12 @@ pub fn calculate_general_estimable_function(
                         );
                     }
                     None => {
-                        web_sys::console::error_1(
-                            &format!(
+                        return Err(
+                            format!(
                                 "Interaction parameter not found: {}. (param_parts: {:?})",
                                 param_to_find,
                                 param_name_parts
-                            ).into()
+                            )
                         );
                     }
                 }
@@ -656,12 +592,7 @@ pub fn calculate_general_estimable_function(
         contrast_information: contrast_info_strings,
     };
 
-    console::log_1(
-        &format!(
-            "Finished calculate_general_estimable_function (v-cell_specific_zeroing). Generated {} L-functions.",
-            estimable_function_entry.l_matrix.len()
-        ).into()
-    );
+    // Finished calculate_general_estimable_function. Generated {} L-functions.
     Ok(GeneralEstimableFunction {
         estimable_function: estimable_function_entry,
         notes,

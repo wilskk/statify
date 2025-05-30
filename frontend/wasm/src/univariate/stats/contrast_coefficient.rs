@@ -277,7 +277,7 @@ pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f6
         }
         _ => {
             // Higher degree polynomials using Gram-Schmidt orthogonalization
-            let mut x_values: Vec<f64> = (0..level_count)
+            let x_values: Vec<f64> = (0..level_count)
                 .map(|i| -1.0 + (2.0 * (i as f64)) / ((level_count - 1) as f64))
                 .collect();
 

@@ -31,7 +31,6 @@ pub fn calculate_parameter_estimates(
         return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
     }
 
-    web_sys::console::log_1(&"design_info".into());
     web_sys::console::log_1(&format!("{:?}", design_info).into());
 
     let ztwz_matrix = create_cross_product_matrix(&design_info)?;

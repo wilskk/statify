@@ -53,8 +53,6 @@ pub fn calculate_tests_between_subjects_effects(
             )
         )?;
 
-    web_sys::console::log_1(&format!("swept_info: {:?}", swept_info).into());
-
     let mut current_source_map: HashMap<String, TestEffectEntry> = HashMap::new();
 
     // Calculate basic statistics
@@ -81,9 +79,6 @@ pub fn calculate_tests_between_subjects_effects(
     );
 
     let all_model_terms_in_design = &design_info.term_names; // This list includes all terms initially considered for the design matrix
-    web_sys::console::log_1(
-        &format!("all_model_terms_in_design: {:?}", all_model_terms_in_design).into()
-    );
 
     for term_name in all_model_terms_in_design {
         let (ss_term, df_term) = (match config.model.sum_of_square_method {

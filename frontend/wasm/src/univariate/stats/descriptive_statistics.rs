@@ -82,6 +82,7 @@ pub fn calculate_descriptive_statistics(
                 }
             }
         }
+
         // Covariates
         if let Some(cov_sets) = &data.covariate_data {
             for cov_set in cov_sets {

@@ -91,6 +91,24 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
         }
     }
 
+    // Check covariates if present
+    if let Some(covar_defs_groups) = &data.covariate_data_defs {
+        for (group_idx, def_group) in covar_defs_groups.iter().enumerate() {
+            if def_group.iter().any(|def| def.name == factor_name) {
+                factor_definition_found = true;
+                if let Some(covar_data_groups_vec) = &data.covariate_data {
+                    if let Some(data_records_for_group) = covar_data_groups_vec.get(group_idx) {
+                        for record in data_records_for_group {
+                            if let Some(value) = record.values.get(factor_name) {
+                                level_set.insert(data_value_to_string(value));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if !factor_definition_found {
         return Err(format!("Factor '{}' not found in the data", factor_name));
     }
@@ -136,6 +154,26 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
                     if def_group.iter().any(|def| &def.name == factor) {
                         if let Some(random_data_groups_vec) = &data.random_factor_data {
                             if let Some(data_records) = random_data_groups_vec.get(group_idx) {
+                                if let Some(record) = data_records.get(i) {
+                                    if let Some(value) = record.values.get(factor) {
+                                        if data_value_to_string(value) == *level {
+                                            factor_matches = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check covariate
+            if let Some(covar_defs_groups) = &data.covariate_data_defs {
+                for (group_idx, def_group) in covar_defs_groups.iter().enumerate() {
+                    if def_group.iter().any(|def| &def.name == factor) {
+                        if let Some(covar_data_groups_vec) = &data.covariate_data {
+                            if let Some(data_records) = covar_data_groups_vec.get(group_idx) {
                                 if let Some(record) = data_records.get(i) {
                                     if let Some(value) = record.values.get(factor) {
                                         if data_value_to_string(value) == *level {
@@ -226,6 +264,15 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
     let mut terms = Vec::new();
     let mut factors_for_interaction = Vec::new();
 
+    // Add Covariates as main effects ONLY (not added to factors_for_interaction)
+    if let Some(covariates) = &config.main.covar {
+        for covar_name in covariates {
+            if !terms.contains(covar_name) {
+                terms.push(covar_name.clone());
+            }
+        }
+    }
+
     // Add main effects for Fixed Factors and collect them for interaction generation
     if let Some(fix_factors) = &config.main.fix_factor {
         for factor_name in fix_factors {
@@ -246,15 +293,6 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add Covariates as main effects ONLY (not added to factors_for_interaction)
-    if let Some(covariates) = &config.main.covar {
-        for covar_name in covariates {
-            if !terms.contains(covar_name) {
-                terms.push(covar_name.clone());
-            }
-        }
-    }
-
     // Add all possible interaction terms among Fixed and Random factors
     if factors_for_interaction.len() > 1 {
         // generate_interaction_terms produces 2-way, 3-way, ..., up to N-way interactions.
@@ -268,20 +306,20 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
 pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
 
-    // Add main effects from factors_model. These are candidates for interactions.
-    if let Some(factors_model) = &config.model.factors_model {
-        for factor_name in factors_model {
-            if !terms.contains(factor_name) {
-                terms.push(factor_name.clone());
-            }
-        }
-    }
-
     // Add covariates from cov_model as main effects only
     if let Some(cov_model_str) = &config.model.cov_model {
         for term_name in cov_model_str.split_whitespace() {
             if !terms.contains(&term_name.to_string()) {
                 terms.push(term_name.to_string());
+            }
+        }
+    }
+
+    // Add main effects from factors_model. These are candidates for interactions.
+    if let Some(factors_model) = &config.model.factors_model {
+        for factor_name in factors_model {
+            if !terms.contains(factor_name) {
+                terms.push(factor_name.clone());
             }
         }
     }

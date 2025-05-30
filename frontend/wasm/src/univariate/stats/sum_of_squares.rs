@@ -2,7 +2,7 @@ use nalgebra::{ DMatrix, DVector };
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{ DesignMatrixInfo, SweptMatrixInfo },
+    result::DesignMatrixInfo,
 };
 
 use super::core::*;
