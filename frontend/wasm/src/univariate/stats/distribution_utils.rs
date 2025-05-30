@@ -1,6 +1,4 @@
 use statrs::distribution::{ ChiSquared, FisherSnedecor, Normal, StudentsT, ContinuousCDF };
-use statrs::function::{ beta::beta_inc, gamma::gamma };
-use std::f64::consts::{ SQRT_2, PI };
 
 /// Calculate F significance (p-value) for F statistic
 pub fn calculate_f_significance(df1: usize, df2: usize, f_value: f64) -> f64 {
@@ -87,107 +85,55 @@ pub fn noncentral_f_cdf(f_prime: f64, df1: f64, df2: f64, lambda: f64) -> f64 {
 }
 
 /// Noncentral t CDF (series expansion) based on provided formula image
-pub fn noncentral_t_cdf(x: f64, df: f64, lambda: f64, max_iter: usize) -> f64 {
-    if df <= 0.0 {
-        // Degrees of freedom must be positive
-        return if x < 0.0 {
-            0.0
-        } else {
-            1.0
-        }; // Or NaN, but this follows limiting behavior
+pub fn noncentral_t_cdf(t_prime: f64, nu: f64, delta: f64) -> f64 {
+    // Implementation of Abramowitz & Stegun formula 26.7.10 (Approximation)
+    // P(t'|ν, δ) ≈ P_norm(x_approx)
+    // x_approx = (t' - δ) / sqrt(1 + (t'^2)/(2ν))
+
+    // Input validation
+    if nu <= 0.0 {
+        // Degrees of freedom ν must be positive
+        return f64::NAN;
     }
 
-    let y_beta_num = x * x;
-    let y_beta_den = df + y_beta_num;
+    let numerator = t_prime - delta;
 
-    let y_beta = if y_beta_den == 0.0 {
-        if y_beta_num == 0.0 {
-            0.0
-        } else {
-            1.0
-        } // Should ideally not happen if df > 0
-    } else {
-        (y_beta_num / y_beta_den).max(0.0).min(1.0) // Clamp y_beta to [0,1]
-    };
+    let den_sqrt_term2_num = t_prime.powi(2);
+    let den_sqrt_term2_den = 2.0 * nu;
 
-    // Corrected exp_coeff to match e^(-λ²/2) from the formula
-    let exp_coeff = ((-lambda * lambda) / 2.0).exp();
+    // Denominator for t'^2 / (2ν) must not be zero.
+    // Since nu > 0, den_sqrt_term2_den will be > 0.
 
-    // If exp_coeff is zero (e.g. lambda is huge), and lambda is not zero, the sum effectively becomes zero.
-    if exp_coeff == 0.0 && lambda != 0.0 {
-        return if x <= 0.0 { 0.0 } else { 1.0 };
-    }
-    // If lambda is zero, it's a central t-distribution.
-    // The formula should converge to central T, but direct calculation is better.
-    if lambda.abs() < 1e-9 {
-        return StudentsT::new(0.0, 1.0, df).map_or(f64::NAN, |dist| dist.cdf(x));
+    let den_under_sqrt = 1.0 + den_sqrt_term2_num / den_sqrt_term2_den;
+
+    if den_under_sqrt <= 0.0 {
+        // Argument to sqrt must be positive.
+        // Given 1.0 + ..., this implies t_prime^2/(2*nu) is very negative, which shouldn't happen if nu > 0.
+        // However, as a safeguard.
+        return f64::NAN;
     }
 
-    // Corrected lambda_series_base to match (λ√2) or (-λ√2) from the formula
-    let lambda_series_base = if x <= 0.0 { lambda * SQRT_2 } else { -lambda * SQRT_2 };
+    let denominator = den_under_sqrt.sqrt();
 
-    let mut current_sum = 0.0;
-    let mut term_lambda_power_j = 1.0; // (lambda_series_base)^j for j=0
-    let mut term_factorial_j = 1.0; // j! for j=0
-    let sqrt_pi = PI.sqrt();
-
-    for j_idx in 0..max_iter {
-        let j_f64 = j_idx as f64;
-        let shape1_beta = (j_f64 + 1.0) / 2.0;
-        let shape2_beta = df / 2.0;
-
-        if shape1_beta <= 0.0 || shape2_beta <= 0.0 {
-            // beta_inc requires positive shape parameters
-            break;
-        }
-
-        let gamma_ratio_val = gamma(shape1_beta) / sqrt_pi;
-        let beta_val = beta_inc(shape1_beta, shape2_beta, y_beta);
-
-        if gamma_ratio_val.is_nan() || beta_val.is_nan() {
-            // If any component fails, the sum is unreliable, return based on x
-            return if x <= 0.0 {
-                0.0
-            } else {
-                1.0
-            }; // Or NaN for error
-        }
-
-        let summand_j = (term_lambda_power_j / term_factorial_j) * gamma_ratio_val * beta_val;
-        current_sum += summand_j;
-
-        // Convergence check
-        if summand_j.abs() < 1e-15 {
-            // More robust convergence: check if relative to sum, or if sum itself is tiny.
-            if current_sum.abs() < 1e-15 || (summand_j / current_sum).abs() < 1e-15 {
-                if (j_idx as f64) > ((lambda * lambda) / 4.0).abs().max(10.0) {
-                    // Ensure we are past the peak of Poisson-like terms
-                    break;
-                }
-            }
-        }
-
-        // Prepare for next iteration (j_idx + 1)
-        term_lambda_power_j *= lambda_series_base;
-        term_factorial_j *= j_f64 + 1.0;
-
-        if
-            term_factorial_j == 0.0 ||
-            term_factorial_j.is_infinite() ||
-            term_lambda_power_j.is_infinite() ||
-            (term_lambda_power_j == 0.0 && lambda_series_base != 0.0)
-        {
-            break; // Unstable terms
-        }
+    if denominator == 0.0 {
+        // This case implies 1 + t_prime^2/(2*nu) = 0, which is unlikely for nu > 0.
+        // Avoid division by zero. Resulting x_approx would be Inf/-Inf.
+        return f64::NAN;
     }
 
-    let calculated_cdf = if x <= 0.0 {
-        0.5 * exp_coeff * current_sum
-    } else {
-        1.0 - 0.5 * exp_coeff * current_sum
-    };
+    let x_approx = numerator / denominator;
 
-    calculated_cdf.max(0.0).min(1.0) // Ensure CDF is in [0,1]
+    // Calculate Normal CDF N(0,1) at x_approx
+    match Normal::new(0.0, 1.0) {
+        Ok(norm_dist) => {
+            let cdf_val = norm_dist.cdf(x_approx);
+            cdf_val.max(0.0).min(1.0) // Clamp result to [0,1]
+        }
+        Err(_) => {
+            // This should not happen for N(0,1)
+            f64::NAN
+        }
+    }
 }
 
 /// Calculate observed power for F-test (uses local noncentral_f_cdf)
@@ -250,37 +196,33 @@ pub fn calculate_observed_power_t(t_value: f64, df: usize, alpha: Option<f64>) -
         return f64::NAN;
     }
 
-    // LANGKAH 1: Hitung Parameter Non-sentralitas (c)
     let ncp = t_value.abs(); // noncentrality_c = AbsoluteValue(t_statistic)
 
-    // LANGKAH 2: Hitung Nilai t Kritis (t_critical)
     let central_t_dist_res = StudentsT::new(0.0, 1.0, df as f64);
     let crit_t_abs = match central_t_dist_res {
         Ok(dist) => dist.inverse_cdf(1.0 - current_alpha / 2.0).abs(),
         Err(_) => {
             return f64::NAN;
-        } // Gagal membuat distribusi t sentral
+        }
     };
 
     if crit_t_abs.is_nan() {
-        return f64::NAN; // t kritis tidak valid
+        return f64::NAN;
     }
 
     let df_f64 = df as f64;
 
-    // LANGKAH 3: Hitung Observed Power
-    // power = 1 - CumulativeNonCentralTDistribution(t_critical, df_residual, noncentrality_c) +
-    //         CumulativeNonCentralTDistribution(-t_critical, df_residual, noncentrality_c)
-    let cdf_pos_crit = noncentral_t_cdf(crit_t_abs, df_f64, ncp, 50);
-    let cdf_neg_crit = noncentral_t_cdf(-crit_t_abs, df_f64, ncp, 50);
+    // Updated calls to noncentral_t_cdf (no max_iter)
+    // Parameters: t_prime, nu, delta
+    let cdf_pos_crit = noncentral_t_cdf(crit_t_abs, df_f64, ncp);
+    let cdf_neg_crit = noncentral_t_cdf(-crit_t_abs, df_f64, ncp);
 
     if cdf_pos_crit.is_nan() || cdf_neg_crit.is_nan() {
-        return f64::NAN; // Salah satu hasil CDF non-sentral tidak valid
+        return f64::NAN;
     }
 
     let power = 1.0 - cdf_pos_crit + cdf_neg_crit;
 
-    // Periksa Batasan (clamping)
     if power.is_nan() {
         return f64::NAN;
     }
