@@ -1,4 +1,3 @@
-// descriptive_statistics.rs
 use std::collections::HashMap;
 
 use crate::univariate::models::{
@@ -7,11 +6,7 @@ use crate::univariate::models::{
     result::DescriptiveStatistics,
 };
 
-use super::{
-    basic_math::calculate_stats_for_values,
-    common::{ extract_numeric_from_record, data_value_to_string },
-    factor_utils::{ get_factor_levels, generate_level_combinations },
-};
+use super::core::*;
 
 /// Calculate descriptive statistics for univariate analysis
 pub fn calculate_descriptive_statistics(
@@ -83,35 +78,37 @@ pub fn calculate_descriptive_statistics(
             }
         }
 
-        // Covariates
-        if let Some(cov_sets) = &data.covariate_data {
-            for cov_set in cov_sets {
-                if let Some(cov) = cov_set.get(i) {
-                    for (k, v) in &cov.values {
-                        record.insert(k.clone(), data_value_to_string(v));
-                    }
-                }
-            }
-        }
-        // WLS weight
-        let weight = if let Some(wls_var) = &config.main.wls_weight {
-            if let Some(wls_sets) = &data.wls_data {
-                if let Some(wls_set) = wls_sets.get(0) {
-                    if let Some(wls_rec) = wls_set.get(i) {
-                        extract_numeric_from_record(wls_rec, wls_var).unwrap_or(1.0).to_string()
-                    } else {
-                        "1.0".to_string()
-                    }
-                } else {
-                    "1.0".to_string()
-                }
-            } else {
-                "1.0".to_string()
-            }
-        } else {
-            "1.0".to_string()
-        };
-        record.insert("wls_weight_value".to_string(), weight);
+        // // Covariates
+        // if let Some(cov_sets) = &data.covariate_data {
+        //     for cov_set in cov_sets {
+        //         if let Some(cov) = cov_set.get(i) {
+        //             for (k, v) in &cov.values {
+        //                 record.insert(k.clone(), data_value_to_string(v));
+        //             }
+        //         }
+        //     }
+        // }
+
+        // // WLS weight
+        // let weight = if let Some(wls_var) = &config.main.wls_weight {
+        //     if let Some(wls_sets) = &data.wls_data {
+        //         if let Some(wls_set) = wls_sets.get(0) {
+        //             if let Some(wls_rec) = wls_set.get(i) {
+        //                 extract_numeric_from_record(wls_rec, wls_var).unwrap_or(1.0).to_string()
+        //             } else {
+        //                 "1.0".to_string()
+        //             }
+        //         } else {
+        //             "1.0".to_string()
+        //         }
+        //     } else {
+        //         "1.0".to_string()
+        //     }
+        // } else {
+        //     "1.0".to_string()
+        // };
+        // record.insert("wls_weight_value".to_string(), weight);
+
         all_records.push(record);
     }
 

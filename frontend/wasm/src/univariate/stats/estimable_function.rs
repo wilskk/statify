@@ -1,15 +1,9 @@
-use std::collections::{ HashMap, HashSet };
-use nalgebra::DMatrix;
+use std::collections::{ HashMap, HashSet, BTreeMap };
 use itertools::Itertools;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{
-        DesignMatrixInfo,
-        GeneralEstimableFunction,
-        GeneralEstimableFunctionEntry,
-        StatsEntry,
-    },
+    result::{ DesignMatrixInfo, GeneralEstimableFunction, GeneralEstimableFunctionEntry },
 };
 
 use super::core::*;
@@ -18,20 +12,8 @@ use super::core::*;
 fn get_coeffs_for_cell_mean(
     cell_levels: &HashMap<String, String>,
     all_model_param_names: &[String],
-    _factor_details: &HashMap<String, FactorDetail>, // Factor details might still be needed for other logic if any
-    stats_entries_map: &HashMap<String, StatsEntry>,
-    desc_stats_factor_order: &[String]
+    _factor_details: &HashMap<String, FactorDetail> // Factor details might still be needed for other logic if any
 ) -> Vec<i32> {
-    let lookup_key = generate_descriptive_stats_key(cell_levels, desc_stats_factor_order);
-    let cell_is_problematic = stats_entries_map
-        .get(&lookup_key)
-        .map_or(true, |entry| (entry.n == 0 || entry.mean.abs() < 1e-9 || entry.mean.is_nan())); // Default to problematic if key not found
-
-    if cell_is_problematic {
-        // Cell has N=0 or mean=0/NaN. Returning all-zero coefficients.
-        return vec![0; all_model_param_names.len()];
-    }
-
     let mut coeffs = vec![0; all_model_param_names.len()];
 
     for (i, model_param_name) in all_model_param_names.iter().enumerate() {
@@ -82,7 +64,7 @@ fn generate_mu_notation(
     ordered_factors: &[String]
 ) -> String {
     // Create a BTreeMap for ordered iteration needed for mu_notation consistency
-    let ordered_cell_levels: std::collections::BTreeMap<_, _> = cell_levels.iter().collect();
+    let ordered_cell_levels: BTreeMap<_, _> = cell_levels.iter().collect();
 
     let mut notation = "μ".to_string();
     for factor_name in ordered_factors {
@@ -99,22 +81,6 @@ fn generate_mu_notation(
         }
     }
     notation
-}
-
-// Helper function to generate a key for descriptive statistics lookup
-fn generate_descriptive_stats_key(
-    cell_config: &HashMap<String, String>,
-    ordered_factors_for_key: &[String]
-) -> String {
-    ordered_factors_for_key
-        .iter()
-        .filter_map(|factor_name_from_desc_order| {
-            cell_config
-                .get(factor_name_from_desc_order)
-                .map(|level| format!("{}={}", factor_name_from_desc_order, level))
-        })
-        .collect::<Vec<String>>()
-        .join(";")
 }
 
 /// Calculate general estimable functions.
@@ -140,75 +106,7 @@ pub fn calculate_general_estimable_function(
         });
     }
 
-    // --- Estimability Check Setup ---
-    let xtx_matrix: DMatrix<f64>;
-    if let Some(w_vec) = &design_info.w {
-        let w_diag = DMatrix::from_diagonal(w_vec);
-        xtx_matrix = design_info.x.transpose() * w_diag * &design_info.x;
-    } else {
-        xtx_matrix = design_info.x.transpose() * &design_info.x;
-    }
-
-    let ztwz_matrix = create_cross_product_matrix(&design_info)?;
-    let swept_info = perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)?;
-    let g_inv_matrix = swept_info.g_inv;
-    let epsilon_estimability = 1e-9;
-
-    fn is_estimable(
-        l_coeffs_i32: &[i32],
-        xtx: &DMatrix<f64>,
-        g_inv: &DMatrix<f64>,
-        epsilon: f64
-    ) -> bool {
-        if l_coeffs_i32.iter().all(|&x| x == 0) {
-            return true; // Treat all-zero L-vector as estimable (though it won't be added later)
-        }
-        let l_vec_f64: Vec<f64> = l_coeffs_i32
-            .iter()
-            .map(|&x| x as f64)
-            .collect();
-        let l_matrix_f64 = DMatrix::from_row_slice(1, l_vec_f64.len(), &l_vec_f64);
-
-        if g_inv.ncols() != xtx.nrows() || l_matrix_f64.ncols() != g_inv.nrows() {
-            // Dimension mismatch for estimability check
-            return false; // Cannot perform check
-        }
-
-        let l_g_inv_xtx = l_matrix_f64 * g_inv * xtx;
-
-        if l_g_inv_xtx.nrows() != 1 || l_g_inv_xtx.ncols() != l_coeffs_i32.len() {
-            // Dimension mismatch for L_prime in estimability check.
-            return false;
-        }
-
-        for (i, original_coeff_i32) in l_coeffs_i32.iter().enumerate() {
-            let original_coeff_f64 = *original_coeff_i32 as f64;
-            let calculated_coeff = l_g_inv_xtx[(0, i)];
-            if (original_coeff_f64 - calculated_coeff).abs() > epsilon {
-                return false;
-            }
-        }
-        true
-    }
-    // --- End Estimability Check Setup ---
-
-    // --- Descriptive Statistics Setup ---
-    let dep_var_name_for_desc = config.main.dep_var
-        .as_ref()
-        .ok_or("Dependent variable not specified for descriptive statistics")?
-        .clone();
-    let all_descriptive_stats = calculate_descriptive_statistics(data, config)?;
-    let descriptive_stats_for_dep_var = all_descriptive_stats
-        .get(&dep_var_name_for_desc)
-        .ok_or_else(||
-            format!("Descriptive statistics not found for dependent var: {}", dep_var_name_for_desc)
-        )?;
-    let stats_entries_map = &descriptive_stats_for_dep_var.stats_entries;
-    let desc_stats_factor_order = &descriptive_stats_for_dep_var.factor_names; // This is Vec<String>
-    // --- End Descriptive Statistics Setup ---
-
     let all_model_param_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
-    // all_model_param_names (v-g_inv_only): {:?}
 
     if all_model_param_names.is_empty() {
         return Ok(GeneralEstimableFunction {
@@ -233,21 +131,35 @@ pub fn calculate_general_estimable_function(
     let mut factor_details: HashMap<String, FactorDetail> = HashMap::new();
     let mut all_factors_ordered: Vec<String> = Vec::new();
 
+    let covariate_names_set: HashSet<String> = config.main.covar
+        .as_ref()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
+
     for param_name in &all_model_param_names {
         if param_name == "Intercept" {
             continue;
         }
         let parsed_param_components = parse_parameter_name(param_name);
-        for (factor, level) in parsed_param_components {
-            if factor == "Intercept" {
+        for (param_component_name, level) in parsed_param_components {
+            if param_component_name == "Intercept" {
+                // Should not happen if outer param_name is not "Intercept"
                 continue;
             }
-            let entry = factor_details.entry(factor.clone()).or_insert_with(|| {
-                if !all_factors_ordered.contains(&factor) {
-                    all_factors_ordered.push(factor.clone());
+            // If this component is a known covariate, skip adding it to factor_details
+            // It should not be treated as a factor for GEF contrast construction.
+            if covariate_names_set.contains(&param_component_name) {
+                continue;
+            }
+
+            let entry = factor_details.entry(param_component_name.clone()).or_insert_with(|| {
+                if !all_factors_ordered.contains(&param_component_name) {
+                    all_factors_ordered.push(param_component_name.clone());
                 }
                 FactorDetail {
-                    name: factor.clone(),
+                    name: param_component_name.clone(),
                     levels: Vec::new(),
                     reference_level: String::new(),
                     pivot_level: String::new(),
@@ -278,6 +190,7 @@ pub fn calculate_general_estimable_function(
             factor_details.get(fname).map(|d| (fname.clone(), d.pivot_level.clone()))
         )
         .collect();
+
     // Base_all_pivot_levels (standard definition): {:?}
     // --- End Determine Effective Base All Pivot Levels ---
 
@@ -290,10 +203,6 @@ pub fn calculate_general_estimable_function(
         expected_l_number: usize,
         expected_l_label: String
     | {
-        if !is_estimable(&l_vec, &xtx_matrix, &g_inv_matrix, epsilon_estimability) {
-            // L-vector for '{}' ({}) is NOT estimable. Skipping.
-            return;
-        }
         if l_vec.iter().all(|&x| x == 0) || !encountered_l_vectors.insert(l_vec.clone()) {
             // L-vector for '{}' ({}) is all zero or duplicate. Skipping.
             return;
@@ -301,14 +210,25 @@ pub fn calculate_general_estimable_function(
         collected_l_functions.push((expected_l_number, expected_l_label, l_vec, description));
     };
 
+    // --- Generate L-vectors for Covariates ---
+    for (k, param_name) in all_model_param_names.iter().enumerate() {
+        if covariate_names_set.contains(param_name) {
+            let mut l_vec_covariate = vec![0i32; all_model_param_names.len()];
+            l_vec_covariate[k] = 1;
+            let l_num = k + 1;
+            let l_label_str = format!("L{}", l_num);
+            let description = format!("Covariate: {}", param_name);
+            add_to_collection_if_valid(l_vec_covariate, description, l_num, l_label_str);
+        }
+    }
+    // --- End L-vectors for Covariates ---
+
     // 1. Mean of the All-Pivot-Levels Cell (L1 / Intercept)
     // Generating L1 (Intercept)...
     let l_vec_l1 = get_coeffs_for_cell_mean(
         &base_all_pivot_levels,
         &all_model_param_names,
-        &factor_details,
-        stats_entries_map,
-        desc_stats_factor_order
+        &factor_details
     );
     let mu_notation_l1 = generate_mu_notation(&base_all_pivot_levels, &all_factors_ordered); // Notation based on intended full pivot cell
     match all_model_param_names.iter().position(|p_name| p_name == "Intercept") {
@@ -345,16 +265,12 @@ pub fn calculate_general_estimable_function(
                 let coeffs_a = get_coeffs_for_cell_mean(
                     &cell_a_levels,
                     &all_model_param_names,
-                    &factor_details,
-                    stats_entries_map,
-                    desc_stats_factor_order
+                    &factor_details
                 );
                 let coeffs_b = get_coeffs_for_cell_mean(
                     &cell_b_levels,
                     &all_model_param_names,
-                    &factor_details,
-                    stats_entries_map,
-                    desc_stats_factor_order
+                    &factor_details
                 );
 
                 let l_vec_sme: Vec<i32> = coeffs_a
@@ -477,9 +393,7 @@ pub fn calculate_general_estimable_function(
                     let cell_coeffs = get_coeffs_for_cell_mean(
                         &current_cell_levels_map,
                         &all_model_param_names,
-                        &factor_details,
-                        stats_entries_map,
-                        desc_stats_factor_order
+                        &factor_details
                     );
                     let mu_term_notation = generate_mu_notation(
                         &current_cell_levels_map,
@@ -570,20 +484,12 @@ pub fn calculate_general_estimable_function(
         "c. Reference levels are first alphabetically/numerically; Pivot levels are last alphabetically/numerically for each factor.".to_string()
     );
     notes.push(
-        "d. Coefficients for individual cell means are zeroed out if N=0 or mean=0/NaN for that specific cell before forming contrasts. This may affect L-vector values.".to_string()
-    );
-    notes.push(
         format!(
             "e. Factor processing order for effects based on first appearance in parameters: {:?}",
             all_factors_ordered
         )
     );
-    notes.push(
-        format!("f. Total unique, non-zero, estimable L-vectors generated: {}", l_matrix_rows.len())
-    );
-    notes.push(
-        "g. Final estimability check L(X'X)^-(X'X) = L performed with epsilon_estimability = 1e-9.".to_string()
-    );
+    notes.push(format!("f. Total unique, non-zero, L-vectors generated: {}", l_matrix_rows.len()));
 
     let estimable_function_entry = GeneralEstimableFunctionEntry {
         parameter: all_model_param_names.clone(),

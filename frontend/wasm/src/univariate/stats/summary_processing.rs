@@ -92,42 +92,42 @@ pub fn basic_processing_summary(
         }
     }
 
-    // Process covariates if present
-    if let Some(covariates) = &config.main.covar {
-        if let Some(covariate_data) = &data.covariate_data {
-            for covariate_name in covariates {
-                let levels = get_factor_levels(data, covariate_name)?;
-                let mut level_counts = HashMap::new();
+    // // Process covariates if present
+    // if let Some(covariates) = &config.main.covar {
+    //     if let Some(covariate_data) = &data.covariate_data {
+    //         for covariate_name in covariates {
+    //             let levels = get_factor_levels(data, covariate_name)?;
+    //             let mut level_counts = HashMap::new();
 
-                // Count occurrences of each level
-                for level in levels {
-                    level_counts.insert(level, 0);
-                }
+    //             // Count occurrences of each level
+    //             for level in levels {
+    //                 level_counts.insert(level, 0);
+    //             }
 
-                // Find the group containing this covariate
-                if let Some(covariate_defs_groups) = &data.covariate_data_defs {
-                    for (group_idx, def_group) in covariate_defs_groups.iter().enumerate() {
-                        if def_group.iter().any(|def| &def.name == covariate_name) {
-                            if let Some(data_records) = covariate_data.get(group_idx) {
-                                for record in data_records {
-                                    if let Some(value) = record.values.get(covariate_name) {
-                                        let level = data_value_to_string(value);
-                                        *level_counts.entry(level).or_insert(0) += 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+    //             // Find the group containing this covariate
+    //             if let Some(covariate_defs_groups) = &data.covariate_data_defs {
+    //                 for (group_idx, def_group) in covariate_defs_groups.iter().enumerate() {
+    //                     if def_group.iter().any(|def| &def.name == covariate_name) {
+    //                         if let Some(data_records) = covariate_data.get(group_idx) {
+    //                             for record in data_records {
+    //                                 if let Some(value) = record.values.get(covariate_name) {
+    //                                     let level = data_value_to_string(value);
+    //                                     *level_counts.entry(level).or_insert(0) += 1;
+    //                                 }
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
 
-                // Convert HashMap to BTreeMap to sort by key
-                let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
-                result.insert(format!("{} (Covariate)", covariate_name), BetweenSubjectFactors {
-                    factors: sorted_counts,
-                });
-            }
-        }
-    }
+    //             // Convert HashMap to BTreeMap to sort by key
+    //             let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
+    //             result.insert(format!("{} (Covariate)", covariate_name), BetweenSubjectFactors {
+    //                 factors: sorted_counts,
+    //             });
+    //         }
+    //     }
+    // }
 
     Ok(result)
 }

@@ -57,12 +57,13 @@ pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
 
 pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<String>, String> {
     let mut level_set = HashSet::new();
-    let mut factor_definition_found = false;
+    let mut factor_definition_found_in_factors = false;
+    let mut factor_definition_found_in_covariates = false;
 
-    // Check fixed factors first
+    // Check fixed factors
     for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
         if def_group.iter().any(|def| def.name == factor_name) {
-            factor_definition_found = true;
+            factor_definition_found_in_factors = true;
             if let Some(data_records_for_group) = data.fix_factor_data.get(group_idx) {
                 for record in data_records_for_group {
                     if let Some(value) = record.values.get(factor_name) {
@@ -70,54 +71,54 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
                     }
                 }
             }
+            break; // Found as a fixed factor, no need to check random or covariates for level collection
         }
     }
 
-    // Check random factors if present
-    if let Some(random_defs_groups) = &data.random_factor_data_defs {
-        for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
-            if def_group.iter().any(|def| def.name == factor_name) {
-                factor_definition_found = true;
-                if let Some(random_data_groups_vec) = &data.random_factor_data {
-                    if let Some(data_records_for_group) = random_data_groups_vec.get(group_idx) {
-                        for record in data_records_for_group {
-                            if let Some(value) = record.values.get(factor_name) {
-                                level_set.insert(data_value_to_string(value));
+    // Check random factors if not found in fixed
+    if !factor_definition_found_in_factors {
+        if let Some(random_defs_groups) = &data.random_factor_data_defs {
+            for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
+                if def_group.iter().any(|def| def.name == factor_name) {
+                    factor_definition_found_in_factors = true;
+                    if let Some(random_data_groups_vec) = &data.random_factor_data {
+                        if let Some(data_records_for_group) = random_data_groups_vec.get(group_idx) {
+                            for record in data_records_for_group {
+                                if let Some(value) = record.values.get(factor_name) {
+                                    level_set.insert(data_value_to_string(value));
+                                }
                             }
                         }
                     }
+                    break; // Found as a random factor
                 }
             }
         }
     }
 
-    // Check covariates if present
+    // Separately, check if it's defined as a covariate
     if let Some(covar_defs_groups) = &data.covariate_data_defs {
-        for (group_idx, def_group) in covar_defs_groups.iter().enumerate() {
+        for def_group in covar_defs_groups {
             if def_group.iter().any(|def| def.name == factor_name) {
-                factor_definition_found = true;
-                if let Some(covar_data_groups_vec) = &data.covariate_data {
-                    if let Some(data_records_for_group) = covar_data_groups_vec.get(group_idx) {
-                        for record in data_records_for_group {
-                            if let Some(value) = record.values.get(factor_name) {
-                                level_set.insert(data_value_to_string(value));
-                            }
-                        }
-                    }
-                }
+                factor_definition_found_in_covariates = true;
+                break;
             }
         }
     }
 
-    if !factor_definition_found {
-        return Err(format!("Factor '{}' not found in the data", factor_name));
+    if factor_definition_found_in_factors {
+        // It's a true factor, collect and sort levels
+        let mut levels: Vec<String> = level_set.into_iter().collect();
+        levels.sort();
+        Ok(levels)
+    } else if factor_definition_found_in_covariates {
+        // It's a covariate (and not a factor), return empty levels
+        Ok(Vec::new())
+    } else {
+        Err(
+            format!("Term \'{}\' not found as a factor or covariate in the data definitions", factor_name)
+        )
     }
-
-    // Convert HashSet to sorted Vec
-    let mut levels: Vec<String> = level_set.into_iter().collect();
-    levels.sort();
-
-    Ok(levels)
 }
 
 /// Memeriksa apakah record cocok dengan kombinasi faktor tertentu dan mengembalikan baris yang cocok
@@ -477,11 +478,19 @@ pub fn generate_all_row_parameter_names_sorted(
             } else {
                 // Handle main effects
                 if let Some(levels) = factor_levels_map.get(term_name) {
-                    for level in levels {
-                        all_params.push(format!("[{}={}]", term_name, level));
+                    if levels.is_empty() {
+                        // This is a covariate, as get_factor_levels now returns empty vec for them
+                        all_params.push(term_name.clone());
+                    } else {
+                        // This is a categorical factor with levels
+                        for level in levels {
+                            all_params.push(format!("[{}={}]", term_name, level));
+                        }
                     }
                 } else {
-                    // This is a covariate or other term without levels
+                    // This case should ideally not be hit if all terms (factors/covariates)
+                    // are processed correctly by get_factor_levels and added to factor_levels_map.
+                    // However, as a fallback, treat it as a term without specific levels (e.g., covariate if logic missed).
                     all_params.push(term_name.clone());
                 }
             }
