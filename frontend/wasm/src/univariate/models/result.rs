@@ -170,6 +170,13 @@ pub struct ContrastCoefficientsEntry {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LackOfFitTests {
+    pub lack_of_fit: LackOfFitTestsEntries,
+    pub pure_error: LackOfFitTestsEntries,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LackOfFitTestsEntries {
     pub sum_of_squares: f64,
     pub df: usize,
     pub mean_square: f64,

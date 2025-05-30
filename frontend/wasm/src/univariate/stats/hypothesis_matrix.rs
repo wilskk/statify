@@ -334,6 +334,14 @@ pub fn construct_type_iii_l_matrix(
     let mut l_rows: Vec<DVector<f64>> = Vec::new();
     let p = design_info.p_parameters;
 
+    // Determine if the term_of_interest is a covariate
+    let is_covariate_term =
+        config.main.covar
+            .as_ref()
+            .map_or(false, |covars| covars.iter().any(|c| c == term_of_interest)) &&
+        !term_of_interest.contains('*') && // Ensure it's not an interaction term like "Cov*Factor"
+        term_of_interest != "Intercept";
+
     // Case 1: term_of_interest is "Intercept"
     if term_of_interest == "Intercept" {
         let mut l_vec = DVector::from_element(p, 0.0);
@@ -367,6 +375,24 @@ pub fn construct_type_iii_l_matrix(
             }
         }
         l_rows.push(l_vec);
+    } else if is_covariate_term {
+        // Case: term_of_interest is a Covariate
+        // The L-matrix for a covariate is a row vector with 1 at the covariate's parameter index and 0 otherwise.
+        if let Some(param_idx) = all_model_param_names.iter().position(|pn| pn == term_of_interest) {
+            let mut l_vec = DVector::from_element(p, 0.0);
+            l_vec[param_idx] = 1.0;
+            l_rows.push(l_vec);
+        } else {
+            // This warning indicates that the covariate defined in the model config
+            // was not found among the generated parameter names. This will result in an empty L-matrix for this term.
+            web_sys::console::warn_1(
+                &format!(
+                    "Hypothesis matrix (Type III): Covariate term '{}' from config was not found in the generated parameter names ({:?}). L-matrix for this term will be empty.",
+                    term_of_interest,
+                    all_model_param_names
+                ).into()
+            );
+        }
     } else if
         // Case 2: term_of_interest is a Main Effect (and is a known factor)
         !term_of_interest.contains('*') &&
@@ -538,12 +564,12 @@ pub fn construct_type_iii_l_matrix(
             }
         }
     }
-    // Note: Covariates as term_of_interest are not handled by this constructive factor-based method.
-    // If term_of_interest is a covariate string (e.g. "MyCovariate"), l_rows will be empty.
-    // The original Type III from SAS/SPSS for a covariate is effectively its contribution after
-    // accounting for (or being orthogonal to) other effects it's not contained in.
-    // This usually comes from matrix methods like (X'X)^- X'X.
-    // This constructive method here is specific to the factor-based interpretation of Type III provided.
+    // Note: The constructive method for Type III SS now handles Intercept, main effects of factors,
+    // interactions between factors, and main effects of covariates (as a single parameter hypothesis).
+    // The L-matrix for a covariate 'C' will test H0: beta_C = 0.
+    // Interactions involving covariates (e.g., Cov*Factor) are typically handled as part of the
+    // 'Interaction' case if their structure fits the factor-interaction pattern, or might
+    // require specific L-matrix construction if they have unique parameterization.
 
     if l_rows.is_empty() {
         Ok(DMatrix::zeros(0, p))
