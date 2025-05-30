@@ -390,10 +390,10 @@ export const RepeatedMeasureDefineDialog = ({
 
         setIsDefineOpen(false);
         closeModal();
-        openModal(ModalType.RepeatedMeasuresDialog, {
-            combinationVars: formattedCombinations,
-            factorVars: dialogState.factors.map((factor) => factor.name || ""),
-        });
+        // openModal(ModalType.RepeatedMeasuresDialog, {
+        //     combinationVars: formattedCombinations,
+        //     factorVars: dialogState.factors.map((factor) => factor.name || ""),
+        // });
 
         onContinue(dialogState);
     };

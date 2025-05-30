@@ -215,8 +215,8 @@ export const ImportCsvConfiguration: FC<ImportCsvConfigurationProps> = ({ // Ren
                                 onChange={(e) => setTextQualifier(e.target.value as TextQualifierOption)}
                                 className="w-full appearance-none px-3 py-2 pr-8 text-sm rounded-md border border-input focus:border-ring focus:outline-none focus:ring-1 bg-background h-9"
                             >
-                                <option value="doubleQuote">Double Quote (")</option>
-                                <option value="singleQuote">Single Quote (')</option>
+                                <option value="doubleQuote">Double Quote (&quot;)</option>
+                                <option value="singleQuote">Single Quote (&apos;)</option>
                                 <option value="none">None</option>
                             </select>
                             <ChevronDownIcon className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />

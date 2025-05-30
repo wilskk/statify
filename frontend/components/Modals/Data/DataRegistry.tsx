@@ -33,11 +33,14 @@ const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
  * withSuspense - HOC for wrapping lazy-loaded components with Suspense
  */
 function withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
-  return (props: BaseModalProps) => (
+  const WrappedComponent = (props: BaseModalProps) => (
     <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
       <Component {...props} />
     </Suspense>
   );
+  
+  WrappedComponent.displayName = `withSuspense(${Component.displayName || Component.name || 'Component'})`;
+  return WrappedComponent;
 }
 
 /**

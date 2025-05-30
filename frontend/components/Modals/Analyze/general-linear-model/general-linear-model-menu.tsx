@@ -17,21 +17,17 @@ const GeneralLinearModelMenu: React.FC = () => {
         <MenubarSub>
             <MenubarSubTrigger>General Linear Model</MenubarSubTrigger>
             <MenubarSubContent>
-                <MenubarItem onClick={() => openModal(ModalType.Univariate)}>
+                <MenubarItem disabled>
                     Univariate
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Multivariate)}>
+                <MenubarItem disabled>
                     Multivariate
                 </MenubarItem>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.RepeatedMeasures)}
-                >
+                <MenubarItem disabled>
                     Repeated Measures
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem
-                    onClick={() => openModal(ModalType.VarianceComponents)}
-                >
+                <MenubarItem disabled>
                     Variance Components
                 </MenubarItem>
             </MenubarSubContent>

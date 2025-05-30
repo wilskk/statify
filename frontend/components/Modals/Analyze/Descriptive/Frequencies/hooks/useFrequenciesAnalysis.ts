@@ -163,7 +163,6 @@ export const useFrequenciesAnalysis = ({
     showFrequencyTables, 
     showStatistics, 
     statisticsOptions, 
-    showCharts, 
     chartOptions, 
     onClose, 
     addLog, 

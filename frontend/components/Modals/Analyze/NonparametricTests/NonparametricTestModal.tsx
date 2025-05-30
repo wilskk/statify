@@ -33,9 +33,10 @@ export const NonparametricTestModal: FC<NonparametricTestModalProps> = ({ modalT
 };
 
 export const isNonparametricTestModal = (type: ModalType): boolean => {
-    return [
-        ModalType.Descriptive,
-        ModalType.Explore,
-        ModalType.Frequencies
-    ].includes(type);
+    return false; // Always return false as all modals are disabled
+    // return [
+    //     ModalType.Descriptives, // Corrected from Descriptive, then commented out
+    //     ModalType.Explore,
+    //     ModalType.Frequencies
+    // ].includes(type);
 };

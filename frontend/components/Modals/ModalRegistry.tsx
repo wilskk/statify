@@ -84,11 +84,14 @@ type ModalComponentRegistry = {
  * @returns Komponen yang dibungkus dengan Suspense
  */
 function withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
-  return (props: BaseModalProps) => (
+  const WrappedComponent = (props: BaseModalProps) => (
     <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
       <Component {...props} />
     </Suspense>
   );
+  
+  WrappedComponent.displayName = `withSuspense(${Component.displayName || Component.name || 'Component'})`;
+  return WrappedComponent;
 }
 
 /**
@@ -111,10 +114,29 @@ const FILE_MODAL_COMPONENTS: ModalComponentRegistry = {
  * Mapping langsung ke komponen dengan props yang sesuai
  */
 const EDIT_MODAL_COMPONENTS: ModalComponentRegistry = {
-  [ModalType.Find]: (props) => <FindAndReplaceModal {...props} mode={FindReplaceMode.FIND} /> as any,
-  [ModalType.Replace]: (props) => <FindAndReplaceModal {...props} mode={FindReplaceMode.REPLACE} /> as any,
-  [ModalType.GoToCase]: (props) => <GoToModal {...props} mode={GoToMode.CASE} /> as any,
-  [ModalType.GoToVariable]: (props) => <GoToModal {...props} mode={GoToMode.VARIABLE} /> as any,
+  [ModalType.Find]: ((props: BaseModalProps) => {
+    const FindComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.FIND} />;
+    FindComp.displayName = 'FindModal';
+    return <FindComp />;
+  }) as React.ComponentType<BaseModalProps>,
+  
+  [ModalType.Replace]: ((props: BaseModalProps) => {
+    const ReplaceComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.REPLACE} />;
+    ReplaceComp.displayName = 'ReplaceModal';
+    return <ReplaceComp />;
+  }) as React.ComponentType<BaseModalProps>,
+  
+  [ModalType.GoToCase]: ((props: BaseModalProps) => {
+    const GoToCaseComp = () => <GoToModal {...props} mode={GoToMode.CASE} />;
+    GoToCaseComp.displayName = 'GoToCaseModal';
+    return <GoToCaseComp />;
+  }) as React.ComponentType<BaseModalProps>,
+  
+  [ModalType.GoToVariable]: ((props: BaseModalProps) => {
+    const GoToVarComp = () => <GoToModal {...props} mode={GoToMode.VARIABLE} />;
+    GoToVarComp.displayName = 'GoToVariableModal';
+    return <GoToVarComp />;
+  }) as React.ComponentType<BaseModalProps>
 };
 
 /**
