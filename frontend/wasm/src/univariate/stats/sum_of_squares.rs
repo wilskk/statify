@@ -1,5 +1,6 @@
 use nalgebra::{ DMatrix, DVector };
 use crate::univariate::models::{
+    config::UnivariateConfig,
     data::AnalysisData,
     result::{ DesignMatrixInfo, SweptMatrixInfo },
 };
@@ -43,13 +44,15 @@ pub fn calculate_type_iii_ss(
     all_model_terms: &[String],
     beta_hat: &DVector<f64>,
     g_inv: &DMatrix<f64>,
-    swept_info: &Option<SweptMatrixInfo>
+    data: &AnalysisData,
+    config: &UnivariateConfig
 ) -> Result<(f64, usize), String> {
     let l_matrix = construct_type_iii_l_matrix(
         design_info,
         term_of_interest,
         all_model_terms,
-        swept_info
+        data,
+        config
     )?;
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }
@@ -61,15 +64,15 @@ pub fn calculate_type_iv_ss(
     all_model_terms: &[String],
     beta_hat: &DVector<f64>,
     g_inv: &DMatrix<f64>,
-    swept_info: &Option<SweptMatrixInfo>,
-    data: &AnalysisData
+    data: &AnalysisData,
+    config: &UnivariateConfig
 ) -> Result<(f64, usize), String> {
     let l_matrix = construct_type_iv_l_matrix(
         design_info,
         term_of_interest,
         all_model_terms,
-        swept_info,
-        data
+        data,
+        config
     )?;
     calculate_ss_for_term(&l_matrix, beta_hat, g_inv, term_of_interest)
 }

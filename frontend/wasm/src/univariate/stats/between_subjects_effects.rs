@@ -111,7 +111,8 @@ pub fn calculate_tests_between_subjects_effects(
                     all_model_terms_in_design,
                     &swept_info.beta_hat,
                     &swept_info.g_inv,
-                    &swept_info_full_model_option
+                    data,
+                    config
                 ),
             SumOfSquaresMethod::TypeIV =>
                 calculate_type_iv_ss(
@@ -120,8 +121,8 @@ pub fn calculate_tests_between_subjects_effects(
                     all_model_terms_in_design,
                     &swept_info.beta_hat,
                     &swept_info.g_inv,
-                    &swept_info_full_model_option,
-                    data
+                    data,
+                    config
                 ),
         })?;
 

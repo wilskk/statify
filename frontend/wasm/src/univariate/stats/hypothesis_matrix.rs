@@ -1,12 +1,18 @@
 use std::collections::{ HashMap, HashSet };
-
-use nalgebra::{ DMatrix };
+use itertools::Itertools;
+use nalgebra::{ DMatrix, DVector };
 
 use crate::univariate::models::{
+    config::UnivariateConfig,
     data::AnalysisData,
     result::{ DesignMatrixInfo, SweptMatrixInfo },
 };
-
+use crate::univariate::stats::factor_utils::{
+    get_factor_levels,
+    parse_interaction_term,
+    parse_parameter_name,
+    generate_all_row_parameter_names_sorted,
+};
 use super::core::*;
 
 /// Constructs the L-matrix for Type I Sum of Squares for a given term F_j.
@@ -252,306 +258,302 @@ pub fn construct_type_ii_l_matrix(
     Ok(l_final)
 }
 
-/// Helper: Performs Gaussian elimination on specified columns of a matrix.
-/// It normalizes pivot rows, eliminates other elements in pivot columns,
-/// and removes rows that become entirely zero *during its operations*.
-/// This is suitable for Step 3 of Type III L-matrix construction.
-fn eliminate_columns(matrix: &mut DMatrix<f64>, col_indices: &[usize]) {
-    if matrix.nrows() == 0 {
-        return;
-    }
-
-    let mut preserved_rows = vec![true; matrix.nrows()];
-
-    for &col_idx in col_indices {
-        if col_idx >= matrix.ncols() {
-            continue;
-        }
-        // Find the first non-zero element in this column among preserved rows
-        let mut pivot_row_opt = None;
-        for r in 0..matrix.nrows() {
-            if preserved_rows[r] && matrix[(r, col_idx)].abs() > 1e-10 {
-                pivot_row_opt = Some(r);
-                break;
-            }
-        }
-
-        if let Some(pivot) = pivot_row_opt {
-            let pivot_val = matrix[(pivot, col_idx)];
-            // Ensure pivot_val is substantially non-zero before dividing
-            if pivot_val.abs() > 1e-10 {
-                // Divide pivot row
-                for c in 0..matrix.ncols() {
-                    matrix[(pivot, c)] /= pivot_val;
-                }
-
-                // Zero out column for other preserved rows
-                for r_other in 0..matrix.nrows() {
-                    if r_other != pivot && preserved_rows[r_other] {
-                        let factor = matrix[(r_other, col_idx)];
-                        if factor.abs() > 1e-10 {
-                            // only subtract if factor is non-negligible
-                            for c in 0..matrix.ncols() {
-                                matrix[(r_other, c)] -= factor * matrix[(pivot, c)];
-                            }
-                            // Check if row became zero due to this operation
-                            let row_norm_sq: f64 = matrix
-                                .row(r_other)
-                                .iter()
-                                .map(|&x| x * x)
-                                .sum();
-                            if row_norm_sq.sqrt() < 1e-10 {
-                                preserved_rows[r_other] = false;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Create new matrix with only preserved rows
-    let mut new_rows_vec = Vec::new();
-    for r in 0..matrix.nrows() {
-        if preserved_rows[r] {
-            new_rows_vec.push(matrix.row(r).clone_owned());
-        }
-    }
-
-    if !new_rows_vec.is_empty() {
-        *matrix = DMatrix::from_rows(&new_rows_vec);
-    } else {
-        *matrix = DMatrix::zeros(0, matrix.ncols());
-    }
-}
-
 /// Constructs the L-matrix for Type III Sum of Squares for a given term.
 /// This involves H = (X'WX)^- X'WX and detailed row operations.
 pub fn construct_type_iii_l_matrix(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
-    all_model_terms: &[String],
-    swept_info: &Option<SweptMatrixInfo>
+    _all_model_terms: &[String], // May not be strictly needed if all info derived from design_info + data
+    data: &AnalysisData,
+    config: &UnivariateConfig
 ) -> Result<DMatrix<f64>, String> {
-    // Step 0: Validate input
-    let g_inv = swept_info
-        .as_ref()
-        .ok_or_else(|| "Swept matrix info (g_inv) is required for Type III L-matrix.".to_string())?
-        .g_inv.clone();
-
-    if design_info.p_parameters == 0 {
-        return Ok(DMatrix::zeros(0, 0));
-    }
-
-    if g_inv.nrows() != design_info.p_parameters || g_inv.ncols() != design_info.p_parameters {
+    // 1. Get all_model_param_names (full list of parameter names for X columns)
+    // These names must correspond 1-to-1 with the columns of design_info.x
+    let all_model_param_names = generate_all_row_parameter_names_sorted(design_info, data)?;
+    if all_model_param_names.len() != design_info.p_parameters {
         return Err(
             format!(
-                "G_inv dimensions ({},{}) do not match p_parameters ({}) for Type III L-matrix.",
-                g_inv.nrows(),
-                g_inv.ncols(),
-                design_info.p_parameters
+                "Mismatch between generated param names ({}) and p_parameters ({}). Param names: {:?}",
+                all_model_param_names.len(),
+                design_info.p_parameters,
+                all_model_param_names
             )
         );
     }
 
-    let x_matrix = &design_info.x;
-    let w_matrix: DMatrix<f64> = if let Some(w_vec) = &design_info.w {
-        if w_vec.len() != design_info.n_samples {
-            return Err("Weight vector length mismatch for Type III L-matrix.".to_string());
-        }
-        DMatrix::from_diagonal(w_vec)
-    } else {
-        DMatrix::identity(design_info.n_samples, design_info.n_samples)
-    };
+    // 2. Get all unique factor names from design_info.term_names and their levels/counts
+    let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut unique_true_factor_names_in_model = HashSet::new(); // Only names of actual factors, not covariates
 
-    // Step 1: H = (X'WX)^- X'WX
-    let xt_w = x_matrix.transpose() * &w_matrix;
-    let xt_w_x = &xt_w * x_matrix;
-    let h_initial = &g_inv * xt_w_x;
-
-    // Step 2: Zero out columns for effects not containing F (term_of_interest) by row operations (2a-2d)
-    let factors_in_f_set: HashSet<_> = parse_interaction_term(term_of_interest)
-        .into_iter()
-        .collect();
-    let mut cols_to_zero_in_step2: Vec<usize> = Vec::new();
-
-    for other_term in all_model_terms {
-        if other_term == term_of_interest {
+    // Populate unique_true_factor_names_in_model by checking against config's factor/covariate lists
+    for term_in_design in &design_info.term_names {
+        if term_in_design == "Intercept" {
             continue;
         }
-        let factors_other: HashSet<_> = parse_interaction_term(other_term).into_iter().collect();
+        let components = parse_interaction_term(term_in_design); // Splits "A*B" into ["A", "B"]
+        for potential_factor_name in components {
+            let is_covariate = config.main.covar
+                .as_ref()
+                .map_or(false, |c_list| { c_list.contains(&potential_factor_name) });
+            let is_fix_factor = config.main.fix_factor
+                .as_ref()
+                .map_or(false, |f_list| { f_list.contains(&potential_factor_name) });
+            let is_rand_factor = config.main.rand_factor
+                .as_ref()
+                .map_or(false, |r_list| { r_list.contains(&potential_factor_name) });
 
-        // Corrected condition: zero out 'other_term' if it does NOT contain 'term_of_interest'
-        let f_is_subset_of_other = factors_in_f_set.is_subset(&factors_other);
-        let will_zero = !f_is_subset_of_other;
-
-        if will_zero {
-            if let Some((start, end)) = design_info.term_column_indices.get(other_term) {
-                for i in *start..=*end {
-                    cols_to_zero_in_step2.push(i);
-                }
+            if !is_covariate && (is_fix_factor || is_rand_factor) {
+                unique_true_factor_names_in_model.insert(potential_factor_name.clone());
             }
         }
     }
-    cols_to_zero_in_step2.sort_unstable();
-    cols_to_zero_in_step2.dedup();
 
-    let mut h_after_step2 = h_initial.clone();
-
-    if h_after_step2.nrows() > 0 {
-        for &col_idx_to_zero in &cols_to_zero_in_step2 {
-            if col_idx_to_zero >= h_after_step2.ncols() {
-                continue;
+    for factor_name_str in &unique_true_factor_names_in_model {
+        match get_factor_levels(data, factor_name_str) {
+            Ok(levels) => {
+                if levels.is_empty() {
+                    return Err(
+                        format!("Factor '{}' (identified as a true factor from config) has no levels defined in the data.", factor_name_str)
+                    );
+                }
+                factor_levels_map.insert(factor_name_str.clone(), levels);
             }
+            Err(e) => {
+                // This should ideally not happen if unique_true_factor_names_in_model was populated correctly
+                return Err(
+                    format!(
+                        "Error getting levels for presumed factor '{}': {}. This might indicate an inconsistency.",
+                        factor_name_str,
+                        e
+                    )
+                );
+            }
+        }
+    }
 
-            let mut pivot_r_opt = None;
-            for r_idx in 0..h_after_step2.nrows() {
-                let row_norm_sq: f64 = h_after_step2
-                    .row(r_idx)
-                    .iter()
-                    .map(|&x| x * x)
-                    .sum();
-                if
-                    row_norm_sq.sqrt() > 1e-12 &&
-                    h_after_step2[(r_idx, col_idx_to_zero)].abs() > 1e-10
-                {
-                    pivot_r_opt = Some(r_idx);
-                    break;
+    let mut l_rows: Vec<DVector<f64>> = Vec::new();
+    let p = design_info.p_parameters;
+
+    // Case 1: term_of_interest is "Intercept"
+    if term_of_interest == "Intercept" {
+        let mut l_vec = DVector::from_element(p, 0.0);
+        for (j, param_name) in all_model_param_names.iter().enumerate() {
+            if param_name == "Intercept" {
+                l_vec[j] = 1.0;
+            } else {
+                let param_components = parse_parameter_name(param_name); // E.g. {"F1":"L1", "F2":"L2"}
+                let mut coeff_prod = 1.0;
+                let mut is_pure_factor_based_param = !param_components.is_empty();
+
+                for (factor_in_param, _level_in_param) in &param_components {
+                    if let Some(levels) = factor_levels_map.get(factor_in_param) {
+                        coeff_prod *= 1.0 / (levels.len() as f64);
+                    } else {
+                        // This component of the parameter is not in factor_levels_map.
+                        // It means it's not a "true factor" identified earlier (e.g., it's a covariate).
+                        // The intercept L-vector definition averages over factor levels.
+                        // If a parameter involves a non-factor, its coefficient for the Intercept L is 0.
+                        is_pure_factor_based_param = false;
+                        break;
+                    }
+                }
+
+                if is_pure_factor_based_param {
+                    l_vec[j] = coeff_prod;
+                } else {
+                    // If param_name is not "Intercept" and not purely factor-based, its coeff is 0 for Intercept L.
+                    l_vec[j] = 0.0;
                 }
             }
+        }
+        l_rows.push(l_vec);
+    } else if
+        // Case 2: term_of_interest is a Main Effect (and is a known factor)
+        !term_of_interest.contains('*') &&
+        factor_levels_map.contains_key(term_of_interest)
+    {
+        let f_levels = factor_levels_map.get(term_of_interest).unwrap();
+        let num_f_levels = f_levels.len();
+        if num_f_levels >= 2 {
+            let ref_level_f = f_levels.last().unwrap().clone(); // Using last level as reference
+            for i in 0..num_f_levels - 1 {
+                let current_level_f = f_levels[i].clone();
+                let mut l_vec = DVector::from_element(p, 0.0);
 
-            if let Some(pivot_r) = pivot_r_opt {
-                let pivot_val = h_after_step2[(pivot_r, col_idx_to_zero)];
+                for (j, param_name) in all_model_param_names.iter().enumerate() {
+                    let param_components = parse_parameter_name(param_name);
+                    // Check if the parameter involves the term_of_interest (F)
+                    if let Some(level_in_param_for_f) = param_components.get(term_of_interest) {
+                        let mut f_contrast_coeff: f64 = 0.0;
+                        if level_in_param_for_f == &current_level_f {
+                            f_contrast_coeff = 1.0;
+                        } else if level_in_param_for_f == &ref_level_f {
+                            f_contrast_coeff = -1.0;
+                        }
 
-                if pivot_val.abs() > 1e-10 {
-                    for c_idx in 0..h_after_step2.ncols() {
-                        h_after_step2[(pivot_r, c_idx)] /= pivot_val;
+                        if f_contrast_coeff.abs() > 1e-9 {
+                            // This parameter is part of the contrast for F
+                            let mut avg_coeff_for_other_factors = 1.0;
+                            let mut is_param_structure_valid_for_avg = true;
+
+                            for (factor_in_param, _level_in_param) in &param_components {
+                                if factor_in_param != term_of_interest {
+                                    // This is an "other factor" within the parameter
+                                    if
+                                        let Some(other_factor_levels) =
+                                            factor_levels_map.get(factor_in_param)
+                                    {
+                                        avg_coeff_for_other_factors *=
+                                            1.0 / (other_factor_levels.len() as f64);
+                                    } else {
+                                        // This "other component" in the param is not a known factor (e.g., a covariate).
+                                        // The averaging rule applies to *other factors*.
+                                        // If it's an interaction with a covariate (e.g. F*Cov), this logic may need adjustment
+                                        // or such parameters should get coefficient 0 for this main effect L.
+                                        is_param_structure_valid_for_avg = false;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if is_param_structure_valid_for_avg {
+                                l_vec[j] = f_contrast_coeff * avg_coeff_for_other_factors;
+                            }
+                            // else l_vec[j] remains 0.0
+                        }
+                    }
+                    // else: param does not contain term_of_interest, so l_vec[j] remains 0.0
+                }
+                l_rows.push(l_vec);
+            }
+        }
+        // If num_f_levels < 2, no contrasts, l_rows remains empty for this term_of_interest.
+    } else if
+        // Case 3: term_of_interest is an Interaction
+        term_of_interest.contains('*')
+    {
+        let interaction_factors_names_in_term_of_interest =
+            parse_interaction_term(term_of_interest);
+        let mut factor_contrast_plans = Vec::new(); // Stores Vec<(non_ref_level, ref_level)> for each factor in interaction
+        let mut interaction_possible_and_valid = true;
+
+        for f_name in &interaction_factors_names_in_term_of_interest {
+            if let Some(levels) = factor_levels_map.get(f_name) {
+                if levels.len() < 2 {
+                    interaction_possible_and_valid = false;
+                    break;
+                }
+                let ref_level = levels.last().unwrap().clone();
+                let mut contrasts_for_this_factor = Vec::new();
+                for i in 0..levels.len() - 1 {
+                    contrasts_for_this_factor.push((levels[i].clone(), ref_level.clone()));
+                }
+                factor_contrast_plans.push(contrasts_for_this_factor);
+            } else {
+                // One of the factors in term_of_interest is not a known factor (e.g. a covariate named like F*Cov)
+                interaction_possible_and_valid = false;
+                break;
+            }
+        }
+
+        if interaction_possible_and_valid && !factor_contrast_plans.is_empty() {
+            // Generate all combinations of chosen contrasts, one from each factor's plan
+            // e.g., factor_contrast_plans = [ [(A1,A_ref)], [(B1,B_ref),(B2,B_ref)] ]
+            // Itertools::multi_cartesian_product will give:
+            // 1. ( (A1,A_ref), (B1,B_ref) )
+            // 2. ( (A1,A_ref), (B2,B_ref) )
+            for specific_contrast_combination in factor_contrast_plans
+                .iter()
+                .map(|plan| plan.iter()) // Need iterators for multi_cartesian_product
+                .multi_cartesian_product() {
+                // specific_contrast_combination is Vec<&(non_ref_level, ref_level)>
+                let mut l_vec = DVector::from_element(p, 0.0);
+                for (j_param_idx, param_name) in all_model_param_names.iter().enumerate() {
+                    let param_components = parse_parameter_name(param_name); // e.g. {"A":"A1", "B":"B1", "C":"C2"}
+                    let mut final_param_coeff_for_this_l: f64 = 1.0;
+                    let mut param_relevant_to_this_l = true;
+
+                    // Part 1: Calculate product of contrast coefficients for factors IN the term_of_interest
+                    for (
+                        k_int_factor,
+                        int_factor_name,
+                    ) in interaction_factors_names_in_term_of_interest.iter().enumerate() {
+                        if
+                            let Some(level_of_int_factor_in_param) =
+                                param_components.get(int_factor_name)
+                        {
+                            let (non_ref_level_for_contrast, ref_level_for_contrast) =
+                                specific_contrast_combination[k_int_factor]; // This is & (String, String)
+
+                            if level_of_int_factor_in_param == non_ref_level_for_contrast {
+                                final_param_coeff_for_this_l *= 1.0;
+                            } else if level_of_int_factor_in_param == ref_level_for_contrast {
+                                final_param_coeff_for_this_l *= -1.0;
+                            } else {
+                                // This param's level for this int_factor_name is not part of the current contrast definition
+                                final_param_coeff_for_this_l = 0.0;
+                                break; // No need to check other factors for this L
+                            }
+                        } else {
+                            // The parameter does not contain this specific interaction factor from term_of_interest.
+                            // So, this parameter is not relevant for this specific L-vector.
+                            param_relevant_to_this_l = false;
+                            break;
+                        }
                     }
 
-                    for r_other_idx in 0..h_after_step2.nrows() {
-                        if r_other_idx != pivot_r {
-                            let factor = h_after_step2[(r_other_idx, col_idx_to_zero)];
-                            if factor.abs() > 1e-10 {
-                                for c_idx in 0..h_after_step2.ncols() {
-                                    h_after_step2[(r_other_idx, c_idx)] -=
-                                        factor * h_after_step2[(pivot_r, c_idx)];
-                                }
+                    if !param_relevant_to_this_l || final_param_coeff_for_this_l.abs() < 1e-9 {
+                        l_vec[j_param_idx] = 0.0;
+                        continue;
+                    }
+
+                    // Part 2: Average over levels of factors NOT IN the term_of_interest but present in the parameter
+                    for (factor_in_param_name, _level_in_param) in param_components.iter() {
+                        if
+                            !interaction_factors_names_in_term_of_interest.contains(
+                                factor_in_param_name
+                            )
+                        {
+                            // This factor_in_param_name is an "other" factor
+                            if
+                                let Some(other_factor_levels) =
+                                    factor_levels_map.get(factor_in_param_name)
+                            {
+                                final_param_coeff_for_this_l *=
+                                    1.0 / (other_factor_levels.len() as f64);
+                            } else {
+                                // This "other" component in param is not a known factor (e.g., a covariate)
+                                // Per user: "If there is an interaction with a third factor, the coefficient for the
+                                // three-way interaction will be the product of the two-way coefficient and the weight of the third factor."
+                                // This implies averaging only over "other factors". If it's a covariate, no averaging.
+                                // So, the term becomes irrelevant for this specific L construction (based on averaging factors)
+                                final_param_coeff_for_this_l = 0.0;
+                                break;
                             }
                         }
                     }
-                    h_after_step2.row_mut(pivot_r).fill(0.0);
+                    l_vec[j_param_idx] = final_param_coeff_for_this_l;
                 }
+                l_rows.push(l_vec);
             }
         }
     }
+    // Note: Covariates as term_of_interest are not handled by this constructive factor-based method.
+    // If term_of_interest is a covariate string (e.g. "MyCovariate"), l_rows will be empty.
+    // The original Type III from SAS/SPSS for a covariate is effectively its contribution after
+    // accounting for (or being orthogonal to) other effects it's not contained in.
+    // This usually comes from matrix methods like (X'X)^- X'X.
+    // This constructive method here is specific to the factor-based interpretation of Type III provided.
 
-    // Step 3: Gaussian elimination on columns of F (term_of_interest) using 2a, 2b, 2c.
-    // Then remove all 0 rows.
-    let (f_start, f_end) = design_info.term_column_indices
-        .get(term_of_interest)
-        .ok_or_else(||
-            format!("Term '{}' not found in term_column_indices for Type III L-matrix.", term_of_interest)
-        )?;
-
-    let f_col_indices: Vec<usize> = (*f_start..=*f_end).collect();
-
-    let mut h_for_f_elimination = h_after_step2.clone();
-
-    eliminate_columns(&mut h_for_f_elimination, &f_col_indices);
-
-    // Explicitly remove ALL zero rows from the result, as per documentation Step 3.
-    let mut nonzero_rows_step3 = Vec::new();
-    if h_for_f_elimination.nrows() > 0 {
-        for r in 0..h_for_f_elimination.nrows() {
-            let row_norm_sq: f64 = h_for_f_elimination
-                .row(r)
-                .iter()
-                .map(|&x| x * x)
-                .sum();
-            if row_norm_sq.sqrt() > 1e-10 {
-                // Tolerance for being non-zero
-                nonzero_rows_step3.push(h_for_f_elimination.row(r).clone_owned());
-            }
-        }
-    }
-
-    let l_matrix_step3 = if !nonzero_rows_step3.is_empty() {
-        DMatrix::from_rows(&nonzero_rows_step3)
+    if l_rows.is_empty() {
+        Ok(DMatrix::zeros(0, p))
     } else {
-        // If all rows are zero, the resulting L matrix for this step is empty (0 rows)
-        // but should have the original number of columns.
-        DMatrix::zeros(0, design_info.p_parameters)
-    };
-
-    if l_matrix_step3.nrows() == 0 {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
+        let row_d_vectors: Vec<nalgebra::RowDVector<f64>> = l_rows
+            .into_iter()
+            .map(|dv_col| dv_col.transpose())
+            .collect();
+        Ok(DMatrix::from_rows(&row_d_vectors))
     }
-
-    // Step 4: Separate rows into G0 (F-columns are all zero) and G1 (F-columns are non-zero).
-    // Then orthogonalize G1 with respect to G0.
-    let mut g0_rows = Vec::new();
-    let mut g1_rows = Vec::new();
-
-    for i in 0..l_matrix_step3.nrows() {
-        let row_view = l_matrix_step3.row(i);
-        let f_col_sum_abs: f64 = f_col_indices
-            .iter()
-            .filter_map(|&j| row_view.get(j).map(|val| val.abs()))
-            .sum();
-
-        let is_g0 = f_col_sum_abs < 1e-10;
-
-        if is_g0 {
-            g0_rows.push(row_view.clone_owned());
-        } else {
-            g1_rows.push(row_view.clone_owned());
-        }
-    }
-
-    let mut normalized_g0_basis = Vec::new();
-    for g0_row_vec in &g0_rows {
-        let norm_sq: f64 = g0_row_vec
-            .iter()
-            .map(|&x| x * x)
-            .sum();
-        if norm_sq.sqrt() > 1e-10 {
-            let mut normalized_row = g0_row_vec.clone_owned();
-            normalized_row /= norm_sq.sqrt();
-            normalized_g0_basis.push(normalized_row);
-        }
-    }
-
-    let mut g1_orth_rows: Vec<nalgebra::RowDVector<f64>> = Vec::new();
-    for mut g1_row_vec in g1_rows {
-        for g0_basis_row in &normalized_g0_basis {
-            // Correct way to compute scalar projection: (u * v^T)
-            // g1_row_vec is 1xN, g0_basis_row.transpose() is Nx1. Result is 1x1 matrix.
-            let projection_matrix = &g1_row_vec * g0_basis_row.transpose();
-            let dot_product = projection_matrix[(0, 0)];
-
-            if dot_product.abs() > 1e-10 {
-                for i in 0..g1_row_vec.ncols() {
-                    if i < g0_basis_row.ncols() {
-                        g1_row_vec[i] -= dot_product * g0_basis_row[i];
-                    }
-                }
-            }
-        }
-        let norm_sq: f64 = g1_row_vec
-            .iter()
-            .map(|&x| x * x)
-            .sum();
-        if norm_sq.sqrt() > 1e-10 {
-            g1_orth_rows.push(g1_row_vec);
-        }
-    }
-
-    if g1_orth_rows.is_empty() {
-        return Ok(DMatrix::zeros(0, design_info.p_parameters));
-    }
-
-    let l_final = DMatrix::from_rows(&g1_orth_rows);
-    Ok(l_final)
 }
 
 /// Constructs the L-matrix for Type IV Sum of Squares for a given term.
@@ -560,16 +562,16 @@ pub fn construct_type_iv_l_matrix(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
     all_model_terms: &[String],
-    swept_info: &Option<SweptMatrixInfo>,
-    data: &AnalysisData // Keep data parameter for cell counting
+    data: &AnalysisData,
+    config: &UnivariateConfig
 ) -> Result<DMatrix<f64>, String> {
-    // 1. Perform Type III steps 1, 2, and 3.
-    //    This means calling a modified Type III that can return the matrix from its step 3.
+    // 1. Perform Type III calculation.
     let l_matrix_base_type_iv = construct_type_iii_l_matrix(
         design_info,
         term_of_interest,
         all_model_terms,
-        swept_info
+        data,
+        config
     )?;
 
     if l_matrix_base_type_iv.nrows() == 0 || design_info.p_parameters == 0 {

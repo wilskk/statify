@@ -3,7 +3,6 @@ pub use crate::univariate::stats::between_subjects_effects::*;
 pub use crate::univariate::stats::bootstrap::*;
 pub use crate::univariate::stats::common::*;
 pub use crate::univariate::stats::contrast_coefficient::*;
-pub use crate::univariate::stats::type_iii_contrast::*;
 pub use crate::univariate::stats::descriptive_statistics::*;
 pub use crate::univariate::stats::distribution_utils::*;
 pub use crate::univariate::stats::design_matrix::*;

@@ -22,4 +22,3 @@ pub mod save;
 pub mod spread_vs_level;
 pub mod sum_of_squares;
 pub mod summary_processing;
-pub mod type_iii_contrast;

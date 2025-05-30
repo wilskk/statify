@@ -117,11 +117,18 @@ pub fn calculate_descriptive_statistics(
     // Calculate statistics for each combination
     let mut stats_entries = HashMap::new();
     for combo in &all_combinations {
-        let combo_key = combo
+        // Generate a deterministic key based on the order in all_factors
+        let combo_key_parts: Vec<String> = all_factors
             .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<String>>()
-            .join(";");
+            .map(|factor_name| {
+                let level = combo
+                    .get(factor_name)
+                    .cloned()
+                    .unwrap_or_else(|| "Total".to_string()); // Default to "Total" if somehow missing, though generate_level_combinations should ensure it.
+                format!("{}={}", factor_name, level)
+            })
+            .collect();
+        let combo_key = combo_key_parts.join(";");
 
         let mut values_with_weights = Vec::new();
         for record in &all_records {
