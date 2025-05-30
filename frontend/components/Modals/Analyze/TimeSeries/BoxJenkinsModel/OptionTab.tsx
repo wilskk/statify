@@ -77,6 +77,9 @@ const OptionTab: FC<OptionTabProps> = ({
                     />
                 </div>
             </div>
+            <div className="ml-4 mt-2">
+                <label className="w-full text-sm font-semibold">note: Method used is Conditional Least Square with L-BFGS Opmatization</label>
+            </div>
         </div>
     )
 }

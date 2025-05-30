@@ -85,6 +85,9 @@ const OptionTab: FC<OptionTabProps> = ({
                         ))}
                     </RadioGroup>
                 </div>
+                <div className="ml-4 mt-2">
+                    <label className="w-full text-sm font-semibold">note: Standard error are calculate with Bartlet's Approximation</label>
+                </div>
             </div>
         </div>
     );

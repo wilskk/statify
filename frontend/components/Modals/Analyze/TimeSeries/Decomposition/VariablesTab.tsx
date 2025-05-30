@@ -89,7 +89,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             className="mr-2 border-slate-300 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
                         <Label htmlFor="saveAsVariable" className="text-sm cursor-pointer">
-                            Save standardized values as variables
+                            Save decomposition values as variables
                         </Label>
                     </div>
                 </div>
