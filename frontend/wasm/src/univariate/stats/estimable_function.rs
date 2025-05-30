@@ -243,16 +243,22 @@ pub fn calculate_general_estimable_function(
     let mut l_matrix_rows: Vec<Vec<i32>> = Vec::new();
     let mut l_labels: Vec<String> = Vec::new();
     let mut contrast_info_strings: Vec<String> = Vec::new();
-    let mut l_overall_counter = 0; // Single counter for L-labels
+
+    // Temporary collection for L-functions before sorting
+    let mut collected_l_functions: Vec<(usize, String, Vec<i32>, String)> = Vec::new();
     let mut encountered_l_vectors: HashSet<Vec<i32>> = HashSet::new();
 
-    let mut add_l_vector_if_valid = |l_vec: Vec<i32>, description: String| {
-        if !l_vec.iter().all(|&x| x == 0) && encountered_l_vectors.insert(l_vec.clone()) {
-            l_overall_counter += 1;
-            l_labels.push(format!("L{}", l_overall_counter));
-            l_matrix_rows.push(l_vec);
-            contrast_info_strings.push(description);
+    let mut add_to_collection_if_valid = |
+        l_vec: Vec<i32>,
+        description: String,
+        expected_l_number: usize, // param_idx + 1
+        expected_l_label: String // "L{param_idx + 1}"
+    | {
+        if l_vec.iter().all(|&x| x == 0) || !encountered_l_vectors.insert(l_vec.clone()) {
+            return; // Not unique or all zero, do nothing
         }
+        // We trust the caller to provide the correct l_number and l_label
+        collected_l_functions.push((expected_l_number, expected_l_label, l_vec, description));
     };
 
     // 1. Mean of the All-Reference-Levels Cell
@@ -265,10 +271,24 @@ pub fn calculate_general_estimable_function(
         &factor_details
     );
     let mu_notation_all_pivot = generate_mu_notation(&base_all_pivot_levels, &all_factors_ordered);
-    add_l_vector_if_valid(
-        l_vec_all_pivot_mean,
-        format!("Mean of pivot cell {}", mu_notation_all_pivot)
-    );
+    let intercept_param_name = "Intercept".to_string();
+    match all_model_param_names.iter().position(|p_name| p_name == &intercept_param_name) {
+        Some(k) => {
+            let l_num = k + 1;
+            let l_label_str = format!("L{}", l_num);
+            add_to_collection_if_valid(
+                l_vec_all_pivot_mean,
+                format!("Mean of pivot cell {}", mu_notation_all_pivot),
+                l_num,
+                l_label_str
+            );
+        }
+        None => {
+            web_sys::console::error_1(
+                &"'Intercept' parameter not found in all_model_param_names!".into()
+            );
+        }
+    }
 
     // 2. Main Effects (k-1 per factor, others at REF)
     console::log_1(
@@ -288,51 +308,55 @@ pub fn calculate_general_estimable_function(
                 cell_a_levels.insert(factor_of_interest_name.clone(), non_pivot_level.clone());
 
                 // Cell B: Factor of interest at its pivot_level, others at their pivot_levels
-                // This is essentially base_all_pivot_levels if the factor_of_interest is already at its pivot in base_all_pivot_levels,
-                // but to be explicit for clarity:
-                let mut cell_b_levels = base_all_pivot_levels.clone();
-                // No need to insert for factor_of_interest_name if base_all_pivot_levels already has it at pivot_level_for_factor_of_interest
-                // However, if we constructed cell_b_levels from scratch or a different base, we would do:
-                // cell_b_levels.insert(factor_of_interest_name.clone(), pivot_level_for_factor_of_interest.clone());
+                let cell_b_levels = base_all_pivot_levels.clone(); // factor_of_interest already at pivot
 
                 let coeffs_a = get_coeffs_for_cell_mean(
-                    // Coeffs for cell with factor_of_interest at non_pivot_level
                     &cell_a_levels,
                     &all_model_param_names,
                     &factor_details
                 );
                 let coeffs_b = get_coeffs_for_cell_mean(
-                    // Coeffs for cell with factor_of_interest at pivot_level
-                    &cell_b_levels, // This is base_all_pivot_levels, where factor_of_interest is at its pivot level
+                    &cell_b_levels,
                     &all_model_param_names,
                     &factor_details
                 );
 
-                // L-vector: coeffs_a - coeffs_b (NonPivot - Pivot)
                 let l_vec_sme: Vec<i32> = coeffs_a
                     .iter()
                     .zip(coeffs_b.iter())
                     .map(|(val_non_pivot, val_pivot)| val_non_pivot - val_pivot)
                     .collect();
 
-                let mu_a_notation = generate_mu_notation(&cell_a_levels, &all_factors_ordered); // mu_NonPivot
-                let mu_b_notation = generate_mu_notation(&cell_b_levels, &all_factors_ordered); // mu_Pivot (all factors at pivot)
+                let mu_a_notation = generate_mu_notation(&cell_a_levels, &all_factors_ordered);
+                let mu_b_notation = generate_mu_notation(&cell_b_levels, &all_factors_ordered);
 
                 let desc = format!(
                     "Simple Main Effect {}({} vs {} | Others at Pivot): {} - {}",
                     factor_of_interest_name,
-                    non_pivot_level, // Non-Pivot level
-                    pivot_level_for_factor_of_interest, // Pivot level
-                    mu_a_notation, // mu_NonPivot
-                    mu_b_notation // mu_Pivot
+                    non_pivot_level,
+                    pivot_level_for_factor_of_interest,
+                    mu_a_notation,
+                    mu_b_notation
                 );
-                add_l_vector_if_valid(l_vec_sme, desc);
+
+                let param_to_find = format!("[{}={}]", factor_of_interest_name, non_pivot_level);
+                match all_model_param_names.iter().position(|p_name| p_name == &param_to_find) {
+                    Some(k) => {
+                        let l_num = k + 1;
+                        let l_label_str = format!("L{}", l_num);
+                        add_to_collection_if_valid(l_vec_sme, desc, l_num, l_label_str);
+                    }
+                    None => {
+                        web_sys::console::error_1(
+                            &format!("Main effect parameter not found: {}", param_to_find).into()
+                        );
+                    }
+                }
             }
         }
     }
 
     // 3. N-way Interactions (non-involved factors at REF)
-    // This will be changed to Simple N-way Interactions, non-involved at PIVOT
     console::log_1(
         &"Generating N-way interactions (non-involved at ref)... was, now non-involved at Pivot (new logic)".into()
     );
@@ -479,12 +503,49 @@ pub fn calculate_general_estimable_function(
                 }
                 // Sort the terms: positive first, then negative.
                 contrast_description_terms.sort_by_key(|k| k.starts_with('-'));
-                add_l_vector_if_valid(
-                    l_vec_interaction,
-                    format!("{}: {}", full_desc_prefix, contrast_description_terms.join(" "))
-                );
+
+                // Construct the parameter name for this specific interaction instance,
+                // respecting the order from interacting_factors_names_tuple.
+                let param_name_parts: Vec<String> = interacting_factors_names_tuple
+                    .iter()
+                    .zip(specific_non_pivot_levels_for_interaction_instance.iter())
+                    .map(|(factor_name, level)| format!("[{}={}]", factor_name, level))
+                    .collect();
+                let param_to_find = param_name_parts.join("*");
+
+                match all_model_param_names.iter().position(|p_name| p_name == &param_to_find) {
+                    Some(k) => {
+                        let l_num = k + 1;
+                        let l_label_str = format!("L{}", l_num);
+                        add_to_collection_if_valid(
+                            l_vec_interaction,
+                            format!(
+                                "{}: {}",
+                                full_desc_prefix,
+                                contrast_description_terms.join(" ")
+                            ),
+                            l_num,
+                            l_label_str
+                        );
+                    }
+                    None => {
+                        web_sys::console::error_1(
+                            &format!("Interaction parameter not found: {}. This may indicate a mismatch in how interaction parameter names are constructed versus how they are stored in all_model_param_names.", param_to_find).into()
+                        );
+                    }
+                }
             }
         }
+    }
+
+    // Sort collected L-functions by their numeric L-value (target_param_idx + 1)
+    collected_l_functions.sort_by_key(|k| k.0);
+
+    // Populate final vectors from the sorted collection
+    for (_l_num, l_label_str, l_vec_coeffs, desc_str) in collected_l_functions {
+        l_labels.push(l_label_str);
+        l_matrix_rows.push(l_vec_coeffs);
+        contrast_info_strings.push(desc_str);
     }
 
     let mut notes = Vec::new();

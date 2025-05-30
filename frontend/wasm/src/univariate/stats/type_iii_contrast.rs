@@ -1,12 +1,7 @@
 use std::collections::{ HashMap, HashSet };
 use nalgebra::DMatrix;
-use crate::univariate::models::{
-    config::UnivariateConfig,
-    data::AnalysisData,
-    result::DesignMatrixInfo,
-};
+use crate::univariate::models::{ data::AnalysisData, result::DesignMatrixInfo };
 use super::factor_utils::*;
-use super::common::*;
 
 #[derive(Debug, Clone)]
 /// Structure to hold Type III contrast information
