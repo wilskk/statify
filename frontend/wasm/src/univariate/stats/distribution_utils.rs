@@ -1,14 +1,6 @@
-use statrs::distribution::{
-    ChiSquared,
-    FisherSnedecor,
-    Normal,
-    StudentsT,
-    Poisson,
-    ContinuousCDF,
-    Discrete,
-};
-use statrs::function::beta::beta_inc;
-use statrs::function::gamma::gamma;
+use statrs::distribution::{ ChiSquared, FisherSnedecor, Normal, StudentsT, ContinuousCDF };
+use statrs::function::{ beta::beta_inc, gamma::gamma };
+use std::f64::consts::{ SQRT_2, PI };
 
 /// Calculate F significance (p-value) for F statistic
 pub fn calculate_f_significance(df1: usize, df2: usize, f_value: f64) -> f64 {
@@ -66,102 +58,36 @@ pub fn calculate_f_non_centrality(f_value: f64, df1: f64, _df2: f64) -> f64 {
     f_value * df1
 }
 
-/// Noncentral F CDF (series expansion using Poisson weights for stability)
-pub fn noncentral_f_cdf(x: f64, df1: f64, df2: f64, lambda: f64, max_iter: usize) -> f64 {
-    if x < 0.0 || df1 <= 0.0 || df2 <= 0.0 || lambda < 0.0 {
-        // lambda must be >= 0 by definition
-        return 0.0;
+/// Formula 26.6.26 (Patnaik's Approximation) - DEFAULT noncentral_f_cdf
+pub fn noncentral_f_cdf(f_prime: f64, df1: f64, df2: f64, lambda: f64) -> f64 {
+    if f_prime < 0.0 || df1 <= 0.0 || df2 <= 0.0 || lambda < 0.0 {
+        return f64::NAN;
     }
 
-    let nu1_div_2 = df1 / 2.0;
-    let b_div_2 = df2 / 2.0;
-
-    let x_for_ib_num = df1 * x;
-    let x_for_ib_den = df2 + x_for_ib_num; // df2 + df1*x
-
-    let x_for_ib = if x_for_ib_den == 0.0 {
-        if x_for_ib_num == 0.0 {
-            0.0
-        } else {
-            1.0
-        } // Should ideally not be hit if df1, df2 > 0
-    } else {
-        (x_for_ib_num / x_for_ib_den).max(0.0).min(1.0) // Clamp x_for_ib to [0,1]
-    };
-
-    // If lambda is effectively zero, it's a central F-distribution.
-    if lambda.abs() < 1e-9 {
-        return beta_inc(nu1_div_2, b_div_2, x_for_ib).max(0.0).min(1.0);
+    let term_v1_plus_lambda = df1 + lambda;
+    if term_v1_plus_lambda == 0.0 {
+        return f64::NAN;
+    }
+    let term_v1_plus_2lambda = df1 + 2.0 * lambda;
+    if term_v1_plus_2lambda == 0.0 {
+        return f64::NAN;
     }
 
-    let poisson_mean = lambda / 2.0;
-    if poisson_mean < 0.0 {
-        // Should be caught by lambda < 0.0 check, but good for safety.
-        return 0.0;
+    let f_adjusted = (df1 / term_v1_plus_lambda) * f_prime;
+    let df1_adjusted = term_v1_plus_lambda.powi(2) / term_v1_plus_2lambda;
+
+    if df1_adjusted <= 0.0 {
+        return f64::NAN;
     }
 
-    let poisson_dist = match Poisson::new(poisson_mean) {
-        Ok(dist) => dist,
-        Err(_) => {
-            return f64::NAN;
-        } // Cannot create Poisson distribution (e.g., mean is negative or NaN)
-    };
-
-    let mut cdf_sum = 0.0;
-
-    for j_idx in 0..max_iter {
-        let j_f64 = j_idx as f64;
-        let poisson_weight = poisson_dist.pmf(j_idx as u64); // PMF involves e^(-mean)
-
-        // If Poisson weight is negligible, and we are far into the tail, we can stop.
-        if poisson_weight < 1e-30 {
-            // Absolute check on Poisson weight
-            // Heuristic: check if j_idx is sufficiently past the mean of the Poisson distribution
-            let std_devs_away = 10.0; // Number of standard deviations
-            let poisson_std_dev = poisson_mean.sqrt();
-            if j_f64 > poisson_mean + std_devs_away * poisson_std_dev.max(1.0) + 20.0 {
-                // Add a buffer
-                break;
-            }
-        }
-
-        let shape1_ib = nu1_div_2 + j_f64;
-        let shape2_ib = b_div_2;
-
-        // beta_inc requires positive shape parameters. df1, df2 > 0 handled. nu1_div_2+j_f64 >= 0 handled.
-        if shape1_ib <= 0.0 || shape2_ib <= 0.0 {
-            // Should not be hit due to prior checks on df1,df2
-            break;
-        }
-
-        let ib_val = beta_inc(shape1_ib, shape2_ib, x_for_ib);
-
-        if ib_val.is_nan() {
-            // If beta_inc fails, the sum becomes unreliable. Depending on policy, could return NaN or current sum.
-            // Returning NaN is safer to indicate computation issues.
-            return f64::NAN;
-        }
-
-        let term_to_add = poisson_weight * ib_val;
-        cdf_sum += term_to_add;
-
-        // Convergence check based on the term just added to the sum.
-        if term_to_add.abs() < 1e-16 && poisson_weight < 1e-16 {
-            // If both components are tiny
-            // More robust check: if j_idx is significantly past the Poisson mean
-            if j_f64 > poisson_mean + 7.0 * poisson_mean.sqrt().max(1.0) + 30.0 {
-                break;
-            }
-        }
+    match FisherSnedecor::new(df1_adjusted, df2) {
+        Ok(dist) => dist.cdf(f_adjusted).max(0.0).min(1.0),
+        Err(_) => f64::NAN,
     }
-
-    cdf_sum.max(0.0).min(1.0) // The sum itself is the CDF value.
 }
 
 /// Noncentral t CDF (series expansion) based on provided formula image
 pub fn noncentral_t_cdf(x: f64, df: f64, lambda: f64, max_iter: usize) -> f64 {
-    use std::f64::consts::{ SQRT_2, PI };
-
     if df <= 0.0 {
         // Degrees of freedom must be positive
         return if x < 0.0 {
@@ -184,7 +110,8 @@ pub fn noncentral_t_cdf(x: f64, df: f64, lambda: f64, max_iter: usize) -> f64 {
         (y_beta_num / y_beta_den).max(0.0).min(1.0) // Clamp y_beta to [0,1]
     };
 
-    let exp_coeff = ((-lambda * lambda) / 4.0).exp();
+    // Corrected exp_coeff to match e^(-λ²/2) from the formula
+    let exp_coeff = ((-lambda * lambda) / 2.0).exp();
 
     // If exp_coeff is zero (e.g. lambda is huge), and lambda is not zero, the sum effectively becomes zero.
     if exp_coeff == 0.0 && lambda != 0.0 {
@@ -196,7 +123,8 @@ pub fn noncentral_t_cdf(x: f64, df: f64, lambda: f64, max_iter: usize) -> f64 {
         return StudentsT::new(0.0, 1.0, df).map_or(f64::NAN, |dist| dist.cdf(x));
     }
 
-    let lambda_series_base = if x <= 0.0 { lambda / SQRT_2 } else { -lambda / SQRT_2 };
+    // Corrected lambda_series_base to match (λ√2) or (-λ√2) from the formula
+    let lambda_series_base = if x <= 0.0 { lambda * SQRT_2 } else { -lambda * SQRT_2 };
 
     let mut current_sum = 0.0;
     let mut term_lambda_power_j = 1.0; // (lambda_series_base)^j for j=0
@@ -264,23 +192,23 @@ pub fn noncentral_t_cdf(x: f64, df: f64, lambda: f64, max_iter: usize) -> f64 {
 
 /// Calculate observed power for F-test (uses local noncentral_f_cdf)
 pub fn calculate_observed_power_f(f_value: f64, df1: f64, df2: f64, alpha_for_test: f64) -> f64 {
-    // Use the alpha from the test for determining the critical F-value for power calculation.
-    let alpha_for_power_critical_value = alpha_for_test;
-
     if
         df1 <= 0.0 ||
         df2 <= 0.0 ||
         f_value < 0.0 ||
-        alpha_for_power_critical_value <= 0.0 || // Check the actual alpha being used
-        alpha_for_power_critical_value >= 1.0 ||
-        f_value.is_nan()
+        f_value.is_nan() ||
+        alpha_for_test <= 0.0 ||
+        alpha_for_test >= 1.0
     {
-        return 0.0;
+        return f64::NAN;
     }
+
+    let ncp = f_value * df1; // This is lambda for the CDF functions
 
     let central_dist_res = FisherSnedecor::new(df1, df2);
     let crit_f = match central_dist_res {
-        Ok(dist) => dist.inverse_cdf(1.0 - alpha_for_power_critical_value),
+        // This is f_prime for the CDF functions
+        Ok(dist) => dist.inverse_cdf(1.0 - alpha_for_test),
         Err(_) => {
             return f64::NAN;
         }
@@ -290,71 +218,73 @@ pub fn calculate_observed_power_f(f_value: f64, df1: f64, df2: f64, alpha_for_te
         return f64::NAN;
     }
 
-    let ncp = f_value * df1;
-    if ncp < 0.0 {
-        return f64::NAN;
-    }
+    // Calculate CDF using only the default method (Patnaik 26.6.26)
+    let cdf_patnaik = noncentral_f_cdf(crit_f, df1, df2, ncp);
 
-    // Call the local noncentral_f_cdf function
-    let cdf_val = crate::univariate::stats::distribution_utils::noncentral_f_cdf(
-        crit_f,
-        df1,
-        df2,
-        ncp,
-        1000
-    );
+    // Calculate Power
+    let power_patnaik = if cdf_patnaik.is_nan() {
+        f64::NAN
+    } else {
+        (1.0 - cdf_patnaik).max(0.0).min(1.0)
+    };
 
-    if cdf_val.is_nan() {
-        // Handle potential NaN from custom CDF
-        return f64::NAN;
-    }
-
-    (1.0 - cdf_val).max(0.0).min(1.0) // Power is 1 - CDF(crit_f)
+    // Return power from default method (Patnaik)
+    power_patnaik
 }
 
 /// Calculate observed power for t-test (uses NonCentralStudentsT from statrs)
 pub fn calculate_observed_power_t(t_value: f64, df: usize, alpha: Option<f64>) -> f64 {
+    // df: df_residual (N - r_X)
     let current_alpha = match alpha {
         Some(a) if a > 0.0 && a < 1.0 => a,
         _ => 0.05, // Default alpha
     };
 
+    // Validasi input dasar
+    // Sesuai pseudocode: IF df_residual <= 0 THEN RETURN SYSMIS
     if df == 0 {
-        // If df is 0, rx >= N. Power is 0 or undefined.
-        return 0.0; // Consistent with SYSMIS, or user formula for rx >= N if it meant 0.
+        // df adalah usize, jadi df <= 0 berarti df == 0
+        return f64::NAN;
     }
-    // If t_value is very small (effectively zero), non-centrality is zero, power might be alpha.
-    // However, the formula implies using the t_value as ncp directly.
-    // For robustness, if t_value is NaN, we should return NaN or 0.
     if t_value.is_nan() {
-        return f64::NAN; // Or 0.0, depending on desired SYSMIS handling
+        return f64::NAN;
     }
 
-    let central_t_dist_res = StudentsT::new(0.0, 1.0, df as f64); // Standard central t-distribution
+    // LANGKAH 1: Hitung Parameter Non-sentralitas (c)
+    let ncp = t_value.abs(); // noncentrality_c = AbsoluteValue(t_statistic)
+
+    // LANGKAH 2: Hitung Nilai t Kritis (t_critical)
+    let central_t_dist_res = StudentsT::new(0.0, 1.0, df as f64);
     let crit_t_abs = match central_t_dist_res {
         Ok(dist) => dist.inverse_cdf(1.0 - current_alpha / 2.0).abs(),
         Err(_) => {
-            return f64::NAN; // Failed to create central T distribution
-        }
+            return f64::NAN;
+        } // Gagal membuat distribusi t sentral
     };
 
     if crit_t_abs.is_nan() {
-        return 0.0; // If critical value is NaN, power is undefined or 0.
+        return f64::NAN; // t kritis tidak valid
     }
 
-    let ncp = t_value; // The observed t-statistic is the non-centrality parameter (c in user's formula)
     let df_f64 = df as f64;
 
-    // Per user formula: p = 1 - NCDF.T(tc, df, c) + NCDF.T(-tc, df, c)
-    // This is equivalent to: p = NCDF.T(-tc, df, c) + (1 - NCDF.T(tc, df, c))
-    // Which means P(T < -tc) + P(T > tc) for a non-central T.
+    // LANGKAH 3: Hitung Observed Power
+    // power = 1 - CumulativeNonCentralTDistribution(t_critical, df_residual, noncentrality_c) +
+    //         CumulativeNonCentralTDistribution(-t_critical, df_residual, noncentrality_c)
+    let cdf_pos_crit = noncentral_t_cdf(crit_t_abs, df_f64, ncp, 50);
+    let cdf_neg_crit = noncentral_t_cdf(-crit_t_abs, df_f64, ncp, 50);
 
-    // Reverting to use the local noncentral_t_cdf function
-    let power =
-        noncentral_t_cdf(-crit_t_abs, df_f64, ncp, 50) +
-        (1.0 - noncentral_t_cdf(crit_t_abs, df_f64, ncp, 50));
+    if cdf_pos_crit.is_nan() || cdf_neg_crit.is_nan() {
+        return f64::NAN; // Salah satu hasil CDF non-sentral tidak valid
+    }
 
-    power.max(0.0).min(1.0) // Ensure power is in [0,1]
+    let power = 1.0 - cdf_pos_crit + cdf_neg_crit;
+
+    // Periksa Batasan (clamping)
+    if power.is_nan() {
+        return f64::NAN;
+    }
+    return power.max(0.0).min(1.0);
 }
 
 /// Chi-square CDF using statrs

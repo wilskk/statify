@@ -175,10 +175,11 @@ pub fn calculate_lack_of_fit_tests(
     };
 
     let observed_power_lof = if df_lack_of_fit > 0 && df_pure_error > 0 && !f_value_lof.is_nan() {
-        calculate_observed_power_t(
-            f_value_lof * (df_lack_of_fit as f64),
-            df_pure_error as usize, // df_pure_error is isize, cast to usize
-            Some(config.options.sig_level)
+        calculate_observed_power_f(
+            f_value_lof,
+            df_lack_of_fit as f64,
+            df_pure_error as f64,
+            config.options.sig_level
         )
     } else {
         f64::NAN

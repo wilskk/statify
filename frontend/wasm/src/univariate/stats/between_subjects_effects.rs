@@ -284,10 +284,11 @@ fn add_model_summary_entries(
             df_model_overall as f64,
             df_error as f64
         );
-        let power_model_corrected = calculate_observed_power_t(
-            f_model_corrected * (df_model_overall as f64),
-            df_error,
-            Some(sig_level)
+        let power_model_corrected = calculate_observed_power_f(
+            f_model_corrected,
+            df_model_overall as f64,
+            df_error as f64,
+            sig_level
         );
         current_source_map.insert("Corrected Model".to_string(), TestEffectEntry {
             sum_of_squares: ss_model_corrected,
@@ -372,7 +373,7 @@ pub fn create_effect_entry(
     };
     let noncent_parameter = if f_value > 0.0 { f_value * (df as f64) } else { 0.0 };
     let observed_power = if f_value > 0.0 {
-        calculate_observed_power_t(f_value * (df as f64), error_df, Some(sig_level))
+        calculate_observed_power_f(f_value, df as f64, error_df as f64, sig_level)
     } else {
         0.0
     };
