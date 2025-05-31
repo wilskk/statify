@@ -211,7 +211,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose }) => {
                             value="time"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'time' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
-                            time
+                            Time
                         </TabsTrigger>
                     </TabsList>
                 </div>
