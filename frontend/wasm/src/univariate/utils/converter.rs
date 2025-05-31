@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::univariate::models::result::{
     ContrastCoefficients,
+    EMMeansResult,
     GeneralEstimableFunction,
     HeteroscedasticityTests,
     LackOfFitTests,
@@ -11,6 +12,7 @@ use crate::univariate::models::result::{
     ParameterEstimateEntry,
     ParameterEstimates,
     PlotData,
+    RobustParameterEstimates,
     SavedVariables,
     SpreadVsLevelPoint,
     StatsEntry,
@@ -45,8 +47,8 @@ struct FormatResult {
     lack_of_fit_tests: Option<LackOfFitTests>,
     spread_vs_level_plots: Option<FormattedSpreadVsLevelPlots>,
     posthoc_tests: Option<Vec<FormattedPosthocTest>>,
-    emmeans: Option<Vec<FormattedEmmean>>,
-    robust_parameter_estimates: Option<ParameterEstimates>,
+    emmeans: Option<EMMeansResult>,
+    robust_parameter_estimates: Option<RobustParameterEstimates>,
     plots: Option<Vec<FormattedPlot>>,
     saved_variables: Option<SavedVariables>,
 }
@@ -90,12 +92,6 @@ struct FormattedSpreadVsLevelPlots {
 
 #[derive(Serialize)]
 struct FormattedPosthocTest {
-    name: String,
-    entries: Vec<ParameterEstimateEntry>,
-}
-
-#[derive(Serialize)]
-struct FormattedEmmean {
     name: String,
     entries: Vec<ParameterEstimateEntry>,
 }
@@ -179,18 +175,6 @@ impl FormatResult {
                 .collect()
         });
 
-        let emmeans = result.emmeans.as_ref().map(|means| {
-            means
-                .iter()
-                .map(|(name, entries)| {
-                    FormattedEmmean {
-                        name: name.clone(),
-                        entries: entries.clone(),
-                    }
-                })
-                .collect()
-        });
-
         let plots = result.plots.as_ref().map(|plots| {
             plots
                 .iter()
@@ -215,7 +199,7 @@ impl FormatResult {
             lack_of_fit_tests: result.lack_of_fit_tests.clone(),
             spread_vs_level_plots,
             posthoc_tests,
-            emmeans,
+            emmeans: result.emmeans.clone(),
             robust_parameter_estimates: result.robust_parameter_estimates.clone(),
             plots,
             saved_variables: result.saved_variables.clone(),

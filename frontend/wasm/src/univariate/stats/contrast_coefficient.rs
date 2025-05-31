@@ -124,7 +124,6 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
 }
 
 // 2. Generate L-Matrix and its descriptions
-#[allow(clippy::too_many_arguments)]
 fn generate_l_matrix_and_descriptions(
     parsed_spec: &ParsedFactorSpec,
     levels_of_contrasted_factor: &Vec<String>,
