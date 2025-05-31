@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import {
   Tabs,
   TabsContent,
@@ -19,12 +19,14 @@ import PlotsLinear, { PlotsLinearParams } from '@/components/Modals/Regression/L
 import SaveLinear, { SaveLinearParams } from './SaveLinear';
 import OptionsLinear, { OptionsLinearParams } from './OptionsLinear';
 import VariablesLinearTab from './VariablesLinearTab';
+import AssumptionTest, { AssumptionTestParams } from './AssumptionTest';
 import { Variable } from '@/types/Variable';
 import { v4 as uuidv4 } from 'uuid';
 import { CellUpdate } from '@/stores/useDataStore';
 
 interface ModalLinearProps {
   onClose: () => void;
+  containerType?: "dialog" | "sidebar";
 }
 
 // Default parameter states - sama seperti modal baru
@@ -89,7 +91,15 @@ const defaultOptionsParams: OptionsLinearParams = {
   missingValue: 'listwise',
 };
 
-const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
+const defaultAssumptionTestParams: AssumptionTestParams = {
+  testLinearityEnabled: false,
+  testNormalityEnabled: false,
+  testHomoscedasticityEnabled: false,
+  testMulticollinearityEnabled: false,
+  testAutocorrelationEnabled: false,
+};
+
+const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dialog" }) => {
   // State variables - menggunakan struktur versi baru
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedDependentVariable, setSelectedDependentVariable] = useState<Variable | null>(null);
@@ -105,6 +115,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   const [plotParams, setPlotParams] = useState<PlotsLinearParams>(defaultPlotParams);
   const [saveParams, setSaveParams] = useState<SaveLinearParams>(defaultSaveParams);
   const [optionsParams, setOptionsParams] = useState<OptionsLinearParams>(defaultOptionsParams);
+  const [assumptionTestParams, setAssumptionTestParams] = useState<AssumptionTestParams>(defaultAssumptionTestParams);
 
   const variablesFromStore = useVariableStore((state) => state.variables);
   const data = useDataStore((state) => state.data);
@@ -276,6 +287,10 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     setOptionsParams(prev => ({ ...prev, ...newParams }));
   };
 
+  const handleAssumptionTestChange = (newParams: Partial<AssumptionTestParams>) => {
+    setAssumptionTestParams(prev => ({ ...prev, ...newParams }));
+  };
+
   // handleReset - menggunakan versi baru
   const handleReset = () => {
     // Get all currently selected variables across all fields
@@ -304,6 +319,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
     setPlotParams(defaultPlotParams);
     setSaveParams(defaultSaveParams);
     setOptionsParams(defaultOptionsParams);
+    setAssumptionTestParams(defaultAssumptionTestParams);
 
     console.log("Reset button clicked - All selections and parameters reset");
   };
@@ -525,7 +541,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
                   }));
                   
                   console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateBulkCells(updates);
+                  await useDataStore.getState().updateCells(updates);
                 }
 
                 console.log("[Analyze] All predicted values saved as new variables");
@@ -706,7 +722,7 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
                   }));
                   
                   console.log("[Analyze] Updating data store for", variable.name);
-                  await useDataStore.getState().updateBulkCells(updates);
+                  await useDataStore.getState().updateCells(updates);
                 }
 
                 console.log("[Analyze] All residual values saved as new variables");
@@ -1236,85 +1252,99 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
   };
   
   return (
-    <DialogContent className="sm:max-w-[900px]">
-      <DialogHeader>
-        <DialogTitle>Linear Regression</DialogTitle>
-      </DialogHeader>
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-4">
+        <Separator className="my-2" />
+      </div>
 
-      <Separator className="my-2" />
+      <div className="flex-grow px-6 overflow-y-auto">
+        <Tabs defaultValue="variables" className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="variables">Variables</TabsTrigger>
+            <TabsTrigger value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger value="plots">Plots</TabsTrigger>
+            <TabsTrigger value="save">Save</TabsTrigger>
+            <TabsTrigger value="options">Options</TabsTrigger>
+            <TabsTrigger value="assumption">Assumption</TabsTrigger>
+          </TabsList>
 
-      <Tabs defaultValue="variables" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="variables">Variables</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics</TabsTrigger>
-          <TabsTrigger value="plots">Plots</TabsTrigger>
-          <TabsTrigger value="save">Save</TabsTrigger>
-          <TabsTrigger value="options">Options</TabsTrigger>
-        </TabsList>
+          {/* Variables Tab */}
+          <TabsContent value="variables">
+            <VariablesLinearTab
+              availableVariables={availableVariables}
+              selectedDependentVariable={selectedDependentVariable}
+              selectedIndependentVariables={selectedIndependentVariables}
+              selectedSelectionVariable={selectedSelectionVariable}
+              selectedCaseLabelsVariable={selectedCaseLabelsVariable}
+              selectedWLSWeightVariable={selectedWLSWeightVariable}
+              highlightedVariable={highlightedVariable}
+              method={method}
+              handleSelectAvailableVariable={handleSelectAvailableVariable}
+              handleMoveToDependent={handleMoveToDependent}
+              handleMoveToIndependent={handleMoveToIndependent}
+              handleMoveToSelectionVariable={handleMoveToSelectionVariable}
+              handleMoveToCaseLabelsVariable={handleMoveToCaseLabelsVariable}
+              handleMoveToWLSWeightVariable={handleMoveToWLSWeightVariable}
+              handleRemoveFromDependent={handleRemoveFromDependent}
+              handleRemoveFromIndependent={handleRemoveFromIndependent}
+              handleRemoveFromSelectionVariable={handleRemoveFromSelectionVariable}
+              handleRemoveFromCaseLabelsVariable={handleRemoveFromCaseLabelsVariable}
+              handleRemoveFromWLSWeightVariable={handleRemoveFromWLSWeightVariable}
+              setMethod={setMethod}
+            />
+          </TabsContent>
 
-        {/* Variables Tab */}
-        <TabsContent value="variables">
-          <VariablesLinearTab
-            availableVariables={availableVariables}
-            selectedDependentVariable={selectedDependentVariable}
-            selectedIndependentVariables={selectedIndependentVariables}
-            selectedSelectionVariable={selectedSelectionVariable}
-            selectedCaseLabelsVariable={selectedCaseLabelsVariable}
-            selectedWLSWeightVariable={selectedWLSWeightVariable}
-            highlightedVariable={highlightedVariable}
-            method={method}
-            handleSelectAvailableVariable={handleSelectAvailableVariable}
-            handleMoveToDependent={handleMoveToDependent}
-            handleMoveToIndependent={handleMoveToIndependent}
-            handleMoveToSelectionVariable={handleMoveToSelectionVariable}
-            handleMoveToCaseLabelsVariable={handleMoveToCaseLabelsVariable}
-            handleMoveToWLSWeightVariable={handleMoveToWLSWeightVariable}
-            handleRemoveFromDependent={handleRemoveFromDependent}
-            handleRemoveFromIndependent={handleRemoveFromIndependent}
-            handleRemoveFromSelectionVariable={handleRemoveFromSelectionVariable}
-            handleRemoveFromCaseLabelsVariable={handleRemoveFromCaseLabelsVariable}
-            handleRemoveFromWLSWeightVariable={handleRemoveFromWLSWeightVariable}
-            setMethod={setMethod}
-          />
-        </TabsContent>
+          {/* Statistics Tab */}
+          <TabsContent value="statistics">
+            <Statistics params={statsParams} onChange={handleStatsChange} />
+          </TabsContent>
 
-        {/* Statistics Tab */}
-        <TabsContent value="statistics">
-          <Statistics params={statsParams} onChange={handleStatsChange} />
-        </TabsContent>
+          {/* Plots Tab */}
+          <TabsContent value="plots">
+            <PlotsLinear
+              params={plotParams}
+              onChange={handlePlotChange}
+              availablePlotVariables={availablePlotVariables} />
+          </TabsContent>
 
-        {/* Plots Tab */}
-        <TabsContent value="plots">
-          <PlotsLinear
-            params={plotParams}
-            onChange={handlePlotChange}
-            availablePlotVariables={availablePlotVariables} />
-        </TabsContent>
+          {/* Save Tab */}
+          <TabsContent value="save">
+             <SaveLinear params={saveParams} onChange={handleSaveChange} />
+          </TabsContent>
 
-        {/* Save Tab */}
-        <TabsContent value="save">
-           <SaveLinear params={saveParams} onChange={handleSaveChange} />
-        </TabsContent>
+          {/* Options Tab */}
+          <TabsContent value="options">
+             <OptionsLinear params={optionsParams} onChange={handleOptionsChange} />
+          </TabsContent>
 
-        {/* Options Tab */}
-        <TabsContent value="options">
-           <OptionsLinear params={optionsParams} onChange={handleOptionsChange} />
-        </TabsContent>
-
-      </Tabs>
+          {/* Assumption Test Tab */}
+          <TabsContent value="assumption">
+            <AssumptionTest 
+              params={assumptionTestParams} 
+              onChange={handleAssumptionTestChange}
+              selectedDependentVariable={selectedDependentVariable}
+              selectedIndependentVariables={selectedIndependentVariables}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Footer */}
-      <DialogFooter className="flex justify-center space-x-4 mt-4">
-        <Button onClick={handleAnalyze}>OK</Button>
-        <Button variant="outline">Paste</Button>
-        <Button variant="outline" onClick={handleReset}>Reset</Button>
-        <Button variant="outline" onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button variant="outline">Help</Button>
-      </DialogFooter>
-    </DialogContent>
+      <div className="px-6 py-4 border-t border-border bg-muted mt-auto">
+        <div className="flex justify-center space-x-4">
+          <Button onClick={handleAnalyze}>OK</Button>
+          <Button variant="outline">Paste</Button>
+          <Button variant="outline" onClick={handleReset}>Reset</Button>
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button variant="outline">Help</Button>
+        </div>
+      </div>
+    </div>
   );
 };
 
+// Export the component with both names for backward compatibility
+export { ModalLinear };
 export default ModalLinear;
