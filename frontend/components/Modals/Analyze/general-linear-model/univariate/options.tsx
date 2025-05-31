@@ -458,7 +458,7 @@ export const UnivariateOptions = ({
                                                     ? "HC3"
                                                     : optionsState.HC4
                                                     ? "HC4"
-                                                    : ""
+                                                    : "HC3"
                                             }
                                             disabled={
                                                 !optionsState.ParamEstRobStdErr

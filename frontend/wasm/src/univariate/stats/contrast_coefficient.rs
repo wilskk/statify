@@ -542,32 +542,69 @@ fn create_contrast_test_result(
 ) -> ContrastTestResult {
     let num_contrasts_for_factor = l_matrix_for_this_factor.len();
     let df_hypothesis = num_contrasts_for_factor;
+    let df_error_usize = if df_error >= 0.0 { df_error as usize } else { 0 };
 
     if df_hypothesis == 0 {
+        let contrast_entry = ContrastTestResultEntry {
+            source: "Contrast".to_string(),
+            sum_of_squares: f64::NAN,
+            df: 0,
+            mean_square: f64::NAN,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+        };
+        let error_entry = ContrastTestResultEntry {
+            source: "Error".to_string(),
+            sum_of_squares: if !mse.is_nan() && df_error_usize > 0 {
+                mse * (df_error_usize as f64)
+            } else {
+                f64::NAN
+            },
+            df: df_error_usize,
+            mean_square: if !mse.is_nan() {
+                mse
+            } else {
+                f64::NAN
+            },
+            f_value: f64::NAN,
+            significance: f64::NAN,
+        };
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
-            contrast_result: vec![ContrastTestResultEntry {
-                sum_of_squares: f64::NAN,
-                df: 0,
-                mean_square: f64::NAN,
-                f_value: f64::NAN,
-                significance: f64::NAN,
-            }],
+            contrast_result: vec![contrast_entry, error_entry],
             notes: vec![format!("No hypothesis to test for: {}", factor_spec_str)],
         };
     }
 
     let p_model_params = beta_hat.nrows();
     if p_model_params == 0 {
+        let contrast_entry = ContrastTestResultEntry {
+            source: "Contrast".to_string(),
+            sum_of_squares: f64::NAN,
+            df: df_hypothesis,
+            mean_square: f64::NAN,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+        };
+        let error_entry = ContrastTestResultEntry {
+            source: "Error".to_string(),
+            sum_of_squares: if !mse.is_nan() && df_error_usize > 0 {
+                mse * (df_error_usize as f64)
+            } else {
+                f64::NAN
+            },
+            df: df_error_usize,
+            mean_square: if !mse.is_nan() {
+                mse
+            } else {
+                f64::NAN
+            },
+            f_value: f64::NAN,
+            significance: f64::NAN,
+        };
         return ContrastTestResult {
             source: vec![format!("Overall test for {}", factor_spec_str)],
-            contrast_result: vec![ContrastTestResultEntry {
-                sum_of_squares: f64::NAN,
-                df: df_hypothesis,
-                mean_square: f64::NAN,
-                f_value: f64::NAN,
-                significance: f64::NAN,
-            }],
+            contrast_result: vec![contrast_entry, error_entry],
             notes: vec![format!("No model parameters for contrast test: {}", factor_spec_str)],
         };
     }
@@ -638,22 +675,41 @@ fn create_contrast_test_result(
         }
     }
 
-    let df_error_usize = if df_error >= 0.0 { df_error as usize } else { 0 };
     let f_significance = if f_value.is_nan() || df_hypothesis == 0 || df_error_usize == 0 {
         f64::NAN
     } else {
         calculate_f_significance(df_hypothesis, df_error_usize, f_value)
     };
 
+    let contrast_entry = ContrastTestResultEntry {
+        source: "Contrast".to_string(),
+        sum_of_squares: ssh,
+        df: df_hypothesis,
+        mean_square: msh,
+        f_value,
+        significance: f_significance,
+    };
+
+    let error_entry = ContrastTestResultEntry {
+        source: "Error".to_string(),
+        sum_of_squares: if !mse.is_nan() && df_error_usize > 0 {
+            mse * (df_error_usize as f64)
+        } else {
+            f64::NAN
+        },
+        df: df_error_usize, // df_error is f64, need usize
+        mean_square: if !mse.is_nan() {
+            mse
+        } else {
+            f64::NAN
+        },
+        f_value: f64::NAN, // F is not applicable for Error row
+        significance: f64::NAN, // Sig is not applicable for Error row
+    };
+
     ContrastTestResult {
         source: vec![format!("Overall test for {}", factor_spec_str)],
-        contrast_result: vec![ContrastTestResultEntry {
-            sum_of_squares: ssh,
-            df: df_hypothesis,
-            mean_square: msh,
-            f_value,
-            significance: f_significance,
-        }],
+        contrast_result: vec![contrast_entry, error_entry],
         notes,
     }
 }
@@ -969,24 +1025,21 @@ pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f6
         contrasts[i] = x_values[i];
     }
 
-    // SPSS often scales these to integers. E.g., for k=4 (x=-1.5,-0.5,0.5,1.5), SPSS uses [-3,-1,1,3]
-    // This scaling is optional but common for presentation.
-    if level_count == 3 {
-        // [-1, 0, 1]
-        // No change needed for k=3, x_values are already -1, 0, 1
-    } else if level_count == 4 {
-        // x_values = -1.5, -0.5, 0.5, 1.5. Scale to [-3, -1, 1, 3]
-        vec![-3.0, -1.0, 1.0, 3.0]
-            .iter()
-            .enumerate()
-            .for_each(|(idx, v)| {
-                contrasts[idx] = *v;
-            });
-    } else if level_count == 5 {
-        // x_values = -2, -1, 0, 1, 2. Scale to [-2, -1, 0, 1, 2] (no change)
-        // No change needed for k=5, x_values are already -2, -1, 0, 1, 2
+    // For other level_counts, the raw centered values are used (before SPSS scaling was applied).
+    // The SPSS scaling for k=3,4,5 is applied after the initial x_values are set into contrasts.
+
+    // Normalize the contrast vector to have unit length
+    let sum_sq: f64 = contrasts
+        .iter()
+        .map(|&x| x * x)
+        .sum();
+    if sum_sq > 1e-12 {
+        // Avoid division by zero or for zero vectors
+        let norm = sum_sq.sqrt();
+        for x in contrasts.iter_mut() {
+            *x /= norm;
+        }
     }
-    // For other level_counts, the raw centered values are used.
 
     contrasts
 }

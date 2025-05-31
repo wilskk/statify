@@ -16,7 +16,7 @@ pub struct UnivariateResult {
     pub spread_vs_level_plots: Option<SpreadVsLevelPlots>,
     pub posthoc_tests: Option<HashMap<String, Vec<ParameterEstimateEntry>>>,
     pub emmeans: Option<HashMap<String, Vec<ParameterEstimateEntry>>>,
-    pub robust_parameter_estimates: Option<ParameterEstimates>,
+    pub robust_parameter_estimates: Option<RobustParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
 }
@@ -136,6 +136,23 @@ pub struct ParameterEstimateEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RobustParameterEstimates {
+    pub estimates: Vec<RobustParameterEstimateEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RobustParameterEstimateEntry {
+    pub parameter: String,
+    pub b: f64,
+    pub robust_std_error: f64,
+    pub t_value: f64,
+    pub significance: f64,
+    pub confidence_interval: ConfidenceInterval,
+    pub is_redundant: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ConfidenceInterval {
     pub lower_bound: f64,
     pub upper_bound: f64,
@@ -206,6 +223,7 @@ pub struct ContrastTestResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastTestResultEntry {
+    pub source: String,
     pub sum_of_squares: f64,
     pub df: usize,
     pub mean_square: f64,
