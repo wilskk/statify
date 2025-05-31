@@ -26,7 +26,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     fileName, // Only fileName and fileContent are needed from parent
     fileContent,
 }) => {
-    const { setDataAndSync, resetData } = useDataStore();
+    const { setData, resetData } = useDataStore();
     const { resetVariables, addVariable } = useVariableStore();
 
     const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
@@ -255,7 +255,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                 await addVariable(newVar);
             }
 
-            await setDataAndSync(processedFullData);
+            await setData(processedFullData);
             onClose();
         } catch (e) {
             console.error("Error processing Excel import: ", e);

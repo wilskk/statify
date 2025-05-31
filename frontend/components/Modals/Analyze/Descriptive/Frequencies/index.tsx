@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/tabs";
 import { useVariableStore } from "@/stores/useVariableStore";
 import type { Variable } from "@/types/Variable";
-import { useFrequenciesAnalysis } from "@/hooks/useFrequenciesAnalysis";
-import type { StatisticsOptions } from "@/types/Analysis";
-import type { ChartOptions } from "@/types/Analysis";
+import { useFrequenciesAnalysis } from "./hooks/useFrequenciesAnalysis";
+import type { StatisticsOptions } from "./types";
+import type { ChartOptions } from "./types";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -117,7 +117,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         };
     }, [showCharts, chartType, chartValues, showNormalCurve]);
 
-    const { isCalculating, errorMsg, runAnalysis } = useFrequenciesAnalysis({
+    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useFrequenciesAnalysis({
         selectedVariables,
         showFrequencyTables,
         showStatistics,
@@ -194,18 +194,48 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setSelectedVariables([]);
 
         setShowFrequencyTables(true);
-        cancelAnalysis();
-    }, [
-        resetVariableSelection,
-        setShowFrequencyTables,
-        cancelAnalysis,
-        statisticsSettings,
-        chartsSettings
-    ]);
+        setShowCharts(false);
+        setShowStatistics(true);
+
+        setQuartilesChecked(false);
+        setCutPointsChecked(false);
+        setCutPointsValue("10");
+        setEnablePercentiles(false);
+        setPercentileValues([]);
+        setCurrentPercentileInput("");
+        setSelectedPercentileItem(null);
+
+        setMeanChecked(false);
+        setMedianChecked(false);
+        setModeChecked(false);
+        setSumChecked(false);
+
+        setStdDevChecked(false);
+        setVarianceChecked(false);
+        setRangeChecked(false);
+        setMinChecked(false);
+        setMaxChecked(false);
+        setSeMeanChecked(false);
+
+        setSkewnessChecked(false);
+        setKurtosisChecked(false);
+        
+        setChartType("none");
+        setChartValues("frequencies");
+        setShowNormalCurve(false);
+
+        setResetChartsCounter(prev => prev + 1);
+
+        if (cancelAnalysis) {
+            cancelAnalysis();
+        }
+    };
 
     useEffect(() => {
         return () => {
-            cancelAnalysis();
+            if (cancelAnalysis) {
+                cancelAnalysis();
+            }
         };
     }, [cancelAnalysis]);
 
@@ -321,9 +351,9 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     <Button
                         className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={runAnalysis}
-                        disabled={isCalculating || selectedVariables.length === 0}
+                        disabled={isLoading || selectedVariables.length === 0}
                     >
-                        {isCalculating ? "Calculating..." : "OK"}
+                        {isLoading ? "Calculating..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
@@ -336,14 +366,14 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                         variant="outline"
                         className="h-8 px-4"
                         onClick={onClose}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
                         className="h-8 px-4"
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Help
                     </Button>

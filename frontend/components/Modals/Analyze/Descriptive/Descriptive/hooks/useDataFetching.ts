@@ -34,7 +34,9 @@ export const useDataFetching = (): DataFetchingResult => {
       let weightVariableData: (string | number)[] | null = null;
       
       if (weightVariableName) {
-        const weightVariable = useVariableStore.getState().getVariableByName(weightVariableName);
+        const weightVariable = useVariableStore.getState().variables
+          .find(v => v.name.toLowerCase() === weightVariableName.toLowerCase());
+        
         if (weightVariable) {
           try {
             const weightDataResult = await useDataStore.getState().getVariableData(weightVariable);

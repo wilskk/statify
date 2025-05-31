@@ -67,7 +67,8 @@ export const useContextMenuLogic = ({
         });
 
         affectedColumns.forEach(columnIndex => {
-            const variable = variableStore.getVariableByColumnIndex(columnIndex);
+            // Akses langsung ke array variables dari store
+            const variable = variableStore.variables.find(v => v.columnIndex === columnIndex);
             // Only update variable store if alignment changed
             if (variable && variable.align !== alignment) {
                  variableStore.updateVariable(columnIndex, 'align', alignment);

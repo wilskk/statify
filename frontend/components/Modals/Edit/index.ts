@@ -1,5 +1,13 @@
 // components/Modals/Edit/index.ts
-import { ModalType } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
+
+// Export registry
+export { 
+    EDIT_MODAL_COMPONENTS,
+    EDIT_MODAL_CONTAINER_PREFERENCES,
+    getEditModalComponent,
+    isEditModal
+} from './EditRegistry';
 
 // Export menu component
 export { default as EditMenu } from './EditMenu';
@@ -10,13 +18,3 @@ export { isFindReplaceModalType } from './FindReplace/FindReplace';
 
 // Export GoTo components and types
 export { default as GoToModal, GoToMode } from './GoTo/GoTo';
-
-// Helper function to identify Edit modals
-export const isEditModal = (type: ModalType): boolean => {
-    return [
-        ModalType.Find,
-        ModalType.Replace,
-        ModalType.GoToCase,
-        ModalType.GoToVariable
-    ].includes(type);
-};

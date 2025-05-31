@@ -52,7 +52,7 @@ const SortVariablesContent: React.FC<SortVariablesModalProps> = ({
     onClose,
 }) => {
     const { variables, sortVariables } = useVariableStore();
-    const { data, setDataAndSync } = useDataStore();
+    const { data, setData } = useDataStore();
 
     const [columns] = useState<string[]>([
         "Name",
@@ -151,7 +151,7 @@ const SortVariablesContent: React.FC<SortVariablesModalProps> = ({
                 });
 
                 // Update the data in the store
-                await setDataAndSync(newData);
+                await setData(newData);
             }
 
             onClose();

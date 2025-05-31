@@ -1,5 +1,12 @@
 import { ModalType } from "@/types/modalTypes";
 
+// Export registry from DescriptiveRegistry
+export { 
+    DESCRIPTIVE_MODAL_COMPONENTS,
+    DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
+    getDescriptiveModalComponent
+} from './DescriptiveRegistry';
+
 // Export menu component
 export { default as DescriptiveMenu } from './DescriptiveMenu';
 

@@ -48,7 +48,7 @@ export const useOpenSavFileLogic = ({
 
     const { isMobile, isPortrait } = useMobile();
     const { overwriteVariables, resetVariables } = useVariableStore();
-    const { setDataAndSync, resetData } = useDataStore();
+    const { setData, resetData } = useDataStore();
     const { setMeta: setProjectMeta } = useMetaStore();
 
     const handleFileChange = useCallback((selectedFile: File | null) => {
@@ -180,7 +180,7 @@ export const useOpenSavFileLogic = ({
             });
 
             await overwriteVariables(variables);
-            await setDataAndSync(dataMatrix);
+            await setData(dataMatrix);
 
             await setProjectMeta({
                 name: file.name,

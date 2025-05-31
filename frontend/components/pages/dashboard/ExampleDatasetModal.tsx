@@ -178,7 +178,7 @@ interface ExampleDatasetModalProps {
 }
 
 export const ExampleDatasetModal: React.FC<ExampleDatasetModalProps> = ({ isOpen, onClose }) => {
-    const { setDataAndSync, resetData } = useDataStore();
+    const { setData, resetData } = useDataStore();
     const { setMeta: setProjectMeta, resetMeta: resetProjectMeta } = useMetaStore();
     const { overwriteVariables, resetVariables, setVariables } = useVariableStore();
     const router = useRouter();
@@ -380,7 +380,7 @@ export const ExampleDatasetModal: React.FC<ExampleDatasetModalProps> = ({ isOpen
             await setProjectMeta({ name: fileToUseForMeta.name, location: fileToUseForMeta.name, created: new Date() });
 
             // Set data and variables
-            await setDataAndSync(parsedData);
+            await setData(parsedData);
             if (fileExtension === 'sav') {
                 await overwriteVariables(variables); // Use overwrite for SAV
             } else {

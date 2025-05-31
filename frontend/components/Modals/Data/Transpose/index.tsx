@@ -32,7 +32,7 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
 }) => {
     // Get store data
     const { variables, overwriteVariables } = useVariableStore();
-    const { data, setDataAndSync } = useDataStore();
+    const { data, setData } = useDataStore();
 
     // Prepare variables with tempId
     const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
@@ -282,7 +282,7 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
             }
 
             // Step 5: Update data and variables in stores
-            await setDataAndSync(transposedData);
+            await setData(transposedData);
             await overwriteVariables(transposedVariables);
 
             onClose();

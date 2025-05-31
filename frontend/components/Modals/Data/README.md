@@ -41,8 +41,7 @@ The data modal components are organized with the following structure:
 ```
 Data/
 ├── DataRegistry.tsx     # Central registry for data modals
-├── exports.ts          # Central exports of all components
-├── index.ts            # Re-export from exports.ts
+├── index.ts            # Exports all components
 ├── README.md           # Documentation
 ├── DataMenu.tsx        # Menu component for data operations
 └── [Component]/        # Individual component directories

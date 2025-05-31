@@ -1,18 +1,21 @@
-// Re-export all file modal components for easier imports
-import { ModalType } from "@/hooks/useModal";
+// Types
+import { ModalType } from "@/types/modalTypes";
 
-// Common components
-// export { default as FileModalTemplate } from './FileModalTemplate';
+// Registry exports
+export { 
+    FILE_MODAL_COMPONENTS,
+    FILE_MODAL_CONTAINER_PREFERENCES,
+    getFileModalComponent
+} from './FileRegistry';
 
-// Import/Export modals
-export * from './ImportCsv';
-export * from './ImportExcel';
-export * from './ExportCsv';
-export * from './ExportExcel';
-
-// File operation modals
-export * from './OpenSavFile';
-export * from './Print';
+// Re-export modal components - these are imported directly in FileRegistry
+// but we export them here for backward compatibility and convenience
+export * from '@/components/Modals/File/ImportCsv';
+export * from '@/components/Modals/File/ImportExcel';
+export * from '@/components/Modals/File/ExportCsv';
+export * from '@/components/Modals/File/ExportExcel';
+export * from '@/components/Modals/File/OpenSavFile';
+export * from '@/components/Modals/File/Print';
 
 // Helper function to check file type
 export const isFileModal = (type: ModalType): boolean => {

@@ -87,6 +87,33 @@ const omitTempId = <T extends { tempId?: string }>(obj: T): Omit<T, 'tempId'> =>
     return rest;
 };
 
+// Helper function for finding variable index by identifier (number or string)
+const findVariableIndexByIdentifier = (variables: Variable[], identifier: number | string): number => {
+    if (typeof identifier === 'number') {
+        return variables.findIndex(v => v.columnIndex === identifier);
+    } else {
+        return variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
+    }
+};
+
+// Helper function for standardizing variables after service operations
+const standardizeVariables = (variables: Variable[]): Variable[] => {
+    return variables
+        .filter(isValidVariable)
+        .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+        .sort((a, b) => a.columnIndex - b.columnIndex);
+};
+
+// Helper function for updating state after successful operation
+const updateStateAfterSuccess = (set: any, variables: Variable[]) => {
+    set((draft: any) => {
+        draft.variables = standardizeVariables(variables);
+        draft.lastUpdated = new Date();
+        draft.error = null;
+        draft.isLoading = false;
+    });
+};
+
 interface VariableStoreState {
     variables: Variable[];
     isLoading: boolean;
@@ -95,17 +122,15 @@ interface VariableStoreState {
 
     setVariables: (variables: Variable[]) => void;
     updateVariable: <K extends keyof Variable>(
-        identifier: number | string, // columnIndex or name
+        identifier: number | string,
         field: K,
         value: Variable[K]
     ) => Promise<void>;
     updateMultipleFields: (
-        identifier: number | string, // columnIndex or name
+        identifier: number | string, 
         changes: Partial<Variable>
     ) => Promise<void>;
     addVariable: (variableData?: Partial<Variable>) => Promise<void>;
-    getVariableByColumnIndex: (columnIndex: number) => Variable | undefined;
-    getVariableByName: (name: string) => Variable | undefined;
     loadVariables: () => Promise<void>;
     resetVariables: () => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
@@ -145,22 +170,19 @@ const enforceMeasureConstraint = (changes: Partial<Variable>, existingVariable?:
 export const useVariableStore = create<VariableStoreState>()(
     devtools(
         immer((set, get) => ({
-            variables: [],
+            variables: [] as Variable[],
             isLoading: false,
             error: null,
             lastUpdated: null,
 
             setVariables: (variables) => {
                 set((draft) => {
-                    draft.variables = variables
-                        .filter(isValidVariable) // Filter out invalid variables
-                        .map(v => ({ ...v, tempId: v.tempId || uuidv4() })) // Ensure tempId
-                        .sort((a, b) => a.columnIndex - b.columnIndex); // Sort by columnIndex
+                    draft.variables = standardizeVariables(variables);
                     draft.lastUpdated = new Date();
                 });
             },
 
-            ensureCompleteVariables: async (targetMaxColumnIndex?: number) => {
+            ensureCompleteVariables: async (targetMaxColumnIndex?) => {
                 try {
                     const existingVariables = [...get().variables];
                     
@@ -199,18 +221,7 @@ export const useVariableStore = create<VariableStoreState>()(
                         
                         // Refresh variables from service
                         const updatedVariables = await variableService.getAllVariables();
-                        
-                        set((draft) => {
-                            // Add tempId to variables from service if not present
-                            draft.variables = updatedVariables
-                                .filter(isValidVariable) // Sanitize
-                                .map(v => ({
-                                    ...v,
-                                    tempId: v.tempId || uuidv4()
-                                }))
-                                .sort((a, b) => a.columnIndex - b.columnIndex);
-                            draft.lastUpdated = new Date();
-                        });
+                        updateStateAfterSuccess(set, updatedVariables);
                     }
                 } catch (error: any) {
                     console.error("Error in ensureCompleteVariables:", error);
@@ -223,51 +234,8 @@ export const useVariableStore = create<VariableStoreState>()(
                 field: K,
                 value: Variable[K]
             ) => {
-                let variableIndexInState: number = -1;
-                let originalVariable: Variable | null = null;
-
-                try {
-                    // 1. Find variable in state
-                    if (typeof identifier === 'number') {
-                        variableIndexInState = get().variables.findIndex(v => v.columnIndex === identifier);
-                    } else {
-                        variableIndexInState = get().variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
-                    }
-                    if (variableIndexInState === -1) throw new Error(`Variable "${identifier}" not found in state.`);
-                    originalVariable = { ...get().variables[variableIndexInState] }; // Get a copy
-
-                    // 2. Prepare initial changes & inferred values
-                    let updatedFields: Partial<Variable> = { [field]: value };
-                    let inferred: Partial<Variable> = {};
-                    if (field === 'name' && typeof value === 'string') {
-                        const otherVariables = get().variables.filter((_, i) => i !== variableIndexInState);
-                        const nameResult = processVariableName(value, otherVariables);
-                        if (!nameResult.isValid) throw new Error(nameResult.message || "Invalid variable name");
-                        updatedFields.name = nameResult.processedName;
-                    } else if (field === 'type' && value !== originalVariable.type) {
-                        inferred = inferDefaultValues(value as Variable['type']);
-                    }
-
-                    // 3. Combine changes and enforce constraints
-                    let changesToApply = { ...inferred, ...updatedFields };
-                    changesToApply = enforceMeasureConstraint(changesToApply, originalVariable);
-
-                    // Save changes via variableService
-                    const updatedVariable = { ...originalVariable, ...changesToApply };
-                    await variableService.saveVariable(updatedVariable);
-
-                    // 5. Update State
-                    set((draft) => {
-                        if (variableIndexInState !== -1) {
-                            Object.assign(draft.variables[variableIndexInState], changesToApply);
-                        }
-                        draft.lastUpdated = new Date();
-                        draft.error = null;
-                    });
-                } catch (error: any) {
-                    console.error("Error in updateVariable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error updating variable", source: "updateVariable", originalError: error }; });
-                }
+                // Simply delegate to updateMultipleFields with a single field update
+                return get().updateMultipleFields(identifier, { [field]: value } as Partial<Variable>);
             },
 
             updateMultipleFields: async (identifier, changes) => {
@@ -276,11 +244,7 @@ export const useVariableStore = create<VariableStoreState>()(
 
                 try {
                     // 1. Find variable in state
-                    if (typeof identifier === 'number') {
-                        variableIndexInState = get().variables.findIndex(v => v.columnIndex === identifier);
-                    } else {
-                        variableIndexInState = get().variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
-                    }
+                    variableIndexInState = findVariableIndexByIdentifier(get().variables, identifier);
                     if (variableIndexInState === -1) throw new Error(`Variable "${identifier}" not found in state.`);
                     originalVariable = { ...get().variables[variableIndexInState] }; // Get a copy
 
@@ -322,7 +286,7 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
-            addVariable: async (variableData?: Partial<Variable>) => {
+            addVariable: async (variableData?) => {
                 try {
                     // Get all current variables
                     const allCurrentVariables = get().variables;
@@ -375,14 +339,7 @@ export const useVariableStore = create<VariableStoreState>()(
                     
                     // Reload variables to get updated state
                     const updatedVariables = await variableService.getAllVariables();
-                    set((draft) => {
-                        draft.variables = updatedVariables.map(v => ({
-                            ...v,
-                            tempId: v.tempId || uuidv4()
-                        })).sort((a, b) => a.columnIndex - b.columnIndex);
-                        draft.lastUpdated = new Date();
-                        draft.error = null;
-                    });
+                    updateStateAfterSuccess(set, updatedVariables);
                     
                     // Check for and fill any gaps in the sequence
                     await get().ensureCompleteVariables();
@@ -447,14 +404,7 @@ export const useVariableStore = create<VariableStoreState>()(
                         
                         // Refresh the variable list
                         const updatedVariables = await variableService.getAllVariables();
-                        set(draft => {
-                            draft.variables = updatedVariables.map(v => ({
-                                ...v,
-                                tempId: v.tempId || uuidv4()
-                            })).sort((a, b) => a.columnIndex - b.columnIndex);
-                            draft.lastUpdated = new Date();
-                            draft.error = null;
-                        });
+                        updateStateAfterSuccess(set, updatedVariables);
                         
                         // Ensure complete variable set
                         await get().ensureCompleteVariables();
@@ -465,27 +415,11 @@ export const useVariableStore = create<VariableStoreState>()(
                 }
             },
 
-            getVariableByColumnIndex: (columnIndex) => {
-                return get().variables.find((v) => v.columnIndex === columnIndex);
-            },
-
-            getVariableByName: (name) => {
-                return get().variables.find(v => v.name.toLowerCase() === name.toLowerCase());
-            },
-
             loadVariables: async () => {
                 set((draft) => { draft.isLoading = true; draft.error = null; });
                 try {
                     const variablesFromService = await variableService.getAllVariables();
-                    set((draft) => {
-                        draft.variables = variablesFromService
-                            .filter(isValidVariable) // Sanitize
-                            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
-                            .sort((a, b) => a.columnIndex - b.columnIndex);
-                        draft.isLoading = false;
-                        draft.lastUpdated = new Date();
-                        draft.error = null; // Clear error on successful load
-                    });
+                    updateStateAfterSuccess(set, variablesFromService);
                 } catch (error: any) {
                     console.error("Error loading variables:", error);
                     set((draft) => {
@@ -542,14 +476,7 @@ export const useVariableStore = create<VariableStoreState>()(
                     
                     // Refresh variables from service
                     const updatedVariables = await variableService.getAllVariables();
-                    set((draft) => {
-                        draft.variables = updatedVariables.map(v => ({
-                            ...v,
-                            tempId: v.tempId || uuidv4()
-                        })).sort((a, b) => a.columnIndex - b.columnIndex);
-                        draft.lastUpdated = new Date();
-                        draft.error = null;
-                    });
+                    updateStateAfterSuccess(set, updatedVariables);
                 } catch (error: any) {
                     console.error("Error deleting variable:", error);
                     set((draft) => { draft.error = { message: error.message || "Error deleting variable", source: "deleteVariable", originalError: error }; });
@@ -567,15 +494,7 @@ export const useVariableStore = create<VariableStoreState>()(
                     await variableService.importVariables(validNewVariables.map(omitTempId));
                     
                     const variablesFromService = await variableService.getAllVariables();
-                    set((draft) => {
-                        draft.variables = variablesFromService
-                            .filter(isValidVariable) // Sanitize
-                            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
-                            .sort((a, b) => a.columnIndex - b.columnIndex);
-                        draft.isLoading = false;
-                        draft.lastUpdated = new Date();
-                        draft.error = null; // Clear error on successful overwrite
-                    });
+                    updateStateAfterSuccess(set, variablesFromService);
                 } catch (error: any) {
                     console.error("Error overwriting variables:", error);
                     set((draft) => {
@@ -628,13 +547,7 @@ export const useVariableStore = create<VariableStoreState>()(
                     
                     // Refresh variables from service
                     const refreshedVariables = await variableService.getAllVariables();
-                    set((draft) => {
-                        draft.variables = refreshedVariables.map(v => ({
-                            ...v,
-                            tempId: v.tempId || uuidv4()
-                        }));
-                        draft.lastUpdated = new Date();
-                    });
+                    updateStateAfterSuccess(set, refreshedVariables);
                 } catch (error: any) {
                     console.error("Error sorting variables:", error);
                     set((draft) => { draft.error = { message: error.message || "Error sorting variables", source: "sortVariables", originalError: error }; });

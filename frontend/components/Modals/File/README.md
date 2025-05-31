@@ -34,25 +34,24 @@ All file modals integrate with the main modal architecture using these component
 
 ```
 components/Modals/File/
-├── FileModalTemplate.tsx     # Shared template component
-├── index.ts                  # Exports all components
-├── README.md                 # This documentation
+├── FileRegistry.tsx         # Central registry for file modals
+├── index.ts                 # Exports all components
+├── README.md                # This documentation
 │
-├── ImportCsv/                # CSV import components
-│   ├── ImportCsv.tsx           # Main UI component
-│   ├── ImportCsvContainer.tsx  # Container component
-│   ├── ImportCsvSelection.tsx  # Step component for file selection
-│   ├── ImportCsvConfiguration.tsx  # Step component for configuration
-│   ├── useImportCsvFileReader.ts   # Hook for file reading
-│   ├── useImportCsvProcessor.ts    # Hook for CSV processing
-│   ├── index.ts              # Export main components
-│   └── utils/                # Utility functions
+├── ImportCsv/               # CSV import components
+│   ├── ImportCsv.tsx          # Main UI component
+│   ├── ImportCsvSelection.tsx # Step component for file selection
+│   ├── ImportCsvConfiguration.tsx # Step component for configuration
+│   ├── useImportCsvFileReader.ts  # Hook for file reading
+│   ├── useImportCsvProcessor.ts   # Hook for CSV processing
+│   ├── index.ts             # Export main components
+│   └── utils/               # Utility functions
 │
-├── ExportCsv/                # Similar structure for CSV export
-├── ImportExcel/              # Similar structure for Excel import
-├── ExportExcelModal/         # Similar structure for Excel export
-├── OpenSavFile/              # Similar structure for opening SAV files
-└── Print/                    # Similar structure for print functionality
+├── ExportCsv/               # Similar structure for CSV export
+├── ImportExcel/             # Similar structure for Excel import
+├── ExportExcel/             # Similar structure for Excel export
+├── OpenSavFile/             # Similar structure for opening SAV files
+└── Print/                   # Similar structure for print functionality
 ```
 
 ## Registration in Modal System
@@ -68,9 +67,14 @@ All file modals are registered in the central modal system through:
    }
    ```
 
-2. **Component Registry** (`ModalRegistry.tsx`):
-   - File modals are registered in `FILE_MODAL_COMPONENTS`
-   - Container preferences in `MODAL_CONTAINER_PREFERENCES`
+2. **File Modal Registry** (`FileRegistry.tsx`):
+   - Centralized registry for all file modals
+   - Defines component mappings in `FILE_MODAL_COMPONENTS`
+   - Defines container preferences in `FILE_MODAL_CONTAINER_PREFERENCES`
+
+3. **Main Registry Integration** (`ModalRegistry.tsx`):
+   - Imports from FileRegistry
+   - Integrates file modals into the main modal system
 
 ## Usage Example
 

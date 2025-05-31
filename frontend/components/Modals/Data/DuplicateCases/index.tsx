@@ -38,7 +38,7 @@ interface DuplicateCasesProps {
 const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal } = useModalStore();
     const { variables, addVariable } = useVariableStore();
-    const { data, updateCells, setDataAndSync } = useDataStore();
+    const { data, updateCells, setData } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Prepare variables with tempId if they don't have it
@@ -250,7 +250,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
             const { result, statistics } = workerResult;
 
             if (moveMatchingToTop) {
-                await setDataAndSync(result.reorderedData);
+                await setData(result.reorderedData);
             }
 
             await createIndicatorVariables(result);

@@ -1,19 +1,11 @@
 import React, { lazy, Suspense } from 'react';
 import { ModalType, BaseModalProps, ModalCategory } from '@/types/modalTypes';
 
-// Import file modals - penting untuk UI dan sering digunakan
-import { ImportCsv } from '@/components/Modals/File/ImportCsv';
-import { ImportExcelModal } from '@/components/Modals/File/ImportExcel';
-import { OpenSavFileModal } from '@/components/Modals/File/OpenSavFile';
-import { PrintModal } from '@/components/Modals/File/Print';
-import { ExportCsv } from '@/components/Modals/File/ExportCsv';
-import { ExportExcel } from '@/components/Modals/File/ExportExcel';
-
-// Import edit modals
-import { FindAndReplaceModal, GoToModal, FindReplaceMode, GoToMode } from '@/components/Modals/Edit';
-
-// Import data modals registry
-import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Data/DataRegistry';
+// Import modal registries
+import { FILE_MODAL_COMPONENTS, FILE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/File/';
+import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Data/';
+import { ANALYZE_MODAL_COMPONENTS, ANALYZE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze';
+import { EDIT_MODAL_COMPONENTS, EDIT_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Edit/';
 
 // Lazy load transform modals
 const ComputeVariableModal = lazy(() => import('@/components/Modals/Transform/ComputeVariableModal'));
@@ -48,15 +40,6 @@ const DecompositionModal = lazy(() => import('@/components/Modals/Analyze/TimeSe
 const AutocorrelationModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/AutocorrelationModal'));
 const UnitRootTestModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/UnitRootTestModal'));
 const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal'));
-
-// Lazy load descriptive statistics modals
-const DescriptivesModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Descriptive'));
-const ExploreModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Explore'));
-const FrequenciesModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Frequencies'));
-const CrosstabsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Crosstabs'));
-const RatioModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Ratio'));
-const PPPlotsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/PPPlots'));
-const QQPlotsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/QQPlots'));
 
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
@@ -95,66 +78,6 @@ function withSuspense(Component: React.ComponentType<BaseModalProps>): React.Com
 }
 
 /**
- * FILE_MODAL_COMPONENTS - Registry khusus untuk modal kategori File
- * 
- * Mapping langsung ke komponen dengan props yang sesuai
- */
-const FILE_MODAL_COMPONENTS: ModalComponentRegistry = {
-  [ModalType.ImportCSV]: ImportCsv as React.ComponentType<BaseModalProps>,
-  [ModalType.ImportExcel]: ImportExcelModal as React.ComponentType<BaseModalProps>,
-  [ModalType.OpenData]: OpenSavFileModal as React.ComponentType<BaseModalProps>,
-  [ModalType.Print]: PrintModal as React.ComponentType<BaseModalProps>,
-  [ModalType.ExportCSV]: ExportCsv as React.ComponentType<BaseModalProps>,
-  [ModalType.ExportExcel]: ExportExcel as React.ComponentType<BaseModalProps>,
-};
-
-/**
- * EDIT_MODAL_COMPONENTS - Registry khusus untuk modal kategori Edit
- * 
- * Mapping langsung ke komponen dengan props yang sesuai
- */
-const EDIT_MODAL_COMPONENTS: ModalComponentRegistry = {
-  [ModalType.Find]: ((props: BaseModalProps) => {
-    const FindComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.FIND} />;
-    FindComp.displayName = 'FindModal';
-    return <FindComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.Replace]: ((props: BaseModalProps) => {
-    const ReplaceComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.REPLACE} />;
-    ReplaceComp.displayName = 'ReplaceModal';
-    return <ReplaceComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.GoToCase]: ((props: BaseModalProps) => {
-    const GoToCaseComp = () => <GoToModal {...props} mode={GoToMode.CASE} />;
-    GoToCaseComp.displayName = 'GoToCaseModal';
-    return <GoToCaseComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.GoToVariable]: ((props: BaseModalProps) => {
-    const GoToVarComp = () => <GoToModal {...props} mode={GoToMode.VARIABLE} />;
-    GoToVarComp.displayName = 'GoToVariableModal';
-    return <GoToVarComp />;
-  }) as React.ComponentType<BaseModalProps>
-};
-
-/**
- * DESCRIPTIVE_MODAL_COMPONENTS - Registry khusus untuk modal kategori Descriptive
- * 
- * Mapping langsung ke komponen dengan props yang sesuai
- */
-const DESCRIPTIVE_MODAL_COMPONENTS: ModalComponentRegistry = {
-  [ModalType.Descriptives]: withSuspense(DescriptivesModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Explore]: withSuspense(ExploreModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Frequencies]: withSuspense(FrequenciesModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Crosstabs]: withSuspense(CrosstabsModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Ratio]: withSuspense(RatioModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.PPPlots]: withSuspense(PPPlotsModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.QQPlots]: withSuspense(QQPlotsModal as any) as React.ComponentType<BaseModalProps>,
-};
-
-/**
  * MODAL_COMPONENTS - Registry utama semua komponen modal
  * 
  * Ini adalah registry terpusat yang memetakan setiap ModalType ke komponen React spesifik.
@@ -173,8 +96,8 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Data modals - from dedicated registry
   ...DATA_MODAL_COMPONENTS,
   
-  // Descriptive statistics modals - from dedicated registry
-  ...DESCRIPTIVE_MODAL_COMPONENTS,
+  // Analyze modals - from dedicated registry
+  ...ANALYZE_MODAL_COMPONENTS,
   
   // Transform modals - lazy loaded
   [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
@@ -239,37 +162,23 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
   // Data modals - from dedicated preferences
   ...DATA_MODAL_CONTAINER_PREFERENCES,
   
+  // File modals - from dedicated preferences
+  ...FILE_MODAL_CONTAINER_PREFERENCES,
+  
+  // Edit modals - from dedicated preferences
+  ...EDIT_MODAL_CONTAINER_PREFERENCES,
+  
+  // Analyze modals - from dedicated preferences
+  ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
+  
   // Chart modals yang kompleks selalu sebagai dialog
   [ModalType.ChartBuilderModal]: "sidebar",
   [ModalType.SimpleBarModal]: "sidebar",
-  
-  // File modals - konsisten dengan implementasi komponen
-  [ModalType.ImportCSV]: "sidebar",
-  [ModalType.ImportExcel]: "sidebar", 
-  [ModalType.OpenData]: "sidebar",
-  [ModalType.Print]: "sidebar",
-  [ModalType.ExportCSV]: "sidebar",
-  [ModalType.ExportExcel]: "sidebar",
-  
-  // Edit modals yang lebih baik sebagai dialog
-  [ModalType.Find]: "sidebar",
-  [ModalType.Replace]: "sidebar",
-  [ModalType.GoToCase]: "sidebar",
-  [ModalType.GoToVariable]: "sidebar",
   
   // Modal dengan form panjang lebih baik sebagai sidebar
   [ModalType.ModalLinear]: "sidebar",
   [ModalType.ModalCurveEstimation]: "sidebar",
   [ModalType.ModalBinaryLogistic]: "sidebar",
-
-  // Descriptive statistics modals preferences
-  [ModalType.Descriptives]: "sidebar",
-  [ModalType.Explore]: "sidebar",
-  [ModalType.Frequencies]: "sidebar",
-  [ModalType.Crosstabs]: "sidebar",
-  [ModalType.Ratio]: "sidebar",
-  [ModalType.PPPlots]: "sidebar",
-  [ModalType.QQPlots]: "sidebar",
 };
 
 /**
