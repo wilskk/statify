@@ -8,20 +8,6 @@ import Autocorrelation from "@/components/Modals/Analyze/TimeSeries/Autocorrelat
 import UnitRootTest from "@/components/Modals/Analyze/TimeSeries/UnitRootTest";
 import BoxJenkinsModel from "@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel";
 
-export const modalStyles = {
-    dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",
-    dialogHeader: "bg-[#F7F7F7] px-6 py-5 border-b border-[#E6E6E6] h-16",
-    dialogBody: "px-6 py-6",
-    dialogFooter: "bg-[#F7F7F7] px-6 py-5 border-t border-[#E6E6E6] h-16",
-    dialogTitle: "text-lg font-semibold text-black",
-    dialogDescription: "text-sm text-[#888888]",
-    primaryButton: "bg-black text-white hover:opacity-90 h-8",
-    secondaryButton: "border-[#CCCCCC] text-black hover:bg-[#F7F7F7] h-8",
-    formGroup: "space-y-2 mb-6",
-    label: "text-[#444444] text-xs font-medium",
-    input: "h-10 border-[#CCCCCC] focus:border-black"
-};
-
 interface TimeSeriesModalProps {
     modalType: ModalType;
     onClose: () => void;
@@ -45,6 +31,12 @@ export const TimeSeriesModal: React.FC<TimeSeriesModalProps> = ({ modalType, onC
     }
 };
 
+/**
+ * Helper function to check if a modal type belongs to the Time Series category
+ * 
+ * @param type - The modal type to check
+ * @returns Whether the modal is a Time Series modal
+ */
 export const isTimeSeriesModal = (type: ModalType): boolean => {
     return [
         ModalType.Smoothing,

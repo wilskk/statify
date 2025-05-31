@@ -1,7 +1,6 @@
 "use client";
 
 import React, { FC, useState, useEffect } from "react";
-import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useVariableStore } from "@/stores/useVariableStore";
@@ -15,6 +14,7 @@ import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 interface UnitRootTestProps {
     onClose: () => void;
+    containerType?: string;
 }
 
 interface VariableState {
@@ -22,7 +22,7 @@ interface VariableState {
     selectedVariables: Variable[];
 }
 
-const UnitRootTest: FC<UnitRootTestProps> = ({ onClose }) => {
+const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
     const { variables } = useVariableStore();
     const { data } = useDataStore();
         
@@ -183,11 +183,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose }) => {
     }
 
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Unit Root Test</DialogTitle>
-            </DialogHeader>
-
+        <div className="h-full flex flex-col overflow-hidden">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-[#E6E6E6] flex-shrink-0">
                     <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
@@ -235,9 +231,9 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose }) => {
                 </TabsContent>
             </Tabs>
 
-            {combinedError && <div className="px-6 py-2 text-red-600 text-center">{combinedError}</div>}
+            {combinedError && <div className="text-red-600 text-center mt-2">{combinedError}</div>}
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
@@ -270,8 +266,9 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose }) => {
                         Help
                     </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </div>
     );
 };
+
 export default UnitRootTest;

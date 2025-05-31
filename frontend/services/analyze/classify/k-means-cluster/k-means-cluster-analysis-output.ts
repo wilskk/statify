@@ -188,7 +188,7 @@ async function saveClusterResults(
     variables: Variable[]
 ) {
     const { addVariable } = useVariableStore.getState();
-    const { updateBulkCells } = useDataStore.getState();
+    const { updateCells } = useDataStore.getState();
 
     // Find the cluster membership table
     const clusterMembershipTable = formattedResult.tables.find(
@@ -259,7 +259,7 @@ async function saveClusterResults(
         }));
 
         if (clusterUpdates.length > 0) {
-            await updateBulkCells(clusterUpdates);
+            await updateCells(clusterUpdates);
         }
 
         nextColumnIndex++;
@@ -293,7 +293,7 @@ async function saveClusterResults(
         }));
 
         if (distanceUpdates.length > 0) {
-            await updateBulkCells(distanceUpdates);
+            await updateCells(distanceUpdates);
         }
     }
 }

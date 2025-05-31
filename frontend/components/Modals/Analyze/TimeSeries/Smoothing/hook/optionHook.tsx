@@ -131,7 +131,7 @@ export function useOptionHook(
                 );
             case 'holt':
                 return (
-                    <div className="flex sm:flex-row flex-col gap-4">
+                    <div className="flex flex-col gap-4">
                         <InputRow 
                             label="alpha" 
                             id="par1" 
@@ -155,7 +155,7 @@ export function useOptionHook(
             case 'winter':
                 return (
                     <div className="flex flex-col gap-2">
-                        <div className="flex sm:flex-row flex-col gap-4">
+                        <div className="flex flex-col gap-4">
                             <InputRow 
                                 label="alpha" 
                                 id="par1" 

@@ -21,7 +21,7 @@ export function useAnalyzeHook(
 
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { addVariable, variables } = useVariableStore();
-    const { updateBulkCells } = useDataStore();
+    const { updateCells } = useDataStore();
     const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName } = useTimeSeriesStore();
 
     const validateInputs = () => {
@@ -112,7 +112,7 @@ export function useAnalyzeHook(
         }
 
         if (updates.length > 0) {
-        await updateBulkCells(updates);
+        await updateCells(updates);
         }
     };
 

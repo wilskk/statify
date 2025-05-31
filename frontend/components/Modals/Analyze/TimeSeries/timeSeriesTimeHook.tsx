@@ -141,7 +141,7 @@ export function useTimeHook(
                 );
             case 'ym':
                 return (
-                    <div className="flex sm:flex-row flex-col gap-4">
+                    <div className="flex flex-col gap-4">
                         <InputRow
                             label="year" 
                             id="year" 
@@ -164,7 +164,7 @@ export function useTimeHook(
                 );
             case 'wwd5': case 'wwd6': case 'wd':
                 return (
-                    <div className="flex sm:flex-row flex-col gap-4">
+                    <div className="flex flex-col gap-4">
                         <InputRow
                             label="year" 
                             id="year" 
@@ -196,7 +196,7 @@ export function useTimeHook(
                 );
             case 'dwh':
                 return (
-                    <div className="flex sm:flex-row flex-col gap-4">
+                    <div className="flex flex-col gap-4">
                         <InputRow
                             label="year" 
                             id="year" 
@@ -237,7 +237,7 @@ export function useTimeHook(
                 );
             case 'dh':
                 return (
-                    <div className="flex sm:flex-row flex-col gap-4">
+                    <div className="flex flex-col gap-4">
                         <InputRow
                             label="year" 
                             id="year" 

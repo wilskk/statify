@@ -20,7 +20,7 @@ export function useAnalyzeHook(
 
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { addVariable, variables } = useVariableStore();
-    const { updateBulkCells } = useDataStore();
+    const { updateCells } = useDataStore();
     const { getTypeDate, getHour, getDay, getMonth, getYear, getDayName } = useTimeSeriesStore();
 
     const validateInputs = () => {
@@ -165,7 +165,7 @@ export function useAnalyzeHook(
             
             // Use bulk update to efficiently add all data
             if (updates.length > 0) {
-                await updateBulkCells(updates);
+                await updateCells(updates);
             }
             
             // Increment column index for next variable
