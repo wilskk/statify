@@ -157,15 +157,60 @@ pub struct GeneralEstimableFunctionEntry {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastCoefficients {
-    pub entries: Vec<ContrastCoefficientsEntry>,
-    pub notes: Vec<String>,
+    pub information: Vec<ContrastInformation>,
+    pub factor_names: Vec<String>,
+    pub contrast_coefficients: Vec<ContrastCoefficientsEntry>,
+    pub contrast_result: Vec<ContrastResult>,
+    pub contrast_test_result: Vec<ContrastTestResult>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastInformation {
+    pub contrast_name: String,
+    pub transformation_coef: String,
+    pub contrast_result: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ContrastCoefficientsEntry {
     pub parameter: Vec<String>,
     pub l_label: Vec<String>,
-    pub coefficients: Vec<Vec<f64>>,
+    pub l_matrix: Vec<Vec<f64>>,
+    pub contrast_information: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastResult {
+    pub parameter: Vec<String>,
+    pub contrast_result: Vec<ContrastResultEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastResultEntry {
+    pub contrast_estimate: f64,
+    pub hypothesized_value: f64,
+    pub difference: f64,
+    pub standard_error: f64,
+    pub significance: f64,
+    pub confidence_interval: ConfidenceInterval,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastTestResult {
+    pub source: Vec<String>,
+    pub contrast_result: Vec<ContrastTestResultEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContrastTestResultEntry {
+    pub sum_of_squares: f64,
+    pub df: usize,
+    pub mean_square: f64,
+    pub f_value: f64,
+    pub significance: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

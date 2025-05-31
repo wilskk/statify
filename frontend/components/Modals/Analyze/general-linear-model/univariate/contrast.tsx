@@ -101,12 +101,24 @@ export const UnivariateContrast = ({
 
     // Format variable based on current contrast settings
     const formatVariable = (variable: string) => {
-        const method = contrastState.ContrastMethod || "Deviation";
-        const reference = contrastState.Last ? "Last" : "First";
-
-        // Get the original variable name to prevent double formatting
+        const uiMethod = contrastState.ContrastMethod; // Method chosen in the dropdown by the user
         const originalName = variable.split(" (")[0];
-        return `${originalName} (${method}, Ref: ${reference})`;
+
+        if (!uiMethod || uiMethod === "" || uiMethod.toLowerCase() === "none") {
+            return originalName;
+        }
+
+        const lowerUiMethod = uiMethod.toLowerCase();
+        if (lowerUiMethod === "deviation" || lowerUiMethod === "simple") {
+            // For these methods, "Ref:" is applicable.
+            const reference = contrastState.Last ? "Last" : "First";
+            // Use the original casing of uiMethod for display if it's not "None"
+            return `${originalName} (${uiMethod}, Ref: ${reference})`;
+        } else {
+            // For other methods (Polynomial, Helmert, etc.), "Ref:" is not applicable.
+            // Use the original casing of uiMethod for display
+            return `${originalName} (${uiMethod})`;
+        }
     };
 
     // Handle the Change button click
@@ -236,9 +248,9 @@ export const UnivariateContrast = ({
                                                 : "First"
                                         }
                                         disabled={
-                                            contrastState.ContrastMethod !==
+                                            contrastState.ContrastMethod?.toLowerCase() !==
                                                 "deviation" &&
-                                            contrastState.ContrastMethod !==
+                                            contrastState.ContrastMethod?.toLowerCase() !==
                                                 "simple"
                                         }
                                         onValueChange={handleRefGrp}

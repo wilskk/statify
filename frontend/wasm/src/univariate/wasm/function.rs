@@ -116,6 +116,22 @@ pub fn run_analysis(
         }
     }
 
+    // Step 6: Contrast Coefficients if requested
+    let mut contrast_coefficients = None;
+    if let Some(factor_list) = &config.contrast.factor_list {
+        if !factor_list.is_empty() {
+            logger.add_log("calculate_contrast_coefficients");
+            match core::calculate_contrast_coefficients(&data, config) {
+                Ok(coefficients) => {
+                    contrast_coefficients = Some(coefficients);
+                }
+                Err(e) => {
+                    error_collector.add_error("calculate_contrast_coefficients", &e);
+                }
+            }
+        }
+    }
+
     // Step 6: Lack of Fit Tests if requested
     let mut lack_of_fit_tests = None;
     if config.options.lack_of_fit {
@@ -262,7 +278,7 @@ pub fn run_analysis(
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
-        contrast_coefficients: None,
+        contrast_coefficients,
         lack_of_fit_tests,
         spread_vs_level_plots,
         posthoc_tests,
