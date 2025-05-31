@@ -556,6 +556,186 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose }) => {
       }
       // End of SaveLinear options processing example
 
+      // Process residuals options
+      if (saveParams.residualUnstandardized || saveParams.residualStandardized || 
+          saveParams.residualStudentized || saveParams.residualDeleted || 
+          saveParams.residualStudentizedDeleted) {
+        if (regressionResults && regressionResults.coefficients) {
+          console.log("[Analyze] Starting Residuals calculation...");
+          console.log("[Analyze] Regression results:", regressionResults);
+          
+          const residualsWorker = new Worker('/workers/Regression/Save/residuals.js');
+          console.log("[Analyze] Worker created for Residuals");
+          
+          // Format data untuk worker
+          const workerData = {
+            independentData: independentDataTransposed.map(row => 
+              row.map(val => {
+                const num = Number(val);
+                return isNaN(num) ? 0 : num;
+              })
+            ),
+            coefficients: regressionResults.coefficients.map(coef => {
+              const num = Number(coef.coefficient);
+              return isNaN(num) ? 0 : num;
+            }),
+            dependentData: filteredDependentData
+          };
+          
+          console.log("[Analyze] Data prepared for residuals worker:", {
+            independentDataLength: workerData.independentData.length,
+            independentVarsCount: workerData.independentData[0]?.length,
+            firstRow: workerData.independentData[0],
+            coefficients: workerData.coefficients,
+            dependentDataLength: workerData.dependentData.length
+          });
+          
+          residualsWorker.postMessage(workerData);
+          console.log("[Analyze] Data sent to residuals worker");
+
+          residualsWorker.onmessage = async (e: MessageEvent) => {
+            console.log("[Analyze] Received response from residuals worker:", e.data);
+            const response = e.data;
+            
+            if (response && response.error) {
+              console.error("[Analyze] Residuals worker error:", response.error);
+              alert(`Error in Residuals worker: ${response.error}`);
+            } else {
+              console.log("[Analyze] Processing residuals worker response...");
+              
+              try {
+                // Pastikan response adalah array objek dengan nilai residual
+                const residualValues = Array.isArray(response) ? response : [];
+                console.log("[Analyze] Residual values array:", residualValues);
+                
+                // Get the next save sequence number for each residual type
+                const existingVars = variablesFromStore.map(v => v.name);
+                
+                // Find the highest number for each prefix
+                const findNextNumber = (prefix: string) => {
+                  const pattern = new RegExp(`^${prefix}_(\\d+)$`);
+                  let maxNum = 0;
+                  
+                  existingVars.forEach(name => {
+                    const match = name.match(pattern);
+                    if (match) {
+                      const num = parseInt(match[1], 10);
+                      if (num > maxNum) maxNum = num;
+                    }
+                  });
+                  
+                  return maxNum + 1;
+                };
+                
+                // Create new variables for each type of residual
+                const newVariables = [];
+                
+                if (saveParams.residualUnstandardized) {
+                  const resNumber = findNextNumber("RES");
+                  newVariables.push({
+                    name: `RES_${resNumber}`,
+                    label: `Residuals (Unstandardized) - ${selectedDependentVariable.name}`,
+                    values: residualValues.map(v => v.unstandardized)
+                  });
+                }
+                
+                if (saveParams.residualStandardized) {
+                  const zresNumber = findNextNumber("ZRE");
+                  newVariables.push({
+                    name: `ZRE_${zresNumber}`,
+                    label: `Residuals (Standardized) - ${selectedDependentVariable.name}`,
+                    values: residualValues.map(v => v.standardized)
+                  });
+                }
+                
+                if (saveParams.residualStudentized) {
+                  const sreNumber = findNextNumber("SRE");
+                  newVariables.push({
+                    name: `SRE_${sreNumber}`,
+                    label: `Residuals (Studentized) - ${selectedDependentVariable.name}`,
+                    values: residualValues.map(v => v.studentized)
+                  });
+                }
+                
+                if (saveParams.residualDeleted) {
+                  const dreNumber = findNextNumber("DRE");
+                  newVariables.push({
+                    name: `DRE_${dreNumber}`,
+                    label: `Residuals (Deleted) - ${selectedDependentVariable.name}`,
+                    values: residualValues.map(v => v.deleted)
+                  });
+                }
+                
+                if (saveParams.residualStudentizedDeleted) {
+                  const sdreNumber = findNextNumber("SDR");
+                  newVariables.push({
+                    name: `SDR_${sdreNumber}`,
+                    label: `Residuals (Studentized Deleted) - ${selectedDependentVariable.name}`,
+                    values: residualValues.map(v => v.studentizedDeleted)
+                  });
+                }
+
+                console.log("[Analyze] New residual variables to create:", newVariables);
+
+                // Add each variable to the store
+                for (const newVar of newVariables) {
+                  const variable: Variable = {
+                    tempId: uuidv4(),
+                    columnIndex: variablesFromStore.length + newVariables.indexOf(newVar),
+                    name: newVar.name,
+                    type: "NUMERIC",
+                    width: 12,
+                    decimals: 5,
+                    label: newVar.label,
+                    values: [],
+                    missing: null,
+                    columns: 64,
+                    align: "right",
+                    measure: "scale",
+                    role: "input"
+                  };
+                  
+                  console.log("[Analyze] Created new residual variable:", variable);
+                  await useVariableStore.getState().addVariable(variable);
+
+                  // Update the data store with the residual values
+                  const updates: CellUpdate[] = newVar.values.map((value: number, rowIndex: number) => ({
+                    row: rowIndex,
+                    col: variable.columnIndex,
+                    value: Number(value.toFixed(5))
+                  }));
+                  
+                  console.log("[Analyze] Updating data store for", variable.name);
+                  await useDataStore.getState().updateBulkCells(updates);
+                }
+
+                console.log("[Analyze] All residual values saved as new variables");
+              } catch (error) {
+                console.error("[Analyze] Error saving residual values:", error);
+                alert("Failed to save residual values as new variables");
+              }
+            }
+            residualsWorker.terminate();
+            console.log("[Analyze] Residuals worker terminated");
+          };
+
+          residualsWorker.onerror = (error: ErrorEvent) => {
+            console.error("[Analyze] Residuals worker error:", {
+              message: error.message,
+              error: error
+            });
+            alert(`Failed to run Residuals worker: ${error.message}`);
+            residualsWorker.terminate();
+          };
+        } else {
+          console.error("[Analyze] Missing regression results:", {
+            hasResults: !!regressionResults,
+            hasCoefficients: regressionResults?.coefficients ? true : false
+          });
+          alert("Regression results or coefficients not available to calculate residuals.");
+        }
+      }
+
       // 1. Variables Entered/Removed Worker
       const variablesEnteredRemovedWorker = new Worker('/workers/Regression/variables.js');
       console.log("[Analyze] Mengirim data ke Worker untuk Variables Entered/Removed...");

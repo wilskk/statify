@@ -1,4 +1,4 @@
-// Modified version of coefficients.js
+// coefficients.js
 
 self.onmessage = function(e) {
   try {
