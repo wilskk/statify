@@ -180,10 +180,12 @@ export function useAnalyzeHook(
     };
     
     const processDecompositionResults = async (
-        results: [any, any[], any[], any[], any[], any[], any, any, any, any],
+        results: [any, any[], any[], any[], any[], any[], any, any, any, any, any, any, any, any],
         dataVarDef: Variable,
     ) => {
-        const [descriptionTable, testing, seasonal, trend, irrengular, forecasting, evaluation, seasonIndices, equation, graphic] = results;
+        const [descriptionTable, testing, seasonal, trend, irrengular, forecasting, evaluation, 
+                seasonIndices, equation, graphicForecasting, graphicData, graphicTrend, graphicSeasonal,
+                graphicIrregular] = results;
         
         // Create log entry
         const logMsg = `DECOMPOSITION: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedDecompositionMethod[1]}.`;
@@ -200,6 +202,34 @@ export function useAnalyzeHook(
             title: "Description Table",
             output_data: descriptionTable,
             components: "Description Table",
+            description: "",
+        });
+
+        await addStatistic(analyticId, {
+            title: `Graphic ${dataVarDef.name}`,
+            output_data: graphicData,
+            components: `Graphic ${dataVarDef.name}`,
+            description: "",
+        });
+        
+        await addStatistic(analyticId, {
+            title: "Graphic Trend",
+            output_data: graphicTrend,
+            components: "Graphic Trend",
+            description: "",
+        });
+        
+        await addStatistic(analyticId, {
+            title: "Graphic Seasonal",
+            output_data: graphicSeasonal,
+            components: "Graphic Seasonal",
+            description: "",
+        });
+        
+        await addStatistic(analyticId, {
+            title: "Graphic Irregular",
+            output_data: graphicIrregular,
+            components: "Graphic Irregular",
             description: "",
         });
         
@@ -219,10 +249,10 @@ export function useAnalyzeHook(
                 description: "",
             });
         }
-
+        
         await addStatistic(analyticId, {
             title: "Graphic Forecasting",
-            output_data: graphic,
+            output_data: graphicForecasting,
             components: "Graphic Forecasting",
             description: "",
         });

@@ -1,3 +1,4 @@
+import { se } from 'date-fns/locale';
 import init, {Decomposition} from '../../../../../../src/wasm/pkg/wasm.js';
 import {generateDate} from '../../timeSeriesGenerateDate';
 
@@ -13,7 +14,8 @@ export async function handleDecomposition(
     startDay: number,
     startMonth: number,
     startYear: number
-): Promise<[string, number[], number[], number[], number[], number[], string, string, string, string]> {
+): Promise<[string, number[], number[], number[], number[], number[], 
+            string, string, string, string, string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
 
@@ -119,6 +121,154 @@ export async function handleDecomposition(
             ],
         });
 
+        let structuredData: any[] = [];
+        // Validasi panjang array
+        if (data.length === forecastingRound.length) {
+            for (let i = 0; i < data.length; i++) {
+                structuredData.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `${dataHeader}`,
+                    value: data[i],
+                });
+            }
+        } else {
+            throw new Error("Panjang array tidak sama!");
+        }
+        let dataGraphicJSON = JSON.stringify({
+            charts: [
+                {
+                    chartType: "Line Chart",
+                    chartMetaData: {
+                        axisInfo: {
+                            category: `date`,
+                            subCategory: [`${dataHeader}`],
+                        },
+                        description: `${dataHeader}`,
+                        notes: `${dataHeader}`,
+                    },
+                    chartData: structuredData,
+                    chartConfig: {
+                        "width": 400,
+                        "height": 200,
+                        "chartColor": ["#4682B4"],
+                        "useLegend": true,
+                        "useAxis": true,
+                    }
+                }
+            ]
+        });
+
+        let structuredTrend: any[] = [];
+        // Validasi panjang array
+        if (data.length === forecastingRound.length) {
+            for (let i = 0; i < data.length; i++) {
+                structuredTrend.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `Trend`,
+                    value: trendRound[i],
+                });
+            }
+        } else {
+            throw new Error("Panjang array tidak sama!");
+        }
+        let trendGraphicJSON = JSON.stringify({
+            charts: [
+                {
+                    chartType: "Line Chart",
+                    chartMetaData: {
+                        axisInfo: {
+                            category: `date`,
+                            subCategory: [`Trend`],
+                        },
+                        description: `Trend`,
+                        notes: `Trend`,
+                    },
+                    chartData: structuredTrend,
+                    chartConfig: {
+                        "width": 400,
+                        "height": 200,
+                        "chartColor": ["#4682B4"],
+                        "useLegend": true,
+                        "useAxis": true,
+                    }
+                }
+            ]
+        });
+
+        let structuredSeasonal: any[] = [];
+        // Validasi panjang array
+        if (data.length === forecastingRound.length) {
+            for (let i = 0; i < data.length; i++) {
+                structuredSeasonal.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `Seasonal`,
+                    value: seasonalRound[i],
+                });
+            }
+        } else {
+            throw new Error("Panjang array tidak sama!");
+        }
+        let seasonalGraphicJSON = JSON.stringify({
+            charts: [
+                {
+                    chartType: "Line Chart",
+                    chartMetaData: {
+                        axisInfo: {
+                            category: `date`,
+                            subCategory: [`Seasonal`],
+                        },
+                        description: `Seasonal`,
+                        notes: `Seasonal`,
+                    },
+                    chartData: structuredSeasonal,
+                    chartConfig: {
+                        "width": 400,
+                        "height": 200,
+                        "chartColor": ["#4682B4"],
+                        "useLegend": true,
+                        "useAxis": true,
+                    }
+                }
+            ]
+        });
+
+        let structuredIrregular: any[] = [];
+        // Validasi panjang array
+        if (data.length === forecastingRound.length) {
+            for (let i = 0; i < data.length; i++) {
+                structuredIrregular.push({
+                    category: `${dateArray[i]}`,
+                    subcategory: `Irregular`,
+                    value: irregularRound[i],
+                });
+            }
+        } else {
+            throw new Error("Panjang array tidak sama!");
+        }
+        let irregularGraphicJSON = JSON.stringify({
+            charts: [
+                {
+                    chartType: "Line Chart",
+                    chartMetaData: {
+                        axisInfo: {
+                            category: `date`,
+                            subCategory: [`Irregular`],
+                        },
+                        description: `Irregular`,
+                        notes: `Irregular`,
+                    },
+                    chartData: structuredIrregular,
+                    chartConfig: {
+                        "width": 400,
+                        "height": 200,
+                        "chartColor": ["#4682B4"],
+                        "useLegend": true,
+                        "useAxis": true,
+                    }
+                }
+            ]
+        });
+
         let structuredForecasting: any[] = [];
         // Validasi panjang array
         if (data.length === forecastingRound.length) {
@@ -137,7 +287,7 @@ export async function handleDecomposition(
         } else {
             throw new Error("Panjang array tidak sama!");
         }
-        let graphicJSON = JSON.stringify({
+        let forecastingGraphicJSON = JSON.stringify({
             charts: [
                 {
                     chartType: "Multiple Line Chart",
@@ -209,9 +359,11 @@ export async function handleDecomposition(
             ]
         });
 
-        return [descriptionJSON,centered,seasonalRound,trendRound,irregularRound,forecastingRound,evalJSON,seasonJSON,equationJSON,graphicJSON];
+        return [descriptionJSON, centered, seasonalRound, trendRound, irregularRound, 
+                forecastingRound, evalJSON, seasonJSON, equationJSON, forecastingGraphicJSON,
+                dataGraphicJSON, trendGraphicJSON, seasonalGraphicJSON, irregularGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","",""];
+        return ["",[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","","","", "", "", ""];
     }
 }
