@@ -227,23 +227,23 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Frequencies</DialogTitle>
+        <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
             </DialogHeader>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList className="bg-muted rounded-none h-9 p-0">
                         <TabsTrigger
                             value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
                             value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Statistics
                         </TabsTrigger>
@@ -316,25 +316,27 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                 </TabsContent>
 
                 <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
-                    <ChartsTab
-                        showCharts={showCharts}
-                        setShowCharts={setShowCharts}
-                        chartType={chartType}
-                        setChartType={setChartType}
-                        chartValues={chartValues}
-                        setChartValues={setChartValues}
-                        showNormalCurve={showNormalCurve}
-                        setShowNormalCurve={setShowNormalCurve}
-                    />
+                    {activeTab === "charts" && (
+                        <ChartsTab
+                            showCharts={showCharts}
+                            setShowCharts={setShowCharts}
+                            chartType={chartType}
+                            setChartType={setChartType}
+                            chartValues={chartValues}
+                            setChartValues={setChartValues}
+                            showNormalCurve={showNormalCurve}
+                            setShowNormalCurve={setShowNormalCurve}
+                        />
+                    )}
                 </TabsContent>
             </Tabs>
 
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={runAnalysis}
                         disabled={isCalculating || selectedVariables.length === 0}
                     >
@@ -342,14 +344,14 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={onClose}
                         disabled={isCalculating}
                     >
@@ -357,7 +359,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         disabled={isCalculating}
                     >
                         Help

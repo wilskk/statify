@@ -62,9 +62,9 @@ const VariableTab: FC<VariableTabProps> = ({
                                 id="ascending"
                                 checked={sortOrder === "ascending"}
                                 onCheckedChange={() => setSortOrder("ascending")}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
-                            <Label htmlFor="ascending" className="text-xs cursor-pointer">
+                            <Label htmlFor="ascending" className="text-xs cursor-pointer text-foreground">
                                 Ascending
                             </Label>
                         </div>
@@ -73,9 +73,9 @@ const VariableTab: FC<VariableTabProps> = ({
                                 id="descending"
                                 checked={sortOrder === "descending"}
                                 onCheckedChange={() => setSortOrder("descending")}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
-                            <Label htmlFor="descending" className="text-xs cursor-pointer">
+                            <Label htmlFor="descending" className="text-xs cursor-pointer text-foreground">
                                 Descending
                             </Label>
                         </div>

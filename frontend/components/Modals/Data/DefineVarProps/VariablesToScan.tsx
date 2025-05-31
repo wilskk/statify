@@ -184,15 +184,15 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Define Variable Properties</DialogTitle>
+            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground">Define Variable Properties</DialogTitle>
                 </DialogHeader>
 
                 <div className="p-6 overflow-y-auto flex-grow">
                     {/* Information text */}
-                    <div className="mb-4 p-3 border-l-2 border-black bg-[#F7F7F7] rounded-sm">
-                        <p className="text-sm">
+                    <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
+                        <p className="text-sm text-accent-foreground">
                             Select variables to scan. Categorical variables (nominal/ordinal) work best.
                             You can change measurement level in the next panel.
                         </p>
@@ -212,23 +212,23 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
                     </div>
 
                     {/* Limit options */}
-                    <div className="border border-[#E6E6E6] rounded-md p-6 mt-6">
-                        <div className="text-sm font-medium mb-4">Scanning Limits</div>
+                    <div className="border border-border rounded-md p-6 mt-6 bg-card">
+                        <div className="text-sm font-medium mb-4 text-card-foreground">Scanning Limits</div>
                         <div className="space-y-4">
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="limit-cases"
                                     checked={limitCases}
                                     onCheckedChange={(checked) => setLimitCases(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                 />
-                                <Label htmlFor="limit-cases" className="text-sm cursor-pointer">
+                                <Label htmlFor="limit-cases" className="text-sm cursor-pointer text-card-foreground">
                                     Limit number of cases scanned to:
                                 </Label>
                                 <Input
                                     value={caseLimit}
                                     onChange={(e) => setCaseLimit(e.target.value)}
-                                    className="w-24 h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    className="w-24 h-8 text-sm"
                                     disabled={!limitCases}
                                 />
                             </div>
@@ -238,15 +238,15 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
                                     id="limit-values"
                                     checked={limitValues}
                                     onCheckedChange={(checked) => setLimitValues(!!checked)}
-                                    className="mr-2 border-[#CCCCCC]"
+                                    className="mr-2"
                                 />
-                                <Label htmlFor="limit-values" className="text-sm cursor-pointer">
+                                <Label htmlFor="limit-values" className="text-sm cursor-pointer text-card-foreground">
                                     Limit number of values displayed to:
                                 </Label>
                                 <Input
                                     value={valueLimit}
                                     onChange={(e) => setValueLimit(e.target.value)}
-                                    className="w-24 h-8 text-sm border-[#CCCCCC] focus:border-black focus:ring-black"
+                                    className="w-24 h-8 text-sm"
                                     disabled={!limitValues}
                                 />
                             </div>
@@ -254,30 +254,30 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
                     </div>
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                     <div className="flex justify-end space-x-3">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={handleContinue}
                         >
                             Continue
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                         >
                             Reset
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                             onClick={onClose}
                         >
                             Cancel
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
                         >
                             Help
                         </Button>
@@ -287,17 +287,17 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
-                <DialogContent className="max-w-[400px] p-6 bg-white border border-[#E6E6E6] shadow-md rounded-md">
+                <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
                     <DialogHeader className="mb-4">
-                        <DialogTitle className="text-[18px] font-semibold">Statify</DialogTitle>
+                        <DialogTitle className="text-[18px] font-semibold text-popover-foreground">Statify</DialogTitle>
                     </DialogHeader>
                     <div className="flex gap-4 items-start">
-                        <AlertCircle className="h-6 w-6 text-black flex-shrink-0 mt-0.5" />
-                        <p className="text-sm">{errorMessage}</p>
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-popover-foreground">{errorMessage}</p>
                     </div>
                     <DialogFooter className="mt-6">
                         <Button
-                            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                             onClick={() => setErrorDialogOpen(false)}
                         >
                             OK

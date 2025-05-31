@@ -101,6 +101,67 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
         setAvailableVariables(validVars);
     }, [variables]);
 
+    const resetAllStates = () => {
+        setActiveTab("variables");
+        const validVars = variables.filter(v => v.name !== "").map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}`
+        }));
+        setAvailableVariables(validVars);
+        setRowVariables([]);
+        setColumnVariables([]);
+        setLayerVariablesMap({ 1: [] });
+        setCurrentLayerIndex(1);
+        setTotalLayers(1);
+        setHighlightedVariable(null);
+        setErrorMsg(null);
+
+        // Variables tab state
+        setDisplayClusteredBarCharts(false);
+        setSuppressTables(false);
+        setDisplayLayerVariables(true);
+
+        // Exact Tests state
+        setExactTestMethod('asymptotic');
+        setConfidenceLevel("99");
+        setMonteCarloSamples("10000");
+        setTimeLimit("5");
+        setUseTimeLimit(true);
+
+        // Statistics state
+        setChiSquare(false);
+        setCorrelations(false);
+        setContingencyCoefficient(false);
+        setPhiAndCramersV(false);
+        setLambda(false);
+        setUncertaintyCoefficient(false);
+        setGamma(false);
+        setSomersD(false);
+        setKendallTauB(false);
+        setKendallTauC(false);
+        setEta(false);
+        setKappa(false);
+        setRisk(false);
+        setMcNemar(false);
+        setCochranMantelHaenszel(false);
+        setCommonOddsRatio("1");
+
+        // Cells state
+        setObservedCounts(true);
+        setExpectedCounts(false);
+        setHideSmallCounts(false);
+        setSmallCountThreshold("5");
+        setRowPercentages(false);
+        setColumnPercentages(false);
+        setTotalPercentages(false);
+        setCompareColumnProportions(false);
+        setAdjustPValues(false);
+        setUnstandardizedResiduals(false);
+        setStandardizedResiduals(false);
+        setAdjustedStandardizedResiduals(false);
+        setNonintegerWeights('roundCell');
+    };
+
     // Helper function to ensure layer consistency
     const reorganizeLayers = () => {
         const newLayerMap: Record<number, Variable[]> = {};
@@ -323,198 +384,120 @@ const CrosstabsModal: FC<CrosstabsModalProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-[650px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Crosstabs</DialogTitle>
-            </DialogHeader>
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl h-[calc(100vh-8rem)] flex flex-col p-0 bg-popover text-popover-foreground">
+                <DialogHeader className="px-6 py-4 border-b border-border">
+                    <DialogTitle className="text-xl">Crosstabs</DialogTitle>
+                </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="exact"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'exact' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Exact Tests
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="cells"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'cells' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Cells
-                        </TabsTrigger>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col overflow-hidden">
+                    <div className="px-6 py-3 border-b border-border">
+                        <TabsList className="grid grid-cols-5 gap-2 w-full">
+                            <TabsTrigger value="variables">Variables</TabsTrigger>
+                            <TabsTrigger value="statistics">Statistics</TabsTrigger>
+                            <TabsTrigger value="cells">Cells</TabsTrigger>
+                            <TabsTrigger value="exact">Exact Tests</TabsTrigger>
+                            {/* Format tab is removed as per previous context, if it was indeed removed */}
+                            {/* <TabsTrigger value="format">Format</TabsTrigger> */}
+                        </TabsList>
+                    </div>
 
-                    </TabsList>
-                </div>
+                    <div className="flex-grow overflow-y-auto">
+                        <TabsContent value="variables" className="p-6">
+                            <VariablesTab
+                                availableVariables={availableVariables}
+                                rowVariables={rowVariables}
+                                columnVariables={columnVariables}
+                                layerVariablesMap={layerVariablesMap}
+                                currentLayerIndex={currentLayerIndex}
+                                totalLayers={totalLayers}
+                                moveToRowVariables={moveToRowVariables}
+                                moveToColumnVariables={moveToColumnVariables}
+                                moveToLayerVariables={moveToLayerVariables}
+                                moveToAvailableVariables={moveToAvailableVariables}
+                                reorderVariables={reorderVariables}
+                                setCurrentLayerIndex={handleSetCurrentLayerIndex}
+                                setTotalLayers={handleSetTotalLayers}
+                                highlightedVariable={highlightedVariable}
+                                setHighlightedVariable={setHighlightedVariable}
+                                displayClusteredBarCharts={displayClusteredBarCharts}
+                                setDisplayClusteredBarCharts={setDisplayClusteredBarCharts}
+                                suppressTables={suppressTables}
+                                setSuppressTables={setSuppressTables}
+                                displayLayerVariables={displayLayerVariables} // Pass down displayLayerVariables state
+                                setDisplayLayerVariables={setDisplayLayerVariables} // Pass down setter
+                            />
+                        </TabsContent>
+                        <TabsContent value="statistics" className="p-6">
+                            <StatisticsTab
+                                chiSquare={chiSquare} setChiSquare={setChiSquare}
+                                correlations={correlations} setCorrelations={setCorrelations}
+                                contingencyCoefficient={contingencyCoefficient} setContingencyCoefficient={setContingencyCoefficient}
+                                phiAndCramersV={phiAndCramersV} setPhiAndCramersV={setPhiAndCramersV}
+                                lambda={lambda} setLambda={setLambda}
+                                uncertaintyCoefficient={uncertaintyCoefficient} setUncertaintyCoefficient={setUncertaintyCoefficient}
+                                gamma={gamma} setGamma={setGamma}
+                                somersD={somersD} setSomersD={setSomersD}
+                                kendallTauB={kendallTauB} setKendallTauB={setKendallTauB}
+                                kendallTauC={kendallTauC} setKendallTauC={setKendallTauC}
+                                eta={eta} setEta={setEta}
+                                kappa={kappa} setKappa={setKappa}
+                                risk={risk} setRisk={setRisk}
+                                mcNemar={mcNemar} setMcNemar={setMcNemar}
+                                cochranMantelHaenszel={cochranMantelHaenszel} setCochranMantelHaenszel={setCochranMantelHaenszel}
+                                commonOddsRatio={commonOddsRatio} setCommonOddsRatio={setCommonOddsRatio}
+                            />
+                        </TabsContent>
+                        <TabsContent value="cells" className="p-6">
+                            <CellsTab
+                                observedCounts={observedCounts} setObservedCounts={setObservedCounts}
+                                expectedCounts={expectedCounts} setExpectedCounts={setExpectedCounts}
+                                hideSmallCounts={hideSmallCounts} setHideSmallCounts={setHideSmallCounts}
+                                smallCountThreshold={smallCountThreshold} setSmallCountThreshold={setSmallCountThreshold}
+                                rowPercentages={rowPercentages} setRowPercentages={setRowPercentages}
+                                columnPercentages={columnPercentages} setColumnPercentages={setColumnPercentages}
+                                totalPercentages={totalPercentages} setTotalPercentages={setTotalPercentages}
+                                compareColumnProportions={compareColumnProportions} setCompareColumnProportions={setCompareColumnProportions}
+                                adjustPValues={adjustPValues} setAdjustPValues={setAdjustPValues}
+                                unstandardizedResiduals={unstandardizedResiduals} setUnstandardizedResiduals={setUnstandardizedResiduals}
+                                standardizedResiduals={standardizedResiduals} setStandardizedResiduals={setStandardizedResiduals}
+                                adjustedStandardizedResiduals={adjustedStandardizedResiduals} setAdjustedStandardizedResiduals={setAdjustedStandardizedResiduals}
+                                nonintegerWeights={nonintegerWeights} setNonintegerWeights={setNonintegerWeights}
+                            />
+                        </TabsContent>
+                        <TabsContent value="exact" className="p-6">
+                            <ExactTestsTab
+                                exactTestMethod={exactTestMethod} setExactTestMethod={setExactTestMethod}
+                                confidenceLevel={confidenceLevel} setConfidenceLevel={setConfidenceLevel}
+                                monteCarloSamples={monteCarloSamples} setMonteCarloSamples={setMonteCarloSamples}
+                                timeLimit={timeLimit} setTimeLimit={setTimeLimit}
+                                useTimeLimit={useTimeLimit} setUseTimeLimit={setUseTimeLimit}
+                            />
+                        </TabsContent>
+                        {/* <TabsContent value="format" className="p-6">
+                            <FormatTab />
+                        </TabsContent> */}
+                    </div>
+                </Tabs>
 
-                <TabsContent value="variables" className="overflow-y-auto flex-grow">
-                    <VariablesTab
-                        availableVariables={availableVariables}
-                        rowVariables={rowVariables}
-                        columnVariables={columnVariables}
-                        layerVariablesMap={layerVariablesMap}
-                        currentLayerIndex={currentLayerIndex}
-                        totalLayers={totalLayers}
-                        highlightedVariable={highlightedVariable}
-                        displayClusteredBarCharts={displayClusteredBarCharts}
-                        suppressTables={suppressTables}
-                        displayLayerVariables={displayLayerVariables}
-                        setHighlightedVariable={setHighlightedVariable}
-                        setCurrentLayerIndex={handleSetCurrentLayerIndex}
-                        setTotalLayers={handleSetTotalLayers}
-                        moveToRowVariables={moveToRowVariables}
-                        moveToColumnVariables={moveToColumnVariables}
-                        moveToLayerVariables={moveToLayerVariables}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        reorderVariables={reorderVariables}
-                        setDisplayClusteredBarCharts={setDisplayClusteredBarCharts}
-                        setSuppressTables={setSuppressTables}
-                        setDisplayLayerVariables={setDisplayLayerVariables}
-                    />
-                </TabsContent>
-
-                <TabsContent value="exact" className="overflow-y-auto flex-grow">
-                    <ExactTestsTab
-                        exactTestMethod={exactTestMethod}
-                        confidenceLevel={confidenceLevel}
-                        monteCarloSamples={monteCarloSamples}
-                        timeLimit={timeLimit}
-                        useTimeLimit={useTimeLimit}
-                        setExactTestMethod={setExactTestMethod}
-                        setConfidenceLevel={setConfidenceLevel}
-                        setMonteCarloSamples={setMonteCarloSamples}
-                        setTimeLimit={setTimeLimit}
-                        setUseTimeLimit={setUseTimeLimit}
-                    />
-                </TabsContent>
-
-                <TabsContent value="statistics" className="overflow-y-auto flex-grow">
-                    <StatisticsTab
-                        chiSquare={chiSquare}
-                        correlations={correlations}
-                        contingencyCoefficient={contingencyCoefficient}
-                        phiAndCramersV={phiAndCramersV}
-                        lambda={lambda}
-                        uncertaintyCoefficient={uncertaintyCoefficient}
-                        gamma={gamma}
-                        somersD={somersD}
-                        kendallTauB={kendallTauB}
-                        kendallTauC={kendallTauC}
-                        eta={eta}
-                        kappa={kappa}
-                        risk={risk}
-                        mcNemar={mcNemar}
-                        cochranMantelHaenszel={cochranMantelHaenszel}
-                        commonOddsRatio={commonOddsRatio}
-                        setChiSquare={setChiSquare}
-                        setCorrelations={setCorrelations}
-                        setContingencyCoefficient={setContingencyCoefficient}
-                        setPhiAndCramersV={setPhiAndCramersV}
-                        setLambda={setLambda}
-                        setUncertaintyCoefficient={setUncertaintyCoefficient}
-                        setGamma={setGamma}
-                        setSomersD={setSomersD}
-                        setKendallTauB={setKendallTauB}
-                        setKendallTauC={setKendallTauC}
-                        setEta={setEta}
-                        setKappa={setKappa}
-                        setRisk={setRisk}
-                        setMcNemar={setMcNemar}
-                        setCochranMantelHaenszel={setCochranMantelHaenszel}
-                        setCommonOddsRatio={setCommonOddsRatio}
-                    />
-                </TabsContent>
-
-                <TabsContent value="cells" className="overflow-y-auto flex-grow">
-                    <CellsTab
-                        observedCounts={observedCounts}
-                        expectedCounts={expectedCounts}
-                        hideSmallCounts={hideSmallCounts}
-                        smallCountThreshold={smallCountThreshold}
-                        rowPercentages={rowPercentages}
-                        columnPercentages={columnPercentages}
-                        totalPercentages={totalPercentages}
-                        compareColumnProportions={compareColumnProportions}
-                        adjustPValues={adjustPValues}
-                        unstandardizedResiduals={unstandardizedResiduals}
-                        standardizedResiduals={standardizedResiduals}
-                        adjustedStandardizedResiduals={adjustedStandardizedResiduals}
-                        nonintegerWeights={nonintegerWeights}
-                        setObservedCounts={setObservedCounts}
-                        setExpectedCounts={setExpectedCounts}
-                        setHideSmallCounts={setHideSmallCounts}
-                        setSmallCountThreshold={setSmallCountThreshold}
-                        setRowPercentages={setRowPercentages}
-                        setColumnPercentages={setColumnPercentages}
-                        setTotalPercentages={setTotalPercentages}
-                        setCompareColumnProportions={setCompareColumnProportions}
-                        setAdjustPValues={setAdjustPValues}
-                        setUnstandardizedResiduals={setUnstandardizedResiduals}
-                        setStandardizedResiduals={setStandardizedResiduals}
-                        setAdjustedStandardizedResiduals={setAdjustedStandardizedResiduals}
-                        setNonintegerWeights={setNonintegerWeights}
-                    />
-                </TabsContent>
-
-
-            </Tabs>
-
-            {errorMsg && (
-                <div className="px-6 py-2 flex items-center text-red-600">
-                    <InfoIcon size={16} className="mr-2 flex-shrink-0" />
-                    <span>{errorMsg}</span>
-                </div>
-            )}
-
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleAnalyze}
-                        disabled={isCalculating}
-                    >
-                        {isCalculating ? "Calculating..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Help
-                    </Button>
-                </div>
-            </DialogFooter>
-        </DialogContent>
+                <DialogFooter className="px-6 py-3 border-t border-border flex justify-between items-center">
+                    <div>
+                        <Button variant="link" className="text-muted-foreground hover:text-foreground p-0">
+                            <InfoIcon size={16} className="mr-1" />
+                            Help
+                        </Button>
+                    </div>
+                    <div className="flex items-center">
+                        {errorMsg && <div className="text-sm text-destructive mr-4">{errorMsg}</div>}
+                        <Button variant="ghost" onClick={resetAllStates}>Reset</Button>
+                        <Button variant="outline" onClick={onClose} className="ml-2">Cancel</Button>
+                        <Button onClick={handleAnalyze} disabled={isCalculating} className="ml-2">
+                            {isCalculating ? "Calculating..." : "OK"}
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 

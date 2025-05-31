@@ -10,12 +10,12 @@ export default function Header() {
     const { isMobile } = useMobile(); // Use the hook
 
     return (
-        <header className="w-full bg-white flex flex-col flex-shrink-0">
+        <header className="w-full bg-background flex flex-col flex-shrink-0">
             {/* Conditionally render Navbar or HamburgerMenu */}
             {isMobile ? <HamburgerMenu /> : <Navbar />}
             
             {/* Remove outer overflow wrappers - Toolbar handles its own scroll */}
-            <div className="border-t border-[#E6E6E6]">
+            <div className="border-t border-border">
                  <Toolbar/>
             </div>
         </header>

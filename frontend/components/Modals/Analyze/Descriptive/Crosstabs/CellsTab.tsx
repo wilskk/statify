@@ -69,7 +69,7 @@ const CellsTab: FC<CellsTabProps> = ({
     return (
         <div className="p-6">
             <div className="grid grid-cols-2 gap-6">
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Counts</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -77,7 +77,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="observedCounts"
                                 checked={observedCounts}
                                 onCheckedChange={(checked) => setObservedCounts(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="observedCounts" className="text-sm cursor-pointer">
                                 Observed
@@ -89,7 +89,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="expectedCounts"
                                 checked={expectedCounts}
                                 onCheckedChange={(checked) => setExpectedCounts(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="expectedCounts" className="text-sm cursor-pointer">
                                 Expected
@@ -101,7 +101,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="hideSmallCounts"
                                 checked={hideSmallCounts}
                                 onCheckedChange={(checked) => setHideSmallCounts(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="hideSmallCounts" className="text-sm cursor-pointer">
                                 Hide small counts
@@ -116,14 +116,14 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="smallCountThreshold"
                                 value={smallCountThreshold}
                                 onChange={(e) => setSmallCountThreshold(e.target.value)}
-                                className="h-8 text-sm w-16 border-[#CCCCCC] focus:border-black focus:ring-black"
+                                className="h-8 text-sm w-16"
                                 disabled={!hideSmallCounts}
                             />
                         </div>
                     </div>
                 </div>
 
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Z-test</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -131,7 +131,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="compareColumnProportions"
                                 checked={compareColumnProportions}
                                 onCheckedChange={(checked) => setCompareColumnProportions(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="compareColumnProportions" className="text-sm cursor-pointer">
                                 Compare column proportions
@@ -143,7 +143,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="adjustPValues"
                                 checked={adjustPValues}
                                 onCheckedChange={(checked) => setAdjustPValues(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                                 disabled={!compareColumnProportions}
                             />
                             <Label htmlFor="adjustPValues" className="text-sm cursor-pointer">
@@ -155,7 +155,7 @@ const CellsTab: FC<CellsTabProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Percentages</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -163,7 +163,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="rowPercentages"
                                 checked={rowPercentages}
                                 onCheckedChange={(checked) => setRowPercentages(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">
                                 Row
@@ -175,7 +175,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="columnPercentages"
                                 checked={columnPercentages}
                                 onCheckedChange={(checked) => setColumnPercentages(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">
                                 Column
@@ -187,7 +187,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="totalPercentages"
                                 checked={totalPercentages}
                                 onCheckedChange={(checked) => setTotalPercentages(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">
                                 Total
@@ -196,7 +196,7 @@ const CellsTab: FC<CellsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="border border-[#E6E6E6] rounded-md p-4">
+                <div className="bg-card border border-border rounded-md p-4">
                     <div className="text-sm font-medium mb-3">Residuals</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -204,7 +204,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="unstandardizedResiduals"
                                 checked={unstandardizedResiduals}
                                 onCheckedChange={(checked) => setUnstandardizedResiduals(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="unstandardizedResiduals" className="text-sm cursor-pointer">
                                 Unstandardized
@@ -216,7 +216,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="standardizedResiduals"
                                 checked={standardizedResiduals}
                                 onCheckedChange={(checked) => setStandardizedResiduals(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="standardizedResiduals" className="text-sm cursor-pointer">
                                 Standardized
@@ -228,7 +228,7 @@ const CellsTab: FC<CellsTabProps> = ({
                                 id="adjustedStandardizedResiduals"
                                 checked={adjustedStandardizedResiduals}
                                 onCheckedChange={(checked) => setAdjustedStandardizedResiduals(!!checked)}
-                                className="mr-2 border-[#CCCCCC]"
+                                className="mr-2"
                             />
                             <Label htmlFor="adjustedStandardizedResiduals" className="text-sm cursor-pointer">
                                 Adjusted standardized
@@ -238,7 +238,7 @@ const CellsTab: FC<CellsTabProps> = ({
                 </div>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4 mt-6">
+            <div className="bg-card border border-border rounded-md p-4 mt-6">
                 <div className="text-sm font-medium mb-3">Noninteger Weights</div>
                 <RadioGroup
                     value={nonintegerWeights}

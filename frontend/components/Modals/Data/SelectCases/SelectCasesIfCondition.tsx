@@ -23,28 +23,30 @@ interface SelectCasesIfConditionProps {
     variables: Variable[];
     onClose: () => void;
     onContinue: (condition: string) => void;
+    initialExpression?: string;
 }
 
 const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                                                      variables,
                                                                      onClose,
-                                                                     onContinue
+                                                                     onContinue,
+                                                                     initialExpression
                                                                  }) => {
-    const [condition, setCondition] = useState<string>("");
+    const [condition, setCondition] = useState<string>(initialExpression || "");
     const [selectedFunctionGroup, setSelectedFunctionGroup] = useState<string>("All");
 
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -78,24 +80,24 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
     ];
 
     return (
-        <DialogContent className="max-w-[800px] p-4">
+        <DialogContent className="max-w-[800px] p-4 bg-popover border border-border">
             <DialogHeader className="p-0 mb-2">
-                <DialogTitle className="text-[18px] font-semibold">Select Cases: If</DialogTitle>
+                <DialogTitle className="text-[18px] font-semibold text-popover-foreground">Select Cases: If</DialogTitle>
             </DialogHeader>
             <Separator className="my-0" />
 
             <div className="grid grid-cols-12 gap-3 py-2">
                 {/* Left Column - Variables List */}
                 <div className="col-span-3">
-                    <Label className="text-[12px] font-medium block mb-1">Variables:</Label>
-                    <div className="border border-[#CCCCCC] rounded-md h-[400px] overflow-y-auto">
+                    <Label className="text-[12px] font-medium block mb-1 text-popover-foreground">Variables:</Label>
+                    <div className="border border-border rounded-md h-[400px] overflow-y-auto bg-card">
                         <div className="p-1 space-y-0.5">
                             {variables.map((variable) => (
                                 <TooltipProvider key={variable.columnIndex}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <div
-                                                className="flex items-center p-1 cursor-pointer border border-[#E6E6E6] rounded hover:bg-[#F7F7F7]"
+                                                className="flex items-center p-1 cursor-pointer border border-border rounded hover:bg-accent text-card-foreground"
                                                 onClick={() => handleVariableClick(variable)}
                                             >
                                                 <div className="flex items-center w-full">
@@ -118,9 +120,9 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                 <div className="col-span-5">
                     {/* Expression Input */}
                     <div className="mb-2">
-                        <Label className="text-[12px] font-medium block mb-1">Expression:</Label>
+                        <Label className="text-[12px] font-medium block mb-1 text-popover-foreground">Expression:</Label>
                         <div
-                            className="h-16 p-2 bg-[#F7F7F7] border border-[#CCCCCC] rounded-md text-[14px] overflow-auto"
+                            className="h-16 p-2 bg-input border border-input rounded-md text-[14px] overflow-auto text-foreground focus-within:ring-1 focus-within:ring-ring"
                             contentEditable
                             suppressContentEditableWarning
                             onInput={(e) => setCondition(e.currentTarget.textContent || "")}
@@ -144,7 +146,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                 key={idx}
                                 variant="outline"
                                 size="sm"
-                                className="h-8 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                                className="h-8 text-[14px]"
                                 onClick={() => handleOperatorClick(btn.value)}
                             >
                                 {btn.label}
@@ -154,7 +156,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 col-span-2 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                            className="h-8 col-span-2 text-[14px]"
                             onClick={() => handleOperatorClick("0")}
                         >
                             0
@@ -162,7 +164,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                            className="h-8 text-[14px]"
                             onClick={() => handleOperatorClick(".")}
                         >
                             .
@@ -170,7 +172,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                            className="h-8 text-[14px]"
                             onClick={() => handleOperatorClick("**")}
                         >
                             **
@@ -178,7 +180,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                            className="h-8 text-[14px]"
                             onClick={() => handleOperatorClick("~")}
                         >
                             ~
@@ -186,7 +188,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 col-span-4 bg-[#F7F7F7] hover:bg-[#E6E6E6] text-black border-[#CCCCCC] text-[14px]"
+                            className="h-8 col-span-4 text-[14px]"
                             onClick={handleDelete}
                         >
                             Delete
@@ -194,20 +196,20 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     {/* Expression Display Area */}
-                    <div className="border border-[#CCCCCC] rounded-md p-2 bg-white h-[160px] mt-3 overflow-auto">
-                        <pre className="text-[12px] whitespace-pre-wrap">{condition}</pre>
+                    <div className="border border-border rounded-md p-2 bg-background h-[160px] mt-3 overflow-auto">
+                        <pre className="text-[12px] whitespace-pre-wrap text-foreground">{condition}</pre>
                     </div>
                 </div>
 
                 {/* Right Column - Function Groups */}
                 <div className="col-span-4">
                     <div className="mb-2">
-                        <Label className="text-[12px] font-medium block mb-1">Function group:</Label>
+                        <Label className="text-[12px] font-medium block mb-1 text-popover-foreground">Function group:</Label>
                         <Select
                             value={selectedFunctionGroup}
                             onValueChange={setSelectedFunctionGroup}
                         >
-                            <SelectTrigger className="h-8 text-[12px] border-[#CCCCCC]">
+                            <SelectTrigger className="h-8 text-[12px]">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -221,8 +223,8 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     <div>
-                        <Label className="text-[12px] font-medium block mb-1">Functions:</Label>
-                        <div className="border border-[#CCCCCC] rounded-md h-[324px] p-2 bg-white overflow-y-auto">
+                        <Label className="text-[12px] font-medium block mb-1 text-popover-foreground">Functions:</Label>
+                        <div className="border border-border rounded-md h-[324px] p-2 bg-card overflow-y-auto text-card-foreground">
                             {selectedFunctionGroup === "All" && (
                                 <div className="space-y-0.5">
                                     {[
@@ -248,48 +250,26 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                         "NORMAL(mean,stddev)",
                                         "RND(numexpr)",
                                         "SQRT(numexpr)",
-                                        "TRUNC(numexpr)"
-                                    ].map((func, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="text-[12px] p-1 cursor-pointer hover:bg-[#F7F7F7] border-b border-[#F7F7F7]"
-                                            onClick={() => handleOperatorClick(func)}
-                                        >
-                                            {func}
-                                        </div>
-                                    ))}
+                                        "STRING(numexpr, format)",
+                                        "SUBSTR(strexpr,pos,len)",
+                                        "SUM(val1,val2...)",
+                                        "TRUNC(numexpr)",
+                                        "UNIFORM(max)",
+                                        "UPCASE(strexpr)",
+                                        "XDATE.DATE(datestring,format)",
+                                        // ... tambahkan fungsi lain jika perlu
+                                    ].map(func => <div key={func} className="p-0.5 hover:bg-accent rounded-sm cursor-pointer text-xs">{func}</div>)}
                                 </div>
                             )}
+                            {/* Tambahkan logika untuk grup fungsi lain jika diperlukan */}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <DialogFooter className="flex justify-end space-x-2 mt-2 p-0">
-                <Button
-                    variant="default"
-                    size="sm"
-                    className="bg-black hover:bg-gray-800 text-white h-8 text-[14px]"
-                    onClick={() => onContinue(condition)}
-                >
-                    Continue
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-[#CCCCCC] hover:bg-[#E6E6E6] text-black h-8 text-[14px]"
-                    onClick={onClose}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-[#CCCCCC] hover:bg-[#E6E6E6] text-black h-8 text-[14px]"
-                    onClick={() => console.log("Help requested")}
-                >
-                    Help
-                </Button>
+            <DialogFooter className="pt-3">
+                <Button variant="outline" onClick={onClose}>Cancel</Button>
+                <Button onClick={() => onContinue(condition)}>Continue</Button>
             </DialogFooter>
         </DialogContent>
     );

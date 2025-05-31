@@ -27,9 +27,9 @@ const ErrorDialog: React.FC<ErrorDialogProps> = ({
                     <DialogTitle>IBM SPSS Statistics 25</DialogTitle>
                 </DialogHeader>
                 <div className="flex gap-4">
-                    <AlertCircle className="h-10 w-10 text-blue-500" />
+                    <AlertCircle className="h-10 w-10 text-primary" />
                     <div>
-                        <p className="text-sm mt-2">{errorMessage}</p>
+                        <p className="text-sm mt-2 text-foreground">{errorMessage}</p>
                     </div>
                 </div>
 

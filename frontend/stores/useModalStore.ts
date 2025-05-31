@@ -13,6 +13,7 @@ export enum ModalType {
   SaveFile = "saveFile",
   ExportData = "exportData",
   ComputeVariable = "computeVariable",
+  RecodeSameVariables = "recodeSameVariables",
 
   // Punya Nopal
   ModalAutomaticLinearModeling = "modalAutomaticLinearModeling",

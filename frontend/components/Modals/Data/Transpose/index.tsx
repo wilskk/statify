@@ -80,15 +80,15 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
             case "scale":
-                return <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "nominal":
-                return <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             case "ordinal":
-                return <BarChartHorizontal size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
             default:
                 return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-gray-600 mr-1 flex-shrink-0" />;
+                    ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                    : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
 
@@ -319,7 +319,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         id: 'selected',
         title: 'Variable(s):',
         variables: selectedVariables,
-        height: '127px',
+        height: '8rem', // approx 128px, Tailwind h-32
         droppable: true,
         draggableItems: true
     };
@@ -328,16 +328,16 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         id: 'name',
         title: 'Name Variable:',
         variables: nameVariables,
-        height: '50px',
+        height: '3rem', // approx 48px, Tailwind h-12
         maxItems: 1, // Only allow one item
         droppable: true,
         draggableItems: false // No need to reorder since it's just one item
     };
 
     return (
-        <DialogContent className="max-w-[550px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Transpose</DialogTitle>
+        <DialogContent className="max-w-md p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-xl font-semibold">Transpose</DialogTitle>
             </DialogHeader>
 
             <div className="p-6 overflow-y-auto flex-grow">
@@ -354,48 +354,48 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                         getVariableIcon={getVariableIcon}
                         getDisplayName={getDisplayName}
                         showArrowButtons={true}
-                        availableListHeight="220px"
+                        availableListHeight="14rem" // approx 224px, Tailwind h-56
                     />
 
                     {/* Info Text */}
-                    <div className="text-xs text-[#888888] flex items-center">
+                    <div className="text-xs text-muted-foreground flex items-center">
                         <InfoIcon size={14} className="mr-1 flex-shrink-0" />
                         <span>Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.</span>
                     </div>
                 </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
                         onClick={handleOk}
                     >
                         OK
                     </Button>
                     {/* <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                     >
                         Paste
                     </Button> */}
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                         onClick={onClose}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+                        className="h-8 px-4"
                     >
                         Help
                     </Button>

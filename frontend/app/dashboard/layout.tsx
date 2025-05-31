@@ -19,27 +19,19 @@ export default function DashboardLayout({
 
     return (
         <>
-            {/* {shouldPrompt && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-80 text-white p-4 text-center">
-                    <p className="text-lg font-semibold">
-                        Please rotate your device to landscape mode for the best experience.
-                    </p>
-                </div>
-            )} */}
-
             <DataLoader />
 
             <div className="h-screen w-full flex flex-col">
                 <header className="flex-shrink-0 z-50">
                    <Header />
                 </header>
-                <main className="flex-grow overflow-y-auto relative bg-[#F7F7F7] hide-scrollbar-x">
+                <main className="flex-grow overflow-y-auto relative bg-muted hide-scrollbar-x">
                     <LoadingOverlay>
                         {children}
                     </LoadingOverlay>
                     <ModalContainer />
                 </main>
-                <footer className="flex-shrink-0 border-t">
+                <footer className="flex-shrink-0 border-t border-border">
                     <Footer />
                 </footer>
             </div>

@@ -26,20 +26,20 @@ const ChartsTab: FC<ChartsTabProps> = ({
 }) => {
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {
-        return disabled ? "text-[#AAAAAA]" : "";
+        return disabled ? "text-muted-foreground" : "";
     };
 
     const isChartValuesDisabled = !showCharts || chartType === "none" || chartType === "histograms";
 
     return (
         <div className="grid grid-cols-1 gap-6">
-            <div className="border border-[#E6E6E6] rounded-md p-4">
+            <div className="border border-border rounded-md p-4 bg-card">
                 <div className="flex items-center mb-4">
                     <Checkbox
                         id="displayCharts"
                         checked={showCharts}
                         onCheckedChange={(checked) => setShowCharts(!!checked)}
-                        className="mr-2 border-[#CCCCCC]"
+                        className="mr-2"
                     />
                     <Label htmlFor="displayCharts" className="text-sm font-medium cursor-pointer">
                         Display charts
@@ -86,7 +86,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                             id="normalCurve"
                             checked={showNormalCurve}
                             onCheckedChange={(checked) => setShowNormalCurve(!!checked)}
-                            className="mr-2 border-[#CCCCCC]"
+                            className="mr-2"
                             disabled={!showCharts || chartType !== "histograms"}
                         />
                         <Label
@@ -99,7 +99,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                 </RadioGroup>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-4">
+            <div className="border border-border rounded-md p-4 bg-card">
                 <div className={`text-sm font-medium mb-3 ${getTextClass(isChartValuesDisabled)}`}>Chart Values</div>
                 <RadioGroup
                     value={chartValues}

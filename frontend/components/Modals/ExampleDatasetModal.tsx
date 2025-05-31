@@ -12,6 +12,7 @@ import { Variable, ValueLabel, MissingValuesSpec, MissingRange } from '@/types/V
 import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { uploadSavFile, API_BASE_URL, handleApiResponse, getApiUrl } from '@/services/api';
 
 const exampleSavFiles = [
     { name: 'tcm_kpi_upd.sav', path: '/exampleData/tcm_kpi_upd.sav' },
@@ -259,7 +260,6 @@ export const ExampleDatasetModal = () => {
         setError(null);
         const fileName = filePath.split('/').pop() || 'Untitled Project';
         const fileExtension = filePath.split('.').pop()?.toLowerCase();
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api'; // Get backend URL
 
         try {
             console.log("Fetching example file from path:", filePath);
@@ -286,6 +286,8 @@ export const ExampleDatasetModal = () => {
                 }
             } else if (fileExtension === 'sav') {
                 const savBlob = await response.blob();
+                
+                // Create FormData directly with the blob
                 const formData = new FormData();
                 formData.append('file', savBlob, fileName);
 
@@ -294,71 +296,72 @@ export const ExampleDatasetModal = () => {
                 await resetVariables();
                 // No meta reset here, will be set later
 
-                const parseResponse = await fetch(`${backendUrl}/sav/upload`, {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!parseResponse.ok) {
-                    const errorText = await parseResponse.text();
-                    throw new Error(`Backend error processing SAV: ${parseResponse.status} - ${errorText || 'Unknown error'}`);
-                }
-
-                const result = await parseResponse.json();
-                if (!result.rows || !result.meta || !result.meta.sysvars) {
-                    throw new Error('Invalid response structure from backend SAV upload endpoint.');
-                }
-
-                // --- Start: Logic copied and adapted from OpenData.tsx --- 
-                const numCases = result.meta.header.n_cases;
-                const numVars = result.meta.header.n_vars; // Use header n_vars
-                const sysvars = result.meta.sysvars;
-
-                variables = sysvars.map((varInfo: any, colIndex: number) => {
-                    const variableName = varInfo.name || `VAR${colIndex + 1}`;
-                    // Use optional chaining carefully, match OpenData
-                    const formatType = varInfo.printFormat?.typestr; 
-                    const isString = formatType === "A" || varInfo.type === 1;
-
-                    const valueLabelsObj = result.meta.valueLabels?.find(
-                        (vl: any) => vl.appliesToNames?.includes(variableName) // Use optional chaining
-                    );
-
-                    const valueLabels = valueLabelsObj ?
-                        valueLabelsObj.entries.map((entry: any) => ({
-                            id: undefined,
-                            variableName,
-                            value: entry.val,
-                            label: entry.label
-                        })) : [];
-
-                    const missingSpec = convertSavMissingToSpec(varInfo.missing);
-
-                    return {
-                        columnIndex: colIndex,
-                        name: variableName,
-                        type: mapSPSSTypeToInterface(formatType), // Use helper function
-                        width: varInfo.printFormat?.width, // Use optional chaining
-                        decimals: varInfo.printFormat?.nbdec, // Use optional chaining
-                        label: varInfo.label || "",
-                        values: valueLabels,
-                        missing: missingSpec, // Gunakan spec yang sudah dikonversi
-                        columns: 200, // Match OpenData default
-                        align: isString ? "left" : "right",
-                        measure: isString ? "nominal" : "scale", // Match OpenData logic
-                        role: "input"
-                    };
-                });
-
-                parsedData = Array(numCases).fill(0).map((_, rowIndex) => {
-                    const rowData = result.rows[rowIndex] || {};
-                    // Ensure sysvars length is respected, match OpenData
-                    return Array(numVars).fill(0).map((_, colIndex) => {
-                        const colName = sysvars[colIndex]?.name; 
-                        return rowData[colName] !== undefined ? rowData[colName] : "";
+                try {
+                    // Call API endpoint directly using FormData
+                    const uploadResponse = await fetch(getApiUrl('sav/upload'), {
+                        method: 'POST',
+                        body: formData,
                     });
-                });
-                // --- End: Logic copied and adapted from OpenData.tsx --- 
+                    
+                    const result = await handleApiResponse(uploadResponse);
+                    
+                    if (!result.rows || !result.meta || !result.meta.sysvars) {
+                        throw new Error('Invalid response structure from backend SAV upload endpoint.');
+                    }
+
+                    // --- Start: Logic copied and adapted from OpenData.tsx --- 
+                    const numCases = result.meta.header.n_cases;
+                    const numVars = result.meta.header.n_vars; // Use header n_vars
+                    const sysvars = result.meta.sysvars;
+
+                    variables = sysvars.map((varInfo: any, colIndex: number) => {
+                        const variableName = varInfo.name || `VAR${colIndex + 1}`;
+                        // Use optional chaining carefully, match OpenData
+                        const formatType = varInfo.printFormat?.typestr; 
+                        const isString = formatType === "A" || varInfo.type === 1;
+
+                        const valueLabelsObj = result.meta.valueLabels?.find(
+                            (vl: any) => vl.appliesToNames?.includes(variableName) // Use optional chaining
+                        );
+
+                        const valueLabels = valueLabelsObj ?
+                            valueLabelsObj.entries.map((entry: any) => ({
+                                id: undefined,
+                                variableName,
+                                value: entry.val,
+                                label: entry.label
+                            })) : [];
+
+                        const missingSpec = convertSavMissingToSpec(varInfo.missing);
+
+                        return {
+                            columnIndex: colIndex,
+                            name: variableName,
+                            type: mapSPSSTypeToInterface(formatType), // Use helper function
+                            width: varInfo.printFormat?.width, // Use optional chaining
+                            decimals: varInfo.printFormat?.nbdec, // Use optional chaining
+                            label: varInfo.label || "",
+                            values: valueLabels,
+                            missing: missingSpec, // Gunakan spec yang sudah dikonversi
+                            columns: 200, // Match OpenData default
+                            align: isString ? "left" : "right",
+                            measure: isString ? "nominal" : "scale", // Match OpenData logic
+                            role: "input"
+                        };
+                    });
+
+                    parsedData = Array(numCases).fill(0).map((_, rowIndex) => {
+                        const rowData = result.rows[rowIndex] || {};
+                        // Ensure sysvars length is respected, match OpenData
+                        return Array(numVars).fill(0).map((_, colIndex) => {
+                            const colName = sysvars[colIndex]?.name; 
+                            return rowData[colName] !== undefined ? rowData[colName] : "";
+                        });
+                    });
+                } catch (error) {
+                    console.error("Error processing SAV file:", error);
+                    throw new Error(`Error processing SAV file: ${error instanceof Error ? error.message : String(error)}`);
+                }
 
             } else {
                 throw new Error(`Unsupported file type: ${fileExtension}`);
@@ -421,10 +424,10 @@ export const ExampleDatasetModal = () => {
 
     return (
         <Dialog open={isModalOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[525px] bg-white text-black">
+            <DialogContent className="sm:max-w-[525px] bg-popover text-popover-foreground">
                 <DialogHeader>
                     <DialogTitle className="flex items-center">
-                        <Database className="h-5 w-5 mr-2 text-blue-700"/> Dataset Contoh
+                        <Database className="h-5 w-5 mr-2 text-primary"/> Dataset Contoh
                     </DialogTitle>
                     <DialogDescription>
                         Pilih dataset contoh (.sav) untuk memulai analisis. Data akan dimuat ke dalam proyek baru.
@@ -432,16 +435,16 @@ export const ExampleDatasetModal = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     {isLoading && (
-                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-                            <Loader2 className="h-8 w-8 animate-spin text-black" />
+                        <div className="absolute inset-0 bg-popover/70 flex items-center justify-center z-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-popover-foreground" />
                         </div>
                     )}
                     {error && (
-                        <p className="text-red-600 text-sm px-4 py-2 bg-red-100 rounded border border-red-300">{error}</p>
+                        <p className="text-destructive-foreground text-sm px-4 py-2 bg-destructive rounded border border-destructive/50">{error}</p>
                     )}
                     <div className="mt-6">
-                        <DialogTitle className="text-lg font-medium text-gray-900">Dataset SPSS (.sav)</DialogTitle>
-                        <DialogDescription className="mt-1 text-sm text-gray-500 mb-4">
+                        <DialogTitle className="text-lg font-medium text-popover-foreground">Dataset SPSS (.sav)</DialogTitle>
+                        <DialogDescription className="mt-1 text-sm text-muted-foreground mb-4">
                             Pilih salah satu dataset contoh untuk memulai analisis.
                         </DialogDescription>
                         {renderFileList(exampleFiles.sav)}

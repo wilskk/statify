@@ -12,16 +12,16 @@ const ResultOutput: React.FC = () => {
       <div className="p-6 space-y-8 w-max">
         {logs.map((log) => (
             <div key={log.id} className="space-y-6">
-              <div id="log" className="text-sm text-gray-600">
+              <div id="log" className="text-sm text-muted-foreground">
                 Log {log.id}: {log.log}
               </div>
               {log.analytics?.map((analytic) => (
                   <Card key={analytic.id} className="p-6 shadow-md">
-                    <div className="text-xl font-bold text-left mb-4">
+                    <div className="text-xl font-bold text-card-foreground text-left mb-4">
                       {analytic.title}
                     </div>
                     {analytic.note && (
-                        <div className="text-sm italic text-gray-500 text-center mb-6">
+                        <div className="text-sm italic text-muted-foreground text-center mb-6">
                           {analytic.note}
                         </div>
                     )}
@@ -37,7 +37,7 @@ const ResultOutput: React.FC = () => {
                         return (
                             <div key={stat.id} className="space-y-4">
                               {isFirstAppearance && (
-                                  <div className="text-base font-semibold mt-6 mb-2">
+                                  <div className="text-base font-semibold text-card-foreground mt-6 mb-2">
                                     {stat.components}
                                   </div>
                               )}
@@ -66,7 +66,7 @@ const ResultOutput: React.FC = () => {
                                     );
                                   } else {
                                     return (
-                                        <div className="text-sm text-red-500">
+                                        <div className="text-sm text-destructive">
                                           Data tidak valid
                                         </div>
                                     );

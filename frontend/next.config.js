@@ -20,6 +20,15 @@ const nextConfig = {
 
         return config;
     },
+    async rewrites() {
+        return [
+            {
+                // Proxy API requests to backend in production
+                source: '/api/:path*',
+                destination: process.env.NEXT_PUBLIC_BACKEND_URL + '/:path*'
+            }
+        ];
+    },
     async redirects() {
         return [
             {

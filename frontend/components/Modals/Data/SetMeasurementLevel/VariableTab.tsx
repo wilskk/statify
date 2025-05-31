@@ -65,15 +65,15 @@ const VariableTab: FC<VariableTabProps> = ({
     ];
 
     return (
-        <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Set Measurement Level</DialogTitle>
+        <DialogContent className="max-w-[700px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Set Measurement Level</DialogTitle>
             </DialogHeader>
 
             <div className="p-6 overflow-y-auto flex-grow">
-                <div className="flex items-center gap-2 py-2 mb-4 bg-[#F7F7F7] p-3 rounded border border-[#E6E6E6]">
-                    <InfoIcon className="text-[#444444] h-4 w-4 flex-shrink-0" />
-                    <p className="text-[#444444] text-xs">
+                <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
+                    <InfoIcon className="text-accent-foreground h-4 w-4 flex-shrink-0" />
+                    <p className="text-accent-foreground text-xs">
                         This dialog only displays variables for which the measurement level is unknown.
                         Use Variable View in the Data Editor to change the measurement level for other variables.
                     </p>
@@ -93,45 +93,18 @@ const VariableTab: FC<VariableTabProps> = ({
                 />
             </div>
 
-            <div className="flex items-center px-6 py-3 border-t border-[#E6E6E6] bg-[#F7F7F7] text-xs text-[#888888] flex-shrink-0">
+            <div className="flex items-center px-6 py-3 border-t border-border bg-muted text-xs text-muted-foreground flex-shrink-0">
                 <InfoIcon size={14} className="mr-2 flex-shrink-0" />
                 <span>Variables will retain their assigned measurement level for statistical analysis</span>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                 <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4 text-sm"
-                        onClick={handleSave}
-                    >
-                        OK
-                    </Button>
-                    {/* <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                    >
-                        Paste
-                    </Button> */}
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                        onClick={handleReset}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4 text-sm"
-                    >
-                        Help
-                    </Button>
+                    <Button size="sm" onClick={handleSave}>OK</Button>
+                    {/* <Button variant="outline" size="sm">Paste</Button> */}
+                    <Button variant="outline" size="sm" onClick={handleReset}>Reset</Button>
+                    <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                    <Button variant="outline" size="sm">Help</Button>
                 </div>
             </DialogFooter>
         </DialogContent>

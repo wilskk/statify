@@ -36,7 +36,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'selected',
             title: 'Selected Variables:',
             variables: selectedVariables,
-            height: '300px', // Height from original renderVariableList
+            height: '18rem', // Replaced 300px with 18rem (Tailwind h-72)
             draggableItems: true, // Allow reordering within selected
             droppable: true
         }
@@ -85,7 +85,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             id="frequencyTables"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
-                            className="mr-2 border-[#CCCCCC] h-4 w-4"
+                            className="mr-2 h-4 w-4"
                         />
                         <Label htmlFor="frequencyTables" className="text-sm cursor-pointer">
                             Display frequency tables

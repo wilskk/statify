@@ -106,23 +106,19 @@ const DefineDatesModal: FC<DefineDatesProps> = ({ onClose }) => {
 
             <div className="grid grid-cols-2 gap-4 py-2">
                 <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Cases Are:</Label>
-                    <div className="border p-2 rounded-md h-48 overflow-y-auto overflow-x-hidden">
+                    <Label className="text-xs font-semibold text-foreground">Cases Are:</Label>
+                    <div className="border border-border p-2 rounded-md h-48 overflow-y-auto overflow-x-hidden">
                         <div className="space-y-1">
                             {casesAreOptions.map((option) => (
                                 <TooltipProvider key={option}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <div
-                                                className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-gray-100 ${
-                                                    selectedCase === option
-                                                        ? "bg-gray-200 border-gray-500"
-                                                        : "border-gray-300"
-                                                }`}
+                                                className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-accent ${selectedCase === option ? 'bg-accent border-primary text-accent-foreground' : 'border-border text-foreground'}`}
                                                 onClick={() => setSelectedCase(option)}
                                             >
                                                 <div className="flex items-center w-full">
-                                                    <Calendar size={14} className="text-gray-600 mr-1 flex-shrink-0" />
+                                                    <Calendar size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
                                                     <span className="text-xs truncate">{option}</span>
                                                 </div>
                                             </div>
@@ -136,27 +132,27 @@ const DefineDatesModal: FC<DefineDatesProps> = ({ onClose }) => {
                         </div>
                     </div>
 
-                    <div className="border p-2 rounded-md">
-                        <Label className="text-xs font-semibold mb-1 block">Current Dates:</Label>
+                    <div className="border border-border p-2 rounded-md bg-card">
+                        <Label className="text-xs font-semibold mb-1 block text-foreground">Current Dates:</Label>
                         <div className="flex items-center">
-                            <Clock size={14} className="text-gray-600 mr-1 flex-shrink-0" />
-                            <span className="text-xs">{formatCurrentDates(selectedCase, timeComponents)}</span>
+                            <Clock size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
+                            <span className="text-xs text-foreground">{formatCurrentDates(selectedCase, timeComponents)}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-xs font-semibold">First Case Is:</Label>
-                    <div className="border p-2 rounded-md space-y-3">
+                    <Label className="text-xs font-semibold text-foreground">First Case Is:</Label>
+                    <div className="border border-border p-2 rounded-md space-y-3 bg-card">
                         {timeComponents.map((component, index) => (
                             <div key={index} className="space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <Label htmlFor={`component-${index}`} className="text-xs block">
+                                    <Label htmlFor={`component-${index}`} className="text-xs block text-foreground">
                                         {component.name}:
                                     </Label>
 
                                     {component.periodicity && (
-                                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <Info size={12} />
                                             <span>Periodicity: {component.periodicity}</span>
                                         </div>
@@ -174,16 +170,16 @@ const DefineDatesModal: FC<DefineDatesProps> = ({ onClose }) => {
                         ))}
 
                         {timeComponents.length === 0 && (
-                            <div className="text-xs text-gray-500 text-center py-2">
+                            <div className="text-xs text-muted-foreground text-center py-2">
                                 No date components to configure
                             </div>
                         )}
                     </div>
 
-                    <div className="border p-2 rounded-md bg-gray-50">
+                    <div className="border border-border p-2 rounded-md bg-muted">
                         <div className="flex items-start gap-2">
-                            <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-gray-700">
+                            <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground">
                                 Periodicity values show how many units exist in the next higher level.
                                 For example, there are 4 quarters in a year, 12 months in a year,
                                 7 days in a week, etc.
