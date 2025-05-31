@@ -31,12 +31,14 @@ import OptionsTab from "./OptionsTab";
 
 interface DuplicateCasesProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
+// Main content component separated from container logic
+const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
     const { closeModal } = useModalStore();
     const { variables, addVariable } = useVariableStore();
-    const { data, updateBulkCells, setDataAndSync } = useDataStore();
+    const { data, updateCells, setData } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Prepare variables with tempId if they don't have it
@@ -170,7 +172,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
             col: primaryVarIndex,
             value
         }));
-        await updateBulkCells(primaryUpdates);
+        await updateCells(primaryUpdates);
 
         if (sequentialCount) {
             const sequenceVarIndex = primaryVarIndex + 1;
@@ -192,7 +194,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                 col: sequenceVarIndex,
                 value
             }));
-            await updateBulkCells(sequenceUpdates);
+            await updateCells(sequenceUpdates);
         }
     };
 
@@ -248,7 +250,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
             const { result, statistics } = workerResult;
 
             if (moveMatchingToTop) {
-                await setDataAndSync(result.reorderedData);
+                await setData(result.reorderedData);
             }
 
             await createIndicatorVariables(result);
@@ -298,10 +300,12 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold text-foreground">Identify Duplicate Cases</DialogTitle>
-                </DialogHeader>
+            <div className={`flex flex-col ${containerType === "sidebar" ? "h-full overflow-hidden" : "max-h-[85vh]"}`}>
+                {containerType === "dialog" && (
+                    <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                        <DialogTitle className="text-[22px] font-semibold text-foreground">Identify Duplicate Cases</DialogTitle>
+                    </DialogHeader>
+                )}
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
                     <div className="border-b border-border flex-shrink-0">
@@ -334,6 +338,7 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                             handleReorderVariable={handleReorderVariable}
                             getVariableIcon={getVariableIcon}
                             getDisplayName={getDisplayName}
+                            containerType={containerType}
                         />
                     </TabsContent>
 
@@ -353,11 +358,12 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                             setMoveMatchingToTop={setMoveMatchingToTop}
                             displayFrequencies={displayFrequencies}
                             setDisplayFrequencies={setDisplayFrequencies}
+                            containerType={containerType}
                         />
                     </TabsContent>
                 </Tabs>
 
-                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+                <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
                     <div className="flex justify-end space-x-3">
                         <Button
                             className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
@@ -390,8 +396,8 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                             Help
                         </Button>
                     </div>
-                </DialogFooter>
-            </DialogContent>
+                </div>
+            </div>
 
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
@@ -413,6 +419,29 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose }) => {
                 </DialogContent>
             </Dialog>
         </>
+    );
+};
+
+// Main component that handles different container types
+const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <DuplicateCasesContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DuplicateCasesContent onClose={onClose} containerType={containerType} />
+            </DialogContent>
+        </Dialog>
     );
 };
 

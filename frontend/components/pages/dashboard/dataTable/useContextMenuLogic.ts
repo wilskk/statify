@@ -67,7 +67,8 @@ export const useContextMenuLogic = ({
         });
 
         affectedColumns.forEach(columnIndex => {
-            const variable = variableStore.getVariableByColumnIndex(columnIndex);
+            // Akses langsung ke array variables dari store
+            const variable = variableStore.variables.find(v => v.columnIndex === columnIndex);
             // Only update variable store if alignment changed
             if (variable && variable.align !== alignment) {
                  variableStore.updateVariable(columnIndex, 'align', alignment);
@@ -103,9 +104,9 @@ export const useContextMenuLogic = ({
                     variableStore.addVariable({ columnIndex: targetIndex });
                     console.log(`[handleInsertColumn] variableStore.addVariable completed for index: ${targetIndex}`);
 
-                    console.log(`[handleInsertColumn] Calling dataStore.addColumn with targetIndex: ${targetIndex}`);
-                    dataStore.addColumn(targetIndex);
-                    console.log(`[handleInsertColumn] dataStore.addColumn completed for index: ${targetIndex}`);
+                    console.log(`[handleInsertColumn] Calling dataStore.addColumns with targetIndex: ${targetIndex}`);
+                    dataStore.addColumns([targetIndex]);
+                    console.log(`[handleInsertColumn] dataStore.addColumns completed for index: ${targetIndex}`);
 
                     console.log(`[handleInsertColumn] Insert column operation completed successfully for index: ${targetIndex}`);
                 } catch (error) {
@@ -125,16 +126,15 @@ export const useContextMenuLogic = ({
                 const endRow = Math.max(selectedRange[0].from.row, selectedRange[0].to.row);
                 const rowCount = endRow - startRow + 1;
 
-                // Delete rows from bottom up to avoid index issues
-                for (let i = 0; i < rowCount; i++) {
-                     dataStore.deleteRow(startRow);
-                }
+                // Use deleteRows instead of multiple deleteRow calls
+                const rowsToDelete = Array.from({ length: rowCount }, (_, i) => startRow + i);
+                dataStore.deleteRows(rowsToDelete);
             }
         };
 
         const handleRemoveColumn = () => {
             const { col } = getSelectedCell();
-             if (col !== -1 && hot) {
+            if (col !== -1 && hot) {
                 const selectedRange = hot.getSelectedRange();
                 if (!selectedRange || selectedRange.length === 0) return;
                 
@@ -142,13 +142,16 @@ export const useContextMenuLogic = ({
                 const endCol = Math.max(selectedRange[0].from.col, selectedRange[0].to.col);
                 const colCount = endCol - startCol + 1;
 
-                // Delete columns from right to left to avoid index issues
+                // Create array of columns to delete
+                const columnsToDelete = Array.from({ length: colCount }, (_, i) => startCol);
+                
+                // Delete all variables first to maintain consistency
                 for (let i = 0; i < colCount; i++) {
-                    const currentTargetCol = startCol; // Always delete the 'startCol' as indices shift
-                    // MUST delete variable first to maintain consistency
-                    variableStore.deleteVariable(currentTargetCol); 
-                    dataStore.deleteColumn(currentTargetCol); 
+                    variableStore.deleteVariable(startCol);
                 }
+                
+                // Then delete all columns at once
+                dataStore.deleteColumns(columnsToDelete);
             }
         };
 

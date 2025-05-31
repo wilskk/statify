@@ -33,30 +33,31 @@ export const DimensionReductionModals: React.FC<
     DimensionReductionModalsProps
 > = ({ modalType, onClose, props }) => {
     switch (modalType) {
-        case ModalType.Factor:
-            return <FactorContainer onClose={onClose} {...props} />;
-        case ModalType.CorrespondenceAnalysis:
-            return <CorrespondenceContainer onClose={onClose} {...props} />;
-        case ModalType.OptimalScaling:
-            return <OptScaContainer onClose={onClose} {...props} />;
-        case ModalType.OptimalScalingCATPCA:
-            return <OptScaCatpcaContainer onClose={onClose} {...props} />;
-        case ModalType.OptimalScalingMCA:
-            return <OptScaMCAContainer onClose={onClose} {...props} />;
-        case ModalType.OptimalScalingOVERALS:
-            return <OptScaOveralsContainer onClose={onClose} {...props} />;
+        // case ModalType.Factor:
+        //     return <FactorContainer onClose={onClose} {...props} />;
+        // case ModalType.CorrespondenceAnalysis:
+        //     return <CorrespondenceContainer onClose={onClose} {...props} />;
+        // case ModalType.OptimalScaling:
+        //     return <OptScaContainer onClose={onClose} {...props} />;
+        // case ModalType.OptimalScalingCATPCA:
+        //     return <OptScaCatpcaContainer onClose={onClose} {...props} />;
+        // case ModalType.OptimalScalingMCA:
+        //     return <OptScaMCAContainer onClose={onClose} {...props} />;
+        // case ModalType.OptimalScalingOVERALS:
+        //     return <OptScaOveralsContainer onClose={onClose} {...props} />;
         default:
             return null;
     }
 };
 
 export const isDimensionReductionModal = (type: ModalType): boolean => {
-    return [
-        ModalType.Factor,
-        ModalType.CorrespondenceAnalysis,
-        ModalType.OptimalScaling,
-        ModalType.OptimalScalingCATPCA,
-        ModalType.OptimalScalingMCA,
-        ModalType.OptimalScalingOVERALS,
-    ].includes(type);
+    return false; // Always return false as all modals are disabled
+    // return [
+    //     // ModalType.Factor,
+    //     // ModalType.CorrespondenceAnalysis,
+    //     // ModalType.OptimalScaling,
+    //     // ModalType.OptimalScalingCATPCA,
+    //     // ModalType.OptimalScalingMCA,
+    //     // ModalType.OptimalScalingOVERALS,
+    // ].includes(type);
 };

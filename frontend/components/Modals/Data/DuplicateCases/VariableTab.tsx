@@ -16,6 +16,7 @@ interface VariableTabProps {
     handleReorderVariable: (listId: string, variables: Variable[]) => void;
     getVariableIcon: (variable: Variable) => React.ReactNode;
     getDisplayName: (variable: Variable) => string;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariableTab: FC<VariableTabProps> = ({
@@ -29,7 +30,8 @@ const VariableTab: FC<VariableTabProps> = ({
                                                handleMoveVariable,
                                                handleReorderVariable,
                                                getVariableIcon,
-                                               getDisplayName
+                                               getDisplayName,
+                                               containerType = "dialog"
                                            }) => {
     // Konfigurasi untuk variabel matching
     const matchingListConfig: TargetListConfig = {

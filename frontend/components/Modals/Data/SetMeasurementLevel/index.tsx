@@ -8,9 +8,13 @@ import VariableTab from "./VariableTab";
 // Main component
 interface SetMeasurementLevelProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({ onClose }) => {
+const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
     const { variables, updateVariable } = useVariableStore();
 
     const [unknownVariables, setUnknownVariables] = useState<Variable[]>([]);
@@ -127,6 +131,8 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({ onClose }) =>
         setHighlightedVariable(null);
     };
 
+    // Reverted: No Dialog, DialogContent, DialogHeader, or DialogTitle here.
+    // It just renders VariableTab directly.
     return (
         <VariableTab
             onClose={onClose}
@@ -140,6 +146,7 @@ const SetMeasurementLevel: React.FC<SetMeasurementLevelProps> = ({ onClose }) =>
             handleReorderVariable={handleReorderVariable}
             handleSave={handleSave}
             handleReset={handleReset}
+            containerType={containerType}
         />
     );
 };

@@ -236,7 +236,7 @@ export const getMaxRow = (data: any[]): number => {
 export const generateSampleData = async (
     timeComponents: TimeComponent[],
     createdVariables: any[],
-    updateBulkCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
+    updateCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
     existingRowCount: number
 ): Promise<void> => {
     const rowCount = existingRowCount > 0 ? existingRowCount : 20;
@@ -304,7 +304,7 @@ export const generateSampleData = async (
     }
 
     if (updates.length > 0) {
-        await updateBulkCells(updates);
+        await updateCells(updates);
     }
 };
 
@@ -314,7 +314,7 @@ export const createDateVariables = async (
     variables: any[],
     addVariable: (variable: any) => Promise<void>,
     resetVariables: () => Promise<void>,
-    updateBulkCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
+    updateCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
     existingRowCount: number
 ): Promise<void> => {
     if (selectedCase === "Not dated") {
@@ -372,5 +372,5 @@ export const createDateVariables = async (
         await addVariable(variable);
     }
 
-    await generateSampleData(timeComponents, variablesToCreate, updateBulkCells, existingRowCount);
+    await generateSampleData(timeComponents, variablesToCreate, updateCells, existingRowCount);
 };

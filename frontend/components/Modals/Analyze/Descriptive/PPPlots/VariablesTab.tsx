@@ -27,9 +27,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const targetLists: TargetListConfig[] = [
         {
             id: 'selected',
-            title: 'Selected Variables:',
+            title: 'Variable(s):',
             variables: selectedVariables,
-            height: '300px',
+            height: 'calc(100% - 40px)', 
             draggableItems: true,
             droppable: true
         }
@@ -57,7 +57,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'selected') {
-            reorderVariables('selected', variables);
+            if (reorderVariables) reorderVariables('selected', variables);
         }
     }, [reorderVariables]);
 

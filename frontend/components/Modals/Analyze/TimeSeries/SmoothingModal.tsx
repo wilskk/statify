@@ -61,7 +61,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
 
     // Store references
     const { variables, loadVariables, addVariable} = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
 
@@ -498,7 +498,7 @@ const SmoothingModal: FC<SmoothingModalProps> = ({ onClose }) => {
         
         // Use bulk update to efficiently add all data
         if (updates.length > 0) {
-            await updateBulkCells(updates);
+            await updateCells(updates);
         }
         
         // Reload variables to reflect changes

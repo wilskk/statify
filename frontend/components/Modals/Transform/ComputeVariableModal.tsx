@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
+import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,13 +137,21 @@ const ComputeVariable: React.FC<ComputeVariableProps> = ({ onClose }) => {
 
             await addVariable(newVariable);
 
-            // Perbarui data di store
+            // Perbarui data di store - collect all updates at once
+            const bulkUpdates: CellUpdate[] = [];
             newData.forEach((row, rowIndex) => {
               const newColumnIndex = variables.length;
-              useDataStore
-                  .getState()
-                  .updateCell(rowIndex, newColumnIndex, row[newColumnIndex]);
+              bulkUpdates.push({
+                row: rowIndex,
+                col: newColumnIndex,
+                value: row[newColumnIndex]
+              });
             });
+            
+            // Apply all updates in one call
+            if (bulkUpdates.length > 0) {
+              await useDataStore.getState().updateCells(bulkUpdates);
+            }
 
             // Perbarui state
             setData(newData);

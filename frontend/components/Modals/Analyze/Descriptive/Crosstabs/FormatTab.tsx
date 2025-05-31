@@ -1,23 +1,20 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-interface FormatTabProps {
-    rowOrder: 'ascending' | 'descending';
-    setRowOrder: (value: 'ascending' | 'descending') => void;
-}
+import { FormatTabProps } from "./types";
 
 const FormatTab: FC<FormatTabProps> = ({
-                                           rowOrder,
-                                           setRowOrder
-                                       }) => {
+    rowOrder,
+    setRowOrder,
+    containerType = "dialog"
+}) => {
     return (
         <div className="p-6">
             <div className="bg-card border border-border rounded-md p-6">
                 <div className="text-sm font-medium mb-4">Row Order</div>
                 <RadioGroup
                     value={rowOrder}
-                    onValueChange={(value) => setRowOrder(value as 'ascending' | 'descending')}
+                    onValueChange={(value) => setRowOrder(value as typeof rowOrder)}
                     className="space-y-4"
                 >
                     <div className="flex items-center">

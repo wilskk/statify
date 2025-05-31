@@ -17,42 +17,34 @@ const ClassifyMenu: React.FC = () => {
         <MenubarSub>
             <MenubarSubTrigger>Classify</MenubarSubTrigger>
             <MenubarSubContent>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.TwoStepCluster)}
-                >
+                <MenubarItem disabled>
                     TwoStep Cluster
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.KMeansCluster)}>
+                <MenubarItem disabled>
                     K-Means Cluster
                 </MenubarItem>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.HierarchicalCluster)}
-                >
+                <MenubarItem disabled>
                     Hierarchical Cluster
                 </MenubarItem>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.ClusterSilhouettes)}
-                >
+                <MenubarItem disabled>
                     Cluster Silhouettes
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.Tree)}>
+                <MenubarItem disabled>
                     Tree
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Discriminant)}>
+                <MenubarItem disabled>
                     Discriminant
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem
-                    onClick={() => openModal(ModalType.NearestNeighbor)}
-                >
+                <MenubarItem disabled>
                     Nearest Neighbor
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.ROCCurve)}>
+                <MenubarItem disabled>
                     ROC Curve
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.ROCAnalysis)}>
+                <MenubarItem disabled>
                     ROC Analysis
                 </MenubarItem>
             </MenubarSubContent>
