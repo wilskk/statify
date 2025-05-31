@@ -10,7 +10,7 @@ import { useMetaStore } from "@/stores/useMetaStore";
 export default function DataLoader() {
     const loadData = useDataStore((state) => state.loadData);
     const loadVariables = useVariableStore((state) => state.loadVariables);
-    const fetchLogs = useResultStore((state) => state.fetchLogs);
+    const loadResults = useResultStore((state) => state.loadResults);
     const loadMeta = useMetaStore((state) => state.loadMeta);
 
     useEffect(() => {
@@ -20,7 +20,7 @@ export default function DataLoader() {
                 await Promise.all([
                     loadData(),
                     loadVariables(),
-                    fetchLogs(),
+                    loadResults(),
                     loadMeta()
                 ]);
             } catch (error) {
@@ -29,7 +29,7 @@ export default function DataLoader() {
         };
 
         loadAllData();
-    }, [loadData, loadVariables, fetchLogs, loadMeta]);
+    }, [loadData, loadVariables, loadResults, loadMeta]);
 
     return null;
 }

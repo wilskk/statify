@@ -1,8 +1,7 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useCallback, useEffect } from "react";
 import {
-    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -15,104 +14,74 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useModalStore } from "@/stores/useModalStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { Variable } from "@/types/Variable";
-import { useDescriptivesAnalysis } from "@/hooks/useDescriptivesAnalysis";
+import { useVariableSelection } from "./hooks/useVariableSelection";
+import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
+import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
+import { useDataFetching } from "./hooks/useDataFetching";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 
+// Komponen utama konten Descriptives yang agnostik terhadap container
+const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
+    const [activeTab, setActiveTab] = useState<"variables" | "statistics">("variables");
+    
+    const {
+        availableVariables,
+        selectedVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToSelectedVariables,
+        moveToAvailableVariables,
+        reorderVariables,
+        resetVariableSelection
+    } = useVariableSelection();
 
-interface DescriptivesProps {
-    onClose: () => void;
-}
+    const {
+        displayStatistics,
+        setDisplayStatistics,
+        displayOrder,
+        setDisplayOrder,
+        saveStandardized,
+        setSaveStandardized,
+        resetStatisticsSettings
+    } = useStatisticsSettings();
 
-const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
-    const { variables } = useVariableStore();
-
-    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
-    const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
-
-    const [activeTab, setActiveTab] = useState("variables");
-    const [saveStandardized, setSaveStandardized] = useState(false);
-    const [displayStatistics, setDisplayStatistics] = useState({
-        mean: true,
-        stdDev: true,
-        minimum: true,
-        maximum: true,
-        variance: false,
-        range: false,
-        sum: false,
-        median: false,
-        skewness: false,
-        kurtosis: false,
-        standardError: false
-    });
-
-    const [displayOrder, setDisplayOrder] = useState("variableList");
-
-    const { isCalculating, errorMsg, runAnalysis } = useDescriptivesAnalysis({
+    const { 
+        isLoading,
+        errorMsg, 
+        runAnalysis,
+        cancelAnalysis
+    } = useDescriptivesAnalysis({
         selectedVariables,
         displayStatistics,
         saveStandardized,
+        displayOrder,
         onClose
     });
 
-    useEffect(() => {
-        setAvailableVariables(variables.filter(v => v.name !== ""));
-    }, [variables]);
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetStatisticsSettings();
+        cancelAnalysis();
+    }, [resetVariableSelection, resetStatisticsSettings, cancelAnalysis]);
 
-    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
-        setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setSelectedVariables(prev => {
-            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
-                return prev;
-            }
-            const newList = [...prev];
-            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-                newList.splice(targetIndex, 0, variable);
-            } else {
-                newList.push(variable);
-            }
-            return newList;
-        });
-        setHighlightedVariable(null);
-    };
-
-    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
-        setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setAvailableVariables(prev => {
-            if (prev.some(v => v.columnIndex === variable.columnIndex)) {
-                return prev;
-            }
-            const newList = [...prev];
-            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-                newList.splice(targetIndex, 0, variable);
-            } else {
-                newList.push(variable);
-            }
-            return newList;
-        });
-        setHighlightedVariable(null);
-    };
-
-    const reorderVariables = (source: 'available' | 'selected', variablesToReorder: Variable[]) => {
-        if (source === 'available') {
-            setAvailableVariables([...variablesToReorder]);
-        } else {
-            setSelectedVariables([...variablesToReorder]);
+    const handleTabChange = useCallback((value: string) => {
+        if (value === 'variables' || value === 'statistics') {
+            setActiveTab(value);
         }
-    };
+    }, [setActiveTab]);
+
+    useEffect(() => {
+        return () => {
+            cancelAnalysis();
+        };
+    }, [cancelAnalysis]);
 
     return (
-        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Descriptives</DialogTitle>
-            </DialogHeader>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+        <>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
                         <TabsTrigger value="variables">Variables</TabsTrigger>
@@ -142,56 +111,71 @@ const Descriptives: FC<DescriptivesProps> = ({ onClose }) => {
                         setDisplayOrder={setDisplayOrder}
                     />
                 </TabsContent>
-
-
             </Tabs>
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
                         onClick={runAnalysis}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
-                        {isCalculating ? "Processing..." : "OK"}
+                        {isLoading ? "Processing..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => {
-                            // Add reset logic here if needed, e.g., call a resetAllStates function
-                            setSelectedVariables([]);
-                            setAvailableVariables(variables.filter(v => v.name !== ""));
-                            setSaveStandardized(false);
-                            setDisplayStatistics({
-                                mean: true, stdDev: true, minimum: true, maximum: true,
-                                variance: false, range: false, sum: false, median: false,
-                                skewness: false, kurtosis: false, standardError: false
-                            });
-                            setDisplayOrder("variableList");
-                        }}
-                        disabled={isCalculating}
+                        onClick={handleReset}
+                        disabled={isLoading}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
                         onClick={onClose}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
                     <Button
                         variant="outline"
                         // onClick={onHelp} // Assuming an onHelp function exists or will be added
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Help
                     </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
     );
 };
 
+// Komponen Descriptives yang menjadi titik masuk utama
+const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    // Render berdasarkan containerType
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <DescriptiveContent onClose={onClose} {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    // Default dialog view with proper Dialog components
+    return (
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Descriptives</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <DescriptiveContent onClose={onClose} {...props} />
+            </div>
+        </DialogContent>
+    );
+}
+
 export default Descriptives;
+export { DescriptiveContent };

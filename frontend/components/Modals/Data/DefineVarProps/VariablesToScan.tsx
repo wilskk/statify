@@ -20,9 +20,11 @@ import VariableListManager, { TargetListConfig } from '@/components/Common/Varia
 interface VariablesToScanProps {
     onClose: () => void;
     onContinue: (variables: Variable[], caseLimit: string | null, valueLimit: string | null) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
+// Main content component that's agnostic of container type
+const VariablesToScanContent: FC<VariablesToScanProps> = ({ onClose, onContinue, containerType = "dialog" }) => {
     // Get variables directly from store
     const { variables } = useVariableStore();
 
@@ -184,106 +186,100 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
 
     return (
         <>
-            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold text-foreground">Define Variable Properties</DialogTitle>
-                </DialogHeader>
+            <div className="p-6 overflow-y-auto flex-grow">
+                {/* Information text */}
+                <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
+                    <p className="text-sm text-accent-foreground">
+                        Select variables to scan. Categorical variables (nominal/ordinal) work best.
+                        You can change measurement level in the next panel.
+                    </p>
+                </div>
 
-                <div className="p-6 overflow-y-auto flex-grow">
-                    {/* Information text */}
-                    <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
-                        <p className="text-sm text-accent-foreground">
-                            Select variables to scan. Categorical variables (nominal/ordinal) work best.
-                            You can change measurement level in the next panel.
-                        </p>
-                    </div>
+                {/* Variable List Manager */}
+                <div className="mb-6">
+                    <VariableListManager
+                        availableVariables={availableVariables}
+                        targetLists={targetLists}
+                        variableIdKey="tempId"
+                        highlightedVariable={managerHighlightedVariable}
+                        setHighlightedVariable={setManagerHighlightedVariable}
+                        onMoveVariable={handleMoveVariable}
+                        onReorderVariable={handleReorderVariables}
+                    />
+                </div>
 
-                    {/* Variable List Manager */}
-                    <div className="mb-6">
-                        <VariableListManager
-                            availableVariables={availableVariables}
-                            targetLists={targetLists}
-                            variableIdKey="tempId"
-                            highlightedVariable={managerHighlightedVariable}
-                            setHighlightedVariable={setManagerHighlightedVariable}
-                            onMoveVariable={handleMoveVariable}
-                            onReorderVariable={handleReorderVariables}
-                        />
-                    </div>
+                {/* Limit options */}
+                <div className="border border-border rounded-md p-6 mt-6 bg-card">
+                    <div className="text-sm font-medium mb-4 text-card-foreground">Scanning Limits</div>
+                    <div className="space-y-4">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="limit-cases"
+                                checked={limitCases}
+                                onCheckedChange={(checked) => setLimitCases(!!checked)}
+                                className="mr-2"
+                            />
+                            <Label htmlFor="limit-cases" className="text-sm cursor-pointer text-card-foreground">
+                                Limit number of cases scanned to:
+                            </Label>
+                            <Input
+                                value={caseLimit}
+                                onChange={(e) => setCaseLimit(e.target.value)}
+                                className="w-24 h-8 text-sm"
+                                disabled={!limitCases}
+                            />
+                        </div>
 
-                    {/* Limit options */}
-                    <div className="border border-border rounded-md p-6 mt-6 bg-card">
-                        <div className="text-sm font-medium mb-4 text-card-foreground">Scanning Limits</div>
-                        <div className="space-y-4">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="limit-cases"
-                                    checked={limitCases}
-                                    onCheckedChange={(checked) => setLimitCases(!!checked)}
-                                    className="mr-2"
-                                />
-                                <Label htmlFor="limit-cases" className="text-sm cursor-pointer text-card-foreground">
-                                    Limit number of cases scanned to:
-                                </Label>
-                                <Input
-                                    value={caseLimit}
-                                    onChange={(e) => setCaseLimit(e.target.value)}
-                                    className="w-24 h-8 text-sm"
-                                    disabled={!limitCases}
-                                />
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="limit-values"
-                                    checked={limitValues}
-                                    onCheckedChange={(checked) => setLimitValues(!!checked)}
-                                    className="mr-2"
-                                />
-                                <Label htmlFor="limit-values" className="text-sm cursor-pointer text-card-foreground">
-                                    Limit number of values displayed to:
-                                </Label>
-                                <Input
-                                    value={valueLimit}
-                                    onChange={(e) => setValueLimit(e.target.value)}
-                                    className="w-24 h-8 text-sm"
-                                    disabled={!limitValues}
-                                />
-                            </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="limit-values"
+                                checked={limitValues}
+                                onCheckedChange={(checked) => setLimitValues(!!checked)}
+                                className="mr-2"
+                            />
+                            <Label htmlFor="limit-values" className="text-sm cursor-pointer text-card-foreground">
+                                Limit number of values displayed to:
+                            </Label>
+                            <Input
+                                value={valueLimit}
+                                onChange={(e) => setValueLimit(e.target.value)}
+                                className="w-24 h-8 text-sm"
+                                disabled={!limitValues}
+                            />
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                    <div className="flex justify-end space-x-3">
-                        <Button
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                            onClick={handleContinue}
-                        >
-                            Continue
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                        >
-                            Reset
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                            onClick={onClose}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                        >
-                            Help
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                    >
+                        Help
+                    </Button>
+                </div>
+            </div>
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
@@ -306,6 +302,39 @@ const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue }) => {
                 </DialogContent>
             </Dialog>
         </>
+    );
+};
+
+// Main component that handles different container types
+const VariablesToScan: FC<VariablesToScanProps> = ({ onClose, onContinue, containerType = "dialog" }) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden">
+                <VariablesToScanContent 
+                    onClose={onClose} 
+                    onContinue={onContinue} 
+                    containerType={containerType} 
+                />
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-foreground">Define Variable Properties</DialogTitle>
+                </DialogHeader>
+                
+                <VariablesToScanContent 
+                    onClose={onClose} 
+                    onContinue={onContinue} 
+                    containerType={containerType} 
+                />
+            </DialogContent>
+        </Dialog>
     );
 };
 

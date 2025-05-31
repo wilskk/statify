@@ -40,6 +40,7 @@ interface VariablesTabProps {
     moveFromAggregated: (variable: AggregatedVariable) => void;
     reorderBreakVariables: (variables: Variable[]) => void;
     reorderAggregatedVariables: (variables: AggregatedVariable[]) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -63,7 +64,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                                  moveToAggregated,
                                                  moveFromAggregated,
                                                  reorderBreakVariables,
-                                                 reorderAggregatedVariables
+                                                 reorderAggregatedVariables,
+                                                 containerType = "dialog"
                                              }) => {
     // DnD state
     const [draggedItem, setDraggedItem] = useState<{

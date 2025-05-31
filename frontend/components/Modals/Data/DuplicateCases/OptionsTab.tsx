@@ -19,6 +19,7 @@ interface OptionsTabProps {
     setMoveMatchingToTop: (value: boolean) => void;
     displayFrequencies: boolean;
     setDisplayFrequencies: (value: boolean) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const OptionsTab: FC<OptionsTabProps> = ({
@@ -35,7 +36,8 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                              moveMatchingToTop,
                                              setMoveMatchingToTop,
                                              displayFrequencies,
-                                             setDisplayFrequencies
+                                             setDisplayFrequencies,
+                                             containerType = "dialog"
                                          }) => {
     return (
         <>

@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-interface ChartsTabProps {
+export interface ChartsTabProps {
     showCharts: boolean;
     setShowCharts: React.Dispatch<React.SetStateAction<boolean>>;
     chartType: "none" | "barCharts" | "pieCharts" | "histograms";
@@ -12,6 +12,7 @@ interface ChartsTabProps {
     setChartValues: React.Dispatch<React.SetStateAction<"frequencies" | "percentages">>;
     showNormalCurve: boolean;
     setShowNormalCurve: React.Dispatch<React.SetStateAction<boolean>>;
+    containerType?: "dialog" | "sidebar";
 }
 
 const ChartsTab: FC<ChartsTabProps> = ({
@@ -23,6 +24,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
     setChartValues,
     showNormalCurve,
     setShowNormalCurve,
+    containerType = "dialog"
 }) => {
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {

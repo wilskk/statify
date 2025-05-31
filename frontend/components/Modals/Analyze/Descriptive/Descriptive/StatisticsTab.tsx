@@ -2,44 +2,26 @@ import React, { FC } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { DescriptiveStatisticsOptions, DisplayOrderType } from "./types";
+import { Dispatch, SetStateAction } from "react";
 
-interface StatisticsTabProps {
-    displayStatistics: {
-        mean: boolean;
-        stdDev: boolean;
-        minimum: boolean;
-        maximum: boolean;
-        variance: boolean;
-        range: boolean;
-        sum: boolean;
-        median: boolean;
-        skewness: boolean;
-        kurtosis: boolean;
-        standardError: boolean;
-    };
-    setDisplayStatistics: React.Dispatch<React.SetStateAction<{
-        mean: boolean;
-        stdDev: boolean;
-        minimum: boolean;
-        maximum: boolean;
-        variance: boolean;
-        range: boolean;
-        sum: boolean;
-        median: boolean;
-        skewness: boolean;
-        kurtosis: boolean;
-        standardError: boolean;
-    }>>;
-    displayOrder: string;
-    setDisplayOrder: React.Dispatch<React.SetStateAction<string>>;
+export interface StatisticsTabProps {
+    displayStatistics: DescriptiveStatisticsOptions;
+    setDisplayStatistics: Dispatch<SetStateAction<DescriptiveStatisticsOptions>>;
+    displayOrder: DisplayOrderType;
+    setDisplayOrder: Dispatch<SetStateAction<DisplayOrderType>>;
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
-                                                   displayStatistics,
-                                                   setDisplayStatistics,
-                                                   displayOrder,
-                                                   setDisplayOrder
-                                               }) => {
+    displayStatistics,
+    setDisplayStatistics,
+    displayOrder,
+    setDisplayOrder
+}) => {
+    const handleDisplayOrderChange = (value: string) => {
+        setDisplayOrder(value as DisplayOrderType);
+    };
+
     return (
         <div className="space-y-6">
             <div className="bg-card border border-border rounded-md p-5">
@@ -178,7 +160,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
             <div className="border border-[#E6E6E6] rounded-md p-5">
                 <div className="text-sm font-medium mb-3">Display Order</div>
-                <RadioGroup value={displayOrder} onValueChange={setDisplayOrder} className="space-y-2">
+                <RadioGroup value={displayOrder} onValueChange={handleDisplayOrderChange} className="space-y-2">
                     <div className="flex items-center">
                         <RadioGroupItem id="variableList" value="variableList" className="mr-2 border-[#CCCCCC]" />
                         <Label htmlFor="variableList" className="text-sm cursor-pointer">Variable list</Label>

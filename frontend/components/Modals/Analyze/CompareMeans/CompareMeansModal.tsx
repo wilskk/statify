@@ -27,21 +27,22 @@ interface CompareMeansModalProps {
 
 export const CompareMeansModal: FC<CompareMeansModalProps> = ({ modalType, onClose, props }) => {
     switch (modalType) {
-        case ModalType.OneSampleTTest:
-            return <OneSampleTTest onClose={onClose} {...props} />;
-        case ModalType.IndependentSamplesTTest:
-            return <IndependentSamplesTTest onClose={onClose} {...props} />;
-        case ModalType.PairedSamplesTTest:
-            return <PairedSamplesTTest onClose={onClose} {...props} />;
+        // case ModalType.OneSampleTTest:
+        //     return <OneSampleTTest onClose={onClose} {...props} />;
+        // case ModalType.IndependentSamplesTTest:
+        //     return <IndependentSamplesTTest onClose={onClose} {...props} />;
+        // case ModalType.PairedSamplesTTest:
+        //     return <PairedSamplesTTest onClose={onClose} {...props} />;
         default:
             return null;
     }
 };
 
 export const isCompareMeansModal = (type: ModalType): boolean => {
-    return [
-        ModalType.OneSampleTTest,
-        ModalType.IndependentSamplesTTest,
-        ModalType.PairedSamplesTTest,
-    ].includes(type);
+    return false;
+    // return [
+    //     // ModalType.OneSampleTTest,
+    //     // ModalType.IndependentSamplesTTest,
+    //     // ModalType.PairedSamplesTTest,
+    // ].includes(type);
 };

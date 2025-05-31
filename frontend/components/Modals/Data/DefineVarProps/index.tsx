@@ -1,6 +1,7 @@
 "use client";
 
 import React, { FC, useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VariablesToScan from "./VariablesToScan";
 import PropertiesEditor from "./PropertiesEditor";
 import { Variable } from "@/types/Variable";
@@ -10,9 +11,17 @@ interface DefineVariablePropsProps {
     variables?: Variable[];
     caseLimit?: string;
     valueLimit?: string;
+    containerType?: "dialog" | "sidebar";
 }
 
-const DefineVariableProps: FC<DefineVariablePropsProps> = ({ onClose, variables, caseLimit, valueLimit }) => {
+// Main content component that's agnostic of container type
+const DefineVariablePropsContent: FC<DefineVariablePropsProps> = ({ 
+    onClose, 
+    variables, 
+    caseLimit, 
+    valueLimit,
+    containerType = "dialog"
+}) => {
     // State to determine which component to render
     const [currentStep, setCurrentStep] = useState<"scan" | "editor">(variables ? "editor" : "scan");
 
@@ -50,6 +59,7 @@ const DefineVariableProps: FC<DefineVariablePropsProps> = ({ onClose, variables,
                 <VariablesToScan
                     onClose={onClose}
                     onContinue={handleContinueToEditor}
+                    containerType={containerType}
                 />
             ) : (
                 <PropertiesEditor
@@ -58,9 +68,47 @@ const DefineVariableProps: FC<DefineVariablePropsProps> = ({ onClose, variables,
                     caseLimit={limits.caseLimit}
                     valueLimit={limits.valueLimit}
                     onSave={() => onClose()}
+                    containerType={containerType}
                 />
             )}
         </>
+    );
+};
+
+// Main component that handles different container types
+const DefineVariableProps: FC<DefineVariablePropsProps> = ({ 
+    onClose, 
+    variables, 
+    caseLimit, 
+    valueLimit,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container without header (header is provided by SidebarContainer)
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <DefineVariablePropsContent 
+                        onClose={onClose} 
+                        variables={variables} 
+                        caseLimit={caseLimit} 
+                        valueLimit={valueLimit}
+                        containerType={containerType}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, the individual components will handle their own dialogs
+    return (
+        <DefineVariablePropsContent 
+            onClose={onClose} 
+            variables={variables} 
+            caseLimit={caseLimit} 
+            valueLimit={valueLimit}
+            containerType={containerType}
+        />
     );
 };
 

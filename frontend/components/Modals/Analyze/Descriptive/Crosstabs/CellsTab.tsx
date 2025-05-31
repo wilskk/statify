@@ -3,69 +3,40 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { CellsTabProps } from "./types";
 
 // Define the union type for nonintegerWeights
 type NonintegerWeightsType = 'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment';
 
-interface CellsTabProps {
-    observedCounts: boolean;
-    expectedCounts: boolean;
-    hideSmallCounts: boolean;
-    smallCountThreshold: string;
-    rowPercentages: boolean;
-    columnPercentages: boolean;
-    totalPercentages: boolean;
-    compareColumnProportions: boolean;
-    adjustPValues: boolean;
-    unstandardizedResiduals: boolean;
-    standardizedResiduals: boolean;
-    adjustedStandardizedResiduals: boolean;
-    // Update the type to use the union type instead of string
-    nonintegerWeights: NonintegerWeightsType;
-    setObservedCounts: (value: boolean) => void;
-    setExpectedCounts: (value: boolean) => void;
-    setHideSmallCounts: (value: boolean) => void;
-    setSmallCountThreshold: (value: string) => void;
-    setRowPercentages: (value: boolean) => void;
-    setColumnPercentages: (value: boolean) => void;
-    setTotalPercentages: (value: boolean) => void;
-    setCompareColumnProportions: (value: boolean) => void;
-    setAdjustPValues: (value: boolean) => void;
-    setUnstandardizedResiduals: (value: boolean) => void;
-    setStandardizedResiduals: (value: boolean) => void;
-    setAdjustedStandardizedResiduals: (value: boolean) => void;
-    // Update the function signature to match the expected type
-    setNonintegerWeights: (value: NonintegerWeightsType) => void;
-}
-
 const CellsTab: FC<CellsTabProps> = ({
-                                         observedCounts,
-                                         expectedCounts,
-                                         hideSmallCounts,
-                                         smallCountThreshold,
-                                         rowPercentages,
-                                         columnPercentages,
-                                         totalPercentages,
-                                         compareColumnProportions,
-                                         adjustPValues,
-                                         unstandardizedResiduals,
-                                         standardizedResiduals,
-                                         adjustedStandardizedResiduals,
-                                         nonintegerWeights,
-                                         setObservedCounts,
-                                         setExpectedCounts,
-                                         setHideSmallCounts,
-                                         setSmallCountThreshold,
-                                         setRowPercentages,
-                                         setColumnPercentages,
-                                         setTotalPercentages,
-                                         setCompareColumnProportions,
-                                         setAdjustPValues,
-                                         setUnstandardizedResiduals,
-                                         setStandardizedResiduals,
-                                         setAdjustedStandardizedResiduals,
-                                         setNonintegerWeights
-                                     }) => {
+    observedCounts,
+    expectedCounts,
+    hideSmallCounts,
+    smallCountThreshold,
+    rowPercentages,
+    columnPercentages,
+    totalPercentages,
+    compareColumnProportions,
+    adjustPValues,
+    unstandardizedResiduals,
+    standardizedResiduals,
+    adjustedStandardizedResiduals,
+    nonintegerWeights,
+    setObservedCounts,
+    setExpectedCounts,
+    setHideSmallCounts,
+    setSmallCountThreshold,
+    setRowPercentages,
+    setColumnPercentages,
+    setTotalPercentages,
+    setCompareColumnProportions,
+    setAdjustPValues,
+    setUnstandardizedResiduals,
+    setStandardizedResiduals,
+    setAdjustedStandardizedResiduals,
+    setNonintegerWeights,
+    containerType = "dialog"
+}) => {
     return (
         <div className="p-6">
             <div className="grid grid-cols-2 gap-6">
@@ -242,7 +213,7 @@ const CellsTab: FC<CellsTabProps> = ({
                 <div className="text-sm font-medium mb-3">Noninteger Weights</div>
                 <RadioGroup
                     value={nonintegerWeights}
-                    onValueChange={(value) => setNonintegerWeights(value as NonintegerWeightsType)}
+                    onValueChange={(value) => setNonintegerWeights(value as typeof nonintegerWeights)}
                     className="grid grid-cols-2 gap-2"
                 >
                     <div className="flex items-center">

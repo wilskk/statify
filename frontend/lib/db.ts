@@ -1,5 +1,5 @@
 import Dexie, { Table } from "dexie";
-import { Cell } from "@/types/Data";
+import { DataRow } from "@/types/Data";
 import { Variable } from "@/types/Variable";
 import { ValueLabel } from "@/types/Variable";
 import { Log } from "@/types/Result";
@@ -8,7 +8,7 @@ import { Statistic } from "@/types/Result";
 import { Meta } from "@/stores/useMetaStore";
 
 class MyDatabase extends Dexie {
-    cells!: Table<Cell, [number, number]>;
+    dataRows!: Table<{ id: number, data: DataRow }, number>;
     variables!: Table<Variable, number>;
     valueLabels!: Table<ValueLabel, number>;
 
@@ -21,8 +21,8 @@ class MyDatabase extends Dexie {
     constructor() {
         super("Statify");
 
-        this.version(4).stores({
-            cells: "[col+row], col, row",
+        this.version(5).stores({
+            dataRows: "++id",
             variables: "++id, &columnIndex, &name, type",
             valueLabels: "++id, variableName, value",
 
@@ -33,7 +33,7 @@ class MyDatabase extends Dexie {
             metadata: "&id"
         });
 
-        this.cells = this.table("cells");
+        this.dataRows = this.table("dataRows");
         this.variables = this.table("variables");
         this.valueLabels = this.table("valueLabels");
         this.logs = this.table("logs");

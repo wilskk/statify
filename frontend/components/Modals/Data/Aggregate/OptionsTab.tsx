@@ -7,13 +7,15 @@ interface OptionsTabProps {
     setIsAlreadySorted: (value: boolean) => void;
     sortBeforeAggregating: boolean;
     setSortBeforeAggregating: (value: boolean) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 const OptionsTab: FC<OptionsTabProps> = ({
                                              isAlreadySorted,
                                              setIsAlreadySorted,
                                              sortBeforeAggregating,
-                                             setSortBeforeAggregating
+                                             setSortBeforeAggregating,
+                                             containerType = "dialog"
                                          }) => {
     return (
         <div className="border border-border p-2 rounded-md bg-card">
