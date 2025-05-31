@@ -10,7 +10,8 @@ import {
     MenubarSeparator,
 } from "@/components/ui/menubar";
 import { useActions } from "@/hooks/actions";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { useModal } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
 
 const EditMenu: React.FC = () => {
     const { openModal } = useModal();

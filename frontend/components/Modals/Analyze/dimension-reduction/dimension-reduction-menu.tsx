@@ -17,18 +17,14 @@ const DimensionReductionMenu: React.FC = () => {
         <MenubarSub>
             <MenubarSubTrigger>Dimension Reduction</MenubarSubTrigger>
             <MenubarSubContent>
-                <MenubarItem onClick={() => openModal(ModalType.Factor)}>
+                <MenubarItem disabled>
                     Factor
                 </MenubarItem>
-                <MenubarItem
-                    onClick={() => openModal(ModalType.CorrespondenceAnalysis)}
-                >
+                <MenubarItem disabled>
                     Correspondence Analysis
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem
-                    onClick={() => openModal(ModalType.OptimalScaling)}
-                >
+                <MenubarItem disabled>
                     Optimal Scaling
                 </MenubarItem>
             </MenubarSubContent>

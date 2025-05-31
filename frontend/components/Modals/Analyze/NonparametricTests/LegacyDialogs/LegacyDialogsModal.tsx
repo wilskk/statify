@@ -29,30 +29,31 @@ interface LegacyDialogsModalProps {
 
 export const LegacyDialogsModal: FC<LegacyDialogsModalProps> = ({ modalType, onClose, props }) => {
     switch (modalType) {
-        case ModalType.ChiSquare:
-            return <ChiSquare onClose={onClose} {...props} />;
-        case ModalType.Runs:
-            return <Runs onClose={onClose} {...props} />;
-        case ModalType.TwoIndependentSamples:
-            return <TwoIndependentSamples onClose={onClose} {...props} />;
-        case ModalType.KIndependentSamples:
-            return <KIndependentSamples onClose={onClose} {...props} />;
-        case ModalType.TwoRelatedSamples:
-            return <TwoRelatedSamples onClose={onClose} {...props} />;
-        case ModalType.KRelatedSamples:
-            return <KRelatedSamples onClose={onClose} {...props} />;
+        // case ModalType.ChiSquare:
+        //     return <ChiSquare onClose={onClose} {...props} />;
+        // case ModalType.Runs:
+        //     return <Runs onClose={onClose} {...props} />;
+        // case ModalType.TwoIndependentSamples:
+        //     return <TwoIndependentSamples onClose={onClose} {...props} />;
+        // case ModalType.KIndependentSamples:
+        //     return <KIndependentSamples onClose={onClose} {...props} />;
+        // case ModalType.TwoRelatedSamples:
+        //     return <TwoRelatedSamples onClose={onClose} {...props} />;
+        // case ModalType.KRelatedSamples:
+        //     return <KRelatedSamples onClose={onClose} {...props} />;
         default:
             return null;
     }
 };
 
 export const isLegacyDialogsModal = (type: ModalType): boolean => {
-    return [
-        ModalType.ChiSquare,
-        ModalType.Runs,
-        ModalType.TwoIndependentSamples,
-        ModalType.KIndependentSamples,
-        ModalType.TwoRelatedSamples,
-        ModalType.KRelatedSamples
-    ].includes(type);
+    return false; // Always return false as all modals are disabled
+    // return [
+    //     // ModalType.ChiSquare,
+    //     // ModalType.Runs,
+    //     // ModalType.TwoIndependentSamples,
+    //     // ModalType.KIndependentSamples,
+    //     // ModalType.TwoRelatedSamples,
+    //     // ModalType.KRelatedSamples
+    // ].includes(type);
 };

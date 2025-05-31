@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -15,46 +16,57 @@ enum RestructureMethod {
     TransposeAllData = "transpose_all_data",
 }
 
-const RestructureDataWizard: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    // State untuk mengelola step wizard
+interface RestructureDataWizardProps {
+    onClose: () => void;
+    containerType?: "dialog" | "sidebar";
+}
+
+// Content component separated from container logic
+const RestructureDataWizardContent: React.FC<RestructureDataWizardProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // State to manage wizard steps
     const [currentStep, setCurrentStep] = useState<number>(1);
 
-    // State untuk menyimpan metode restruktur yang dipilih
+    // State to store the selected restructure method
     const [method, setMethod] = useState<RestructureMethod>(
         RestructureMethod.VariablesToCases
     );
 
-    // Event handler untuk tombol Next
+    // Event handler for Next button
     const handleNext = () => {
-        // Di sini Anda bisa melakukan validasi atau menyimpan pilihan sebelum ke step berikutnya
+        // Here you can validate or save choices before moving to the next step
         setCurrentStep((prev) => prev + 1);
     };
 
-    // Event handler untuk tombol Back
+    // Event handler for Back button
     const handleBack = () => {
         setCurrentStep((prev) => prev - 1);
     };
 
-    // Event handler untuk tombol Cancel
+    // Event handler for Cancel button
     const handleCancel = () => {
-        // Tutup wizard tanpa menyimpan perubahan
+        // Close wizard without saving changes
         onClose();
     };
 
-    // Contoh tampilan step 2 (opsional)
+    // Example of step 2 view (optional)
     const Step2 = () => (
         <div>
-            <p>Ini adalah contoh Step 2. Di sini Anda dapat menambahkan form/opsi lanjutan.</p>
+            <p>This is an example of Step 2. Here you can add advanced form/options.</p>
         </div>
     );
 
     return (
-        <DialogContent className="max-w-xl">
+        <>
             {currentStep === 1 && (
                 <>
-                    <DialogHeader>
-                        <DialogTitle>Welcome to the Restructure Data Wizard!</DialogTitle>
-                    </DialogHeader>
+                    {containerType === "dialog" && (
+                        <DialogHeader>
+                            <DialogTitle>Welcome to the Restructure Data Wizard!</DialogTitle>
+                        </DialogHeader>
+                    )}
                     <div className="mb-4 space-y-2 text-foreground">
                         <p>
                             This wizard helps you restructure your data from multiple variables
@@ -96,48 +108,82 @@ const RestructureDataWizard: React.FC<{ onClose: () => void }> = ({ onClose }) =
                             </label>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" disabled>
-                            Back
-                        </Button>
-                        <Button variant="outline" onClick={handleNext}>
-                            Next
-                        </Button>
-                        <Button variant="outline" onClick={handleCancel}>
-                            Cancel
-                        </Button>
-                        <Button variant="outline" onClick={() => alert("Help dialog here")}>
-                            Help
-                        </Button>
-                    </DialogFooter>
+                    <div className={containerType === "dialog" ? "" : "border-t border-border bg-muted pt-4"}>
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" disabled className="h-8 px-4">
+                                Back
+                            </Button>
+                            <Button variant="outline" onClick={handleNext} className="h-8 px-4">
+                                Next
+                            </Button>
+                            <Button variant="outline" onClick={handleCancel} className="h-8 px-4">
+                                Cancel
+                            </Button>
+                            <Button variant="outline" onClick={() => alert("Help dialog here")} className="h-8 px-4">
+                                Help
+                            </Button>
+                        </div>
+                    </div>
                 </>
             )}
 
             {currentStep === 2 && (
                 <>
-                    <DialogHeader>
-                        <DialogTitle>Restructure Data - Step 2</DialogTitle>
-                    </DialogHeader>
+                    {containerType === "dialog" && (
+                        <DialogHeader>
+                            <DialogTitle>Restructure Data - Step 2</DialogTitle>
+                        </DialogHeader>
+                    )}
                     <Step2 />
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleBack}>
-                            Back
-                        </Button>
-                        <Button variant="outline" onClick={() => alert("Next step")}>
-                            Next
-                        </Button>
-                        <Button variant="outline" onClick={handleCancel}>
-                            Cancel
-                        </Button>
-                        <Button variant="outline" onClick={() => alert("Help dialog here")}>
-                            Help
-                        </Button>
-                    </DialogFooter>
+                    <div className={containerType === "dialog" ? "" : "border-t border-border bg-muted pt-4"}>
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={handleBack} className="h-8 px-4">
+                                Back
+                            </Button>
+                            <Button variant="outline" onClick={() => alert("Next step")} className="h-8 px-4">
+                                Next
+                            </Button>
+                            <Button variant="outline" onClick={handleCancel} className="h-8 px-4">
+                                Cancel
+                            </Button>
+                            <Button variant="outline" onClick={() => alert("Help dialog here")} className="h-8 px-4">
+                                Help
+                            </Button>
+                        </div>
+                    </div>
                 </>
             )}
 
-            {/* Tambahkan step lain jika diperlukan */}
-        </DialogContent>
+            {/* Add more steps if needed */}
+        </>
+    );
+};
+
+// Main component that handles different container types
+const RestructureDataWizard: React.FC<RestructureDataWizardProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground p-6">
+                <div className="flex-grow flex flex-col overflow-auto">
+                    {/* Title for sidebar version */}
+                    <h2 className="text-lg font-semibold mb-4">Restructure Data Wizard</h2>
+                    <RestructureDataWizardContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-xl">
+                <RestructureDataWizardContent onClose={onClose} containerType={containerType} />
+            </DialogContent>
+        </Dialog>
     );
 };
 

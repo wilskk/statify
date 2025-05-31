@@ -87,15 +87,17 @@ interface PropertiesEditorProps {
     caseLimit: string;
     valueLimit: string;
     onSave?: (variables: Variable[]) => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const PropertiesEditor: FC<PropertiesEditorProps> = ({
-                                                         onClose,
-                                                         variables,
-                                                         caseLimit,
-                                                         valueLimit,
-                                                         onSave
-                                                     }) => {
+const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
+    onClose,
+    variables,
+    caseLimit,
+    valueLimit,
+    onSave,
+    containerType = "dialog"
+}) => {
     // Get data from data store
     const { data, isLoading: dataIsLoading } = useDataStore();
 
@@ -813,295 +815,287 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
 
     return (
         <>
-            <DialogContent className="max-w-[880px] max-h-[90vh] p-0 bg-background">
-                <DialogHeader className="px-4 py-3 border-b border-border">
-                    <DialogTitle className="flex items-center text-sm font-semibold text-foreground">
-                        Define Variable Properties
-                    </DialogTitle>
-                </DialogHeader>
-
-                <div className="grid grid-cols-12 gap-4 p-4">
-                    {/* Left Column - Scanned Variable List */}
-                    <div className="col-span-4 flex flex-col">
-                        <div className="text-xs font-semibold mb-1 text-foreground">Scanned Variable List</div>
-                        <div className="border border-border rounded h-full overflow-y-auto bg-card">
-                            <div className="bg-muted border-b border-border">
-                                <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground">
-                                    <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Labeled">
-                                        <span className="block truncate">Labeled</span>
-                                    </div>
-                                    <div className="col-span-4 p-1 text-center border-r border-border overflow-hidden" title="Measurement">
-                                        <span className="block truncate">Measurement</span>
-                                    </div>
-                                    <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Role">
-                                        <span className="block truncate">Role</span>
-                                    </div>
-                                    <div className="col-span-4 p-1 text-center overflow-hidden" title="Variable">
-                                        <span className="block truncate">Variable</span>
-                                    </div>
+            <div className="grid grid-cols-12 gap-4 p-4">
+                {/* Left Column - Scanned Variable List */}
+                <div className="col-span-4 flex flex-col">
+                    <div className="text-xs font-semibold mb-1 text-foreground">Scanned Variable List</div>
+                    <div className="border border-border rounded h-full overflow-y-auto bg-card">
+                        <div className="bg-muted border-b border-border">
+                            <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground">
+                                <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Labeled">
+                                    <span className="block truncate">Labeled</span>
+                                </div>
+                                <div className="col-span-4 p-1 text-center border-r border-border overflow-hidden" title="Measurement">
+                                    <span className="block truncate">Measurement</span>
+                                </div>
+                                <div className="col-span-2 p-1 text-center border-r border-border overflow-hidden" title="Role">
+                                    <span className="block truncate">Role</span>
+                                </div>
+                                <div className="col-span-4 p-1 text-center overflow-hidden" title="Variable">
+                                    <span className="block truncate">Variable</span>
                                 </div>
                             </div>
-                            <div className="overflow-y-auto" style={{ maxHeight: '160px' }}>
-                                {modifiedVariables.map((variable, index) => (
-                                    <div
-                                        key={variable.columnIndex}
-                                        className={`grid grid-cols-12 text-xs cursor-pointer border-b border-border hover:bg-accent ${selectedVariableIndex === index ? 'bg-primary text-primary-foreground' : 'text-card-foreground'}`}
-                                        onClick={() => handleVariableChange(index)}
-                                    >
-                                        <div className="col-span-2 p-1 text-center border-r border-border">
-                                            <input
-                                                type="checkbox"
-                                                className="w-3 h-3 accent-primary"
-                                                checked={variable.values.length > 0}
-                                                readOnly
-                                            />
-                                        </div>
-                                        <div className="col-span-4 p-1 text-center border-r border-border flex items-center justify-center"
-                                             title={formatDropdownText(variable.measure)}>
-                                            {getVariableIcon(variable)}
-                                            <span className="truncate">{formatDropdownText(variable.measure)}</span>
-                                        </div>
-                                        <div className="col-span-2 p-1 text-center border-r border-border truncate"
-                                             title={formatDropdownText(variable.role)}>
-                                            {formatDropdownText(variable.role)}
-                                        </div>
-                                        <div className="col-span-4 p-1 text-center truncate"
-                                             title={variable.name}>
-                                            {variable.name}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
-                        <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                            <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
-                            <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
-                        </div>
-                    </div>
-
-                    {/* Right Column - Variable Properties */}
-                    <div className="col-span-8 flex flex-col">
-                        {currentVariable ? (
-                            <>
-                                <div className="grid grid-cols-12 gap-2">
-                                    {/* Left Column of Form */}
-                                    <div className="col-span-6 space-y-2">
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Current Variable:</div>
-                                            <div className="col-span-7">
-                                                <Input
-                                                    value={currentVariable.name}
-                                                    onChange={(e) => handleVariableFieldChange('name', e.target.value)}
-                                                    className="h-5 w-full text-xs"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Label:</div>
-                                            <div className="col-span-7">
-                                                <Input
-                                                    value={currentVariable.label || ''}
-                                                    onChange={(e) => handleVariableFieldChange('label', e.target.value)}
-                                                    className="h-5 w-full text-xs"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Measurement Level:</div>
-                                            <div className="col-span-7 flex">
-                                                <div className="relative flex-grow">
-                                                    <div
-                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
-                                                        onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}
-                                                        title={formatDropdownText(currentVariable.measure)}
-                                                    >
-                                                        {getVariableIcon(currentVariable)}
-                                                        <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.measure)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
-                                                    </div>
-                                                    {showMeasureDropdown && renderDropdown(
-                                                        MEASURE_OPTIONS,
-                                                        currentVariable.measure,
-                                                        (value) => handleVariableFieldChange('measure', value),
-                                                        () => setShowMeasureDropdown(false)
-                                                    )}
-                                                </div>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    className="text-xs h-5 px-2 ml-1 whitespace-nowrap"
-                                                    onClick={handleSuggestMeasurement}
-                                                >
-                                                    Suggest
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Role:</div>
-                                            <div className="col-span-7">
-                                                <div className="relative w-full">
-                                                    <div
-                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
-                                                        onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-                                                        title={formatDropdownText(currentVariable.role)}
-                                                    >
-                                                        <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.role)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
-                                                    </div>
-                                                    {showRoleDropdown && renderDropdown(
-                                                        ROLE_OPTIONS,
-                                                        currentVariable.role,
-                                                        (value) => handleVariableFieldChange('role', value),
-                                                        () => setShowRoleDropdown(false)
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Unlabeled values:</div>
-                                            <div className="col-span-7">
-                                                <Input
-                                                    value={unlabeledValuesCount}
-                                                    className="w-full h-5 text-xs bg-muted text-muted-foreground border-input"
-                                                    readOnly
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Right Column of Form */}
-                                    <div className="col-span-6 space-y-2">
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Type:</div>
-                                            <div className="col-span-9 flex">
-                                                <div className="relative flex-1">
-                                                    <div
-                                                        className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
-                                                        onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-                                                        title={getFormattedTypeName(currentVariable.type)}
-                                                    >
-                                                        <span className="capitalize truncate text-foreground">{getFormattedTypeName(currentVariable.type)}</span>
-                                                        <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
-                                                    </div>
-                                                    {showTypeDropdown && renderDropdown(
-                                                        TYPE_OPTIONS,
-                                                        currentVariable.type,
-                                                        (value) => handleVariableFieldChange('type', value),
-                                                        () => setShowTypeDropdown(false)
-                                                    )}
-                                                </div>
-                                                <div className="relative ml-1 flex-1">
-                                                    <div
-                                                        className={`flex items-center h-5 text-xs border rounded px-1 w-full ${isDateType(currentVariable.type) ? 'bg-background border-input cursor-pointer hover:border-ring' : 'bg-muted border-input cursor-not-allowed text-muted-foreground/70'}`}
-                                                        onClick={() => isDateType(currentVariable.type) && setShowDateFormatDropdown(!showDateFormatDropdown)}
-                                                        title={isDateType(currentVariable.type) ? "Select date format" : "Format (only available for date types)"}
-                                                    >
-                                                        <span className={`capitalize truncate ${isDateType(currentVariable.type) ? 'text-foreground' : 'text-muted-foreground/70'}`}>Format</span>
-                                                        <ChevronDown size={12} className={`ml-auto flex-shrink-0 ${isDateType(currentVariable.type) ? 'text-muted-foreground' : 'text-muted-foreground/70'}`} />
-                                                    </div>
-                                                    {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown(currentVariable, handleVariableFieldChange, setShowDateFormatDropdown)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-12 items-center">
-                                            <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Width:</div>
-                                            <div className="col-span-4">
-                                                <input
-                                                    value={currentVariable.width}
-                                                    onChange={(e) => handleVariableFieldChange('width', parseInt(e.target.value) || 0)}
-                                                    className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
-                                                    disabled={isDateType(currentVariable.type)}
-                                                />
-                                            </div>
-                                            <div className="col-span-3 text-xs font-semibold text-foreground px-1">Decimals:</div>
-                                            <div className="col-span-2">
-                                                <input
-                                                    value={currentVariable.decimals}
-                                                    onChange={(e) => handleVariableFieldChange('decimals', parseInt(e.target.value) || 0)}
-                                                    className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
-                                                    disabled={isDateType(currentVariable.type)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Value Labels Grid */}
-                                <div className="mt-3">
-                                    <div className="flex items-center mb-1">
-                                        <div className="text-xs font-semibold text-foreground mr-1">
-                                            Value Labels for {currentVariable.name}:
-                                        </div>
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Info size={12} className="text-muted-foreground cursor-help" />
-                                                </TooltipTrigger>
-                                                <TooltipContent side="top">
-                                                    <p className="text-xs">
-                                                        Enter or paste values and their labels. Changed rows are indicated.
-                                                        <br />Use the checkbox to mark values as missing.
-                                                    </p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        <span className="ml-auto text-xs text-muted-foreground">
-                                            Unlabeled Values: {unlabeledValuesCount}
-                                        </span>
-                                    </div>
-                                    <div className="h-48 border border-border rounded overflow-hidden">
-                                        <HotTable
-                                            ref={hotTableRef}
-                                            data={gridData}
-                                            columns={[
-                                                { data: 0, title: '#', readOnly: true, width: 30, className: 'htCenter htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
-                                                { data: 1, title: '<span class="text-destructive">*</span>', renderer: checkboxRenderer, readOnly: true, width: 30, className: 'htCenter htMiddle text-xs bg-muted border-r-border' }, // Changed
-                                                { data: 2, title: 'Missing', renderer: checkboxRenderer, width: 50, className: 'htCenter htMiddle text-xs bg-muted border-r-border' },
-                                                { data: 3, title: 'Count', type: 'numeric', readOnly: true, width: 50, className: 'htRight htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
-                                                { data: 4, title: 'Value', width: 100, className: 'htLeft htMiddle text-xs text-foreground' },
-                                                { data: 5, title: 'Label', width: 150, className: 'htLeft htMiddle text-xs text-foreground' },
-                                            ]}
-                                            rowHeaders={false}
-                                            colHeaders={true}
-                                            manualColumnResize={true}
-                                            manualRowResize={true}
-                                            selectionMode="single"
-                                            className="htXSmall htCustomTheme" // Added htCustomTheme for potential global overrides
-                                            licenseKey="non-commercial-and-evaluation"
-                                            afterChange={handleDataChange}
-                                            // afterSelection={handleCellSelection}
+                        <div className="overflow-y-auto" style={{ maxHeight: '160px' }}>
+                            {modifiedVariables.map((variable, index) => (
+                                <div
+                                    key={variable.columnIndex}
+                                    className={`grid grid-cols-12 text-xs cursor-pointer border-b border-border hover:bg-accent ${selectedVariableIndex === index ? 'bg-primary text-primary-foreground' : 'text-card-foreground'}`}
+                                    onClick={() => handleVariableChange(index)}
+                                >
+                                    <div className="col-span-2 p-1 text-center border-r border-border">
+                                        <input
+                                            type="checkbox"
+                                            className="w-3 h-3 accent-primary"
+                                            checked={variable.values.length > 0}
+                                            readOnly
                                         />
                                     </div>
-                                    <div className="flex items-center justify-between mt-1">
-                                        <div className="flex gap-1">
-                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleAutoLabel}>Auto Label</Button>
-                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyFromVariable}>Copy From...</Button>
-                                            <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyToVariables}>Copy To...</Button>
-                                        </div>
-                                        {/* Placeholder for Add/Remove buttons if needed */}
+                                    <div className="col-span-4 p-1 text-center border-r border-border flex items-center justify-center"
+                                         title={formatDropdownText(variable.measure)}>
+                                        {getVariableIcon(variable)}
+                                        <span className="truncate">{formatDropdownText(variable.measure)}</span>
+                                    </div>
+                                    <div className="col-span-2 p-1 text-center border-r border-border truncate"
+                                         title={formatDropdownText(variable.role)}>
+                                        {formatDropdownText(variable.role)}
+                                    </div>
+                                    <div className="col-span-4 p-1 text-center truncate"
+                                         title={variable.name}>
+                                        {variable.name}
                                     </div>
                                 </div>
-                            </>
-                        ) : (
-                            <div className="text-center text-sm text-muted-foreground py-10">
-                                Select a variable from the list to view and edit its properties.
-                            </div>
-                        )}
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                        <div>Cases scanned: <input value={caseLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
+                        <div>Value list limit: <input value={valueLimit} className="w-10 h-5 text-xs border border-input rounded px-1 bg-muted text-muted-foreground" readOnly /></div>
                     </div>
                 </div>
 
-                <DialogFooter className="px-4 py-3 border-t border-border bg-muted flex-shrink-0">
-                    <div className="flex items-center">
-                        <Button variant="link" size="sm" className="text-xs p-0 text-muted-foreground hover:text-foreground">
-                            <Info size={14} className="mr-1"/> Help
-                        </Button>
-                    </div>
+                {/* Right Column - Variable Properties */}
+                <div className="col-span-8 flex flex-col">
+                    {currentVariable ? (
+                        <>
+                            <div className="grid grid-cols-12 gap-2">
+                                {/* Left Column of Form */}
+                                <div className="col-span-6 space-y-2">
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Current Variable:</div>
+                                        <div className="col-span-7">
+                                            <Input
+                                                value={currentVariable.name}
+                                                onChange={(e) => handleVariableFieldChange('name', e.target.value)}
+                                                className="h-5 w-full text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Label:</div>
+                                        <div className="col-span-7">
+                                            <Input
+                                                value={currentVariable.label || ''}
+                                                onChange={(e) => handleVariableFieldChange('label', e.target.value)}
+                                                className="h-5 w-full text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Measurement Level:</div>
+                                        <div className="col-span-7">
+                                            <div className="relative flex-grow">
+                                                <div
+                                                    className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
+                                                    onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}
+                                                    title={formatDropdownText(currentVariable.measure)}
+                                                >
+                                                    {getVariableIcon(currentVariable)}
+                                                    <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.measure)}</span>
+                                                    <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
+                                                </div>
+                                                {showMeasureDropdown && renderDropdown(
+                                                    MEASURE_OPTIONS,
+                                                    currentVariable.measure,
+                                                    (value) => handleVariableFieldChange('measure', value),
+                                                    () => setShowMeasureDropdown(false)
+                                                )}
+                                            </div>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="text-xs h-5 px-2 ml-1 whitespace-nowrap"
+                                                onClick={handleSuggestMeasurement}
+                                            >
+                                                Suggest
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Role:</div>
+                                        <div className="col-span-7">
+                                            <div className="relative w-full">
+                                                <div
+                                                    className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
+                                                    onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                                                    title={formatDropdownText(currentVariable.role)}
+                                                >
+                                                    <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.role)}</span>
+                                                    <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
+                                                </div>
+                                                {showRoleDropdown && renderDropdown(
+                                                    ROLE_OPTIONS,
+                                                    currentVariable.role,
+                                                    (value) => handleVariableFieldChange('role', value),
+                                                    () => setShowRoleDropdown(false)
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-5 text-xs font-semibold text-foreground pr-1">Unlabeled values:</div>
+                                        <div className="col-span-7">
+                                            <Input
+                                                value={unlabeledValuesCount}
+                                                className="w-full h-5 text-xs bg-muted text-muted-foreground border-input"
+                                                readOnly
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column of Form */}
+                                <div className="col-span-6 space-y-2">
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Type:</div>
+                                        <div className="col-span-9 flex">
+                                            <div className="relative flex-1">
+                                                <div
+                                                    className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring"
+                                                    onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                                                    title={getFormattedTypeName(currentVariable.type)}
+                                                >
+                                                    <span className="capitalize truncate text-foreground">{getFormattedTypeName(currentVariable.type)}</span>
+                                                    <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
+                                                </div>
+                                                {showTypeDropdown && renderDropdown(
+                                                    TYPE_OPTIONS,
+                                                    currentVariable.type,
+                                                    (value) => handleVariableFieldChange('type', value),
+                                                    () => setShowTypeDropdown(false)
+                                                )}
+                                            </div>
+                                            <div className="relative ml-1 flex-1">
+                                                <div
+                                                    className={`flex items-center h-5 text-xs border rounded px-1 w-full ${isDateType(currentVariable.type) ? 'bg-background border-input cursor-pointer hover:border-ring' : 'bg-muted border-input cursor-not-allowed text-muted-foreground/70'}`}
+                                                    onClick={() => isDateType(currentVariable.type) && setShowDateFormatDropdown(!showDateFormatDropdown)}
+                                                    title={isDateType(currentVariable.type) ? "Select date format" : "Format (only available for date types)"}
+                                                >
+                                                    <span className={`capitalize truncate ${isDateType(currentVariable.type) ? 'text-foreground' : 'text-muted-foreground/70'}`}>Format</span>
+                                                    <ChevronDown size={12} className={`ml-auto flex-shrink-0 ${isDateType(currentVariable.type) ? 'text-muted-foreground' : 'text-muted-foreground/70'}`} />
+                                                </div>
+                                                {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown(currentVariable, handleVariableFieldChange, setShowDateFormatDropdown)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center">
+                                        <div className="col-span-3 text-xs font-semibold text-foreground pr-1 pl-2">Width:</div>
+                                        <div className="col-span-4">
+                                            <input
+                                                value={currentVariable.width}
+                                                onChange={(e) => handleVariableFieldChange('width', parseInt(e.target.value) || 0)}
+                                                className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
+                                                disabled={isDateType(currentVariable.type)}
+                                            />
+                                        </div>
+                                        <div className="col-span-3 text-xs font-semibold text-foreground px-1">Decimals:</div>
+                                        <div className="col-span-2">
+                                            <input
+                                                value={currentVariable.decimals}
+                                                onChange={(e) => handleVariableFieldChange('decimals', parseInt(e.target.value) || 0)}
+                                                className={`w-full h-5 text-xs border border-gray-300 rounded px-1 ${isDateType(currentVariable.type) ? 'bg-gray-100' : 'bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black'}`}
+                                                disabled={isDateType(currentVariable.type)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Value Labels Grid */}
+                            <div className="mt-3">
+                                <div className="flex items-center mb-1">
+                                    <div className="text-xs font-semibold text-foreground mr-1">
+                                        Value Labels for {currentVariable.name}:
+                                    </div>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info size={12} className="text-muted-foreground cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top">
+                                                <p className="text-xs">
+                                                    Enter or paste values and their labels. Changed rows are indicated.
+                                                    <br />Use the checkbox to mark values as missing.
+                                                </p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <span className="ml-auto text-xs text-muted-foreground">
+                                        Unlabeled Values: {unlabeledValuesCount}
+                                    </span>
+                                </div>
+                                <div className="h-48 border border-border rounded overflow-hidden">
+                                    <HotTable
+                                        ref={hotTableRef}
+                                        data={gridData}
+                                        columns={[
+                                            { data: 0, title: '#', readOnly: true, width: 30, className: 'htCenter htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
+                                            { data: 1, title: '<span class="text-destructive">*</span>', renderer: checkboxRenderer, readOnly: true, width: 30, className: 'htCenter htMiddle text-xs bg-muted border-r-border' }, // Changed
+                                            { data: 2, title: 'Missing', renderer: checkboxRenderer, width: 50, className: 'htCenter htMiddle text-xs bg-muted border-r-border' },
+                                            { data: 3, title: 'Count', type: 'numeric', readOnly: true, width: 50, className: 'htRight htMiddle text-xs text-muted-foreground bg-muted border-r-border' },
+                                            { data: 4, title: 'Value', width: 100, className: 'htLeft htMiddle text-xs text-foreground' },
+                                            { data: 5, title: 'Label', width: 150, className: 'htLeft htMiddle text-xs text-foreground' },
+                                        ]}
+                                        rowHeaders={false}
+                                        colHeaders={true}
+                                        manualColumnResize={true}
+                                        manualRowResize={true}
+                                        selectionMode="single"
+                                        className="htXSmall htCustomTheme" // Added htCustomTheme for potential global overrides
+                                        licenseKey="non-commercial-and-evaluation"
+                                        afterChange={handleDataChange}
+                                        // afterSelection={handleCellSelection}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between mt-1">
+                                    <div className="flex gap-1">
+                                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleAutoLabel}>Auto Label</Button>
+                                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyFromVariable}>Copy From...</Button>
+                                        <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={handleCopyToVariables}>Copy To...</Button>
+                                    </div>
+                                    {/* Placeholder for Add/Remove buttons if needed */}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center text-sm text-muted-foreground py-10">
+                            Select a variable from the list to view and edit its properties.
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="px-4 py-3 border-t border-border bg-muted flex-shrink-0">
+                <div className="flex items-center justify-between">
+                    <Button variant="link" size="sm" className="text-xs p-0 text-muted-foreground hover:text-foreground">
+                        <Info size={14} className="mr-1"/> Help
+                    </Button>
                     <div className="flex items-center space-x-2">
                         <Button variant="outline" size="sm" className="text-xs h-7" onClick={onClose}>Cancel</Button>
                         <Button size="sm" className="text-xs h-7" onClick={handleSave}>OK</Button>
                     </div>
-                </DialogFooter>
-            </DialogContent>
+                </div>
+            </div>
 
             {/* Error Dialog */}
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
@@ -1142,6 +1136,56 @@ const PropertiesEditor: FC<PropertiesEditorProps> = ({
                 </DialogContent>
             </Dialog>
         </>
+    );
+};
+
+// Main component that handles different container types
+const PropertiesEditor: FC<PropertiesEditorProps> = ({ 
+    onClose, 
+    variables, 
+    caseLimit, 
+    valueLimit, 
+    onSave,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container without header
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <PropertiesEditorContent 
+                        onClose={onClose} 
+                        variables={variables} 
+                        caseLimit={caseLimit} 
+                        valueLimit={valueLimit}
+                        onSave={onSave}
+                        containerType={containerType}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[880px] max-h-[90vh] p-0 bg-background">
+                <DialogHeader className="px-4 py-3 border-b border-border">
+                    <DialogTitle className="flex items-center text-sm font-semibold text-foreground">
+                        Define Variable Properties
+                    </DialogTitle>
+                </DialogHeader>
+
+                <PropertiesEditorContent 
+                    onClose={onClose} 
+                    variables={variables} 
+                    caseLimit={caseLimit} 
+                    valueLimit={valueLimit}
+                    onSave={onSave}
+                    containerType={containerType}
+                />
+            </DialogContent>
+        </Dialog>
     );
 };
 

@@ -3,22 +3,7 @@ import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Updated Props interface for PlotsTab (removed props for deleted sections)
-interface PlotsTabProps {
-    boxplotOption: string;
-    setBoxplotOption: React.Dispatch<React.SetStateAction<string>>;
-    showStemAndLeaf: boolean;
-    setShowStemAndLeaf: React.Dispatch<React.SetStateAction<boolean>>;
-    showHistogram: boolean;
-    setShowHistogram: React.Dispatch<React.SetStateAction<boolean>>;
-    showNormalityPlots: boolean;
-    setShowNormalityPlots: React.Dispatch<React.SetStateAction<boolean>>;
-    // Removed: spreadVsLevelOption, setSpreadVsLevelOption
-    // Removed: transformationPower, setTransformationPower
-    // Removed: displayOption, setDisplayOption
-}
+import { PlotsTabProps } from "./types";
 
 const PlotsTab: FC<PlotsTabProps> = ({
     boxplotOption,
@@ -29,7 +14,7 @@ const PlotsTab: FC<PlotsTabProps> = ({
     setShowHistogram,
     showNormalityPlots,
     setShowNormalityPlots,
-    // Removed destructured props for deleted sections
+    containerType = "dialog"
 }) => {
     return (
         <div>
@@ -83,10 +68,6 @@ const PlotsTab: FC<PlotsTabProps> = ({
                     <Label htmlFor="normalityPlots" className="text-sm cursor-pointer">Normality plots with tests</Label>
                 </div>
             </div>
-
-            {/* Removed Spread vs Level Section */}
-
-            {/* Removed Display Options Section */}
         </div>
     );
 };

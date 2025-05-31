@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FolderOpen, FilePlus, Database, BookOpen } from 'lucide-react';
@@ -11,7 +11,7 @@ import { useModal, ModalType } from '@/hooks/useModal';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { DashboardLandingSkeleton } from '@/components/ui/Skeletons';
-import { ExampleDatasetModal } from '@/components/Modals/ExampleDatasetModal';
+import { ExampleDatasetModal } from '@/components/pages/dashboard/ExampleDatasetModal';
 
 interface ResourceItem {
     icon: React.ReactNode;
@@ -26,6 +26,7 @@ export default function DashboardPage() {
     const { openModal } = useModal();
     const { resetData } = useDataStore();
     const { resetVariables } = useVariableStore();
+    const [isExampleDatasetModalOpen, setIsExampleDatasetModalOpen] = useState(false);
 
     useEffect(() => {
         if (metaIsLoaded && meta.name) {
@@ -66,7 +67,7 @@ export default function DashboardPage() {
             icon: <Database className="h-12 w-12 text-primary" />,
             title: 'Dataset Contoh',
             description: 'Akses berbagai dataset untuk latihan',
-            action: () => openModal(ModalType.ExampleDataset),
+            action: () => setIsExampleDatasetModalOpen(true),
             primary: false
         }
     ];
@@ -160,7 +161,10 @@ export default function DashboardPage() {
                     })}
                 </div>
             </div>
-            <ExampleDatasetModal />
+            <ExampleDatasetModal 
+                isOpen={isExampleDatasetModalOpen}
+                onClose={() => setIsExampleDatasetModalOpen(false)}
+            />
         </div>
     );
 }

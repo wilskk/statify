@@ -9,8 +9,15 @@ import {
     MenubarItem,
     MenubarSeparator,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
+import { useModal } from "@/hooks/useModal";
 
+/**
+ * DataMenu - Menu component for Data operations
+ * 
+ * Provides menu items for accessing the various data-related modal operations
+ * such as variable configuration, case operations, and data structure operations.
+ */
 const DataMenu: React.FC = () => {
     const { openModal } = useModal();
 
