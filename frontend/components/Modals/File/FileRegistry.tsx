@@ -81,6 +81,6 @@ export const FILE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   [ModalType.ExportExcel]: "sidebar",
   
   // File operation modals
-  [ModalType.OpenData]: "sidebar",
+  [ModalType.OpenData]: "dialog",
   [ModalType.Print]: "sidebar",
 }; 
