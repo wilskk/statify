@@ -22,7 +22,7 @@ export interface UseImportExcelLogicOutput {
     stage: ImportExcelStage;
     isMobile: boolean;
     isPortrait: boolean;
-    handleFileSelect: (selectedFile: File) => void;
+    handleFileSelect: (selectedFile: File | null) => void;
     handleContinueToConfigure: () => void;
     handleBackToSelect: () => void;
     handleModalClose: () => void;
@@ -43,7 +43,7 @@ export interface ImportExcelProps {
 // Props for the first step (file selection)
 export interface ImportExcelSelectionStepProps {
     onClose: () => void; 
-    onFileSelect: (file: File) => void;
+    onFileSelect: (file: File | null) => void;
     onContinue: () => void;
     isLoading: boolean;
     error: string | null;

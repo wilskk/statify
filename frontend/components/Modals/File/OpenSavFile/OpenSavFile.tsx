@@ -78,22 +78,21 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
             </div>
             <div className="p-6 flex-grow flex flex-col">
                 <div
-                    className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors flex-grow mb-4 
-                        ${ isMobile && isPortrait ? 'min-h-[150px]' : 'min-h-[200px]'}
-                        ${ error && !selectedFile ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 hover:bg-muted/50"
+                    className={`w-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${isMobile && isPortrait ? 'p-6' : 'p-8'} ${
+                        error && !selectedFile ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 bg-background hover:bg-muted/50"
                     }`}
                     onClick={() => document.getElementById("sav-file-upload-step")?.click()}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                 >
-                    <Upload size={isMobile ? 28: 32} className={`mb-3 text-muted-foreground ${error && !selectedFile ? 'text-destructive/80' : ''}`} />
-                    <p className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-foreground`}>
-                        Click to select a .sav file
+                    <Upload size={isMobile ? 28 : 32} className={`mb-3 text-muted-foreground ${error && !selectedFile ? 'text-destructive/80' : ''}`} />
+                    <p className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-popover-foreground`}>
+                        {selectedFile ? selectedFile.name : "Click to select a .sav file"}
                     </p>
                     <p className={`text-xs text-muted-foreground ${error && !selectedFile ? 'text-destructive/70' : ''}`}>
                         {selectedFile
                             ? `${(selectedFile.size / 1024).toFixed(1)} KB`
-                            : "or drag and drop here"}
+                            : "or drag and drop here (.sav)"}
                     </p>
                     <input
                         id="sav-file-upload-step"
@@ -187,4 +186,4 @@ export const OpenSavFileModal: React.FC<OpenSavFileProps> = ({
 };
 
 // Export the component with both names for backward compatibility
-export default OpenSavFileModal; 
+export default OpenSavFileModal;

@@ -4,6 +4,7 @@ import { ModalType, BaseModalProps } from '@/types/modalTypes';
 // Import file modals directly - prioritize commonly used modals
 import { ImportCsv } from '@/components/Modals/File/ImportCsv';
 import { ImportExcelModal } from '@/components/Modals/File/ImportExcel';
+import { ImportClipboardModal } from '@/components/Modals/File/ImportClipboard';
 import { OpenSavFileModal } from '@/components/Modals/File/OpenSavFile';
 import { PrintModal } from '@/components/Modals/File/Print';
 import { ExportCsv } from '@/components/Modals/File/ExportCsv';
@@ -42,6 +43,7 @@ export const FILE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModal
   // Import/Export related
   [ModalType.ImportCSV]: ImportCsv as React.ComponentType<BaseModalProps>,
   [ModalType.ImportExcel]: ImportExcelModal as React.ComponentType<BaseModalProps>,
+  [ModalType.ImportClipboard]: ImportClipboardModal as React.ComponentType<BaseModalProps>,
   [ModalType.ExportCSV]: ExportCsv as React.ComponentType<BaseModalProps>,
   [ModalType.ExportExcel]: ExportExcel as React.ComponentType<BaseModalProps>,
   
@@ -77,10 +79,11 @@ export const FILE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   // Import/Export modals
   [ModalType.ImportCSV]: "sidebar",
   [ModalType.ImportExcel]: "sidebar", 
+  [ModalType.ImportClipboard]: "sidebar",
   [ModalType.ExportCSV]: "sidebar",
   [ModalType.ExportExcel]: "sidebar",
   
   // File operation modals
-  [ModalType.OpenData]: "dialog",
+  [ModalType.OpenData]: "sidebar",
   [ModalType.Print]: "sidebar",
 }; 

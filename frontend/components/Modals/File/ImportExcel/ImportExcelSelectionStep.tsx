@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, FileSpreadsheet, Loader2, X } from "lucide-react";
 import { ImportExcelSelectionStepProps } from "./ImportExcel.types"; // Adjusted import path
 
 export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> = ({
@@ -38,9 +39,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                 onFileSelect(file);
             }
         }
-    };
-
-    return (
+    };    return (
         <div className="flex flex-col h-full">
             <div className="px-6 py-4 border-b border-border flex items-center flex-shrink-0">
                 <FileSpreadsheet size={18} className="mr-2.5 flex-shrink-0 text-primary" />
@@ -54,23 +53,24 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                 </div>
             </div>
 
-            <div className="p-6 flex-grow overflow-y-auto">
+            <div className="flex-1 p-6 flex flex-col overflow-hidden">
                 <div
-                    className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${isMobile && isPortrait ? 'p-6' : 'p-8'} ${
-                        error ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 bg-background hover:bg-muted/50"
+                    className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors flex-1 mb-4 
+                        ${ isMobile && isPortrait ? 'min-h-[150px]' : 'min-h-[200px]'}
+                        ${ error ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 hover:bg-muted/50"
                     }`}
                     onClick={() => document.getElementById("excel-file-input-content-step")?.click()}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                 >
                     <FileSpreadsheet size={isMobile ? 28 : 32} className={`mb-3 text-muted-foreground ${error ? 'text-destructive/80' : ''}`} />
-                    <p className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-popover-foreground`}>
-                        {selectedFile ? selectedFile.name : "Click to select an Excel file"}
+                    <p className={`text-center font-medium mb-1 ${isMobile ? 'text-sm' : 'text-base'} text-foreground`}>
+                        Click to select an Excel file
                     </p>
                     <p className={`text-xs text-muted-foreground ${error ? 'text-destructive/70' : ''}`}>
                         {selectedFile
                             ? `${(selectedFile.size / 1024).toFixed(1)} KB`
-                            : "or drag and drop here (.xls, .xlsx)"}
+                            : "or drag and drop here"}
                     </p>
                     <input
                         id="excel-file-input-content-step"
@@ -81,19 +81,36 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                     />
                 </div>
 
-                {error && (
-                    <div className="flex items-center gap-2 mt-3 text-sm text-destructive">
-                        <AlertCircle size={16} className="flex-shrink-0" />
-                        <span>{error}</span>
+                {selectedFile && !error && ( 
+                    <div className="mb-4 p-3 bg-muted/50 border border-border rounded-md flex items-center justify-between flex-shrink-0">
+                        <div className="flex items-center overflow-hidden">
+                            <FileSpreadsheet size={20} className="mr-2.5 text-primary flex-shrink-0" />
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-medium text-foreground truncate">{selectedFile.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {(selectedFile.size / 1024).toFixed(1)} KB
+                                </p>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => onFileSelect(null)} className="text-muted-foreground hover:text-destructive h-7 w-7 flex-shrink-0">
+                            <X size={16} />
+                        </Button>
                     </div>
+                )}
+
+                {error && ( 
+                    <Alert variant="destructive" className="mb-4 flex-shrink-0">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                 )}
             </div>
 
-            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex ${isMobile && isPortrait ? 'flex-col space-y-2' : 'justify-end space-x-2'}`}>
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
                 <Button
                     variant="outline"
                     onClick={onClose}
-                    className={`min-w-[90px] h-9 ${isMobile && isPortrait ? 'w-full' : ''}`}
+                    className="min-w-[90px] h-9"
                     disabled={isLoading}
                 >
                     Cancel
@@ -101,7 +118,7 @@ export const ImportExcelSelectionStep: React.FC<ImportExcelSelectionStepProps> =
                 <Button
                     onClick={onContinue}
                     disabled={isLoading || !selectedFile}
-                    className={`min-w-[90px] h-9 ${isMobile && isPortrait ? 'w-full' : ''}`}
+                    className="min-w-[90px] h-9"
                 >
                     {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Continue

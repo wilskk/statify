@@ -23,6 +23,7 @@ export enum ModalType {
   ExportCSV = "ExportCSV",
   ExportExcel = "ExportExcel",
   Exit = "Exit",
+  ImportClipboard = "ImportClipboard",
   
   // Edit modals - Operasi pencarian dan navigasi
   Find = "Find",
@@ -169,6 +170,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.ExportCSV]: ModalCategory.File,
   [ModalType.ExportExcel]: ModalCategory.File,
   [ModalType.Exit]: ModalCategory.File,
+  [ModalType.ImportClipboard]: ModalCategory.File,
   
   // Edit modals
   [ModalType.Find]: ModalCategory.Edit,

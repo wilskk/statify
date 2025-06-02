@@ -54,20 +54,19 @@ const DataMenu: React.FC = () => {
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.SortVars)}>
                     Sort Variables...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
+                </MenubarItem>                <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
                     Transpose...
                 </MenubarItem>
-                {/*<MenubarItem onClick={() => openModal(ModalType.Restructure)}>*/}
-                {/*    Restructure...*/}
-                {/*</MenubarItem>*/}
+                <MenubarItem onClick={() => openModal(ModalType.Restructure)}>
+                    Restructure...
+                </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.Aggregate)}>
                     Aggregate...
                 </MenubarItem>
                 <MenubarSeparator />
-                {/*<MenubarItem onClick={() => openModal(ModalType.SelectCases)}>*/}
-                {/*    Select Cases...*/}
-                {/*</MenubarItem>*/}
+                <MenubarItem onClick={() => openModal(ModalType.SelectCases)}>
+                    Select Cases...
+                </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.WeightCases)}>
                     Weight Cases...
                 </MenubarItem>

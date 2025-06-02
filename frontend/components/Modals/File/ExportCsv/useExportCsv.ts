@@ -14,6 +14,15 @@ export interface UseExportCsvOptions {
     initialEncoding?: string;
 }
 
+const initialState = {
+    filename: "dataset_export",
+    delimiter: ",",
+    includeHeaders: true,
+    includeVariableProperties: false,
+    quoteStrings: false,
+    encoding: "utf-8", // <-- tambahkan default encoding di sini
+};
+
 export const useExportCsv = (options?: UseExportCsvOptions) => {
     const { closeModal } = useModal();
     const { toast } = useToast();
@@ -108,4 +117,4 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
         handleFilenameChange,
         handleExport,
     };
-}; 
+};

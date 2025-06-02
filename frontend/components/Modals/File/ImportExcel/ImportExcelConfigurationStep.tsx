@@ -277,14 +277,12 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         }
         setError(null);
         // updatePreview will be called by the useEffect hook due to state changes
-    };
-
-    const hotTableColHeaders = columnHeaders === false 
+    };    const hotTableColHeaders = columnHeaders === false 
         ? (parsedData[0]?.length > 0 ? Array.from({length: parsedData[0].length}, (_,i)=> XLSX.utils.encode_col(i)) : true) 
         : columnHeaders;
-
+        
     return (
-        <div className="flex flex-col h-full"> {/* Main wrapper */}
+        <div className="flex flex-col h-full"> {/* Unified container like CSV */}
             {/* Internal Header for this configuration stage */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
                 <div className="flex items-center flex-1 min-w-0">
@@ -301,14 +299,13 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                         </p>
                     </div>
                 </div>
-                {/* Optional: Add a spacer or other controls on the right if needed */}
-                 <div className="w-8"></div> {/* Spacer to balance the back button */}
+                <div className="w-8"></div> {/* Spacer to balance the back button */}
             </div>
 
-            {/* Main Content Area - existing structure */}
-            <div className="flex-grow flex flex-col overflow-hidden">
+            {/* Main Content Area - unified scrolling like CSV */}
+            <div className="p-6 flex-grow overflow-y-auto space-y-6">
                 {/* Top section: Sheet selection and Range input */}
-                <div className="px-6 pt-4 pb-3 space-y-3 border-b border-border flex-shrink-0 bg-muted/30">
+                <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-md">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-3 sm:space-y-0">
                         <div className="flex-1 min-w-0">
                             <Label htmlFor="worksheet-select" className="text-xs font-medium text-muted-foreground">Worksheet</Label>
@@ -350,124 +347,115 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                     </div>
                 </div>
 
-                {/* Options Panel */}
-                <div className="p-6 flex-grow flex flex-col md:flex-row gap-6 overflow-hidden">
-                    <div className="w-full md:w-[300px] lg:w-[320px] xl:w-[350px] flex-shrink-0 space-y-4 overflow-y-auto pr-2 pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                        <div className="space-y-3 pt-2">
-                             <Label className="text-xs font-medium text-muted-foreground">Options</Label>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="firstLineContainsExcelConfig" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
-                                <Label htmlFor="firstLineContainsExcelConfig" className="text-sm font-normal cursor-pointer select-none">First row as variable names</Label>
+                {/* Content Area - responsive grid layout like CSV */}
+                <div className="grid lg:grid-cols-3 gap-6">
+                    {/* Options Panel - left column */}
+                    <div className="lg:col-span-1">
+                        <div className="space-y-4">
+                            <Label className="text-xs font-medium text-muted-foreground">Options</Label>
+                            
+                            {/* Options layout */}
+                            <div className="space-y-3">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="firstLineContainsExcelConfig" checked={firstLineContains} onCheckedChange={(checked) => setFirstLineContains(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
+                                    <Label htmlFor="firstLineContainsExcelConfig" className="text-sm font-normal cursor-pointer select-none">First row as variable names</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="readHiddenRowsColsConfig" checked={readHiddenRowsCols} onCheckedChange={(checked) => setReadHiddenRowsCols(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
+                                    <Label htmlFor="readHiddenRowsColsConfig" className="text-sm font-normal cursor-pointer select-none">Read hidden rows & columns</Label>
+                                </div>
+                                <div>
+                                    <Label htmlFor="empty-cells-select" className="text-xs font-medium text-muted-foreground">Read empty cells as</Label>
+                                    <Select value={readEmptyCellsAs} onValueChange={(val) => setReadEmptyCellsAs(val as "empty" | "missing")} disabled={isLoadingPreview || isProcessing || !selectedSheet}>
+                                        <SelectTrigger id="empty-cells-select" className="w-full mt-1 h-9">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="empty">Empty string (treat as valid)</SelectItem>
+                                            <SelectItem value="missing">System missing (SYSMIS)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="readHiddenRowsColsConfig" checked={readHiddenRowsCols} onCheckedChange={(checked) => setReadHiddenRowsCols(Boolean(checked))} disabled={isLoadingPreview || isProcessing || !selectedSheet}/>
-                                <Label htmlFor="readHiddenRowsColsConfig" className="text-sm font-normal cursor-pointer select-none">Read hidden rows & columns</Label>
-                            </div>
-                            <div>
-                                <Label htmlFor="empty-cells-select" className="text-xs font-medium text-muted-foreground">Read empty cells as</Label>
-                                <Select value={readEmptyCellsAs} onValueChange={(val) => setReadEmptyCellsAs(val as "empty" | "missing")} disabled={isLoadingPreview || isProcessing || !selectedSheet}>
-                                    <SelectTrigger id="empty-cells-select" className="w-full mt-1 h-9">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="empty">Empty string (treat as valid)</SelectItem>
-                                        <SelectItem value="missing">System missing (SYSMIS)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            
+                            {/* Refresh button */}
+                            <Button variant="outline" size="sm" onClick={updatePreview} disabled={isLoadingPreview || isProcessing || !selectedSheet} className="w-full mt-3 h-8">
+                                <RefreshCw size={14} className={`mr-1.5 ${isLoadingPreview ? 'animate-spin' : ''}`} />
+                                Refresh Preview
+                            </Button>
                         </div>
-                         <Button variant="outline" size="sm" onClick={updatePreview} disabled={isLoadingPreview || isProcessing || !selectedSheet} className="w-full mt-3 h-8">
-                            <RefreshCw size={14} className={`mr-1.5 ${isLoadingPreview ? 'animate-spin' : ''}`} />
-                            Refresh Preview
-                        </Button>
                     </div>
 
-                    {/* Data Preview Panel */}
-                    <div className="w-full md:flex-1 flex flex-col overflow-hidden">
-                        <Label className="text-xs font-medium text-muted-foreground mb-1.5 flex-shrink-0">Data Preview (max 100 rows shown)</Label>
-                        <div className="border border-border rounded-md overflow-auto flex-grow bg-background hot-container-excel relative min-h-[200px]">
-                            {(isLoadingPreview && !isProcessing) ? (
-                                <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
-                                    <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
-                                </div>
-                            ) : null}
-                            {(!isLoadingPreview && error && (!parsedData || parsedData.length === 0)) ? (
-                                 <div className="flex flex-col items-center justify-center h-full text-destructive p-4 text-center">
-                                    <InfoIcon size={20} className="mb-2" /> 
-                                    <span className="font-medium">Preview Error</span>
-                                    <span className="text-xs max-w-sm mx-auto">{error}</span>
-                                </div>
-                            ) : (!isLoadingPreview && (!parsedData || parsedData.length === 0) && !error) ? (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
-                                    <InfoIcon size={20} className="mb-2" /> 
-                                    { !selectedSheet ? "Please select a worksheet to see a preview." : "No data to preview. Try adjusting options or check the selected range/sheet."}
-                                </div>
-                            ) : (parsedData && parsedData.length > 0) ? (
-                                <HotTable
-                                    ref={hotTableRef}
-                                    data={parsedData}
-                                    colHeaders={hotTableColHeaders}
-                                    rowHeaders={true}
-                                    width="100%"
-                                    height="100%"
-                                    manualColumnResize={true}
-                                    manualRowResize={true}
-                                    columnSorting={false}
-                                    filters={false}
-                                    dropdownMenu={false}
-                                    comments={false}
-                                    licenseKey="non-commercial-and-evaluation"
-                                    className="htMiddle htCenter text-sm htNoEmpty"
-                                    readOnly
-                                />
-                            ) : null }
+                    {/* Data Preview Panel - right columns */}
+                    <div className="lg:col-span-2">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-medium text-muted-foreground">Data Preview (max 100 rows shown)</Label>
+                            <div className="border border-border rounded-md bg-background hot-container-excel relative min-h-[220px] max-h-[220px] overflow-auto" style={{zIndex: 0}}>
+                                {(isLoadingPreview && !isProcessing) ? (
+                                    <div className="absolute inset-0 flex items-center justify-center h-full text-muted-foreground bg-background/80 z-10">
+                                        <RefreshCw size={18} className="animate-spin mr-2" /> Loading preview...
+                                    </div>
+                                ) : null}
+                                {(!isLoadingPreview && error && (!parsedData || parsedData.length === 0)) ? (
+                                     <div className="flex flex-col items-center justify-center h-full text-destructive p-4 text-center">
+                                        <InfoIcon size={20} className="mb-2" /> 
+                                        <span className="font-medium">Preview Error</span>
+                                        <span className="text-xs max-w-sm mx-auto">{error}</span>
+                                    </div>
+                                ) : (!isLoadingPreview && (!parsedData || parsedData.length === 0) && !error) ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+                                        <InfoIcon size={20} className="mb-2" /> 
+                                        { !selectedSheet ? "Please select a worksheet to see a preview." : "No data to preview. Try adjusting options or check the selected range/sheet."}
+                                    </div>
+                                ) : (parsedData && parsedData.length > 0) ? (
+                                    <HotTable
+                                        ref={hotTableRef}
+                                        data={parsedData}
+                                        colHeaders={hotTableColHeaders}
+                                        rowHeaders={true}
+                                        width="100%"
+                                        height="220px"
+                                        manualColumnResize={true}
+                                        manualRowResize={true}
+                                        columnSorting={false}
+                                        filters={false}
+                                        dropdownMenu={false}
+                                        comments={false}
+                                        licenseKey="non-commercial-and-evaluation"
+                                        className="htMiddle htCenter text-sm htNoEmpty"
+                                        readOnly
+                                    />
+                                ) : null }
+                            </div>
+                            {error && parsedData && parsedData.length > 0 && <p className="text-xs text-destructive mt-1.5">Error: {error}</p>}
                         </div>
-                        {error && parsedData && parsedData.length > 0 && <p className="text-xs text-destructive mt-1.5 flex-shrink-0">Error: {error}</p>}
-                    </div>
-                </div>
-
-                {/* Footer Actions */}
-                <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-between items-center">
-                    <div>
-                        <Button
-                            variant="link"
-                            onClick={handleResetOptions}
-                            className="text-sm px-0 h-auto text-primary hover:text-primary/90"
-                            disabled={isProcessing || isLoadingPreview}
-                        >
-                            Reset Options
-                        </Button>
-                    </div>
-                    <div className="flex space-x-2">
-                        <Button variant="outline" onClick={onClose} disabled={isProcessing} className="h-9">Cancel</Button>
-                        <Button 
-                            onClick={handleOk} 
-                            disabled={isProcessing || isLoadingPreview || !parsedData || parsedData.length === 0 || (!!error && !isLoadingPreview) }
-                            className="h-9 min-w-[90px]"
-                        >
-                            {isProcessing ? <RefreshCw size={16} className="animate-spin mr-1.5" /> : null}
-                            {isProcessing ? "Importing..." : "Import"}
-                        </Button>
                     </div>
                 </div>
             </div>
-            <style jsx global>{`
-                .hot-container-excel .handsontable .htCore td, 
-                .hot-container-excel .handsontable .htCore th {
-                    padding: 4px 6px !important;
-                    font-size: 0.8rem !important;
-                    line-height: 1.2 !important;
-                }
-                .hot-container-excel .handsontable .htDimmed {
-                    color: hsl(var(--muted-foreground)) !important;
-                }
-                .hot-container-excel .handsontable .htNoEmpty tbody tr td:empty {
-                    background-color: hsl(var(--background)) !important; 
-                }
-                .hot-container-excel .handsontable colgroup col {
-                    min-width: 50px !important; 
-                }
-            `}</style>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-between items-center">
+                <div>
+                    <Button
+                        variant="link"
+                        onClick={handleResetOptions}
+                        className="text-sm px-0 h-auto text-primary hover:text-primary/90"
+                        disabled={isProcessing || isLoadingPreview}
+                    >
+                        Reset Options
+                    </Button>
+                </div>
+                <div className="flex space-x-2">
+                    <Button variant="outline" onClick={onClose} disabled={isProcessing} className="h-9">Cancel</Button>
+                    <Button 
+                        onClick={handleOk} 
+                        disabled={isProcessing || isLoadingPreview || !parsedData || parsedData.length === 0 || (!!error && !isLoadingPreview) }
+                        className="h-9 min-w-[90px]"
+                    >
+                        {isProcessing ? <RefreshCw size={16} className="animate-spin mr-1.5" /> : null}
+                        {isProcessing ? "Importing..." : "Import"}
+                    </Button>                </div>
+            </div>
         </div>
     );
-}; 
+};

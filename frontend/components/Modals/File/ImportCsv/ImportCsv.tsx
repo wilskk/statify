@@ -39,7 +39,7 @@ const ImportCsv: FC<ImportCsvProps> = ({
         }
     }, [fileContent, isFileReaderLoading, pendingConfigure]);
 
-    const handleFileSelect = (selectedFile: File) => {
+    const handleFileSelect = (selectedFile: File | null) => {
         setFile(selectedFile);
     };
 
@@ -88,8 +88,8 @@ const ImportCsv: FC<ImportCsvProps> = ({
     // Stage-specific titles/back buttons should be part of the stage components (ImportCsvConfiguration).
     return (
         // The outer <DialogHeader> specific to containerType === "dialog" is removed.
-        // The padding for the content area is preserved.
-        <div className="flex-grow flex flex-col overflow-hidden p-6 h-full">
+        // The padding for the content area is removed to match other file modals.
+        <div className="flex-grow flex flex-col overflow-hidden h-full">
             {/* 
                 The h-full class is added to ensure this div tries to take available vertical space, 
                 especially important if child components like ImportCsvSelection or ImportCsvConfiguration 

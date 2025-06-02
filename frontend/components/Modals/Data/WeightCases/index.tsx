@@ -28,12 +28,10 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
 }) => {
     const { variables } = useVariableStore();
     const meta = useMetaStore((state) => state.meta);
-    const setMeta = useMetaStore((state) => state.setMeta);
-
-    // States for variable lists
+    const setMeta = useMetaStore((state) => state.setMeta);    // States for variable lists
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [frequencyVariables, setFrequencyVariables] = useState<Variable[]>([]);
-
+    
     // Track the highlighted variable
     const [highlightedVariable, setHighlightedVariable] = useState<{
         id: string;
@@ -42,15 +40,30 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
 
     // Error handling
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [errorDialogOpen, setErrorDialogOpen] = useState<boolean>(false);
-
-    // Compute the weight method based on frequency variables
+    const [errorDialogOpen, setErrorDialogOpen] = useState<boolean>(false);    // Compute the weight method based on frequency variables
     const weightMethod = frequencyVariables.length > 0 ? "byVariable" : "none";
+    
+    // Helper function to ensure variable has unique tempId
+    const ensureUniqueTempId = useCallback((variable: Variable): Variable => {
+        if (!variable.tempId) {
+            return {
+                ...variable,
+                tempId: `weight_temp_${variable.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            };
+        }
+        return variable;
+    }, []);
 
     // Initialize lists from store
     useEffect(() => {
-        // Filter to only numeric variables
-        const numericVariables = variables.filter(v => v.name !== "" && v.type !== "STRING");
+        // Filter to only numeric variables and ensure each has a unique tempId
+        const numericVariables = variables
+            .filter(v => v.name !== "" && v.type !== "STRING")
+            .map((v, index) => ensureUniqueTempId({
+                ...v,
+                // Force regenerate tempId to ensure uniqueness in this context
+                tempId: `weight_${v.columnIndex}_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            }));
 
         // If we have a weight variable set in meta, move it to the frequency list
         if (meta.weight && meta.weight !== "") {
@@ -67,38 +80,68 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
             setAvailableVariables(numericVariables);
             setFrequencyVariables([]);
         }
-    }, [variables, meta.weight]);
-
-    // Handler for moving variables between lists
+    }, [variables, meta.weight, ensureUniqueTempId]);    // Handler for moving variables between lists
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string) => {
+        // Create a new variable with unique tempId for this move operation
+        const variableWithTempId = {
+            ...variable,
+            tempId: `weight_move_${variable.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        };
+
         // Validate variable type for frequency list
-        if (toListId === 'frequency' && variable.type === "STRING") {
+        if (toListId === 'frequency' && variableWithTempId.type === "STRING") {
             setErrorMessage("Weight variable must be numeric");
             setErrorDialogOpen(true);
             return;
         }
 
-        // Remove from source list
+        // Check if variable is already in the target list (by name, not tempId)
+        if (toListId === 'frequency') {
+            const isAlreadySelected = frequencyVariables.some(v => v.name === variableWithTempId.name);
+            if (isAlreadySelected) {
+                // Variable is already selected, do nothing
+                setHighlightedVariable(null);
+                return;
+            }
+        }
+
+        if (toListId === 'available') {
+            const isAlreadyAvailable = availableVariables.some(v => v.name === variableWithTempId.name);
+            if (isAlreadyAvailable) {
+                // Variable is already in available list, do nothing
+                setHighlightedVariable(null);
+                return;
+            }
+        }
+
+        // Remove from source list (by tempId for exact match)
         if (fromListId === 'available') {
-            setAvailableVariables(prev => prev.filter(v =>
-                // Use tempId if available, otherwise use columnIndex
-                (v.tempId !== undefined ? v.tempId !== variable.tempId : v.columnIndex !== variable.columnIndex)
-            ));
+            setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         } else if (fromListId === 'frequency') {
             setFrequencyVariables([]);
         }
 
         // Add to target list
         if (toListId === 'available') {
-            setAvailableVariables(prev => [...prev, variable].sort((a, b) => a.columnIndex - b.columnIndex));
-        } else if (toListId === 'frequency') {
-            // Replace any existing variable in the frequency list (single selection)
-            setFrequencyVariables([variable]);
-        }
-
-        // Clear highlight
+            setAvailableVariables(prev => [...prev, variableWithTempId].sort((a, b) => a.columnIndex - b.columnIndex));        } else if (toListId === 'frequency') {
+            // Move current frequency variable back to available if exists
+            if (frequencyVariables.length > 0) {
+                const currentFreqVar = frequencyVariables[0];
+                const newAvailableVar = {
+                    ...currentFreqVar,
+                    tempId: `weight_back_${currentFreqVar.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                };
+                setAvailableVariables(prev => {
+                    // First remove any existing instance of this variable by name to prevent duplicates
+                    const filtered = prev.filter(v => v.name !== currentFreqVar.name);
+                    return [...filtered, newAvailableVar].sort((a, b) => a.columnIndex - b.columnIndex);
+                });
+            }
+            // Set the new variable as the frequency variable (single selection)
+            setFrequencyVariables([variableWithTempId]);
+        }// Clear highlight
         setHighlightedVariable(null);
-    }, []);
+    }, [frequencyVariables, availableVariables]);
 
     // Handler for reordering variables within a list (not needed for this modal, but required by VariableListManager)
     const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
@@ -116,14 +159,18 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
             setMeta({ weight: "" });
         }
         onClose();
-    };
-
-    const handleReset = () => {
-        // Move any frequency variables back to available
+    };    const handleReset = () => {
+        // Move any frequency variables back to available with new tempId
         if (frequencyVariables.length > 0) {
-            setAvailableVariables(prev =>
-                [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
-            );
+            const varsWithNewTempId = frequencyVariables.map(v => ({
+                ...v,
+                tempId: `weight_reset_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            }));
+            setAvailableVariables(prev => {
+                // Remove any existing instances of these variables by name to prevent duplicates
+                const filtered = prev.filter(v => !varsWithNewTempId.some(newVar => newVar.name === v.name));
+                return [...filtered, ...varsWithNewTempId].sort((a, b) => a.columnIndex - b.columnIndex);
+            });
             setFrequencyVariables([]);
         }
         setHighlightedVariable(null);
@@ -149,51 +196,8 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
     return (
         <>
             {/* DialogHeader and Separator are removed from here, will be handled by parent */}
-            
-            {/* Main content area with standardized padding and scrolling */}
-            <div className="p-6 overflow-y-auto flex-grow">
-                <div className="flex items-start space-x-4 mb-4">
-                    <div className="space-y-2 flex-1">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="weightMethod"
-                                className="w-3 h-3"
-                                checked={weightMethod === "none"}
-                                onChange={() => {
-                                    // Move any frequency variables back to available
-                                    if (frequencyVariables.length > 0) {
-                                        setAvailableVariables(prev =>
-                                            [...prev, ...frequencyVariables].sort((a, b) => a.columnIndex - b.columnIndex)
-                                        );
-                                        setFrequencyVariables([]);
-                                    }
-                                }}
-                            />
-                            <span className="text-xs">Do not weight cases</span>
-                        </label>
-
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="weightMethod"
-                                className="w-3 h-3"
-                                checked={weightMethod === "byVariable"}
-                                onChange={() => {
-                                    // If no variable is selected yet, encourage selection
-                                    if (frequencyVariables.length === 0) {
-                                        // We don't need to do anything here, as the user will select a variable
-                                        // which will automatically set the weight method to "byVariable"
-                                    }
-                                }}
-                            />
-                            <span className="text-xs">Weight cases by variable</span>
-                        </label>
-                    </div>
-                </div>
-
-                {/* Use VariableListManager for drag & drop functionality */}
-                <VariableListManager
+              {/* Main content area with standardized padding and scrolling */}            <div className="p-6 overflow-y-auto flex-grow">
+                {/* Use VariableListManager for drag & drop functionality */}                <VariableListManager
                     availableVariables={availableVariables}
                     targetLists={targetLists}
                     variableIdKey="tempId"

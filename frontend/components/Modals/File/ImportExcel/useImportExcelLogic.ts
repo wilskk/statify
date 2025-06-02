@@ -12,12 +12,16 @@ export const useImportExcelLogic = ({
     const [error, setError] = useState<string | null>(null);
     const [stage, setStage] = useState<ImportExcelStage>("select");
 
-    const { isMobile, isPortrait } = useMobile();
-
-    const handleFileSelect = useCallback((selectedFile: File) => {
-        setFile(selectedFile);
-        setFileName(selectedFile.name);
-        setError(null);
+    const { isMobile, isPortrait } = useMobile();    const handleFileSelect = useCallback((selectedFile: File | null) => {
+        if (selectedFile) {
+            setFile(selectedFile);
+            setFileName(selectedFile.name);
+            setError(null);
+        } else {
+            setFile(null);
+            setFileName("");
+            setError(null);
+        }
     }, []);
 
     const handleContinueToConfigure = useCallback(() => {
