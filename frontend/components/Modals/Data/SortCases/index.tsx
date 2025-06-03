@@ -286,15 +286,6 @@ const SortCasesContent: React.FC<SortCasesModalProps> = ({
                 await sortData(variable.columnIndex, direction);
             }
 
-            if (saveSortedData && fileName) {
-                // In a real implementation, this would save to a file
-                console.log(`Saving sorted data to ${fileName}`);
-
-                if (createIndex) {
-                    console.log("Creating index for sorted data");
-                }
-            }
-
             onClose();
         } catch (error) {
             console.error("Error during sort operation:", error);
@@ -309,9 +300,6 @@ const SortCasesContent: React.FC<SortCasesModalProps> = ({
         setAvailableVariables(prepareVariablesWithTempId([...availableVariables, ...sortedVariables].sort((a, b) => a.columnIndex - b.columnIndex)));
         setSortByConfigs([]);
         setDefaultSortOrder("asc");
-        setSaveSortedData(false);
-        setFileName("");
-        setCreateIndex(false);
         setHighlightedVariable(null);
     };
 
@@ -354,58 +342,6 @@ const SortCasesContent: React.FC<SortCasesModalProps> = ({
                     {/* Default sort order controls (when no variable is selected) */}
                     {renderDefaultSortOrderControls()}
 
-                    {/* Save Options Section */}
-                    <div className="mt-2 border border-border p-4 rounded-md">
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="saveSortedData"
-                                    checked={saveSortedData}
-                                    onCheckedChange={(checked) => setSaveSortedData(!!checked)}
-                                    className="mr-2"
-                                />
-                                <Label htmlFor="saveSortedData" className="text-sm cursor-pointer">
-                                    Save file with sorted data
-                                </Label>
-                            </div>
-
-                            {saveSortedData && (
-                                <div className="ml-6 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 text-xs"
-                                            onClick={() => {
-                                                // In a real implementation, this would open a file picker
-                                                const fakeFile = "sorted_data.csv";
-                                                setFileName(fakeFile);
-                                            }}
-                                        >
-                                            File...
-                                        </Button>
-                                        {fileName && (
-                                            <span className="text-xs text-muted-foreground">
-                                                Selected File: {fileName}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="createIndex"
-                                            checked={createIndex}
-                                            onCheckedChange={(checked) => setCreateIndex(!!checked)}
-                                            className="mr-2"
-                                        />
-                                        <Label htmlFor="createIndex" className="text-sm cursor-pointer">
-                                            Create an index
-                                        </Label>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </div>
 

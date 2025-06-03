@@ -472,23 +472,29 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-between items-center">
-                <Button
-                    variant="outline"
-                    onClick={onBack}
-                    disabled={isProcessing}
-                    className="h-9"
-                >
-                    Back
-                </Button>
-                <Button
-                    onClick={handleImport}
-                    disabled={isProcessing || isPreviewLoading || previewData.length === 0}
-                    className="h-9 min-w-[90px]"
-                >
-                    {isProcessing && <RefreshCw size={16} className="animate-spin mr-1.5" />}
-                    {isProcessing ? "Importing..." : "Import"}
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Kiri: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Kanan: tombol Back/Import */}
+                <div>
+                    <Button
+                        variant="outline"
+                        onClick={onBack}
+                        disabled={isProcessing}
+                        className="mr-2"
+                    >
+                        Back
+                    </Button>
+                    <Button
+                        onClick={handleImport}
+                        disabled={isProcessing || isPreviewLoading || previewData.length === 0}
+                    >
+                        {isProcessing && <RefreshCw size={16} className="animate-spin mr-1.5" />}
+                        {isProcessing ? "Importing..." : "Import"}
+                    </Button>
+                </div>
             </div>
         </div>
     );

@@ -43,8 +43,8 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                                }) => {
     return (
         <>
-            <div className="grid grid-cols-5 gap-6">
-                <div className="col-span-3 border border-border rounded-md p-6">
+            <div className="flex flex-col lg:flex-row gap-6 min-w-0">
+                <div className="w-full lg:w-3/5 flex-1 min-w-0 border border-border rounded-md p-6">
                     <div className="text-sm font-medium mb-4">Criteria for Identifying Unusual Cases</div>
 
                     <div className="space-y-4">
@@ -126,7 +126,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                     </div>
                 </div>
 
-                <div className="col-span-2 border border-border rounded-md p-6">
+                <div className="w-full lg:w-2/5 flex-1 min-w-0 border border-border rounded-md p-6">
                     <div className="text-sm font-medium mb-4">Number of Peer Groups</div>
 
                     <div className="space-y-4">

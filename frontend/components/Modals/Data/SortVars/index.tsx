@@ -213,28 +213,6 @@ const SortVariablesContent: React.FC<SortVariablesModalProps> = ({
                     </div>
                 </div>
 
-                <div className="border border-border p-2 rounded">
-                    <label className="flex items-center gap-2 mb-2">
-                        <input
-                            type="checkbox"
-                            checked={savePreSortedOrder}
-                            onChange={() => setSavePreSortedOrder((prev) => !prev)}
-                        />
-                        Save the current (pre-sorted) variable order in a new attribute
-                    </label>
-                    {savePreSortedOrder && (
-                        <div className="mt-2">
-                            <label className="block mb-1">Attribute name:</label>
-                            <input
-                                type="text"
-                                value={attributeName}
-                                onChange={(e) => setAttributeName(e.target.value)}
-                                className="border border-input p-1 w-full"
-                                disabled={!savePreSortedOrder}
-                            />
-                        </div>
-                    )}
-                </div>
             </div>
 
             {/* Standardized action buttons footer */}
@@ -265,10 +243,6 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
-                {/* Sidebar Header */}
-                <div className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <h2 className="text-xl font-semibold">Sort Variables</h2>
-                </div>
                 <div className="flex-grow flex flex-col overflow-hidden">
                     <SortVariablesContent onClose={onClose} />
                 </div>

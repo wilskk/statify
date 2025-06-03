@@ -10,8 +10,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -279,8 +290,15 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
     };
 
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-popover border border-border">
-            <div className="px-3 sm:px-4 py-2">
+        <DialogContent
+            className="
+                max-w-full sm:max-w-[800px] w-full p-0 bg-popover border border-border
+                max-h-[100dvh] overflow-y-auto
+                sm:rounded-lg
+            "
+            style={{ maxHeight: "100dvh" }}
+        >
+            <div className="px-2 sm:px-4 py-2">
                 <DialogHeader className="p-0">
                     <DialogTitle className="text-sm sm:text-base font-semibold text-popover-foreground flex items-center">
                         <span>Select Cases: If Condition</span>
@@ -299,15 +317,15 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </DialogTitle>
                 </DialogHeader>
             </div>
-            
             <Separator />
-
             <div className="p-2 sm:p-3 md:p-4">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4">
+                <div className="
+                    flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-4
+                ">
                     {/* Left Column - Variables List */}
-                    <div className="col-span-1 md:col-span-3">
+                    <div className="md:col-span-3">
                         <Label className="text-xs font-medium block mb-1">Variables:</Label>
-                        <div className="border border-border rounded-md h-[180px] bg-card overflow-hidden">
+                        <div className="border border-border rounded-md min-h-[100px] max-h-[160px] sm:max-h-[180px] bg-card overflow-hidden">
                             <ScrollArea className="h-full w-full">
                                 <div className="p-1">
                                     {variables.map((variable) => (
@@ -333,7 +351,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     {/* Middle Column - Expression Builder */}
-                    <div className="col-span-1 md:col-span-5 mt-3 md:mt-0">
+                    <div className="md:col-span-5 mt-2 md:mt-0">
                         <div className="flex flex-col">
                             {/* Expression Input */}
                             <div className="mb-2">
@@ -446,7 +464,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     {/* Right Column - Function Groups */}
-                    <div className="col-span-1 md:col-span-4 mt-3 md:mt-0">
+                    <div className="md:col-span-4 mt-2 md:mt-0">
                         <div className="flex flex-col">
                             <div className="mb-2">
                                 <Label className="text-xs font-medium block mb-1">Function group:</Label>
@@ -482,7 +500,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
 
                             <div>
                                 <Label className="text-xs font-medium block mb-1">Functions:</Label>
-                                <div className="border border-border rounded-md h-[180px] bg-card">
+                                <div className="border border-border rounded-md min-h-[100px] max-h-[160px] sm:max-h-[180px] bg-card">
                                     <ScrollArea className="h-full w-full">
                                         <div className="p-1">
                                             {filteredFunctions.length > 0 ? (
@@ -512,9 +530,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
                 </div>
             </div>
-
             <Separator />
-
             <DialogFooter className="p-2 sm:p-3">
                 {validationError && (
                     <div className="w-full mb-2">
@@ -528,4 +544,4 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
     );
 };
 
-export default SelectCasesIfCondition; 
+export default SelectCasesIfCondition;

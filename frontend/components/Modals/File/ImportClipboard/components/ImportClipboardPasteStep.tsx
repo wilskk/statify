@@ -2,9 +2,10 @@
 
 import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clipboard, Loader2 } from "lucide-react";
+import { AlertCircle, Clipboard, Loader2, HelpCircle } from "lucide-react";
 import { ImportClipboardPasteStepProps } from "../types"; // Updated path
 import { Textarea } from "@/components/ui/textarea";
+import { readTextFromClipboard } from "../services/services"; // Import the new service function
 
 export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> = ({
     onClose,
@@ -37,28 +38,20 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
 
     const handlePasteButtonClick = async () => {
         try {
-            console.log("Attempting to read clipboard via Clipboard API...");
-            const text = await navigator.clipboard.readText();
-            if (text) {
-                console.log("Successfully read from clipboard API:", text.length, "characters");
-                onTextPaste(text);
-                if (textareaRef.current) {
-                    textareaRef.current.value = text;
-                }
-                setClipboardApiError(null);
-            } else {
-                console.warn("Clipboard API returned empty text");
-                setClipboardApiError("Clipboard appears to be empty.");
+            console.log("Attempting to read clipboard via service...");
+            const text = await readTextFromClipboard(); // Use the service function
+            // No need to check for empty text here, as the service function already does that
+            console.log("Successfully read from clipboard service:", text.length, "characters");
+            onTextPaste(text);
+            if (textareaRef.current) {
+                textareaRef.current.value = text;
             }
-        } catch (err) {
-            console.error("Failed to read clipboard:", err);
-            
-            // Show user-friendly error message
+            setClipboardApiError(null);
+        } catch (err: any) {
+            console.error("Failed to read clipboard using service:", err);
             setClipboardApiError(
-                "Clipboard access denied. Please manually paste text using Ctrl+V (or Cmd+V on Mac)."
+                err.message || "Clipboard access denied or error. Please manually paste text (Ctrl+V / Cmd+V)."
             );
-            
-            // Focus the textarea to encourage manual paste
             if (textareaRef.current) {
                 textareaRef.current.focus();
             }
@@ -119,23 +112,30 @@ export const ImportClipboardPasteStep: React.FC<ImportClipboardPasteStepProps> =
                 )}
             </div>
 
-            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex ${isMobile && isPortrait ? 'flex-col space-y-2' : 'justify-end space-x-2'}`}>
-                <Button
-                    variant="outline"
-                    onClick={onClose}
-                    className={`min-w-[90px] h-9 ${isMobile && isPortrait ? 'w-full' : ''}`}
-                    disabled={isLoading}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    onClick={onContinue}
-                    disabled={isLoading || !pastedText || pastedText.trim() === ''}
-                    className={`min-w-[90px] h-9 ${isMobile && isPortrait ? 'w-full' : ''}`}
-                >
-                    {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Continue
-                </Button>
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Kiri: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Kanan: tombol Cancel/Continue */}
+                <div>
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isLoading}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={onContinue}
+                        disabled={isLoading || !pastedText || pastedText.trim() === ''}
+                    >
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );
