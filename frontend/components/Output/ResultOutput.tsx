@@ -4,6 +4,7 @@ import DataTableRenderer from "@/components/Output/table/data-table";
 import { Card } from "@/components/ui/card";
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "./Chart/GeneralChartContainer";
+import { StatisticsComponents, getStatisticsComponent } from "./Statistics/index";
 
 const ResultOutput: React.FC = () => {
   const { logs } = useResultStore();
@@ -47,23 +48,23 @@ const ResultOutput: React.FC = () => {
                                   className="mb-4"
                               >
                                 {(() => {
+                                  // Check if we have a custom component for this statistics type
+                                  const StatisticsComponent = getStatisticsComponent(stat.components);
+                                  
+                                  if (StatisticsComponent) {
+                                    return <StatisticsComponent data={stat.output_data} />;
+                                  }
+                                  
+                                  // Fall back to default rendering for tables and charts
                                   const parsedData =
                                       typeof stat.output_data === "string"
                                           ? JSON.parse(stat.output_data)
                                           : stat.output_data;
+                                          
                                   if (parsedData.tables) {
-                                    return (
-                                        <DataTableRenderer data={stat.output_data} />
-                                        // <DataTableRenderer data={
-                                        //     ""
-                                        // } />
-                                    );
+                                    return <DataTableRenderer data={stat.output_data} />;
                                   } else if (parsedData.charts) {
-                                    return (
-                                        <GeneralChartContainer
-                                            data={stat.output_data}
-                                        />
-                                    );
+                                    return <GeneralChartContainer data={stat.output_data} />;
                                   } else {
                                     return (
                                         <div className="text-sm text-destructive">
