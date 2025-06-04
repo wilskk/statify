@@ -1,6 +1,5 @@
 "use client"; // Make this layout a Client Component
 
-// app/dashboard/layout.tsx
 import "@/app/globals.css";
 import Header from "@/components/layout/dashboard/Header";
 import Footer from "@/components/layout/dashboard/Footer";
@@ -9,6 +8,8 @@ import DataLoader from "@/components/ui/DataLoader";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useMobile } from "@/hooks/useMobile";
 import { useModal } from "@/hooks/useModal";
+import dynamic from 'next/dynamic';
+const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 // Lazy load ModalManager untuk performa yang lebih baik
@@ -43,6 +44,7 @@ export default function DashboardLayout({
 }) {
     const { isMobile } = useMobile(); // Deteksi device mobile
     const { modals } = useModal();
+    // Auto-sync is now triggered within the client-only Footer component
     const hasOpenModal = modals.length > 0;
     
     // State untuk mengingat lebar sidebar ketika terbuka
@@ -65,8 +67,9 @@ export default function DashboardLayout({
             <DataLoader />
 
             <div className="h-screen w-full flex flex-col dashboard-layout">
-                <header className="flex-shrink-0 z-50">
+                <header className="flex-shrink-0 z-50 flex items-center justify-between">
                    <Header />
+                   <SyncStatusClient />
                 </header>
                 <main className="flex-grow overflow-hidden relative bg-muted w-full">
                     {isMobile ? (

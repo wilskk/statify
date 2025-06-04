@@ -1,16 +1,20 @@
 // components/layout/dashboard/Footer.tsx
 "use client";
+"use client";
 
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DatabaseIcon, VariableIcon, BarChartIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMobile } from "@/hooks/useMobile";
+import useAutoSync from "@/hooks/useAutoSync";
+import SyncStatus from "@/components/ui/SyncStatus";
 
 export default function Footer() {
     const pathname = usePathname();
     const router = useRouter();
     const { isMobile } = useMobile();
+    useAutoSync();
     const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
 
     const isDataActive = pathname ? pathname.startsWith('/dashboard/data') : false;
@@ -120,11 +124,7 @@ export default function Footer() {
                         </span>
                     )}
 
-                    {!isMobile && (
-                        <span className="text-sm text-foreground/80 hidden md:inline">
-                            Current dataset: <span className="font-semibold text-foreground">sample_data</span>
-                        </span>
-                    )}
+                    <SyncStatus />
                 </div>
             </TooltipProvider>
         </footer>
