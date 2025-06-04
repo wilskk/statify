@@ -5,7 +5,7 @@ export const FAQ = () => {
     <div className="space-y-6">
       <div className="space-y-2">
         <h3 className="font-medium">Q: How do I reset my password?</h3>
-        <p>Go to your account settings and click "Reset Password". You'll receive an email with instructions to create a new password.</p>
+        <p>Go to your account settings and click &quot;Reset Password&quot;. You&apos;ll receive an email with instructions to create a new password.</p>
       </div>
       <div className="space-y-2">
         <h3 className="font-medium">Q: Can I invite team members?</h3>

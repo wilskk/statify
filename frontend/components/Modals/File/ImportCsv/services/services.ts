@@ -1,10 +1,34 @@
 import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
+import { CSVProcessingOptions } from "../types";
 
-interface ProcessedCsvData {
+export interface ProcessedCsvData {
     variables: Variable[];
     data: string[][];
+}
+
+/**
+ * Parses CSV content off the main thread via Web Worker.
+ */
+export function parseCsvWithWorker(
+  fileContent: string,
+  options: CSVProcessingOptions
+): Promise<ProcessedCsvData> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker("/workers/file-management/csvWorker.js");
+    worker.onmessage = (e) => {
+      const { result, error } = e.data;
+      if (error) reject(new Error(error));
+      else resolve(result);
+      worker.terminate();
+    };
+    worker.onerror = (err) => {
+      reject(err.error || new Error("Worker error"));
+      worker.terminate();
+    };
+    worker.postMessage({ fileContent, options });
+  });
 }
 
 export const importCsvDataService = {

@@ -1,19 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMobile } from "@/hooks/useMobile";
 import { ImportExcelStage, UseImportExcelLogicProps, UseImportExcelLogicOutput } from "../types";
-import { readExcelFileAsBinary } from "../services/services";
+import { useExcelWorker } from "./useExcelWorker";
 
 export const useImportExcelLogic = ({
     onClose,
 }: UseImportExcelLogicProps): UseImportExcelLogicOutput => {
     const [file, setFile] = useState<File | null>(null);
-    const [binaryFileContent, setBinaryFileContent] = useState<string | null>(null);
+    const [parsedSheets, setParsedSheets] = useState<any[] | null>(null);
     const [fileName, setFileName] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [stage, setStage] = useState<ImportExcelStage>("select");
 
     const { isMobile, isPortrait } = useMobile();
+    const { parse } = useExcelWorker();
 
     const handleFileSelect = useCallback((selectedFile: File | null) => {
         if (selectedFile) {
@@ -37,8 +38,8 @@ export const useImportExcelLogic = ({
         setError(null);
 
         try {
-            const binaryStr = await readExcelFileAsBinary(file);
-            setBinaryFileContent(binaryStr);
+            const sheets = await parse(file);
+            setParsedSheets(sheets);
             setStage("configure");
         } catch (err: any) {
             console.error("File processing error:", err);
@@ -50,7 +51,7 @@ export const useImportExcelLogic = ({
 
     const handleBackToSelect = useCallback(() => {
         setStage("select");
-        setBinaryFileContent(null); 
+        setParsedSheets(null);
         // Clear file to allow re-selection if needed, or keep it if user might go back and forth
         // setFile(null);
         // setFileName("");
@@ -61,7 +62,7 @@ export const useImportExcelLogic = ({
         onClose();
         // Reset state if modal is closed completely
         setFile(null);
-        setBinaryFileContent(null);
+        setParsedSheets(null);
         setFileName("");
         setError(null);
         setStage("select");
@@ -69,7 +70,7 @@ export const useImportExcelLogic = ({
 
     return {
         file,
-        binaryFileContent,
+        parsedSheets,
         fileName,
         isLoading,
         error,

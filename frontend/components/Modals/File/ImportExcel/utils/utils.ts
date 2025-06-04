@@ -69,12 +69,14 @@ export const parseSheetForPreview = (
                 dataToDisplay = [];
             }
         } else {
-            dataToDisplay = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 'A' }) as any[][];
-            const numColsPreview = dataToDisplay.length > 0 ? dataToDisplay[0]?.length || 0 : 0;
+            // No header row: parse as array of arrays and generate default column letters
+            dataToDisplay = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            const numColsPreview = dataToDisplay.length > 0 ? dataToDisplay[0].length : 0;
             headersArray = Array.from({ length: numColsPreview }, (_, i) => XLSX.utils.encode_col(i));
         }
 
-        const finalHeaders = options.firstLineContains ? headersArray : (dataToDisplay.length > 0 ? headersArray : false);
+        // Use headersArray if any, else false
+        const finalHeaders = headersArray.length > 0 ? headersArray : false;
         const numFinalCols = headersArray.length > 0 
             ? headersArray.length 
             : (dataToDisplay.length > 0 ? dataToDisplay[0]?.length || 0 : 0);
@@ -132,11 +134,13 @@ export const processSheetForImport = (
                 fullDataForStore = [];
             }
         } else {
-            fullDataForStore = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 'A' }) as any[][];
-            const numCols = fullDataForStore.length > 0 ? fullDataForStore[0]?.length || 0 : 0;
+            // No header row: parse as arrays and generate default header letters
+            fullDataForStore = XLSX.utils.sheet_to_json(sheet, { ...jsonDataOpts, header: 1 }) as any[][];
+            const numCols = fullDataForStore.length > 0 ? fullDataForStore[0].length : 0;
             actualHeadersArray = Array.from({ length: numCols }, (_, i) => XLSX.utils.encode_col(i));
         }
 
+        // Use actualHeadersArray length or fallback
         const numFinalCols = actualHeadersArray.length;
         const emptyValue = options.readEmptyCellsAs === 'empty' ? "" : "SYSMIS";
         const missingValue = "SYSMIS";

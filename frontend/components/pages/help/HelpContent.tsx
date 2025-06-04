@@ -104,7 +104,7 @@ export default function HelpContent({
 
         <h1 className="text-3xl font-bold mb-2">Statify Help & Documentation</h1>
         <p className="text-gray-600 mb-5">
-          Welcome to the Statify documentation. Here you'll find answers to common
+          Welcome to the Statify documentation. Here you&apos;ll find answers to common
           questions and guides to help you get started.
         </p>
         <Separator className="mb-6" />

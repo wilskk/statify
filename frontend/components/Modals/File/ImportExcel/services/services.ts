@@ -33,3 +33,27 @@ export const readExcelFileAsBinary = (file: File): Promise<string> => {
         reader.readAsBinaryString(file);
     });
 }; 
+
+export interface SheetData { sheetName: string; data: any[][]; }
+
+export const parseExcelWithWorker = (file: File): Promise<SheetData[]> => {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('/workers/file-management/excelWorker.js');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const binaryStr = e.target?.result as string;
+      worker.onmessage = (msg) => {
+        worker.terminate();
+        if (msg.data.error) {
+          reject(new Error(msg.data.error));
+        } else {
+          resolve(msg.data.result);
+        }
+      };
+      worker.onerror = (err) => { worker.terminate(); reject(err); };
+      worker.postMessage({ binaryStr });
+    };
+    reader.onerror = (err) => { reader.abort(); worker.terminate(); reject(err); };
+    reader.readAsBinaryString(file);
+  });
+}

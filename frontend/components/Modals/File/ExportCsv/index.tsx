@@ -8,8 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, InfoIcon, HelpCircle } from "lucide-react";
-import { UseExportCsvOptions, useExportCsv } from "./hooks/useExportCsv";
-import { ExportCsvProps } from "./types";
+import { useExportCsv } from "./hooks/useExportCsv";
+import { ExportCsvProps, UseExportCsvOptions } from "./types";
+import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export const ExportCsv: FC<ExportCsvProps> = ({ 
     onClose,

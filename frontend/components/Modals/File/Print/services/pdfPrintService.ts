@@ -75,7 +75,6 @@ export function addDataGridView(
         tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
         didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; } 
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
     return newY;
 }
@@ -131,7 +130,6 @@ export function addVariableView(
         tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
         didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
     return newY;
 }
@@ -226,7 +224,6 @@ export function addResultsView(
                                 tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
                                 didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
                             });
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
                         }
                     }

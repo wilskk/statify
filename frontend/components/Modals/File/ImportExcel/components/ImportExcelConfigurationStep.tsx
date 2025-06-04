@@ -4,7 +4,7 @@ import React, { useState, FC, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
-import * as XLSX from "xlsx"; // Still needed for XLSX.utils.encode_col if used for fallback headers
+import * as XLSX from "xlsx"; 
 import { HotTable, HotTableClass } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
 import { registerAllModules } from 'handsontable/registry';
@@ -14,9 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ImportExcelConfigurationStepProps, ParseSheetOptions } from "../types";
+import type { ImportExcelConfigurationStepProps, ParseSheetOptions, SheetData } from "../types";
 import {
-    parseExcelWorkbook,
     getSheetNamesFromWorkbook,
     parseSheetForPreview,
     processSheetForImport,
@@ -30,14 +29,14 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     onClose,
     onBack,
     fileName,
-    fileContent,
+    parsedSheets,
 }) => {
     const { setData, resetData } = useDataStore();
     const { resetVariables, addVariable } = useVariableStore();
 
-    const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
     const [sheetNames, setSheetNames] = useState<string[]>([]);
-    const [selectedSheet, setSelectedSheet] = useState<string>("");
+    const [parsedSheetsState, setParsedSheetsState] = useState<SheetData[]>(parsedSheets);
+    const [selectedSheet, setSelectedSheet] = useState<string>(parsedSheets[0]?.sheetName || "");
     
     const [range, setRange] = useState<string>("");
     const [parsedPreviewData, setParsedPreviewData] = useState<any[][]>([]);
@@ -54,39 +53,29 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     const hotTableRef = useRef<HotTableClass | null>(null);
 
     useEffect(() => {
-        if (!fileContent) {
-            setError("No file content available to parse.");
+        if (!parsedSheetsState || parsedSheetsState.length === 0) {
+            setError("No sheets parsed from Excel file.");
             setIsLoadingPreview(false);
             return;
         }
-        setIsLoadingPreview(true);
-        setError(null);
-        const wb = parseExcelWorkbook(fileContent);
-        if (wb) {
-            setWorkbook(wb);
-            const names = getSheetNamesFromWorkbook(wb);
-            setSheetNames(names);
-            if (names.length > 0) {
-                setSelectedSheet(names[0]);
-            } else {
-                setError("No worksheets found in the Excel file.");
-            }
-        } else {
-            setError("Could not read the Excel file. It might be corrupted or an unsupported format.");
+        const names = parsedSheetsState.map((s: SheetData) => s.sheetName);
+        if (names.length === 0) {
+            setError("No worksheets found in the Excel file.");
         }
+        setSheetNames(names);
+        setSelectedSheet(names[0] || "");
         setIsLoadingPreview(false);
-    }, [fileContent]);
+    }, [parsedSheetsState]);
 
     const currentParseOptions = useCallback((): ParseSheetOptions => ({
         range,
         firstLineContains,
         readHiddenRowsCols,
         readEmptyCellsAs,
-        // sheetRef: workbook && selectedSheet ? workbook.Sheets[selectedSheet]?.[ '!ref'] : undefined
     }), [range, firstLineContains, readHiddenRowsCols, readEmptyCellsAs]);
 
     const updatePreview = useCallback(() => {
-        if (!workbook || !selectedSheet) {
+        if (!parsedSheetsState || !selectedSheet) {
             setParsedPreviewData([]);
             setPreviewColumnHeaders(false);
             setIsLoadingPreview(false);
@@ -96,7 +85,16 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         setError(null);
 
         const options = currentParseOptions();
-        const result = parseSheetForPreview(workbook, selectedSheet, options);
+        const sheet = parsedSheetsState.find((s: SheetData) => s.sheetName === selectedSheet);
+        if (!sheet) {
+            setError("Sheet not found.");
+            setParsedPreviewData([]);
+            setPreviewColumnHeaders(false);
+            setIsLoadingPreview(false);
+            return;
+        }
+        // @ts-ignore: legacy util expects workbook, sheetName
+        const result = parseSheetForPreview(sheet as any, options);
 
         if (result.error) {
             setError(result.error);
@@ -107,14 +105,14 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             setPreviewColumnHeaders(result.headers);
         }
         setIsLoadingPreview(false);
-    }, [workbook, selectedSheet, currentParseOptions]);
+    }, [range, firstLineContains, readHiddenRowsCols, readEmptyCellsAs, selectedSheet, parsedSheetsState]);
 
     useEffect(() => {
         updatePreview();
     }, [updatePreview]);
 
     const handleImport = async () => {
-        if (!workbook || !selectedSheet) {
+        if (!parsedSheetsState || !selectedSheet) {
             setError("No data to import. Check sheet selection and options.");
             return;
         }
@@ -131,7 +129,14 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             await resetVariables();
 
             const options = currentParseOptions();
-            const importResult = processSheetForImport(workbook, selectedSheet, options);
+            const sheet = parsedSheetsState.find((s: SheetData) => s.sheetName === selectedSheet);
+            if (!sheet) {
+                setError("Sheet not found.");
+                setIsProcessing(false);
+                return;
+            }
+            // @ts-ignore: legacy util expects workbook, sheetName
+            const importResult = processSheetForImport(sheet as any, options);
 
             if (importResult.error) {
                 setError(importResult.error);

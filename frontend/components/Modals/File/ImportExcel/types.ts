@@ -1,4 +1,5 @@
 import { ContainerType } from "@/types/ui";
+import { SheetData } from "./services/services";
 
 export type ImportExcelStage = "select" | "configure";
 
@@ -15,7 +16,8 @@ export interface UseImportExcelLogicProps {
 
 export interface UseImportExcelLogicOutput {
     file: File | null;
-    binaryFileContent: string | null; 
+    // removed binary content; now parsedSheets is provided
+    parsedSheets: SheetData[] | null;
     fileName: string;
     isLoading: boolean;
     error: string | null;
@@ -57,7 +59,7 @@ export interface ImportExcelConfigurationStepProps {
     onClose: () => void; 
     onBack: () => void;
     fileName: string;
-    fileContent: string; // Binary string content
+    parsedSheets: SheetData[]; // Parsed sheet data from worker
 }
 
 export interface ParseSheetOptions {
@@ -76,4 +78,7 @@ export interface ParsedSheetData {
 export interface ProcessedImportData {
     processedFullData: any[][];
     actualHeaders: string[];
-} 
+}
+
+// re-export SheetData for use in configuration component
+export type { SheetData } from "./services/services";

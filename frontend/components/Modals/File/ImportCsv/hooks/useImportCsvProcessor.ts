@@ -3,12 +3,12 @@ import { useState } from "react";
 // import { useDataStore, CellUpdate } from "@/stores/useDataStore"; 
 // import { useVariableStore } from "@/stores/useVariableStore";
 import { 
-    processCSVContent, 
     CSVProcessingError 
 } from "../utils/importCsvUtils"; 
 import { CSVProcessingOptions } from "../types";
 // import { DataRow } from "@/types/Data"; // No longer needed here
 import { importCsvDataService } from "../services/services"; // Import the new service
+import { parseCsvWithWorker, ProcessedCsvData } from "../services/services";
 
 interface ProcessCSVParams {
     fileContent: string;
@@ -26,10 +26,10 @@ export const useImportCsvProcessor = () => {
             // Reset existing data and variables using the service
             await importCsvDataService.resetStores();
             
-            // Process CSV content (this util remains)
-            const result = processCSVContent(fileContent, options);
+            // Parse CSV off main thread
+            const result: ProcessedCsvData = await parseCsvWithWorker(fileContent, options);
             
-            // Populate stores with processed data using the service
+            // Populate stores
             await importCsvDataService.populateStores(result);
             
             return result; // Still returning result for potential use, though stores are updated

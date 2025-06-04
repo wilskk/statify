@@ -139,6 +139,7 @@ interface VariableStoreState {
     sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     ensureCompleteVariables: (targetMaxColumnIndex?: number) => Promise<void>;
     saveVariables: () => Promise<void>;
+    getVariableByColumnIndex: (columnIndex: number) => Variable | undefined;
 }
 
 // Helper to enforce measure constraint
@@ -571,6 +572,10 @@ export const useVariableStore = create<VariableStoreState>()(
                     });
                     throw error;
                 }
+            },
+
+            getVariableByColumnIndex: (columnIndex) => {
+                return get().variables.find(v => v.columnIndex === columnIndex);
             }
         }))
     )

@@ -12,7 +12,7 @@ export const ImportExcelModal: React.FC<ImportExcelProps> = ({
 }) => {
     const {
         file,
-        binaryFileContent,
+        parsedSheets,
         fileName,
         isLoading,
         error,
@@ -40,13 +40,13 @@ export const ImportExcelModal: React.FC<ImportExcelProps> = ({
                 />
             );
         }
-        if (stage === "configure" && binaryFileContent) {
+        if (stage === "configure" && parsedSheets) {
             return (
                 <ImportExcelConfigurationStep
                     onClose={handleModalClose}
                     onBack={handleBackToSelect}
                     fileName={fileName}
-                    fileContent={binaryFileContent}
+                    parsedSheets={parsedSheets!}
                 />
             );
         }

@@ -14,7 +14,7 @@ import { ImportClipboardConfigurationStepProps, ClipboardProcessingOptions } fro
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
 import { registerAllModules } from 'handsontable/registry';
-import { useImportClipboardProcessor } from "..";
+import { useImportClipboardProcessor } from "../hooks/useImportClipboardProcessor";
 
 // Register Handsontable modules
 registerAllModules();
@@ -285,8 +285,8 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
                                 <SelectValue placeholder="Select text qualifier" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value='"'>Double Quote (")</SelectItem>
-                                <SelectItem value="'">Single Quote (')</SelectItem>
+                                <SelectItem value='"'>Double Quote (&quot;)</SelectItem>
+                                <SelectItem value="'">Single Quote (&apos;)</SelectItem>
                                 <SelectItem value="NO_QUALIFIER">None</SelectItem>
                             </SelectContent>
                         </Select>

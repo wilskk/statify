@@ -98,4 +98,20 @@ const MyDataManagementPage = () => {
 -   `hooks/`:
     -   `useImportCsvFileReader.ts`: Custom hook to handle asynchronous file reading and manage related state (content, loading, errors).
 -   `services/`: (Potentially) If there are specific service calls for CSV processing beyond client-side parsing.
--   `utils/`: (Potentially) For utility functions related to CSV parsing or data transformation if not handled within hooks or components directly. 
+-   `utils/`: For utility functions related to CSV parsing or data transformation if not handled within hooks or components directly.
+
+## Web Worker Integration
+
+-   **csvWorker.js**: Located at `public/workers/file-management/csvWorker.js`, handles CSV parsing off the main thread to keep UI responsive.
+-   **Service**: `services/services.ts` exports `parseCsvWithWorker(fileContent, options)` and `ProcessedCsvData` type to interact with the worker.
+-   **Hook**: `hooks/useCsvWorker.ts` wraps `parseCsvWithWorker`, providing `parse`, `isProcessing`, and `error` state for components.
+
+## Updated Structure
+
+-   `public/workers/file-management/csvWorker.js`: Web Worker script for CSV parsing.
+-   `services/services.ts`: Includes `importCsvDataService` and `parseCsvWithWorker`.
+-   `hooks/useImportCsvFileReader.ts`: Reads raw file content.
+-   `hooks/useCsvWorker.ts`: Manages worker parsing.
+-   `hooks/useImportCsvProcessor.ts`: Populates stores via service using worker-parsed data.
+
+# End of README

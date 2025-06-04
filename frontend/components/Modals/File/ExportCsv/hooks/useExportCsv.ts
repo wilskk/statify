@@ -2,9 +2,9 @@ import { useState, useTransition } from "react";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useToast } from "@/hooks/use-toast";
-import { generateCsvContent, CsvExportOptions } from "../utils/exportCsvUtils"; // Adjusted path
+import { generateCsvContent } from "../utils/exportCsvUtils"; // Adjusted path
+import { CsvExportOptions, UseExportCsvOptions } from "../types"; // Import from new types.ts
 import { useModal } from "@/hooks/useModal";
-import { UseExportCsvOptions } from "../types"; // Import from new types.ts
 
 const initialState = {
     filename: "dataset_export",

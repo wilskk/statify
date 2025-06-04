@@ -456,7 +456,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                     </Button>
                                     <Button variant="ghost" size="sm" className="h-6 text-xs justify-start px-2 font-mono w-full"
                                             onClick={() => setCondition("gender == \"F\" | gender == \"f\"")}>
-                                        gender == "F" | gender == "f"
+                                        gender == &quot;F&quot; | gender == &quot;f&quot;
                                     </Button>
                                 </div>
                             </div>
