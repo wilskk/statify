@@ -3,7 +3,7 @@ import { useVariableStore } from '@/stores/useVariableStore';
 import {
     COLUMN_INDEX,
     DEFAULT_VARIABLE_TYPE
-} from './constants';
+} from '../constants';
 import { Variable, VariableType, ValueLabel, MissingValuesSpec } from '@/types/Variable';
 
 // Placeholder types for dialog handler arguments, adjust as needed

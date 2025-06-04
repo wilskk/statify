@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { MIN_ROWS, MIN_COLS } from './constants';
+import { MIN_ROWS, MIN_COLS } from '../constants';
 
 /**
  * Custom hook to calculate various dimensions of the data table.
@@ -19,7 +19,7 @@ export const useTableDimensions = () => {
             ? Math.max(...variables.map(v => v.columnIndex))
             : -1;
         const requiredColsByVars = maxVariableIndex + 1;
-        const dataCols = data[0]?.length ?? 0;
+        const dataCols = data.reduce((max, row) => Math.max(max, row.length), 0);
         // ACTUAL columns are based ONLY on existing data/vars, ignore visual minimums
         return Math.max(requiredColsByVars, dataCols);
     }, [variables, data]);

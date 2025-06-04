@@ -15,7 +15,7 @@ import {
     ArrowBigLeft
 } from "lucide-react";
 import { Variable } from "@/types/Variable";
-import { AggregatedVariable } from './index';
+import { AggregatedVariable } from './types';
 
 interface VariablesTabProps {
     availableVariables: Variable[];

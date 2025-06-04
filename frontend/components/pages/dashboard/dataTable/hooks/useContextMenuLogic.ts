@@ -1,16 +1,13 @@
 import React, { useCallback, useMemo } from 'react';
 import Handsontable from 'handsontable';
 import { HotTableClass } from '@handsontable/react';
-import { useVariableStore } from '@/stores/useVariableStore';
-import { useDataStore } from '@/stores/useDataStore'; // Import useDataStore
-import { Variable, VariableAlign } from '@/types/Variable'; // Import Variable type and VariableAlign
+import { VariableAlign } from '@/types/Variable';
+import { insertRow, insertColumn, removeRows, removeColumns, applyAlignment as svcApplyAlignment } from '../services/contextMenuService';
 
 interface UseContextMenuLogicProps {
     hotTableRef: React.RefObject<HotTableClass | null>;
     actualNumRows: number;
     actualNumCols: number;
-    // We need store actions for alignment updates, assume they are passed or accessed
-    // For simplicity, accessing store directly here. Consider passing actions if preferred.
 }
 
 /**
@@ -22,8 +19,7 @@ export const useContextMenuLogic = ({
     actualNumCols
 }: UseContextMenuLogicProps) => {
 
-    const variableStore = useVariableStore(); // Get the whole store
-    const dataStore = useDataStore(); // Get the whole store
+    // service layer handles store interactions
 
     // --- Helper functions for context menu conditions ---
 
@@ -47,38 +43,18 @@ export const useContextMenuLogic = ({
     // --- Context Menu Actions ---
 
     const applyAlignment = useCallback((alignment: VariableAlign) => {
-        const hotInstance = hotTableRef.current?.hotInstance;
-        const selectedRanges = hotInstance?.getSelectedRange();
-
-        if (!hotInstance || !selectedRanges || selectedRanges.length === 0) {
-            return;
-        }
-
-        const affectedColumns = new Set<number>();
-        selectedRanges.forEach(range => {
-            const startCol = Math.min(range.from.col, range.to.col);
-            const endCol = Math.max(range.from.col, range.to.col);
-            for (let col = startCol; col <= endCol; col++) {
-                // Only apply to actual data columns
-                if (col < actualNumCols) {
-                    affectedColumns.add(col);
-                }
+        // collect selected columns
+        const hot = hotTableRef.current?.hotInstance;
+        const ranges = hot?.getSelectedRange();
+        if (!ranges || ranges.length === 0) return;
+        const cols = new Set<number>();
+        ranges.forEach(r => {
+            for (let c = Math.min(r.from.col, r.to.col); c <= Math.max(r.from.col, r.to.col); c++) {
+                if (c < actualNumCols) cols.add(c);
             }
         });
-
-        affectedColumns.forEach(columnIndex => {
-            // Akses langsung ke array variables dari store
-            const variable = variableStore.variables.find(v => v.columnIndex === columnIndex);
-            // Only update variable store if alignment changed
-            if (variable && variable.align !== alignment) {
-                 variableStore.updateVariable(columnIndex, 'align', alignment);
-            }
-            // Visual update is now handled by DataTable re-rendering with updated `columns` prop
-        });
-
-        // No need to call hotInstance.render() here explicitly
-
-    }, [variableStore, hotTableRef, actualNumCols]);
+        svcApplyAlignment(Array.from(cols), alignment);
+    }, [hotTableRef, actualNumCols]);
 
     // --- Context Menu Configuration ---
 
@@ -88,7 +64,7 @@ export const useContextMenuLogic = ({
         const handleInsertRow = (above: boolean) => {
             const { row } = getSelectedCell();
             if (row !== -1) {
-                dataStore.addRow(above ? row : row + 1);
+                insertRow(above ? row : row + 1);
             }
         };
 
@@ -96,22 +72,7 @@ export const useContextMenuLogic = ({
             const { col } = getSelectedCell();
             if (col !== -1) {
                 const targetIndex = left ? col : col + 1;
-                console.log(`[handleInsertColumn] Attempting insert at targetIndex: ${targetIndex} (left: ${left})`); // Log target
-
-                try {
-                    console.log(`[handleInsertColumn] Calling variableStore.addVariable with columnIndex: ${targetIndex}`);
-                    // MUST add variable first to shift indices before adding data column
-                    variableStore.addVariable({ columnIndex: targetIndex });
-                    console.log(`[handleInsertColumn] variableStore.addVariable completed for index: ${targetIndex}`);
-
-                    console.log(`[handleInsertColumn] Calling dataStore.addColumns with targetIndex: ${targetIndex}`);
-                    dataStore.addColumns([targetIndex]);
-                    console.log(`[handleInsertColumn] dataStore.addColumns completed for index: ${targetIndex}`);
-
-                    console.log(`[handleInsertColumn] Insert column operation completed successfully for index: ${targetIndex}`);
-                } catch (error) {
-                     console.error(`[handleInsertColumn] Error during insert column operation for index: ${targetIndex}`, error);
-                }
+                insertColumn(targetIndex);
             }
         };
 
@@ -128,7 +89,7 @@ export const useContextMenuLogic = ({
 
                 // Use deleteRows instead of multiple deleteRow calls
                 const rowsToDelete = Array.from({ length: rowCount }, (_, i) => startRow + i);
-                dataStore.deleteRows(rowsToDelete);
+                removeRows(rowsToDelete);
             }
         };
 
@@ -145,13 +106,8 @@ export const useContextMenuLogic = ({
                 // Create array of columns to delete
                 const columnsToDelete = Array.from({ length: colCount }, (_, i) => startCol);
                 
-                // Delete all variables first to maintain consistency
-                for (let i = 0; i < colCount; i++) {
-                    variableStore.deleteVariable(startCol);
-                }
-                
                 // Then delete all columns at once
-                dataStore.deleteColumns(columnsToDelete);
+                removeColumns(startCol, colCount);
             }
         };
 
@@ -212,7 +168,7 @@ export const useContextMenuLogic = ({
                 },
             }
         };
-    }, [hotTableRef, dataStore, variableStore, getSelectedCell, isRangeSelected, applyAlignment]); 
+    }, [hotTableRef, getSelectedCell, isRangeSelected, applyAlignment]); 
 
     // Removed isContextMenuEnabled as Handsontable handles this implicitly
     // when contextMenu config is provided.

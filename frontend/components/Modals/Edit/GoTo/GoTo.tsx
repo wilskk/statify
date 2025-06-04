@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BaseModalProps } from "@/types/modalTypes";
-import { X } from "lucide-react";
+import { X, HelpCircle } from "lucide-react";
 
 export enum GoToMode {
     CASE = "case",
@@ -187,10 +187,14 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                 </Tabs>
             </div>
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => alert("Help for Go To")}>Help</Button>
-                <Button variant="outline" onClick={onClose}>Cancel</Button>
-                <Button onClick={handleGo} disabled={(activeTab === 'case' && !!caseError) || (activeTab === 'variable' && !!variableError && !selectedVariable) || (activeTab === 'case' && !caseNumber)}>Go</Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => alert("Help for Go To")}>
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleGo} disabled={(activeTab === 'case' && !!caseError) || (activeTab === 'variable' && !!variableError && !selectedVariable) || (activeTab === 'case' && !caseNumber)}>Go</Button>
+                </div>
             </div>
         </>
     );

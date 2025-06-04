@@ -4,7 +4,7 @@ import { HotTableClass } from '@handsontable/react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable, VariableAlign } from '@/types/Variable';
-import { areValuesEqual } from './utils';
+import { areValuesEqual } from '../utils/utils';
 
 // Define our own specific column configuration type
 interface ColumnConfig {

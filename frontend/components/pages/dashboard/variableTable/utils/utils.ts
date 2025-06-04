@@ -1,5 +1,5 @@
 import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
-import { DEFAULT_MIN_ROWS, COLUMN_INDEX_TO_FIELD_MAP } from './constants';
+import { DEFAULT_MIN_ROWS, COLUMN_INDEX_TO_FIELD_MAP } from '../constants';
 
 export function formatMissingValuesDisplay(variable: Variable): string {
     if (!variable.missing) {

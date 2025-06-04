@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable, VariableType } from "@/types/Variable";
-import { DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH } from './constants';
+import { DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH } from '../constants';
 
 // Export these types so they can be imported by other hooks
 export type OperationType =

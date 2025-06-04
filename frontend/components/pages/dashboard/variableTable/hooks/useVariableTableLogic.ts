@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { HotTableClass } from "@handsontable/react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useTableRefStore } from "@/stores/useTableRefStore";
-import { transformVariablesToTableData } from './utils';
+import { transformVariablesToTableData } from '../utils';
 import { useVariableTableUpdates } from './useVariableTableUpdates';
 import { useVariableTableDialogs } from './useVariableTableDialogs';
 import { useVariableTableEvents } from './useVariableTableEvents';

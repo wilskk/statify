@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback } from 'react';
-import { HotTable, HotTableClass } from '@handsontable/react';
+import HandsontableWrapper from './HandsontableWrapper';
+import { HotTableClass } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
 
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useDataStore } from '@/stores/useDataStore';
-import { useDataTableLogic } from './useDataTableLogic';
+import { useDataTableLogic } from './hooks/useDataTableLogic';
 import './DataTable.css';
 
 registerAllModules();
 
-export default function DataTable() {
+export default function Index() {
     const hotTableRef = useRef<HotTableClass>(null);
     const { setDataTableRef } = useTableRefStore();
     const updateCells = useDataStore.getState().updateCells;
@@ -78,30 +78,12 @@ export default function DataTable() {
 
     return (
         <div className="h-full w-full z-0 relative hot-container overflow-hidden">
-            <HotTable
+            <HandsontableWrapper
                 ref={hotTableRef}
                 data={displayMatrix}
                 colHeaders={colHeaders}
                 columns={columns as any}
-                rowHeaders={true}
-                width="100%"
-                height="100%"
                 contextMenu={contextMenuConfig}
-                manualColumnResize={true}
-                manualRowResize={false}
-                manualColumnMove={false}
-                manualRowMove={false}
-                dropdownMenu={false}
-                filters={true}
-                customBorders={true}
-                copyPaste={true}
-                licenseKey="non-commercial-and-evaluation"
-                minSpareRows={0}
-                minSpareCols={0}
-                allowInvalid={false}
-                outsideClickDeselects={false}
-                invalidCellClassName="htInvalid"
-                preventOverflow="horizontal"
                 beforeChange={handleBeforeChange}
                 afterCreateRow={handleAfterCreateRow}
                 afterCreateCol={handleAfterCreateCol}

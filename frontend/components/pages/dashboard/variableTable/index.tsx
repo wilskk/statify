@@ -12,7 +12,7 @@ import { ValueLabelsDialog } from "./dialog/ValueLabelsDialog";
 import { MissingValuesDialog } from "./dialog/MissingValuesDialog";
 
 import { colHeaders, columns } from "./tableConfig";
-import { useVariableTableLogic } from './useVariableTableLogic';
+import { useVariableTableLogic } from './hooks/useVariableTableLogic';
 import {
     DEFAULT_VARIABLE_TYPE,
     DEFAULT_VARIABLE_WIDTH,

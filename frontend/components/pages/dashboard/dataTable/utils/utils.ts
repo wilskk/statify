@@ -2,7 +2,7 @@ import Handsontable from 'handsontable';
 // @ts-ignore
 import { ColumnSettings } from 'handsontable/settings';
 import { Variable } from '@/types/Variable';
-import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMNS, DEFAULT_MIN_ROWS } from './constants';
+import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMNS, MIN_ROWS } from '../constants';
 
 // Helper function for default spare column config
 export const getDefaultSpareColumnConfig = (): ColumnSettings => ({
@@ -63,7 +63,7 @@ export const getDisplayMatrix = (
     const stateRows = stateData?.length || 0;
     const stateCols = stateRows > 0 && stateData[0] ? stateData[0].length : 0;
 
-    const newRows = Math.max(DEFAULT_MIN_ROWS, stateRows);
+    const newRows = Math.max(MIN_ROWS, stateRows);
     const newCols = Math.max(defaultCols, stateCols);
 
     return Array.from({ length: newRows }, (_, rowIndex) => {

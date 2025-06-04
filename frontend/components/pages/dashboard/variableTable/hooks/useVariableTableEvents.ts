@@ -6,7 +6,7 @@ import {
     COLUMN_INDEX_TO_FIELD_MAP,
     DIALOG_TRIGGER_COLUMNS,
     COLUMN_INDEX
-} from './constants';
+} from '../constants';
 import { PendingOperation, OperationType } from './useVariableTableUpdates'; // Assuming types are exported from here
 
 // Define types for the arguments passed to the hook

@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
-import { getColumnConfig, getDefaultSpareColumnConfig } from './utils';
+import { getColumnConfig, getDefaultSpareColumnConfig } from '../utils/utils';
 import { Variable, VariableAlign, VariableType, spssDateTypes } from '@/types/Variable';
 
 /**
