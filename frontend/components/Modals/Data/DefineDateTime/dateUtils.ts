@@ -1,8 +1,4 @@
-export interface TimeComponent {
-    name: string;
-    value: number;
-    periodicity?: number;
-}
+import { TimeComponent } from "./types";
 
 export const getTimeComponentsFromCase = (selectedCase: string): TimeComponent[] => {
     const components: TimeComponent[] = [];
@@ -189,14 +185,17 @@ export const formatDateString = (
     const timeParts: string[] = [];
 
     if (componentNames.includes("hour") || componentNames.includes("work hour")) {
-        timeParts.push((values["hour"] || values["work hour"]).toString());
+        const hourValue = values["hour"] !== undefined ? values["hour"] : values["work hour"];
+        if (hourValue !== undefined) {
+            timeParts.push(hourValue.toString());
+        }
     }
 
-    if (componentNames.includes("minute")) {
+    if (componentNames.includes("minute") && values["minute"] !== undefined) {
         timeParts.push(values["minute"].toString().padStart(2, "0"));
     }
 
-    if (componentNames.includes("second")) {
+    if (componentNames.includes("second") && values["second"] !== undefined) {
         timeParts.push(values["second"].toString().padStart(2, "0"));
     }
 

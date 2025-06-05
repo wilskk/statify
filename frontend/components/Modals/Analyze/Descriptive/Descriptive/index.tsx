@@ -14,6 +14,7 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { HelpCircle } from "lucide-react";
 import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
@@ -115,16 +116,16 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        onClick={runAnalysis}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? "Processing..." : "OK"}
-                    </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={handleReset}
                         disabled={isLoading}
                     >
@@ -132,17 +133,17 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={onClose}
                         disabled={isLoading}
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
+                        onClick={runAnalysis}
                         disabled={isLoading}
                     >
-                        Help
+                        {isLoading ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>

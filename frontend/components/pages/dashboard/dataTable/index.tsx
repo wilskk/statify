@@ -1,21 +1,48 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import HandsontableWrapper from './HandsontableWrapper';
 import { HotTableClass } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
+import debounce from 'lodash/debounce';
 
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { useDataTableLogic } from './hooks/useDataTableLogic';
+import { addColumns, addMultipleVariables, getVariables } from './services/storeOperations';
 import './DataTable.css';
 
 registerAllModules();
+
+/** Map Handsontable changes to update objects */
+function mapChangesToUpdates(changes: any[]) {
+  return changes.map((item: any[]) => {
+    const [row, prop, , newValue] = item;
+    const col = typeof prop === 'string' ? parseInt(prop as string, 10) : (prop as number);
+    return { row: row as number, col, value: newValue as string | number };
+  });
+}
+
+/** Truncate updates based on widthMap */
+function applyTruncation(
+  updates: Array<{ row: number; col: number; value: string | number }>,
+  widthMap: Record<number, number>
+) {
+  updates.forEach(u => {
+    const maxWidth = widthMap[u.col];
+    if (typeof u.value === 'string' && maxWidth !== undefined && String(u.value).length > maxWidth) {
+      u.value = String(u.value).substring(0, maxWidth);
+    }
+  });
+}
 
 export default function Index() {
     const hotTableRef = useRef<HotTableClass>(null);
     const { setDataTableRef } = useTableRefStore();
     const updateCells = useDataStore.getState().updateCells;
+
+    // Debounce updates to batch rapid changes and improve performance
+    const debouncedUpdateCells = useMemo(() => debounce(updateCells, 100), [updateCells]);
 
     const {
         displayMatrix,
@@ -53,6 +80,53 @@ export default function Index() {
         }
     }, [actualNumCols]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleAfterChange = useCallback(async (changes: any[] | null, source: any) => {
+        if (!changes || source === 'loadData') return;
+        try {
+            const updates = mapChangesToUpdates(changes);
+            const maxCol = updates.reduce((max, u) => Math.max(max, u.col), -1);
+            const widthMap: Record<number, number> = {};
+            if (maxCol >= actualNumCols) {
+                const initialCols = actualNumCols;
+                const newCols = Array.from({ length: maxCol - initialCols + 1 }, (_, idx) => initialCols + idx);
+                const updatesByCol: Record<number, any[]> = {};
+                updates.forEach(({ col, value }) => {
+                    if (col >= initialCols) (updatesByCol[col] ||= []).push(value);
+                });
+                const varsToAdd = newCols.map(colIndex => {
+                    const vals = updatesByCol[colIndex] || [];
+                    const isNumericOnly = vals.every(v => {
+                        const num = typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''));
+                        return !isNaN(num) && String(v).trim() !== '';
+                    });
+                    const width = isNumericOnly ? 8 : Math.max(...vals.map(v => String(v).length));
+                    widthMap[colIndex] = width;
+                    return { columnIndex: colIndex, type: isNumericOnly ? 'NUMERIC' : 'STRING', width } as Partial<import('@/types/Variable').Variable>;
+                });
+                try {
+                    await addMultipleVariables(varsToAdd);
+                    addColumns(newCols);
+                } catch (error) {
+                    console.error('Failed to add new variables/columns:', error);
+                }
+            }
+            let vars: Array<{ columnIndex: number; width?: number }> = [];
+            try {
+                vars = getVariables();
+            } catch (error) {
+                console.error('Failed to fetch variables:', error);
+            }
+            vars.forEach(v => {
+                if (widthMap[v.columnIndex] === undefined) widthMap[v.columnIndex] = v.width ?? 8;
+            });
+            applyTruncation(updates, widthMap);
+            debouncedUpdateCells(updates);
+        } catch (error) {
+            console.error('Error in handleAfterChange:', error);
+        }
+    }, [debouncedUpdateCells, actualNumCols]);
+
     useEffect(() => {
         if (hotTableRef.current) {
             setDataTableRef(hotTableRef as React.RefObject<any>);
@@ -62,19 +136,18 @@ export default function Index() {
         };
     }, [setDataTableRef]);
 
+    // Cancel pending debounced calls on unmount
     useEffect(() => {
-        const hotInstance = hotTableRef.current?.hotInstance;
-        if (hotInstance) {
-            hotInstance.updateSettings({ colHeaders: colHeaders }, false);
-        }
-    }, [colHeaders]);
+        return () => { debouncedUpdateCells.cancel(); };
+    }, [debouncedUpdateCells]);
 
+    // Update settings for headers & columns in one effect to reduce re-renders
     useEffect(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
         if (hotInstance) {
-            hotInstance.updateSettings({ columns: columns as any }, false);
+            hotInstance.updateSettings({ colHeaders, columns: columns as any }, false);
         }
-    }, [columns]);
+    }, [colHeaders, columns]);
 
     return (
         <div className="h-full w-full z-0 relative hot-container overflow-hidden">
@@ -93,15 +166,7 @@ export default function Index() {
                 afterValidate={handleAfterValidate}
                 afterGetRowHeader={handleAfterGetRowHeader}
                 afterGetColHeader={handleAfterGetColHeader}
-                afterChange={(changes, source) => {
-                    if (!changes || source === 'loadData') return;
-                    const updates = changes.map(([row, prop, , newValue]) => ({
-                        row: row as number,
-                        col: typeof prop === 'string' ? parseInt(prop, 10) : (prop as number),
-                        value: newValue as string | number,
-                    }));
-                    updateCells(updates);
-                }}
+                afterChange={handleAfterChange}
             />
         </div>
     );

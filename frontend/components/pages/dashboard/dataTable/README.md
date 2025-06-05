@@ -16,6 +16,7 @@ Comprehensive, configurable data table for the Statify Dashboard, built on Hands
    - [Types](#types)
 5. [Getting Started](#getting-started)
 6. [Contribution](#contribution)
+7. [Blackbox Test Scenarios](#blackbox-test-scenarios)
 
 ---
 
@@ -159,3 +160,26 @@ Shared interfaces for data, variables, and service function signatures.
 
 Contributions, issues, and feature requests welcome!
 Please follow repository guidelines when submitting pull requests.
+
+---
+
+## Blackbox Test Scenarios
+
+Exercise critical behaviors end-to-end to verify integrity and UX.
+
+1. Column Creation & Type Inference
+   - Paste mixed numeric and text in new columns → verify `NUMERIC` vs `STRING` type and `width` char limit.
+2. String Truncation
+   - Enter text longer than `width` → ensure data saved truncated and display shows full entry.
+3. Column Insert/Delete Transaction
+   - Insert/Delete column via context menu → check data and variable store sync, rollback on failure.
+4. Cell Validation
+   - Input invalid numeric → validator rejects; valid input persists.
+5. Context Menu Operations
+   - Execute row/column insert/delete and alignment → confirm UI and persistent store updated.
+6. Data Persistence
+   - Refresh page after edits → ensure variables and data reload correctly.
+7. Error Rollback
+   - Simulate persistence failure (e.g. offline) → verify UI rollback and error message.
+8. Edge Cases
+   - Empty columns, oversized pastes, rapid operations → no state corruption or crashes.

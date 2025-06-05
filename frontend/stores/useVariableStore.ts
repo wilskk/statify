@@ -168,6 +168,12 @@ const enforceMeasureConstraint = (changes: Partial<Variable>, existingVariable?:
     return finalChanges;
 };
 
+// Static mapping for field names by column index
+const FIELD_NAME_MAPPING = [
+  "name", "type", "width", "decimals", "label", "values", "missing",
+  "columns", "align", "measure", "role"
+] as const;
+
 export const useVariableStore = create<VariableStoreState>()(
     devtools(
         immer((set, get) => ({
@@ -310,28 +316,26 @@ export const useVariableStore = create<VariableStoreState>()(
                     };
                     
                     const nameResult = processVariableName(newVariableBase.name, allCurrentVariables);
-                    const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
+                    const finalName = (nameResult.isValid && nameResult.processedName) 
+                        ? nameResult.processedName 
+                        : newVariableBase.name;
+                    
                     let finalNewVariable = { ...newVariableBase, name: finalName };
                     finalNewVariable = { ...finalNewVariable, ...enforceMeasureConstraint(finalNewVariable, null) };
 
                     if (variableExistsAtIndex) {
-                        // Insertion case - need to shift existing variables
+                        // Insertion case - shift existing variables first to make room
                         console.log(`[addVariable] Insertion case detected for index: ${intendedIndex}`);
-                        
-                        // Shift variables with columnIndex >= intendedIndex
-                        const variablesToShift = get().variables.filter(v => v.columnIndex >= intendedIndex);
-                        
-                        // Save new variable first
-                        await variableService.saveVariable(finalNewVariable);
-                        
-                        // Update shifted variables
+                        // Shift variables at or after intendedIndex descending to avoid collisions
+                        const variablesToShift = get().variables
+                            .filter(v => v.columnIndex >= intendedIndex)
+                            .sort((a, b) => b.columnIndex - a.columnIndex);
                         for (const variable of variablesToShift) {
-                            const shiftedVar = {
-                                ...variable,
-                                columnIndex: variable.columnIndex + 1
-                            };
+                            const shiftedVar = { ...variable, columnIndex: variable.columnIndex + 1 };
                             await variableService.saveVariable(shiftedVar);
                         }
+                        // Insert new variable at intendedIndex
+                        await variableService.saveVariable(finalNewVariable);
                     } else {
                         // Simple append case
                         console.log(`[addVariable] Append/GapFill case for index: ${intendedIndex}`);
@@ -341,9 +345,6 @@ export const useVariableStore = create<VariableStoreState>()(
                     // Reload variables to get updated state
                     const updatedVariables = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, updatedVariables);
-                    
-                    // Check for and fill any gaps in the sequence
-                    await get().ensureCompleteVariables();
                 } catch (error: any) {
                     console.error("Error in addVariable:", error);
                     set((draft) => { draft.error = { message: error.message || "Error adding variable", source: "addVariable", originalError: error }; });
@@ -406,9 +407,6 @@ export const useVariableStore = create<VariableStoreState>()(
                         // Refresh the variable list
                         const updatedVariables = await variableService.getAllVariables();
                         updateStateAfterSuccess(set, updatedVariables);
-                        
-                        // Ensure complete variable set
-                        await get().ensureCompleteVariables();
                     }
                 } catch (error: any) {
                     console.error("Error adding multiple variables:", error);
@@ -508,7 +506,7 @@ export const useVariableStore = create<VariableStoreState>()(
             sortVariables: async (direction, columnIndex) => {
                 try {
                     // Get field to sort by based on columnIndex
-                    const field = getFieldNameByColumnIndex(columnIndex);
+                    const field = FIELD_NAME_MAPPING[columnIndex] ?? null;
                     if (!field) {
                         console.warn(`Invalid column index ${columnIndex} for sorting.`);
                         return;
@@ -582,9 +580,5 @@ export const useVariableStore = create<VariableStoreState>()(
 );
 
 function getFieldNameByColumnIndex(columnIndex: number): string | null {
-    const fieldMapping = [
-        "name", "type", "width", "decimals", "label", "values", "missing",
-        "columns", "align", "measure", "role"
-    ];
-    return columnIndex >= 0 && columnIndex < fieldMapping.length ? fieldMapping[columnIndex] : null;
+    return FIELD_NAME_MAPPING[columnIndex] ?? null;
 }

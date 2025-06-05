@@ -12,3 +12,9 @@
     overflow: hidden; /* Hide overflowing text */
     text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
 } 
+
+.truncate-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -23,9 +23,11 @@ import { Variable } from "@/types/Variable";
 import {
     Shapes,
     Ruler,
-    BarChartHorizontal
+    BarChartHorizontal,
+    HelpCircle
 } from "lucide-react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { IdentifyUnusualCasesProps } from "./types";
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
@@ -34,10 +36,10 @@ import SaveTab from "./SaveTab";
 import MissingValuesTab from "./MissingValuesTab";
 import OptionsTab from "./OptionsTab";
 
-interface IdentifyUnusualCasesProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
+// interface IdentifyUnusualCasesProps {
+//     onClose: () => void;
+//     containerType?: "dialog" | "sidebar";
+// }
 
 // Content component separated from container logic
 const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({ 
@@ -998,40 +1000,31 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                 </TabsContent>
             </Tabs>
 
-            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                        onClick={handleConfirm}
-                    >
-                        OK
-                    </Button>
-                    {/* <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Paste
-                    </Button> */}
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
                     <Button
                         variant="outline"
-                        className="h-8 px-4"
+                        className="mr-2"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 px-4"
+                        className="mr-2"
                         onClick={onClose}
                     >
                         Cancel
                     </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={() => alert("Help for Unusual Cases")}
+                    <Button 
+                        onClick={handleConfirm}
                     >
-                        Help
+                        OK
                     </Button>
                 </div>
             </div>

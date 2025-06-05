@@ -14,4 +14,5 @@ export enum TabType {
 export interface FindAndReplaceModalProps extends BaseModalProps {
     // columns?: string[]; // Columns are now fetched from useVariableStore via the hook
     defaultTab?: FindReplaceMode;
+    initialTab?: FindReplaceMode; // For setting initial tab from outside
 } 

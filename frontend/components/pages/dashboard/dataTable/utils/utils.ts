@@ -1,8 +1,8 @@
-import Handsontable from 'handsontable';
 // @ts-ignore
 import { ColumnSettings } from 'handsontable/settings';
 import { Variable } from '@/types/Variable';
-import { DEFAULT_COLUMN_WIDTH, DEFAULT_MIN_COLUMNS, MIN_ROWS } from '../constants';
+import { DEFAULT_COLUMN_WIDTH } from '../constants';
+import { textRenderer } from 'handsontable/renderers';
 
 // Helper function for default spare column config
 export const getDefaultSpareColumnConfig = (): ColumnSettings => ({
@@ -45,6 +45,23 @@ export const getColumnConfig = (variable?: Variable): ColumnSettings => {
         case 'STRING':
         default:
             config.type = 'text';
+            // Truncate string values based on variable.columns length
+            config.renderer = (
+                hotInstance: any,
+                td: HTMLTableCellElement,
+                row: number,
+                col: number,
+                prop: number | string,
+                value: any,
+                cellProperties: any
+            ) => {
+                let displayValue: any = value;
+                if (typeof value === 'string' && variable.columns !== undefined && value.length > variable.columns) {
+                    displayValue = value.substring(0, variable.columns);
+                }
+                // Use Handsontable textRenderer
+                textRenderer(hotInstance, td, row, col, prop, displayValue, cellProperties);
+            };
             break;
     }
 
@@ -52,29 +69,6 @@ export const getColumnConfig = (variable?: Variable): ColumnSettings => {
 
     return config;
 };
-
-// Remove unused getDisplayMatrix function
-/*
-export const getDisplayMatrix = (
-    stateData: (string | number | null)[][],
-    varCount: number
-): (string | number | null)[][] => {
-    const defaultCols = Math.max(DEFAULT_MIN_COLUMNS, varCount);
-    const stateRows = stateData?.length || 0;
-    const stateCols = stateRows > 0 && stateData[0] ? stateData[0].length : 0;
-
-    const newRows = Math.max(MIN_ROWS, stateRows);
-    const newCols = Math.max(defaultCols, stateCols);
-
-    return Array.from({ length: newRows }, (_, rowIndex) => {
-        const row = rowIndex < stateRows ? stateData[rowIndex] : [];
-        const fullRow = Array.from({ length: newCols }, (_, colIndex) =>
-            colIndex < (row?.length ?? 0) ? row[colIndex] : null
-        );
-        return fullRow;
-    });
-};
-*/
 
 export const areValuesEqual = (val1: any, val2: any): boolean => {
     if (val1 === val2) return true;

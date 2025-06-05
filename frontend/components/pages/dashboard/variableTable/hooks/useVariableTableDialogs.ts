@@ -79,8 +79,8 @@ export function useVariableTableDialogs() {
         // setSelectedCell(null);
     }, []);
 
-
-    return {
+    // Memoize return object to stabilize references
+    return useMemo(() => ({
         // Dialog State
         showTypeDialog,
         setShowTypeDialog,
@@ -90,7 +90,7 @@ export function useVariableTableDialogs() {
         setShowMissingDialog,
         // Selected Cell Info
         selectedCell,
-        setSelectedCell, // Expose setter if needed externally
+        setSelectedCell,
         selectedVariable,
         selectedVariableType,
         // Actions
@@ -100,5 +100,17 @@ export function useVariableTableDialogs() {
         handleTypeChange,
         handleValuesChange,
         handleMissingChange,
-    };
+    }), [
+        showTypeDialog,
+        showValuesDialog,
+        showMissingDialog,
+        selectedCell,
+        selectedVariable,
+        selectedVariableType,
+        openDialogForCell,
+        closeAllDialogs,
+        handleTypeChange,
+        handleValuesChange,
+        handleMissingChange
+    ]);
 } 

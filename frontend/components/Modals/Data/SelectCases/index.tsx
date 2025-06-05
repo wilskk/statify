@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, CornerDownRight, Info } from "lucide-react";
+import { AlertCircle, CornerDownRight, Info, HelpCircle } from "lucide-react";
 import { useSelectCases } from "./hooks/useSelectCases";
 import { getVariableIcon, getDisplayName } from "./utils/variableUtils";
 
@@ -262,20 +262,19 @@ const SelectCasesContent: FC<{
                 </div>
             </div>
 
-            <div className="px-3 py-3 sm:px-6 sm:py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                    <Button variant="link" size="sm" className="text-xs p-0 h-auto text-muted-foreground hover:text-foreground" onClick={handleHelp}>
-                        <Info size={14} className="mr-1"/> Help
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div className="flex items-center gap-2">
+                    {isProcessing && <span className="text-xs text-muted-foreground mr-2">Processing...</span>}
+                    <Button variant="outline" className="mr-2" onClick={handleReset} disabled={isProcessing}>Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose} disabled={isProcessing}>Cancel</Button>
+                    <Button onClick={handleConfirm} disabled={isProcessing}>
+                        {isProcessing ? "Processing..." : "OK"}
                     </Button>
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                        {isProcessing && <span className="text-xs text-muted-foreground mr-2">Processing...</span>}
-                        <Button variant="outline" className="h-8 px-4" onClick={handlePaste} disabled={isProcessing}>Paste</Button>
-                        <Button variant="outline" className="h-8 px-4" onClick={handleReset} disabled={isProcessing}>Reset</Button>
-                        <Button variant="outline" className="h-8 px-4" onClick={onClose} disabled={isProcessing}>Cancel</Button>
-                        <Button className="h-8 px-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleConfirm} disabled={isProcessing}>
-                            {isProcessing ? "Processing..." : "OK"}
-                        </Button>
-                    </div>
                 </div>
             </div>
 

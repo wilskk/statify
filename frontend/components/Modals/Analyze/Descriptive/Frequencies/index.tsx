@@ -19,16 +19,15 @@ import type { Variable } from "@/types/Variable";
 import { useFrequenciesAnalysis } from "./hooks/useFrequenciesAnalysis";
 import type { StatisticsOptions } from "./types";
 import type { ChartOptions } from "./types";
+import { HelpCircle } from "lucide-react";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import ChartsTab from "./ChartsTab";
 
-interface FrequenciesModalProps {
-    onClose: () => void;
-}
-
-const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
+// FrequenciesContent component to be reused in both dialog and sidebar containers
+const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
@@ -240,149 +239,171 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
     }, [cancelAnalysis]);
 
     return (
+        <>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList className="bg-muted rounded-none h-9 p-0">
+                        <TabsTrigger
+                            value="variables"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="statistics"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                        >
+                            Statistics
+                        </TabsTrigger>
+                        {/* <TabsTrigger
+                            value="charts"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                        >
+                            Charts
+                        </TabsTrigger> */}
+                    </TabsList>
+                </div>
+
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        selectedVariables={selectedVariables}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                        showFrequencyTables={showFrequencyTables}
+                        setShowFrequencyTables={setShowFrequencyTables}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+
+                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
+                    <StatisticsTab
+                        showStatistics={showStatistics}
+                        setShowStatistics={setShowStatistics}
+                        quartilesChecked={quartilesChecked}
+                        setQuartilesChecked={setQuartilesChecked}
+                        cutPointsChecked={cutPointsChecked}
+                        setCutPointsChecked={setCutPointsChecked}
+                        cutPointsValue={cutPointsValue}
+                        setCutPointsValue={setCutPointsValue}
+                        enablePercentiles={enablePercentiles}
+                        setEnablePercentiles={setEnablePercentiles}
+                        percentileValues={percentileValues}
+                        setPercentileValues={setPercentileValues}
+                        currentPercentileInput={currentPercentileInput}
+                        setCurrentPercentileInput={setCurrentPercentileInput}
+                        selectedPercentileItem={selectedPercentileItem}
+                        setSelectedPercentileItem={setSelectedPercentileItem}
+                        meanChecked={meanChecked}
+                        setMeanChecked={setMeanChecked}
+                        medianChecked={medianChecked}
+                        setMedianChecked={setMedianChecked}
+                        modeChecked={modeChecked}
+                        setModeChecked={setModeChecked}
+                        sumChecked={sumChecked}
+                        setSumChecked={setSumChecked}
+                        stdDevChecked={stdDevChecked}
+                        setStdDevChecked={setStdDevChecked}
+                        varianceChecked={varianceChecked}
+                        setVarianceChecked={setVarianceChecked}
+                        rangeChecked={rangeChecked}
+                        setRangeChecked={setRangeChecked}
+                        minChecked={minChecked}
+                        setMinChecked={setMinChecked}
+                        maxChecked={maxChecked}
+                        setMaxChecked={setMaxChecked}
+                        seMeanChecked={seMeanChecked}
+                        setSeMeanChecked={setSeMeanChecked}
+                        skewnessChecked={skewnessChecked}
+                        setSkewnessChecked={setSkewnessChecked}
+                        kurtosisChecked={kurtosisChecked}
+                        setKurtosisChecked={setKurtosisChecked}
+                        containerType={containerType}
+                    />
+                </TabsContent>
+
+                <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
+                    {activeTab === "charts" && (
+                        <ChartsTab
+                            showCharts={showCharts}
+                            setShowCharts={setShowCharts}
+                            chartType={chartType}
+                            setChartType={setChartType}
+                            chartValues={chartValues}
+                            setChartValues={setChartValues}
+                            showNormalCurve={showNormalCurve}
+                            setShowNormalCurve={setShowNormalCurve}
+                            containerType={containerType}
+                        />
+                    )}
+                </TabsContent>
+            </Tabs>
+
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={onClose}
+                        disabled={isLoading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={runAnalysis}
+                        disabled={isLoading || selectedVariables.length === 0}
+                    >
+                        {isLoading ? "Calculating..." : "OK"}
+                    </Button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// Main component that conditionally renders either dialog or sidebar version
+const Frequencies: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    // Render based on containerType
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <FrequenciesContent onClose={onClose} containerType={containerType} {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    // Default dialog view
+    return (
         <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
             <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
                 </DialogHeader>
-
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                    <div className="border-b border-border flex-shrink-0">
-                        <TabsList className="bg-muted rounded-none h-9 p-0">
-                            <TabsTrigger
-                                value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Variables
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="statistics"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                            >
-                                Statistics
-                            </TabsTrigger>
-                            {/* <TabsTrigger
-                                value="charts"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                            >
-                                Charts
-                            </TabsTrigger> */}
-                        </TabsList>
-                    </div>
-
-                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                        <VariablesTab
-                            availableVariables={availableVariables}
-                            selectedVariables={selectedVariables}
-                            highlightedVariable={highlightedVariable}
-                            setHighlightedVariable={setHighlightedVariable}
-                            moveToSelectedVariables={moveToSelectedVariables}
-                            moveToAvailableVariables={moveToAvailableVariables}
-                            reorderVariables={reorderVariables}
-                            showFrequencyTables={showFrequencyTables}
-                            setShowFrequencyTables={setShowFrequencyTables}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                        <StatisticsTab
-                            showStatistics={showStatistics}
-                            setShowStatistics={setShowStatistics}
-                            quartilesChecked={quartilesChecked}
-                            setQuartilesChecked={setQuartilesChecked}
-                            cutPointsChecked={cutPointsChecked}
-                            setCutPointsChecked={setCutPointsChecked}
-                            cutPointsValue={cutPointsValue}
-                            setCutPointsValue={setCutPointsValue}
-                            enablePercentiles={enablePercentiles}
-                            setEnablePercentiles={setEnablePercentiles}
-                            percentileValues={percentileValues}
-                            setPercentileValues={setPercentileValues}
-                            currentPercentileInput={currentPercentileInput}
-                            setCurrentPercentileInput={setCurrentPercentileInput}
-                            selectedPercentileItem={selectedPercentileItem}
-                            setSelectedPercentileItem={setSelectedPercentileItem}
-                            meanChecked={meanChecked}
-                            setMeanChecked={setMeanChecked}
-                            medianChecked={medianChecked}
-                            setMedianChecked={setMedianChecked}
-                            modeChecked={modeChecked}
-                            setModeChecked={setModeChecked}
-                            sumChecked={sumChecked}
-                            setSumChecked={setSumChecked}
-                            stdDevChecked={stdDevChecked}
-                            setStdDevChecked={setStdDevChecked}
-                            varianceChecked={varianceChecked}
-                            setVarianceChecked={setVarianceChecked}
-                            rangeChecked={rangeChecked}
-                            setRangeChecked={setRangeChecked}
-                            minChecked={minChecked}
-                            setMinChecked={setMinChecked}
-                            maxChecked={maxChecked}
-                            setMaxChecked={setMaxChecked}
-                            seMeanChecked={seMeanChecked}
-                            setSeMeanChecked={setSeMeanChecked}
-                            skewnessChecked={skewnessChecked}
-                            setSkewnessChecked={setSkewnessChecked}
-                            kurtosisChecked={kurtosisChecked}
-                            setKurtosisChecked={setKurtosisChecked}
-                        />
-                    </TabsContent>
-
-                    <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
-                        {activeTab === "charts" && (
-                            <ChartsTab
-                                showCharts={showCharts}
-                                setShowCharts={setShowCharts}
-                                chartType={chartType}
-                                setChartType={setChartType}
-                                chartValues={chartValues}
-                                setChartValues={setChartValues}
-                                showNormalCurve={showNormalCurve}
-                                setShowNormalCurve={setShowNormalCurve}
-                            />
-                        )}
-                    </TabsContent>
-                </Tabs>
-
-                {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
-
-                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                    <div className="flex justify-end space-x-3">
-                        <Button
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                            onClick={runAnalysis}
-                            disabled={isLoading || selectedVariables.length === 0}
-                        >
-                            {isLoading ? "Calculating..." : "OK"}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            onClick={handleReset}
-                        >
-                            Reset
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            onClick={onClose}
-                            disabled={isLoading}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="h-8 px-4"
-                            disabled={isLoading}
-                        >
-                            Help
-                        </Button>
-                    </div>
-                </DialogFooter>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <FrequenciesContent onClose={onClose} containerType={containerType} {...props} />
+                </div>
             </DialogContent>
         </Dialog>
     );
 };
 
-export default Index;
+export default Frequencies;

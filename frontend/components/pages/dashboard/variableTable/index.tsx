@@ -33,8 +33,9 @@ export default function VariableTable() {
         // Event Handlers from useVariableTableEvents (via useVariableTableLogic)
         handleBeforeChange,
         handleAfterSelectionEnd,
-        // handleInsertVariable, // Keep if triggered by external buttons
-        // handleDeleteVariable, // Keep if triggered by external buttons
+        handleInsertVariable,
+        handleDeleteVariable,
+        handleCopyVariable,
 
         // Dialog State & Handlers from useVariableTableDialogs (via useVariableTableLogic)
         showTypeDialog,
@@ -123,6 +124,7 @@ export default function VariableTable() {
                 source: allowedMeasures,
                 strict: true,
                 allowInvalid: false,
+                className: currentMeasure === 'unknown' ? 'htUnknown' : ''
             } as Handsontable.CellProperties;
         }
 
@@ -146,14 +148,32 @@ export default function VariableTable() {
                     autoWrapRow={true}
                     autoWrapCol={true}
                     manualColumnResize={true}
-                    // contextMenu={customContextMenu} // Removed - needs reimplementation
+                    // Custom context menu for variable actions
+                    contextMenu={{
+                        items: {
+                            insert_variable: { name: 'Insert Variable' },
+                            copy_variable:   { name: 'Copy Variable' },
+                            delete_variable: { name: 'Delete Variable' },
+                        },
+                        callback: (key: string) => {
+                            switch (key) {
+                                case 'insert_variable':
+                                    handleInsertVariable();
+                                    break;
+                                case 'copy_variable':
+                                    handleCopyVariable();
+                                    break;
+                                case 'delete_variable':
+                                    handleDeleteVariable();
+                                    break;
+                            }
+                        },
+                    }}
                     licenseKey="non-commercial-and-evaluation"
                     minSpareRows={1}
                     afterGetRowHeader={handleAfterGetRowHeader}
                     beforeChange={handleBeforeChange}
                     afterSelectionEnd={handleAfterSelectionEnd}
-                    // beforeSetRangeEnd={handleBeforeSetRangeEnd} // Removed - needs reimplementation
-                    // beforeKeyDown={handleBeforeKeyDown} // Removed - needs reimplementation
                     outsideClickDeselects={false} // Keep this to prevent dialogs closing unexpectedly
                     selectionMode="single" // Keep single selection mode
                 />

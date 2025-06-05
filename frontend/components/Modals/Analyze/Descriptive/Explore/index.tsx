@@ -22,6 +22,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
+import { HelpCircle } from "lucide-react";
 
 // Import the Tab components
 import VariablesTab from "./VariablesTab";
@@ -350,16 +351,16 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                 </div>
             )}
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        onClick={handleExplore}
-                        disabled={isCalculating}
-                    >
-                        {isCalculating ? "Processing..." : "OK"}
-                    </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors" onClick={handleHelp}>
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={handleReset}
                         disabled={isCalculating}
                     >
@@ -367,17 +368,17 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                     </Button>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={onClose}
                         disabled={isCalculating}
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        onClick={handleHelp}
+                        onClick={handleExplore}
                         disabled={isCalculating}
                     >
-                        Help
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>

@@ -5,23 +5,25 @@ export const DEFAULT_VARIABLE_TYPE = "NUMERIC";
 export const DEFAULT_VARIABLE_WIDTH = 8;
 export const DEFAULT_VARIABLE_DECIMALS = 2;
 
+// Reorder indices: Measure after Decimals; last: Role, Columns, Align
 export const COLUMN_INDEX = {
     NAME: 0,
     TYPE: 1,
     WIDTH: 2,
     DECIMALS: 3,
-    LABEL: 4,
-    VALUES: 5,
-    MISSING: 6,
-    COLUMNS: 7,
-    ALIGN: 8,
-    MEASURE: 9,
-    ROLE: 10,
+    MEASURE: 4,
+    LABEL: 5,
+    VALUES: 6,
+    MISSING: 7,
+    ROLE: 8,
+    COLUMNS: 9,
+    ALIGN: 10,
 };
 
+// Update field map to new column order
 export const COLUMN_INDEX_TO_FIELD_MAP: (keyof Variable | string)[] = [
-    "name", "type", "width", "decimals", "label",
-    "values", "missing", "columns", "align", "measure", "role"
+    "name", "type", "width", "decimals", "measure",
+    "label", "values", "missing", "role", "columns", "align"
 ];
 
 export const DIALOG_TRIGGER_COLUMNS = [

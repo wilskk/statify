@@ -7,6 +7,7 @@ export enum GoToMode {
 
 export interface GoToModalProps extends BaseModalProps {
     defaultMode?: GoToMode;
+    initialMode?: GoToMode; // For setting initial mode from outside
     // variables?: string[]; // Will be fetched from useVariableStore via the hook
     // totalCases?: number; // Will be fetched from useDataStore via the hook
 } 

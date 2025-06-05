@@ -17,23 +17,32 @@ export function getContextMenuConfig(
   handlers: ContextMenuHandlers
 ): Handsontable.GridSettings['contextMenu'] {
   const { insertRow, insertColumn, removeRow, removeColumn, applyAlignment, isRangeSelected } = handlers;
+  const SEP = Handsontable.plugins.ContextMenu.SEPARATOR;
   return {
     items: {
+      // Row operations
       row_above: { name: 'Insert row above', callback: () => insertRow(true), disabled: () => !isRangeSelected() },
       row_below: { name: 'Insert row below', callback: () => insertRow(false), disabled: () => !isRangeSelected() },
+      remove_row: { name: 'Remove row(s)', callback: removeRow, disabled: () => !isRangeSelected() },
+      sp1: SEP,
+      // Column operations
       col_left: { name: 'Insert column left', callback: () => insertColumn(true), disabled: () => !isRangeSelected() },
       col_right: { name: 'Insert column right', callback: () => insertColumn(false), disabled: () => !isRangeSelected() },
-      sp1: Handsontable.plugins.ContextMenu.SEPARATOR,
-      remove_row: { name: 'Remove row(s)', callback: removeRow, disabled: () => !isRangeSelected() },
       remove_col: { name: 'Remove column(s)', callback: removeColumn, disabled: () => !isRangeSelected() },
-      sp2: Handsontable.plugins.ContextMenu.SEPARATOR,
-      copy: { name: 'Copy', disabled: () => !isRangeSelected() },
-      cut: { name: 'Cut', disabled: () => !isRangeSelected() },
-      sp3: Handsontable.plugins.ContextMenu.SEPARATOR,
-      alignment: {
-        name: 'Alignment',
+      sp2: SEP,
+      // Clipboard operations
+      paste: {
+        name: 'Paste',
+        callback: function(this: Handsontable.Core) {
+          // invoke CopyPaste plugin's paste method
+          (this.getPlugin('CopyPaste') as any)?.paste();
+        },
         disabled: () => !isRangeSelected(),
-        submenu: {
+      },
+      sp3: SEP,
+      // Alignment
+      alignment: {
+        name: 'Alignment', disabled: () => !isRangeSelected(), submenu: {
           items: [
             { key: 'alignment:left', name: 'Left', callback: () => applyAlignment('left') },
             { key: 'alignment:center', name: 'Center', callback: () => applyAlignment('center') },
@@ -41,6 +50,9 @@ export function getContextMenuConfig(
           ],
         },
       },
+      sp4: SEP,
+      // Clear contents
+      clear_contents: { name: 'Clear contents', callback: () => console.warn('Clear not implemented'), disabled: () => !isRangeSelected() },
     },
   };
 }

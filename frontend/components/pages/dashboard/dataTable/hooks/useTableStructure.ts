@@ -3,6 +3,7 @@ import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { getColumnConfig, getDefaultSpareColumnConfig } from '../utils/utils';
 import { Variable, VariableAlign, VariableType, spssDateTypes } from '@/types/Variable';
+import { DEFAULT_COLUMN_WIDTH } from '../constants';
 
 /**
  * Custom hook to generate the structures needed for Handsontable display.
@@ -73,57 +74,37 @@ export const useTableStructure = (
             }
         };
 
-        const DEFAULT_COLUMN_WIDTH = 64;
-
+        // Generate column configs: data columns, skeleton editable, and spare column
         const generatedColumns = Array(displayNumCols).fill(null).map((_, colIndex) => {
             if (colIndex < actualNumCols) {
+                // Existing variable column: editable with alignment and truncate for strings
                 const variable = variables.find(v => v.columnIndex === colIndex);
-                if (variable) {
-                    const isSpecialDateColumn = spssDateTypes.has(variable.type) && variable.width === 11;
-                    const columnWidth = variable.columns > 0 ? variable.columns : DEFAULT_COLUMN_WIDTH;
-                    const alignmentClass = getAlignmentClass(variable.align);
-
-                    if (isSpecialDateColumn) {
-                        return {
-                            data: colIndex,
-                            type: 'text', // Force text type
-                            readOnly: false,
-                            className: alignmentClass,
-                            width: columnWidth,
-                            validator: dateValidator
-                        };
-                    } else {
-                        const type = variable.type.startsWith('NUMERIC') || [
-                            'COMMA', 'DOT', 'SCIENTIFIC', 'DOLLAR'
-                        ].includes(variable.type) ? 'numeric' : 'text';
-
-                        return {
-                            data: colIndex,
-                            type: type,
-                            readOnly: false,
-                            className: alignmentClass,
-                            width: columnWidth // Include width here too
-                        };
-                    }
-                }
-                // Fallback for a data column missing a variable
+                const baseConfig = getColumnConfig(variable);
+                const alignClass = getAlignmentClass(variable?.align);
+                const truncateClass = variable?.type === 'STRING' ? 'truncate-cell' : '';
+                const className = `${alignClass} ${truncateClass}`.trim();
+                return { data: colIndex, readOnly: false, className, ...baseConfig };
+            } else if (colIndex < targetVisualDataCols) {
+                // Editable skeleton column
                 return {
                     data: colIndex,
-                    type: 'text',
                     readOnly: false,
+                    type: 'text',
                     className: 'htLeft',
-                    width: DEFAULT_COLUMN_WIDTH
+                    width: DEFAULT_COLUMN_WIDTH,
+                };
+            } else {
+                // Spare column for adding new variable
+                return {
+                    data: colIndex,
+                    readOnly: false,
+                    ...getDefaultSpareColumnConfig(),
+                    width: DEFAULT_COLUMN_WIDTH,
                 };
             }
-            // Config for visual spare columns
-            return {
-                data: colIndex,
-                ...getDefaultSpareColumnConfig(),
-                width: DEFAULT_COLUMN_WIDTH
-            };
         });
         return generatedColumns;
-    }, [variables, actualNumCols, displayNumCols]);
+    }, [variables, actualNumCols, targetVisualDataCols, displayNumCols]);
 
     return {
         colHeaders,

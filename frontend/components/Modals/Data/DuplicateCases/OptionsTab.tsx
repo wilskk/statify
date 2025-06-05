@@ -3,24 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-
-interface OptionsTabProps {
-    primaryCaseIndicator: "last" | "first";
-    setPrimaryCaseIndicator: (value: "last" | "first") => void;
-    primaryName: string;
-    setPrimaryName: (value: string) => void;
-    filterByIndicator: boolean;
-    setFilterByIndicator: (value: boolean) => void;
-    sequentialCount: boolean;
-    setSequentialCount: (value: boolean) => void;
-    sequentialName: string;
-    setSequentialName: (value: string) => void;
-    moveMatchingToTop: boolean;
-    setMoveMatchingToTop: (value: boolean) => void;
-    displayFrequencies: boolean;
-    setDisplayFrequencies: (value: boolean) => void;
-    containerType?: "dialog" | "sidebar";
-}
+import { OptionsTabProps } from "./types";
 
 const OptionsTab: FC<OptionsTabProps> = ({
                                              primaryCaseIndicator,

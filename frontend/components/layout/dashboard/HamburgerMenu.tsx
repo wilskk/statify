@@ -30,6 +30,8 @@ import {
 
 import { useActions, ActionPayload } from "@/hooks/actions";
 import { ModalType, useModal } from "@/hooks/useModal";
+import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
+import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 // NOTE: We don't need useMobile *inside* this component,
 // it will be rendered conditionally by its parent.
 
@@ -129,10 +131,10 @@ const HamburgerMenu: React.FC = () => {
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'InsertVariable' })} disabled={false}>Insert Variable</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => handleAction({ actionType: 'InsertCases' })} disabled={false}>Insert Cases</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.Find)}>Find...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.Replace)}>Replace...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.GoToCase)}>Go to Case...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.GoToVariable)}>Go to Variable...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND })}>Find...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.REPLACE })}>Replace...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE })}>Go to Case...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.VARIABLE })}>Go to Variable...</DrawerMenuItem>
                                 </AccordionContent>
                             </AccordionItem>
 

@@ -3,21 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { Variable } from "@/types/Variable";
-
-interface VariableTabProps {
-    sourceVariables: Variable[];
-    matchingVariables: Variable[];
-    sortingVariables: Variable[];
-    highlightedVariable: { id: string, source: string } | null;
-    setHighlightedVariable: (value: { id: string, source: string } | null) => void;
-    sortOrder: "ascending" | "descending";
-    setSortOrder: (value: "ascending" | "descending") => void;
-    handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
-    handleReorderVariable: (listId: string, variables: Variable[]) => void;
-    getVariableIcon: (variable: Variable) => React.ReactNode;
-    getDisplayName: (variable: Variable) => string;
-    containerType?: "dialog" | "sidebar";
-}
+import { VariableTabProps } from "./types";
 
 const VariableTab: FC<VariableTabProps> = ({
                                                sourceVariables,

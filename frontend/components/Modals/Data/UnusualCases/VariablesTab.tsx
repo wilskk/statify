@@ -1,28 +1,25 @@
 import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
-import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import type { Variable } from "@/types/Variable"; // Import Variable directly
+import type { VariablesTabProps, UnusualCasesSource } from "../types"; // Import props from ../types
 
-// Possible sources within this specific modal's variable lists
-type UnusualCasesSource = 'available' | 'analysis' | 'identifier';
+// // Possible sources within this specific modal's variable lists (MOVED TO TYPES.TS)
+// type UnusualCasesSource = 'available' | 'analysis' | 'identifier';
 
-interface VariablesTabProps {
-    availableVariables: Variable[];
-    analysisVariables: Variable[];
-    caseIdentifierVariable: Variable | null; // Single variable
-
-    // Use the original highlight state type (tempId) from the parent
-    highlightedVariable: { tempId: string, source: UnusualCasesSource } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: UnusualCasesSource } | null>>;
-
-    // Movement functions passed from parent
-    moveToAvailableVariables: (variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => void;
-    moveToAnalysisVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToCaseIdentifierVariable: (variable: Variable) => void; // No targetIndex needed
-    reorderVariables: (source: 'analysis', variables: Variable[]) => void; // Only analysis reorderable
-
-    errorMsg: string | null;
-}
+// interface VariablesTabProps { // MOVED TO TYPES.TS
+//     availableVariables: Variable[];
+//     analysisVariables: Variable[];
+//     caseIdentifierVariable: Variable | null; 
+//     highlightedVariable: { tempId: string, source: UnusualCasesSource } | null;
+//     setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: UnusualCasesSource } | null>>;
+//     moveToAvailableVariables: (variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => void;
+//     moveToAnalysisVariables: (variable: Variable, targetIndex?: number) => void;
+//     moveToCaseIdentifierVariable: (variable: Variable) => void; 
+//     reorderVariables: (source: 'analysis', variables: Variable[]) => void; 
+//     errorMsg: string | null;
+//     // getVariableIcon and getDisplayName will be passed through props
+// }
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
@@ -34,11 +31,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToAnalysisVariables,
     moveToCaseIdentifierVariable,
     reorderVariables,
-    errorMsg
+    errorMsg,
+    getVariableIcon,
+    getDisplayName
 }) => {
 
-    // --- Adapt props for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'tempId'; // Manager uses tempId internally
+    const variableIdKeyToUse: keyof Variable = 'tempId';
 
     // 1. Configure the target lists
     const targetLists: TargetListConfig[] = [
@@ -46,7 +44,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'analysis',
             title: 'Analysis Variables',
             variables: analysisVariables,
-            height: '13rem', // approx 208px, Tailwind h-52
+            height: '13rem',
             draggableItems: true,
             droppable: true,
         },
@@ -54,10 +52,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'identifier',
             title: 'Case Identifier Variable',
             variables: caseIdentifierVariable ? [caseIdentifierVariable] : [],
-            height: '4.5rem', // approx 72px, custom or Tailwind h-18
+            height: '4.5rem',
             maxItems: 1,
-            draggableItems: false, // Cannot drag *from* or reorder within identifier list
-            droppable: true,      // Can drop *into* identifier list
+            draggableItems: false,
+            droppable: true,
         }
     ];
 
@@ -68,7 +66,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // Adapt the setter function to convert back (id -> tempId)
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
-        // Ensure the source is one of the expected types for this component
         if (value && ['available', 'analysis', 'identifier'].includes(value.source)) {
             setHighlightedVariable({ tempId: value.id, source: value.source as UnusualCasesSource });
         } else {
@@ -79,24 +76,19 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 3. Create onMoveVariable callback
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
         const source = fromListId as UnusualCasesSource;
-
         switch (toListId) {
             case 'available':
-                // Only allow moving back from 'analysis' or 'identifier'
                 if (source === 'analysis' || source === 'identifier') {
                     moveToAvailableVariables(variable, source, targetIndex);
                 }
                 break;
             case 'analysis':
-                // Can only move *to* analysis from available
                 if (source === 'available') {
                     moveToAnalysisVariables(variable, targetIndex);
                 }
                 break;
             case 'identifier':
-                // Can only move *to* identifier from available
                 if (source === 'available') {
-                     // moveToCaseIdentifierVariable doesn't take targetIndex
                     moveToCaseIdentifierVariable(variable);
                 }
                 break;
@@ -104,14 +96,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
     }, [moveToAvailableVariables, moveToAnalysisVariables, moveToCaseIdentifierVariable]);
 
     // 4. Create onReorderVariable callback
-    const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
+    const handleReorderVariables = useCallback((listId: string, reorderedList: Variable[]) => {
         if (listId === 'analysis') {
-            reorderVariables(listId, variables);
+            reorderVariables(listId as 'analysis', reorderedList);
         }
-        // Cannot reorder 'identifier' or 'available'
     }, [reorderVariables]);
 
-    // --- Render the manager component and error message ---
     return (
         <div>
             <VariableListManager
@@ -122,6 +112,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 setHighlightedVariable={setManagerHighlightedVariable}
                 onMoveVariable={handleMoveVariable}
                 onReorderVariable={handleReorderVariables}
+                getVariableIcon={getVariableIcon}
+                getDisplayName={getDisplayName}
             />
             {errorMsg && (
                 <div className="col-span-2 text-destructive text-sm mt-3 p-2 bg-destructive/10 border border-destructive/30 rounded">

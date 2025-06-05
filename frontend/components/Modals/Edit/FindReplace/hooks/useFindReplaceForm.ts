@@ -45,7 +45,7 @@ export const useFindReplaceForm = ({
     const [lastSearchOptions, setLastSearchOptions] = useState<any>(null);
 
     useEffect(() => {
-        const names = variables.sort((a,b) => a.columnIndex - b.columnIndex).map(v => v.name);
+        const names = [...variables].sort((a,b) => a.columnIndex - b.columnIndex).map(v => v.name);
         setColumnNames(names);
         if (names.length > 0 && !selectedColumnName) {
             setSelectedColumnName(names[0]);

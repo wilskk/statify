@@ -174,48 +174,36 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerT
                         <Label htmlFor="match-case" className="text-sm font-normal">Match case</Label>
                     </div>
 
-                    <div className="pt-2">
-                        <Button
-                            variant="link"
-                            onClick={() => setShowOptions((prev) => !prev)}
-                            className="p-0 h-auto text-sm text-primary hover:text-primary/90"
-                        >
-                            {showOptions ? "Hide Options" : "Show Options"}
-                        </Button>
-                    </div>
-
-                    {showOptions && (
-                        <div className="border border-border p-4 rounded-md space-y-4 bg-background mt-2">
-                            <div>
-                                <Label className="text-xs font-medium text-muted-foreground">Match in:</Label>
-                                <RadioGroup value={matchTo} onValueChange={(value) => setMatchTo(value as any)} className="mt-1 space-y-1">
-                                    {[
-                                        { value: "contains", label: "Any part of cell" },
-                                        { value: "entire_cell", label: "Entire cell" },
-                                        { value: "begins_with", label: "Beginning of cell" },
-                                        { value: "ends_with", label: "End of cell" },
-                                    ].map((option) => (
-                                        <div key={option.value} className="flex items-center space-x-2">
-                                            <RadioGroupItem value={option.value} id={`matchTo-${option.value}`} />
-                                            <Label htmlFor={`matchTo-${option.value}`} className="text-sm font-normal">{option.label}</Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            </div>
-                            <Separator />
-                            <div>
-                                <Label className="text-xs font-medium text-muted-foreground">Direction:</Label>
-                                <RadioGroup value={direction} onValueChange={(value) => setDirection(value as any)} className="mt-1 space-y-1">
-                                    {[{ value: "down", label: "Down" }, { value: "up", label: "Up" }].map((dir) => (
-                                        <div key={dir.value} className="flex items-center space-x-2">
-                                            <RadioGroupItem value={dir.value} id={`direction-${dir.value}`} />
-                                            <Label htmlFor={`direction-${dir.value}`} className="text-sm font-normal">{dir.label}</Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            </div>
+                    <div className="border border-border p-4 rounded-md space-y-4 bg-background mt-2">
+                        <div>
+                            <Label className="text-xs font-medium text-muted-foreground">Match in:</Label>
+                            <RadioGroup value={matchTo} onValueChange={(value) => setMatchTo(value as any)} className="mt-1 space-y-1">
+                                {[
+                                    { value: "contains", label: "Any part of cell" },
+                                    { value: "entire_cell", label: "Entire cell" },
+                                    { value: "begins_with", label: "Beginning of cell" },
+                                    { value: "ends_with", label: "End of cell" },
+                                ].map((option) => (
+                                    <div key={option.value} className="flex items-center space-x-2">
+                                        <RadioGroupItem value={option.value} id={`matchTo-${option.value}`} />
+                                        <Label htmlFor={`matchTo-${option.value}`} className="text-sm font-normal">{option.label}</Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
                         </div>
-                    )}
+                        <Separator />
+                        <div>
+                            <Label className="text-xs font-medium text-muted-foreground">Direction:</Label>
+                            <RadioGroup value={direction} onValueChange={(value) => setDirection(value as any)} className="mt-1 space-y-1">
+                                {[{ value: "down", label: "Down" }, { value: "up", label: "Up" }].map((dir) => (
+                                    <div key={dir.value} className="flex items-center space-x-2">
+                                        <RadioGroupItem value={dir.value} id={`direction-${dir.value}`} />
+                                        <Label htmlFor={`direction-${dir.value}`} className="text-sm font-normal">{dir.label}</Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -269,10 +257,13 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerT
 export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
     onClose,
     defaultTab = FindReplaceMode.FIND,
+    initialTab,
     containerType = "dialog",
     ...props
 }) => {
-    const contentProps = { defaultTab, ...props };
+    // Use initialTab if provided, otherwise fall back to defaultTab
+    const activeTab = initialTab || defaultTab;
+    const contentProps = { defaultTab: activeTab, ...props };
 
     if (containerType === "sidebar") {
         return (

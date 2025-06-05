@@ -28,97 +28,45 @@ export function useVariableTableEvents({
 }: UseVariableTableEventsProps) {
 
     const handleBeforeChange = useCallback((
-        changes: (Handsontable.CellChange | null)[],
-        source: Handsontable.ChangeSource
+        changes: (Handsontable.CellChange | null)[], source: Handsontable.ChangeSource
     ): void | boolean => {
-        if (source === "loadData" || source === "updateData" || !changes) return;
-
-        const changesByRow: Record<number, Partial<Variable>> = {};
-        let shouldPreventDefault = false;
-        let cellToOpenDialog: { row: number; col: number } | null = null;
-
+        if (source === 'loadData' || source === 'updateData' || !changes) return;
         for (const change of changes) {
             if (!change) continue;
             const [row, prop, oldValue, newValue] = change;
-            if (newValue === oldValue) continue;
-            if (typeof row !== "number") continue;
+            if (newValue === oldValue || typeof row !== 'number') continue;
 
             let columnIndex: number | undefined;
-            if (typeof prop === 'number') {
-                columnIndex = prop;
-            } else if (typeof prop === 'string') {
-                // Ensure hotInstance exists before calling propToCol
-                columnIndex = hotTableRef.current?.hotInstance?.propToCol(prop);
-            } else {
+            if (typeof prop === 'number') columnIndex = prop;
+            else if (typeof prop === 'string') columnIndex = hotTableRef.current?.hotInstance?.propToCol(prop);
+            else continue;
+            if (typeof columnIndex !== 'number') continue;
+
+            // Dialog triggers
+            if (DIALOG_TRIGGER_COLUMNS.includes(columnIndex)) {
+                if (source === 'edit' || source === 'Autofill.fill' || source === 'CopyPaste.paste') {
+                    openDialogForCell(row, columnIndex);
+                    return false;
+                }
                 continue;
             }
 
-            if (typeof columnIndex !== 'number') continue;
-
-            if (DIALOG_TRIGGER_COLUMNS.includes(columnIndex)) {
-                 // Prevent default editing for dialog trigger columns
-                 // Only trigger dialog opening if source indicates user interaction
-                if (source === 'edit' || source === 'Autofill.fill' || source === 'CopyPaste.paste') {
-                    shouldPreventDefault = true;
-                     // Store the first cell that triggers a dialog
-                     if (!cellToOpenDialog) {
-                        cellToOpenDialog = { row, col: columnIndex };
-                    }
+            const field = COLUMN_INDEX_TO_FIELD_MAP[columnIndex];
+            if (field && typeof field === 'string') {
+                const existingVariable = variables.find(v => v.columnIndex === row);
+                const rawChange: any = { [field]: newValue };
+                // Constraint: STRING variables cannot have measure 'scale'
+                if (existingVariable && field === 'measure' && existingVariable.type === 'STRING' && newValue === 'scale') {
+                    console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'.`);
+                    rawChange.measure = 'nominal';
                 }
-            } else {
-                const field = COLUMN_INDEX_TO_FIELD_MAP[columnIndex];
-                if (field && typeof field === 'string') {
-                    if (!changesByRow[row]) changesByRow[row] = {};
-                    // Apply the change to the temporary record
-                    changesByRow[row][field as keyof Variable] = newValue as any;
-                }
+                const op: PendingOperation = existingVariable
+                    ? { type: 'UPDATE_VARIABLE', payload: { row, changes: rawChange } }
+                    : { type: 'CREATE_VARIABLE', payload: { row, variableData: rawChange } };
+                enqueueOperation(op);
             }
         }
-
-        // If any change requires a dialog, prevent default and open the dialog for the first trigger cell
-        if (shouldPreventDefault && cellToOpenDialog) {
-            openDialogForCell(cellToOpenDialog.row, cellToOpenDialog.col);
-            return false; // Prevent Handsontable from applying the change
-        }
-
-        // If no dialog trigger, proceed to enqueue update/create operations
-        Object.keys(changesByRow).forEach(rowKey => {
-            const row = Number(rowKey);
-            const rowChanges = changesByRow[row];
-            const existingVariable = variables.find(v => v.columnIndex === row);
-
-            // --- Constraint Check ---
-            let finalType = rowChanges.type ?? existingVariable?.type;
-            let finalMeasure = rowChanges.measure ?? existingVariable?.measure;
-
-            if (finalType === 'STRING' && finalMeasure === 'scale') {
-                console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'. Setting measure to 'nominal' for row ${row}.`);
-                rowChanges.measure = 'nominal'; // Force measure back to nominal
-            }
-            // --- End Constraint Check ---
-
-            if (existingVariable) {
-                enqueueOperation({
-                    type: 'UPDATE_VARIABLE', // Ensure this matches OperationType
-                    payload: { row, changes: rowChanges }
-                });
-            } else {
-                // Apply constraint check also for new variables if type/measure are set
-                 let createChanges = { ...rowChanges };
-                 let createType = createChanges.type;
-                 let createMeasure = createChanges.measure;
-                 if (createType === 'STRING' && createMeasure === 'scale') {
-                     console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'. Setting measure to 'nominal' for new row ${row}.`);
-                     createChanges.measure = 'nominal';
-                 }
-                enqueueOperation({
-                    type: 'CREATE_VARIABLE', // Ensure this matches OperationType
-                    payload: { row, variableData: createChanges }
-                });
-            }
-        });
-
-        return true; // Allow Handsontable to proceed if no dialog was triggered
+        return true;
     }, [variables, enqueueOperation, openDialogForCell, hotTableRef]);
 
     const handleAfterSelectionEnd = useCallback((
@@ -136,18 +84,17 @@ export function useVariableTableEvents({
         }
     }, [openDialogForCell, setSelectedCell]); // Added setSelectedCell dependency
 
+    // Insert variable at selected row or append if bottom
     const handleInsertVariable = useCallback(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
         if (!hotInstance) return;
         const selectedRange = hotInstance.getSelectedRangeLast();
-        // Use countRows() directly if selectedRange is null/undefined
-        const selectedRow = selectedRange ? selectedRange.from.row : hotInstance.countRows();
-
-        enqueueOperation({
-            type: 'INSERT_VARIABLE', // Ensure this matches OperationType
-            payload: { row: selectedRow }
-        });
-    }, [hotTableRef, enqueueOperation]);
+        // Determine insertion index: use selected row or append
+        let selectedRow = selectedRange ? selectedRange.from.row : variables.length;
+        // Clamp to existing variable count
+        selectedRow = Math.min(selectedRow, variables.length);
+        enqueueOperation({ type: 'INSERT_VARIABLE', payload: { row: selectedRow } });
+    }, [hotTableRef, enqueueOperation, variables]);
 
     const handleDeleteVariable = useCallback(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
@@ -173,10 +120,37 @@ export function useVariableTableEvents({
         }
     }, [hotTableRef, enqueueOperation, variables]); // Added variables dependency
 
+    // Copy variable data to system clipboard
+    const handleCopyVariable = useCallback(() => {
+        const hotInstance = hotTableRef.current?.hotInstance;
+        if (!hotInstance) return;
+        const selectedRange = hotInstance.getSelectedRangeLast();
+        if (!selectedRange) return;
+        const row = selectedRange.from.row;
+        const variable = variables.find(v => v.columnIndex === row);
+        if (!variable) {
+            console.warn(`No variable found at index ${row} to copy`);
+            return;
+        }
+        try {
+            // Exclude internal identifiers
+            const { id, tempId, ...copyData } = variable;
+            const text = JSON.stringify(copyData);
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('[useVariableTableEvents] Variable copied to clipboard', variable);
+            }).catch(err => {
+                console.error('[useVariableTableEvents] Copy to clipboard failed', err);
+            });
+        } catch (err) {
+            console.error('[useVariableTableEvents] Failed to copy variable', err);
+        }
+    }, [hotTableRef, variables]);
+
     return {
         handleBeforeChange,
         handleAfterSelectionEnd,
         handleInsertVariable,
         handleDeleteVariable,
+        handleCopyVariable,
     };
 } 

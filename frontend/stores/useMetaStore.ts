@@ -3,34 +3,12 @@ import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 import db from '@/lib/db';
 
-export interface SingleVariableRule {
-    id: string;
-    name: string;
-    type: string;
-    format?: string;
-    validValuesType: string;
-    minimum?: string;
-    maximum?: string;
-    allowNoninteger: boolean;
-    allowUserMissing: boolean;
-    allowSystemMissing: boolean;
-    allowBlank: boolean;
-}
-
-export interface CrossVariableRule {
-    id: string;
-    name: string;
-    expression: string;
-}
-
 export interface Meta {
     name: string;
     location: string;
     created: Date;
     weight: string;
     dates: string;
-    singleVarRules: SingleVariableRule[];
-    crossVarRules: CrossVariableRule[];
     selectCasesCondition?: {
         type: 'all' | 'condition' | 'random' | 'time' | 'variable';
         expression?: string;
@@ -66,8 +44,6 @@ interface MetaStoreState {
     loadMeta: () => Promise<void>;
     setMeta: (newMeta: Partial<Meta>) => Promise<void>;
     clearDates: () => Promise<void>;
-    setSingleVarRules: (rules: SingleVariableRule[]) => Promise<void>;
-    setCrossVarRules: (rules: CrossVariableRule[]) => Promise<void>;
     setSelectCasesCondition: (condition: Meta['selectCasesCondition']) => Promise<void>;
     _saveMetaToDb: (metaToSave: Meta) => Promise<void>;
     resetMeta: () => Promise<void>;
@@ -80,8 +56,6 @@ const initialMetaState: Meta = {
     created: new Date(),
     weight: '',
     dates: '',
-    singleVarRules: [],
-    crossVarRules: [],
     selectCasesCondition: undefined
 };
 
@@ -94,8 +68,7 @@ export const useMetaStore = create<MetaStoreState>()(
                 created: new Date(),
                 weight: '',
                 dates: '',
-                singleVarRules: [],
-                crossVarRules: []
+                selectCasesCondition: undefined
             },
             isLoading: false,
             error: null,
@@ -169,28 +142,6 @@ export const useMetaStore = create<MetaStoreState>()(
                 let updatedMeta: Meta | null = null;
                 set((state) => {
                     state.meta.dates = '';
-                    updatedMeta = state.meta;
-                });
-                if (updatedMeta) {
-                    await get()._saveMetaToDb(updatedMeta);
-                }
-            },
-
-            setSingleVarRules: async (rules) => {
-                let updatedMeta: Meta | null = null;
-                set((state) => {
-                    state.meta.singleVarRules = rules;
-                    updatedMeta = state.meta;
-                });
-                if (updatedMeta) {
-                    await get()._saveMetaToDb(updatedMeta);
-                }
-            },
-
-            setCrossVarRules: async (rules) => {
-                let updatedMeta: Meta | null = null;
-                set((state) => {
-                    state.meta.crossVarRules = rules;
                     updatedMeta = state.meta;
                 });
                 if (updatedMeta) {

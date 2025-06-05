@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
     Dialog,
     DialogContent,
@@ -21,72 +21,40 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BaseModalProps } from "@/types/modalTypes";
-import { X, HelpCircle } from "lucide-react";
-
-export enum GoToMode {
-    CASE = "case",
-    VARIABLE = "variable",
-}
+import { X, HelpCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { GoToMode } from "./types";
+import { useGoToForm } from "./hooks/useGoToForm";
 
 interface GoToModalProps extends BaseModalProps {
     defaultMode?: GoToMode;
-    variables?: string[];
-    totalCases?: number;
+    initialMode?: GoToMode;
 }
 
-const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & { onClose: () => void }> = ({
+const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = ({
     onClose,
     defaultMode = GoToMode.CASE,
-    variables = ["DATE_", "HOUR_", "MINUTE_", "NAME_", "ID_"],
-    totalCases = 1000,
+    initialMode,
 }) => {
-    const [activeTab, setActiveTab] = useState<string>(
-        defaultMode === GoToMode.VARIABLE ? "variable" : "case"
-    );
-    const [caseNumber, setCaseNumber] = useState<string>("1");
-    const [caseError, setCaseError] = useState<string>("");
-    const [selectedVariable, setSelectedVariable] = useState<string>("");
-    const [variableError, setVariableError] = useState<string>("");
-
-    useEffect(() => {
-        setCaseError("");
-        setVariableError("");
-        if (activeTab === "case") {
-            setCaseNumber("1");
-        } else if (activeTab === "variable" && variables.length > 0 && !selectedVariable) {
-            setSelectedVariable(variables[0]);
-        }
-    }, [activeTab, variables, selectedVariable]);
-
-    const handleCaseNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setCaseNumber(value);
-
-        if (value === "" || !/^[1-9][0-9]*$/.test(value)) {
-            setCaseError("Case number must be a positive integer.");
-        } else if (parseInt(value) > totalCases) {
-            setCaseError(`Case number must not exceed ${totalCases}.`);
-        } else {
-            setCaseError("");
-        }
-    };
-
-    const handleGo = () => {
-        if (activeTab === "case") {
-            if (caseNumber === "" || !/^[1-9][0-9]*$/.test(caseNumber) || parseInt(caseNumber) > totalCases) {
-                setCaseError(`Please enter a valid case number (1-${totalCases}).`);
-                return;
-            }
-            console.log(`Go to case number: ${caseNumber}`);
-        } else {
-            if (!selectedVariable) {
-                setVariableError("Please select a variable.");
-                return;
-            }
-            console.log(`Go to variable: ${selectedVariable}`);
-        }
-        onClose();
-    };
+    const activeMode = initialMode || defaultMode;
+    
+    const {
+        activeTab,
+        setActiveTab,
+        caseNumberInput,
+        handleCaseNumberChange,
+        caseError,
+        variableNames,
+        selectedVariableName,
+        handleSelectedVariableChange,
+        variableError,
+        totalCases,
+        handleGo,
+        handleClose,
+        lastNavigationSuccess
+    } = useGoToForm({ 
+        defaultMode: activeMode, 
+        onClose 
+    });
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
@@ -97,8 +65,6 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
         }
     };
 
-    const sortedVariables = [...variables].sort();
-
     return (
         <>
             <div className="p-6 overflow-y-auto flex-grow">
@@ -107,15 +73,15 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                     onValueChange={setActiveTab}
                 >
                     <TabsList className="w-full mb-6">
-                        <TabsTrigger value="case" className="w-1/2">
+                        <TabsTrigger value={GoToMode.CASE} className="w-1/2">
                             Case
                         </TabsTrigger>
-                        <TabsTrigger value="variable" className="w-1/2">
+                        <TabsTrigger value={GoToMode.VARIABLE} className="w-1/2">
                             Variable
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="case" className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                    <TabsContent value={GoToMode.CASE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
                         <div className="space-y-1">
                             <div className="flex justify-between items-baseline">
                                 <Label htmlFor="case-number" className="text-xs font-medium text-muted-foreground">
@@ -130,8 +96,8 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                                 type="number"
                                 min="1"
                                 max={totalCases}
-                                value={caseNumber}
-                                onChange={handleCaseNumberChange}
+                                value={caseNumberInput}
+                                onChange={(e) => handleCaseNumberChange(e.target.value)}
                                 className={`h-9 text-sm ${caseError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                                 aria-invalid={!!caseError}
                                 aria-describedby={caseError ? "case-error-message" : undefined}
@@ -141,25 +107,38 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                                     {caseError}
                                 </p>
                             )}
+                            
+                            {lastNavigationSuccess !== null && activeTab === GoToMode.CASE && (
+                                <div className={`mt-2 p-2 text-xs rounded flex items-center ${lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                                    {lastNavigationSuccess ? (
+                                        <>
+                                            <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                                            Successfully navigated to case {caseNumberInput}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+                                            Failed to navigate to case {caseNumberInput}
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="variable" className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
+                    <TabsContent value={GoToMode.VARIABLE} className="mt-0 space-y-4" onKeyDown={handleKeyDown}>
                         <div className="space-y-1">
                             <div className="flex justify-between items-baseline">
                                 <Label htmlFor="variable-select" className="text-xs font-medium text-muted-foreground">
                                     Go to variable:
                                 </Label>
                                 <span className="text-xs text-muted-foreground">
-                                    Total: {sortedVariables.length}
+                                    Total: {variableNames.length}
                                 </span>
                             </div>
                             <Select
-                                value={selectedVariable}
-                                onValueChange={(value) => {
-                                    setSelectedVariable(value);
-                                    setVariableError("");
-                                }}
+                                value={selectedVariableName}
+                                onValueChange={handleSelectedVariableChange}
                             >
                                 <SelectTrigger
                                     id="variable-select"
@@ -170,7 +149,7 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                                     <SelectValue placeholder="Select a variable" />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[200px]">
-                                    {sortedVariables.map((variable: string) => (
+                                    {variableNames.map((variable: string) => (
                                         <SelectItem key={variable} value={variable}>
                                             {variable}
                                         </SelectItem>
@@ -182,6 +161,22 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                                     {variableError}
                                 </p>
                             )}
+                            
+                            {lastNavigationSuccess !== null && activeTab === GoToMode.VARIABLE && (
+                                <div className={`mt-2 p-2 text-xs rounded flex items-center ${lastNavigationSuccess ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                                    {lastNavigationSuccess ? (
+                                        <>
+                                            <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                                            Successfully navigated to variable {selectedVariableName}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+                                            Failed to navigate to variable {selectedVariableName}
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </TabsContent>
                 </Tabs>
@@ -192,8 +187,8 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                     <HelpCircle size={18} className="mr-1" />
                 </div>
                 <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleGo} disabled={(activeTab === 'case' && !!caseError) || (activeTab === 'variable' && !!variableError && !selectedVariable) || (activeTab === 'case' && !caseNumber)}>Go</Button>
+                    <Button variant="outline" onClick={handleClose}>Close</Button>
+                    <Button onClick={handleGo} disabled={(activeTab === GoToMode.CASE && !!caseError) || (activeTab === GoToMode.VARIABLE && !!variableError && !selectedVariableName) || (activeTab === GoToMode.CASE && !caseNumberInput)}>Go</Button>
                 </div>
             </div>
         </>
@@ -203,19 +198,21 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
 const GoToModal: React.FC<GoToModalProps> = ({
     onClose,
     defaultMode = GoToMode.CASE,
-    variables,
-    totalCases,
+    initialMode,
     containerType = "dialog",
     ...props
 }) => {
+    // Use initialMode if provided, otherwise fall back to defaultMode
+    const activeMode = initialMode || defaultMode;
+    
     if (containerType === "sidebar") {
         return (
             <div className="flex flex-col h-full bg-background text-foreground">
                 <GoToContent
                     onClose={onClose}
-                    defaultMode={defaultMode}
-                    variables={variables}
-                    totalCases={totalCases}
+                    defaultMode={activeMode}
+                    initialMode={initialMode}
+                    {...props}
                 />
             </div>
         );
@@ -226,11 +223,12 @@ const GoToModal: React.FC<GoToModalProps> = ({
     return (
         <GoToContent
             onClose={onClose}
-            defaultMode={defaultMode}
-            variables={variables}
-            totalCases={totalCases}
+            defaultMode={activeMode}
+            initialMode={initialMode}
+            {...props}
         />
     );
 };
 
+export { GoToMode };
 export default GoToModal;

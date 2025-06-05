@@ -25,6 +25,7 @@ import VariablesTab from "./VariablesTab";
 import OptionsTab from "./OptionsTab";
 // import SaveTab from "./SaveTab"; // Assuming SaveTab is not yet fully integrated based on commented out code
 import { useAggregateData } from "./hooks/useAggregateData";
+import { HelpCircle } from "lucide-react";
 
 // Main content component that's agnostic of container type
 const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "dialog" }) => {
@@ -153,41 +154,31 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                 </TabsContent> */}
             </Tabs>
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                        onClick={() => handleConfirm(closeModal)}
-                    >
-                        OK
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                        onClick={() => console.log("Paste clicked")} 
-                    >
-                        Paste
-                    </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
                     <Button
                         variant="outline"
-                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        className="mr-2"
                         onClick={handleReset}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
+                        className="mr-2"
                         onClick={onClose}
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        className="border-border hover:bg-accent hover:text-accent-foreground h-8 px-4"
-                        onClick={() => console.log("Help clicked")}
+                        onClick={() => handleConfirm(closeModal)}
                     >
-                        Help
+                        OK
                     </Button>
                 </div>
             </div>

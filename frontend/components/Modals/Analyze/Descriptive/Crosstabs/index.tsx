@@ -13,7 +13,7 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, HelpCircle } from "lucide-react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { BaseModalProps } from "@/types/modalTypes";
@@ -494,33 +494,34 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        onClick={handleAnalyze}
-                        disabled={isCalculating}
-                    >
-                        {isCalculating ? "Calculating..." : "OK"}
-                    </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
+                <div>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={resetAllStates}
                         disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
-                        variant="outline" 
-                        onClick={onClose} 
+                        variant="outline"
+                        className="mr-2"
+                        onClick={onClose}
                         disabled={isCalculating}
                     >
                         Cancel
                     </Button>
-                    <Button 
-                        variant="outline"
+                    <Button
+                        onClick={handleAnalyze}
                         disabled={isCalculating}
-                    > 
-                        Help
+                    >
+                        {isCalculating ? "Calculating..." : "OK"}
                     </Button>
                 </div>
             </div>

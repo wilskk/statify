@@ -23,6 +23,7 @@ export function useVariableTableUpdates() {
     const {
         variables,
         addVariable,
+        addMultipleVariables,
         updateMultipleFields,
         deleteVariable,
         ensureCompleteVariables
@@ -41,97 +42,117 @@ export function useVariableTableUpdates() {
         isProcessing.current = true;
 
         try {
-            const operation = pendingOperations.current[0];
+            // Batch CREATE_VARIABLE operations
+            if (pendingOperations.current[0].type === 'CREATE_VARIABLE') {
+                const createOps: PendingOperation[] = [];
+                while (pendingOperations.current.length > 0 && pendingOperations.current[0].type === 'CREATE_VARIABLE') {
+                    createOps.push(pendingOperations.current.shift()!);
+                }
+                // Merge payloads by row index
+                const dataByRow = createOps.reduce((map, op) => {
+                    const { row, variableData } = op.payload;
+                    if (!map.has(row)) map.set(row, { ...variableData });
+                    else Object.assign(map.get(row)!, variableData);
+                    return map;
+                }, new Map<number, any>());
+                const rows = Array.from(dataByRow.keys()).sort((a, b) => a - b);
 
-            switch (operation.type) {
-                case 'CREATE_VARIABLE': {
-                    const { row, variableData } = operation.payload;
-                    const existingVar = variables.find(v => v.columnIndex === row);
+                // Identify new vs existing variables
+                const existingIndices = new Set(variables.map(v => v.columnIndex!));
+                const rowsToAdd = rows.filter(r => !existingIndices.has(r));
+                const rowsToUpdate = rows.filter(r => existingIndices.has(r));
 
-                    if (!existingVar) {
-                        // Find the maximum current columnIndex *before* potential gap filling
-                        const maxIndexBefore = variables.reduce((max, v) => Math.max(max, v.columnIndex ?? -1), -1);
-
-                        // --- Optimized Gap Filling ---
-                        if (row > maxIndexBefore + 1) {
-                            const gapEndIndex = row - 1;
-                            console.log(`Filling gap efficiently up to index: ${gapEndIndex}`);
-                            // Ensure variable metadata exists for the gap
-                            await ensureCompleteVariables(gapEndIndex);
-                            // Ensure data columns exist for the gap
-                            await ensureColumns(gapEndIndex);
+                // Add new variables
+                if (rowsToAdd.length > 0) {
+                    const maxRowToAdd = Math.max(...rowsToAdd);
+                    // Ensure data matrix has sufficient columns
+                    await ensureColumns(maxRowToAdd);
+                    const newVarsData = rowsToAdd.map(row => ({ ...dataByRow.get(row)!, columnIndex: row }));
+                    // Batch add with fallback on collision
+                    try {
+                        await addMultipleVariables(newVarsData);
+                    } catch (error) {
+                        console.warn('[processPendingOperations] addMultipleVariables collision, falling back to individual adds', error);
+                        for (const varData of newVarsData) {
+                            await addVariable(varData);
                         }
-                        // --- End Optimized Gap Filling ---
+                    }
+                    // Add corresponding columns in data table
+                    await addColumns(rowsToAdd);
+                }
 
-                        // Proceed to create the *originally requested* variable metadata and data column
-                        console.log(`Creating target variable at index: ${row}`);
-                        const newVarData = { ...variableData, columnIndex: row };
-                        // addVariable handles insertion vs append logic within the store
-                        await addVariable(newVarData);
-                        // addColumns handles adding the corresponding data column
+                // Update existing variables
+                for (const row of rowsToUpdate) {
+                    await updateMultipleFields(row, dataByRow.get(row)!);
+                }
+            }
+            // Batch DELETE_VARIABLE operations
+            else if (pendingOperations.current[0].type === 'DELETE_VARIABLE') {
+                const deleteOps: PendingOperation[] = [];
+                while (pendingOperations.current.length > 0 && pendingOperations.current[0].type === 'DELETE_VARIABLE') {
+                    deleteOps.push(pendingOperations.current.shift()!);
+                }
+                // Sort rows descending to avoid reindex issues
+                const rows = deleteOps.map(op => op.payload.row).sort((a, b) => b - a);
+                for (const row of rows) {
+                    await deleteVariable(row);
+                    await deleteColumn(row);
+                }
+            } else {
+                const operation = pendingOperations.current.shift()!;
+                switch (operation.type) {
+                    case 'UPDATE_VARIABLE': {
+                        const { row, changes } = operation.payload;
+                        const variableExists = !!(variables.find(v => v.columnIndex === row));
+
+                        if (variableExists) {
+                            await updateMultipleFields(row, changes);
+                            const needsValidation = 'type' in changes || 'width' in changes;
+
+                            if (needsValidation) {
+                                // Re-fetch the variable after update to ensure we have the latest state for validation
+                                const updatedVar = useVariableStore.getState().variables.find(v => v.columnIndex === row);
+                                if (updatedVar) {
+                                    // Use the potentially updated type/width from changes, fallback to the latest state, then defaults
+                                    const typeToValidate = changes.type ?? updatedVar.type ?? DEFAULT_VARIABLE_TYPE;
+                                    const widthToValidate = changes.width ?? updatedVar.width ?? DEFAULT_VARIABLE_WIDTH;
+                                    await validateVariableData(row, typeToValidate, widthToValidate);
+                                } else {
+                                     console.warn(`[UPDATE_VARIABLE] Variable at index ${row} disappeared after updateMultipleFields call? Skipping validation.`);
+                                }
+                            }
+                        } else {
+                             console.warn(`[UPDATE_VARIABLE] Attempted to update non-existent variable at index ${row}.`);
+                        }
+                        break;
+                    }
+                    case 'INSERT_VARIABLE': {
+                        const { row } = operation.payload; // 'row' is the index to insert *before*
+
+                        // addVariable handles the insertion logic (shifting indices)
+                        await addVariable({ columnIndex: row });
+                        // addColumns handles inserting the data column at the same index
                         await addColumns([row]);
 
-                    } else {
-                        console.log(`Variable already exists at index: ${row}. Skipping creation.`);
-                        // If variable exists, perhaps we should update instead?
-                        // For now, we skip, aligning with previous logic. If an update is needed,
-                        // the 'UPDATE_VARIABLE' operation should be enqueued instead.
+                        break;
                     }
-                    break;
-                }
-                case 'UPDATE_VARIABLE': {
-                    const { row, changes } = operation.payload;
-                    const variableExists = !!(variables.find(v => v.columnIndex === row));
-
-                    if (variableExists) {
-                        await updateMultipleFields(row, changes);
-                        const needsValidation = 'type' in changes || 'width' in changes;
-
-                        if (needsValidation) {
-                            // Re-fetch the variable after update to ensure we have the latest state for validation
-                            const updatedVar = useVariableStore.getState().variables.find(v => v.columnIndex === row);
-                            if (updatedVar) {
-                                // Use the potentially updated type/width from changes, fallback to the latest state, then defaults
-                                const typeToValidate = changes.type ?? updatedVar.type ?? DEFAULT_VARIABLE_TYPE;
-                                const widthToValidate = changes.width ?? updatedVar.width ?? DEFAULT_VARIABLE_WIDTH;
-                                await validateVariableData(row, typeToValidate, widthToValidate);
-                            } else {
-                                 console.warn(`[UPDATE_VARIABLE] Variable at index ${row} disappeared after updateMultipleFields call? Skipping validation.`);
-                            }
+                    case 'DELETE_VARIABLE': {
+                        const { row } = operation.payload; // 'row' is the index to delete
+                        const variableToDelete = variables.find(v => v.columnIndex === row);
+                        if (variableToDelete) {
+                            // deleteVariable handles deletion and re-indexing in the store
+                            await deleteVariable(row);
+                            // deleteColumn handles deleting the data column and potential re-indexing issues
+                            await deleteColumn(row);
+                        } else {
+                            console.warn(`[DELETE_VARIABLE] Attempted to delete non-existent variable at index ${row}.`);
                         }
-                    } else {
-                         console.warn(`[UPDATE_VARIABLE] Attempted to update non-existent variable at index ${row}.`);
+                        break;
                     }
-                    break;
+                    default:
+                         console.warn(`[processPendingOperations] Unknown operation type: ${operation.type}`);
                 }
-                case 'INSERT_VARIABLE': {
-                    const { row } = operation.payload; // 'row' is the index to insert *before*
-
-                    // addVariable handles the insertion logic (shifting indices)
-                    await addVariable({ columnIndex: row });
-                    // addColumns handles inserting the data column at the same index
-                    await addColumns([row]);
-
-                    break;
-                }
-                case 'DELETE_VARIABLE': {
-                    const { row } = operation.payload; // 'row' is the index to delete
-                    const variableToDelete = variables.find(v => v.columnIndex === row);
-                    if (variableToDelete) {
-                        // deleteVariable handles deletion and re-indexing in the store
-                        await deleteVariable(row);
-                        // deleteColumn handles deleting the data column and potential re-indexing issues
-                        await deleteColumn(row);
-                    } else {
-                        console.warn(`[DELETE_VARIABLE] Attempted to delete non-existent variable at index ${row}.`);
-                    }
-                    break;
-                }
-                default:
-                     console.warn(`[processPendingOperations] Unknown operation type: ${operation.type}`);
             }
-
-            pendingOperations.current.shift();
 
         } catch (error) {
             console.error("Error processing operation:", error, pendingOperations.current[0]);
@@ -149,8 +170,9 @@ export function useVariableTableUpdates() {
             }
         }
     }, [
-        variables, // Need current variables to find maxIndex and check existence
+        variables,
         addVariable,
+        addMultipleVariables,
         updateMultipleFields,
         deleteVariable,
         ensureCompleteVariables,

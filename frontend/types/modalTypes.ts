@@ -26,10 +26,8 @@ export enum ModalType {
   ImportClipboard = "ImportClipboard",
   
   // Edit modals - Operasi pencarian dan navigasi
-  Find = "Find",
-  Replace = "Replace",
-  GoToCase = "GoToCase", 
-  GoToVariable = "GoToVariable",
+  FindAndReplace = "FindAndReplace",
+  GoTo = "GoTo",
   
   // Data modals - Operasi manipulasi dan pengaturan data
   DefineVarProps = "DefineVarProps",
@@ -49,8 +47,6 @@ export enum ModalType {
   MultipleResponse = "MultipleResponse",
   NewCustomAttr = "NewCustomAttr",
   SelectCases = "SelectCases",
-  DefineValidationRules = "DefineValidationRules",
-  Validate = "Validate",
   
   // Transform modals - Transformasi variabel dan data
   ComputeVariable = "ComputeVariable",
@@ -173,10 +169,8 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.ImportClipboard]: ModalCategory.File,
   
   // Edit modals
-  [ModalType.Find]: ModalCategory.Edit,
-  [ModalType.Replace]: ModalCategory.Edit,
-  [ModalType.GoToCase]: ModalCategory.Edit,
-  [ModalType.GoToVariable]: ModalCategory.Edit,
+  [ModalType.FindAndReplace]: ModalCategory.Edit,
+  [ModalType.GoTo]: ModalCategory.Edit,
   
   // Data modals
   [ModalType.DefineVarProps]: ModalCategory.Data,
@@ -196,8 +190,6 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.MultipleResponse]: ModalCategory.Data,
   [ModalType.NewCustomAttr]: ModalCategory.Data,
   [ModalType.SelectCases]: ModalCategory.Data,
-  [ModalType.DefineValidationRules]: ModalCategory.Data,
-  [ModalType.Validate]: ModalCategory.Data,
   
   // Transform modals
   [ModalType.ComputeVariable]: ModalCategory.Transform,
@@ -302,10 +294,10 @@ export function getModalTitle(type: ModalType): string {
       return "Import Excel";
     case ModalType.ExportExcel:
       return "Export Excel";
-    case ModalType.GoToCase:
-      return "Go to Case";
-    case ModalType.GoToVariable:
-      return "Go to Variable";
+    case ModalType.FindAndReplace:
+      return "Find and Replace";
+    case ModalType.GoTo:
+      return "Go To";
     case ModalType.DefineVarProps:
       return "Define Variable Properties";
     case ModalType.VarPropsEditor:
@@ -366,10 +358,6 @@ export function getModalTitle(type: ModalType): string {
       return "New Custom Attribute";
     case ModalType.SelectCases:
       return "Select Cases";
-    case ModalType.DefineValidationRules:
-      return "Define Validation Rules";
-    case ModalType.Validate:
-      return "Validate Data";
     default:
       return rawTitle.trim();
   }

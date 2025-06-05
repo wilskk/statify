@@ -42,7 +42,7 @@ export const useContextMenuLogic = ({
 
     // --- Context Menu Actions ---
 
-    const applyAlignment = useCallback((alignment: VariableAlign) => {
+    const applyAlignment = useCallback(async (alignment: VariableAlign) => {
         // collect selected columns
         const hot = hotTableRef.current?.hotInstance;
         const ranges = hot?.getSelectedRange();
@@ -53,101 +53,63 @@ export const useContextMenuLogic = ({
                 if (c < actualNumCols) cols.add(c);
             }
         });
-        svcApplyAlignment(Array.from(cols), alignment);
+        await svcApplyAlignment(Array.from(cols), alignment);
+        // re-render table to apply new column configs
+        hot?.render();
     }, [hotTableRef, actualNumCols]);
+
+    // --- Context Menu Handlers ---
+
+    const handleInsertRow = useCallback((above: boolean) => {
+        const { row } = getSelectedCell();
+        if (row !== -1) insertRow(above ? row : row + 1);
+    }, [getSelectedCell]);
+
+    const handleInsertColumn = useCallback((left: boolean) => {
+        const { col } = getSelectedCell();
+        if (col !== -1) insertColumn(left ? col : col + 1);
+    }, [getSelectedCell]);
+
+    const handleRemoveRow = useCallback(() => {
+        const { row } = getSelectedCell();
+        const hot = hotTableRef.current?.hotInstance;
+        if (row !== -1 && hot) {
+            const range = hot.getSelectedRange()![0];
+            const start = Math.min(range.from.row, range.to.row);
+            const end = Math.max(range.from.row, range.to.row);
+            removeRows(Array.from({ length: end - start + 1 }, (_, i) => start + i));
+        }
+    }, [getSelectedCell]);
+
+    const handleRemoveColumn = useCallback(() => {
+        const { col } = getSelectedCell();
+        const hot = hotTableRef.current?.hotInstance;
+        if (col !== -1 && hot) {
+            const range = hot.getSelectedRange()![0];
+            const start = Math.min(range.from.col, range.to.col);
+            const end = Math.max(range.from.col, range.to.col);
+            removeColumns(start, end - start + 1);
+        }
+    }, [getSelectedCell]);
 
     // --- Context Menu Configuration ---
 
     const contextMenuConfig = useMemo((): Handsontable.GridSettings['contextMenu'] => {
-        const hot = hotTableRef.current?.hotInstance;
-
-        const handleInsertRow = (above: boolean) => {
-            const { row } = getSelectedCell();
-            if (row !== -1) {
-                insertRow(above ? row : row + 1);
-            }
-        };
-
-        const handleInsertColumn = (left: boolean) => {
-            const { col } = getSelectedCell();
-            if (col !== -1) {
-                const targetIndex = left ? col : col + 1;
-                insertColumn(targetIndex);
-            }
-        };
-
-        const handleRemoveRow = () => {
-            const { row } = getSelectedCell();
-            if (row !== -1 && hot) {
-                // Handsontable's selection might span multiple rows
-                const selectedRange = hot.getSelectedRange();
-                if (!selectedRange || selectedRange.length === 0) return;
-                
-                const startRow = Math.min(selectedRange[0].from.row, selectedRange[0].to.row);
-                const endRow = Math.max(selectedRange[0].from.row, selectedRange[0].to.row);
-                const rowCount = endRow - startRow + 1;
-
-                // Use deleteRows instead of multiple deleteRow calls
-                const rowsToDelete = Array.from({ length: rowCount }, (_, i) => startRow + i);
-                removeRows(rowsToDelete);
-            }
-        };
-
-        const handleRemoveColumn = () => {
-            const { col } = getSelectedCell();
-            if (col !== -1 && hot) {
-                const selectedRange = hot.getSelectedRange();
-                if (!selectedRange || selectedRange.length === 0) return;
-                
-                const startCol = Math.min(selectedRange[0].from.col, selectedRange[0].to.col);
-                const endCol = Math.max(selectedRange[0].from.col, selectedRange[0].to.col);
-                const colCount = endCol - startCol + 1;
-
-                // Create array of columns to delete
-                const columnsToDelete = Array.from({ length: colCount }, (_, i) => startCol);
-                
-                // Then delete all columns at once
-                removeColumns(startCol, colCount);
-            }
-        };
+        const SEP = Handsontable.plugins.ContextMenu.SEPARATOR;
 
         return {
             items: {
-                row_above: { 
-                    name: 'Insert row above',
-                    callback: () => handleInsertRow(true),
-                    disabled: () => !isRangeSelected()
-                },
-                row_below: { 
-                    name: 'Insert row below',
-                    callback: () => handleInsertRow(false),
-                    disabled: () => !isRangeSelected()
-                 },
-                col_left: { 
-                    name: 'Insert column left',
-                    callback: () => handleInsertColumn(true),
-                    disabled: () => !isRangeSelected()
-                },
-                col_right: { 
-                    name: 'Insert column right',
-                    callback: () => handleInsertColumn(false),
-                    disabled: () => !isRangeSelected()
-                },
-                sp1: Handsontable.plugins.ContextMenu.SEPARATOR,
-                remove_row: { 
-                    name: 'Remove row(s)',
-                    callback: handleRemoveRow,
-                    disabled: () => !isRangeSelected() 
-                },
-                remove_col: { 
-                    name: 'Remove column(s)',
-                    callback: handleRemoveColumn,
-                    disabled: () => !isRangeSelected()
-                 },
-                sp2: Handsontable.plugins.ContextMenu.SEPARATOR,
+                row_above: { name: 'Insert row above', callback: () => handleInsertRow(true), disabled: () => !isRangeSelected() },
+                row_below: { name: 'Insert row below', callback: () => handleInsertRow(false), disabled: () => !isRangeSelected() },
+                col_left: { name: 'Insert column left', callback: () => handleInsertColumn(true), disabled: () => !isRangeSelected() },
+                col_right: { name: 'Insert column right', callback: () => handleInsertColumn(false), disabled: () => !isRangeSelected() },
+                sp1: SEP,
+                remove_row: { name: 'Remove row(s)', callback: handleRemoveRow, disabled: () => !isRangeSelected() },
+                remove_col: { name: 'Remove column(s)', callback: handleRemoveColumn, disabled: () => !isRangeSelected() },
+                sp2: SEP,
                 copy: { name: 'Copy', disabled: () => !isRangeSelected() }, // Handled by Handsontable
                 cut: { name: 'Cut', disabled: () => !isRangeSelected() }, // Handled by Handsontable
-                sp3: Handsontable.plugins.ContextMenu.SEPARATOR,
+                sp3: SEP,
                 alignment: { // Add Alignment submenu back
                     name: 'Alignment',
                     disabled: () => !isRangeSelected(),
@@ -159,7 +121,7 @@ export const useContextMenuLogic = ({
                         ]
                     }
                 },
-                sp4: Handsontable.plugins.ContextMenu.SEPARATOR, // Added separator
+                sp4: SEP, // Added separator
                 clear_column: { // Renamed from clear_custom
                     name: 'Clear contents',
                     // Same action as remove_col
@@ -168,7 +130,7 @@ export const useContextMenuLogic = ({
                 },
             }
         };
-    }, [hotTableRef, getSelectedCell, isRangeSelected, applyAlignment]); 
+    }, [isRangeSelected, applyAlignment, handleInsertRow, handleInsertColumn, handleRemoveRow, handleRemoveColumn]);
 
     // Removed isContextMenuEnabled as Handsontable handles this implicitly
     // when contextMenu config is provided.
