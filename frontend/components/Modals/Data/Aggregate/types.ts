@@ -26,5 +26,21 @@ export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'va
 
 export interface AggregateDataProps {
     onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-} 
+    containerType?: "dialog" | "sidebar" | "panel";
+}
+
+// Tour-related types
+export type PopupPosition = 'top' | 'bottom';
+export type HorizontalPosition = 'left' | 'right';
+
+export type TourStep = {
+    title: string;
+    content: string;
+    targetId: string;
+    defaultPosition: PopupPosition;
+    defaultHorizontalPosition: HorizontalPosition;
+    position?: PopupPosition;
+    horizontalPosition?: HorizontalPosition | null;
+    icon: string;
+    tab?: 'variables' | 'options';
+}; 

@@ -1,6 +1,5 @@
 // statify/components/variableTable/useVariableTableLogic.ts
 import { useRef, useEffect, useMemo, useCallback } from "react";
-import { HotTableClass } from "@handsontable/react";
 import Handsontable from 'handsontable';
 import { useVariableStore } from "@/stores/useVariableStore";
 import { transformVariablesToTableData } from '../utils';
@@ -16,7 +15,8 @@ const MEASURE_OPTIONS: Record<string, string[]> = {
 };
 
 export function useVariableTableLogic() {
-    const hotTableRef = useRef<HotTableClass>(null);
+    // Removed HotTableClass import; using any for ref
+    const hotTableRef = useRef<any>(null);
     const { variables } = useVariableStore(); // Get variables
 
     // Replace state-based tableData handling with memoization

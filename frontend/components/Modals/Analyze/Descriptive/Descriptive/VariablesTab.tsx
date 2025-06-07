@@ -25,6 +25,8 @@ export interface VariablesTabProps {
     reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
     saveStandardized: boolean;
     setSaveStandardized: Dispatch<SetStateAction<boolean>>;
+    tourActive?: boolean;
+    currentTargetElement?: HTMLElement | null;
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -36,7 +38,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToAvailableVariables,
     reorderVariables,
     saveStandardized,
-    setSaveStandardized
+    setSaveStandardized,
+    tourActive,
+    currentTargetElement
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
@@ -88,7 +92,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         if (listId === 'selected') {
             return (
                 <div className="mt-4">
-                    <div className="flex items-center">
+                    <div className="flex items-center relative">
                         <Checkbox
                             id="saveStandardized"
                             checked={saveStandardized}
@@ -98,24 +102,33 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <Label htmlFor="saveStandardized" className="text-sm cursor-pointer">
                             Save standardized values as variables
                         </Label>
+                        {tourActive && currentTargetElement?.id === "saveStandardized" && (
+                            <div className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none" />
+                        )}
                     </div>
                 </div>
             );
         }
         return null;
-    }, [saveStandardized, setSaveStandardized]);
+    }, [saveStandardized, setSaveStandardized, tourActive, currentTargetElement]);
 
     return (
-        <VariableListManager
-            availableVariables={filteredAvailableVariables}
-            targetLists={targetLists}
-            variableIdKey={variableIdKeyToUse}
-            highlightedVariable={managerHighlightedVariable}
-            setHighlightedVariable={setManagerHighlightedVariable}
-            onMoveVariable={handleMoveVariable}
-            onReorderVariable={handleReorderVariables}
-            renderListFooter={renderSelectedFooter}
-        />
+        <div className="space-y-4">
+            <div id="descriptive-available-variables">
+                <div id="descriptive-selected-variables">
+                    <VariableListManager
+                        availableVariables={filteredAvailableVariables}
+                        targetLists={targetLists}
+                        variableIdKey={variableIdKeyToUse}
+                        highlightedVariable={managerHighlightedVariable}
+                        setHighlightedVariable={setManagerHighlightedVariable}
+                        onMoveVariable={handleMoveVariable}
+                        onReorderVariable={handleReorderVariables}
+                        renderListFooter={renderSelectedFooter}
+                    />
+                </div>
+            </div>
+        </div>
     );
 };
 

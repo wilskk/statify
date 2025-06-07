@@ -20,12 +20,16 @@ import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
 import { useDataFetching } from "./hooks/useDataFetching";
 import { BaseModalProps } from "@/types/modalTypes";
+import { useTourGuide } from "./hooks/useTourGuide";
+import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { AnimatePresence } from "framer-motion";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 
 // Komponen utama konten Descriptives yang agnostik terhadap container
-const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
+const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "statistics">("variables");
     
     const {
@@ -62,6 +66,18 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
         onClose
     });
 
+    // Add tour hook
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps, 
+        currentTargetElement,
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType);
+
     const handleReset = useCallback(() => {
         resetVariableSelection();
         resetStatisticsSettings();
@@ -82,11 +98,31 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
 
     return (
         <>
+            {/* Add tour popup */}
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
                         <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger 
+                            id="statistics-tab-trigger"
+                            value="statistics"
+                        >
+                            Statistics
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -101,6 +137,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
                         reorderVariables={reorderVariables}
                         saveStandardized={saveStandardized}
                         setSaveStandardized={setSaveStandardized}
+                        tourActive={tourActive}
+                        currentTargetElement={currentTargetElement}
                     />
                 </TabsContent>
 
@@ -110,6 +148,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
                         setDisplayStatistics={setDisplayStatistics}
                         displayOrder={displayOrder}
                         setDisplayOrder={setDisplayOrder}
+                        tourActive={tourActive}
+                        currentTargetElement={currentTargetElement}
                     />
                 </TabsContent>
             </Tabs>
@@ -117,10 +157,27 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+                {/* Left: Help/Tour button with tooltip */}
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
+                
                 {/* Right: Buttons */}
                 <div>
                     <Button
@@ -140,6 +197,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose }) => {
                         Cancel
                     </Button>
                     <Button
+                        id="descriptive-ok-button"
                         onClick={runAnalysis}
                         disabled={isLoading}
                     >
@@ -158,7 +216,7 @@ const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", .
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <DescriptiveContent onClose={onClose} {...props} />
+                    <DescriptiveContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
@@ -172,7 +230,7 @@ const Descriptives: FC<BaseModalProps> = ({ onClose, containerType = "dialog", .
             </DialogHeader>
 
             <div className="flex-grow flex flex-col overflow-hidden">
-                <DescriptiveContent onClose={onClose} {...props} />
+                <DescriptiveContent onClose={onClose} containerType={containerType} {...props} />
             </div>
         </DialogContent>
     );

@@ -1,5 +1,4 @@
 import React from 'react';
-import { HotTableClass } from '@handsontable/react';
 
 import { useTableDimensions } from './useTableDimensions';
 import { useTableStructure } from './useTableStructure';
@@ -12,7 +11,7 @@ import { useTableRefStore } from '@/stores/useTableRefStore';
  * Coordinates dimension calculations, structure generation, update handling,
  * and context menu logic by composing other specialized hooks.
  */
-export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | null>) => {
+export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
 
     // 1. Calculate Dimensions
     const {
@@ -24,7 +23,7 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         displayNumCols,
     } = useTableDimensions();
 
-    const { viewMode, setVariableTableRef } = useTableRefStore();
+    const { viewMode} = useTableRefStore();
 
     // 2. Generate Table Structure (Headers, Data Matrix, Column Configs)
     const {

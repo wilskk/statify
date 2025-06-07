@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useCallback } from "react"; // Import useCallback
-import { HotTable } from "@handsontable/react";
+import { HotTable } from "@handsontable/react-wrapper";
 import { registerAllModules } from "handsontable/registry";
 import Handsontable from 'handsontable'; // Import Handsontable namespace
 import "handsontable/dist/handsontable.full.min.css";

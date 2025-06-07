@@ -83,12 +83,12 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 <div className="mt-4">
                     <div className="flex items-center">
                         <Checkbox
-                            id="displayFrequencyTables"
+                            id="display-frequency-tables"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
-                        <Label htmlFor="displayFrequencyTables" className="text-sm cursor-pointer">
+                        <Label htmlFor="display-frequency-tables" className="text-sm cursor-pointer">
                             Display frequency tables
                         </Label>
                     </div>
@@ -98,18 +98,25 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return null;
     }, [showFrequencyTables, setShowFrequencyTables]);
 
-    // --- Render the manager component ---
+    // Render wrapper divs with IDs for tour targeting
     return (
-        <VariableListManager
-            availableVariables={availableVariables}
-            targetLists={targetLists}
-            variableIdKey={variableIdKeyToUse}
-            highlightedVariable={managerHighlightedVariable}
-            setHighlightedVariable={setManagerHighlightedVariable}
-            onMoveVariable={handleMoveVariable}
-            onReorderVariable={handleReorderVariables}
-            renderListFooter={renderSelectedFooter}
-        />
+        <div className="space-y-4">
+            <div id="available-variables-wrapper">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    renderListFooter={renderSelectedFooter}
+                />
+            </div>
+            <div id="selected-variables-wrapper" className="hidden">
+                {/* This is just a placeholder for the tour target, actual content is in VariableListManager */}
+            </div>
+        </div>
     );
 };
 

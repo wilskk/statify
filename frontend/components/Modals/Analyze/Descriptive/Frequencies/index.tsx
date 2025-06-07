@@ -21,6 +21,10 @@ import type { StatisticsOptions } from "./types";
 import type { ChartOptions } from "./types";
 import { HelpCircle } from "lucide-react";
 import { BaseModalProps } from "@/types/modalTypes";
+import { useTourGuide } from "./hooks/useTourGuide";
+import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { AnimatePresence } from "framer-motion";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -67,6 +71,18 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     const [kurtosisChecked, setKurtosisChecked] = useState(false);
 
     const variables = useVariableStore.getState().variables;
+
+    // Add tour hook
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps, 
+        currentTargetElement,
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType);
 
     const getCurrentStatisticsOptions = useCallback((): StatisticsOptions | null => {
         if (!showStatistics) return null;
@@ -240,6 +256,21 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
 
     return (
         <>
+            {/* Add tour popup */}
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList className="bg-muted rounded-none h-9 p-0">
@@ -250,6 +281,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
+                            id="statistics-tab-trigger" // Add ID for tour target
                             value="statistics"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
@@ -345,11 +377,28 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+                {/* Left: Help/Tour button with tooltip */}
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
-                {/* Right: Buttons */}
+                
+                {/* Right: Action buttons */}
                 <div>
                     <Button
                         variant="outline"
@@ -367,6 +416,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         Cancel
                     </Button>
                     <Button
+                        id="frequencies-ok-button" // Add ID for tour target
                         onClick={runAnalysis}
                         disabled={isLoading || selectedVariables.length === 0}
                     >

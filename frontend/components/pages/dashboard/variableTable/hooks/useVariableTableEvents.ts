@@ -1,17 +1,12 @@
 import { useCallback } from 'react';
 import Handsontable from 'handsontable';
-import { HotTableClass } from '@handsontable/react';
+import { COLUMN_INDEX_TO_FIELD_MAP, DIALOG_TRIGGER_COLUMNS, COLUMN_INDEX } from '../constants';
 import { Variable, VariableType } from "@/types/Variable";
-import {
-    COLUMN_INDEX_TO_FIELD_MAP,
-    DIALOG_TRIGGER_COLUMNS,
-    COLUMN_INDEX
-} from '../constants';
 import { PendingOperation, OperationType } from './useVariableTableUpdates'; // Assuming types are exported from here
 
 // Define types for the arguments passed to the hook
 interface UseVariableTableEventsProps {
-    hotTableRef: React.RefObject<HotTableClass | null>; // Allow null for initial ref
+    hotTableRef: React.RefObject<any>; // Ref to HotTable instance
     variables: Variable[]; // Needed for checking existence
     enqueueOperation: (operation: PendingOperation) => void; // Use the specific PendingOperation type
     openDialogForCell: (row: number, col: number) => void;

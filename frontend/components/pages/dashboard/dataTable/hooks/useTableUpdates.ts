@@ -1,6 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
 import Handsontable from 'handsontable';
-import { HotTableClass } from '@handsontable/react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useTableRefStore } from '@/stores/useTableRefStore';
@@ -23,7 +22,7 @@ interface PendingOperation {
 }
 
 interface UseTableUpdatesProps {
-    hotTableRef: React.RefObject<HotTableClass | null>;
+    hotTableRef: React.RefObject<any>;
     actualNumRows: number;
     actualNumCols: number;
     columns: ReadonlyArray<ColumnConfig>; // Use our defined interface

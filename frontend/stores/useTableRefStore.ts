@@ -6,7 +6,7 @@ export interface TableRefState {
     toggleViewMode: () => void;
 }
 
-export const useTableRefStore = create<TableRefState>()((set) => ({
+export const useTableRefStore = create<TableRefState>((set) => ({
     viewMode: 'numeric',
     setViewMode: (mode) => set({ viewMode: mode }),
     toggleViewMode: () => set((state) => ({ viewMode: state.viewMode === 'numeric' ? 'label' : 'numeric' })),

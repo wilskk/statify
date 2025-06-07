@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from 'react';
-import { HotTable, HotTableClass, HotTableProps } from '@handsontable/react';
+import { HotTable, HotTableProps } from '@handsontable/react-wrapper';
 import 'handsontable/dist/handsontable.full.min.css';
 
 export type HandsontableWrapperProps = Omit<HotTableProps, 'licenseKey'> & {
@@ -26,10 +26,10 @@ const defaultProps: Partial<HandsontableWrapperProps> = {
   allowInvalid: false,
   outsideClickDeselects: false,
   invalidCellClassName: 'htInvalid',
-  preventOverflow: 'horizontal',
+  preventOverflow: 'horizontal'
 };
 
-export const HandsontableWrapper = forwardRef<HotTableClass, HandsontableWrapperProps>(
+export const HandsontableWrapper = forwardRef<any, HandsontableWrapperProps>(
   (props, ref) => <HotTable ref={ref} {...defaultProps} {...props} />
 );
 

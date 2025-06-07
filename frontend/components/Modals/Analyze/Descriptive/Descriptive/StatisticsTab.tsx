@@ -10,13 +10,17 @@ export interface StatisticsTabProps {
     setDisplayStatistics: Dispatch<SetStateAction<DescriptiveStatisticsOptions>>;
     displayOrder: DisplayOrderType;
     setDisplayOrder: Dispatch<SetStateAction<DisplayOrderType>>;
+    tourActive?: boolean;
+    currentTargetElement?: HTMLElement | null;
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
     displayStatistics,
     setDisplayStatistics,
     displayOrder,
-    setDisplayOrder
+    setDisplayOrder,
+    tourActive,
+    currentTargetElement
 }) => {
     const handleDisplayOrderChange = (value: string) => {
         setDisplayOrder(value as DisplayOrderType);
@@ -158,7 +162,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
             </div>
 
-            <div className="border border-[#E6E6E6] rounded-md p-5">
+            <div id="display-order-section" className="border border-[#E6E6E6] rounded-md p-5 relative">
                 <div className="text-sm font-medium mb-3">Display Order</div>
                 <RadioGroup value={displayOrder} onValueChange={handleDisplayOrderChange} className="space-y-2">
                     <div className="flex items-center">
@@ -178,6 +182,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor="descendingMeans" className="text-sm cursor-pointer">Descending means</Label>
                     </div>
                 </RadioGroup>
+                
+                {tourActive && currentTargetElement?.id === "display-order-section" && (
+                    <div className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none" />
+                )}
             </div>
         </div>
     );

@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo } from 'react';
 import Handsontable from 'handsontable';
-import { HotTableClass } from '@handsontable/react';
 import { VariableAlign } from '@/types/Variable';
 import { insertRow, insertColumn, removeRows, removeColumns, applyAlignment as svcApplyAlignment } from '../services/contextMenuService';
 
+// Removed HotTableClass import; using any for ref
+
 interface UseContextMenuLogicProps {
-    hotTableRef: React.RefObject<HotTableClass | null>;
+    hotTableRef: React.RefObject<any>;
     actualNumRows: number;
     actualNumCols: number;
 }
@@ -48,7 +49,7 @@ export const useContextMenuLogic = ({
         const ranges = hot?.getSelectedRange();
         if (!ranges || ranges.length === 0) return;
         const cols = new Set<number>();
-        ranges.forEach(r => {
+        ranges.forEach((r: Handsontable.CellRange) => {
             for (let c = Math.min(r.from.col, r.to.col); c <= Math.max(r.from.col, r.to.col); c++) {
                 if (c < actualNumCols) cols.add(c);
             }

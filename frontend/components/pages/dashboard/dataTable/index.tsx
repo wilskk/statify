@@ -2,7 +2,6 @@
 
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import HandsontableWrapper from './HandsontableWrapper';
-import { HotTableClass } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import debounce from 'lodash/debounce';
 
@@ -38,7 +37,7 @@ function applyTruncation(
 }
 
 export default function Index() {
-    const hotTableRef = useRef<HotTableClass>(null);
+    const hotTableRef = useRef<any>(null);
     const updateCells = useDataStore(state => state.updateCells);
     const data = useDataStore(state => state.data);
     const variables = useVariableStore(state => state.variables);
