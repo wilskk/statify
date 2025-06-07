@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FindReplaceMode, TabType } from "../types"; // Adjust path as necessary
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -43,6 +43,9 @@ export const useFindReplaceForm = ({
     const [searchResults, setSearchResults] = useState<Array<{row: number, col: number}>>([]);
     const [currentSearchResultIndex, setCurrentSearchResultIndex] = useState<number>(-1);
     const [lastSearchOptions, setLastSearchOptions] = useState<any>(null);
+    const [isLoadingSearch, setIsLoadingSearch] = useState<boolean>(false); // New state for loading
+
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref for debounce timer
 
     useEffect(() => {
         const names = [...variables].sort((a,b) => a.columnIndex - b.columnIndex).map(v => v.name);
@@ -67,37 +70,47 @@ export const useFindReplaceForm = ({
         if (dataTableRef?.current?.hotInstance) {
             dataTableRef.current.hotInstance.deselectCell();
         }
+        setLastSearchOptions(null); // Clear last search options as well
+        // setFindError(""); // Avoid clearing find error here, let actions decide
     }, [dataTableRef]);
 
-    // Debounce or call on demand
-    useEffect(() => {
-      clearSearch();
-    }, [findText, selectedColumnName, matchCase, matchTo, activeTab]);
-
     const performSearch = useCallback(() => {
-        if (!findText) {
-            setFindError("Find text cannot be empty.");
-            clearSearch();
+        // Case 1: In Replace tab and Find input is empty - don't search, don't error on findText.
+        if (activeTab === TabType.REPLACE && !findText.trim()) {
+            clearSearch(); // Clear previous results if any
+            // setFindError(""); // No error for empty find in replace mode
             return;
         }
-        setFindError("");
 
+        // Case 2: Find input is empty (and not covered by case 1, so must be Find tab)
+        if (!findText.trim()) {
+            setFindError("Find text cannot be empty.");
+            // To prevent results from a previous non-empty search lingering when input becomes empty then non-empty again before debounce clears it via useEffect.
+            setSearchResults([]); 
+            setCurrentSearchResultIndex(-1);
+            return;
+        }
+
+        // Case 3: Column not selected
         if (selectedColumnIndex === -1) {
             setFindError("Please select a valid column.");
-            clearSearch();
+            // To prevent results from a previous valid column search lingering.
+            setSearchResults([]); 
+            setCurrentSearchResultIndex(-1);
             return;
         }
 
-        const currentSearchOptions = { findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab }; 
-        // Check if search options or data have changed significantly enough to warrant a new search
-        // For simplicity here, we re-search if options change. A more complex diff could be used for data.
+        // If all checks pass, error will be cleared by useEffect before debounce, 
+        // or by this function if results are found.
+        // setFindError(""); // Moved to useEffect initiating the search process
+
+        const currentSearchOptions = { findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab };
         if (JSON.stringify(currentSearchOptions) === JSON.stringify(lastSearchOptions) && searchResults.length > 0) {
-            // If options are the same and we have results, no need to re-search unless forced
             return;
         }
 
         const results: Array<{row: number, col: number}> = [];
-        const searchData = data; // from useDataStore
+        const searchData = data;
 
         for (let r = 0; r < searchData.length; r++) {
             const cellValue = searchData[r]?.[selectedColumnIndex];
@@ -130,16 +143,64 @@ export const useFindReplaceForm = ({
             }
         }
         setSearchResults(results);
-        setCurrentSearchResultIndex(-1); // Reset index for new search
+        setCurrentSearchResultIndex(-1);
         setLastSearchOptions(currentSearchOptions);
 
         if (results.length === 0) {
-            // Optionally provide feedback: "No results found"
-             console.log("No results found");
+             setFindError("No results found."); // Set error if no results
+        } else {
+            setFindError(""); // Clear error if results are found
+        }
+    }, [data, findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab, lastSearchOptions, clearSearch]);
+
+
+    // This useEffect triggers search or clears results based on input changes with debounce
+    useEffect(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
 
-    }, [data, findText, selectedColumnIndex, matchCase, matchTo, lastSearchOptions, searchResults.length, clearSearch]);
-    
+        if (findText.trim() === "") {
+            clearSearch();
+            setIsLoadingSearch(false);
+            setFindError(""); // Clear error when input is actively cleared
+            return;
+        }
+
+        if (selectedColumnIndex === -1) {
+            clearSearch(); 
+            setIsLoadingSearch(false);
+            setFindError("Please select a column to search in.");
+            return;
+        }
+
+        // If conditions are met for a search, clear previous error and set loading.
+        setFindError(""); // Clear any previous error message before starting new search process 
+        setIsLoadingSearch(true);
+
+        debounceTimerRef.current = setTimeout(() => {
+            performSearch(); // This will set findError accordingly
+            setIsLoadingSearch(false);
+        }, 2000);
+
+        return () => { // Cleanup on unmount or before re-run
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+        };
+    }, [
+        findText, 
+        selectedColumnName, // Ensures effect runs if column name changes (indirectly selectedColumnIndex)
+        selectedColumnIndex, 
+        matchCase, 
+        matchTo, 
+        activeTab, 
+        direction, 
+        performSearch, // useCallback ensures stable reference
+        clearSearch    // useCallback ensures stable reference
+    ]);
+    // Note: selectedColumnName is included because selectedColumnIndex depends on it.
+
 
     const navigateToResult = useCallback((index: number) => {
         if (index >= 0 && index < searchResults.length) {
@@ -276,13 +337,9 @@ export const useFindReplaceForm = ({
 
     const handleFindChange = (value: string) => {
         setFindText(value);
-        if (value.trim() === "") {
-            setFindError("Find text cannot be empty");
-            clearSearch();
-        } else {
-            setFindError("");
-            // Optionally, trigger performSearch here or on a slight debounce
-        }
+        // The useEffect above will handle calling performSearch or clearSearch.
+        // Errors related to empty text or no column will be set by performSearch
+        // or by the useEffect if text is empty.
     };
 
     const handleReplaceChange = (value: string) => {
@@ -318,5 +375,6 @@ export const useFindReplaceForm = ({
         handleReplaceAll,
         searchResultsCount: searchResults.length,
         currentResultNumber: currentSearchResultIndex + 1, // For display (1-based)
+        isLoadingSearch, // Expose loading state
     };
 }; 

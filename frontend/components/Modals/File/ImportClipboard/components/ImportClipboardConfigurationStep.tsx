@@ -235,9 +235,9 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
             </div>
 
             {/* Main Content Area */}
-            <div className="p-6 flex-grow flex flex-col md:flex-row gap-6">
+            <div className="p-6 flex-grow flex flex-col gap-6">
                 {/* Options Panel */}
-                <div className="w-full md:w-[300px] lg:w-[320px] xl:w-[350px] flex-shrink-0 space-y-4 overflow-y-auto pr-2 pb-4">
+                <div className="w-full space-y-4 overflow-y-auto pr-2 pb-4">
                     <div className="space-y-3">
                         <Label className="text-xs font-medium text-muted-foreground">Delimiter</Label>
                         <Select
@@ -405,7 +405,7 @@ export const ImportClipboardConfigurationStep: FC<ImportClipboardConfigurationSt
                 </div>
 
                 {/* Data Preview Panel */}
-                <div className="w-full md:flex-1 flex flex-col overflow-hidden">
+                <div className="w-full flex flex-col overflow-hidden">
                     <div className="flex justify-between items-center mb-1.5">
                         <Label className="text-xs font-medium text-muted-foreground">Data Preview</Label>
                         <div className="flex items-center space-x-2">

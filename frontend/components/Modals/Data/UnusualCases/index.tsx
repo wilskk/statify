@@ -31,10 +31,7 @@ import { IdentifyUnusualCasesProps } from "./types";
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
-import OutputTab from "./OutputTab";
 import SaveTab from "./SaveTab";
-import MissingValuesTab from "./MissingValuesTab";
-import OptionsTab from "./OptionsTab";
 
 // interface IdentifyUnusualCasesProps {
 //     onClose: () => void;
@@ -60,13 +57,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     const [activeTab, setActiveTab] = useState("variables");
     const [errorMsg, setErrorMsg] = useState<string | null>(null); // State untuk pesan error
 
-    // Output tab state
-    const [showUnusualCasesList, setShowUnusualCasesList] = useState(true);
-    const [peerGroupNorms, setPeerGroupNorms] = useState(false);
-    const [anomalyIndices, setAnomalyIndices] = useState(false);
-    const [reasonOccurrence, setReasonOccurrence] = useState(false);
-    const [caseProcessed, setCaseProcessed] = useState(false);
-
     // Save tab state
     const [saveAnomalyIndex, setSaveAnomalyIndex] = useState(false);
     const [anomalyIndexName, setAnomalyIndexName] = useState("AnomalyIndex");
@@ -77,10 +67,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     const [replaceExisting, setReplaceExisting] = useState(false);
     const [exportFilePath, setExportFilePath] = useState("");
 
-    // Missing values tab state
-    const [missingValuesOption, setMissingValuesOption] = useState("exclude");
-    const [useProportionMissing, setUseProportionMissing] = useState(true);
-
     // Options tab state
     const [identificationCriteria, setIdentificationCriteria] = useState("percentage");
     const [percentageValue, setPercentageValue] = useState("5");
@@ -90,6 +76,9 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     const [minPeerGroups, setMinPeerGroups] = useState("1");
     const [maxPeerGroups, setMaxPeerGroups] = useState("15");
     const [maxReasons, setMaxReasons] = useState("1");
+
+    // Default behavior: exclude missing values from analysis
+    const missingValuesOption = "exclude";
 
     // --- Update Available Variables ---
     useEffect(() => {
@@ -847,11 +836,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
          setActiveTab("variables");
 
          // Reset other tabs' state
-         setShowUnusualCasesList(true);
-         setPeerGroupNorms(false);
-         setAnomalyIndices(false);
-         setReasonOccurrence(false);
-         setCaseProcessed(false);
          setSaveAnomalyIndex(false);
          setAnomalyIndexName("AnomalyIndex");
          setSavePeerGroups(false);
@@ -860,8 +844,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
          setReasonsRootName("Reason");
          setReplaceExisting(false);
          setExportFilePath("");
-         setMissingValuesOption("exclude");
-         setUseProportionMissing(true);
          setIdentificationCriteria("percentage");
          setPercentageValue("5");
          setFixedNumber("");
@@ -892,28 +874,10 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
-                            value="output"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Output
-                        </TabsTrigger>
-                        <TabsTrigger
                             value="save"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Save
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="missingValues"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Missing Values
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Options
                         </TabsTrigger>
                     </TabsList>
                 </div>
@@ -930,21 +894,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                         moveToCaseIdentifierVariable={moveToCaseIdentifierVariable}
                         reorderVariables={reorderVariables}
                         errorMsg={errorMsg}
-                    />
-                </TabsContent>
-
-                <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
-                    <OutputTab
-                        showUnusualCasesList={showUnusualCasesList}
-                        setShowUnusualCasesList={setShowUnusualCasesList}
-                        peerGroupNorms={peerGroupNorms}
-                        setPeerGroupNorms={setPeerGroupNorms}
-                        anomalyIndices={anomalyIndices}
-                        setAnomalyIndices={setAnomalyIndices}
-                        reasonOccurrence={reasonOccurrence}
-                        setReasonOccurrence={setReasonOccurrence}
-                        caseProcessed={caseProcessed}
-                        setCaseProcessed={setCaseProcessed}
                     />
                 </TabsContent>
 
@@ -966,36 +915,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                         setReplaceExisting={setReplaceExisting}
                         exportFilePath={exportFilePath}
                         setExportFilePath={setExportFilePath}
-                    />
-                </TabsContent>
-
-                <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
-                    <MissingValuesTab
-                        missingValuesOption={missingValuesOption}
-                        setMissingValuesOption={setMissingValuesOption}
-                        useProportionMissing={useProportionMissing}
-                        setUseProportionMissing={setUseProportionMissing}
-                    />
-                </TabsContent>
-
-                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                    <OptionsTab
-                        identificationCriteria={identificationCriteria}
-                        setIdentificationCriteria={setIdentificationCriteria}
-                        percentageValue={percentageValue}
-                        setPercentageValue={setPercentageValue}
-                        fixedNumber={fixedNumber}
-                        setFixedNumber={setFixedNumber}
-                        useMinimumValue={useMinimumValue}
-                        setUseMinimumValue={setUseMinimumValue}
-                        cutoffValue={cutoffValue}
-                        setCutoffValue={setCutoffValue}
-                        minPeerGroups={minPeerGroups}
-                        setMinPeerGroups={setMinPeerGroups}
-                        maxPeerGroups={maxPeerGroups}
-                        setMaxPeerGroups={setMaxPeerGroups}
-                        maxReasons={maxReasons}
-                        setMaxReasons={setMaxReasons}
                     />
                 </TabsContent>
             </Tabs>

@@ -124,16 +124,12 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                             setPrimaryCaseIndicator={setPrimaryCaseIndicator}
                             primaryName={primaryName}
                             setPrimaryName={setPrimaryName}
-                            filterByIndicator={filterByIndicator}
-                            setFilterByIndicator={setFilterByIndicator}
                             sequentialCount={sequentialCount}
                             setSequentialCount={setSequentialCount}
                             sequentialName={sequentialName}
                             setSequentialName={setSequentialName}
                             moveMatchingToTop={moveMatchingToTop}
                             setMoveMatchingToTop={setMoveMatchingToTop}
-                            displayFrequencies={displayFrequencies}
-                            setDisplayFrequencies={setDisplayFrequencies}
                             containerType={containerType}
                         />
                     </TabsContent>

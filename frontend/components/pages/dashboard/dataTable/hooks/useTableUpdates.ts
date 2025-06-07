@@ -3,6 +3,7 @@ import Handsontable from 'handsontable';
 import { HotTableClass } from '@handsontable/react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useTableRefStore } from '@/stores/useTableRefStore';
 import { Variable, VariableAlign } from '@/types/Variable';
 import { areValuesEqual } from '../utils/utils';
 
@@ -59,6 +60,8 @@ export const useTableUpdates = ({
         ensureCompleteVariables
     } = useVariableStore();
 
+    const viewMode = useTableRefStore(state => state.viewMode);
+
     // --- Core Update Logic ---
 
     const processCellUpdates = useCallback(async (updatePayload: {
@@ -84,19 +87,30 @@ export const useTableUpdates = ({
             const variable = variables.find(v => v.columnIndex === columnIndex);
             let processedValue = newValue;
 
+            // In label view, convert selected label back to its numeric code
+            if (variable && viewMode === 'label' && variable.values?.length) {
+                // Map selected label or raw code back to numeric value
+                const newStr = String(newValue);
+                const mapping = variable.values.find(v => String(v.label) === newStr)
+                             || variable.values.find(v => String(v.value) === newStr);
+                if (mapping) {
+                    processedValue = mapping.value;
+                }
+            }
+
             // --- Value processing based on variable type ---
             if (variable) {
                 switch (variable.type) {
                     case 'NUMERIC':
-                        if (newValue === '' || newValue === null || newValue === undefined) {
+                        if (processedValue === '' || processedValue === null || processedValue === undefined) {
                             processedValue = '';
                         } else {
                             // Remove commas before converting to number
-                            const valueString = String(newValue).replace(/,/g, '');
+                            const valueString = String(processedValue).replace(/,/g, '');
                             if (!isNaN(Number(valueString))) {
                                 processedValue = Number(valueString);
                             } else {
-                                console.warn(`Invalid numeric value skipped: Row ${row}, Col ${columnIndex}, Value: ${newValue}`);
+                                console.warn(`Invalid numeric value skipped: Row ${row}, Col ${columnIndex}, Value: ${processedValue}`);
                                 continue; // Skip this update
                             }
                         }
@@ -139,7 +153,7 @@ export const useTableUpdates = ({
                 // TODO: Add user feedback
             }
         }
-    }, [variables, updateCells, ensureCompleteVariables]);
+    }, [variables, updateCells, ensureCompleteVariables, viewMode]);
 
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;

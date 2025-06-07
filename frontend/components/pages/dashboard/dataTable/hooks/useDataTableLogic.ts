@@ -5,6 +5,7 @@ import { useTableDimensions } from './useTableDimensions';
 import { useTableStructure } from './useTableStructure';
 import { useTableUpdates } from './useTableUpdates';
 import { useContextMenuLogic } from './useContextMenuLogic';
+import { useTableRefStore } from '@/stores/useTableRefStore';
 
 /**
  * Main hook for the DataTable component.
@@ -23,12 +24,15 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<HotTableClass | n
         displayNumCols,
     } = useTableDimensions();
 
+    const { viewMode, setVariableTableRef } = useTableRefStore();
+
     // 2. Generate Table Structure (Headers, Data Matrix, Column Configs)
     const {
         colHeaders,
         displayMatrix,
         columns,
     } = useTableStructure(
+        viewMode,
         actualNumRows,
         actualNumCols,
         targetVisualDataRows,

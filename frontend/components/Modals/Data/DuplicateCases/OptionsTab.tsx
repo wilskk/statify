@@ -10,16 +10,12 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                              setPrimaryCaseIndicator,
                                              primaryName,
                                              setPrimaryName,
-                                             filterByIndicator,
-                                             setFilterByIndicator,
                                              sequentialCount,
                                              setSequentialCount,
                                              sequentialName,
                                              setSequentialName,
                                              moveMatchingToTop,
                                              setMoveMatchingToTop,
-                                             displayFrequencies,
-                                             setDisplayFrequencies,
                                              containerType = "dialog"
                                          }) => {
     return (
@@ -82,17 +78,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                                 First case in each group is primary
                             </Label>
                         </div>
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="filterIndicator"
-                                checked={filterByIndicator}
-                                onCheckedChange={(checked) => setFilterByIndicator(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="filterIndicator" className="text-sm cursor-pointer text-card-foreground">
-                                Filter by indicator values
-                            </Label>
-                        </div>
                     </div>
 
                     <Separator className="my-4" />
@@ -143,17 +128,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                         />
                         <Label htmlFor="moveToTop" className="text-sm cursor-pointer text-card-foreground">
                             Move matching cases to the top of the file
-                        </Label>
-                    </div>
-                    <div className="flex items-center">
-                        <Checkbox
-                            id="displayFrequencies"
-                            checked={displayFrequencies}
-                            onCheckedChange={(checked) => setDisplayFrequencies(!!checked)}
-                            className="mr-2"
-                        />
-                        <Label htmlFor="displayFrequencies" className="text-sm cursor-pointer text-card-foreground">
-                            Display frequencies for created variables
                         </Label>
                     </div>
                 </div>

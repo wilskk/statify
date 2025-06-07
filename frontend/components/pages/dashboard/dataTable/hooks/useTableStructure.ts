@@ -1,14 +1,16 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { getColumnConfig, getDefaultSpareColumnConfig } from '../utils/utils';
 import { Variable, VariableAlign, VariableType, spssDateTypes } from '@/types/Variable';
 import { DEFAULT_COLUMN_WIDTH } from '../constants';
+import { textRenderer } from 'handsontable/renderers';
 
 /**
  * Custom hook to generate the structures needed for Handsontable display.
  * Creates column headers, the display matrix (with padding), and column configurations.
  *
+ * @param viewMode - Current view mode (numeric or label)
  * @param actualNumRows - Actual number of data rows from the store.
  * @param actualNumCols - Actual number of data columns (based on data and variables).
  * @param targetVisualDataRows - Target number of rows to display (including min rows).
@@ -16,6 +18,7 @@ import { DEFAULT_COLUMN_WIDTH } from '../constants';
  * @param displayNumCols - Total columns to display including the final spare column.
  */
 export const useTableStructure = (
+    viewMode: 'numeric' | 'label',
     actualNumRows: number,
     actualNumCols: number,
     targetVisualDataRows: number,
@@ -48,13 +51,62 @@ export const useTableStructure = (
                 if (r < actualNumRows && c < actualNumCols) {
                     matrix[r][c] = data[r]?.[c] ?? '';
                 } else {
-                    // Fill with null for all visual padding and spare areas
-                    matrix[r][c] = null;
+                    // Fill with empty string for visual padding
+                    matrix[r][c] = '';
                 }
             }
         }
         return matrix;
     }, [data, actualNumRows, actualNumCols, targetVisualDataRows, displayNumCols]);
+
+    /**
+     * Returns dropdown column config for label mode if applicable
+     */
+    function getDropdownColumnConfig(
+        viewMode: 'numeric' | 'label',
+        variable: Variable | undefined,
+        colIndex: number,
+        data: (string | number)[][],
+        alignClass: string,
+        truncateClass: string
+    ): any {
+        if (viewMode !== 'label' || !variable?.values?.length) return;
+        const mappingLabels = variable.values.map(v => v.label);
+        const rawLabels = Array.from(new Set(data.map(row => String(row[colIndex]))));
+        const source = mappingLabels.length ? mappingLabels : rawLabels;
+        return {
+            data: colIndex,
+            readOnly: false,
+            className: `${alignClass} ${truncateClass}`.trim(),
+            type: 'dropdown',
+            source,
+            strict: false,
+            allowInvalid: false,
+            validator(value: any, callback: (isValid: boolean) => void) {
+                if (value === null || value === undefined || String(value) === '') return callback(true);
+                const valStr = String(value).trim();
+                if (variable.type === 'NUMERIC') {
+                    const num = Number(valStr.replace(/,/g, ''));
+                    if (!isNaN(num)) return callback(true);
+                }
+                if (variable.type === 'STRING') return callback(true);
+                return callback(source.includes(valStr));
+            },
+            renderer(
+                hotInstance: any,
+                td: HTMLTableCellElement,
+                row: number,
+                col: number,
+                prop: string | number,
+                cellValue: string | number,
+                cellProps: any
+            ) {
+                const match = variable.values.find(v => String(v.value) === String(cellValue));
+                const display = match ? match.label : String(cellValue);
+                textRenderer(hotInstance, td, row, col, prop, display, cellProps);
+            },
+        };
+    }
 
     const columns = useMemo(() => {
         const getAlignmentClass = (align: VariableAlign | undefined): string => {
@@ -82,29 +134,19 @@ export const useTableStructure = (
                 const baseConfig = getColumnConfig(variable);
                 const alignClass = getAlignmentClass(variable?.align);
                 const truncateClass = variable?.type === 'STRING' ? 'truncate-cell' : '';
-                const className = `${alignClass} ${truncateClass}`.trim();
-                return { data: colIndex, readOnly: false, className, ...baseConfig };
+                const dropdown = getDropdownColumnConfig(viewMode, variable, colIndex, data, alignClass, truncateClass);
+                if (dropdown) return dropdown;
+                return { data: colIndex, readOnly: false, className: `${alignClass} ${truncateClass}`.trim(), ...baseConfig };
             } else if (colIndex < targetVisualDataCols) {
                 // Editable skeleton column
-                return {
-                    data: colIndex,
-                    readOnly: false,
-                    type: 'text',
-                    className: 'htLeft',
-                    width: DEFAULT_COLUMN_WIDTH,
-                };
+                return { data: colIndex, readOnly: false, type: 'text', className: 'htLeft', width: DEFAULT_COLUMN_WIDTH };
             } else {
                 // Spare column for adding new variable
-                return {
-                    data: colIndex,
-                    readOnly: false,
-                    ...getDefaultSpareColumnConfig(),
-                    width: DEFAULT_COLUMN_WIDTH,
-                };
+                return { data: colIndex, readOnly: false, ...getDefaultSpareColumnConfig(), width: DEFAULT_COLUMN_WIDTH };
             }
         });
         return generatedColumns;
-    }, [variables, actualNumCols, targetVisualDataCols, displayNumCols]);
+    }, [data, variables, actualNumCols, targetVisualDataCols, displayNumCols, viewMode]);
 
     return {
         colHeaders,

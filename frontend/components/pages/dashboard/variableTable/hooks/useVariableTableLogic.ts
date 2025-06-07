@@ -3,7 +3,6 @@ import { useRef, useEffect, useMemo, useCallback } from "react";
 import { HotTableClass } from "@handsontable/react";
 import Handsontable from 'handsontable';
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useTableRefStore } from "@/stores/useTableRefStore";
 import { transformVariablesToTableData } from '../utils';
 import { COLUMN_INDEX } from '../constants';
 import { useVariableTableUpdates } from './useVariableTableUpdates';
@@ -19,20 +18,11 @@ const MEASURE_OPTIONS: Record<string, string[]> = {
 export function useVariableTableLogic() {
     const hotTableRef = useRef<HotTableClass>(null);
     const { variables } = useVariableStore(); // Get variables
-    const { setVariableTableRef } = useTableRefStore();
 
     // Replace state-based tableData handling with memoization
     const tableData = useMemo(() => transformVariablesToTableData(variables), [variables]);
 
-    // Register the table ref in the global store when it mounts
-    useEffect(() => {
-        if (hotTableRef.current) {
-            setVariableTableRef(hotTableRef as React.RefObject<any>);
-        }
-        return () => {
-            setVariableTableRef(null); // Clear ref on unmount
-        };
-    }, [setVariableTableRef]);
+    // No longer storing variableTableRef in global store
 
     // --- Initialize Child Hooks ---
 

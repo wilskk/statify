@@ -25,15 +25,11 @@ export interface OptionsTabProps {
     setPrimaryCaseIndicator: (value: "last" | "first") => void;
     primaryName: string;
     setPrimaryName: (value: string) => void;
-    filterByIndicator: boolean;
-    setFilterByIndicator: (value: boolean) => void;
     sequentialCount: boolean;
     setSequentialCount: (value: boolean) => void;
     sequentialName: string;
     setSequentialName: (value: string) => void;
     moveMatchingToTop: boolean;
     setMoveMatchingToTop: (value: boolean) => void;
-    displayFrequencies: boolean;
-    setDisplayFrequencies: (value: boolean) => void;
     containerType?: "dialog" | "sidebar";
 } 

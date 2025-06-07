@@ -10,6 +10,7 @@ import {
     Locate,
     Variable,
     Search,
+    ArrowRightLeft,
 } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
@@ -19,12 +20,18 @@ import { useMobile } from "@/hooks/useMobile";
 import { useActions } from '@/hooks/actions';
 import { ModalType, useModal } from '@/hooks/useModal';
 import { ModeToggle } from "@/components/mode-toggle";
+import { useTableRefStore } from '@/stores/useTableRefStore';
+import { usePathname } from 'next/navigation';
 
 export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
     const { isMobile } = useMobile();
+    const pathname = usePathname();
     const { handleAction } = useActions();
     const { openModal } = useModal();
+    const { viewMode, toggleViewMode } = useTableRefStore();
+
+    const isDataPage = pathname === '/dashboard/data';
 
     const fileTools = [
         { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
@@ -36,6 +43,7 @@ export default function Toolbar() {
         { name: 'Locate', icon: <Locate size={16} /> },
         { name: 'Variable', icon: <Variable size={16} /> },
         { name: 'Search', icon: <Search size={16} /> },
+        { name: 'Toggle View', icon: <ArrowRightLeft size={16} />, onClick: toggleViewMode },
     ];
 
     const ToolGroup = ({ tools }: { tools: { name: string; icon: React.ReactNode; onClick?: () => void }[] }) => (
@@ -45,8 +53,11 @@ export default function Toolbar() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`flex items-center justify-center h-8 w-8 text-muted-foreground hover:bg-accent transition-colors
-                                ${hoveredTool === tool.name ? 'bg-accent' : ''}`}
+                                className={`flex items-center justify-center h-8 w-8 text-muted-foreground hover:bg-accent transition-colors ${
+                                    hoveredTool === tool.name || (tool.name === 'Toggle View' && viewMode === 'label' && isDataPage)
+                                        ? 'bg-accent'
+                                        : ''
+                                }`}
                                 onMouseEnter={() => setHoveredTool(tool.name)}
                                 onMouseLeave={() => setHoveredTool(null)}
                                 aria-label={tool.name}

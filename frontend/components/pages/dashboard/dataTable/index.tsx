@@ -6,10 +6,11 @@ import { HotTableClass } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
 import debounce from 'lodash/debounce';
 
-import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useDataStore } from '@/stores/useDataStore';
 import { useDataTableLogic } from './hooks/useDataTableLogic';
 import { addColumns, addMultipleVariables, getVariables } from './services/storeOperations';
+import { useTableRefStore } from '@/stores/useTableRefStore';
+import { useVariableStore } from '@/stores/useVariableStore';
 import './DataTable.css';
 
 registerAllModules();
@@ -38,8 +39,10 @@ function applyTruncation(
 
 export default function Index() {
     const hotTableRef = useRef<HotTableClass>(null);
-    const { setDataTableRef } = useTableRefStore();
-    const updateCells = useDataStore.getState().updateCells;
+    const updateCells = useDataStore(state => state.updateCells);
+    const data = useDataStore(state => state.data);
+    const variables = useVariableStore(state => state.variables);
+    const { viewMode } = useTableRefStore();
 
     // Debounce updates to batch rapid changes and improve performance
     const debouncedUpdateCells = useMemo(() => debounce(updateCells, 100), [updateCells]);
@@ -127,14 +130,23 @@ export default function Index() {
         }
     }, [debouncedUpdateCells, actualNumCols]);
 
+    // When switching back to numeric mode, convert any remaining labels to codes
     useEffect(() => {
-        if (hotTableRef.current) {
-            setDataTableRef(hotTableRef as React.RefObject<any>);
+        if (viewMode === 'numeric') {
+            const updates: {row: number; col: number; value: any}[] = [];
+            data.forEach((row, r) => {
+                variables.forEach(variable => {
+                    const c = variable.columnIndex;
+                    const cell = row[c];
+                    if (typeof cell === 'string') {
+                        const mapping = variable.values?.find(v => v.label === cell);
+                        if (mapping) updates.push({ row: r, col: c, value: mapping.value });
+                    }
+                });
+            });
+            if (updates.length) updateCells(updates);
         }
-        return () => {
-            setDataTableRef(null);
-        };
-    }, [setDataTableRef]);
+    }, [viewMode]);
 
     // Cancel pending debounced calls on unmount
     useEffect(() => {

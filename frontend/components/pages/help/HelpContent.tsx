@@ -9,11 +9,21 @@ export interface SectionItem {
   key: string;
   label: string;
   content: React.JSX.Element;
+  children?: ChildSectionItem[];
+}
+
+// Define child section item type
+export interface ChildSectionItem {
+  key: string;
+  label: string;
+  parentKey: string;
+  childContent: string;
 }
 
 interface HelpContentProps {
   sections: SectionItem[]; // The original full list of sections for rendering main content
   selectedSectionKey: string;
+  activeChildKey: string | null;
   onSectionSelect: (key: string) => void;
   searchValue: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -23,11 +33,50 @@ interface HelpContentProps {
 export default function HelpContent({
   sections,
   selectedSectionKey,
+  activeChildKey,
   onSectionSelect,
   searchValue,
   onSearchChange,
   displaySections,
 }: HelpContentProps) {
+  // Find the currently selected section
+  const selectedSection = sections.find(s => s.key === selectedSectionKey);
+  
+  // Get the active child content if applicable
+  const renderChildContent = () => {
+    if (!selectedSection || !selectedSection.children || !activeChildKey) return null;
+    
+    const childSection = selectedSection.children.find(child => child.key === activeChildKey);
+    if (!childSection) return null;
+    
+    // For StatisticsGuide, pass the section prop to show only the relevant content
+    if (selectedSection.key === "statistics-guide") {
+      return (
+        <div className="animate-fadeIn">
+          <h2 className="text-2xl font-semibold mb-5">
+            {childSection.label}
+          </h2>
+          {/* Display the StatisticsGuide with the specific section */}
+          <div className="prose max-w-none">
+            {React.cloneElement(selectedSection.content, { section: childSection.childContent })}
+          </div>
+        </div>
+      );
+    }
+    
+    // Default handling for other section types
+    return (
+      <div className="animate-fadeIn">
+        <h2 className="text-2xl font-semibold mb-5">
+          {childSection.label}
+        </h2>
+        <div className="prose max-w-none">
+          {selectedSection.content}
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <div className="flex max-w-7xl mx-auto py-8 px-2 sm:px-3 gap-4 sm:gap-6 min-h-screen">
       {/* Sidebar */}
@@ -70,6 +119,25 @@ export default function HelpContent({
                 >
                   {section.label}
                 </button>
+                {/* Show children if this section is selected */}
+                {selectedSectionKey === section.key && section.children && (
+                  <ul className="ml-4 mt-1 space-y-1">
+                    {section.children.map((child) => (
+                      <li key={child.key}>
+                        <button
+                          className={`w-full text-left px-2 py-1 text-sm rounded-md transition duration-200 ${
+                            activeChildKey === child.key 
+                              ? "bg-blue-50 text-blue-700 font-medium" 
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                          onClick={() => onSectionSelect(child.key)}
+                        >
+                          {child.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
@@ -94,10 +162,21 @@ export default function HelpContent({
             <li className="mx-2">/</li>
             <li><a href="#" className="hover:text-gray-700">Documentation</a></li>
             <li className="mx-2">/</li>
-            {sections.map(section => 
-              section.key === selectedSectionKey && (
-                <li key={section.key} className="font-medium text-gray-900">{section.label}</li>
-              )
+            {sections.map(section => {
+              if (section.key === selectedSectionKey) {
+                return (
+                  <li key={section.key} className="font-medium text-gray-900">{section.label}</li>
+                );
+              }
+              return null;
+            })}
+            {activeChildKey && selectedSection?.children && (
+              <>
+                <li className="mx-2">/</li>
+                <li className="font-medium text-gray-900">
+                  {selectedSection.children.find(c => c.key === activeChildKey)?.label}
+                </li>
+              </>
             )}
           </ol>
         </nav>
@@ -110,16 +189,21 @@ export default function HelpContent({
         <Separator className="mb-6" />
 
         <section>
-          {sections.map(
-            (section) =>
-              section.key === selectedSectionKey && (
-                <div key={section.key} className="animate-fadeIn">
-                  <h2 className="text-2xl font-semibold mb-5">
-                    {section.label}
-                  </h2>
-                  <div className="prose max-w-none">{section.content}</div>
-                </div>
-              )
+          {/* Show either the main section content or child content */}
+          {activeChildKey ? (
+            renderChildContent()
+          ) : (
+            sections.map(
+              (section) =>
+                section.key === selectedSectionKey && (
+                  <div key={section.key} className="animate-fadeIn">
+                    <h2 className="text-2xl font-semibold mb-5">
+                      {section.label}
+                    </h2>
+                    <div className="prose max-w-none">{section.content}</div>
+                  </div>
+                )
+            )
           )}
         </section>
         
