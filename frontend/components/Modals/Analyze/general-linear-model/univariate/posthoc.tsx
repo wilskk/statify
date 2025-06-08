@@ -104,6 +104,15 @@ export const UnivariatePostHoc = ({
         });
     };
 
+    const handleDunnetGrp = (value: string) => {
+        setPostHocState((prev) => ({
+            ...prev,
+            LtControl: value === "LtControl",
+            GtControl: value === "GtControl",
+            Twosided: value === "Twosided",
+        }));
+    };
+
     const handleContinue = () => {
         Object.entries(postHocState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariatePostHocType, value);
@@ -656,7 +665,23 @@ export const UnivariatePostHoc = ({
                                                     <Label className="font-bold">
                                                         Test
                                                     </Label>
-                                                    <RadioGroup>
+                                                    <RadioGroup
+                                                        value={
+                                                            postHocState.LtControl
+                                                                ? "LtControl"
+                                                                : postHocState.GtControl
+                                                                ? "GtControl"
+                                                                : postHocState.Twosided
+                                                                ? "Twosided"
+                                                                : "Twosided"
+                                                        }
+                                                        disabled={
+                                                            !postHocState.Dunnett
+                                                        }
+                                                        onValueChange={
+                                                            handleDunnetGrp
+                                                        }
+                                                    >
                                                         <div className="grid grid-cols-3 gap-2">
                                                             <div className="flex items-center space-x-2">
                                                                 <RadioGroupItem

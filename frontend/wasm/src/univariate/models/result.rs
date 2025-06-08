@@ -14,7 +14,7 @@ pub struct UnivariateResult {
     pub contrast_coefficients: Option<ContrastCoefficients>,
     pub lack_of_fit_tests: Option<LackOfFitTests>,
     pub spread_vs_level_plots: Option<SpreadVsLevelPlots>,
-    pub posthoc_tests: Option<HashMap<String, Vec<ParameterEstimateEntry>>>,
+    pub posthoc_tests: Option<PostHoc>,
     pub emmeans: Option<EMMeansResult>,
     pub robust_parameter_estimates: Option<RobustParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
@@ -53,8 +53,17 @@ pub struct BetweenSubjectFactors {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DescriptiveStatistics {
     pub dependent_variable: String,
-    pub stats_entries: HashMap<String, StatsEntry>,
+    pub groups: Vec<DescriptiveStatGroup>,
     pub factor_names: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DescriptiveStatGroup {
+    pub factor_name: String,
+    pub factor_value: String,
+    pub stats: StatsEntry,
+    pub subgroups: Vec<DescriptiveStatGroup>,
+    pub is_total: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -136,6 +145,49 @@ pub struct EMMeansEstimatesEntry {
     pub mean: Vec<f64>,
     pub standard_error: Vec<f64>,
     pub confidence_interval: Vec<ConfidenceInterval>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostHoc {
+    pub factor_names: Vec<String>,
+    pub comparison: Vec<PostHocComparison>,
+    pub homogoneous: Vec<PostHocHomogoneous>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostHocComparison {
+    pub entries: Vec<PostHocComparisonEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostHocComparisonEntry {
+    pub method: String,
+    pub parameter: Vec<String>,
+    pub mean_difference: Vec<f64>,
+    pub standard_error: Vec<f64>,
+    pub significance: Vec<f64>,
+    pub confidence_interval: Vec<ConfidenceInterval>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostHocHomogoneous {
+    pub entries: Vec<PostHocHomogoneousEntry>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PostHocHomogoneousEntry {
+    pub method: String,
+    pub parameter: Vec<String>,
+    pub mean_difference: Vec<f64>,
+    pub n: Vec<usize>,
+    pub subsets: Vec<Subset>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Subset {
+    pub subset: Vec<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

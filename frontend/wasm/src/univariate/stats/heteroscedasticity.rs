@@ -17,6 +17,9 @@ pub fn calculate_heteroscedasticity_tests(
         format!("Failed to create design matrix for main model: {}", e)
     )?;
 
+    let dep_var_name = config.main.dep_var.clone().unwrap_or_else(|| "Unknown".to_string());
+    let design_string = generate_design_string(&design_info);
+
     if design_info.n_samples == 0 {
         return Err("No data for main model fitting in heteroscedasticity tests.".to_string());
     }
@@ -96,6 +99,24 @@ pub fn calculate_heteroscedasticity_tests(
                 ],
             });
         }
+    }
+
+    // Add metadata to notes for frontend consumption
+    if let Some(ref mut test) = white_test_result {
+        test.note.push(format!("__DEP_VAR:{}", dep_var_name));
+        test.note.push(format!("__DESIGN:{}", design_string));
+    }
+    if let Some(ref mut test) = bp_test_result {
+        test.note.push(format!("__DEP_VAR:{}", dep_var_name));
+        test.note.push(format!("__DESIGN:{}", design_string));
+    }
+    if let Some(ref mut test) = modified_bp_test_result {
+        test.note.push(format!("__DEP_VAR:{}", dep_var_name));
+        test.note.push(format!("__DESIGN:{}", design_string));
+    }
+    if let Some(ref mut test) = f_test_kb_result {
+        test.note.push(format!("__DEP_VAR:{}", dep_var_name));
+        test.note.push(format!("__DESIGN:{}", design_string));
     }
 
     Ok(HeteroscedasticityTests {

@@ -84,6 +84,28 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
+             * 🔬 Heteroscedasticity Tests Result 🔬
+             * */
+            const heteroTables = formattedResult.tables.filter((table: Table) =>
+                table.key.startsWith("hetero_")
+            );
+
+            for (const heteroTable of heteroTables) {
+                const heteroData = JSON.stringify({ tables: [heteroTable] });
+                const heteroId = await addAnalytic(logId, {
+                    title: heteroTable.title,
+                    note: "",
+                });
+
+                await addStatistic(heteroId, {
+                    title: heteroTable.title,
+                    description: heteroTable.title,
+                    output_data: heteroData,
+                    components: heteroTable.title,
+                });
+            }
+
+            /*
              * 🧪 Tests of Between-Subjects Effects Result 🧪
              * */
             const testsOfBetweenSubjectsEffects = findTable(

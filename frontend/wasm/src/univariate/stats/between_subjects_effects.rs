@@ -150,15 +150,19 @@ pub fn calculate_tests_between_subjects_effects(
         config.options.sig_level
     );
 
+    let mut notes = if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
+        vec!["Type I SS placeholder due to missing incremental SWEEP.".to_string()]
+    } else {
+        Vec::new()
+    };
+    notes.push(format!("__SIG_LEVEL:{}", config.options.sig_level));
+    notes.push(format!("__SS_METHOD:{:?}", config.model.sum_of_square_method));
+
     Ok(TestsBetweenSubjectsEffects {
         source: current_source_map,
         r_squared: current_r_squared,
         adjusted_r_squared: current_adj_r_squared,
-        notes: if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
-            vec!["Type I SS placeholder due to missing incremental SWEEP.".to_string()]
-        } else {
-            Vec::new()
-        },
+        notes,
     })
 }
 

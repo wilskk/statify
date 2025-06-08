@@ -1,6 +1,5 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
-use std::collections::HashMap;
 
 use crate::univariate::models::result::{
     ContrastCoefficients,
@@ -9,15 +8,15 @@ use crate::univariate::models::result::{
     HeteroscedasticityTests,
     LackOfFitTests,
     LeveneTest,
-    ParameterEstimateEntry,
     ParameterEstimates,
     PlotData,
+    PostHoc,
     RobustParameterEstimates,
     SavedVariables,
     SpreadVsLevelPoint,
-    StatsEntry,
     TestEffectEntry,
     UnivariateResult,
+    DescriptiveStatGroup,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -46,7 +45,7 @@ struct FormatResult {
     contrast_coefficients: Option<ContrastCoefficients>,
     lack_of_fit_tests: Option<LackOfFitTests>,
     spread_vs_level_plots: Option<FormattedSpreadVsLevelPlots>,
-    posthoc_tests: Option<Vec<FormattedPosthocTest>>,
+    posthoc_tests: Option<PostHoc>,
     emmeans: Option<EMMeansResult>,
     robust_parameter_estimates: Option<RobustParameterEstimates>,
     plots: Option<Vec<FormattedPlot>>,
@@ -68,7 +67,7 @@ struct FactorEntry {
 #[derive(Serialize)]
 struct FormattedDescriptiveStatistic {
     dependent_variable: String,
-    flat_entries: HashMap<String, StatsEntry>,
+    groups: Vec<DescriptiveStatGroup>,
     factor_names: Vec<String>,
 }
 
@@ -88,12 +87,6 @@ struct SourceEntry {
 #[derive(Serialize)]
 struct FormattedSpreadVsLevelPlots {
     points: Vec<SpreadVsLevelPoint>,
-}
-
-#[derive(Serialize)]
-struct FormattedPosthocTest {
-    name: String,
-    entries: Vec<ParameterEstimateEntry>,
 }
 
 #[derive(Serialize)]
@@ -130,7 +123,7 @@ impl FormatResult {
                 .map(|(_, stat)| {
                     FormattedDescriptiveStatistic {
                         dependent_variable: stat.dependent_variable.clone(),
-                        flat_entries: stat.stats_entries.clone(),
+                        groups: stat.groups.clone(),
                         factor_names: stat.factor_names.clone(),
                     }
                 })
@@ -163,18 +156,6 @@ impl FormatResult {
             }
         });
 
-        let posthoc_tests = result.posthoc_tests.as_ref().map(|tests| {
-            tests
-                .iter()
-                .map(|(name, entries)| {
-                    FormattedPosthocTest {
-                        name: name.clone(),
-                        entries: entries.clone(),
-                    }
-                })
-                .collect()
-        });
-
         let plots = result.plots.as_ref().map(|plots| {
             plots
                 .iter()
@@ -198,7 +179,7 @@ impl FormatResult {
             contrast_coefficients: result.contrast_coefficients.clone(),
             lack_of_fit_tests: result.lack_of_fit_tests.clone(),
             spread_vs_level_plots,
-            posthoc_tests,
+            posthoc_tests: result.posthoc_tests.clone(),
             emmeans: result.emmeans.clone(),
             robust_parameter_estimates: result.robust_parameter_estimates.clone(),
             plots,
