@@ -167,6 +167,29 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
+             * 📝 Hypothesis L-Matrix Result 📝
+             */
+            const lMatrixTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("hypothesis_matrix_")
+            );
+
+            for (const lMatrixTable of lMatrixTables) {
+                const lMatrixData = JSON.stringify({ tables: [lMatrixTable] });
+                const termName = lMatrixTable.title;
+                const lMatrixId = await addAnalytic(logId, {
+                    title: `Contrast Coefficients (L Matrix) - ${termName}`,
+                    note: "",
+                });
+
+                await addStatistic(lMatrixId, {
+                    title: lMatrixTable.title,
+                    description: `The default display of this matrix is the transpose of the corresponding L matrix.`,
+                    output_data: lMatrixData,
+                    components: `Hypothesis Matrix - ${termName}`,
+                });
+            }
+
+            /*
              * 📊 Contrast Coefficients Result 📊
              * */
             const contrastCoefficients = findTable("contrast_coefficients");

@@ -11,6 +11,7 @@ pub struct UnivariateResult {
     pub tests_of_between_subjects_effects: Option<TestsBetweenSubjectsEffects>,
     pub parameter_estimates: Option<ParameterEstimates>,
     pub general_estimable_function: Option<GeneralEstimableFunction>,
+    pub hypothesis_l_matrices: Option<HypothesisLMatrices>,
     pub contrast_coefficients: Option<ContrastCoefficients>,
     pub lack_of_fit_tests: Option<LackOfFitTests>,
     pub spread_vs_level_plots: Option<SpreadVsLevelPlots>,
@@ -271,6 +272,20 @@ pub struct ConfidenceInterval {
 pub struct GeneralEstimableFunction {
     pub estimable_function: GeneralEstimableFunctionEntry,
     pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HypothesisLMatrices {
+    pub matrices: Vec<TermMatrix>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TermMatrix {
+    pub term: String,
+    pub parameter_names: Vec<String>,
+    pub contrast_names: Vec<String>,
+    pub matrix: Vec<Vec<f64>>,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

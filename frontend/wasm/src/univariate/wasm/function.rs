@@ -132,6 +132,20 @@ pub fn run_analysis(
         }
     }
 
+    // Step 6: Hypothesis L Matrices if requested
+    let mut hypothesis_l_matrices = None;
+    if config.options.coefficient_matrix {
+        logger.add_log("calculate_hypothesis_l_matrices");
+        match core::calculate_hypothesis_l_matrices(&data, config) {
+            Ok(matrices) => {
+                hypothesis_l_matrices = Some(matrices);
+            }
+            Err(e) => {
+                error_collector.add_error("calculate_hypothesis_l_matrices", &e);
+            }
+        }
+    }
+
     // Step 6: Lack of Fit Tests if requested
     let mut lack_of_fit_tests = None;
     if config.options.lack_of_fit {
@@ -278,6 +292,7 @@ pub fn run_analysis(
         tests_of_between_subjects_effects,
         parameter_estimates,
         general_estimable_function,
+        hypothesis_l_matrices,
         contrast_coefficients,
         lack_of_fit_tests,
         spread_vs_level_plots,

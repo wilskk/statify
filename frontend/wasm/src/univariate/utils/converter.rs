@@ -17,6 +17,7 @@ use crate::univariate::models::result::{
     TestEffectEntry,
     UnivariateResult,
     DescriptiveStatGroup,
+    HypothesisLMatrices,
 };
 
 pub fn string_to_js_error(error: String) -> JsValue {
@@ -43,6 +44,7 @@ struct FormatResult {
     parameter_estimates: Option<ParameterEstimates>,
     general_estimable_function: Option<GeneralEstimableFunction>,
     contrast_coefficients: Option<ContrastCoefficients>,
+    hypothesis_l_matrices: Option<HypothesisLMatrices>,
     lack_of_fit_tests: Option<LackOfFitTests>,
     spread_vs_level_plots: Option<FormattedSpreadVsLevelPlots>,
     posthoc_tests: Option<PostHoc>,
@@ -177,6 +179,7 @@ impl FormatResult {
             parameter_estimates: result.parameter_estimates.clone(),
             general_estimable_function: result.general_estimable_function.clone(),
             contrast_coefficients: result.contrast_coefficients.clone(),
+            hypothesis_l_matrices: result.hypothesis_l_matrices.clone(),
             lack_of_fit_tests: result.lack_of_fit_tests.clone(),
             spread_vs_level_plots,
             posthoc_tests: result.posthoc_tests.clone(),

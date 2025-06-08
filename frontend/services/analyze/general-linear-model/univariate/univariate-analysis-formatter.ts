@@ -827,65 +827,165 @@ export function transformUnivariateResult(data: any): ResultJson {
     }
 
     // 6. General Estimable Function table
-    if (data.general_estimable_function) {
+    if (
+        data.general_estimable_function &&
+        data.general_estimable_function.estimable_function
+    ) {
         const gef = data.general_estimable_function;
+        const estimable = gef.estimable_function;
 
         // Only process if matrix exists and has content
-        if (gef.matrix && gef.matrix.length > 0 && gef.matrix[0].length > 0) {
-            // Create column headers based on the matrix dimensions
-            const columnHeaders = [{ header: "Parameter", key: "parameter" }];
-
-            // Add L headers based on matrix width
-            for (let i = 0; i < gef.matrix[0].length; i++) {
-                columnHeaders.push({ header: `L${i + 1}`, key: `l${i + 1}` });
+        if (
+            estimable.parameter &&
+            estimable.l_matrix &&
+            estimable.l_label &&
+            estimable.l_matrix.length > 0 &&
+            estimable.parameter.length > 0
+        ) {
+            // Find the design note for title superscript
+            let designNoteLetter = "";
+            const designNote =
+                gef.notes?.find((n: string) => n.match(/^a\./)) || "";
+            if (designNote) {
+                designNoteLetter = "a";
             }
+
+            // Create column headers from l_label
+            const lLabelKeys = estimable.l_label.map((l: string) =>
+                l.toLowerCase()
+            );
+            const columnHeaders = [
+                { header: "Parameter", key: "rowHeader" },
+                ...estimable.l_label.map((label: string, i: number) => ({
+                    header: label,
+                    key: lLabelKeys[i],
+                })),
+            ];
 
             const table: Table = {
                 key: "general_estimable_function",
-                title: "General Estimable Function",
+                title: `General Estimable Function${
+                    designNoteLetter ? `<sup>${designNoteLetter}</sup>` : ""
+                }`,
                 columnHeaders,
                 rows: [],
             };
 
-            // Since parameter names aren't directly available in gef.matrix,
-            // we'd need to get them from elsewhere or use generic names
-            const parameters =
-                data.parameter_estimates?.estimates?.map(
-                    (est: any) => est.parameter
-                ) || [];
+            // Transpose l_matrix to populate rows
+            const numParameters = estimable.parameter.length;
+            const numLabels = estimable.l_label.length;
 
-            // Populate rows from matrix
-            for (let i = 0; i < gef.matrix.length; i++) {
+            for (let i = 0; i < numParameters; i++) {
+                // For each parameter (table row)
                 const rowData: any = {
-                    rowHeader: [parameters[i] || `Parameter ${i + 1}`],
+                    rowHeader: [estimable.parameter[i]],
                 };
 
-                for (let j = 0; j < gef.matrix[i].length; j++) {
-                    rowData[`l${j + 1}`] = formatDisplayNumber(
-                        gef.matrix[i][j]
-                    );
+                for (let j = 0; j < numLabels; j++) {
+                    // For each L-vector (table column)
+                    const key = lLabelKeys[j];
+                    // Value is from l_matrix[j][i]
+                    const value = estimable.l_matrix[j]?.[i];
+                    rowData[key] =
+                        value !== undefined && value !== null
+                            ? formatDisplayNumber(value)
+                            : "";
                 }
-
-                table.rows.push(rowData);
+                table.rows.push(rowData as Row);
             }
 
-            // Add note with nulls for all L columns
-            const nullLColumns = Object.fromEntries(
-                Array.from({ length: gef.matrix[0].length }, (_, i) => [
-                    `l${i + 1}`,
-                    null,
-                ])
+            // Add notes
+            if (gef.notes && Array.isArray(gef.notes)) {
+                const nullColumnsForNotes = Object.fromEntries(
+                    lLabelKeys.map((key: string) => [key, null])
+                );
+
+                gef.notes.forEach((note: string) => {
+                    table.rows.push({
+                        rowHeader: [note],
+                        ...nullColumnsForNotes,
+                    });
+                });
+            }
+
+            resultJson.tables.push(table);
+        }
+    }
+
+    // Hypothesis L-Matrices
+    if (data.hypothesis_l_matrices && data.hypothesis_l_matrices.matrices) {
+        data.hypothesis_l_matrices.matrices.forEach((termMatrix: any) => {
+            if (
+                !termMatrix.parameter_names ||
+                termMatrix.parameter_names.length === 0
+            ) {
+                return; // Skip if no parameters
+            }
+
+            const contrastKeys = termMatrix.contrast_names.map((c: string) =>
+                c.toLowerCase()
+            );
+            const contrastHeaders = termMatrix.contrast_names.map(
+                (name: string, i: number) => ({
+                    header: name,
+                    key: contrastKeys[i],
+                })
+            );
+
+            const table: Table = {
+                key: `hypothesis_matrix_${termMatrix.term.replace(/\W/g, "_")}`,
+                title: termMatrix.term,
+                columnHeaders: [
+                    { header: "Parameter", key: "rowHeader" },
+                    {
+                        header: "Contrast",
+                        key: "contrast_group",
+                        children: contrastHeaders,
+                    },
+                ],
+                rows: [],
+            };
+
+            termMatrix.parameter_names.forEach(
+                (paramName: string, paramIndex: number) => {
+                    const row: any = {
+                        rowHeader: [paramName],
+                    };
+                    termMatrix.contrast_names.forEach(
+                        (_contrastName: string, contrastIndex: number) => {
+                            const key = contrastKeys[contrastIndex];
+                            const value =
+                                termMatrix.matrix[paramIndex]?.[contrastIndex];
+                            row[key] =
+                                value !== undefined && value !== null
+                                    ? formatDisplayNumber(value)
+                                    : ".";
+                        }
+                    );
+                    table.rows.push(row as Row);
+                }
+            );
+
+            const nullColumnsForNotes = Object.fromEntries(
+                contrastKeys.map((key: string) => [key, null])
             );
 
             table.rows.push({
                 rowHeader: [
-                    "a. This matrix has been transformed into the form required by the function evaluator.",
+                    "The default display of this matrix is the transpose of the corresponding L matrix.",
                 ],
-                ...nullLColumns,
+                ...nullColumnsForNotes,
             });
 
+            if (termMatrix.note) {
+                table.rows.push({
+                    rowHeader: [termMatrix.note],
+                    ...nullColumnsForNotes,
+                });
+            }
+
             resultJson.tables.push(table);
-        }
+        });
     }
 
     // 7. Contrast Coefficients table

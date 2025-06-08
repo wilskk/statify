@@ -84,9 +84,6 @@ pub fn calculate_ss_for_term(
     g_inv_model: &DMatrix<f64>,
     term_of_interest: &str
 ) -> Result<(f64, usize), String> {
-    web_sys::console::log_1(&format!("term_of_interest: {:?}", term_of_interest).into());
-    web_sys::console::log_1(&format!("l_matrix: {:?}", l_matrix).into());
-
     if l_matrix.nrows() == 0 || l_matrix.ncols() == 0 {
         return Ok((0.0, 0));
     }
