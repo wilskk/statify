@@ -190,6 +190,77 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
+             * 🔬 Custom Hypothesis Tests Result 🔬
+             */
+            const customHypothesisIndexTable = findTable(
+                "custom_hypothesis_tests_index"
+            );
+            if (customHypothesisIndexTable) {
+                const analyticId = await addAnalytic(logId, {
+                    title: `Custom Hypothesis Tests Index`,
+                    note: "",
+                });
+                await addStatistic(analyticId, {
+                    title: `Custom Hypothesis Tests Index`,
+                    description: `Index of all custom hypothesis tests performed.`,
+                    output_data: customHypothesisIndexTable,
+                    components: `Custom Hypothesis Tests Index`,
+                });
+            }
+
+            const testResultTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("custom_test_results_")
+            );
+            for (const table of testResultTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: (table as any).subtitle || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
+
+            const kMatrixTables = formattedResult.tables.filter(
+                (table: Table) =>
+                    table.key.startsWith("custom_contrast_results_k_matrix_")
+            );
+            for (const table of kMatrixTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
+
+            const lMatrixTablesCustom = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("contrast_coefficients_")
+            );
+            for (const table of lMatrixTablesCustom) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
+
+            /*
              * 📊 Contrast Coefficients Result 📊
              * */
             const contrastCoefficients = findTable("contrast_coefficients");
@@ -274,33 +345,77 @@ export async function resultUnivariateAnalysis({
             /*
              * 📏 Estimated Marginal Means Result 📏
              * */
-            // Since EMMs can have dynamic keys, we need to find all tables with 'emmeans_' prefix
-            const emmeansTables = formattedResult.tables.filter(
-                (table: Table) => table.key.startsWith("emmeans_")
+            const emmeansEstimatesTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("emmeans_estimates_")
             );
+            for (const table of emmeansEstimatesTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: (table as any).subtitle || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
 
-            for (const emmeansTable of emmeansTables) {
-                const factorName = emmeansTable.title.replace(
-                    "Estimated Marginal Means - ",
-                    ""
-                );
-                const emmeansData = JSON.stringify({ tables: [emmeansTable] });
-
-                const emmeansId = await addAnalytic(logId, {
-                    title: `Estimated Marginal Means - ${factorName}`,
+            const emmeansLMatrixTables = formattedResult.tables.filter(
+                (table: Table) =>
+                    table.key.startsWith("emmeans_contrast_coefficients_")
+            );
+            for (const table of emmeansLMatrixTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
                     note: "",
                 });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
 
-                await addStatistic(emmeansId, {
-                    title: `Estimated Marginal Means - ${factorName}`,
-                    description: `Estimated Marginal Means - ${factorName}`,
-                    output_data: emmeansData,
-                    components: `Estimated Marginal Means - ${factorName}`,
+            const emmeansPairwiseTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("emmeans_pairwise_")
+            );
+            for (const table of emmeansPairwiseTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: (table as any).subtitle || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
+                });
+            }
+
+            const emmeansUnivariateTables = formattedResult.tables.filter(
+                (table: Table) => table.key.startsWith("emmeans_univariate_")
+            );
+            for (const table of emmeansUnivariateTables) {
+                const tableData = JSON.stringify({ tables: [table] });
+                const analyticId = await addAnalytic(logId, {
+                    title: table.title,
+                    note: (table as any).subtitle || "",
+                });
+                await addStatistic(analyticId, {
+                    title: table.title,
+                    description: table.title,
+                    output_data: tableData,
+                    components: table.title,
                 });
             }
 
             /*
-             * 📈 Plots Result 📈
+             * 📈 Plots Result ��
              * */
             // Since plots can have dynamic keys, we need to find all tables with 'plot_' prefix
             const plotTables = formattedResult.tables.filter((table: Table) =>

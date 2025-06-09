@@ -88,9 +88,23 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                 FactorsVar: [...factorVars, ...randVars, ...covarVars],
             };
 
+            const newBaseFactors = [...factorVars, ...randVars];
+            const oldContrastFactorList = prev.contrast.FactorList || [];
+
+            const formattingMap = new Map(
+                oldContrastFactorList.map((factor: string) => [
+                    factor.split(" (")[0],
+                    factor,
+                ])
+            );
+
+            const newContrastFactorList = newBaseFactors.map(
+                (baseName) => formattingMap.get(baseName) || baseName
+            );
+
             newState.contrast = {
                 ...prev.contrast,
-                FactorList: [...factorVars, ...randVars],
+                FactorList: newContrastFactorList,
             };
 
             newState.plots = {

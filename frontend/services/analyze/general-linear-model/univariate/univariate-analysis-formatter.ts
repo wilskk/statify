@@ -1,4 +1,3 @@
-// univariate-analysis-formatter.ts
 import { formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table, Row } from "@/types/Table";
 
@@ -1033,13 +1032,48 @@ export function transformUnivariateResult(data: any): ResultJson {
     // 8. Lack of Fit Tests table
     if (data.lack_of_fit_tests) {
         const lof = data.lack_of_fit_tests;
+        const lofData = lof.lack_of_fit;
+        const pureErrorData = lof.pure_error;
+
+        const formatCell = (value: any) => {
+            if (
+                value === null ||
+                typeof value === "undefined" ||
+                isNaN(value)
+            ) {
+                return null;
+            }
+            return formatDisplayNumber(value);
+        };
+
+        const formatSig = (value: any) => {
+            if (
+                value === null ||
+                typeof value === "undefined" ||
+                isNaN(value)
+            ) {
+                return null;
+            }
+            if (value < 0.001) {
+                return "<.001";
+            }
+            return formatDisplayNumber(value);
+        };
+
+        const depVarName =
+            (data.tests_of_between_subjects_effects &&
+                data.tests_of_between_subjects_effects.dependent_variable) ||
+            (data.descriptive_statistics &&
+                Object.values(data.descriptive_statistics).length > 0 &&
+                (Object.values(data.descriptive_statistics)[0] as any)
+                    .dependent_variable) ||
+            "";
 
         const table: Table = {
             key: "lack_of_fit_tests",
-            title: "Lack of Fit Tests",
+            title: `Lack of Fit Tests (Dependent Variable: ${depVarName})`,
             columnHeaders: [
-                { header: "Dependent Variable:", key: "dependent_var" },
-                { header: "Source", key: "source" },
+                { header: "Source", key: "rowHeader" },
                 { header: "Sum of Squares", key: "sum_of_squares" },
                 { header: "df", key: "df" },
                 { header: "Mean Square", key: "mean_square" },
@@ -1052,25 +1086,38 @@ export function transformUnivariateResult(data: any): ResultJson {
             rows: [],
         };
 
-        // Add Lack of Fit row
-        table.rows.push({
-            rowHeader: ["Lack of Fit"],
-            sum_of_squares: formatDisplayNumber(lof.sum_of_squares),
-            df: formatDisplayNumber(lof.df),
-            mean_square: formatDisplayNumber(lof.mean_square),
-            f: formatDisplayNumber(lof.f_value),
-            sig: formatDisplayNumber(lof.significance),
-            partial_eta_squared: formatDisplayNumber(lof.partial_eta_squared),
-            noncent_parameter: formatDisplayNumber(lof.noncent_parameter),
-            observed_power: formatDisplayNumber(lof.observed_power),
-        });
+        if (lofData) {
+            table.rows.push({
+                rowHeader: ["Lack of Fit"],
+                sum_of_squares: formatCell(lofData.sum_of_squares),
+                df: lofData.df,
+                mean_square: formatCell(lofData.mean_square),
+                f: formatCell(lofData.f_value),
+                sig: formatSig(lofData.significance),
+                partial_eta_squared: formatCell(lofData.partial_eta_squared),
+                noncent_parameter: formatCell(lofData.noncent_parameter),
+                observed_power: formatCell(lofData.observed_power),
+            });
+        }
 
-        // Add Pure Error row - we'd need data from elsewhere
-        // Only add placeholder row if we have relevant data
-        if (lof.df !== undefined) {
+        if (pureErrorData) {
             table.rows.push({
                 rowHeader: ["Pure Error"],
-                // These would need to come from another data source
+                sum_of_squares: formatCell(pureErrorData.sum_of_squares),
+                df: pureErrorData.df,
+                mean_square: formatCell(pureErrorData.mean_square),
+                f: formatCell(pureErrorData.f_value),
+                sig: formatSig(pureErrorData.significance),
+                partial_eta_squared: formatCell(
+                    pureErrorData.partial_eta_squared
+                ),
+                noncent_parameter: formatCell(pureErrorData.noncent_parameter),
+                observed_power: formatCell(pureErrorData.observed_power),
+            });
+        }
+
+        if (lof.notes && Array.isArray(lof.notes)) {
+            const nullColumnsForNotes = {
                 sum_of_squares: null,
                 df: null,
                 mean_square: null,
@@ -1079,20 +1126,15 @@ export function transformUnivariateResult(data: any): ResultJson {
                 partial_eta_squared: null,
                 noncent_parameter: null,
                 observed_power: null,
+            };
+
+            lof.notes.forEach((note: string) => {
+                table.rows.push({
+                    rowHeader: [note],
+                    ...nullColumnsForNotes,
+                });
             });
         }
-
-        // Add note
-        const nullColumns = Object.fromEntries(
-            table.columnHeaders
-                .filter((col) => col.key && col.key !== "source")
-                .map((col) => [col.key!, null])
-        );
-
-        table.rows.push({
-            rowHeader: ["a. Computed using alpha = .05"],
-            ...nullColumns,
-        });
 
         resultJson.tables.push(table);
     }
@@ -1193,64 +1235,393 @@ export function transformUnivariateResult(data: any): ResultJson {
         );
     }
 
-    // 11. Estimated Marginal Means table
+    // 11. Estimated Marginal Means
     if (data.emmeans) {
-        Object.entries(data.emmeans).forEach(
-            ([factorName, entries]: [string, any]) => {
-                // Only process if we have entries
-                if (Array.isArray(entries) && entries.length > 0) {
-                    const table: Table = {
-                        key: `emmeans_${factorName
-                            .toLowerCase()
-                            .replace(/\s+/g, "_")}`,
-                        title: `Estimated Marginal Means - ${factorName}`,
-                        columnHeaders: [
-                            {
-                                header: "Dependent Variable:",
-                                key: "dependent_var",
-                            },
-                            { header: factorName, key: "factor" },
-                            { header: "Mean", key: "mean" },
-                            { header: "Std. Error", key: "std_error" },
-                            {
-                                header: "95% Confidence Interval",
-                                key: "confidence_interval",
-                                children: [
-                                    {
-                                        header: "Lower Bound",
-                                        key: "lower_bound",
-                                    },
-                                    {
-                                        header: "Upper Bound",
-                                        key: "upper_bound",
-                                    },
-                                ],
-                            },
-                        ],
-                        rows: [],
-                    };
+        const emmeans = data.emmeans;
+        const depVarName =
+            (data.tests_of_between_subjects_effects &&
+                data.tests_of_between_subjects_effects.dependent_variable) ||
+            (data.descriptive_statistics &&
+                Object.values(data.descriptive_statistics).length > 0 &&
+                (Object.values(data.descriptive_statistics)[0] as any)
+                    .dependent_variable) ||
+            "";
 
-                    // Process each entry
-                    entries.forEach((entry: any) => {
-                        if (entry && entry.parameter) {
-                            table.rows.push({
-                                rowHeader: [entry.parameter],
-                                mean: formatDisplayNumber(entry.b),
-                                std_error: formatDisplayNumber(entry.std_error),
-                                lower_bound: formatDisplayNumber(
-                                    entry.confidence_interval?.lower_bound
-                                ),
-                                upper_bound: formatDisplayNumber(
-                                    entry.confidence_interval?.upper_bound
-                                ),
+        emmeans.parameter_names.forEach((paramName: string, index: number) => {
+            const estimates = emmeans.em_estimates?.[index];
+            const contrastCoeffs = emmeans.contrast_coefficients?.[index];
+
+            // 11.1 Estimates Table
+            if (
+                estimates &&
+                estimates.entries.length > 0 &&
+                estimates.entries[0].levels.length > 0
+            ) {
+                const isOverall = paramName === "(OVERALL)";
+                let factorNames: string[] = [];
+                if (!isOverall) {
+                    factorNames = estimates.entries[0].levels[0]
+                        .split(", ")
+                        .map((p: string) => p.split("=")[0]);
+                }
+
+                const columnHeaders: any[] = [
+                    ...factorNames.map((f) => ({ header: f, key: f })),
+                    { header: "Mean", key: "mean" },
+                    { header: "Std. Error", key: "std_error" },
+                    {
+                        header: "95% Confidence Interval",
+                        key: "ci",
+                        children: [
+                            { header: "Lower Bound", key: "lower_bound" },
+                            { header: "Upper Bound", key: "upper_bound" },
+                        ],
+                    },
+                ];
+
+                if (isOverall) {
+                    columnHeaders.unshift({
+                        header: "",
+                        key: "grand_mean_label",
+                    });
+                }
+
+                const table: any = {
+                    key: `emmeans_estimates_${paramName.replace(/\W/g, "_")}`,
+                    title: isOverall ? `Grand Mean` : `Estimates`,
+                    subtitle: `Dependent Variable: ${depVarName}`,
+                    columnHeaders,
+                    rows: [],
+                };
+
+                if (!isOverall) {
+                    table.title = `Estimates: ${paramName}`;
+                }
+
+                estimates.entries.forEach((entry: any) => {
+                    entry.levels.forEach((levelString: string, i: number) => {
+                        const row: Row = { rowHeader: [] };
+                        if (isOverall) {
+                            row.grand_mean_label = "";
+                        } else {
+                            const levelParts = levelString.split(", ");
+                            const levelMap = new Map(
+                                levelParts
+                                    .map((p: string) => p.split("="))
+                                    .filter((p) => p.length === 2) as [
+                                    string,
+                                    string
+                                ][]
+                            );
+                            factorNames.forEach((fn) => {
+                                row[fn] = levelMap.get(fn) || "";
                             });
                         }
+
+                        row.mean = formatDisplayNumber(entry.mean[i]);
+                        row.std_error = formatDisplayNumber(
+                            entry.standard_error[i]
+                        );
+                        row.lower_bound = formatDisplayNumber(
+                            entry.confidence_interval[i]?.lower_bound
+                        );
+                        row.upper_bound = formatDisplayNumber(
+                            entry.confidence_interval[i]?.upper_bound
+                        );
+                        table.rows.push(row);
+                    });
+                });
+
+                if (factorNames.length > 1) {
+                    const processedRows: Row[] = [];
+                    const lastFactorValues = new Array(factorNames.length).fill(
+                        null
+                    );
+                    table.rows.forEach((row: Row) => {
+                        const newRow = { ...row };
+                        for (let i = 0; i < factorNames.length; i++) {
+                            const key = factorNames[i];
+                            if (newRow[key] === lastFactorValues[i]) {
+                                newRow[key] = "";
+                            } else {
+                                lastFactorValues[i] = newRow[key] as string;
+                                for (
+                                    let j = i + 1;
+                                    j < factorNames.length;
+                                    j++
+                                ) {
+                                    lastFactorValues[j] = null;
+                                }
+                            }
+                        }
+                        processedRows.push(newRow);
+                    });
+                    table.rows = processedRows;
+                }
+
+                resultJson.tables.push(table);
+            }
+
+            // 11.2 Contrast Coefficients Table
+            if (contrastCoeffs) {
+                const isOverall = paramName === "(OVERALL)";
+                const title = isOverall
+                    ? "Contrast Coefficients (L' Matrix): Grand Mean"
+                    : `Contrast Coefficients (L' Matrix): ${paramName}`;
+
+                const lMatrixHeaders: any[] = [
+                    { header: "Parameter", key: "parameter" },
+                ];
+
+                const factorNames = isOverall ? [] : paramName.split("*");
+
+                if (isOverall) {
+                    lMatrixHeaders.push({ header: "Grand Mean", key: "l0" });
+                } else if (factorNames.length === 1) {
+                    lMatrixHeaders.push({
+                        header: paramName,
+                        key: `${paramName}_group`,
+                        children: contrastCoeffs.l_label.map(
+                            (label: string, i: number) => ({
+                                header: label.split("=")[1] || `L${i + 1}`,
+                                key: `l${i}`,
+                            })
+                        ),
+                    });
+                } else {
+                    const childrenHeaders: any[] = contrastCoeffs.l_label.map(
+                        (label: string, i: number) => {
+                            const parts = label
+                                .replace("EMM: ", "")
+                                .split(", ");
+                            const headerParts = parts.map(
+                                (p) => p.split("=")[1]
+                            );
+                            return {
+                                header: headerParts.join(" "),
+                                key: `l${i}`,
+                            };
+                        }
+                    );
+
+                    const topLevelFactors = paramName.split("*");
+                    const groupedHeaders: any = {};
+                    topLevelFactors.forEach((factor) => {
+                        groupedHeaders[factor] = [];
                     });
 
-                    resultJson.tables.push(table);
+                    lMatrixHeaders.push(...childrenHeaders);
                 }
+
+                const lMatrixTable: Table = {
+                    key: `emmeans_contrast_coefficients_${paramName.replace(
+                        /\W/g,
+                        "_"
+                    )}`,
+                    title: title,
+                    columnHeaders: lMatrixHeaders,
+                    rows: [],
+                };
+
+                contrastCoeffs.parameter.forEach(
+                    (param: string, paramIndex: number) => {
+                        const row: Row = { rowHeader: [], parameter: param };
+                        contrastCoeffs.l_matrix.forEach(
+                            (l_row: number[], l_index: number) => {
+                                row[`l${l_index}`] = formatDisplayNumber(
+                                    l_row[paramIndex]
+                                );
+                            }
+                        );
+                        lMatrixTable.rows.push(row);
+                    }
+                );
+
+                resultJson.tables.push(lMatrixTable);
             }
-        );
+        });
+
+        // 11.3 Pairwise Comparisons
+        if (emmeans.pairwise_comparisons) {
+            emmeans.pairwise_comparisons.forEach((comparison: any) => {
+                if (!comparison.entries || comparison.entries.length === 0)
+                    return;
+
+                const notes = comparison.notes[0] || "";
+                const factorMatch = notes.match(
+                    /Pairwise comparisons for (.*?)\./
+                );
+                const factorName = factorMatch ? factorMatch[1] : "Unknown";
+                const adjMatch = notes.match(
+                    /Adjustment for multiple comparisons: (.*?)\./
+                );
+                const adjMethod = adjMatch ? adjMatch[1] : "None";
+
+                const table: any = {
+                    key: `emmeans_pairwise_${factorName}`,
+                    title: `Pairwise Comparisons: ${factorName}`,
+                    subtitle: `Dependent Variable: ${depVarName}`,
+                    columnHeaders: [
+                        { header: `(I) ${factorName}`, key: "i_level" },
+                        { header: `(J) ${factorName}`, key: "j_level" },
+                        { header: "Mean Difference (I-J)", key: "mean_diff" },
+                        { header: "Std. Error", key: "std_error" },
+                        { header: "Sig.a", key: "sig" },
+                        {
+                            header: `95% Confidence Interval for Differencea`,
+                            key: "ci",
+                            children: [
+                                { header: "Lower Bound", key: "lower_bound" },
+                                { header: "Upper Bound", key: "upper_bound" },
+                            ],
+                        },
+                    ],
+                    rows: [],
+                };
+
+                const groupedRows: { [key: string]: Row[] } = {};
+                comparison.entries.forEach((entry: any) => {
+                    const iLevel = entry.parameter[0]?.split("=")[1];
+                    if (!groupedRows[iLevel]) {
+                        groupedRows[iLevel] = [];
+                    }
+                    groupedRows[iLevel].push({
+                        rowHeader: [],
+                        i_level: iLevel,
+                        j_level: entry.parameter[1]?.split("=")[1],
+                        mean_diff: formatDisplayNumber(
+                            entry.mean_difference[0]
+                        ),
+                        std_error: formatDisplayNumber(entry.standard_error[0]),
+                        sig: formatDisplayNumber(entry.significance[0]),
+                        lower_bound: formatDisplayNumber(
+                            entry.confidence_interval[0]?.lower_bound
+                        ),
+                        upper_bound: formatDisplayNumber(
+                            entry.confidence_interval[0]?.upper_bound
+                        ),
+                    });
+                });
+
+                Object.keys(groupedRows)
+                    .sort()
+                    .forEach((key) => {
+                        groupedRows[key].forEach((row, rowIndex) => {
+                            if (rowIndex > 0) {
+                                row.i_level = "";
+                            }
+                            table.rows.push(row);
+                        });
+                    });
+
+                const nullNoteCols = {
+                    j_level: null,
+                    mean_diff: null,
+                    std_error: null,
+                    sig: null,
+                    lower_bound: null,
+                    upper_bound: null,
+                };
+                table.rows.push({
+                    rowHeader: ["Based on estimated marginal means"],
+                    ...nullNoteCols,
+                });
+                table.rows.push({
+                    rowHeader: [
+                        `a. Adjustment for multiple comparisons: ${adjMethod}.`,
+                    ],
+                    ...nullNoteCols,
+                });
+
+                resultJson.tables.push(table);
+            });
+        }
+
+        // 11.4 Univariate Tests
+        if (emmeans.univariate_tests) {
+            emmeans.univariate_tests.forEach((test: any) => {
+                const factorName = test.entries[0]?.source || "Unknown";
+                const table: any = {
+                    key: `emmeans_univariate_${factorName.replace(/\W/g, "_")}`,
+                    title: `Univariate Tests`,
+                    subtitle: `Dependent Variable: ${depVarName}`,
+                    columnHeaders: [
+                        { header: "", key: "source" },
+                        { header: "Sum of Squares", key: "sum_of_squares" },
+                        { header: "df", key: "df" },
+                        { header: "Mean Square", key: "mean_square" },
+                        { header: "F", key: "f" },
+                        { header: "Sig.", key: "sig" },
+                        {
+                            header: "Partial Eta Squared",
+                            key: "partial_eta_squared",
+                        },
+                        {
+                            header: "Noncent. Parameter",
+                            key: "noncent_parameter",
+                        },
+                        { header: "Observed Powera", key: "observed_power" },
+                    ],
+                    rows: [],
+                };
+
+                const sigLevelMatch = test.notes.find((n: string) =>
+                    n.includes("alpha =")
+                );
+                const sigLevel = sigLevelMatch
+                    ? sigLevelMatch.split("=")[1].trim()
+                    : "0.05";
+
+                test.entries.forEach((entry: any) => {
+                    table.rows.push({
+                        rowHeader: [],
+                        source: entry.source,
+                        sum_of_squares: formatDisplayNumber(
+                            entry.sum_of_squares
+                        ),
+                        df: entry.df,
+                        mean_square: formatDisplayNumber(entry.mean_square),
+                        f: formatDisplayNumber(entry.f_value),
+                        sig: formatDisplayNumber(entry.significance),
+                        partial_eta_squared: formatDisplayNumber(
+                            entry.partial_eta_squared
+                        ),
+                        noncent_parameter: formatDisplayNumber(
+                            entry.noncent_parameter
+                        ),
+                        observed_power: formatDisplayNumber(
+                            entry.observed_power
+                        ),
+                    });
+                });
+
+                const nullNoteCols = {
+                    sum_of_squares: null,
+                    df: null,
+                    mean_square: null,
+                    f: null,
+                    sig: null,
+                    partial_eta_squared: null,
+                    noncent_parameter: null,
+                    observed_power: null,
+                };
+                const effectNote = test.notes.find((n: string) =>
+                    n.startsWith("The F tests")
+                );
+                if (effectNote) {
+                    table.rows.push({
+                        rowHeader: [effectNote],
+                        ...nullNoteCols,
+                    });
+                }
+                table.rows.push({
+                    rowHeader: [`a. Computed using alpha = ${sigLevel}`],
+                    ...nullNoteCols,
+                });
+
+                resultJson.tables.push(table);
+            });
+        }
     }
 
     // 12. Plots (data for visualization)
@@ -1340,6 +1711,265 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             resultJson.tables.push(table);
         }
+    }
+
+    // 14. Custom Hypothesis Tests
+    if (data.contrast_coefficients) {
+        const custom_tests = data.contrast_coefficients;
+
+        // 14.1 Custom Hypothesis Tests Index table
+        if (custom_tests.information && custom_tests.information.length > 0) {
+            const table: Table = {
+                key: "custom_hypothesis_tests_index",
+                title: "Custom Hypothesis Tests Index",
+                columnHeaders: [
+                    { header: "", key: "index" },
+                    { header: "", key: "matrix_type" },
+                    { header: "", key: "description" },
+                ],
+                rows: [],
+            };
+
+            custom_tests.information.forEach((info: any, index: number) => {
+                table.rows.push({
+                    rowHeader: [],
+                    index: String(index + 1),
+                    matrix_type: "Contrast Coefficients (L' Matrix)",
+                    description: info.contrast_name,
+                });
+                table.rows.push({
+                    rowHeader: [],
+                    index: "",
+                    matrix_type: "Transformation Coefficients (M Matrix)",
+                    description: info.transformation_coef,
+                });
+                table.rows.push({
+                    rowHeader: [],
+                    index: "",
+                    matrix_type: "Contrast Results (K Matrix)",
+                    description: info.contrast_result,
+                });
+            });
+
+            resultJson.tables.push(table);
+        }
+
+        const depVarName =
+            (data.tests_of_between_subjects_effects &&
+                data.tests_of_between_subjects_effects.dependent_variable) ||
+            (data.descriptive_statistics &&
+                Object.values(data.descriptive_statistics).length > 0 &&
+                (Object.values(data.descriptive_statistics)[0] as any)
+                    .dependent_variable) ||
+            "";
+
+        // Loop through each custom test
+        custom_tests.factor_names?.forEach(
+            (_factorName: string, index: number) => {
+                const info = custom_tests.information?.[index];
+                const test_result = custom_tests.contrast_test_result?.[index];
+                const contrast_k_result = custom_tests.contrast_result?.[index];
+                const contrast_def =
+                    custom_tests.contrast_coefficients?.[index];
+
+                // 14.2 Test Results table
+                if (test_result) {
+                    const table: any = {
+                        key: `custom_test_results_${index}`,
+                        title: "Test Results",
+                        subtitle: `Dependent Variable: ${depVarName}`,
+                        columnHeaders: [
+                            { header: "Source", key: "source" },
+                            { header: "Sum of Squares", key: "sum_of_squares" },
+                            { header: "df", key: "df" },
+                            { header: "Mean Square", key: "mean_square" },
+                            { header: "F", key: "f" },
+                            { header: "Sig.", key: "sig" },
+                        ],
+                        rows: [],
+                    };
+
+                    test_result.contrast_result.forEach((res: any) => {
+                        table.rows.push({
+                            rowHeader: [],
+                            source: res.source,
+                            sum_of_squares: formatDisplayNumber(
+                                res.sum_of_squares
+                            ),
+                            df: res.df,
+                            mean_square: formatDisplayNumber(res.mean_square),
+                            f: formatDisplayNumber(res.f_value),
+                            sig: formatDisplayNumber(res.significance),
+                        });
+                    });
+                    resultJson.tables.push(table);
+                }
+
+                // 14.3 Contrast Results (K Matrix)
+                if (contrast_k_result && info) {
+                    const table: Table = {
+                        key: `custom_contrast_results_k_matrix_${index}`,
+                        title: "Contrast Results (K Matrix)",
+                        columnHeaders: [
+                            {
+                                header:
+                                    info.contrast_name.split(" for ")[1] ||
+                                    info.contrast_name,
+                                key: "param_group",
+                            },
+                            { header: "", key: "stat" },
+                            { header: "", key: "sub_stat" },
+                            {
+                                header: `Dependent Variable: ${depVarName}`,
+                                key: "value",
+                            },
+                        ],
+                        rows: [],
+                    };
+
+                    contrast_k_result.parameter.forEach(
+                        (paramName: string, paramIndex: number) => {
+                            const resultData =
+                                contrast_k_result.contrast_result[paramIndex];
+                            if (resultData) {
+                                table.rows.push(
+                                    {
+                                        rowHeader: [],
+                                        param_group: paramName,
+                                        stat: "Contrast Estimate",
+                                        sub_stat: "",
+                                        value: formatDisplayNumber(
+                                            resultData.contrast_estimate
+                                        ),
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "Hypothesized Value",
+                                        sub_stat: "",
+                                        value: resultData.hypothesized_value,
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "Difference (Estimate - Hypothesized)",
+                                        sub_stat: "",
+                                        value: formatDisplayNumber(
+                                            resultData.difference
+                                        ),
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "Std. Error",
+                                        sub_stat: "",
+                                        value: formatDisplayNumber(
+                                            resultData.standard_error
+                                        ),
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "Sig.",
+                                        sub_stat: "",
+                                        value: formatDisplayNumber(
+                                            resultData.significance
+                                        ),
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "95% Confidence Interval for Difference",
+                                        sub_stat: "Lower Bound",
+                                        value: formatDisplayNumber(
+                                            resultData.confidence_interval
+                                                ?.lower_bound
+                                        ),
+                                    },
+                                    {
+                                        rowHeader: [],
+                                        param_group: "",
+                                        stat: "",
+                                        sub_stat: "Upper Bound",
+                                        value: formatDisplayNumber(
+                                            resultData.confidence_interval
+                                                ?.upper_bound
+                                        ),
+                                    }
+                                );
+                            }
+                        }
+                    );
+                    resultJson.tables.push(table);
+                }
+
+                // 14.4 Contrast Coefficients (L' Matrix)
+                if (contrast_def && info) {
+                    const contrastHeaders = contrast_def.l_label.map(
+                        (_label: string, i: number) => ({
+                            header:
+                                contrast_k_result?.parameter[i] || `L${i + 1}`,
+                            key: `l${i + 1}`,
+                        })
+                    );
+
+                    const table: Table = {
+                        key: `contrast_coefficients_${index}`,
+                        title: "Contrast Coefficients (L' Matrix)",
+                        columnHeaders: [
+                            { header: "Parameter", key: "parameter" },
+                            {
+                                header: info.contrast_name,
+                                key: "contrast_group",
+                                children: contrastHeaders,
+                            },
+                        ],
+                        rows: [],
+                    };
+
+                    contrast_def.parameter.forEach(
+                        (param: string, paramIndex: number) => {
+                            const row: Row = {
+                                rowHeader: [param],
+                                parameter: param,
+                            };
+                            contrast_def.l_label.forEach(
+                                (_label: string, contrastIndex: number) => {
+                                    row[`l${contrastIndex + 1}`] =
+                                        formatDisplayNumber(
+                                            contrast_def.l_matrix[
+                                                contrastIndex
+                                            ]?.[paramIndex]
+                                        );
+                                }
+                            );
+                            table.rows.push(row);
+                        }
+                    );
+
+                    const nullColumnsForNotes = Object.fromEntries(
+                        table.columnHeaders
+                            .filter((h) => h.key !== "parameter")
+                            .map((h) => [h.key, null])
+                    );
+
+                    if (contrast_def.l_label.length > 1) {
+                        contrast_def.l_label.forEach((_l: any, i: number) => {
+                            nullColumnsForNotes[`l${i + 1}`] = null;
+                        });
+                    }
+
+                    table.rows.push({
+                        rowHeader: [
+                            "a. The default display of this matrix is the transpose of the corresponding L matrix.",
+                        ],
+                        ...nullColumnsForNotes,
+                    });
+
+                    resultJson.tables.push(table);
+                }
+            }
+        );
     }
 
     return resultJson;

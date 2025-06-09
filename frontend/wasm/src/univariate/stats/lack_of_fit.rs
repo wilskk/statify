@@ -188,7 +188,7 @@ pub fn calculate_lack_of_fit_tests(
     Ok(LackOfFitTests {
         lack_of_fit: LackOfFitTestsEntries {
             sum_of_squares: ss_lack_of_fit,
-            df: df_lack_of_fit.max(0) as usize, // Ensure df is not negative
+            df: df_lack_of_fit.max(0) as usize,
             mean_square: ms_lack_of_fit,
             f_value: f_value_lof,
             significance: significance_lof,
@@ -198,16 +198,13 @@ pub fn calculate_lack_of_fit_tests(
         },
         pure_error: LackOfFitTestsEntries {
             sum_of_squares: ss_pure_error,
-            df: df_pure_error.max(0) as usize, // Ensure df is not negative
+            df: df_pure_error.max(0) as usize,
             mean_square: ms_pure_error,
-            // F-value, significance, etc., are typically not directly applicable to the pure error component in isolation
-            // as they relate to the LOF test (MS_LOF / MS_PE).
-            // Setting them to NaN or 0.0 as placeholders.
             f_value: f64::NAN,
             significance: f64::NAN,
-            partial_eta_squared: 0.0,
-            noncent_parameter: 0.0,
-            observed_power: 0.0,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         },
         notes: vec![
             format!(
