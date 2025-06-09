@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import {
     COLUMN_INDEX,
     DEFAULT_VARIABLE_TYPE
-} from '../constants';
+} from '../tableConfig';
 import { Variable, VariableType, ValueLabel, MissingValuesSpec } from '@/types/Variable';
 
 // Placeholder types for dialog handler arguments, adjust as needed
@@ -11,9 +11,15 @@ type TypeChangePayload = { type: VariableType; width: number; decimals?: number 
 type ValuesChangePayload = ValueLabel[];
 type MissingChangePayload = MissingValuesSpec | null;
 
-
+/**
+ * Hook to manage dialogs for variable table operations.
+ * 
+ * Provides state and handlers for type, values, and missing values dialogs.
+ * 
+ * @returns An object containing dialog state, selected cell info, and action handlers.
+ */
 export function useVariableTableDialogs() {
-    const { variables, updateMultipleFields } = useVariableStore();
+    const { variables, updateMultipleFields, insertVariableAt } = useVariableStore();
 
     const [showTypeDialog, setShowTypeDialog] = useState(false);
     const [showValuesDialog, setShowValuesDialog] = useState(false);
@@ -45,29 +51,38 @@ export function useVariableTableDialogs() {
     // --- Dialog Update Handlers (Placeholders - Implement actual logic based on dialog components) ---
 
     const handleTypeChange = useCallback(async (payload: TypeChangePayload) => {
-        if (!selectedVariable) return; // No need to check id anymore
-        // Update using columnIndex
-        await updateMultipleFields(selectedVariable.columnIndex, {
-             type: payload.type,
-             width: payload.width,
-             ...(payload.decimals !== undefined && { decimals: payload.decimals })
-            });
+        if (!selectedCell) return;
+        const rowIndex = selectedCell.row;
+        if (!selectedVariable) {
+            await insertVariableAt(rowIndex);
+        }
+        await updateMultipleFields(rowIndex, {
+            type: payload.type,
+            width: payload.width,
+            ...(payload.decimals !== undefined && { decimals: payload.decimals })
+        });
         setShowTypeDialog(false);
-    }, [selectedVariable, updateMultipleFields]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, insertVariableAt]);
 
     const handleValuesChange = useCallback(async (newValueLabels: ValuesChangePayload) => {
-        if (!selectedVariable) return; // No need to check id anymore
-        // Update using columnIndex
-        await updateMultipleFields(selectedVariable.columnIndex, { values: newValueLabels });
+        if (!selectedCell) return;
+        const rowIndex = selectedCell.row;
+        if (!selectedVariable) {
+            await insertVariableAt(rowIndex);
+        }
+        await updateMultipleFields(rowIndex, { values: newValueLabels });
         setShowValuesDialog(false);
-    }, [selectedVariable, updateMultipleFields]);
+    }, [selectedCell, updateMultipleFields, insertVariableAt]);
 
     const handleMissingChange = useCallback(async (newMissingSpec: MissingChangePayload) => {
-        if (!selectedVariable) return; // No need to check id anymore
-        // Update using columnIndex
-        await updateMultipleFields(selectedVariable.columnIndex, { missing: newMissingSpec });
+        if (!selectedCell) return;
+        const rowIndex = selectedCell.row;
+        if (!selectedVariable) {
+            await insertVariableAt(rowIndex);
+        }
+        await updateMultipleFields(rowIndex, { missing: newMissingSpec });
         setShowMissingDialog(false);
-    }, [selectedVariable, updateMultipleFields]);
+    }, [selectedCell, updateMultipleFields, insertVariableAt]);
 
     // --- End Dialog Update Handlers ---
 

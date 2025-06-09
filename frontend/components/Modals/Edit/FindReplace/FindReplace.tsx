@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { X, ChevronLeft, ChevronRight, HelpCircle, Info } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, HelpCircle, Info, Replace, ReplaceAll } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FindReplaceMode, TabType, FindAndReplaceModalProps } from "./types";
 import { useFindReplaceForm } from "./hooks/useFindReplaceForm";
@@ -174,13 +174,15 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerT
             { title: "Text to Find", content: "Next, type the text you want to find here. Results will appear as you type.", targetId: "fr-find-input-wrapper", defaultPosition: 'bottom' as PopupPosition, defaultHorizontalPosition: 'left' as HorizontalPosition, icon: "🔍" }
         ];
         const replaceStep = { title: "Replacement Text", content: "Enter the text that will replace the found text.", targetId: "fr-replace-input-wrapper", defaultPosition: 'bottom' as PopupPosition, defaultHorizontalPosition: 'left' as HorizontalPosition, icon: "✍️" };
+
         const commonSuffix = [
             { title: "Match Case", content: "Check this box to make your search case-sensitive (e.g., 'A' will not match 'a').", targetId: "fr-match-case-wrapper", defaultPosition: 'right' as PopupPosition, defaultHorizontalPosition: 'left' as HorizontalPosition, icon: "🔠" },
             { title: "Matching Logic", content: "Define how the search should match text within a cell (e.g., anywhere, entire cell, etc.).", targetId: "fr-match-in-wrapper", defaultPosition: 'right' as PopupPosition, defaultHorizontalPosition: 'left' as HorizontalPosition, icon: "🧩" },
             { title: "Search Direction", content: "Set the direction for the 'Find Next'/'Previous' buttons to search up or down from the current selection.", targetId: "fr-direction-wrapper", defaultPosition: 'right' as PopupPosition, defaultHorizontalPosition: 'left' as HorizontalPosition, icon: "↕️" },
             { title: "Navigation", content: "Use these buttons to jump between the matches found in the selected column.", targetId: "fr-navigation-wrapper", defaultPosition: 'top' as PopupPosition, defaultHorizontalPosition: 'right' as HorizontalPosition, icon: "🧭" }
         ];
-        const replaceActionsStep = { title: "Replace Actions", content: "Click 'Replace' to change the current highlighted match, or 'Replace All' for every match in the column.", targetId: "fr-replace-actions-wrapper", defaultPosition: 'top' as PopupPosition, defaultHorizontalPosition: 'right' as HorizontalPosition, icon: "✨" };
+        const replaceActionsStep = { title: "Replace Actions", content: "Click 'Replace' to change the current highlighted match, or 'Replace All' for every match in the column.", targetId: "fr-replace-actions-wrapper", defaultPosition: 'top' as PopupPosition, defaultHorizontalPosition: 'right' as HorizontalPosition, icon: "🔁" };
+
 
         return activeTab === TabType.REPLACE ? [...commonPrefix, replaceStep, ...commonSuffix, replaceActionsStep] : [...commonPrefix, ...commonSuffix];
     }, [activeTab]);
@@ -287,9 +289,10 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'containerT
                     <Button variant="outline" onClick={onClose}>Close</Button>
                     {activeTab === TabType.REPLACE && (
                         <div id="fr-replace-actions-wrapper" className="flex items-center gap-2 relative">
-                            <Button variant="destructive" onClick={handleReplaceAll} disabled={!findText || !!findError}>Replace All</Button>
-                            <Button variant="outline" onClick={handleReplace} disabled={!findText || !!findError}>Replace</Button>
+                            <Button variant="destructive" onClick={handleReplaceAll} disabled={!findText || !!findError}><ReplaceAll className="mr-2 h-4 w-4" />Replace All</Button>
+                            <Button variant="outline" onClick={handleReplace} disabled={!findText || !!findError}><Replace className="mr-2 h-4 w-4" />Replace</Button>
                             <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'fr-replace-actions-wrapper'} />
+
                         </div>
                     )}
                     <div id="fr-navigation-wrapper" className="inline-flex rounded-md shadow-sm border border-input bg-background relative">

@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CellsTabProps } from "./types";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 // Define the union type for nonintegerWeights
 type NonintegerWeightsType = 'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment';
@@ -35,12 +36,22 @@ const CellsTab: FC<CellsTabProps> = ({
     setStandardizedResiduals,
     setAdjustedStandardizedResiduals,
     setNonintegerWeights,
-    containerType = "dialog"
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+    
+    const countsStep = getStepIndex('crosstabs-counts-section');
+    const percentagesStep = getStepIndex('crosstabs-percentages-section');
+    const residualsStep = getStepIndex('crosstabs-residuals-section');
+    const weightsStep = getStepIndex('crosstabs-noninteger-weights-section');
+
     return (
         <div className="p-6">
             <div className="grid grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-md p-4">
+                <div id="crosstabs-counts-section" className="bg-card border border-border rounded-md p-4 relative">
                     <div className="text-sm font-medium mb-3">Counts</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -92,6 +103,7 @@ const CellsTab: FC<CellsTabProps> = ({
                             />
                         </div>
                     </div>
+                    <ActiveElementHighlight active={tourActive && currentStep === countsStep} />
                 </div>
 
                 <div className="bg-card border border-border rounded-md p-4">
@@ -126,7 +138,7 @@ const CellsTab: FC<CellsTabProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-6 mt-6">
-                <div className="bg-card border border-border rounded-md p-4">
+                <div id="crosstabs-percentages-section" className="bg-card border border-border rounded-md p-4 relative">
                     <div className="text-sm font-medium mb-3">Percentages</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -165,9 +177,10 @@ const CellsTab: FC<CellsTabProps> = ({
                             </Label>
                         </div>
                     </div>
+                    <ActiveElementHighlight active={tourActive && currentStep === percentagesStep} />
                 </div>
 
-                <div className="bg-card border border-border rounded-md p-4">
+                <div id="crosstabs-residuals-section" className="bg-card border border-border rounded-md p-4 relative">
                     <div className="text-sm font-medium mb-3">Residuals</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
@@ -206,10 +219,11 @@ const CellsTab: FC<CellsTabProps> = ({
                             </Label>
                         </div>
                     </div>
+                    <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
                 </div>
             </div>
 
-            <div className="bg-card border border-border rounded-md p-4 mt-6">
+            <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 mt-6 relative">
                 <div className="text-sm font-medium mb-3">Noninteger Weights</div>
                 <RadioGroup
                     value={nonintegerWeights}
@@ -220,7 +234,6 @@ const CellsTab: FC<CellsTabProps> = ({
                         <RadioGroupItem
                             value="roundCell"
                             id="roundCell"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="roundCell" className="text-sm ml-2 cursor-pointer">
                             Round cell counts
@@ -231,7 +244,6 @@ const CellsTab: FC<CellsTabProps> = ({
                         <RadioGroupItem
                             value="roundCase"
                             id="roundCase"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="roundCase" className="text-sm ml-2 cursor-pointer">
                             Round case weights
@@ -242,7 +254,6 @@ const CellsTab: FC<CellsTabProps> = ({
                         <RadioGroupItem
                             value="truncateCell"
                             id="truncateCell"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="truncateCell" className="text-sm ml-2 cursor-pointer">
                             Truncate cell counts
@@ -253,7 +264,6 @@ const CellsTab: FC<CellsTabProps> = ({
                         <RadioGroupItem
                             value="truncateCase"
                             id="truncateCase"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="truncateCase" className="text-sm ml-2 cursor-pointer">
                             Truncate case weights
@@ -264,13 +274,13 @@ const CellsTab: FC<CellsTabProps> = ({
                         <RadioGroupItem
                             value="noAdjustment"
                             id="noAdjustment"
-                            className="border-[#CCCCCC] data-[state=checked]:bg-black data-[state=checked]:border-black"
                         />
                         <Label htmlFor="noAdjustment" className="text-sm ml-2 cursor-pointer">
                             No adjustments
                         </Label>
                     </div>
                 </RadioGroup>
+                <ActiveElementHighlight active={tourActive && currentStep === weightsStep} />
             </div>
         </div>
     );

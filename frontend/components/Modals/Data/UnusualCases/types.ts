@@ -1,6 +1,9 @@
 import React from 'react';
 import type { Variable } from "@/types/Variable";
+import type { TourStep } from './hooks/useTourGuide';
 import type { Dispatch, SetStateAction } from 'react';
+
+export type TabType = 'variables' | 'options' | 'output' | 'save' | 'missing';
 
 export interface IdentifyUnusualCasesProps {
     onClose: () => void;
@@ -10,7 +13,13 @@ export interface IdentifyUnusualCasesProps {
 // From VariablesTab.tsx
 export type UnusualCasesSource = 'available' | 'analysis' | 'identifier';
 
-export interface VariablesTabProps {
+interface TourTabProps {
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
+}
+
+export interface VariablesTabProps extends TourTabProps {
     availableVariables: Variable[];
     analysisVariables: Variable[];
     caseIdentifierVariable: Variable | null;
@@ -26,7 +35,7 @@ export interface VariablesTabProps {
 }
 
 // From OutputTab.tsx
-export interface OutputTabProps {
+export interface OutputTabProps extends TourTabProps {
     showUnusualCasesList: boolean;
     setShowUnusualCasesList: (value: boolean) => void;
     peerGroupNorms: boolean;
@@ -40,27 +49,17 @@ export interface OutputTabProps {
 }
 
 // From SaveTab.tsx
-export interface SaveTabProps {
+export interface SaveTabProps extends TourTabProps {
     saveAnomalyIndex: boolean;
     setSaveAnomalyIndex: (value: boolean) => void;
     anomalyIndexName: string;
     setAnomalyIndexName: (value: string) => void;
-    savePeerGroups: boolean;
-    setSavePeerGroups: (value: boolean) => void;
-    peerGroupsRootName: string;
-    setPeerGroupsRootName: (value: string) => void;
-    saveReasons: boolean;
-    setSaveReasons: (value: boolean) => void;
-    reasonsRootName: string;
-    setReasonsRootName: (value: string) => void;
     replaceExisting: boolean;
     setReplaceExisting: (value: boolean) => void;
-    exportFilePath: string; 
-    setExportFilePath: (value: string) => void; 
 }
 
 // From MissingValuesTab.tsx
-export interface MissingValuesTabProps {
+export interface MissingValuesTabProps extends TourTabProps {
     missingValuesOption: string;
     setMissingValuesOption: (value: string) => void;
     useProportionMissing: boolean;
@@ -68,7 +67,7 @@ export interface MissingValuesTabProps {
 }
 
 // From OptionsTab.tsx
-export interface OptionsTabProps {
+export interface OptionsTabProps extends TourTabProps {
     identificationCriteria: string;
     setIdentificationCriteria: (value: string) => void;
     percentageValue: string;
@@ -79,10 +78,4 @@ export interface OptionsTabProps {
     setUseMinimumValue: (value: boolean) => void;
     cutoffValue: string;
     setCutoffValue: (value: string) => void;
-    minPeerGroups: string;
-    setMinPeerGroups: (value: string) => void;
-    maxPeerGroups: string;
-    setMaxPeerGroups: (value: string) => void;
-    maxReasons: string;
-    setMaxReasons: (value: string) => void;
 } 

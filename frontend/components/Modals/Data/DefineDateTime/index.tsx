@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar, Clock, Info, HelpCircle } from "lucide-react";
+import { Calendar, Clock, Info } from "lucide-react";
 import { DefineDateTimeProps } from "./types";
 import { useDefineDateTime } from "./hooks/useDefineDateTime";
 
@@ -34,6 +34,12 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
             <div className="w-full flex flex-col flex-grow overflow-hidden">
                 {/* Scrollable area for the grid */}
                 <div className="flex-grow p-6 overflow-y-auto">
+                    <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
+                        <Info size={14} className="text-accent-foreground h-4 w-4 flex-shrink-0" />
+                        <p className="text-accent-foreground text-xs">
+                            Define date and time formats for your variables. Variables with successfully defined formats will be moved to the 'Dated' list.
+                        </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-4 h-full"> {/* Grid takes full height of scrollable parent */}
                         {/* Left Column */}
                         <div className="flex flex-col space-y-2 h-full"> {/* Takes full height of grid cell */}
@@ -132,9 +138,7 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
             {/* Footer (OK, Reset, Cancel, Help buttons) */}
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
-                </div>
+                <div />
                 {/* Right: Buttons */}
                 <div>
                     <Button

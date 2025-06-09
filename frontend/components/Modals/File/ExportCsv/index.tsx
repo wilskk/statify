@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC } from "react";
+import React, { FC, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,16 @@ export const ExportCsv: FC<ExportCsvProps> = ({
         endTour 
     } = useTourGuide(containerType);
 
+    // Helper function untuk mencari step index berdasarkan targetId (sesuai panduan)
+    const getStepIndex = useCallback((targetId: string): number => {
+        return tourSteps.findIndex(step => step.targetId === targetId);
+    }, [tourSteps]);
+
+    // Helper function untuk mengecek apakah step sedang aktif (sesuai panduan)
+    const isStepActive = useCallback((targetId: string): boolean => {
+        return tourActive && tourSteps[currentStep]?.targetId === targetId;
+    }, [tourActive, tourSteps, currentStep]);
+
     return (
         <div className="flex flex-col h-full" id="export-csv-modal">
             {/* Add tour popup */}
@@ -59,7 +69,7 @@ export const ExportCsv: FC<ExportCsvProps> = ({
 
             <div className="p-6 space-y-5 flex-grow overflow-y-auto">
                 {/* File Name */}
-                <div className="space-y-1.5 relative">
+                <div id="csv-filename-wrapper" className="space-y-1.5 relative">
                     <Label htmlFor="export-csv-filename">
                         File Name
                     </Label>
@@ -70,13 +80,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                         placeholder="Enter file name (e.g., dataset_export)"
                         disabled={isExporting}
                     />
-                    {tourActive && currentTargetElement?.id === "export-csv-filename" && (
-                        <ActiveElementHighlight active={true} />
-                    )}
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-filename-wrapper")} 
+                    />
                 </div>
 
                 {/* Delimiter */}
-                <div className="space-y-1.5 relative">
+                <div id="csv-delimiter-wrapper" className="space-y-1.5 relative">
                     <Label htmlFor="export-csv-delimiter">
                         Delimiter
                     </Label>
@@ -95,13 +105,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                             <SelectItem value="\t">Tab</SelectItem>
                         </SelectContent>
                     </Select>
-                    {tourActive && currentTargetElement?.id === "export-csv-delimiter" && (
-                        <ActiveElementHighlight active={true} />
-                    )}
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-delimiter-wrapper")} 
+                    />
                 </div>
 
                 {/* Include Headers */}
-                <div className="flex items-center space-x-2 relative">
+                <div id="csv-headers-wrapper" className="flex items-center space-x-2 relative">
                     <Checkbox
                         id="export-csv-includeHeaders"
                         checked={exportOptions.includeHeaders}
@@ -113,13 +123,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                     >
                         Include variable names as header row
                     </Label>
-                    {tourActive && currentTargetElement?.id === "export-csv-includeHeaders" && (
-                        <ActiveElementHighlight active={true} />
-                    )}
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-headers-wrapper")} 
+                    />
                 </div>
 
                 {/* Include Variable Properties */}
-                <div className="flex items-center space-x-2 relative">
+                <div id="csv-properties-wrapper" className="flex items-center space-x-2 relative">
                     <Checkbox
                         id="export-csv-includeVarProps"
                         checked={exportOptions.includeVariableProperties}
@@ -131,13 +141,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                     >
                         Include variable properties as first row
                     </Label>
-                    {tourActive && currentTargetElement?.id === "export-csv-includeVarProps" && (
-                        <ActiveElementHighlight active={true} />
-                    )}
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-properties-wrapper")} 
+                    />
                 </div>
 
                 {/* Quote Strings */}
-                <div className="flex items-center space-x-2 relative">
+                <div id="csv-quotes-wrapper" className="flex items-center space-x-2 relative">
                     <Checkbox
                         id="export-csv-quoteStrings"
                         checked={exportOptions.quoteStrings}
@@ -149,13 +159,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                     >
                         Quote all string values
                     </Label>
-                    {tourActive && currentTargetElement?.id === "export-csv-quoteStrings" && (
-                        <ActiveElementHighlight active={true} />
-                    )}
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-quotes-wrapper")} 
+                    />
                 </div>
 
                 {/* Encoding */}
-                <div className="space-y-1.5">
+                <div id="csv-encoding-wrapper" className="space-y-1.5 relative">
                     <Label htmlFor="export-csv-encoding">
                         Encoding
                     </Label>
@@ -173,10 +183,13 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                             <SelectItem value="windows-1252">Windows-1252</SelectItem>
                         </SelectContent>
                     </Select>
+                    <ActiveElementHighlight 
+                        active={isStepActive("csv-encoding-wrapper")} 
+                    />
                 </div>
             </div>
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+            <div id="csv-buttons-wrapper" className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0 relative">
                 {/* Left: Help/Tour button with tooltip */}
                 <div className="flex items-center text-muted-foreground">
                     <TooltipProvider>
@@ -221,14 +234,14 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                         ) : (
                             "Export"
                         )}
-                        {tourActive && currentTargetElement?.id === "export-csv-button" && (
-                            <ActiveElementHighlight active={true} />
-                        )}
                     </Button>
                 </div>
+                <ActiveElementHighlight 
+                    active={isStepActive("csv-buttons-wrapper")} 
+                />
             </div>
         </div>
     );
 };
 
-export default ExportCsv; 
+export default ExportCsv;

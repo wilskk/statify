@@ -4,12 +4,15 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { Variable } from "@/types/Variable";
+import { TabType } from "../types";
 
 interface UseDuplicateCasesProps {
     onClose: () => void;
+    activeTab: TabType;
+    setActiveTab: (tab: TabType) => void;
 }
 
-export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
+export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDuplicateCasesProps) => {
     const { closeModal } = useModalStore();
     const { variables: storeVariables, addVariable } = useVariableStore(); // Renamed variables to storeVariables to avoid conflict
     const { data, updateCells, setData } = useDataStore();
@@ -26,7 +29,6 @@ export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
     const [matchingVariables, setMatchingVariables] = useState<Variable[]>([]);
     const [sortingVariables, setSortingVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: string} | null>(null);
-    const [activeTab, setActiveTab] = useState("variables");
     const [sortOrder, setSortOrder] = useState<"ascending" | "descending">("ascending");
     const [primaryCaseIndicator, setPrimaryCaseIndicator] = useState<"last" | "first">("last");
     const [primaryName, setPrimaryName] = useState<string>("PrimaryLast");

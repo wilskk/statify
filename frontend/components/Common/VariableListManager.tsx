@@ -483,7 +483,11 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         };
 
         return (
-            <div key={id} className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}>
+            <div 
+                key={id} 
+                className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}
+                id={id === 'selected' ? 'selected-variables-list-container' : undefined}
+            >
                 {title && (
                     <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6">
                         {id !== 'available' && renderArrowButton()}
@@ -491,11 +495,14 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     </div>
                 )}
                 <div
+                    data-list-id={id}
+                    id={id === 'selected' ? 'selected-variables-list' : undefined}
                     className={`
                         border p-1 rounded-md w-full transition-colors relative bg-background
                         ${overflowStyle}
                         ${isDraggingOver === id && droppable ? "border-primary bg-accent" : "border-border"}
                         ${!droppable && id !== 'available' ? 'bg-muted cursor-not-allowed' : ''}
+                        ${id === 'selected' ? 'tour-target-selected-variables' : ''}
                     `}
                     style={{ height: adjustedHeight, minHeight: isSingleItemList ? "auto" : "" }}
                     onDragOver={(e) => handleDragOver(e, id)}
@@ -548,7 +555,10 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             </div>
 
             {/* Target Lists Column (Right) */}
-            <div className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}>
+            <div 
+                className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}
+                id="selected-variables-wrapper"
+            >
                 {targetLists.map(listConfig => renderList(listConfig))}
                 {renderRightColumnFooter && renderRightColumnFooter()}
             </div>

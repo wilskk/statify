@@ -5,11 +5,12 @@ import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes'
 const TABS = {
   VARIABLES: 'variables' as const,
   STATISTICS: 'statistics' as const,
+  PLOTS: 'plots' as const,
 };
 
 const TIMEOUT_DELAY = 200;
 
-export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS;
+export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS | typeof TABS.PLOTS;
 
 // Extended TourStep with required tab property
 export type TourStep = BaseTourStep & {
@@ -23,80 +24,84 @@ export interface TabControlProps {
   currentActiveTab: TabType;
 }
 
-// Define tour steps for Descriptive component
+// Define tour steps for Explore component
 const baseTourSteps: TourStep[] = [
+  // Variables Tab
   {
-    title: "Variables Selection",
-    content: "Drag variables from the available list to analyze descriptive statistics. Only numeric and date variables are shown.",
-    targetId: "descriptive-available-variables",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📊",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Selected Variables",
-    content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-    targetId: "descriptive-selected-variables",
+    title: "Dependent & Factor Lists",
+    content: "Move variables into the 'Dependent List' for analysis and into the 'Factor List' to group the data. The 'Label Cases by' field is optional.",
+    targetId: "explore-variable-lists",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: 'left',
     icon: "📋",
     requiredTab: TABS.VARIABLES
   },
   {
-    title: "Save Standardized Values",
-    content: "Enable this option to create new variables containing standardized values (Z-scores).",
-    targetId: "save-standardized-section",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "💾",
-    requiredTab: TABS.VARIABLES
-  },
-  {
     title: "Statistics Tab",
-    content: "Click on this tab to configure which statistics to display and their order.",
-    targetId: "descriptive-statistics-tab-trigger",
+    content: "Click this tab to select the specific statistics to be calculated.",
+    targetId: "explore-statistics-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📈",
     requiredTab: TABS.VARIABLES,
     forceChangeTab: true
   },
+  // Statistics Tab
   {
-    title: "Central Tendency",
-    content: "Calculate measures like mean, median, and sum to understand the central values of your data.",
-    targetId: "descriptive-central-tendency",
+    title: "Display Options",
+    content: "Choose whether to show statistics, plots, or both in the output.",
+    targetId: "explore-display-options",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "🎯",
+    icon: "📺",
     requiredTab: TABS.STATISTICS
   },
   {
-    title: "Dispersion",
-    content: "Analyze data spread with standard deviation, variance, range, minimum and maximum values.",
-    targetId: "descriptive-dispersion",
+    title: "Descriptives",
+    content: "Enable this to see descriptive statistics. You can also set a custom confidence interval for the mean.",
+    targetId: "explore-descriptives-section",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📊",
     requiredTab: TABS.STATISTICS
   },
   {
-    title: "Distribution",
-    content: "Examine distribution characteristics with skewness and kurtosis measures.",
-    targetId: "descriptive-distribution",
-    defaultPosition: 'bottom',
+    title: "Additional Statistics",
+    content: "You can also request robust M-estimators, identify outliers, and calculate percentiles.",
+    targetId: "explore-additional-stats-section",
+    defaultPosition: 'top',
     defaultHorizontalPosition: null,
-    icon: "📉",
+    icon: "➕",
     requiredTab: TABS.STATISTICS
   },
   {
-    title: "Display Order",
-    content: "Choose how to order variables in the results table - by variable list, alphabetically, or by mean values.",
-    targetId: "display-order-section",
+    title: "Plots Tab",
+    content: "Next, let's configure which plots to generate.",
+    targetId: "explore-plots-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "🔢",
-    requiredTab: TABS.STATISTICS
+    icon: "🎨",
+    requiredTab: TABS.STATISTICS,
+    forceChangeTab: true
+  },
+  // Plots Tab
+  {
+    title: "Boxplots & Descriptive Plots",
+    content: "Choose how boxplots are displayed and select descriptive plots like stem-and-leaf or histograms.",
+    targetId: "explore-boxplots-descriptive-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "📊",
+    requiredTab: TABS.PLOTS
+  },
+  {
+    title: "Normality Plots",
+    content: "Enable this option to generate normality plots along with statistical tests for normality.",
+    targetId: "explore-normality-plots-section",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: null,
+    icon: "📉",
+    requiredTab: TABS.PLOTS
   },
 ];
 
@@ -122,7 +127,6 @@ export const useTourGuide = (
   const lastTabRef = useRef<TabType | null>(null);
   const timeoutRef = useRef<number | undefined>(undefined);
 
-  // Adjust tour steps based on container type
   const tourSteps = useMemo(() => baseTourSteps.map(step => ({
     ...step,
     horizontalPosition: containerType === "sidebar"

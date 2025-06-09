@@ -5,11 +5,12 @@ import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes'
 const TABS = {
   VARIABLES: 'variables' as const,
   STATISTICS: 'statistics' as const,
+  CELLS: 'cells' as const,
 };
 
 const TIMEOUT_DELAY = 200;
 
-export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS;
+export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS | typeof TABS.CELLS;
 
 // Extended TourStep with required tab property
 export type TourStep = BaseTourStep & {
@@ -23,80 +24,147 @@ export interface TabControlProps {
   currentActiveTab: TabType;
 }
 
-// Define tour steps for Descriptive component
+// Define tour steps for Crosstabs component
 const baseTourSteps: TourStep[] = [
+  // Variables Tab
   {
-    title: "Variables Selection",
-    content: "Drag variables from the available list to analyze descriptive statistics. Only numeric and date variables are shown.",
-    targetId: "descriptive-available-variables",
+    title: "Available Variables",
+    content: "Select variables from this list for your analysis. You can drag them or use the arrow buttons.",
+    targetId: "crosstabs-available-variables",
     defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
+    defaultHorizontalPosition: 'right',
     icon: "📊",
     requiredTab: TABS.VARIABLES
   },
   {
-    title: "Selected Variables",
-    content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-    targetId: "descriptive-selected-variables",
+    title: "Row Variables",
+    content: "Place one or more variables here to define the rows of your crosstabulation table.",
+    targetId: "crosstabs-row-variables",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: 'left',
-    icon: "📋",
+    icon: "↔️",
     requiredTab: TABS.VARIABLES
   },
   {
-    title: "Save Standardized Values",
-    content: "Enable this option to create new variables containing standardized values (Z-scores).",
-    targetId: "save-standardized-section",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "💾",
+    title: "Column Variables",
+    content: "Place one or more variables here to define the columns of your crosstabulation table.",
+    targetId: "crosstabs-column-variables",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: 'left',
+    icon: "↕️",
+    requiredTab: TABS.VARIABLES
+  },
+  {
+    title: "Layer Variables",
+    content: "You can add layer variables to create separate tables for each category of the layer variable.",
+    targetId: "crosstabs-layer-variables",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: 'left',
+    icon: "📑",
+    requiredTab: TABS.VARIABLES
+  },
+  {
+    title: "Display Options",
+    content: "Choose to display clustered bar charts or suppress the tables from the output.",
+    targetId: "crosstabs-display-options",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: 'right',
+    icon: "⚙️",
     requiredTab: TABS.VARIABLES
   },
   {
     title: "Statistics Tab",
-    content: "Click on this tab to configure which statistics to display and their order.",
-    targetId: "descriptive-statistics-tab-trigger",
+    content: "Click here to configure statistical tests for your analysis.",
+    targetId: "crosstabs-statistics-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📈",
     requiredTab: TABS.VARIABLES,
     forceChangeTab: true
   },
+  // Statistics Tab
   {
-    title: "Central Tendency",
-    content: "Calculate measures like mean, median, and sum to understand the central values of your data.",
-    targetId: "descriptive-central-tendency",
+    title: "Chi-square & Correlations",
+    content: "Select fundamental tests like Chi-square for association and correlations for linear relationships.",
+    targetId: "crosstabs-chi-square-correlations",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "🎯",
+    icon: "🔗",
     requiredTab: TABS.STATISTICS
   },
   {
-    title: "Dispersion",
-    content: "Analyze data spread with standard deviation, variance, range, minimum and maximum values.",
-    targetId: "descriptive-dispersion",
-    defaultPosition: 'bottom',
+    title: "Nominal Statistics",
+    content: "Choose statistics for nominal data, like Phi and Cramer's V.",
+    targetId: "crosstabs-nominal-statistics",
+    defaultPosition: 'top',
     defaultHorizontalPosition: null,
-    icon: "📊",
+    icon: "🏷️",
     requiredTab: TABS.STATISTICS
   },
   {
-    title: "Distribution",
-    content: "Examine distribution characteristics with skewness and kurtosis measures.",
-    targetId: "descriptive-distribution",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📉",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Display Order",
-    content: "Choose how to order variables in the results table - by variable list, alphabetically, or by mean values.",
-    targetId: "display-order-section",
-    defaultPosition: 'bottom',
+    title: "Ordinal Statistics",
+    content: "For ordinal data, you can select statistics like Gamma and Kendall's tau.",
+    targetId: "crosstabs-ordinal-statistics",
+    defaultPosition: 'top',
     defaultHorizontalPosition: null,
     icon: "🔢",
     requiredTab: TABS.STATISTICS
+  },
+  {
+    title: "Cells Tab",
+    content: "Now, let's customize what is displayed in each cell of the table.",
+    targetId: "crosstabs-cells-tab-trigger",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "🔢",
+    requiredTab: TABS.STATISTICS,
+    forceChangeTab: true
+  },
+  // Cells Tab
+  {
+    title: "Counts",
+    content: "Choose to display observed and/or expected counts in each cell. You can also hide cells with small counts.",
+    targetId: "crosstabs-counts-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "🔢",
+    requiredTab: TABS.CELLS
+  },
+  {
+    title: "Percentages",
+    content: "Include row, column, or total percentages to better understand the distribution.",
+    targetId: "crosstabs-percentages-section",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: null,
+    icon: "%",
+    requiredTab: TABS.CELLS
+  },
+  {
+    title: "Residuals",
+    content: "Display residuals (unstandardized, standardized, or adjusted) to see the difference between observed and expected counts.",
+    targetId: "crosstabs-residuals-section",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: null,
+    icon: "🔍",
+    requiredTab: TABS.CELLS
+  },
+   {
+    title: "Noninteger Weights",
+    content: "Specify how to handle cases with noninteger weights if you are using a weight variable.",
+    targetId: "crosstabs-noninteger-weights-section",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: null,
+    icon: "⚖️",
+    requiredTab: TABS.CELLS
+  },
+  {
+    title: "Run Analysis",
+    content: "Once you have configured your analysis, click OK to see the results.",
+    targetId: "crosstabs-ok-button",
+    defaultPosition: 'top',
+    defaultHorizontalPosition: 'left',
+    icon: "🚀",
+    requiredTab: TABS.CELLS
   },
 ];
 

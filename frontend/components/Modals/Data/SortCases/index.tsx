@@ -140,7 +140,7 @@ const SortCasesContent: React.FC<SortCasesModalProps> = ({
         id: 'sortBy',
         title: 'Sort By:',
         variables: getSortByVariables(),
-        height: '15rem',
+        height: '16rem',
         droppable: true,
         draggableItems: true
     };

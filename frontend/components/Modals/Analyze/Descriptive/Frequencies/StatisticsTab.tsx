@@ -13,6 +13,8 @@ import {
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { useMobile } from '@/hooks/useMobile';
+import { TourStep } from "./hooks/useTourGuide";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 export interface StatisticsTabProps {
     showStatistics: boolean;
@@ -65,6 +67,9 @@ export interface StatisticsTabProps {
     setKurtosisChecked: Dispatch<SetStateAction<boolean>>;
 
     containerType?: "dialog" | "sidebar";
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
@@ -90,7 +95,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     seMeanChecked, setSeMeanChecked,
     skewnessChecked, setSkewnessChecked,
     kurtosisChecked, setKurtosisChecked,
-    containerType = "dialog"
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
     // Remove internal state for statistics options
     // const [percentileValues, setPercentileValues] = useState<string[]>([]);
@@ -223,6 +231,8 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         }
     };
 
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
     return (
         <div className={`grid ${isMobile && isPortrait ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
             {containerType === "dialog" && (
@@ -245,7 +255,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                 </div>
             )}
 
-            <div className="border border-border rounded-md p-4 space-y-3 bg-card">
+            <div id="percentile-values-section" className="border border-border rounded-md p-4 space-y-3 bg-card relative">
                 <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>
                 <div className="flex items-center">
                     <Checkbox
@@ -335,9 +345,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         </div>
                     )}
                 </div>
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("percentile-values-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="central-tendency-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
                 {[
                     { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked },
@@ -356,9 +367,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("central-tendency-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="dispersion-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Dispersion</div>
                 {[
                     { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked },
@@ -379,9 +391,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("dispersion-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="distribution-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Distribution</div>
                 {[
                     { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked },
@@ -398,6 +411,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("distribution-section")} />
             </div>
         </div>
     );

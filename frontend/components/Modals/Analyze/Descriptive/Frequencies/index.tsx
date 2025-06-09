@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, FC, useCallback } from "react";
+import React, { useState, useEffect, FC, useCallback, useMemo, useReducer, Dispatch, SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -29,24 +29,37 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/comp
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
 import ChartsTab from "./ChartsTab";
+import { TabControlProps } from "./hooks/useTourGuide";
+
+// Extend the Props to include a forcedTab for tour use
+interface FrequenciesContentProps extends BaseModalProps {
+    forcedTab?: 'variables' | 'statistics' | 'charts';
+}
 
 // FrequenciesContent component to be reused in both dialog and sidebar containers
-const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
-    const [activeTab, setActiveTab] = useState("variables");
+const FrequenciesContent: FC<FrequenciesContentProps> = ({ 
+    onClose, 
+    containerType = "dialog", 
+    forcedTab 
+}) => {
+    // State management
+    const [localActiveTab, setLocalActiveTab] = useState<'variables' | 'statistics' | 'charts'>("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'selected'} | null>(null);
-
     const [resetChartsCounter, setResetChartsCounter] = useState(0);
-
+    
+    // Display options
     const [showFrequencyTables, setShowFrequencyTables] = useState(true);
     const [showCharts, setShowCharts] = useState(false);
     const [showStatistics, setShowStatistics] = useState(true);
-
+    
+    // Chart options
     const [chartType, setChartType] = useState<"none" | "barCharts" | "pieCharts" | "histograms">("none");
     const [chartValues, setChartValues] = useState<"frequencies" | "percentages">("frequencies");
     const [showNormalCurve, setShowNormalCurve] = useState(false);
-
+    
+    // Statistics - percentile options
     const [quartilesChecked, setQuartilesChecked] = useState(false);
     const [cutPointsChecked, setCutPointsChecked] = useState(false);
     const [cutPointsValue, setCutPointsValue] = useState("10");
@@ -54,25 +67,45 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     const [percentileValues, setPercentileValues] = useState<string[]>([]);
     const [currentPercentileInput, setCurrentPercentileInput] = useState("");
     const [selectedPercentileItem, setSelectedPercentileItem] = useState<string | null>(null);
-
+    
+    // Statistics - central tendency options
     const [meanChecked, setMeanChecked] = useState(false);
     const [medianChecked, setMedianChecked] = useState(false);
     const [modeChecked, setModeChecked] = useState(false);
     const [sumChecked, setSumChecked] = useState(false);
-
+    
+    // Statistics - dispersion options
     const [stdDevChecked, setStdDevChecked] = useState(false);
     const [varianceChecked, setVarianceChecked] = useState(false);
     const [rangeChecked, setRangeChecked] = useState(false);
     const [minChecked, setMinChecked] = useState(false);
     const [maxChecked, setMaxChecked] = useState(false);
     const [seMeanChecked, setSeMeanChecked] = useState(false);
-
+    
+    // Statistics - distribution options
     const [skewnessChecked, setSkewnessChecked] = useState(false);
     const [kurtosisChecked, setKurtosisChecked] = useState(false);
 
-    const variables = useVariableStore.getState().variables;
+    // Get variables from store
+    const variables = useVariableStore(state => state.variables);
 
-    // Add tour hook
+    // Computed activeTab value that respects forcedTab when present
+    const activeTab = forcedTab || localActiveTab;
+    
+    // Update handler that only changes local state, not overriding forced value
+    const handleTabChange = useCallback((value: string) => {
+        setLocalActiveTab(value as 'variables' | 'statistics' | 'charts');
+    }, []);
+    
+    // Tab control for tour
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: 'variables' | 'statistics' | 'charts') => {
+            setLocalActiveTab(tab);
+        },
+        currentActiveTab: activeTab as 'variables' | 'statistics' | 'charts'
+    }), [activeTab]);
+    
+    // Use the enhanced tour hook with tab control
     const { 
         tourActive, 
         currentStep, 
@@ -82,8 +115,9 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         nextStep, 
         prevStep, 
         endTour 
-    } = useTourGuide(containerType);
+    } = useTourGuide(containerType, tabControl);
 
+    // Calculate statistics options based on current state
     const getCurrentStatisticsOptions = useCallback((): StatisticsOptions | null => {
         if (!showStatistics) return null;
         return {
@@ -123,6 +157,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         kurtosisChecked, skewnessChecked,
     ]);
 
+    // Calculate chart options based on current state
     const getCurrentChartOptions = useCallback((): ChartOptions | null => {
         if (!showCharts) return null;
         return {
@@ -132,6 +167,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         };
     }, [showCharts, chartType, chartValues, showNormalCurve]);
 
+    // Run the analysis
     const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useFrequenciesAnalysis({
         selectedVariables,
         showFrequencyTables,
@@ -142,26 +178,29 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         onClose
     });
 
+    // Update available variables when variables or selected variables change
     useEffect(() => {
         const validVars = variables.filter(v => v.name !== "").map(v => ({
             ...v,
             tempId: v.tempId || `temp_${v.columnIndex}`
         }));
+        
         const selectedTempIds = new Set(selectedVariables.map(v => v.tempId));
         const finalAvailable = validVars.filter(v => v.tempId && !selectedTempIds.has(v.tempId));
         setAvailableVariables(finalAvailable);
     }, [variables, selectedVariables]);
 
-    const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
+    // Handle variable movement between lists
+    const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
         if (!variable.tempId) {
             console.error("Cannot move variable without tempId:", variable);
             return;
         }
+        
         setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setSelectedVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) {
-                return prev;
-            }
+            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
                 newList.splice(targetIndex, 0, variable);
@@ -170,19 +209,20 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             }
             return newList;
         });
+        
         setHighlightedVariable(null);
-    };
+    }, []);
 
-    const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
+    const moveToAvailableVariables = useCallback((variable: Variable, targetIndex?: number) => {
         if (!variable.tempId) {
             console.error("Cannot move variable without tempId:", variable);
             return;
         }
+        
         setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setAvailableVariables(prev => {
-            if (prev.some(v => v.tempId === variable.tempId)) {
-                return prev;
-            }
+            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            
             const newList = [...prev];
             if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
                 newList.splice(targetIndex, 0, variable);
@@ -192,26 +232,31 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             newList.sort((a, b) => a.columnIndex - b.columnIndex);
             return newList;
         });
+        
         setHighlightedVariable(null);
-    };
+    }, []);
 
-    const reorderVariables = (source: 'available' | 'selected', reorderedList: Variable[]) => {
+    // Handle variable list reordering
+    const reorderVariables = useCallback((source: 'available' | 'selected', reorderedList: Variable[]) => {
         if (source === 'available') {
             setAvailableVariables([...reorderedList]);
         } else {
             setSelectedVariables([...reorderedList]);
         }
-    };
+    }, []);
 
-    const handleReset = () => {
+    // Reset all options and selections
+    const handleReset = useCallback(() => {
         const allVars = [...availableVariables, ...selectedVariables].sort((a, b) => a.columnIndex - b.columnIndex);
         setAvailableVariables(allVars);
         setSelectedVariables([]);
 
+        // Reset display options
         setShowFrequencyTables(true);
         setShowCharts(false);
         setShowStatistics(true);
 
+        // Reset percentile options
         setQuartilesChecked(false);
         setCutPointsChecked(false);
         setCutPointsValue("10");
@@ -220,11 +265,13 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         setCurrentPercentileInput("");
         setSelectedPercentileItem(null);
 
+        // Reset central tendency options
         setMeanChecked(false);
         setMedianChecked(false);
         setModeChecked(false);
         setSumChecked(false);
 
+        // Reset dispersion options
         setStdDevChecked(false);
         setVarianceChecked(false);
         setRangeChecked(false);
@@ -232,9 +279,11 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         setMaxChecked(false);
         setSeMeanChecked(false);
 
+        // Reset distribution options
         setSkewnessChecked(false);
         setKurtosisChecked(false);
         
+        // Reset chart options
         setChartType("none");
         setChartValues("frequencies");
         setShowNormalCurve(false);
@@ -244,8 +293,9 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         if (cancelAnalysis) {
             cancelAnalysis();
         }
-    };
+    }, [availableVariables, selectedVariables, cancelAnalysis]);
 
+    // Cleanup when component unmounts
     useEffect(() => {
         return () => {
             if (cancelAnalysis) {
@@ -254,9 +304,58 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         };
     }, [cancelAnalysis]);
 
+    // Create wrappers for set state functions to handle SetStateAction correctly
+    const handleSetHighlightedVariable = useCallback((value: SetStateAction<{tempId: string, source: 'available' | 'selected'} | null>) => {
+        if (typeof value === 'function') {
+            setHighlightedVariable(current => value(current));
+        } else {
+            setHighlightedVariable(value);
+        }
+    }, []);
+
+    const handleSetShowFrequencyTables = useCallback((value: SetStateAction<boolean>) => {
+        if (typeof value === 'function') {
+            setShowFrequencyTables(current => value(current));
+        } else {
+            setShowFrequencyTables(value);
+        }
+    }, []);
+
+    const handleSetShowCharts = useCallback((value: SetStateAction<boolean>) => {
+        if (typeof value === 'function') {
+            setShowCharts(current => value(current));
+        } else {
+            setShowCharts(value);
+        }
+    }, []);
+
+    const handleSetChartType = useCallback((value: SetStateAction<"none" | "barCharts" | "pieCharts" | "histograms">) => {
+        if (typeof value === 'function') {
+            setChartType(current => value(current));
+        } else {
+            setChartType(value);
+        }
+    }, []);
+
+    const handleSetChartValues = useCallback((value: SetStateAction<"frequencies" | "percentages">) => {
+        if (typeof value === 'function') {
+            setChartValues(current => value(current));
+        } else {
+            setChartValues(value);
+        }
+    }, []);
+
+    const handleSetShowNormalCurve = useCallback((value: SetStateAction<boolean>) => {
+        if (typeof value === 'function') {
+            setShowNormalCurve(current => value(current));
+        } else {
+            setShowNormalCurve(value);
+        }
+    }, []);
+
     return (
         <>
-            {/* Add tour popup */}
+            {/* Tour popup */}
             <AnimatePresence>
                 {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
                     <TourPopup
@@ -271,7 +370,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                 )}
             </AnimatePresence>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList className="bg-muted rounded-none h-9 p-0">
                         <TabsTrigger
@@ -281,18 +380,19 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
-                            id="statistics-tab-trigger" // Add ID for tour target
+                            id="statistics-tab-trigger"
                             value="statistics"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Statistics
                         </TabsTrigger>
-                        {/* <TabsTrigger
+                        <TabsTrigger
+                            id="charts-tab-trigger"
                             value="charts"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-card border-t border-l border-r border-border' : ''}`}
                         >
                             Charts
-                        </TabsTrigger> */}
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -301,13 +401,16 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         availableVariables={availableVariables}
                         selectedVariables={selectedVariables}
                         highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
+                        setHighlightedVariable={handleSetHighlightedVariable}
                         moveToSelectedVariables={moveToSelectedVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
                         showFrequencyTables={showFrequencyTables}
-                        setShowFrequencyTables={setShowFrequencyTables}
+                        setShowFrequencyTables={handleSetShowFrequencyTables}
                         containerType={containerType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -354,6 +457,9 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         kurtosisChecked={kurtosisChecked}
                         setKurtosisChecked={setKurtosisChecked}
                         containerType={containerType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -361,14 +467,17 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     {activeTab === "charts" && (
                         <ChartsTab
                             showCharts={showCharts}
-                            setShowCharts={setShowCharts}
+                            setShowCharts={handleSetShowCharts}
                             chartType={chartType}
-                            setChartType={setChartType}
+                            setChartType={handleSetChartType}
                             chartValues={chartValues}
-                            setChartValues={setChartValues}
+                            setChartValues={handleSetChartValues}
                             showNormalCurve={showNormalCurve}
-                            setShowNormalCurve={setShowNormalCurve}
+                            setShowNormalCurve={handleSetShowNormalCurve}
                             containerType={containerType}
+                            tourActive={tourActive}
+                            currentStep={currentStep}
+                            tourSteps={tourSteps}
                         />
                     )}
                 </TabsContent>
@@ -377,7 +486,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help/Tour button with tooltip */}
+                {/* Tour button */}
                 <div className="flex items-center text-muted-foreground">
                     <TooltipProvider>
                         <Tooltip>
@@ -398,7 +507,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     </TooltipProvider>
                 </div>
                 
-                {/* Right: Action buttons */}
+                {/* Action buttons */}
                 <div>
                     <Button
                         variant="outline"
@@ -416,7 +525,7 @@ const FrequenciesContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         Cancel
                     </Button>
                     <Button
-                        id="frequencies-ok-button" // Add ID for tour target
+                        id="frequencies-ok-button"
                         onClick={runAnalysis}
                         disabled={isLoading || selectedVariables.length === 0}
                     >

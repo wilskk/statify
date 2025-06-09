@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
+import React, { useState, useEffect, FC, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -24,6 +24,11 @@ import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
 import { HelpCircle } from "lucide-react";
 
+// Tour guide imports
+import { useTourGuide, TabType, TabControlProps } from "./hooks/useTourGuide";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { AnimatePresence } from "framer-motion";
+
 // Import the Tab components
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -39,7 +44,24 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     const [displayOption, setDisplayOption] = useState<'both' | 'statistics' | 'plots'>('both');
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState("variables");
+    const [activeTab, setActiveTab] = useState<TabType>("variables");
+
+    // Tour guide setup
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab,
+        currentActiveTab: activeTab,
+    }), [activeTab]);
+
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps,
+        currentTargetElement, 
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType, tabControl);
 
     const [confidenceInterval, setConfidenceInterval] = useState<string>("95");
     const [showDescriptives, setShowDescriptives] = useState<boolean>(true);
@@ -280,19 +302,14 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         // TODO: Implement paste logic if needed
     };
 
-    const handleHelp = () => {
-        console.log("Help action triggered");
-        // TODO: Implement help logic if needed
-    };
-
     return (
         <>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
-                        <TabsTrigger value="plots">Plots</TabsTrigger>
+                        <TabsTrigger value="variables" id="explore-variables-tab-trigger">Variables</TabsTrigger>
+                        <TabsTrigger value="statistics" id="explore-statistics-tab-trigger">Statistics</TabsTrigger>
+                        <TabsTrigger value="plots" id="explore-plots-tab-trigger">Plots</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -311,6 +328,9 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                         reorderVariables={reorderVariables}
                         errorMsg={errorMsg}
                         containerType={containerType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -326,7 +346,12 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                         setShowOutliers={setShowOutliers}
                         showPercentiles={showPercentiles}
                         setShowPercentiles={setShowPercentiles}
+                        displayOption={displayOption}
+                        setDisplayOption={setDisplayOption}
                         containerType={containerType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -341,6 +366,9 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                         showNormalityPlots={showNormalityPlots}
                         setShowNormalityPlots={setShowNormalityPlots}
                         containerType={containerType}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
             </Tabs>
@@ -353,8 +381,10 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors" onClick={handleHelp}>
-                    <HelpCircle size={18} className="mr-1" />
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8">
+                        <HelpCircle size={18} />
+                    </Button>
                 </div>
                 {/* Right: Buttons */}
                 <div>
@@ -382,6 +412,19 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                     </Button>
                 </div>
             </div>
+            <AnimatePresence>
+                {tourActive && currentTargetElement && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
         </>
     );
 };

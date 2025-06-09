@@ -84,7 +84,9 @@ export default function Index() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleAfterChange = useCallback(async (changes: any[] | null, source: any) => {
-        if (!changes || source === 'loadData') return;
+        if (!changes) return;
+        const src = String(source).toLowerCase();
+        if (src === 'loaddata' || src.includes('contextmenu')) return;
         try {
             const updates = mapChangesToUpdates(changes);
             const maxCol = updates.reduce((max, u) => Math.max(max, u.col), -1);
@@ -156,9 +158,10 @@ export default function Index() {
     useEffect(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
         if (hotInstance) {
-            hotInstance.updateSettings({ colHeaders, columns: columns as any }, false);
+            hotInstance.updateSettings({ colHeaders, columns: columns as any });
+            hotInstance.render();
         }
-    }, [colHeaders, columns]);
+    }, [colHeaders, columns, viewMode]);
 
     return (
         <div className="h-full w-full z-0 relative hot-container overflow-hidden">

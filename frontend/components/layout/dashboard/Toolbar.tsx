@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { useMobile } from "@/hooks/useMobile";
 import { useActions } from '@/hooks/actions';
 import { ModalType, useModal } from '@/hooks/useModal';
-import { ModeToggle } from "@/components/mode-toggle";
+// import { ModeToggle } from "@/components/mode-toggle";
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { usePathname } from 'next/navigation';
 
@@ -84,7 +84,7 @@ export default function Toolbar() {
                     <ToolGroup tools={dataTools} />
                 </div>
             </div>
-            <ModeToggle />
+            {/* <ModeToggle /> */}
         </div>
     );
 }

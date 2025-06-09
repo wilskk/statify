@@ -1,23 +1,68 @@
-import { useState, useCallback, useEffect } from 'react';
-import { TourStep, HorizontalPosition } from '@/types/tourTypes';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
 
-// Define tour steps for Frequencies component
+// Constants
+const TABS = {
+  VARIABLES: 'variables' as const,
+  STATISTICS: 'statistics' as const,
+  CHARTS: 'charts' as const,
+};
+
+const TIMEOUT_DELAY = 200;
+const STEP_INDICES = {
+  VARIABLES_TAB_STEPS: [0, 1, 2, 3],
+  STATISTICS_TAB_STEPS: [4, 5, 6, 7, 8],
+  CHARTS_TAB_STEPS: [9, 10, 11],
+  SWITCH_TO_STATS_STEP: 3, 
+  SWITCH_TO_CHARTS_STEP: 8,
+};
+
+export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS | typeof TABS.CHARTS;
+
+// Extended TourStep with required tab property
+export type TourStep = BaseTourStep & {
+  requiredTab?: TabType;
+  forceChangeTab?: boolean;
+};
+
+// Tab control interface
+export interface TabControlProps {
+  setActiveTab: (tab: TabType) => void;
+  currentActiveTab: TabType;
+}
+
+// Element selectors for reliable targeting
+const ELEMENT_SELECTORS: Record<string, string> = {
+  'selected-variables-list': '[data-list-id="selected"]',
+};
+
+// Statistics section IDs for direct access
+const STATISTICS_SECTIONS = [
+  'percentile-values-section',
+  'central-tendency-section', 
+  'dispersion-section', 
+  'distribution-section'
+];
+
+// Base tour step definitions
 const baseTourSteps: TourStep[] = [
   {
     title: "Variables Selection",
     content: "Drag variables from the available list to analyze their frequencies, or use the arrow button to move them.",
-    targetId: "available-variables-wrapper",
+    targetId: "frequencies-available-variables",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📊",
+    requiredTab: TABS.VARIABLES
   },
   {
     title: "Selected Variables",
     content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-    targetId: "selected-variables-wrapper",
+    targetId: "frequencies-selected-variables",
     defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
+    defaultHorizontalPosition: 'left',
     icon: "📋",
+    requiredTab: TABS.VARIABLES
   },
   {
     title: "Frequency Tables",
@@ -26,23 +71,82 @@ const baseTourSteps: TourStep[] = [
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📑",
+    requiredTab: TABS.VARIABLES
   },
   {
-    title: "Statistics Options",
-    content: "Switch to this tab to configure descriptive statistics for your analysis.",
+    title: "Statistics Tab",
+    content: "Click on this tab to configure descriptive statistics for your analysis.",
     targetId: "statistics-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "📈",
+    requiredTab: TABS.VARIABLES,
+    forceChangeTab: true
   },
   {
-    title: "Run Analysis",
-    content: "Click OK to run the frequency analysis with your selected settings.",
-    targetId: "frequencies-ok-button",
-    defaultPosition: 'top',
+    title: "Percentile Values",
+    content: "Calculate quartiles, cut points, and custom percentiles for your data.",
+    targetId: "percentile-values-section",
+    defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
-    icon: "✅",
+    icon: "📏",
+    requiredTab: TABS.STATISTICS
   },
+  {
+    title: "Central Tendency",
+    content: "Calculate measures like mean, median, mode, and sum to understand the central values of your data.",
+    targetId: "central-tendency-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "🎯",
+    requiredTab: TABS.STATISTICS
+  },
+  {
+    title: "Dispersion",
+    content: "Analyze data spread with standard deviation, variance, range, minimum and maximum values.",
+    targetId: "dispersion-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "📊",
+    requiredTab: TABS.STATISTICS
+  },
+  {
+    title: "Distribution",
+    content: "Examine distribution characteristics with skewness and kurtosis measures.",
+    targetId: "distribution-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "📉",
+    requiredTab: TABS.STATISTICS
+  },
+  {
+    title: "Charts Tab",
+    content: "Click here to set up chart generation for the analysis.",
+    targetId: "charts-tab-trigger",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "📊",
+    requiredTab: TABS.STATISTICS,
+    forceChangeTab: true
+  },
+  {
+    title: "Enable & Select Charts",
+    content: "First, enable charts, then choose the type of chart to display (bar, pie, or histogram).",
+    targetId: "chart-type-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "📈",
+    requiredTab: TABS.CHARTS
+  },
+  {
+    title: "Chart Values",
+    content: "Choose whether the chart should represent frequencies or percentages.",
+    targetId: "chart-values-section",
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: null,
+    icon: "🔢",
+    requiredTab: TABS.CHARTS
+  }
 ];
 
 export interface UseTourGuideResult {
@@ -56,48 +160,144 @@ export interface UseTourGuideResult {
   endTour: () => void;
 }
 
-export const useTourGuide = (containerType: "dialog" | "sidebar" = "dialog"): UseTourGuideResult => {
+/**
+ * Custom hook for creating an interactive tour guide with tab switching support
+ * @param containerType Type of container ("dialog" or "sidebar")
+ * @param tabControl Optional tab control interface for tab switching
+ * @returns Tour guide control functions and state
+ */
+export const useTourGuide = (
+  containerType: "dialog" | "sidebar" = "dialog",
+  tabControl?: TabControlProps
+): UseTourGuideResult => {
   const [tourActive, setTourActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [tourSteps, setTourSteps] = useState<TourStep[]>([]);
   const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
+  
+  const lastTabRef = useRef<TabType | null>(null);
+  const timeoutRef = useRef<number | undefined>(undefined);
+  
+  // Process tour steps once based on container type
+  const tourSteps = useMemo(() => baseTourSteps.map(step => ({
+    ...step,
+    horizontalPosition: containerType === "sidebar" 
+      ? "left" as HorizontalPosition 
+      : step.defaultHorizontalPosition as HorizontalPosition | null,
+    position: containerType === "sidebar" ? undefined : step.defaultPosition,
+  })), [containerType]);
 
-  // Adjust tour steps based on container type
-  useEffect(() => {
-    const adjustedSteps = baseTourSteps.map(step => {
-      if (containerType === "sidebar") {
-        return {
-          ...step,
-          horizontalPosition: "left" as HorizontalPosition,
-          position: undefined,
-        };
-      } else {
-        return {
-          ...step,
-          horizontalPosition: null,
-          position: step.defaultPosition,
-        };
+  // Find target element with optimized selector strategy
+  const findTargetElement = useCallback((stepId: string): HTMLElement | null => {
+    try {
+      let element = document.getElementById(stepId);
+      
+      if (!element && ELEMENT_SELECTORS[stepId]) {
+        element = document.querySelector(ELEMENT_SELECTORS[stepId]) as HTMLElement;
       }
-    });
-    setTourSteps(adjustedSteps);
-  }, [containerType]);
+      
+      if (!element && STATISTICS_SECTIONS.includes(stepId)) {
+        element = document.getElementById(stepId);
+      }
+      
+      if (!element && stepId === 'selected-variables-list') {
+        element = document.getElementById('selected-variables-wrapper');
+      }
 
-  // Get references to DOM elements when tour activates
-  useEffect(() => {
+      return element;
+    } catch (error) {
+      console.error(`Error finding element with ID ${stepId}:`, error);
+      return null;
+    }
+  }, []);
+
+  // Helper to clear timeout safely
+  const clearTimeout = useCallback(() => {
+    if (timeoutRef.current !== undefined) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = undefined;
+    }
+  }, []);
+
+  // Update target elements
+  const refreshTargetElements = useCallback(() => {
     if (!tourActive) return;
     
-    const elements: Record<string, HTMLElement | null> = {};
-    tourSteps.forEach(step => {
-      elements[step.targetId] = document.getElementById(step.targetId);
-    });
-    
-    setTargetElements(elements);
-  }, [tourActive, tourSteps]);
+    try {
+      const elements: Record<string, HTMLElement | null> = {};
+      tourSteps.forEach(step => {
+        elements[step.targetId] = findTargetElement(step.targetId);
+      });
+      
+      setTargetElements(elements);
+    } catch (error) {
+      console.error("Error refreshing target elements:", error);
+    }
+  }, [tourActive, tourSteps, findTargetElement]);
 
+  // Determine required tab for current step
+  const getRequiredTabForStep = useCallback((stepIndex: number): TabType | undefined => {
+    // Special case handling
+    if (stepIndex === STEP_INDICES.SWITCH_TO_STATS_STEP) {
+      return TABS.VARIABLES;
+    } else if (stepIndex === STEP_INDICES.SWITCH_TO_STATS_STEP + 1) {
+      return TABS.STATISTICS;
+    } else if (stepIndex === STEP_INDICES.SWITCH_TO_CHARTS_STEP) {
+      return TABS.STATISTICS;
+    } else if (stepIndex === STEP_INDICES.SWITCH_TO_CHARTS_STEP + 1) {
+      return TABS.CHARTS;
+    }
+    
+    // Regular case - use the step's required tab
+    const step = tourSteps[stepIndex];
+    return step?.requiredTab;
+  }, [tourSteps]);
+
+  // Switch tab only if needed
+  const switchTabIfNeeded = useCallback((requiredTab?: TabType) => {
+    if (!tabControl || !requiredTab || tabControl.currentActiveTab === requiredTab) {
+      return;
+    }
+    
+    tabControl.setActiveTab(requiredTab);
+    lastTabRef.current = requiredTab;
+    
+    clearTimeout();
+    timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);
+  }, [tabControl, refreshTargetElements, clearTimeout]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return clearTimeout;
+  }, [clearTimeout]);
+
+  // Handle tab switching based on step changes
+  useEffect(() => {
+    if (!tourActive || !tabControl || currentStep < 0 || currentStep >= tourSteps.length) return;
+
+    const requiredTab = getRequiredTabForStep(currentStep);
+    if (requiredTab) {
+      switchTabIfNeeded(requiredTab);
+    }
+  }, [currentStep, tabControl, tourActive, tourSteps.length, switchTabIfNeeded, getRequiredTabForStep]);
+
+  // Initialize and refresh elements when tour starts
+  useEffect(() => {
+    if (tourActive) {
+      clearTimeout();
+      timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);
+    }
+  }, [tourActive, refreshTargetElements, clearTimeout]);
+
+  // Tour control functions
   const startTour = useCallback(() => {
     setCurrentStep(0);
     setTourActive(true);
-  }, []);
+    
+    if (tabControl) {
+      tabControl.setActiveTab(TABS.VARIABLES);
+      lastTabRef.current = TABS.VARIABLES;
+    }
+  }, [tabControl]);
 
   const nextStep = useCallback(() => {
     if (currentStep < tourSteps.length - 1) {
@@ -115,9 +315,15 @@ export const useTourGuide = (containerType: "dialog" | "sidebar" = "dialog"): Us
     setTourActive(false);
   }, []);
 
-  const currentTargetElement = tourActive && tourSteps.length > 0 && currentStep < tourSteps.length
-    ? targetElements[tourSteps[currentStep].targetId] || null
-    : null;
+  // Calculate current target element
+  const currentTargetElement = useMemo(() => {
+    if (!tourActive || tourSteps.length === 0 || currentStep >= tourSteps.length) {
+      return null;
+    }
+    
+    const currentStepData = tourSteps[currentStep];
+    return currentStepData ? targetElements[currentStepData.targetId] || null : null;
+  }, [tourActive, tourSteps, currentStep, targetElements]);
 
   return {
     tourActive,

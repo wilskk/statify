@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import { VariablesTabProps, VariableHighlight } from "./types";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
@@ -41,12 +42,23 @@ const VariablesTab: FC<VariablesTabProps> = ({
     setDisplayClusteredBarCharts,
     setSuppressTables,
     setDisplayLayerVariables,
-    containerType = "dialog"
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, source: 'available' | 'row' | 'column' | 'layer' } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'row' | 'column' | 'layer' | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const variableIdKeyToUse: keyof Variable = 'tempId';
+
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
+    const availableVarsStep = getStepIndex('crosstabs-available-variables');
+    const rowVarsStep = getStepIndex('crosstabs-row-variables');
+    const colVarsStep = getStepIndex('crosstabs-column-variables');
+    const layerVarsStep = getStepIndex('crosstabs-layer-variables');
+    const displayOptsStep = getStepIndex('crosstabs-display-options');
 
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
@@ -385,7 +397,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         <div className="p-4">
             <div className="grid grid-cols-2 gap-6">
                 {/* Available Variables Section */}
-                <div className="col-span-1">
+                <div id="crosstabs-available-variables" className="col-span-1 relative">
                     <div className="flex items-center mb-2">
                         <span className="text-sm font-medium">Available Variables</span>
                     </div>
@@ -394,12 +406,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <InfoIcon size={14} className="mr-1 flex-shrink-0" />
                         <span>Drag or double-click variables to move them.</span>
                     </div>
+                    <ActiveElementHighlight active={tourActive && currentStep === availableVarsStep} />
                 </div>
 
                 {/* Variables Lists Section */}
                 <div className="col-span-1 space-y-4">
                     {/* Row Variables */}
-                    <div className="flex flex-col">
+                    <div id="crosstabs-row-variables" className="flex flex-col relative">
                         <div className="flex-1">
                             <div className="flex items-center mb-2">
                                 {renderArrowButton('row')}
@@ -407,10 +420,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             </div>
                             {renderVariableList(rowVariables, 'row', '80px')}
                         </div>
+                        <ActiveElementHighlight active={tourActive && currentStep === rowVarsStep} />
                     </div>
 
                     {/* Column Variables */}
-                    <div className="flex flex-col">
+                    <div id="crosstabs-column-variables" className="flex flex-col relative">
                         <div className="flex-1">
                             <div className="flex items-center mb-2">
                                 {renderArrowButton('column')}
@@ -418,10 +432,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             </div>
                             {renderVariableList(columnVariables, 'column', '80px')}
                         </div>
+                        <ActiveElementHighlight active={tourActive && currentStep === colVarsStep} />
                     </div>
 
                     {/* Layer Variables */}
-                    <div className="flex flex-col">
+                    <div id="crosstabs-layer-variables" className="flex flex-col relative">
                         <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center">
@@ -460,19 +475,20 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="displayLayerVariables"
                                     checked={displayLayerVariables}
                                     onCheckedChange={(checked) => setDisplayLayerVariables(!!checked)}
-                                    className="mr-2 border-[#CCCCCC] h-4 w-4 rounded-sm data-[state=checked]:bg-black data-[state=checked]:text-white"
+                                    className="mr-2"
                                 />
                                 <Label htmlFor="displayLayerVariables" className="text-xs cursor-pointer">
                                     Display layer variables in table layers
                                 </Label>
                             </div>
                         </div>
+                        <ActiveElementHighlight active={tourActive && currentStep === layerVarsStep} />
                     </div>
                 </div>
             </div>
 
             {/* Options Section */}
-            <div className="mt-6 pt-4 border-t border-[#E6E6E6]">
+            <div id="crosstabs-display-options" className="mt-6 pt-4 border-t border-[#E6E6E6] relative">
                 <div className="text-sm font-medium mb-2">Display Options</div>
                 <div className="space-y-2">
                     <div className="flex items-center">
@@ -480,7 +496,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             id="displayClusteredBarCharts"
                             checked={displayClusteredBarCharts}
                             onCheckedChange={(checked) => setDisplayClusteredBarCharts(!!checked)}
-                            className="mr-2 border-[#CCCCCC] h-4 w-4 rounded-sm data-[state=checked]:bg-black data-[state=checked]:text-white"
+                            className="mr-2"
                         />
                         <Label htmlFor="displayClusteredBarCharts" className="text-sm cursor-pointer">
                             Display clustered bar charts
@@ -492,13 +508,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             id="suppressTables"
                             checked={suppressTables}
                             onCheckedChange={(checked) => setSuppressTables(!!checked)}
-                            className="mr-2 border-[#CCCCCC] h-4 w-4 rounded-sm data-[state=checked]:bg-black data-[state=checked]:text-white"
+                            className="mr-2"
                         />
                         <Label htmlFor="suppressTables" className="text-sm cursor-pointer">
                             Suppress tables
                         </Label>
                     </div>
                 </div>
+                <ActiveElementHighlight active={tourActive && currentStep === displayOptsStep} />
             </div>
         </div>
     );

@@ -17,565 +17,365 @@ Feature tour (tur fitur) adalah panduan interaktif langkah demi langkah yang mem
 
 Fitur tour pada Statify menggunakan pendekatan komponen yang bersih dan modular, terdiri dari beberapa bagian utama:
 
-1. **Data Tour** - Definisi langkah-langkah tour berupa array objek
-2. **Komponen TourPopup** - Tampilan visual popup penjelasan untuk setiap langkah
-3. **Komponen ActiveElementHighlight** - Penyorotan elemen yang aktif/sedang dijelaskan
-4. **State Management** - Pengelolaan status tour (aktif/tidak, langkah saat ini)
-5. **Event Handlers** - Fungsi navigasi dan interaksi (next, previous, close)
-6. **Portal** - Rendering popup di luar hirarki DOM untuk menghindari masalah z-index
+1. **Data Tour** - Definisi langkah-langkah tour berupa array objek.
+2. **Komponen TourPopup** - Tampilan visual popup penjelasan untuk setiap langkah.
+3. **Komponen ActiveElementHighlight** - Penyorotan elemen yang aktif/sedang dijelaskan.
+4. **State Management** - Pengelolaan status tour (aktif/tidak, langkah saat ini) melalui custom hook `useTourGuide`.
+5. **Event Handlers** - Fungsi navigasi dan interaksi (next, previous, close) yang disediakan oleh hook.
+6. **Portal** - Rendering popup di luar hierarki DOM untuk menghindari masalah z-index.
+7. **Tab Navigation** - Navigasi otomatis antar tab yang dikelola oleh `useTourGuide`.
+8. **Highlighting Presisi** - Teknik untuk menyorot area spesifik, bahkan di dalam komponen kompleks.
+
+### Komponen Terpusat
+
+Untuk memastikan konsistensi di seluruh aplikasi, komponen tour diimplementasikan secara terpusat dalam `components/Common/TourComponents.tsx`, yang menyediakan:
+
+1. `TourPopupPortal` - Portal untuk merender popup di luar hierarki DOM normal.
+2. `TourPopup` - Komponen popup tour utama dengan penempatan yang cerdas.
+3. `ActiveElementHighlight` - Komponen untuk menyoroti elemen target.
 
 ### Adaptasi Responsif
 
-Tour dapat ditampilkan dengan dua pendekatan berbeda berdasarkan jenis container:
+Tour dapat ditampilkan dengan beberapa pendekatan berbeda berdasarkan konteks:
 
-- **Mode Dialog** - Popup di atas/bawah elemen target, dengan penempatan cerdas berdasarkan ruang yang tersedia
-- **Mode Sidebar/Panel** - Popup di sebelah kiri elemen, di luar area panel yang resizable
+- **Mode Dialog** - Popup di atas/bawah elemen target, dengan penempatan cerdas berdasarkan ruang yang tersedia.
+- **Mode Sidebar/Panel** - Popup di sebelah kiri elemen, di luar area panel yang resizable.
+- **Posisi Horizontal** - Mendukung penempatan khusus di kiri atau kanan elemen target.
 
 ## Implementasi Dasar
 
 ### 1. Tipe Data dan Struktur
 
-Pertama, definisikan tipe data untuk langkah-langkah tour:
+Tipe data yang diekspor dari hook tour guide (`useTourGuide`) mendefinisikan struktur tour.
 
 ```tsx
-// Posisi vertikal popup
-type PopupPosition = 'top' | 'bottom';
+// File: components/Modals/Analyze/.../hooks/useTourGuide.ts
 
-// Posisi horizontal popup
-type HorizontalPosition = 'left' | 'right';
+// Tipe untuk tab yang berbeda dalam satu modal
+export type TabType = 'variables' | 'statistics' | 'charts';
 
-// Struktur langkah tour
-type TourStep = {
-    title: string;         // Judul langkah
-    content: string;       // Konten/deskripsi penjelasan
-    targetId: string;      // ID elemen HTML yang menjadi target
-    defaultPosition: PopupPosition;  // Posisi default (vertikal)
-    defaultHorizontalPosition: HorizontalPosition;  // Posisi default (horizontal)
-    position?: PopupPosition;        // Posisi aktual (setelah disesuaikan)
-    horizontalPosition?: HorizontalPosition | null;  // Posisi horizontal aktual (null untuk dialog)
-    icon: string;          // Emoji atau icon untuk langkah ini
+// Tipe dasar untuk satu langkah tour dari @/types/tourTypes
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
+
+// Tipe langkah tour yang diperluas dengan fungsionalitas tab
+export type TourStep = BaseTourStep & {
+  requiredTab?: TabType;     // Tab yang harus aktif untuk langkah ini
+  forceChangeTab?: boolean;  // Paksa pindah tab setelah langkah ini
+};
+
+// Interface untuk mengontrol tab dari komponen induk
+export interface TabControlProps {
+  setActiveTab: (tab: TabType) => void;
+  currentActiveTab: TabType;
+}
+```
+
+### 2. Custom Hook `useTourGuide`
+
+Custom hook ini adalah inti dari fungsionalitas tour, mengelola semua state dan logika, termasuk navigasi tab otomatis.
+
+```tsx
+// File: components/Modals/Analyze/.../hooks/useTourGuide.ts
+
+export const useTourGuide = (
+  containerType: "dialog" | "sidebar" = "dialog",
+  tabControl?: TabControlProps // Kontrol tab bersifat opsional
+): UseTourGuideResult => {
+  const [tourActive, setTourActive] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
+  
+  const lastTabRef = useRef<TabType | null>(null);
+  const timeoutRef = useRef<number | undefined>(undefined);
+  
+  // Mengolah langkah-langkah tour berdasarkan tipe container
+  const tourSteps = useMemo(() => baseTourSteps.map(step => ({
+    ...step,
+    horizontalPosition: containerType === "sidebar" 
+      ? "left" as HorizontalPosition 
+      : step.defaultHorizontalPosition as HorizontalPosition | null,
+    position: containerType === "sidebar" ? undefined : step.defaultPosition,
+  })), [containerType]);
+
+  // Fungsi untuk menemukan elemen target
+  const findTargetElement = useCallback((stepId: string): HTMLElement | null => {
+    // ... implementasi pencarian elemen
+  }, []);
+
+  // Membersihkan timeout
+  const clearTimeout = useCallback(() => {
+    // ... implementasi clearTimeout
+  }, []);
+
+  // Merefresh elemen target
+  const refreshTargetElements = useCallback(() => {
+    // ... implementasi refresh elemen
+  }, [tourActive, tourSteps, findTargetElement]);
+
+  // Menentukan tab yang diperlukan untuk langkah tertentu
+  const getRequiredTabForStep = useCallback((stepIndex: number): TabType | undefined => {
+    const step = tourSteps[stepIndex];
+    return step?.requiredTab;
+  }, [tourSteps]);
+
+  // Logika untuk berpindah tab jika diperlukan
+  const switchTabIfNeeded = useCallback((requiredTab?: TabType) => {
+    if (!tabControl || !requiredTab || tabControl.currentActiveTab === requiredTab) {
+      return;
+    }
+    tabControl.setActiveTab(requiredTab);
+    lastTabRef.current = requiredTab;
+    clearTimeout();
+    timeoutRef.current = window.setTimeout(refreshTargetElements, 200); // 200ms delay
+  }, [tabControl, refreshTargetElements, clearTimeout]);
+
+  // Efek untuk mengelola logika tour
+  useEffect(() => {
+    // ... logika untuk menangani pembaruan, perpindahan tab, dan pembersihan
+  }, [currentStep, tourActive, tabControl, /* ... dependensi lain */]);
+
+  // Fungsi kontrol tour
+  const startTour = useCallback(() => { /* ... */ }, [tabControl]);
+  const nextStep = useCallback(() => { /* ... */ }, [currentStep, tourSteps.length]);
+  const prevStep = useCallback(() => { /* ... */ }, [currentStep]);
+  const endTour = useCallback(() => { /* ... */ }, []);
+
+  // Menghitung elemen target saat ini
+  const currentTargetElement = useMemo(() => {
+    // ... logika untuk mendapatkan elemen target
+  }, [tourActive, tourSteps, currentStep, targetElements]);
+
+  return {
+    tourActive,
+    currentStep,
+    tourSteps,
+    currentTargetElement,
+    startTour,
+    nextStep,
+    prevStep,
+    endTour
+  };
 };
 ```
 
-### 2. Komponen TourPopupPortal
+### 3. Definisi Langkah-Langkah Tour
 
-Komponen ini memastikan popup tour di-render di luar hirarki DOM normal menggunakan `createPortal` dari React, sehingga menghindari masalah z-index dan clipping:
+Setiap modal yang memiliki tour mendefinisikan langkah-langkahnya sendiri dalam file `useTourGuide.ts` lokal.
 
+**Contoh dari Frequencies Modal:**
 ```tsx
-import { createPortal } from "react-dom";
+// File: frontend/components/Modals/Analyze/Descriptive/Frequencies/hooks/useTourGuide.ts
 
-// Portal wrapper untuk memastikan popup selalu berada di atas elemen lain
-const TourPopupPortal: FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [mounted, setMounted] = useState(false);
-    
-    useEffect(() => {
-        setMounted(true);
-        return () => setMounted(false);
-    }, []);
-    
-    return mounted && typeof window !== "undefined" ? createPortal(children, document.body) : null;
-};
-```
-
-### 3. Komponen TourPopup
-
-Ini adalah komponen visual utama yang menampilkan popup untuk setiap langkah:
-
-```tsx
-const TourPopup: FC<{
-    step: TourStep;
-    currentStep: number;
-    totalSteps: number;
-    onNext: () => void;
-    onPrev: () => void;
-    onClose: () => void;
-    targetElement: HTMLElement | null;
-}> = ({ step, currentStep, totalSteps, onNext, onPrev, onClose, targetElement }) => {
-    const position = step.position || step.defaultPosition;
-    const horizontalPosition = step.horizontalPosition;
-    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
-    const popupRef = useRef<HTMLDivElement>(null);
-    
-    // Perhitungan posisi secara dinamis
-    useEffect(() => {
-        if (!targetElement) return;
-        
-        const updatePosition = () => {
-            const rect = targetElement.getBoundingClientRect();
-            const popupHeight = popupRef.current?.offsetHeight || 170;
-            const popupWidth = 280;
-            const popupBuffer = 20;
-            let top: number, left: number;
-            
-            // Menentukan posisi berdasarkan mode (sidebar/panel vs dialog)
-            if (horizontalPosition === 'left') {
-                // Mode sidebar/panel: posisi di sebelah kiri
-                left = Math.max(10, rect.left - 300);
-                top = rect.top + (rect.height / 2) - 100;
-            } else {
-                // Mode dialog: posisi atas/bawah
-                // Menentukan posisi vertikal
-                if (position === 'top') {
-                    top = rect.top - (popupHeight + popupBuffer);
-                    // Jika tidak cukup ruang di atas, pindahkan ke bawah
-                    if (top < 20) {
-                        top = rect.bottom + popupBuffer;
-                        step.position = 'bottom'; // Update untuk panah
-                    }
-                } else {
-                    top = rect.bottom + popupBuffer;
-                }
-                
-                // Menentukan posisi horizontal
-                const elementWidth = rect.width;
-                left = rect.left + (elementWidth / 2) - (popupWidth / 2);
-                
-                // Menyesuaikan posisi untuk elemen kecil
-                if (elementWidth < 100) {
-                    const rightSpace = window.innerWidth - rect.right;
-                    const leftSpace = rect.left;
-                    
-                    // Pilih sisi dengan ruang yang lebih besar
-                    if (rightSpace >= popupWidth + popupBuffer) {
-                        left = rect.right + popupBuffer;
-                    } else if (leftSpace >= popupWidth + popupBuffer) {
-                        left = rect.left - (popupWidth + popupBuffer);
-                    }
-                }
-
-                // Override untuk posisi horizontal kanan jika ditentukan
-                if (horizontalPosition === 'right') {
-                    left = rect.right - popupWidth;
-                }
-                
-                // Mencegah popup keluar dari viewport
-                if (left < 10) {
-                    left = 10;
-                }
-                if (left + popupWidth > window.innerWidth - 10) {
-                    left = window.innerWidth - (popupWidth + 10);
-                }
-            }
-            
-            setPopupPosition({ top, left });
-        };
-        
-        // Update posisi
-        updatePosition();
-        const timer = setTimeout(updatePosition, 100);
-        
-        // Listener untuk scroll dan resize
-        window.addEventListener('scroll', updatePosition, true);
-        window.addEventListener('resize', updatePosition);
-        
-        return () => {
-            clearTimeout(timer);
-            window.removeEventListener('scroll', updatePosition, true);
-            window.removeEventListener('resize', updatePosition);
-        };
-    }, [targetElement, position, horizontalPosition]);
-
-    // Styling untuk arrows/panah
-    const getArrowStyles = () => {
-        const arrowClasses = "w-3 h-3 bg-white dark:bg-gray-800";
-        const borderClasses = "border-primary/10 dark:border-primary/20";
-        
-        // Arrow untuk mode dialog (atas/bawah)
-        if (horizontalPosition !== 'left') {
-            if (position === 'top') {
-                return (
-                    <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 ${arrowClasses} border-b border-r ${borderClasses}`} />
-                );
-            }
-            if (position === 'bottom') {
-                return (
-                    <div className={`absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-t border-l ${borderClasses}`} />
-                );
-            }
-        }
-        // Arrow untuk mode sidebar (kiri)
-        else if (horizontalPosition === 'left') {
-            return (
-                <div className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-t border-r ${borderClasses}`} />
-            );
-        }
-        
-        return null;
-    };
-
-    return (
-        <TourPopupPortal>
-            <motion.div
-                initial={{ opacity: 0, y: position === 'top' ? 10 : -10, x: horizontalPosition === 'left' ? -10 : 0 }}
-                animate={{ opacity: 1, y: 0, x: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{
-                    position: 'fixed',
-                    top: `${popupPosition.top}px`,
-                    left: `${popupPosition.left}px`,
-                    width: '280px',
-                    zIndex: 99999,
-                    pointerEvents: 'auto'
-                }}
-                className="popup-tour-fixed"
-            >
-                <Card 
-                    ref={popupRef}
-                    className={cn(
-                    "shadow-lg border-primary/10 dark:border-primary/20 rounded-lg",
-                    "relative backdrop-blur-sm bg-white/90 dark:bg-gray-800/90"
-                )}>
-                    {/* Panah dinamis sesuai posisi */}
-                    {getArrowStyles()}
-                    
-                    <CardHeader className="p-3 pb-2 border-b border-primary/10 dark:border-primary/20">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                {step.icon && <span className="text-lg">{step.icon}</span>}
-                                <CardTitle className="text-base font-medium">{step.title}</CardTitle>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full hover:bg-primary/10">
-                                <X className="h-3 w-3" />
-                            </Button>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                            Langkah {currentStep + 1} dari {totalSteps}
-                        </div>
-                    </CardHeader>
-                    
-                    <CardContent className="p-3 text-sm">
-                        <div className="flex space-x-2">
-                            <Info className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                            <p>{step.content}</p>
-                        </div>
-                    </CardContent>
-                    
-                    <CardFooter className="flex justify-between p-3 pt-2 border-t border-primary/10 dark:border-primary/20">
-                        <div>
-                            {currentStep !== 0 && (
-                                <Button variant="outline" size="sm" onClick={onPrev} className="h-7 px-2 py-0">
-                                    <ChevronLeft className="mr-1 h-3 w-3" />
-                                    <span className="text-xs">Sebelumnya</span>
-                                </Button>
-                            )}
-                        </div>
-                        <div>
-                            {currentStep + 1 !== totalSteps ? (
-                                <Button size="sm" onClick={onNext} className="h-7 px-2 py-0">
-                                    <span className="text-xs">Lanjut</span>
-                                    <ChevronRight className="ml-1 h-3 w-3" />
-                                </Button>
-                            ) : (
-                                <Button size="sm" onClick={onClose} className="h-7 px-2 py-0 bg-green-600 hover:bg-green-700">
-                                    <span className="text-xs">Selesai</span>
-                                </Button>
-                            )}
-                        </div>
-                    </CardFooter>
-                </Card>
-            </motion.div>
-        </TourPopupPortal>
-    );
-};
-```
-
-### 4. Komponen ActiveElementHighlight
-
-Komponen yang menyoroti elemen yang sedang aktif:
-
-```tsx
-const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
-    if (!active) return null;
-    
-    return (
-        <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none"
-        />
-    );
-};
-```
-
-### 5. Integrasi pada Komponen Target
-
-Berikut adalah langkah-langkah untuk mengintegrasikan tour pada komponen target:
-
-#### 5.1 Definisikan Langkah-langkah Tour
-
-```tsx
-// Data langkah tour
 const baseTourSteps: TourStep[] = [
-    {
-        title: "Nama File",
-        content: "Tentukan nama file untuk hasil ekspor CSV Anda di sini.",
-        targetId: "csv-filename-wrapper",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: 'left',
-        icon: "📝",
-    },
-    // Tambahkan langkah-langkah lainnya...
+  {
+    title: "Variables Selection",
+    content: "Drag variables from the available list...",
+    targetId: "frequencies-available-variables", // ID unik untuk highlight presisi
+    defaultPosition: 'bottom',
+    icon: "📊",
+    requiredTab: TABS.VARIABLES // Langkah ini memerlukan tab 'variables'
+  },
+  {
+    title: "Selected Variables",
+    content: "Variables in this list will be analyzed.",
+    targetId: "frequencies-selected-variables", // ID unik untuk highlight presisi
+    defaultPosition: 'bottom',
+    defaultHorizontalPosition: 'left',
+    icon: "📋",
+    requiredTab: TABS.VARIABLES
+  },
+  {
+    title: "Statistics Tab",
+    content: "Click on this tab to configure descriptive statistics...",
+    targetId: "statistics-tab-trigger",
+    defaultPosition: 'bottom',
+    icon: "📈",
+    requiredTab: TABS.VARIABLES,
+    forceChangeTab: true // Pindah tab setelah langkah ini
+  },
+  // ... langkah-langkah untuk tab 'statistics' dan 'charts'
 ];
 ```
 
-#### 5.2 Tambahkan State dan Callbacks
-
+**Contoh dari Descriptive Modal:**
 ```tsx
-// State untuk tour
-const [tourActive, setTourActive] = useState(false);
-const [currentStep, setCurrentStep] = useState(0);
-const [tourSteps, setTourSteps] = useState<TourStep[]>([]);
+// File: frontend/components/Modals/Analyze/Descriptive/Descriptive/hooks/useTourGuide.ts
 
-// Efisiensi dengan menggunakan callback untuk fungsi-fungsi tour
-const startTour = useCallback(() => {
-    setCurrentStep(0);
-    setTourActive(true);
-}, []);
-
-const nextStep = useCallback(() => {
-    if (currentStep < tourSteps.length - 1) {
-        setCurrentStep(prev => prev + 1);
-    }
-}, [currentStep, tourSteps.length]);
-
-const prevStep = useCallback(() => {
-    if (currentStep > 0) {
-        setCurrentStep(prev => prev - 1);
-    }
-}, [currentStep]);
-
-const endTour = useCallback(() => {
-    setTourActive(false);
-}, []);
+const baseTourSteps: TourStep[] = [
+  // ... langkah untuk seleksi variabel
+  {
+    title: "Statistics Tab",
+    content: "Click on this tab to configure which statistics...",
+    targetId: "descriptive-statistics-tab-trigger",
+    icon: "📈",
+    requiredTab: TABS.VARIABLES,
+    forceChangeTab: true
+  },
+  {
+    title: "Central Tendency",
+    content: "Calculate measures like mean, median, and sum...",
+    targetId: "descriptive-central-tendency", // Target ID untuk grup checkbox
+    icon: "🎯",
+    requiredTab: TABS.STATISTICS // Langkah ini memerlukan tab 'statistics'
+  },
+  // ... langkah-langkah lain untuk 'Dispersion', 'Distribution', dll.
+];
 ```
 
-#### 5.3 Menyesuaikan Tour Berdasarkan Container
+## Integrasi dengan Komponen Induk
+
+Komponen induk (misalnya, `Frequencies/index.tsx`) bertanggung jawab untuk mengintegrasikan hook tour dan komponen UI.
 
 ```tsx
-// Menyesuaikan langkah-langkah tour berdasarkan tipe container
-useEffect(() => {
-    const adjustedSteps = baseTourSteps.map(step => {
-        if (containerType === "sidebar" || containerType === "panel") {
-            // Untuk sidebar/panel: posisi di sebelah kiri elemen
-            return {
-                ...step,
-                horizontalPosition: "left" as HorizontalPosition,
-                position: undefined
-            };
-        } else {
-            // Untuk dialog: posisi di atas/bawah elemen, tanpa posisi horizontal khusus
-            return {
-                ...step,
-                horizontalPosition: null, // Gunakan null untuk dialog
-                position: step.defaultPosition,
-            };
-        }
-    });
-    
-    setTourSteps(adjustedSteps);
-}, [containerType]);
-```
+// File: frontend/components/Modals/Analyze/.../index.tsx
 
-#### 5.4 Mendapatkan Referensi ke Elemen Target
+const MainContentComponent: FC<BaseModalProps> = ({ onClose, containerType }) => {
+  const [activeTab, setActiveTab] = useState<TabType>("variables");
 
-```tsx
-// Mendapatkan referensi elemen DOM saat tour aktif
-const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
+  // Buat objek kontrol tab untuk diberikan ke hook tour
+  const tabControl = useMemo((): TabControlProps => ({
+    setActiveTab,
+    currentActiveTab: activeTab,
+  }), [activeTab]);
 
-useEffect(() => {
-    if (!tourActive) return;
-    
-    const elements: Record<string, HTMLElement | null> = {};
-    baseTourSteps.forEach(step => {
-        elements[step.targetId] = document.getElementById(step.targetId);
-    });
-    
-    setTargetElements(elements);
-}, [tourActive]);
+  // Inisialisasi hook tour dengan tabControl
+  const { 
+    tourActive, 
+    currentStep, 
+    tourSteps,
+    currentTargetElement, 
+    startTour, 
+    nextStep, 
+    prevStep, 
+    endTour 
+  } = useTourGuide(containerType, tabControl);
 
-// Referensi ke elemen target saat ini
-const currentTargetElement = useMemo(() => {
-    if (!tourActive || !tourSteps.length || currentStep >= tourSteps.length) {
-        return null;
-    }
-    return targetElements[tourSteps[currentStep].targetId] || null;
-}, [tourActive, tourSteps, currentStep, targetElements]);
-```
-
-#### 5.5 Render Tour dan Sorotan
-
-```tsx
-return (
-    <div className="flex flex-col h-full" id="component-container">
-        {/* Tour popup */}
-        <AnimatePresence>
-            {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
-                <TourPopup
-                    step={tourSteps[currentStep]}
-                    currentStep={currentStep}
-                    totalSteps={tourSteps.length}
-                    onNext={nextStep}
-                    onPrev={prevStep}
-                    onClose={endTour}
-                    targetElement={currentTargetElement}
-                />
-            )}
-        </AnimatePresence>
-        
-        {/* Konten komponen dengan elemen yang dapat di-highlight */}
-        <div className="space-y-1.5 relative" id="example-element-wrapper">
-            <Label htmlFor="example-input" className={cn(tourActive && currentStep === 0 ? "text-primary font-medium" : "")}>
-                Label Contoh
-            </Label>
-            <div className="relative">
-                <Input
-                    id="example-input"
-                    placeholder="Placeholder..."
-                />
-                <ActiveElementHighlight active={tourActive && currentStep === 0} />
-            </div>
-        </div>
-        
-        {/* Footer dengan tombol bantuan */}
-        <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-            {/* Kiri: Tour button (icon only) */}
-            <div className="flex items-center text-muted-foreground">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={startTour}
-                                className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                            >
-                                <HelpCircle className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                            <p className="text-xs">Mulai tour fitur</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-            {/* Tombol aksi lainnya */}
-        </div>
-    </div>
-);
-```
-
-## Praktik Terbaik dan Tips
-
-### 1. Struktur ID dan Target Elemen
-
-- Berikan ID yang deskriptif dan konsisten untuk setiap elemen target
-- Gunakan wrapper dengan ID untuk elemen yang kompleks atau tersusun dari beberapa bagian
-- Pastikan elemen target dapat diakses melalui `document.getElementById()`
-
-### 2. Penempatan Popup yang Cerdas
-
-- Gunakan useRef untuk mengukur ukuran popup secara dinamis
-- Pertimbangkan ruang yang tersedia di viewport saat menentukan posisi
-- Buat logika alternatif jika posisi default tidak memiliki ruang yang cukup 
-- Gunakan buffer/margin yang cukup agar popup tidak terlalu dekat dengan elemen target
-
-### 3. Optimasi Performa
-
-- Gunakan `useCallback` dan `useMemo` untuk memastikan performa optimal
-- Bersihkan event listeners dan timer pada cleanup function di useEffect
-- Pastikan perhitungan ulang posisi hanya terjadi saat perubahan yang relevan
-- Gunakan setTimeout untuk memperbarui posisi setelah popup benar-benar dirender
-
-### 4. Responsif dan Aksesibilitas
-
-- Pastikan popup tour terlihat jelas pada berbagai ukuran layar
-- Hindari overlap dengan elemen UI lain yang penting 
-- Pastikan popup tidak keluar dari viewport dengan cek batas layar
-- Tambahkan pointerEvents: 'auto' agar popup dapat diinteraksi
-- Gunakan warna yang kontras untuk menyoroti elemen target
-
-### 5. Konsistensi UI/UX
-
-- Untuk tombol bantuan/tour, gunakan icon saja dengan tooltip untuk UI yang bersih
-- Posisikan tombol bantuan di area yang konsisten (biasanya di footer kiri)
-- Gunakan ukuran dan padding yang konsisten untuk semua popup tour
-- Terapkan animasi yang halus dan konsisten untuk transisi antar langkah
-
-## Integrasi dengan Sistem Modal
-
-Pada Statify, tour dapat diintegrasikan dengan sistem modal yang ada, dengan mempertimbangkan:
-
-1. **Posisi Berdasarkan Container**
-   - Untuk modal dalam mode panel/sidebar, tampilkan popup di luar panel (sebelah kiri)
-   - Untuk modal dialog, posisikan popup di atas/bawah elemen dengan penempatan cerdas
-   - Gunakan horizontalPosition: null untuk mode dialog (memungkinkan penempatan otomatis)
-
-2. **Z-Index Management**
-   - Popup tour harus memiliki z-index yang lebih tinggi dari modal (99999)
-   - Gunakan Portal untuk memastikan popup di-render di luar hirarki DOM normal
-   - Tambahkan pointerEvents: 'auto' untuk memastikan popup dapat diinteraksi
-
-3. **Deteksi Tipe Container**
-   - Periksa properti `containerType` untuk menentukan jenis container modal
-   - Sesuaikan posisi tour berdasarkan tipe container tersebut
-   - Perbarui posisi saat ukuran container atau viewport berubah
-
-## Contoh Kasus Penggunaan
-
-### 1. Tour untuk Modal Dialog
-
-```tsx
-// Di dalam komponen modal:
-<Button 
-    variant="ghost" 
-    size="icon"
-    onClick={startTour}
-    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
->
-    <HelpCircle className="h-4 w-4" />
-</Button>
-```
-
-### 2. Tour untuk Halaman Dashboard dengan Persistensi
-
-```tsx
-// Pada komponen dashboard utama
-const DashboardPage: FC = () => {
-  const [showTour, setShowTour] = useState(false);
-  
-  // Cek apakah ini kunjungan pertama user
-  useEffect(() => {
-    const isFirstVisit = localStorage.getItem('dashboard_tour_completed') !== 'true';
-    if (isFirstVisit) {
-      setShowTour(true);
-    }
-  }, []);
-  
-  const completeTour = useCallback(() => {
-    setShowTour(false);
-    localStorage.setItem('dashboard_tour_completed', 'true');
-  }, []);
-  
   return (
-    <div>
-      {/* Konten dashboard */}
-      {showTour && <DashboardTour onComplete={completeTour} />}
+    <>
+      {/* Tombol untuk memulai tour */}
+      <Button onClick={startTour}>
+        <HelpCircle /> Bantuan
+      </Button>
+      
+      {/* Navigasi Tabs dari ShadCN */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger id="variables-tab-trigger" value="variables">Variables</TabsTrigger>
+          <TabsTrigger id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
+          {/* Tambahkan trigger lain jika ada */}
+        </TabsList>
+        
+        <TabsContent value="variables">
+          <VariablesTab 
+            {...props} 
+            tourActive={tourActive} 
+            currentStep={currentStep} 
+            tourSteps={tourSteps} 
+          />
+        </TabsContent>
+        <TabsContent value="statistics">
+          <StatisticsTab 
+            {...props}
+            tourActive={tourActive} 
+            currentStep={currentStep} 
+            tourSteps={tourSteps}
+          />
+        </TabsContent>
+      </Tabs>
+      
+      {/* Render popup tour */}
+      <AnimatePresence>
+        {tourActive && (
+          <TourPopup
+            step={tourSteps[currentStep]}
+            currentStep={currentStep}
+            totalSteps={tourSteps.length}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onClose={endTour}
+            targetElement={currentTargetElement}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+```
+
+## Praktik Terbaik dan Optimasi
+
+### 1. Highlighting yang Presisi
+
+Untuk menyorot area spesifik dalam komponen yang kompleks (seperti `VariableListManager`), gunakan `div` overlay yang diposisikan secara absolut. Ini menghindari penyorotan yang tidak diinginkan pada elemen-elemen di sekitarnya.
+
+```tsx
+// File: VariablesTab.tsx
+
+const VariablesTab: FC<VariablesTabProps> = ({ tourActive, currentStep, tourSteps = [] }) => {
+  const availableStepIndex = tourSteps.findIndex(step => step.targetId === 'descriptive-available-variables');
+  const selectedStepIndex = tourSteps.findIndex(step => step.targetId === 'descriptive-selected-variables');
+
+  return (
+    <div className="relative">
+      <VariableListManager {...props} />
+      
+      {/* Overlay untuk menyorot area 'Available Variables' */}
+      <div 
+        id="descriptive-available-variables" 
+        className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md"
+      >
+        <ActiveElementHighlight active={tourActive && currentStep === availableStepIndex} />
+      </div>
+
+      {/* Overlay untuk menyorot area 'Selected Variables' */}
+      <div 
+        id="descriptive-selected-variables" 
+        className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md"
+      >
+        <ActiveElementHighlight active={tourActive && currentStep === selectedStepIndex} />
+      </div>
     </div>
   );
 };
 ```
 
+### 2. Mengelompokkan Elemen untuk Highlighting
+
+Untuk menyorot sekelompok elemen terkait (seperti beberapa checkbox), bungkus mereka dalam satu `div` dengan ID target dan posisikan `ActiveElementHighlight` di dalamnya.
+
+```tsx
+// File: StatisticsTab.tsx
+
+const StatisticsTab: FC<StatisticsTabProps> = ({ tourActive, currentStep, tourSteps = [] }) => {
+  const centralTendencyStepIndex = tourSteps.findIndex(step => step.targetId === 'descriptive-central-tendency');
+  
+  return (
+    <div id="descriptive-central-tendency" className="bg-card border rounded-md p-5 relative">
+      <div className="text-sm font-medium mb-3">Central Tendency</div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+        {/* Checkbox untuk Mean, Median, Sum */}
+      </div>
+      <ActiveElementHighlight active={tourActive && currentStep === centralTendencyStepIndex} />
+    </div>
+  );
+};
+```
+
+### 3. Penggunaan `useMemo` dan `useCallback`
+
+Gunakan `useMemo` dan `useCallback` di dalam `useTourGuide` dan komponen induk untuk mengoptimalkan performa dan menghindari re-render yang tidak perlu.
+
+### 4. Manajemen State Terpusat
+
+Dengan memusatkan hampir semua logika di dalam `useTourGuide`, komponen UI tetap bersih dan hanya bertanggung jawab untuk menampilkan data dan meneruskan event. Ini membuat pemeliharaan lebih mudah.
+
 ## Kesimpulan
 
-Dengan mengikuti panduan ini, Anda dapat mengimplementasikan fitur tour yang interaktif, responsif, dan user-friendly pada aplikasi Statify. Feature tour ini dapat secara signifikan meningkatkan pengalaman pengguna dan mempercepat adopsi fitur baru.
+Arsitektur feature tour pada Statify telah berevolusi menjadi solusi yang matang, fleksibel, dan dapat digunakan kembali. Dengan pendekatan ini, implementasi tour di berbagai modal menjadi konsisten, mudah dikelola, dan berperforma tinggi.
 
-Beberapa poin penting dalam implementasi:
-
-1. **Penempatan Cerdas** - Menggunakan pengukuran dinamis untuk penempatan popup yang optimal
-2. **Responsif** - Menyesuaikan posisi berdasarkan ukuran layar dan tipe container
-3. **Efisien** - Menggunakan useRef, useCallback, dan useMemo untuk performa yang baik
-4. **Konsisten** - Menjaga konsistensi UI di semua komponen tour
-5. **Aksesibel** - Memastikan tour dapat digunakan oleh semua pengguna
-
-Feature tour pada Statify adalah contoh yang baik dari komponen yang sederhana namun kuat, yang meningkatkan pengalaman pengguna tanpa menambahkan ketergantungan eksternal. 
+Kunci utamanya adalah:
+1. **Custom Hook `useTourGuide`**: Mengabstraksi semua logika kompleks.
+2. **Navigasi Tab Otomatis**: Memberikan pengalaman pengguna yang mulus.
+3. **Highlighting yang Presisi**: Menargetkan elemen dengan akurat.
+4. **Struktur Data yang Jelas**: Memisahkan data tour dari logika komponen.
+5. **Pola yang Konsisten**: Memudahkan implementasi di fitur-fitur baru. 

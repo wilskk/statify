@@ -57,6 +57,15 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
     return (
         <>
             <div className="p-6 overflow-y-auto flex-grow">
+                {/* Added info section */}
+                <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
+                    <InfoIcon className="text-accent-foreground h-4 w-4 flex-shrink-0" />
+                    <p className="text-accent-foreground text-xs">
+                        Cases are weighted by the values of the selected numeric variable. 
+                        If a case has a value of zero, negative, or missing for the weighting variable, it is excluded from the analysis.
+                    </p>
+                </div>
+
                 <VariableListManager
                     availableVariables={availableVariables}
                     targetLists={targetLists}
@@ -78,11 +87,11 @@ const WeightCasesContent: React.FC<WeightCasesModalProps> = ({
             </div>
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+                {/* Left: Help icon (Removed) */}
+                <div className="flex items-center text-muted-foreground">
+                    {/* <HelpCircle size={18} className="mr-1" /> */}
                 </div>
-                {/* Right: Buttons */}
+                {/* Right: Buttons */} 
                 <div>
                     <Button
                         variant="outline"

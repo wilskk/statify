@@ -38,11 +38,11 @@ export const useDefineDateTime = (onClose: () => void) => {
         "Hours, minutes, seconds",
         "Not dated"
     ];
-    const [selectedCase, setSelectedCase] = useState<string>("Years, quarters");
+    const [selectedCase, setSelectedCase] = useState<string>("Not dated");
 
     const [timeComponents, setTimeComponents] = useState<TimeComponent[]>(() => {
         // Initialize with the default selectedCase
-        return getTimeComponentsFromCase("Years, quarters");
+        return getTimeComponentsFromCase("Not dated");
     });
 
     useEffect(() => {
@@ -75,7 +75,7 @@ export const useDefineDateTime = (onClose: () => void) => {
     }, [selectedCase, timeComponents, variables, addVariable, resetVariables, updateCells, data, setMeta, onClose]);
 
     const handleReset = useCallback(() => {
-        setSelectedCase("Years, quarters");
+        setSelectedCase("Not dated");
         // The useEffect will then update timeComponents
     }, []);
 

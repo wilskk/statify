@@ -4,6 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatisticsTabProps } from "./types";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
     showDescriptives,
@@ -16,77 +18,115 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     setShowOutliers,
     showPercentiles,
     setShowPercentiles,
-    containerType = "dialog"
+    displayOption,
+    setDisplayOption,
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+    const descriptivesStep = getStepIndex('explore-descriptives-section');
+    const additionalStatsStep = getStepIndex('explore-additional-stats-section');
+    const displayStep = getStepIndex('explore-display-options');
+
     return (
         <div className="space-y-4">
-            {/* Descriptives Checkbox */}
-            <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="descriptives"
-                    checked={showDescriptives}
-                    onCheckedChange={(checked) => setShowDescriptives(checked as boolean)}
-                    className="h-4 w-4"
-                />
-                <Label htmlFor="descriptives" className="text-sm font-medium cursor-pointer">
-                    Descriptives
-                </Label>
+            <div id="explore-display-options" className="p-4 border rounded-md relative">
+                <Label className="text-sm font-medium">Display</Label>
+                <RadioGroup
+                    value={displayOption}
+                    onValueChange={(value) => setDisplayOption(value as 'both' | 'statistics' | 'plots')}
+                    className="flex items-center space-x-4 mt-2"
+                >
+                    <div className="flex items-center">
+                        <RadioGroupItem value="both" id="displayBoth" />
+                        <Label htmlFor="displayBoth" className="ml-2 text-sm cursor-pointer">Both</Label>
+                    </div>
+                    <div className="flex items-center">
+                        <RadioGroupItem value="statistics" id="displayStatistics" />
+                        <Label htmlFor="statistics" className="ml-2 text-sm cursor-pointer">Statistics</Label>
+                    </div>
+                    <div className="flex items-center">
+                        <RadioGroupItem value="plots" id="displayPlots" />
+                        <Label htmlFor="plots" className="ml-2 text-sm cursor-pointer">Plots</Label>
+                    </div>
+                </RadioGroup>
+                <ActiveElementHighlight active={tourActive && currentStep === displayStep} />
             </div>
-
-            {/* Confidence Interval Input - Conditionally enabled */}
-            <div className={`flex items-center ml-8 space-x-2 ${!showDescriptives ? 'opacity-50 pointer-events-none' : ''}`}>
-                <Label htmlFor="confidenceInterval" className="text-sm">
-                    Confidence Interval for Mean:
-                </Label>
-                <div className="flex items-center">
-                    <Input
-                        id="confidenceInterval"
-                        value={confidenceInterval}
-                        onChange={(e) => setConfidenceInterval(e.target.value)}
-                        className="h-8 text-sm w-16"
-                        disabled={!showDescriptives}
+            <div id="explore-descriptives-section" className="p-4 border rounded-md relative">
+                {/* Descriptives Checkbox */}
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="descriptives"
+                        checked={showDescriptives}
+                        onCheckedChange={(checked) => setShowDescriptives(checked as boolean)}
+                        className="h-4 w-4"
                     />
-                    <span className="ml-1 text-sm">%</span>
+                    <Label htmlFor="descriptives" className="text-sm font-medium cursor-pointer">
+                        Descriptives
+                    </Label>
                 </div>
+
+                {/* Confidence Interval Input - Conditionally enabled */}
+                <div className={`flex items-center ml-8 mt-2 space-x-2 ${!showDescriptives ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <Label htmlFor="confidenceInterval" className="text-sm">
+                        Confidence Interval for Mean:
+                    </Label>
+                    <div className="flex items-center">
+                        <Input
+                            id="confidenceInterval"
+                            value={confidenceInterval}
+                            onChange={(e) => setConfidenceInterval(e.target.value)}
+                            className="h-8 text-sm w-16"
+                            disabled={!showDescriptives}
+                        />
+                        <span className="ml-1 text-sm">%</span>
+                    </div>
+                </div>
+                <ActiveElementHighlight active={tourActive && currentStep === descriptivesStep} />
             </div>
 
-            {/* M-estimators Checkbox */}
-            <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="mEstimators"
-                    checked={showMEstimators}
-                    onCheckedChange={(checked) => setShowMEstimators(checked as boolean)}
-                    className="h-4 w-4"
-                />
-                <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
-                    M-estimators
-                </Label>
-            </div>
+            <div id="explore-additional-stats-section" className="p-4 border rounded-md space-y-2 relative">
+                {/* M-estimators Checkbox */}
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="mEstimators"
+                        checked={showMEstimators}
+                        onCheckedChange={(checked) => setShowMEstimators(checked as boolean)}
+                        className="h-4 w-4"
+                    />
+                    <Label htmlFor="mEstimators" className="text-sm font-medium cursor-pointer">
+                        M-estimators
+                    </Label>
+                </div>
 
-            {/* Outliers Checkbox */}
-            <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="outliers"
-                    checked={showOutliers}
-                    onCheckedChange={(checked) => setShowOutliers(checked as boolean)}
-                    className="h-4 w-4"
-                />
-                <Label htmlFor="outliers" className="text-sm font-medium cursor-pointer">
-                    Outliers
-                </Label>
-            </div>
+                {/* Outliers Checkbox */}
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="outliers"
+                        checked={showOutliers}
+                        onCheckedChange={(checked) => setShowOutliers(checked as boolean)}
+                        className="h-4 w-4"
+                    />
+                    <Label htmlFor="outliers" className="text-sm font-medium cursor-pointer">
+                        Outliers
+                    </Label>
+                </div>
 
-            {/* Percentiles Checkbox */}
-            <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="percentiles"
-                    checked={showPercentiles}
-                    onCheckedChange={(checked) => setShowPercentiles(checked as boolean)}
-                    className="h-4 w-4"
-                />
-                <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
-                    Percentiles
-                </Label>
+                {/* Percentiles Checkbox */}
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="percentiles"
+                        checked={showPercentiles}
+                        onCheckedChange={(checked) => setShowPercentiles(checked as boolean)}
+                        className="h-4 w-4"
+                    />
+                    <Label htmlFor="percentiles" className="text-sm font-medium cursor-pointer">
+                        Percentiles
+                    </Label>
+                </div>
+                <ActiveElementHighlight active={tourActive && currentStep === additionalStatsStep} />
             </div>
         </div>
     );

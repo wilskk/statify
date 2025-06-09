@@ -1,6 +1,6 @@
 // index.tsx
 "use client";
-import React, { useState, useEffect, FC } from "react";
+import React, { useState, useEffect, FC, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -19,23 +19,23 @@ import { useResultStore } from "@/stores/useResultStore";
 import { BaseModalProps } from "@/types/modalTypes";
 import { 
     VariableHighlight, 
-    ExactTestMethodType, 
     NonintegerWeightsType 
 } from "./types";
+import { useTourGuide, TabType, TabControlProps, TourStep } from "./hooks/useTourGuide";
+import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { AnimatePresence } from "framer-motion";
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
-import ExactTestsTab from "./ExactTestsTab";
 import StatisticsTab from "./StatisticsTab";
 import CellsTab from "./CellsTab";
-import FormatTab from "./FormatTab";
 
 // Types
 import type { Variable } from "@/types/Variable";
 
 // Main content component that's agnostic of container type
 const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
-    const [activeTab, setActiveTab] = useState("variables");
+    const [activeTab, setActiveTab] = useState<TabType>("variables");
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [rowVariables, setRowVariables] = useState<Variable[]>([]);
     const [columnVariables, setColumnVariables] = useState<Variable[]>([]);
@@ -46,35 +46,36 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+    // Tour guide state
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab,
+        currentActiveTab: activeTab,
+    }), [activeTab]);
+    
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps,
+        currentTargetElement, 
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType, tabControl);
+
     // Variables tab state
     const [displayClusteredBarCharts, setDisplayClusteredBarCharts] = useState(false);
     const [suppressTables, setSuppressTables] = useState(false);
     const [displayLayerVariables, setDisplayLayerVariables] = useState(true);
 
-    // Exact Tests state
-    const [exactTestMethod, setExactTestMethod] = useState<ExactTestMethodType>('asymptotic');
-    const [confidenceLevel, setConfidenceLevel] = useState("99");
-    const [monteCarloSamples, setMonteCarloSamples] = useState("10000");
-    const [timeLimit, setTimeLimit] = useState("5");
-    const [useTimeLimit, setUseTimeLimit] = useState(true);
-
     // Statistics state
     const [chiSquare, setChiSquare] = useState(false);
     const [correlations, setCorrelations] = useState(false);
-    const [contingencyCoefficient, setContingencyCoefficient] = useState(false);
     const [phiAndCramersV, setPhiAndCramersV] = useState(false);
-    const [lambda, setLambda] = useState(false);
-    const [uncertaintyCoefficient, setUncertaintyCoefficient] = useState(false);
     const [gamma, setGamma] = useState(false);
-    const [somersD, setSomersD] = useState(false);
     const [kendallTauB, setKendallTauB] = useState(false);
     const [kendallTauC, setKendallTauC] = useState(false);
-    const [eta, setEta] = useState(false);
-    const [kappa, setKappa] = useState(false);
     const [risk, setRisk] = useState(false);
-    const [mcNemar, setMcNemar] = useState(false);
-    const [cochranMantelHaenszel, setCochranMantelHaenszel] = useState(false);
-    const [commonOddsRatio, setCommonOddsRatio] = useState("1");
 
     // Cells state
     const [observedCounts, setObservedCounts] = useState(true);
@@ -91,9 +92,6 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
     const [adjustedStandardizedResiduals, setAdjustedStandardizedResiduals] = useState(false);
     const [nonintegerWeights, setNonintegerWeights] = useState<NonintegerWeightsType>('roundCell');
     
-    // Format state
-    const [rowOrder, setRowOrder] = useState<'ascending' | 'descending'>('ascending');
-
     const variables = useVariableStore.getState().variables;
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
@@ -126,30 +124,14 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
         setSuppressTables(false);
         setDisplayLayerVariables(true);
 
-        // Exact Tests state
-        setExactTestMethod('asymptotic');
-        setConfidenceLevel("99");
-        setMonteCarloSamples("10000");
-        setTimeLimit("5");
-        setUseTimeLimit(true);
-
         // Statistics state
         setChiSquare(false);
         setCorrelations(false);
-        setContingencyCoefficient(false);
         setPhiAndCramersV(false);
-        setLambda(false);
-        setUncertaintyCoefficient(false);
         setGamma(false);
-        setSomersD(false);
         setKendallTauB(false);
         setKendallTauC(false);
-        setEta(false);
-        setKappa(false);
         setRisk(false);
-        setMcNemar(false);
-        setCochranMantelHaenszel(false);
-        setCommonOddsRatio("1");
 
         // Cells state
         setObservedCounts(true);
@@ -165,9 +147,6 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
         setStandardizedResiduals(false);
         setAdjustedStandardizedResiduals(false);
         setNonintegerWeights('roundCell');
-        
-        // Format state
-        setRowOrder('ascending');
     };
 
     // Helper function to ensure layer consistency
@@ -318,34 +297,19 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                                     displayClusteredBarCharts,
                                     suppressTables,
                                     displayLayerVariables,
-                                    exact: {
-                                        method: exactTestMethod,
-                                        confidenceLevel,
-                                        monteCarloSamples,
-                                        timeLimit: useTimeLimit ? timeLimit : null
-                                    },
                                     statistics: {
                                         chiSquare,
                                         correlations,
                                         nominal: {
-                                            contingencyCoefficient,
                                             phiAndCramersV,
-                                            lambda,
-                                            uncertaintyCoefficient
                                         },
                                         ordinal: {
                                             gamma,
-                                            somersD,
                                             kendallTauB,
                                             kendallTauC
                                         },
                                         other: {
-                                            eta,
-                                            kappa,
                                             risk,
-                                            mcNemar,
-                                            cochranMantelHaenszel,
-                                            commonOddsRatio
                                         }
                                     },
                                     cells: {
@@ -371,9 +335,6 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                                         },
                                         nonintegerWeights
                                     },
-                                    format: {
-                                        rowOrder
-                                    }
                                 }
                             }),
                             components: "Cross Tabulation",
@@ -395,14 +356,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
 
     return (
         <>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex-grow flex flex-col overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger value="statistics">Statistics</TabsTrigger>
-                        <TabsTrigger value="cells">Cells</TabsTrigger>
-                        <TabsTrigger value="exact">Exact Tests</TabsTrigger>
-                        <TabsTrigger value="format">Format</TabsTrigger>
+                        <TabsTrigger value="variables" id="crosstabs-variables-tab-trigger">Variables</TabsTrigger>
+                        <TabsTrigger value="statistics" id="crosstabs-statistics-tab-trigger">Statistics</TabsTrigger>
+                        <TabsTrigger value="cells" id="crosstabs-cells-tab-trigger">Cells</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -431,27 +390,24 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                             displayLayerVariables={displayLayerVariables}
                             setDisplayLayerVariables={setDisplayLayerVariables}
                             containerType={containerType}
+                            tourActive={tourActive}
+                            currentStep={currentStep}
+                            tourSteps={tourSteps}
                         />
                     </TabsContent>
                     <TabsContent value="statistics">
                         <StatisticsTab
                             chiSquare={chiSquare} setChiSquare={setChiSquare}
                             correlations={correlations} setCorrelations={setCorrelations}
-                            contingencyCoefficient={contingencyCoefficient} setContingencyCoefficient={setContingencyCoefficient}
                             phiAndCramersV={phiAndCramersV} setPhiAndCramersV={setPhiAndCramersV}
-                            lambda={lambda} setLambda={setLambda}
-                            uncertaintyCoefficient={uncertaintyCoefficient} setUncertaintyCoefficient={setUncertaintyCoefficient}
                             gamma={gamma} setGamma={setGamma}
-                            somersD={somersD} setSomersD={setSomersD}
                             kendallTauB={kendallTauB} setKendallTauB={setKendallTauB}
                             kendallTauC={kendallTauC} setKendallTauC={setKendallTauC}
-                            eta={eta} setEta={setEta}
-                            kappa={kappa} setKappa={setKappa}
                             risk={risk} setRisk={setRisk}
-                            mcNemar={mcNemar} setMcNemar={setMcNemar}
-                            cochranMantelHaenszel={cochranMantelHaenszel} setCochranMantelHaenszel={setCochranMantelHaenszel}
-                            commonOddsRatio={commonOddsRatio} setCommonOddsRatio={setCommonOddsRatio}
                             containerType={containerType}
+                            tourActive={tourActive}
+                            currentStep={currentStep}
+                            tourSteps={tourSteps}
                         />
                     </TabsContent>
                     <TabsContent value="cells">
@@ -470,23 +426,9 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                             adjustedStandardizedResiduals={adjustedStandardizedResiduals} setAdjustedStandardizedResiduals={setAdjustedStandardizedResiduals}
                             nonintegerWeights={nonintegerWeights} setNonintegerWeights={setNonintegerWeights}
                             containerType={containerType}
-                        />
-                    </TabsContent>
-                    <TabsContent value="exact">
-                        <ExactTestsTab
-                            exactTestMethod={exactTestMethod} setExactTestMethod={setExactTestMethod}
-                            confidenceLevel={confidenceLevel} setConfidenceLevel={setConfidenceLevel}
-                            monteCarloSamples={monteCarloSamples} setMonteCarloSamples={setMonteCarloSamples}
-                            timeLimit={timeLimit} setTimeLimit={setTimeLimit}
-                            useTimeLimit={useTimeLimit} setUseTimeLimit={setUseTimeLimit}
-                            containerType={containerType}
-                        />
-                    </TabsContent>
-                    <TabsContent value="format">
-                        <FormatTab
-                            rowOrder={rowOrder}
-                            setRowOrder={setRowOrder}
-                            containerType={containerType}
+                            tourActive={tourActive}
+                            currentStep={currentStep}
+                            tourSteps={tourSteps}
                         />
                     </TabsContent>
                 </div>
@@ -497,7 +439,9 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
                 {/* Left: Help icon */}
                 <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+                    <Button variant="ghost" size="icon" onClick={startTour} className="h-8 w-8">
+                        <HelpCircle size={18} />
+                    </Button>
                 </div>
                 {/* Right: Buttons */}
                 <div>
@@ -518,6 +462,7 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                         Cancel
                     </Button>
                     <Button
+                        id="crosstabs-ok-button"
                         onClick={handleAnalyze}
                         disabled={isCalculating}
                     >
@@ -525,6 +470,20 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                     </Button>
                 </div>
             </div>
+            
+            <AnimatePresence>
+                {tourActive && currentTargetElement && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
         </>
     );
 };

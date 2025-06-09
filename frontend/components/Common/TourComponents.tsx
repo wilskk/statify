@@ -68,13 +68,31 @@ export const TourPopup: FC<{
       const popupBuffer = 20;
       let top: number, left: number;
       
-      // Position based on mode (sidebar vs dialog)
+      // Position based on horizontal position preference
       if (horizontalPosition === 'left') {
-        // Sidebar mode: position to the left
-        left = Math.max(10, rect.left - 300);
-        top = rect.top + (rect.height / 2) - 100;
+        // Position to the left of the element
+        left = Math.max(10, rect.left - popupWidth - popupBuffer);
+        
+        // If there's not enough space on the left, try the right side
+        if (left < 10) {
+          left = rect.right + popupBuffer;
+        }
+        
+        // Vertical positioning - center align with the element when using horizontal positioning
+        top = rect.top + (rect.height / 2) - (popupHeight / 2);
+      } else if (horizontalPosition === 'right') {
+        // Position to the right of the element
+        left = rect.right + popupBuffer;
+        
+        // If there's not enough space on the right, try the left side
+        if (left + popupWidth > window.innerWidth - 10) {
+          left = Math.max(10, rect.left - popupWidth - popupBuffer);
+        }
+        
+        // Center align vertically
+        top = rect.top + (rect.height / 2) - (popupHeight / 2);
       } else {
-        // Dialog mode: position above/below
+        // Standard top/bottom positioning
         if (position === 'top') {
           top = rect.top - (popupHeight + popupBuffer);
           // If not enough space above, move below
@@ -86,34 +104,20 @@ export const TourPopup: FC<{
           top = rect.bottom + popupBuffer;
         }
         
-        // Horizontal positioning
+        // Horizontal positioning - center align by default
         const elementWidth = rect.width;
         left = rect.left + (elementWidth / 2) - (popupWidth / 2);
-        
-        // Adjust for small elements
-        if (elementWidth < 100) {
-          const rightSpace = window.innerWidth - rect.right;
-          const leftSpace = rect.left;
-          
-          if (rightSpace >= popupWidth + popupBuffer) {
-            left = rect.right + popupBuffer;
-          } else if (leftSpace >= popupWidth + popupBuffer) {
-            left = rect.left - (popupWidth + popupBuffer);
-          }
-        }
-
-        // Right position override
-        if (horizontalPosition === 'right') {
-          left = rect.right - popupWidth;
-        }
-        
-        // Keep within viewport
-        if (left < 10) {
-          left = 10;
-        }
-        if (left + popupWidth > window.innerWidth - 10) {
-          left = window.innerWidth - (popupWidth + 10);
-        }
+      }
+      
+      // Keep within viewport bounds
+      if (top < 10) top = 10;
+      if (top + popupHeight > window.innerHeight - 10) {
+        top = window.innerHeight - popupHeight - 10;
+      }
+      
+      if (left < 10) left = 10;
+      if (left + popupWidth > window.innerWidth - 10) {
+        left = window.innerWidth - popupWidth - 10;
       }
       
       setPopupPosition({ top, left });
@@ -139,27 +143,27 @@ export const TourPopup: FC<{
     const arrowClasses = "w-3 h-3 bg-white dark:bg-gray-800";
     const borderClasses = "border-primary/10 dark:border-primary/20";
     
-    // Dialog mode arrows (top/bottom)
-    if (horizontalPosition !== 'left') {
-      if (position === 'top') {
-        return (
-          <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 ${arrowClasses} border-b border-r ${borderClasses}`} />
-        );
-      }
-      if (position === 'bottom') {
-        return (
-          <div className={`absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-t border-l ${borderClasses}`} />
-        );
-      }
-    }
-    // Sidebar mode arrow (left)
-    else if (horizontalPosition === 'left') {
+    if (horizontalPosition === 'left') {
+      // Arrow pointing to the right
       return (
         <div className={`absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-t border-r ${borderClasses}`} />
       );
+    } else if (horizontalPosition === 'right') {
+      // Arrow pointing to the left
+      return (
+        <div className={`absolute left-0 top-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-b border-l ${borderClasses}`} />
+      );
+    } else if (position === 'top') {
+      // Arrow pointing down
+      return (
+        <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 ${arrowClasses} border-b border-r ${borderClasses}`} />
+      );
+    } else {
+      // Arrow pointing up (bottom position)
+      return (
+        <div className={`absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 ${arrowClasses} border-t border-l ${borderClasses}`} />
+      );
     }
-    
-    return null;
   };
 
   return (

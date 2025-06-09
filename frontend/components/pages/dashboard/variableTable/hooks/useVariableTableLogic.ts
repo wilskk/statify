@@ -1,14 +1,13 @@
 // statify/components/variableTable/useVariableTableLogic.ts
-import { useRef, useEffect, useMemo, useCallback } from "react";
+import { useRef, useMemo, useCallback } from "react";
 import Handsontable from 'handsontable';
 import { useVariableStore } from "@/stores/useVariableStore";
-import { transformVariablesToTableData } from '../utils';
-import { COLUMN_INDEX } from '../constants';
+import { COLUMN_INDEX } from '../tableConfig';
 import { useVariableTableUpdates } from './useVariableTableUpdates';
 import { useVariableTableDialogs } from './useVariableTableDialogs';
 import { useVariableTableEvents } from './useVariableTableEvents';
+import { transformVariablesToTableData } from '../utils';
 
-// Add static measure options map
 const MEASURE_OPTIONS: Record<string, string[]> = {
     STRING: ['nominal', 'ordinal'],
     DEFAULT: ['nominal', 'ordinal', 'scale'],
@@ -17,12 +16,10 @@ const MEASURE_OPTIONS: Record<string, string[]> = {
 export function useVariableTableLogic() {
     // Removed HotTableClass import; using any for ref
     const hotTableRef = useRef<any>(null);
-    const { variables } = useVariableStore(); // Get variables
 
-    // Replace state-based tableData handling with memoization
+    // Subscribe to variables and compute tableData with memoization
+    const variables = useVariableStore(state => state.variables);
     const tableData = useMemo(() => transformVariablesToTableData(variables), [variables]);
-
-    // No longer storing variableTableRef in global store
 
     // --- Initialize Child Hooks ---
 
@@ -60,9 +57,6 @@ export function useVariableTableLogic() {
         setSelectedCell, // Pass down the setter from dialogs hook
     });
 
-    // Memoize measure options lookup
-    const measureSourceMap = useMemo(() => MEASURE_OPTIONS, []);
-
     // --- Dynamic Cell Configuration ---
     const dynamicCellsConfig = useCallback((row: number, col: number, prop: string | number) => {
         if (col === COLUMN_INDEX.MEASURE) {
@@ -70,21 +64,41 @@ export function useVariableTableLogic() {
             const currentType = currentVar?.type;
             const currentMeasure = currentVar?.measure;
             // Use DEFAULT if type is undefined or not in map
-            const baseMeasures = measureSourceMap[currentType ?? 'DEFAULT'];
+            const baseMeasures = MEASURE_OPTIONS[currentType ?? 'DEFAULT'];
             const sourceOptions = currentMeasure === 'unknown'
                 ? ['unknown', ...baseMeasures]
                 : baseMeasures;
             return {
+                type: 'autocomplete',
                 source: sourceOptions,
                 strict: true,
                 allowInvalid: false,
+                trimDropdown: false,
+                visibleRows: 5,
                 className: currentMeasure === 'unknown' ? 'htUnknown' : ''
             } as Handsontable.CellProperties;
         }
 
         return {};
-    }, [variables, measureSourceMap]);
+    }, [variables]);
     // --- End Dynamic Cell Configuration ---
+
+    // Unified context-menu dispatch
+    const handleContextMenu = useCallback((key: string) => {
+        switch (key) {
+            case 'insert_variable':
+                handleInsertVariable();
+                break;
+            case 'copy_variable':
+                handleCopyVariable();
+                break;
+            case 'delete_variable':
+                handleDeleteVariable();
+                break;
+            default:
+                break;
+        }
+    }, [handleInsertVariable, handleCopyVariable, handleDeleteVariable]);
 
     // --- Return values needed by the VariableTable component ---
     return {
@@ -98,6 +112,9 @@ export function useVariableTableLogic() {
         handleInsertVariable,
         handleDeleteVariable,
         handleCopyVariable,
+
+        // Unified context-menu dispatch
+        handleContextMenu,
 
         // Dialog State & Handlers for Dialog Components
         showTypeDialog,

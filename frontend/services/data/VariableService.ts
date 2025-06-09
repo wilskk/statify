@@ -59,29 +59,21 @@ export class VariableService {
    * Update or create a variable
    */
   async saveVariable(variable: Variable) {
+    // Combined insert/update + value-labels rename in one Dexie transaction
     try {
-      let variableId: number;
-      
-      // Use transaction to ensure both variable and value labels are saved atomically
-      await db.transaction('rw', [db.variables, db.valueLabels], async () => {
-        // If updating an existing variable and the name has changed
+      const id = await db.transaction('rw', [db.variables, db.valueLabels], async () => {
+        // Save variable directly (insert or update)
+        const savedId = await db.variables.put(variable);
+        // If name changed, bulk modify labels
         if (variable.id !== undefined) {
-          const existingVariable = await variableRepository.getVariableById(variable.id);
-          
-          // If name has changed, we need to update the variableName in value labels
-          if (existingVariable && existingVariable.name !== variable.name) {
-            await variableRepository.updateValueLabelsVariableName(
-              existingVariable.name, 
-              variable.name
-            );
-          }
+          await db.valueLabels
+            .where('variableName')
+            .equals((await variableRepository.getVariableById(variable.id))?.name || '')
+            .modify({ variableName: variable.name });
         }
-        
-        // Save the variable
-        variableId = await variableRepository.saveVariable(variable);
+        return savedId;
       });
-      
-      return variableId!;
+      return id;
     } catch (error) {
       console.error("Error in VariableService.saveVariable:", error);
       throw error;
@@ -121,47 +113,26 @@ export class VariableService {
    * Import variables
    */
   async importVariables(variables: Variable[]) {
+    // Batch import via single transaction + bulk clear + bulk add + bulk modify labels
     try {
       await db.transaction('rw', [db.variables, db.valueLabels], async () => {
-        // Get existing variables to track changes for value labels
-        const existingVariables = await variableRepository.getAllVariables();
-        const existingVariableMap = new Map<number, string>();
-        
-        // Map column indices to variable names for existing variables
-        existingVariables.forEach(v => {
-          if (v.columnIndex !== undefined && v.name) {
-            existingVariableMap.set(v.columnIndex, v.name);
-          }
-        });
-        
-        // Clear all variables first
-        await variableRepository.clearVariables();
-        
-        // Process each variable
-        for (const variable of variables) {
-          // Check if this column index had a variable before with a different name
-          const oldName = existingVariableMap.get(variable.columnIndex);
-          
-          // Save the new variable first
-          await variableRepository.saveVariable(variable);
-          
-          // If the column had a variable with a different name before, update value labels
-          if (oldName && oldName !== variable.name) {
-            await variableRepository.updateValueLabelsVariableName(oldName, variable.name);
-          }
-          
-          // Add any value labels associated with this variable
-          if (variable.values && variable.values.length > 0) {
-            for (const valueLabel of variable.values) {
-              await variableRepository.saveValueLabel({
-                ...valueLabel,
-                variableName: variable.name
-              });
-            }
-          }
+        // Map old names by columnIndex
+        const existing = await db.variables.toArray();
+        const oldNameMap = new Map<number, string>(existing.map(v => [v.columnIndex, v.name]));
+
+        // Clear all variables and labels
+        await db.variables.clear();
+        await db.valueLabels.clear();
+
+        // Bulk put variables
+        await db.variables.bulkPut(variables);
+
+        // Bulk insert labels
+        const labels = variables.flatMap(v => v.values.map(val => ({ ...val, variableName: v.name })));
+        if (labels.length) {
+          await db.valueLabels.bulkPut(labels);
         }
       });
-      
       return true;
     } catch (error) {
       console.error("Error in VariableService.importVariables:", error);

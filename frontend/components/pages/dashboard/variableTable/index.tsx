@@ -11,14 +11,8 @@ import { VariableTypeDialog } from "./dialog/VariableTypeDialog";
 import { ValueLabelsDialog } from "./dialog/ValueLabelsDialog";
 import { MissingValuesDialog } from "./dialog/MissingValuesDialog";
 
-import { colHeaders, columns } from "./tableConfig";
+import { colHeaders, columns, DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH, DEFAULT_VARIABLE_DECIMALS, COLUMN_INDEX } from "./tableConfig";
 import { useVariableTableLogic } from './hooks/useVariableTableLogic';
-import {
-    DEFAULT_VARIABLE_TYPE,
-    DEFAULT_VARIABLE_WIDTH,
-    DEFAULT_VARIABLE_DECIMALS,
-    COLUMN_INDEX // Import COLUMN_INDEX
-} from './constants'; // Asumsi path ini benar
 import { VariableType } from "@/types/Variable"; // Import VariableType
 import './VariableTable.css'; // Import CSS
 
@@ -36,6 +30,7 @@ export default function VariableTable() {
         handleInsertVariable,
         handleDeleteVariable,
         handleCopyVariable,
+        handleContextMenu,
 
         // Dialog State & Handlers from useVariableTableDialogs (via useVariableTableLogic)
         showTypeDialog,
@@ -155,19 +150,7 @@ export default function VariableTable() {
                             copy_variable:   { name: 'Copy Variable' },
                             delete_variable: { name: 'Delete Variable' },
                         },
-                        callback: (key: string) => {
-                            switch (key) {
-                                case 'insert_variable':
-                                    handleInsertVariable();
-                                    break;
-                                case 'copy_variable':
-                                    handleCopyVariable();
-                                    break;
-                                case 'delete_variable':
-                                    handleDeleteVariable();
-                                    break;
-                            }
-                        },
+                        callback: handleContextMenu,
                     }}
                     licenseKey="non-commercial-and-evaluation"
                     minSpareRows={1}
@@ -179,14 +162,10 @@ export default function VariableTable() {
                 />
             </div>
 
-            {/* Render dialogs only if the required variable data is available */}
-            {selectedVariable && (
-                <>
-                    <VariableTypeDialog {...typeDialogProps} />
-                    <ValueLabelsDialog {...valuesDialogProps} />
-                    <MissingValuesDialog {...missingDialogProps} />
-                </>
-            )}
+            {/* Render dialogs */}
+            <VariableTypeDialog {...typeDialogProps} />
+            <ValueLabelsDialog {...valuesDialogProps} />
+            <MissingValuesDialog {...missingDialogProps} />
         </div>
     );
 }

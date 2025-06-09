@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, HelpCircle } from "lucide-react";
+import { AlertCircle, HelpCircle, InfoIcon } from "lucide-react";
 import VariableListManager from '@/components/Common/VariableListManager';
 import { VariablesToScanProps } from "./types";
 import { useVariablesToScan } from "./hooks/useVariablesToScan";
@@ -44,8 +44,9 @@ const VariablesToScanContent: FC<VariablesToScanProps> = ({ onClose, onContinue,
         <>
             <div className="p-6 overflow-y-auto flex-grow">
                 {/* Information text */}
-                <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
-                    <p className="text-sm text-accent-foreground">
+                <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
+                    <InfoIcon className="text-accent-foreground h-4 w-4 flex-shrink-0" />
+                    <p className="text-accent-foreground text-xs">
                         Select variables to scan. Categorical variables (nominal/ordinal) work best.
                         You can change measurement level in the next panel.
                     </p>
@@ -108,10 +109,8 @@ const VariablesToScanContent: FC<VariablesToScanProps> = ({ onClose, onContinue,
             </div>
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
-                </div>
+                {/* Left: Help icon (REMOVED) */}
+                <div />
                 {/* Right: Buttons */}
                 <div>
                     <Button

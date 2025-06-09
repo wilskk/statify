@@ -1,28 +1,38 @@
 import { Variable } from "@/types/Variable";
 
+export type TabType = 'variables' | 'options';
+
+export type DuplicateCasesSource = 'source' | 'matching' | 'sorting';
+
 export interface DuplicateCasesProps {
     onClose: () => void;
     containerType?: "dialog" | "sidebar";
 }
 
-export interface VariableTabProps {
+interface TourTabProps {
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: any[];
+}
+
+export interface VariableTabProps extends TourTabProps {
     sourceVariables: Variable[];
     matchingVariables: Variable[];
     sortingVariables: Variable[];
-    highlightedVariable: { id: string, source: string } | null;
-    setHighlightedVariable: (value: { id: string, source: string } | null) => void;
-    sortOrder: "ascending" | "descending";
-    setSortOrder: (value: "ascending" | "descending") => void;
+    highlightedVariable: { id: string, source: DuplicateCasesSource } | null;
+    setHighlightedVariable: (value: { id: string, source: DuplicateCasesSource } | null) => void;
+    sortOrder: 'asc' | 'desc';
+    setSortOrder: (order: 'asc' | 'desc') => void;
     handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
-    handleReorderVariable: (listId: string, variables: Variable[]) => void;
-    getVariableIcon: (variable: Variable) => React.ReactNode;
+    handleReorderVariable: (listId: string, reorderedList: Variable[]) => void;
+    getVariableIcon: (variable: Variable) => React.JSX.Element;
     getDisplayName: (variable: Variable) => string;
-    containerType?: "dialog" | "sidebar";
+    containerType: "dialog" | "sidebar";
 }
 
-export interface OptionsTabProps {
-    primaryCaseIndicator: "last" | "first";
-    setPrimaryCaseIndicator: (value: "last" | "first") => void;
+export interface OptionsTabProps extends TourTabProps {
+    primaryCaseIndicator: boolean;
+    setPrimaryCaseIndicator: (value: boolean) => void;
     primaryName: string;
     setPrimaryName: (value: string) => void;
     sequentialCount: boolean;
@@ -31,5 +41,5 @@ export interface OptionsTabProps {
     setSequentialName: (value: string) => void;
     moveMatchingToTop: boolean;
     setMoveMatchingToTop: (value: boolean) => void;
-    containerType?: "dialog" | "sidebar";
+    containerType: "dialog" | "sidebar";
 } 

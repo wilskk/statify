@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction } from 'react';
 import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
+import { TourStep } from './hooks/useTourGuide';
 
 // Type for highlighted variable
 export type HighlightedVariable = {
@@ -8,8 +9,15 @@ export type HighlightedVariable = {
     source: 'available' | 'dependent' | 'factor' | 'label';
 } | null;
 
+// === Tour Props ===
+export interface TourProps {
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
+}
+
 // Props for VariablesTab component
-export interface VariablesTabProps {
+export interface VariablesTabProps extends TourProps {
     availableVariables: Variable[];
     dependentVariables: Variable[];
     factorVariables: Variable[];
@@ -26,7 +34,7 @@ export interface VariablesTabProps {
 }
 
 // Props for StatisticsTab component
-export interface StatisticsTabProps {
+export interface StatisticsTabProps extends TourProps {
     showDescriptives: boolean;
     setShowDescriptives: Dispatch<SetStateAction<boolean>>;
     confidenceInterval: string;
@@ -37,11 +45,13 @@ export interface StatisticsTabProps {
     setShowOutliers: Dispatch<SetStateAction<boolean>>;
     showPercentiles: boolean;
     setShowPercentiles: Dispatch<SetStateAction<boolean>>;
+    displayOption: 'both' | 'statistics' | 'plots';
+    setDisplayOption: Dispatch<SetStateAction<'both' | 'statistics' | 'plots'>>;
     containerType?: "dialog" | "sidebar";
 }
 
 // Props for PlotsTab component
-export interface PlotsTabProps {
+export interface PlotsTabProps extends TourProps {
     boxplotOption: string;
     setBoxplotOption: Dispatch<SetStateAction<string>>;
     showStemAndLeaf: boolean;

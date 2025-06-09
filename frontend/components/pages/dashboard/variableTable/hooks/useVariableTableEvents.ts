@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import Handsontable from 'handsontable';
-import { COLUMN_INDEX_TO_FIELD_MAP, DIALOG_TRIGGER_COLUMNS, COLUMN_INDEX } from '../constants';
+import { COLUMN_INDEX_TO_FIELD_MAP, DIALOG_TRIGGER_COLUMNS, COLUMN_INDEX } from '../tableConfig';
 import { Variable, VariableType } from "@/types/Variable";
 import { PendingOperation, OperationType } from './useVariableTableUpdates'; // Assuming types are exported from here
 
@@ -50,11 +50,6 @@ export function useVariableTableEvents({
             if (field && typeof field === 'string') {
                 const existingVariable = variables.find(v => v.columnIndex === row);
                 const rawChange: any = { [field]: newValue };
-                // Constraint: STRING variables cannot have measure 'scale'
-                if (existingVariable && field === 'measure' && existingVariable.type === 'STRING' && newValue === 'scale') {
-                    console.warn(`Constraint Applied (UI): Variable type is STRING, measure cannot be 'scale'.`);
-                    rawChange.measure = 'nominal';
-                }
                 const op: PendingOperation = existingVariable
                     ? { type: 'UPDATE_VARIABLE', payload: { row, changes: rawChange } }
                     : { type: 'CREATE_VARIABLE', payload: { row, variableData: rawChange } };

@@ -95,19 +95,19 @@ const VariableTabContent: FC<VariableTabProps> = ({
             </div>
 
             <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                {/* Left: Help icon */}
-                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                    <HelpCircle size={18} className="mr-1" />
+                {/* Left: Help icon (Removed) */}
+                <div className="flex items-center text-muted-foreground">
+                    {/* <HelpCircle size={18} className="mr-1" /> */}
                 </div>
-                {/* Right: Buttons */}
+                {/* Right: Buttons */} 
                 <div>
-                    <Button
+                    {/* <Button
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
                     >
                         Reset
-                    </Button>
+                    </Button> */}
                     <Button
                         variant="outline"
                         className="mr-2"

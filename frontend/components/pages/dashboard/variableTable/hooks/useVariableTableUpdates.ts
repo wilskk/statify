@@ -26,7 +26,9 @@ export function useVariableTableUpdates() {
         addMultipleVariables,
         updateMultipleFields,
         deleteVariable,
-        ensureCompleteVariables
+        ensureCompleteVariables,
+        insertVariableAt,
+        removeVariableAt
     } = useVariableStore();
 
     const {
@@ -65,6 +67,8 @@ export function useVariableTableUpdates() {
                 // Add new variables
                 if (rowsToAdd.length > 0) {
                     const maxRowToAdd = Math.max(...rowsToAdd);
+                    // Ensure default variables exist for all preceding columns
+                    await ensureCompleteVariables(maxRowToAdd - 1);
                     // Ensure data matrix has sufficient columns
                     await ensureColumns(maxRowToAdd);
                     const newVarsData = rowsToAdd.map(row => ({ ...dataByRow.get(row)!, columnIndex: row }));
@@ -92,11 +96,9 @@ export function useVariableTableUpdates() {
                 while (pendingOperations.current.length > 0 && pendingOperations.current[0].type === 'DELETE_VARIABLE') {
                     deleteOps.push(pendingOperations.current.shift()!);
                 }
-                // Sort rows descending to avoid reindex issues
                 const rows = deleteOps.map(op => op.payload.row).sort((a, b) => b - a);
                 for (const row of rows) {
-                    await deleteVariable(row);
-                    await deleteColumn(row);
+                    await removeVariableAt(row);
                 }
             } else {
                 const operation = pendingOperations.current.shift()!;
@@ -129,24 +131,16 @@ export function useVariableTableUpdates() {
                     case 'INSERT_VARIABLE': {
                         const { row } = operation.payload; // 'row' is the index to insert *before*
 
-                        // addVariable handles the insertion logic (shifting indices)
-                        await addVariable({ columnIndex: row });
-                        // addColumns handles inserting the data column at the same index
-                        await addColumns([row]);
+                        // Delegate insertion to unified store helper
+                        await insertVariableAt(row);
 
                         break;
                     }
                     case 'DELETE_VARIABLE': {
                         const { row } = operation.payload; // 'row' is the index to delete
-                        const variableToDelete = variables.find(v => v.columnIndex === row);
-                        if (variableToDelete) {
-                            // deleteVariable handles deletion and re-indexing in the store
-                            await deleteVariable(row);
-                            // deleteColumn handles deleting the data column and potential re-indexing issues
-                            await deleteColumn(row);
-                        } else {
-                            console.warn(`[DELETE_VARIABLE] Attempted to delete non-existent variable at index ${row}.`);
-                        }
+
+                        // Delegate removal to unified store helper
+                        await removeVariableAt(row);
                         break;
                     }
                     default:
@@ -179,7 +173,9 @@ export function useVariableTableUpdates() {
         addColumns,
         deleteColumn,
         validateVariableData,
-        ensureColumns
+        ensureColumns,
+        insertVariableAt,
+        removeVariableAt
     ]);
 
     const enqueueOperation = useCallback((operation: PendingOperation) => {

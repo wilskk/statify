@@ -240,13 +240,8 @@ export const useTableUpdates = ({
     }, []);
 
     const handleAfterCreateCol = useCallback((index: number, amount: number, source?: Handsontable.ChangeSource) => {
-        console.log('After Create Col', { index, amount, source });
-        // Sync variable store: batch create variables
-        const maxIndex = index + amount - 1;
-        ensureCompleteVariables(maxIndex);
-        const newVars = Array.from({ length: amount }, (_, i) => ({ columnIndex: index + i }));
-        addMultipleVariables(newVars);
-    }, [ensureCompleteVariables, addMultipleVariables]);
+        // no-op: service layer handles insertColumn and variable sync
+    }, []);
 
     const handleAfterRemoveRow = useCallback((index: number, amount: number, physicalRows: number[], source?: Handsontable.ChangeSource) => {
         console.log('After Remove Row', { index, amount, physicalRows, source });
@@ -254,6 +249,8 @@ export const useTableUpdates = ({
     }, []);
 
     const handleAfterRemoveCol = useCallback((index: number, amount: number, physicalCols: number[], source?: Handsontable.ChangeSource) => {
+        // Skip variables deletion when triggered by context menu (handled in service)
+        if (source && String(source).toLowerCase().includes('contextmenu')) return;
         console.log('After Remove Col', { index, amount, physicalCols, source });
         // Sync variable store: batch delete variables
         const colsToDelete = [...physicalCols].sort((a, b) => b - a);

@@ -71,6 +71,8 @@ export const useTableStructure = (
         truncateClass: string
     ): any {
         if (viewMode !== 'label' || !variable?.values?.length) return;
+        // preserve original column width
+        const baseConfig = getColumnConfig(variable);
         const mappingLabels = variable.values.map(v => v.label);
         const rawLabels = Array.from(new Set(data.map(row => String(row[colIndex]))));
         const source = mappingLabels.length ? mappingLabels : rawLabels;
@@ -82,6 +84,7 @@ export const useTableStructure = (
             source,
             strict: false,
             allowInvalid: false,
+            width: baseConfig.width,
             validator(value: any, callback: (isValid: boolean) => void) {
                 if (value === null || value === undefined || String(value) === '') return callback(true);
                 const valStr = String(value).trim();

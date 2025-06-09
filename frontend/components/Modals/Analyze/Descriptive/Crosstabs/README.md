@@ -1,6 +1,6 @@
 # Crosstabs Modal Component
 
-The Crosstabs modal provides a comprehensive interface for creating cross-tabulation analyses. It features a tab-based approach that allows users to specify variables, statistics, cell display options, and test methods.
+The Crosstabs modal provides a comprehensive interface for creating cross-tabulation analyses. It features a tab-based approach that allows users to specify variables, statistics, and cell display options.
 
 ## Architecture
 
@@ -30,13 +30,6 @@ The component is built using the centralized modal architecture:
    - Controls cell display options: counts, percentages, residuals
    - Manages Z-test options and noninteger weight handling
 
-5. **Exact Tests Tab**:
-   - Sets the method for exact test calculations
-   - Provides options for Monte Carlo and exact test configurations
-
-6. **Format Tab**:
-   - Controls result formatting options like row order
-
 ## Usage
 
 The Crosstabs component is designed to work with the central modal registry:
@@ -61,12 +54,8 @@ All component props are properly typed through interfaces in `types.ts`:
 - `BaseModalProps`: Base props for modal components
 - `VariableHighlight`: Type for tracking highlighted variables
 - `NonintegerWeightsType`: Type for noninteger weights options
-- `ExactTestMethodType`: Type for exact test method options
-- `RowOrderType`: Type for row ordering options
 - Component-specific props interfaces:
   - `VariablesTabProps`
   - `StatisticsTabProps` 
   - `CellsTabProps`
-  - `ExactTestsTabProps`
-  - `FormatTabProps`
 - `CrosstabsAnalysisParams`: Parameters passed to analysis functions 

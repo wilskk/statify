@@ -14,6 +14,8 @@ import {
 import { HighlightedVariableInfo } from "./types";
 import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { TourStep } from "./hooks/useTourGuide";
 
 export interface VariablesTabProps {
     availableVariables: Variable[];
@@ -26,7 +28,8 @@ export interface VariablesTabProps {
     saveStandardized: boolean;
     setSaveStandardized: Dispatch<SetStateAction<boolean>>;
     tourActive?: boolean;
-    currentTargetElement?: HTMLElement | null;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -39,8 +42,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     reorderVariables,
     saveStandardized,
     setSaveStandardized,
-    tourActive,
-    currentTargetElement
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
@@ -90,9 +94,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const renderSelectedFooter = useCallback((listId: string) => {
         if (listId === 'selected') {
+            const stepIndex = tourSteps.findIndex(step => step.targetId === 'save-standardized-section');
             return (
                 <div className="mt-4">
-                    <div className="flex items-center relative">
+                    <div id="save-standardized-section" className="flex items-center relative">
                         <Checkbox
                             id="saveStandardized"
                             checked={saveStandardized}
@@ -102,30 +107,35 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <Label htmlFor="saveStandardized" className="text-sm cursor-pointer">
                             Save standardized values as variables
                         </Label>
-                        {tourActive && currentTargetElement?.id === "saveStandardized" && (
-                            <div className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none" />
-                        )}
+                        <ActiveElementHighlight active={tourActive && currentStep === stepIndex} />
                     </div>
                 </div>
             );
         }
         return null;
-    }, [saveStandardized, setSaveStandardized, tourActive, currentTargetElement]);
-
+    }, [saveStandardized, setSaveStandardized, tourActive, currentStep, tourSteps]);
+    
+    const availableStepIndex = tourSteps.findIndex(step => step.targetId === 'descriptive-available-variables');
+    const selectedStepIndex = tourSteps.findIndex(step => step.targetId === 'descriptive-selected-variables');
+    
     return (
         <div className="space-y-4">
-            <div id="descriptive-available-variables">
-                <div id="descriptive-selected-variables">
-                    <VariableListManager
-                        availableVariables={filteredAvailableVariables}
-                        targetLists={targetLists}
-                        variableIdKey={variableIdKeyToUse}
-                        highlightedVariable={managerHighlightedVariable}
-                        setHighlightedVariable={setManagerHighlightedVariable}
-                        onMoveVariable={handleMoveVariable}
-                        onReorderVariable={handleReorderVariables}
-                        renderListFooter={renderSelectedFooter}
-                    />
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={filteredAvailableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    renderListFooter={renderSelectedFooter}
+                />
+                <div id="descriptive-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === availableStepIndex} />
+                </div>
+                <div id="descriptive-selected-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+                     <ActiveElementHighlight active={tourActive && currentStep === selectedStepIndex} />
                 </div>
             </div>
         </div>

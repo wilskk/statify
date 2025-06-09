@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useCallback, useEffect } from "react";
+import React, { FC, useState, useCallback, useEffect, useMemo } from "react";
 import {
     DialogContent,
     DialogHeader,
@@ -27,6 +27,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/comp
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
+import { TabControlProps } from "./hooks/useTourGuide";
 
 // Komponen utama konten Descriptives yang agnostik terhadap container
 const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
@@ -67,6 +68,13 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     });
 
     // Add tour hook
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: 'variables' | 'statistics') => {
+            setActiveTab(tab);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
+    
     const { 
         tourActive, 
         currentStep, 
@@ -76,7 +84,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         nextStep, 
         prevStep, 
         endTour 
-    } = useTourGuide(containerType);
+    } = useTourGuide(containerType, tabControl);
 
     const handleReset = useCallback(() => {
         resetVariableSelection();
@@ -118,7 +126,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     <TabsList>
                         <TabsTrigger value="variables">Variables</TabsTrigger>
                         <TabsTrigger 
-                            id="statistics-tab-trigger"
+                            id="descriptive-statistics-tab-trigger"
                             value="statistics"
                         >
                             Statistics
@@ -138,7 +146,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         saveStandardized={saveStandardized}
                         setSaveStandardized={setSaveStandardized}
                         tourActive={tourActive}
-                        currentTargetElement={currentTargetElement}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -149,7 +158,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         displayOrder={displayOrder}
                         setDisplayOrder={setDisplayOrder}
                         tourActive={tourActive}
-                        currentTargetElement={currentTargetElement}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
             </Tabs>
@@ -199,7 +209,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     <Button
                         id="descriptive-ok-button"
                         onClick={runAnalysis}
-                        disabled={isLoading}
+                        disabled={isLoading || selectedVariables.length === 0}
                     >
                         {isLoading ? "Processing..." : "OK"}
                     </Button>

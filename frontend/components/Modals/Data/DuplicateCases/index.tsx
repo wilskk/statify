@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useCallback } from "react";
+import React, { FC, useMemo, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -23,34 +23,51 @@ import {
     AlertCircle,
     HelpCircle
 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { TourPopup } from "@/components/Common/TourComponents";
 import VariableTab from "./VariableTab";
 import OptionsTab from "./OptionsTab";
-import { DuplicateCasesProps } from "./types";
+import { DuplicateCasesProps, TabType, VariableTabProps, OptionsTabProps, DuplicateCasesSource } from "./types";
 import { useDuplicateCases } from "./hooks/useDuplicateCases";
+import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
 
 // Main content component separated from container logic
 const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
+    const [activeTab, setActiveTab] = useState<TabType>("variables");
     const {
         sourceVariables,
         matchingVariables,
         sortingVariables,
         highlightedVariable, setHighlightedVariable,
-        activeTab, setActiveTab,
         sortOrder, setSortOrder,
         primaryCaseIndicator, setPrimaryCaseIndicator,
         primaryName, setPrimaryName,
-        filterByIndicator, setFilterByIndicator,
         sequentialCount, setSequentialCount,
         sequentialName, setSequentialName,
         moveMatchingToTop, setMoveMatchingToTop,
-        displayFrequencies, setDisplayFrequencies,
         errorMessage, errorDialogOpen, setErrorDialogOpen,
         isProcessing,
         handleMoveVariable,
         handleReorderVariable,
         handleReset,
         handleConfirm,
-    } = useDuplicateCases({ onClose });
+    } = useDuplicateCases({ onClose, activeTab, setActiveTab });
+
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab,
+        currentActiveTab: activeTab,
+    }), [activeTab]);
+
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps,
+        currentTargetElement, 
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType, tabControl);
 
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
@@ -74,6 +91,42 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
         return variable.name;
     };
 
+    // Adapt the props from the hook to match what the child components expect
+    const variableTabProps: VariableTabProps = {
+        sourceVariables,
+        matchingVariables,
+        sortingVariables,
+        highlightedVariable: highlightedVariable as { id: string, source: DuplicateCasesSource } | null,
+        setHighlightedVariable: setHighlightedVariable as (value: { id: string, source: DuplicateCasesSource } | null) => void,
+        sortOrder: sortOrder === "ascending" ? 'asc' : 'desc',
+        setSortOrder: (order: 'asc' | 'desc') => setSortOrder(order === 'asc' ? 'ascending' : 'descending'),
+        handleMoveVariable,
+        handleReorderVariable,
+        getVariableIcon,
+        getDisplayName,
+        containerType,
+        tourActive,
+        currentStep,
+        tourSteps,
+    };
+
+    const optionsTabProps: OptionsTabProps = {
+        primaryCaseIndicator: primaryCaseIndicator === "first",
+        setPrimaryCaseIndicator: (value: boolean) => setPrimaryCaseIndicator(value ? "first" : "last"),
+        primaryName,
+        setPrimaryName,
+        sequentialCount,
+        setSequentialCount,
+        sequentialName,
+        setSequentialName,
+        moveMatchingToTop,
+        setMoveMatchingToTop,
+        containerType,
+        tourActive,
+        currentStep,
+        tourSteps
+    };
+
     return (
         <>
             <div className={`flex flex-col ${containerType === "sidebar" ? "h-full overflow-hidden" : "max-h-[85vh]"}`}>
@@ -83,18 +136,20 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                     </DialogHeader>
                 )}
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
                     <div className="border-b border-border flex-shrink-0">
                         <TabsList className="bg-muted rounded-none h-9 p-0">
                             <TabsTrigger
+                                id="variables-tab-trigger"
                                 value="variables"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+                                className="px-4 h-8 rounded-none text-sm"
                             >
                                 Variables
                             </TabsTrigger>
                             <TabsTrigger
+                                id="options-tab-trigger"
                                 value="options"
-                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-background border-t border-l border-r border-border text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+                                className="px-4 h-8 rounded-none text-sm"
                             >
                                 Options
                             </TabsTrigger>
@@ -102,45 +157,19 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                     </div>
 
                     <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                        <VariableTab
-                            sourceVariables={sourceVariables}
-                            matchingVariables={matchingVariables}
-                            sortingVariables={sortingVariables}
-                            highlightedVariable={highlightedVariable}
-                            setHighlightedVariable={setHighlightedVariable}
-                            sortOrder={sortOrder}
-                            setSortOrder={setSortOrder}
-                            handleMoveVariable={handleMoveVariable}
-                            handleReorderVariable={handleReorderVariable}
-                            getVariableIcon={getVariableIcon}
-                            getDisplayName={getDisplayName}
-                            containerType={containerType}
-                        />
+                        <VariableTab {...variableTabProps} />
                     </TabsContent>
 
                     <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                        <OptionsTab
-                            primaryCaseIndicator={primaryCaseIndicator}
-                            setPrimaryCaseIndicator={setPrimaryCaseIndicator}
-                            primaryName={primaryName}
-                            setPrimaryName={setPrimaryName}
-                            sequentialCount={sequentialCount}
-                            setSequentialCount={setSequentialCount}
-                            sequentialName={sequentialName}
-                            setSequentialName={setSequentialName}
-                            moveMatchingToTop={moveMatchingToTop}
-                            setMoveMatchingToTop={setMoveMatchingToTop}
-                            containerType={containerType}
-                        />
+                        <OptionsTab {...optionsTabProps} />
                     </TabsContent>
                 </Tabs>
 
                 <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
-                    {/* Left: Help icon */}
-                    <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
-                        <HelpCircle size={18} className="mr-1" />
-                    </div>
-                    {/* Right: Buttons */}
+                    <Button variant="ghost" size="icon" onClick={startTour} className="text-muted-foreground hover:text-foreground">
+                        <HelpCircle size={20} />
+                    </Button>
+                    
                     <div>
                         <Button
                             variant="outline"
@@ -168,6 +197,20 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                 </div>
             </div>
 
+            <AnimatePresence>
+                {tourActive && currentTargetElement && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
             <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
                 <DialogContent className="max-w-[400px] p-6 bg-popover border border-border shadow-md rounded-md">
                     <DialogHeader className="mb-4">
@@ -193,7 +236,6 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
 
 // Main component that handles different container types
 const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose, containerType = "dialog" }) => {
-    // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
@@ -204,10 +246,9 @@ const DuplicateCases: FC<DuplicateCasesProps> = ({ onClose, containerType = "dia
         );
     }
 
-    // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-[650px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl w-full p-0 flex flex-col">
                 <DuplicateCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

@@ -3,8 +3,6 @@ import Handsontable from 'handsontable';
 import { VariableAlign } from '@/types/Variable';
 import { insertRow, insertColumn, removeRows, removeColumns, applyAlignment as svcApplyAlignment } from '../services/contextMenuService';
 
-// Removed HotTableClass import; using any for ref
-
 interface UseContextMenuLogicProps {
     hotTableRef: React.RefObject<any>;
     actualNumRows: number;
@@ -68,8 +66,12 @@ export const useContextMenuLogic = ({
 
     const handleInsertColumn = useCallback((left: boolean) => {
         const { col } = getSelectedCell();
-        if (col !== -1) insertColumn(left ? col : col + 1);
-    }, [getSelectedCell]);
+        if (col === -1) return;
+        // determine target index and clamp to actualNumCols
+        let idx = left ? col : col + 1;
+        if (idx > actualNumCols) idx = actualNumCols;
+        insertColumn(idx);
+    }, [getSelectedCell, actualNumCols]);
 
     const handleRemoveRow = useCallback(() => {
         const { row } = getSelectedCell();

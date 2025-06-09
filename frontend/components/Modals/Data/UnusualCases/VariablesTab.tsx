@@ -1,6 +1,7 @@
 import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import type { Variable } from "@/types/Variable"; // Import Variable directly
 import type { VariablesTabProps, UnusualCasesSource } from "../types"; // Import props from ../types
 
@@ -33,8 +34,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
     reorderVariables,
     errorMsg,
     getVariableIcon,
-    getDisplayName
+    getDisplayName,
+    tourActive,
+    currentStep,
+    tourSteps
 }) => {
+    const analysisStepIndex = tourSteps?.findIndex(step => step.targetId === 'unusual-cases-analysis-variables');
+    const identifierStepIndex = tourSteps?.findIndex(step => step.targetId === 'unusual-cases-identifier-variable');
 
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
@@ -103,7 +109,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     }, [reorderVariables]);
 
     return (
-        <div>
+        <div className="relative">
             <VariableListManager
                 availableVariables={availableVariables}
                 targetLists={targetLists}
@@ -115,6 +121,19 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 getVariableIcon={getVariableIcon}
                 getDisplayName={getDisplayName}
             />
+            {/* Overlays for tour highlighting. These are positioned over the target list areas */}
+            <div 
+                id="unusual-cases-analysis-variables" 
+                className="absolute top-0 right-0 w-[48%] h-[15.5rem] pointer-events-none"
+            >
+                <ActiveElementHighlight active={!!(tourActive && currentStep === analysisStepIndex)} />
+            </div>
+            <div 
+                id="unusual-cases-identifier-variable" 
+                className="absolute top-[16.5rem] right-0 w-[48%] h-[7rem] pointer-events-none"
+            >
+                <ActiveElementHighlight active={!!(tourActive && currentStep === identifierStepIndex)} />
+            </div>
             {errorMsg && (
                 <div className="col-span-2 text-destructive text-sm mt-3 p-2 bg-destructive/10 border border-destructive/30 rounded">
                     {errorMsg}

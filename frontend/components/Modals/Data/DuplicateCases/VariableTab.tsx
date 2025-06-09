@@ -1,72 +1,72 @@
-import React, { FC } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { FC, useCallback } from "react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { Variable } from "@/types/Variable";
-import { VariableTabProps } from "./types";
+import { VariableTabProps, DuplicateCasesSource } from "./types";
 
 const VariableTab: FC<VariableTabProps> = ({
-                                               sourceVariables,
-                                               matchingVariables,
-                                               sortingVariables,
-                                               highlightedVariable,
-                                               setHighlightedVariable,
-                                               sortOrder,
-                                               setSortOrder,
-                                               handleMoveVariable,
-                                               handleReorderVariable,
-                                               getVariableIcon,
-                                               getDisplayName,
-                                               containerType = "dialog"
-                                           }) => {
-    // Konfigurasi untuk variabel matching
-    const matchingListConfig: TargetListConfig = {
-        id: 'matching',
-        title: 'Define matching cases by:',
-        variables: matchingVariables,
-        height: '150px',
-        droppable: true,
-        draggableItems: true
-    };
+    sourceVariables,
+    matchingVariables,
+    sortingVariables,
+    highlightedVariable,
+    setHighlightedVariable,
+    sortOrder,
+    setSortOrder,
+    handleMoveVariable,
+    handleReorderVariable,
+    getVariableIcon,
+    getDisplayName,
+    tourActive,
+    currentStep,
+    tourSteps = []
+}) => {
+    const matchingStepIndex = tourSteps.findIndex(step => step.targetId === 'duplicate-cases-matching-variables');
+    const sortingStepIndex = tourSteps.findIndex(step => step.targetId === 'duplicate-cases-sorting-variables');
 
-    // Konfigurasi untuk variabel sorting
-    const sortingListConfig: TargetListConfig = {
-        id: 'sorting',
-        title: 'Sort within matching groups by:',
-        variables: sortingVariables,
-        height: '100px',
-        droppable: true,
-        draggableItems: true
-    };
+    const targetLists: TargetListConfig[] = [
+        {
+            id: 'matching',
+            title: 'Define matching cases by:',
+            variables: matchingVariables,
+            height: '150px',
+            droppable: true,
+            draggableItems: true,
+        },
+        {
+            id: 'sorting',
+            title: 'Sort within matching groups by:',
+            variables: sortingVariables,
+            height: '100px',
+            droppable: true,
+            draggableItems: true,
+        }
+    ];
 
-    // Render additional footer for sorting list
     const renderListFooter = (listId: string) => {
         if (listId === 'sorting') {
             return (
                 <div className="flex items-center mt-2">
                     <div className="ml-auto flex items-center space-x-4">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="ascending"
-                                checked={sortOrder === "ascending"}
-                                onCheckedChange={() => setSortOrder("ascending")}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="ascending" className="text-xs cursor-pointer text-foreground">
-                                Ascending
-                            </Label>
-                        </div>
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="descending"
-                                checked={sortOrder === "descending"}
-                                onCheckedChange={() => setSortOrder("descending")}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="descending" className="text-xs cursor-pointer text-foreground">
-                                Descending
-                            </Label>
-                        </div>
+                        <RadioGroup 
+                            value={sortOrder} 
+                            onValueChange={(value) => setSortOrder(value as 'asc' | 'desc')}
+                            className="flex space-x-4"
+                        >
+                            <div className="flex items-center">
+                                <RadioGroupItem value="asc" id="ascending" />
+                                <Label htmlFor="ascending" className="text-xs cursor-pointer text-foreground ml-2">
+                                    Ascending
+                                </Label>
+                            </div>
+                            <div className="flex items-center">
+                                <RadioGroupItem value="desc" id="descending" />
+                                <Label htmlFor="descending" className="text-xs cursor-pointer text-foreground ml-2">
+                                    Descending
+                                </Label>
+                            </div>
+                        </RadioGroup>
                     </div>
                 </div>
             );
@@ -74,14 +74,23 @@ const VariableTab: FC<VariableTabProps> = ({
         return null;
     };
 
+    const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
+        if (value && ['source', 'matching', 'sorting'].includes(value.source)) {
+            setHighlightedVariable({ ...value, source: value.source as DuplicateCasesSource });
+        } else {
+            setHighlightedVariable(null);
+        }
+    }, [setHighlightedVariable]);
+
+
     return (
-        <div className="w-full">
+        <div className="w-full relative">
             <VariableListManager
                 availableVariables={sourceVariables}
-                targetLists={[matchingListConfig, sortingListConfig]}
+                targetLists={targetLists}
                 variableIdKey="tempId"
                 highlightedVariable={highlightedVariable}
-                setHighlightedVariable={setHighlightedVariable}
+                setHighlightedVariable={setManagerHighlightedVariable}
                 onMoveVariable={handleMoveVariable}
                 onReorderVariable={handleReorderVariable}
                 getVariableIcon={getVariableIcon}
@@ -90,6 +99,19 @@ const VariableTab: FC<VariableTabProps> = ({
                 showArrowButtons={true}
                 availableListHeight="300px"
             />
+             {/* Overlays for tour highlighting. Positioned to cover both the title and the list. */}
+            <div
+                id="duplicate-cases-matching-variables"
+                className="absolute top-0 right-0 w-[48%] h-[185px] pointer-events-none rounded-md"
+            >
+                <ActiveElementHighlight active={!!(tourActive && currentStep === matchingStepIndex)} />
+            </div>
+            <div
+                id="duplicate-cases-sorting-variables"
+                className="absolute top-[200px] right-0 w-[48%] h-[160px] pointer-events-none rounded-md"
+            >
+                <ActiveElementHighlight active={!!(tourActive && currentStep === sortingStepIndex)} />
+            </div>
         </div>
     );
 };

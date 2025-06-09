@@ -223,7 +223,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
 
     const renderDropdown = (options: string[], currentValue: string, onChange: (value: string) => void, onCloseDropdown: () => void) => {
         return (
-            <div className="absolute top-full left-0 z-10 mt-1 w-full bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
+            <div className="absolute top-full left-0 z-50 mt-1 w-full bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
                 {options.map((option) => (
                     <div
                         key={option}
@@ -241,7 +241,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
     const renderDateFormatDropdown = (currentVar: Variable | null, handleVarFieldChangeFn: (field: keyof Variable, value: any) => void, setShowDd: (show: boolean) => void) => {
         if (!currentVar) return null;
         return (
-            <div className="absolute top-full right-0 z-10 mt-1 w-60 bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
+            <div className="absolute top-full right-0 z-50 mt-1 w-60 bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
                 {DATE_FORMAT_SPECS.map((format, index) => (
                     <div
                         key={index}
@@ -278,7 +278,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                             {modifiedVariables.map((variable, index) => (
                                 <div
                                     key={variable.tempId || variable.columnIndex}
-                                    className={`grid grid-cols-12 text-xs cursor-pointer border-b border-border hover:bg-accent ${selectedVariableIndex === index ? 'bg-primary text-primary-foreground' : 'text-card-foreground'}`}
+                                    className={`grid grid-cols-12 text-xs cursor-pointer border-b border-border ${selectedVariableIndex === index ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-card-foreground hover:bg-accent'}`}
                                     onClick={() => handleVariableChange(index)}
                                 >
                                     <div className="col-span-2 p-1 text-center border-r border-border">
@@ -306,7 +306,7 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                                 <TabsTrigger value="properties">Properties</TabsTrigger>
                                 <TabsTrigger value="labels">Value Labels</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="properties" className="flex-grow overflow-y-auto p-1">
+                            <TabsContent value="properties" className="flex-grow p-1">
                                 <div className="space-y-3">
                                     <div className="grid grid-cols-12 items-center gap-x-2">
                                         <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Current Variable:</div>
