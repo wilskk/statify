@@ -378,6 +378,7 @@ export const UnivariateSave = ({
                                                     ? "Heteroscedasticity"
                                                     : ""
                                             }
+                                            disabled={!saveState.CoeffStats}
                                             onValueChange={handleTypeGrp}
                                         >
                                             <div className="flex flex-col gap-1">
@@ -413,6 +414,7 @@ export const UnivariateSave = ({
                                                     ? "WriteNewDataSet"
                                                     : ""
                                             }
+                                            disabled={true}
                                             onValueChange={handleDestGrp}
                                         >
                                             <div className="flex flex-col gap-1">
@@ -439,6 +441,7 @@ export const UnivariateSave = ({
                                                                 ""
                                                             }
                                                             disabled={
+                                                                true ||
                                                                 !saveState.NewDataSet
                                                             }
                                                             onChange={(e) =>

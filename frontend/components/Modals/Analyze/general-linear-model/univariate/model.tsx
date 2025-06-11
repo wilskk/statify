@@ -31,7 +31,7 @@ import {
 import {
     BUILDTERMMETHOD,
     SUMSQUARESMETHOD,
-} from "@/constants/general-linear-model/multivariate/multivariate-method";
+} from "@/constants/general-linear-model/univariate/univariate-method";
 import {
     Table,
     TableBody,
@@ -61,6 +61,8 @@ export const UnivariateModel = ({
     const [selectedVariable, setSelectedVariable] = useState<string | null>(
         null
     );
+    // Tambahan: Multi-select support
+    const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
 
     // Add state for current build term
     const [currentBuildTerm, setCurrentBuildTerm] = useState<string>("");
@@ -75,6 +77,7 @@ export const UnivariateModel = ({
             setAvailableVariables(data.FactorsVar ?? []);
             setCurrentBuildTerm("");
             setSelectedVariable(null);
+            setSelectedVariables([]);
             setWithinParentheses(false);
             setParenthesesDepth(0);
         }
@@ -132,8 +135,42 @@ export const UnivariateModel = ({
         });
     };
 
-    // Handle variable selection
-    const handleVariableClick = (variable: string) => {
+    // Handle variable selection (support Ctrl/Shift for multi-select)
+    const handleVariableClick = (
+        variable: string,
+        event?: React.MouseEvent<HTMLDivElement | HTMLButtonElement, MouseEvent>
+    ) => {
+        if (!modelState.Custom) {
+            setSelectedVariable(variable);
+            setSelectedVariables([variable]);
+            return;
+        }
+        if (event?.ctrlKey || event?.metaKey) {
+            setSelectedVariables((prev) =>
+                prev.includes(variable)
+                    ? prev.filter((v) => v !== variable)
+                    : [...prev, variable]
+            );
+        } else if (event?.shiftKey && selectedVariables.length > 0) {
+            const lastIndex = availableVariables.findIndex(
+                (v) => v === selectedVariables[selectedVariables.length - 1]
+            );
+            const currIndex = availableVariables.findIndex(
+                (v) => v === variable
+            );
+            if (lastIndex !== -1 && currIndex !== -1) {
+                const [start, end] =
+                    lastIndex < currIndex
+                        ? [lastIndex, currIndex]
+                        : [currIndex, lastIndex];
+                const range = availableVariables.slice(start, end + 1);
+                setSelectedVariables((prev) =>
+                    Array.from(new Set([...prev, ...range]))
+                );
+            }
+        } else {
+            setSelectedVariables([variable]);
+        }
         setSelectedVariable(variable);
     };
 
@@ -282,6 +319,62 @@ export const UnivariateModel = ({
         }
     };
 
+    // Helper: Generate combinations for All N-Way
+    function getCombinations(arr: string[], k: number): string[][] {
+        const results: string[][] = [];
+        function combine(start: number, path: string[]) {
+            if (path.length === k) {
+                results.push([...path]);
+                return;
+            }
+            for (let i = start; i < arr.length; i++) {
+                combine(i + 1, [...path, arr[i]]);
+            }
+        }
+        combine(0, []);
+        return results;
+    }
+
+    // Helper: Add variables to FactorsModel based on BuildTermMethod
+    const handleAddByBuildTermMethod = () => {
+        if (!selectedVariables.length) return;
+        let terms: string[] = [];
+        const method = modelState.BuildTermMethod;
+        if (method === "interaction") {
+            if (selectedVariables.length > 1) {
+                terms.push(selectedVariables.join("*"));
+            } else {
+                terms.push(selectedVariables[0]);
+            }
+        } else if (method === "mainEffects") {
+            terms = [...selectedVariables];
+        } else if (method && method.startsWith("all")) {
+            // e.g. all2Way, all3Way, all4Way
+            const nWayMatch = method.match(/^all(\d+)Way$/);
+            if (nWayMatch) {
+                const nWay = parseInt(nWayMatch[1]);
+                if (!isNaN(nWay) && nWay > 1) {
+                    const combos = getCombinations(selectedVariables, nWay);
+                    terms = combos.map((combo) => combo.join("*"));
+                }
+            }
+        }
+        // Add terms to FactorsModel, avoiding duplicates
+        setModelState((prev) => {
+            const updatedState = { ...prev };
+            const current = Array.isArray(updatedState.FactorsModel)
+                ? updatedState.FactorsModel
+                : updatedState.FactorsModel
+                ? [updatedState.FactorsModel]
+                : [];
+            const newTerms = terms.filter((t) => !current.includes(t));
+            updatedState.FactorsModel = [...current, ...newTerms];
+            return updatedState;
+        });
+        setSelectedVariables([]);
+        setSelectedVariable(null);
+    };
+
     const handleContinue = () => {
         Object.entries(modelState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateModelType, value);
@@ -368,10 +461,17 @@ export const UnivariateModel = ({
                                                             ) => (
                                                                 <Badge
                                                                     key={index}
-                                                                    className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                                                                    className={`w-full text-start text-sm font-light p-2 cursor-pointer ${
+                                                                        selectedVariables.includes(
+                                                                            variable
+                                                                        )
+                                                                            ? "bg-blue-500 text-white"
+                                                                            : ""
+                                                                    }`}
                                                                     variant={
-                                                                        selectedVariable ===
-                                                                        variable
+                                                                        selectedVariables.includes(
+                                                                            variable
+                                                                        )
                                                                             ? "default"
                                                                             : "outline"
                                                                     }
@@ -387,9 +487,12 @@ export const UnivariateModel = ({
                                                                             variable
                                                                         )
                                                                     }
-                                                                    onClick={() =>
+                                                                    onClick={(
+                                                                        e
+                                                                    ) =>
                                                                         handleVariableClick(
-                                                                            variable
+                                                                            variable,
+                                                                            e as any
                                                                         )
                                                                     }
                                                                 >
@@ -456,9 +559,26 @@ export const UnivariateModel = ({
                                                             </SelectGroup>
                                                         </SelectContent>
                                                     </Select>
+                                                    {/* Tambahkan tombol Add di bawah Select untuk mode Custom */}
                                                 </div>
-
-                                                {/* Build Custom Terms section removed as it's now in the table */}
+                                                {modelState.Custom && (
+                                                    <div className="mt-2 flex justify-end">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="default"
+                                                            disabled={
+                                                                selectedVariables.length ===
+                                                                    0 ||
+                                                                !modelState.BuildTermMethod
+                                                            }
+                                                            onClick={
+                                                                handleAddByBuildTermMethod
+                                                            }
+                                                        >
+                                                            Add
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </ResizablePanel>
                                         <ResizableHandle />

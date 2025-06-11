@@ -555,6 +555,7 @@ export const UnivariateDialog = ({
                                         type="button"
                                         variant="secondary"
                                         onClick={openDialog(setIsBootstrapOpen)}
+                                        disabled={true}
                                     >
                                         Bootstrap...
                                     </Button>

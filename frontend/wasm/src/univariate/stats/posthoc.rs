@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-use statrs::distribution::{ StudentsT, ContinuousCDF };
+use std::collections::{ BTreeSet, HashSet };
 
 use crate::univariate::models::{
     config::{ CategoryMethod, UnivariateConfig },
@@ -22,7 +21,10 @@ use crate::univariate::stats::distribution_utils::{
     calculate_t_critical,
     calculate_t_significance,
     studentized_maximum_modulus_critical_value,
-}; // Assuming t-dist is needed
+    studentized_range_critical_value,
+    dunnett_critical_value,
+    waller_duncan_critical_value,
+};
 
 // Helper struct to hold statistics for each level of a factor
 #[derive(Debug, Clone)]
@@ -97,29 +99,6 @@ fn get_level_values(
         )
     {
         if let Some(factor_records_group_specific) = factor_records_groups.get(f_group_idx) {
-            // Assuming number of records per group matches, or that specific factor group aligns with dep var group.
-            // This logic might need refinement if data structure is more complex (e.g. multiple dep_var_groups or factor_groups not 1-to-1)
-            // For simplicity, assuming the primary dependent variable group corresponds to the factor group.
-
-            if factor_records_group_specific.len() != dep_var_records_group.len() {
-                // This check might be too strict if data can be ragged or from different sources not perfectly aligned by index alone.
-                // However, for typical ANOVA/posthoc, data is usually structured.
-                // return Err(format!(
-                //     "Mismatch in record count between factor group {} (len {}) and dependent variable group {} (len {}).",
-                //     f_group_idx, factor_records_group_specific.len(),
-                //     d_group_idx, dep_var_records_group.len()
-                // ));
-                web_sys::console::warn_1(
-                    &format!(
-                        "Potential mismatch or complex structure: record count for factor group {} (len {}) vs dependent variable group {} (len {}). Proceeding with available data.",
-                        f_group_idx,
-                        factor_records_group_specific.len(),
-                        d_group_idx,
-                        dep_var_records_group.len()
-                    ).into()
-                );
-            }
-
             for (idx, factor_record) in factor_records_group_specific.iter().enumerate() {
                 if let Some(factor_value) = factor_record.values.get(factor_name) {
                     if data_value_to_string(factor_value) == level_name {
@@ -173,7 +152,7 @@ fn calculate_single_level_stats(
             .map(|x| (x - mean).powi(2))
             .sum::<f64>() / ((values.len() - 1) as f64)
     } else {
-        f64::NAN // Variance is undefined for a single point, or can be 0. SPSS shows it as blank.
+        0.0 // Variance is 0 for a single point.
     };
     Ok(LevelStats {
         name: level_name.to_string(),
@@ -188,7 +167,6 @@ fn calculate_single_level_stats(
 fn calculate_pooled_stats_for_posthoc(
     level_stats_list: &[LevelStats]
 ) -> (f64, usize, f64, f64, usize) {
-    // mse, df_error, s_pp (sqrt(mse)), n_h (harmonic mean of n), total_n
     let mut sum_sq_error = 0.0;
     let mut total_n: usize = 0;
     let mut num_groups_with_data = 0;
@@ -233,7 +211,7 @@ fn calculate_pooled_stats_for_posthoc(
 /// Calculate Welch-Satterthwaite degrees of freedom for unequal variances t-test
 fn welch_satterthwaite_df(var_i: f64, n_i: f64, var_j: f64, n_j: f64) -> f64 {
     if n_i <= 1.0 || n_j <= 1.0 || var_i.is_nan() || var_j.is_nan() || var_i < 0.0 || var_j < 0.0 {
-        return f64::NAN; // Or a small default like 1.0, but NaN indicates issue
+        return f64::NAN;
     }
     let term_i = var_i / n_i;
     let term_j = var_j / n_j;
@@ -244,1907 +222,955 @@ fn welch_satterthwaite_df(var_i: f64, n_i: f64, var_j: f64, n_j: f64) -> f64 {
     let denominator = denominator_i + denominator_j;
 
     if denominator.abs() < 1e-12 {
-        // Avoid division by zero if variances are tiny or n is very small
-        // Smallest possible df is often 1 if any data exists.
-        // If both n_i and n_j are > 1, this case is less likely unless variances are zero.
-        // If variances are truly zero, t-test is problematic anyway.
-        // Returning min(n_i-1, n_j-1) or similar might be an option, but indicates instability.
-        // Let's return NaN for now if denominator is effectively zero, signaling an issue.
         if numerator.abs() < 1e-12 {
-            // If numerator also zero (e.g. both variances zero)
-            return (n_i + n_j - 2.0).max(1.0); // Fallback to pooled-like df, but problem exists
+            return (n_i + n_j - 2.0).max(1.0);
         }
         return f64::NAN;
     }
     let df = numerator / denominator;
-    df.max(1.0) // Ensure df is at least 1 if calculation is valid
+    df.max(1.0)
 }
 
+/// Calculate significance for a homogeneous subset using an F-test (ANOVA).
+fn calculate_subset_significance(
+    subset_indices: &[usize],
+    level_stats_list: &[LevelStats],
+    mse: f64,
+    df_error: usize
+) -> Option<f64> {
+    if subset_indices.len() <= 1 {
+        return None;
+    }
+
+    let subset_stats: Vec<_> = subset_indices
+        .iter()
+        .map(|&i| &level_stats_list[i])
+        .collect();
+
+    let mut total_n_subset = 0;
+    let mut weighted_sum_means = 0.0;
+    for stats in &subset_stats {
+        total_n_subset += stats.n;
+        weighted_sum_means += stats.mean * (stats.n as f64);
+    }
+
+    if total_n_subset == 0 {
+        return None;
+    }
+
+    let grand_mean_subset = weighted_sum_means / (total_n_subset as f64);
+
+    let mut ss_between = 0.0;
+    for stats in &subset_stats {
+        ss_between += (stats.n as f64) * (stats.mean - grand_mean_subset).powi(2);
+    }
+
+    let df_between = subset_stats.len() - 1;
+    if df_between == 0 {
+        return None;
+    }
+
+    let ms_between = ss_between / (df_between as f64);
+
+    if mse.abs() < 1e-9 {
+        return None;
+    }
+
+    let f_value = ms_between / mse;
+
+    Some(calculate_f_significance(df_between, df_error, f_value))
+}
+
+/// Calculate multiple comparisons for post-hoc tests
 fn calculate_multiple_comparisons(
     factor_name: &str,
     current_level_stats: &[LevelStats],
     mse: f64,
     df_error_pooled: usize,
-    s_pp: f64, // sqrt(mse), needed for Gabriel's SE
     config: &UnivariateConfig,
     alpha: f64,
-    k_total_levels_with_data: usize, // Renamed for clarity, this is num_levels_with_data for Scheffe etc.
-    num_initial_levels: usize, // Number of original levels for Dunnett's First/Last
-    k_pairwise_comparisons: usize, // Number of unique pairwise comparisons for Bonferroni etc.
-    f_factor_value: f64, // F-statistic for the factor (ANOVA)
-    df_factor: usize, // Degrees of freedom for the factor (k-1)
+    k_total_levels_with_data: usize,
+    f_factor_value: f64,
+    df_factor: usize,
     overall_notes: &mut Vec<String>
 ) -> Vec<PostHocComparisonEntry> {
     let mut factor_comparison_entries: Vec<PostHocComparisonEntry> = Vec::new();
-    let num_levels_with_data = current_level_stats.len(); // k_total_levels_with_data is this
+    let num_levels_with_data = current_level_stats.len();
+    let k_pairwise_comparisons = if num_levels_with_data >= 2 {
+        (num_levels_with_data * (num_levels_with_data - 1)) / 2
+    } else {
+        0
+    };
 
-    // --- LSD (Least Significant Difference) ---
-    if config.posthoc.lsd {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors: Vec<f64> = Vec::new();
-        let mut significances: Vec<f64> = Vec::new();
-        let mut confidence_intervals: Vec<ConfidenceInterval> = Vec::new();
+    let expand_pairwise = |
+        method: String,
+        temp_results: Vec<(usize, usize, f64, f64, f64, ConfidenceInterval)>
+    | -> PostHocComparisonEntry {
+        let mut parameters = Vec::new();
+        let mut mean_differences = Vec::new();
+        let mut std_errors = Vec::new();
+        let mut significances = Vec::new();
+        let mut confidence_intervals = Vec::new();
 
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
+        for (i, j, mean_diff, std_err, sig, ci) in temp_results {
+            let level_i_stats = &current_level_stats[i];
+            let level_j_stats = &current_level_stats[j];
 
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
+            // i vs j
+            parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
+            mean_differences.push(mean_diff);
+            std_errors.push(std_err);
+            significances.push(sig);
+            confidence_intervals.push(ci.clone());
 
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                significances.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled);
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-
-                confidence_intervals.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
+            // j vs i
+            parameters.push(format!("{} vs {}", level_j_stats.name, level_i_stats.name));
+            mean_differences.push(-mean_diff);
+            std_errors.push(std_err);
+            significances.push(sig);
+            confidence_intervals.push(ConfidenceInterval {
+                lower_bound: -ci.upper_bound,
+                upper_bound: -ci.lower_bound,
+            });
         }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("LSD ({})", factor_name),
+        PostHocComparisonEntry {
+            method,
             parameter: parameters,
             mean_difference: mean_differences,
             standard_error: std_errors,
             significance: significances,
             confidence_interval: confidence_intervals,
-        });
-    }
-
-    // --- Bonferroni ---
-    if config.posthoc.bonfe {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors: Vec<f64> = Vec::new();
-        let mut significances: Vec<f64> = Vec::new();
-        let mut confidence_intervals: Vec<ConfidenceInterval> = Vec::new();
-
-        let bonf_alpha_ci = alpha / (k_pairwise_comparisons.max(1) as f64);
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let p_value_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                let sig = if !p_value_unadjusted.is_nan() {
-                    (p_value_unadjusted * (k_pairwise_comparisons as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances.push(sig);
-
-                let t_crit_bonf = calculate_t_critical(Some(bonf_alpha_ci), df_error_pooled);
-                let ci_width = if !std_err.is_nan() && !t_crit_bonf.is_nan() {
-                    t_crit_bonf * std_err
-                } else {
-                    f64::NAN
-                };
-
-                confidence_intervals.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
         }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Bonferroni ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors,
-            significance: significances,
-            confidence_interval: confidence_intervals,
-        });
-    }
+    };
 
-    // --- Sidak ---
-    if config.posthoc.sidak {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors: Vec<f64> = Vec::new();
-        let mut significances: Vec<f64> = Vec::new();
-        let mut confidence_intervals: Vec<ConfidenceInterval> = Vec::new();
+    let mut all_pairwise_results: Vec<
+        (usize, usize, f64, f64, f64, ConfidenceInterval)
+    > = Vec::new();
 
-        let sidak_alpha_ci_per_comparison =
-            1.0 - (1.0 - alpha).powf(1.0 / (k_pairwise_comparisons.max(1) as f64));
+    for i in 0..num_levels_with_data {
+        for j in i + 1..num_levels_with_data {
+            let level_i_stats = &current_level_stats[i];
+            let level_j_stats = &current_level_stats[j];
+            let mean_diff = level_i_stats.mean - level_j_stats.mean;
+            let n_i = level_i_stats.n as f64;
+            let n_j = level_j_stats.n as f64;
 
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-                let p_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-
-                let adjusted_sig = if !p_unadjusted.is_nan() {
-                    (1.0 - (1.0 - p_unadjusted).powf(k_pairwise_comparisons as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances.push(adjusted_sig);
-
-                let t_crit_sidak = calculate_t_critical(
-                    Some(sidak_alpha_ci_per_comparison),
-                    df_error_pooled
-                );
-                let ci_width = if !std_err.is_nan() && !t_crit_sidak.is_nan() {
-                    t_crit_sidak * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Sidak ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors,
-            significance: significances,
-            confidence_interval: confidence_intervals,
-        });
-    }
-
-    // --- Scheffe ---
-    if config.posthoc.scheffe {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors: Vec<f64> = Vec::new();
-        let mut significances: Vec<f64> = Vec::new();
-        let mut confidence_intervals: Vec<ConfidenceInterval> = Vec::new();
-
-        let df1_scheffe = (k_total_levels_with_data - 1).max(1);
-        let f_crit_scheffe_val = if df1_scheffe > 0 && df_error_pooled > 0 {
-            calculate_f_critical(alpha, df1_scheffe, df_error_pooled)
-        } else {
-            f64::NAN
-        };
-        let scheffe_multiplier = if !f_crit_scheffe_val.is_nan() {
-            ((df1_scheffe as f64) * f_crit_scheffe_val).sqrt()
-        } else {
-            f64::NAN
-        };
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let scheffe_f_observed = if !t_value.is_nan() {
-                    t_value.powi(2) / (df1_scheffe as f64)
-                } else {
-                    f64::NAN
-                };
-                let sig = if !scheffe_f_observed.is_nan() && df_error_pooled > 0 && df1_scheffe > 0 {
-                    calculate_f_significance(df1_scheffe, df_error_pooled, scheffe_f_observed)
-                } else {
-                    f64::NAN
-                };
-                significances.push(sig);
-
-                let ci_width = if !std_err.is_nan() && !scheffe_multiplier.is_nan() {
-                    scheffe_multiplier * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Scheffe ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors,
-            significance: significances,
-            confidence_interval: confidence_intervals,
-        });
-    }
-
-    // --- Games-Howell (GH) --- (Unequal Variances)
-    if config.posthoc.games {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_gh: Vec<f64> = Vec::new();
-        let mut significances_gh: Vec<f64> = Vec::new();
-        let mut confidence_intervals_gh: Vec<ConfidenceInterval> = Vec::new();
-
-        let gh_alpha_adj = alpha / (k_pairwise_comparisons.max(1) as f64);
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let var_i = level_i_stats.variance;
-                let n_j = level_j_stats.n as f64;
-                let var_j = level_j_stats.variance;
-
-                let std_err = if
-                    n_i > 0.0 &&
-                    n_j > 0.0 &&
-                    !var_i.is_nan() &&
-                    !var_j.is_nan() &&
-                    var_i >= 0.0 &&
-                    var_j >= 0.0
-                {
-                    (var_i / n_i + var_j / n_j).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_gh.push(std_err);
-
-                let df_gh = welch_satterthwaite_df(var_i, n_i, var_j, n_j);
-                let df_gh_usize = if !df_gh.is_nan() && df_gh >= 1.0 {
-                    df_gh.round() as usize
-                } else {
-                    0
-                };
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let p_unadjusted = if !t_value.is_nan() && df_gh_usize > 0 {
-                    calculate_t_significance(t_value, df_gh_usize)
-                } else {
-                    f64::NAN
-                };
-
-                significances_gh.push(p_unadjusted);
-
-                let t_crit_gh = if df_gh_usize > 0 {
-                    calculate_t_critical(Some(gh_alpha_adj), df_gh_usize)
-                } else {
-                    f64::NAN
-                };
-
-                let ci_width = if !std_err.is_nan() && !t_crit_gh.is_nan() {
-                    t_crit_gh * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_gh.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Games-Howell ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_gh,
-            significance: significances_gh,
-            confidence_interval: confidence_intervals_gh,
-        });
-        overall_notes.push(
-            format!("Games-Howell for factor '{}' assumes unequal variances. Significance and CI are based on t-distribution with Welch-Satterthwaite df (approximating Studentized Range q).", factor_name)
-        );
-    }
-
-    // --- Tamhane's T2 --- (Unequal Variances)
-    if config.posthoc.tam {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_tam: Vec<f64> = Vec::new();
-        let mut significances_tam: Vec<f64> = Vec::new();
-        let mut confidence_intervals_tam: Vec<ConfidenceInterval> = Vec::new();
-
-        let tam_alpha_ci = alpha / (k_pairwise_comparisons.max(1) as f64);
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let var_i = level_i_stats.variance;
-                let n_j = level_j_stats.n as f64;
-                let var_j = level_j_stats.variance;
-
-                let std_err = if
-                    n_i > 0.0 &&
-                    n_j > 0.0 &&
-                    !var_i.is_nan() &&
-                    !var_j.is_nan() &&
-                    var_i >= 0.0 &&
-                    var_j >= 0.0
-                {
-                    (var_i / n_i + var_j / n_j).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_tam.push(std_err);
-
-                let df_tam = welch_satterthwaite_df(var_i, n_i, var_j, n_j);
-                let df_tam_usize = if !df_tam.is_nan() && df_tam >= 1.0 {
-                    df_tam.round() as usize
-                } else {
-                    0
-                };
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-                let p_unadjusted = if !t_value.is_nan() && df_tam_usize > 0 {
-                    calculate_t_significance(t_value, df_tam_usize)
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !p_unadjusted.is_nan() {
-                    (p_unadjusted * (k_pairwise_comparisons as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances_tam.push(sig);
-
-                let t_crit_tam = if df_tam_usize > 0 {
-                    calculate_t_critical(Some(tam_alpha_ci), df_tam_usize)
-                } else {
-                    f64::NAN
-                };
-                let ci_width = if !std_err.is_nan() && !t_crit_tam.is_nan() {
-                    t_crit_tam * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_tam.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Tamhane's T2 ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_tam,
-            significance: significances_tam,
-            confidence_interval: confidence_intervals_tam,
-        });
-        overall_notes.push(
-            format!("Tamhane's T2 for factor '{}' assumes unequal variances and uses t-tests with Welch-Satterthwaite df and Bonferroni correction.", factor_name)
-        );
-    }
-
-    // --- Dunnett's Test (vs. Control) (config.posthoc.dunnett) ---
-    if config.posthoc.dunnett {
-        let control_original_idx: Option<usize> = match config.posthoc.category_method {
-            CategoryMethod::First => Some(0),
-            CategoryMethod::Last => {
-                if num_initial_levels > 0 { Some(num_initial_levels - 1) } else { None }
-            }
-            // No other variants in CategoryMethod enum as per config.rs
-        };
-
-        if let Some(ctrl_orig_idx) = control_original_idx {
-            let control_stats_opt = current_level_stats
-                .iter()
-                .find(|ls| ls.original_index == ctrl_orig_idx);
-
-            if let Some(control_stats) = control_stats_opt {
-                let mut parameters: Vec<String> = Vec::new();
-                let mut mean_differences: Vec<f64> = Vec::new();
-                let mut std_errors_dunnett: Vec<f64> = Vec::new();
-                let mut significances_dunnett: Vec<f64> = Vec::new();
-                let mut confidence_intervals_dunnett: Vec<ConfidenceInterval> = Vec::new();
-
-                // Determine sidedness for Dunnett's test
-                let final_is_lt = !config.posthoc.twosided && config.posthoc.lt_control;
-                let final_is_gt =
-                    !config.posthoc.twosided && !final_is_lt && config.posthoc.gt_control;
-                let final_is_two_sided = !final_is_lt && !final_is_gt; // Default to two-sided if not explicitly lt or gt
-
-                let k_dunnett_comparisons = (num_levels_with_data - 1).max(1);
-
-                for level_stats in current_level_stats.iter() {
-                    if level_stats.name == control_stats.name {
-                        continue;
-                    }
-
-                    parameters.push(
-                        format!("{} vs {} (Control)", level_stats.name, control_stats.name)
-                    );
-                    let mean_diff = level_stats.mean - control_stats.mean;
-                    mean_differences.push(mean_diff);
-
-                    let n_i = level_stats.n as f64;
-                    let n_control = control_stats.n as f64;
-
-                    let std_err = if n_i > 0.0 && n_control > 0.0 && !mse.is_nan() {
-                        (mse * (1.0 / n_i + 1.0 / n_control)).sqrt()
-                    } else {
-                        f64::NAN
-                    };
-                    std_errors_dunnett.push(std_err);
-
-                    let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                        mean_diff / std_err
-                    } else {
-                        f64::NAN
-                    };
-
-                    let p_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                        StudentsT::new(0.0, 1.0, df_error_pooled as f64).map_or(f64::NAN, |dist| {
-                            if final_is_lt {
-                                // H1: level < control (mean_diff < 0, t_value should be negative)
-                                dist.cdf(t_value)
-                            } else if final_is_gt {
-                                // H1: level > control (mean_diff > 0, t_value should be positive)
-                                dist.sf(t_value) // sf is 1 - cdf
-                            } else {
-                                // Two-sided (final_is_two_sided == true)
-                                2.0 * dist.cdf(-t_value.abs())
-                            }
-                        })
-                    } else {
-                        f64::NAN
-                    };
-
-                    let sig = if !p_unadjusted.is_nan() {
-                        (p_unadjusted * (k_dunnett_comparisons as f64)).min(1.0) // Bonferroni adjustment
-                    } else {
-                        f64::NAN
-                    };
-                    significances_dunnett.push(sig);
-
-                    // CIs are typically two-sided. Alpha for one CI from Bonferroni perspective.
-                    let dunnett_ci_alpha_per_comp = alpha / (k_dunnett_comparisons.max(1) as f64);
-                    let t_crit_dunnett = calculate_t_critical(
-                        Some(dunnett_ci_alpha_per_comp),
-                        df_error_pooled
-                    );
-
-                    let ci_width = if !std_err.is_nan() && !t_crit_dunnett.is_nan() {
-                        t_crit_dunnett * std_err
-                    } else {
-                        f64::NAN
-                    };
-                    confidence_intervals_dunnett.push(ConfidenceInterval {
-                        lower_bound: mean_diff - ci_width,
-                        upper_bound: mean_diff + ci_width,
-                    });
-                }
-
-                let test_type_str = if final_is_lt {
-                    "Lower < Control"
-                } else if final_is_gt {
-                    "Higher > Control"
-                } else {
-                    "Two-Sided vs Control"
-                };
-
-                factor_comparison_entries.push(PostHocComparisonEntry {
-                    method: format!(
-                        "Dunnett ({}) ('{}') ({})",
-                        test_type_str,
-                        control_stats.name,
-                        factor_name
-                    ),
-                    parameter: parameters,
-                    mean_difference: mean_differences,
-                    standard_error: std_errors_dunnett,
-                    significance: significances_dunnett,
-                    confidence_interval: confidence_intervals_dunnett,
-                });
-                overall_notes.push(
-                    format!(
-                        "Dunnett's test ({}) for factor '{}' vs control '{}' assumes equal variances. Significance and CI based on t-distribution with Bonferroni-style adjustment.",
-                        test_type_str,
-                        factor_name,
-                        control_stats.name
-                    )
-                );
+            let se = (mse * (1.0 / n_i + 1.0 / n_j)).sqrt();
+            let t_value = if se > 0.0 {
+                mean_diff / se
             } else {
-                if num_initial_levels > 0 {
-                    // Only note if control should have existed
-                    overall_notes.push(
-                        format!(
-                            "Dunnett's test: Control group (original index {}) for factor '{}' specified by CategoryMethod::{:?} not found among levels with data or has no data.",
-                            ctrl_orig_idx,
-                            factor_name,
-                            config.posthoc.category_method
-                        )
-                    );
+                f64::INFINITY * mean_diff.signum()
+            };
+            let p_value_unadjusted = calculate_t_significance(t_value.abs(), df_error_pooled);
+            let t_crit_lsd = calculate_t_critical(Some(alpha), df_error_pooled);
+            let margin = t_crit_lsd * se;
+
+            all_pairwise_results.push((
+                i,
+                j,
+                mean_diff,
+                se,
+                p_value_unadjusted,
+                ConfidenceInterval {
+                    lower_bound: mean_diff - margin,
+                    upper_bound: mean_diff + margin,
+                },
+            ));
+        }
+    }
+
+    if config.posthoc.lsd {
+        let lsd_results = all_pairwise_results
+            .iter()
+            .map(|(i, j, mean_diff, se, sig, ci)| (*i, *j, *mean_diff, *se, *sig, ci.clone()))
+            .collect();
+        factor_comparison_entries.push(
+            expand_pairwise(format!("LSD ({})", factor_name), lsd_results)
+        );
+    }
+
+    if config.posthoc.bonfe {
+        let bonf_results = all_pairwise_results
+            .iter()
+            .map(|(i, j, mean_diff, se, sig, _ci)| {
+                let p_adj = (*sig * (k_pairwise_comparisons as f64)).min(1.0);
+                let t_crit_bonf = calculate_t_critical(
+                    Some(alpha / (k_pairwise_comparisons as f64)),
+                    df_error_pooled
+                );
+                let margin = t_crit_bonf * *se;
+                let new_ci = ConfidenceInterval {
+                    lower_bound: *mean_diff - margin,
+                    upper_bound: *mean_diff + margin,
+                };
+                (*i, *j, *mean_diff, *se, p_adj, new_ci)
+            })
+            .collect();
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Bonferroni ({})", factor_name), bonf_results)
+        );
+    }
+
+    if config.posthoc.sidak {
+        let sidak_results = all_pairwise_results
+            .iter()
+            .map(|(i, j, mean_diff, se, sig, _ci)| {
+                let p_adj = (1.0 - (1.0 - *sig).powf(k_pairwise_comparisons as f64)).min(1.0);
+                let sidak_alpha = 1.0 - (1.0 - alpha).powf(1.0 / (k_pairwise_comparisons as f64));
+                let t_crit_sidak = calculate_t_critical(Some(sidak_alpha), df_error_pooled);
+                let margin = t_crit_sidak * *se;
+                let new_ci = ConfidenceInterval {
+                    lower_bound: *mean_diff - margin,
+                    upper_bound: *mean_diff + margin,
+                };
+                (*i, *j, *mean_diff, *se, p_adj, new_ci)
+            })
+            .collect();
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Sidak ({})", factor_name), sidak_results)
+        );
+    }
+
+    if config.posthoc.scheffe {
+        let scheffe_results = all_pairwise_results
+            .iter()
+            .map(|(i, j, mean_diff, se, _sig, _ci)| {
+                let f_val = (*mean_diff / *se).powi(2);
+                let p_adj = calculate_f_significance(
+                    df_factor,
+                    df_error_pooled,
+                    f_val / (df_factor as f64)
+                );
+                let f_crit = calculate_f_critical(alpha, df_factor, df_error_pooled);
+                let margin = *se * (f_crit * (df_factor as f64)).sqrt();
+                let new_ci = ConfidenceInterval {
+                    lower_bound: *mean_diff - margin,
+                    upper_bound: *mean_diff + margin,
+                };
+                (*i, *j, *mean_diff, *se, p_adj, new_ci)
+            })
+            .collect();
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Scheffe ({})", factor_name), scheffe_results)
+        );
+    }
+
+    if config.posthoc.tu {
+        if
+            let Some(q_crit) = studentized_range_critical_value(
+                alpha,
+                k_total_levels_with_data,
+                df_error_pooled
+            )
+        {
+            let tukey_results = all_pairwise_results
+                .iter()
+                .map(|(i, j, mean_diff, _se, _sig, _ci)| {
+                    let n_i = current_level_stats[*i].n as f64;
+                    let n_j = current_level_stats[*j].n as f64;
+                    let se_tukey = ((mse * (1.0 / n_i + 1.0 / n_j)) / 2.0).sqrt();
+                    let q_val = if se_tukey > 0.0 { *mean_diff / se_tukey } else { f64::INFINITY };
+                    let margin = q_crit * se_tukey;
+                    let new_ci = ConfidenceInterval {
+                        lower_bound: *mean_diff - margin,
+                        upper_bound: *mean_diff + margin,
+                    };
+                    let sig = if q_val.abs() >= q_crit { 0.0 } else { 1.0 };
+                    (*i, *j, *mean_diff, se_tukey, sig, new_ci)
+                })
+                .collect();
+            factor_comparison_entries.push(
+                expand_pairwise(format!("Tukey HSD ({})", factor_name), tukey_results)
+            );
+        } else {
+            overall_notes.push(
+                format!(
+                    "Tukey HSD not calculated for factor '{}' due to missing critical value for alpha={}.",
+                    factor_name,
+                    alpha
+                )
+            );
+        }
+    }
+
+    if config.posthoc.dunnett {
+        let control_level_index = match config.posthoc.category_method {
+            CategoryMethod::First => 0,
+            CategoryMethod::Last => num_levels_with_data - 1,
+        };
+
+        let k_dunnett = num_levels_with_data;
+        let df_dunnett = df_error_pooled;
+
+        let mut dunnett_results_2sided: Vec<
+            (usize, usize, f64, f64, f64, ConfidenceInterval)
+        > = Vec::new();
+        let mut dunnett_results_lt: Vec<
+            (usize, usize, f64, f64, f64, ConfidenceInterval)
+        > = Vec::new();
+        let mut dunnett_results_gt: Vec<
+            (usize, usize, f64, f64, f64, ConfidenceInterval)
+        > = Vec::new();
+
+        for i in 0..num_levels_with_data {
+            if i == control_level_index {
+                continue;
+            }
+
+            let control_stats = &current_level_stats[control_level_index];
+            let test_stats = &current_level_stats[i];
+            let mean_diff = test_stats.mean - control_stats.mean;
+            let se = (mse * (1.0 / (test_stats.n as f64) + 1.0 / (control_stats.n as f64))).sqrt();
+
+            if config.posthoc.twosided {
+                if let Some(t_crit) = dunnett_critical_value(alpha, k_dunnett, df_dunnett, false) {
+                    let t_val = if se > 0.0 { mean_diff.abs() / se } else { f64::INFINITY };
+                    let margin = t_crit * se;
+                    let ci = ConfidenceInterval {
+                        lower_bound: mean_diff - margin,
+                        upper_bound: mean_diff + margin,
+                    };
+                    let sig = if t_val >= t_crit { 0.0 } else { 1.0 };
+                    dunnett_results_2sided.push((i, control_level_index, mean_diff, se, sig, ci));
                 }
             }
-        } else {
-            // This case implies num_initial_levels was 0 if CategoryMethod::Last was used.
-            if config.posthoc.dunnett {
-                // Only add note if Dunnett was actually requested
-                overall_notes.push(
-                    format!(
-                        "Dunnett's test for factor '{}' was requested, but control group could not be determined (e.g. no initial levels for 'Last' category method). CategoryMethod was {:?}.",
-                        factor_name,
-                        config.posthoc.category_method
-                    )
-                );
+            if config.posthoc.lt_control {
+                if let Some(t_crit) = dunnett_critical_value(alpha, k_dunnett, df_dunnett, true) {
+                    let t_val = if se > 0.0 { mean_diff / se } else { f64::NEG_INFINITY };
+                    let margin = t_crit * se;
+                    let ci = ConfidenceInterval {
+                        lower_bound: f64::NEG_INFINITY,
+                        upper_bound: mean_diff + margin,
+                    };
+                    let sig = if t_val <= -t_crit { 0.0 } else { 1.0 };
+                    dunnett_results_lt.push((i, control_level_index, mean_diff, se, sig, ci));
+                }
             }
+            if config.posthoc.gt_control {
+                if let Some(t_crit) = dunnett_critical_value(alpha, k_dunnett, df_dunnett, true) {
+                    let t_val = if se > 0.0 { mean_diff / se } else { f64::INFINITY };
+                    let margin = t_crit * se;
+                    let ci = ConfidenceInterval {
+                        lower_bound: mean_diff - margin,
+                        upper_bound: f64::INFINITY,
+                    };
+                    let sig = if t_val >= t_crit { 0.0 } else { 1.0 };
+                    dunnett_results_gt.push((i, control_level_index, mean_diff, se, sig, ci));
+                }
+            }
+        }
+        if !dunnett_results_2sided.is_empty() {
+            factor_comparison_entries.push(
+                expand_pairwise(
+                    format!("Dunnett's Two-Sided t ({})", factor_name),
+                    dunnett_results_2sided
+                )
+            );
+        }
+        if !dunnett_results_lt.is_empty() {
+            factor_comparison_entries.push(
+                expand_pairwise(
+                    format!("Dunnett's One-Sided t (< Control) ({})", factor_name),
+                    dunnett_results_lt
+                )
+            );
+        }
+        if !dunnett_results_gt.is_empty() {
+            factor_comparison_entries.push(
+                expand_pairwise(
+                    format!("Dunnett's One-Sided t (> Control) ({})", factor_name),
+                    dunnett_results_gt
+                )
+            );
         }
     }
 
-    // --- Tukey HSD (approx.) ---
-    if config.posthoc.tu {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors: Vec<f64> = Vec::new();
-        let mut significances: Vec<f64> = Vec::new();
-        let mut confidence_intervals: Vec<ConfidenceInterval> = Vec::new();
+    if config.posthoc.games {
+        let games_howell_results = all_pairwise_results
+            .iter()
+            .map(|(i, j, mean_diff, _se, _sig, _ci)| {
+                let n_i = current_level_stats[*i].n as f64;
+                let var_i = current_level_stats[*i].variance;
+                let n_j = current_level_stats[*j].n as f64;
+                let var_j = current_level_stats[*j].variance;
+                let se_gh = (var_i / n_i + var_j / n_j).sqrt();
+                let df_gh = welch_satterthwaite_df(var_i, n_i, var_j, n_j);
+                let q_val = *mean_diff / (se_gh / (2.0_f64).sqrt());
 
-        // Tukey HSD (approx.) often uses the same SE as LSD but may have different critical values/p-value adjustments.
-        // For this approximation, we will use t-tests without specific Tukey adjustment for p-values,
-        // as the homogeneous subsets will be derived from these p-values later.
-        // The critical aspect is that calculate_homogeneous_subsets expects a PostHocComparisonEntry
-        // with this specific method name.
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
+                let p_adj = 1.0; // P-value is complex.
+                let q_crit = studentized_range_critical_value(
+                    alpha,
+                    k_total_levels_with_data,
+                    df_gh as usize
+                ).unwrap_or(f64::NAN);
+                let margin = q_crit * (se_gh / (2.0_f64).sqrt());
+                let new_ci = ConfidenceInterval {
+                    lower_bound: *mean_diff - margin,
+                    upper_bound: *mean_diff + margin,
                 };
-                std_errors.push(std_err);
+                let sig = if q_val.abs() >= q_crit { 0.0 } else { 1.0 };
 
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                // Using unadjusted p-values from t-distribution, similar to LSD for this approximation
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                significances.push(sig);
-
-                // CI based on standard t-critical value, similar to LSD
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled);
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-
-                confidence_intervals.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Tukey HSD (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors,
-            significance: significances,
-            confidence_interval: confidence_intervals,
-        });
-        overall_notes.push(
-            format!("Tukey HSD (approx.) for factor '{}' provides pairwise comparisons based on t-tests. Homogeneous subsets will be derived using these significance values.", factor_name)
+                (*i, *j, *mean_diff, se_gh, sig, new_ci)
+            })
+            .collect();
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Games-Howell ({})", factor_name), games_howell_results)
         );
     }
 
-    // --- Gabriel's Test ---
     if config.posthoc.gabriel {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_gabriel: Vec<f64> = Vec::new();
-        let mut significances_gabriel: Vec<f64> = Vec::new();
-        let mut confidence_intervals_gabriel: Vec<ConfidenceInterval> = Vec::new();
-
-        // Gabriel's test uses s_pp * sqrt(1/(2*n_i) + 1/(2*n_j)) as SE for |mean_i - mean_j|
-        // Critical value from Studentized Maximum Modulus m_{alpha,k*,v} where k* = k(k-1)/2,
-        // with k being the number of groups. The SMM tables are indexed by k.
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (0.5 / n_i + 0.5 / n_j)).sqrt() // SE for Gabriel
-                } else {
-                    f64::NAN
-                };
-                std_errors_gabriel.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let p_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                let sig = if !p_unadjusted.is_nan() {
-                    (p_unadjusted * (k_pairwise_comparisons as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances_gabriel.push(sig);
-
-                let m_crit_gabriel = studentized_maximum_modulus_critical_value(
-                    alpha,
-                    k_total_levels_with_data.max(1) as f64, // Use k (number of groups) for table lookup
-                    df_error_pooled
-                ).unwrap_or_else(|| {
-                    // Fallback to Bonferroni-corrected t-critical value
-                    let num_comparisons = k_pairwise_comparisons.max(1) as f64;
-                    let adjusted_alpha = alpha / num_comparisons;
-                    calculate_t_critical(Some(adjusted_alpha), df_error_pooled)
-                });
-                let ci_width = if !std_err.is_nan() && !m_crit_gabriel.is_nan() {
-                    m_crit_gabriel * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_gabriel.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Gabriel ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_gabriel,
-            significance: significances_gabriel,
-            confidence_interval: confidence_intervals_gabriel,
-        });
-        overall_notes.push(
-            format!(
-                "Gabriel's test for factor '{}' uses the Studentized Maximum Modulus distribution (k*={}) and assumes equal variances. Fallback to Bonferroni-corrected t-test if table value is unavailable.",
-                factor_name,
-                k_pairwise_comparisons.max(1)
+        let mut gabriel_results = Vec::new();
+        if
+            let Some(m_crit) = studentized_maximum_modulus_critical_value(
+                alpha,
+                k_total_levels_with_data as f64,
+                df_error_pooled
             )
-        );
+        {
+            for i in 0..num_levels_with_data {
+                for j in i + 1..num_levels_with_data {
+                    let mean_diff = (
+                        current_level_stats[i].mean - current_level_stats[j].mean
+                    ).abs();
+                    let n1 = current_level_stats[i].n as f64;
+                    let n2 = current_level_stats[j].n as f64;
+                    let se = (mse * (1.0 / n1 + 1.0 / n2)).sqrt();
+                    let sig = if mean_diff / (se / (2.0_f64).sqrt()) >= m_crit { 0.0 } else { 1.0 };
+                    let margin = (m_crit * se) / (2.0_f64).sqrt();
+                    let ci = ConfidenceInterval {
+                        lower_bound: mean_diff - margin,
+                        upper_bound: mean_diff + margin,
+                    };
+                    gabriel_results.push((
+                        i,
+                        j,
+                        current_level_stats[i].mean - current_level_stats[j].mean,
+                        se,
+                        sig,
+                        ci,
+                    ));
+                }
+            }
+            factor_comparison_entries.push(
+                expand_pairwise(format!("Gabriel ({})", factor_name), gabriel_results)
+            );
+        }
     }
 
-    // --- Hochberg's GT2 ---
     if config.posthoc.hoc {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_hoc: Vec<f64> = Vec::new();
-        let mut significances_hoc: Vec<f64> = Vec::new();
-        let mut confidence_intervals_hoc: Vec<ConfidenceInterval> = Vec::new();
+        let mut gt2_results = Vec::new();
+        if
+            let Some(m_crit) = studentized_maximum_modulus_critical_value(
+                alpha,
+                k_total_levels_with_data as f64,
+                df_error_pooled
+            )
+        {
+            for i in 0..num_levels_with_data {
+                for j in i + 1..num_levels_with_data {
+                    let mean_diff = (
+                        current_level_stats[i].mean - current_level_stats[j].mean
+                    ).abs();
+                    let n1 = current_level_stats[i].n as f64;
+                    let n2 = current_level_stats[j].n as f64;
+                    let se = (mse * (1.0 / n1 + 1.0 / n2)).sqrt();
+                    let sig = if mean_diff / se >= m_crit { 0.0 } else { 1.0 };
+                    let margin = m_crit * se;
+                    let ci = ConfidenceInterval {
+                        lower_bound: mean_diff - margin,
+                        upper_bound: mean_diff + margin,
+                    };
+                    gt2_results.push((
+                        i,
+                        j,
+                        current_level_stats[i].mean - current_level_stats[j].mean,
+                        se,
+                        sig,
+                        ci,
+                    ));
+                }
+            }
+            factor_comparison_entries.push(
+                expand_pairwise(format!("Hochberg GT2 ({})", factor_name), gt2_results)
+            );
+        }
+    }
 
-        // Hochberg's GT2 uses Studentized Maximum Modulus m_{alpha,k,v} where k is the number of groups.
-        // To use tables for m_{alpha,k*,v} indexed by a k_lookup where k* = k_lookup(k_lookup-1)/2,
-        // we must find k_lookup such that k_lookup(k_lookup-1)/2 = k.
-        let k_hochberg = k_total_levels_with_data as f64;
-        // Solve k_lookup^2 - k_lookup - 2*k = 0 for k_lookup
-        let k_lookup_hochberg = (1.0 + (1.0 + 8.0 * k_hochberg).sqrt()) / 2.0;
-
+    if config.posthoc.tam {
+        let mut t2_results = Vec::new();
         for i in 0..num_levels_with_data {
             for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
+                let s1 = &current_level_stats[i];
+                let s2 = &current_level_stats[j];
+                let se = (s1.variance / (s1.n as f64) + s2.variance / (s2.n as f64)).sqrt();
+                let t_val = (s1.mean - s2.mean) / se;
+                let df = welch_satterthwaite_df(s1.variance, s1.n as f64, s2.variance, s2.n as f64);
+                let p_unadj = calculate_t_significance(t_val.abs(), df as usize);
+                let sig = (p_unadj * (k_pairwise_comparisons as f64)).min(1.0); // Bonferroni correction
 
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt() // Standard SE
-                } else {
-                    f64::NAN
-                };
-                std_errors_hoc.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
+                let t_crit = calculate_t_critical(
+                    Some(alpha / (k_pairwise_comparisons as f64)),
+                    df as usize
+                );
+                let margin = t_crit * se;
+                let ci = ConfidenceInterval {
+                    lower_bound: s1.mean - s2.mean - margin,
+                    upper_bound: s1.mean - s2.mean + margin,
                 };
 
-                let p_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                // Significance adjustment based on k_total_levels_with_data (number of groups for SMM M_k,v)
-                let sig = if !p_unadjusted.is_nan() {
-                    (p_unadjusted * (k_total_levels_with_data as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances_hoc.push(sig);
-
-                let m_crit_hoc = studentized_maximum_modulus_critical_value(
-                    alpha,
-                    k_lookup_hochberg, // Pass the calculated k_lookup
-                    df_error_pooled
-                ).unwrap_or_else(|| {
-                    // Fallback to Bonferroni-corrected t-critical value
-                    let num_comparisons = k_total_levels_with_data.max(1) as f64; // k comparisons
-                    let adjusted_alpha = alpha / num_comparisons;
-                    calculate_t_critical(Some(adjusted_alpha), df_error_pooled)
-                });
-                let ci_width = if !std_err.is_nan() && !m_crit_hoc.is_nan() {
-                    m_crit_hoc * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_hoc.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
+                t2_results.push((i, j, s1.mean - s2.mean, se, sig, ci));
             }
         }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Hochberg's GT2 ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_hoc,
-            significance: significances_hoc,
-            confidence_interval: confidence_intervals_hoc,
-        });
-        overall_notes.push(
-            format!(
-                "Hochberg's GT2 for factor '{}' uses the Studentized Maximum Modulus distribution (parameter k={}) and assumes equal variances. Fallback to Bonferroni-corrected t-test if table value is unavailable.",
-                factor_name,
-                k_total_levels_with_data.max(1)
-            )
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Tamhane T2 ({})", factor_name), t2_results)
         );
     }
 
-    // --- Dunnett's T3 (Unequal Variances) ---
     if config.posthoc.dunt {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_dunt: Vec<f64> = Vec::new();
-        let mut significances_dunt: Vec<f64> = Vec::new();
-        let mut confidence_intervals_dunt: Vec<ConfidenceInterval> = Vec::new();
-
-        // Dunnett's T3 uses Studentized Maximum Modulus M_k,v (k=num_groups = k_total_levels_with_data) with Welch-Satterthwaite df.
-        // Critical value currently approximated via studentized_maximum_modulus_critical_value.
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let var_i = level_i_stats.variance;
-                let n_j = level_j_stats.n as f64;
-                let var_j = level_j_stats.variance;
-
-                let std_err = if
-                    n_i > 0.0 &&
-                    n_j > 0.0 &&
-                    !var_i.is_nan() &&
-                    !var_j.is_nan() &&
-                    var_i >= 0.0 &&
-                    var_j >= 0.0
-                {
-                    (var_i / n_i + var_j / n_j).sqrt() // SE for unequal variances
-                } else {
-                    f64::NAN
-                };
-                std_errors_dunt.push(std_err);
-
-                let df_dunt = welch_satterthwaite_df(var_i, n_i, var_j, n_j);
-                let df_dunt_usize = if !df_dunt.is_nan() && df_dunt >= 1.0 {
-                    df_dunt.round() as usize
-                } else {
-                    0 // Or handle as error/NaN p-value
-                };
-
-                let t_value = if !std_err.is_nan() && std_err != 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let p_unadjusted = if !t_value.is_nan() && df_dunt_usize > 0 {
-                    calculate_t_significance(t_value, df_dunt_usize)
-                } else {
-                    f64::NAN
-                };
-                // Significance adjustment based on k_total_levels_with_data (number of groups for SMM M_k,v)
-                let sig = if !p_unadjusted.is_nan() {
-                    (p_unadjusted * (k_total_levels_with_data as f64)).min(1.0)
-                } else {
-                    f64::NAN
-                };
-                significances_dunt.push(sig);
-
-                let m_crit_dunt = if df_dunt_usize > 0 {
-                    studentized_maximum_modulus_critical_value(
-                        alpha,
-                        k_total_levels_with_data.max(1) as f64,
-                        df_dunt_usize
-                    ).unwrap_or_else(|| {
-                        // Fallback to Bonferroni-corrected t-critical value
-                        let num_comparisons = k_total_levels_with_data.max(1) as f64; // k comparisons
-                        let adjusted_alpha = alpha / num_comparisons;
-                        calculate_t_critical(Some(adjusted_alpha), df_dunt_usize)
-                    })
-                } else {
-                    f64::NAN
-                };
-                let ci_width = if !std_err.is_nan() && !m_crit_dunt.is_nan() {
-                    m_crit_dunt * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_dunt.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Dunnett's T3 ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_dunt,
-            significance: significances_dunt,
-            confidence_interval: confidence_intervals_dunt,
-        });
-        overall_notes.push(
-            format!(
-                "Dunnett's T3 for factor '{}' assumes unequal variances and uses the Studentized Maximum Modulus distribution (k={}). Fallback to Bonferroni-corrected t-test with Welch-Satterthwaite df if table value is unavailable.",
-                factor_name,
-                k_total_levels_with_data.max(1)
+        let mut t3_results = Vec::new();
+        if
+            let Some(m_crit) = studentized_maximum_modulus_critical_value(
+                alpha,
+                k_pairwise_comparisons as f64,
+                df_error_pooled
             )
-        );
-    }
-
-    // --- Waller-Duncan t-test ---
-    if config.posthoc.waller {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_waller: Vec<f64> = Vec::new();
-        let mut significances_waller: Vec<f64> = Vec::new();
-        let mut confidence_intervals_waller: Vec<ConfidenceInterval> = Vec::new();
-
-        let k_ratio_waller = 100.0; // Common default K-ratio for Waller-Duncan
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_waller.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                // Placeholder for actual Waller-Duncan p-value calculation.
-                // The true p-value depends on the Waller-Duncan critical value, which is complex.
-                // Using unadjusted t-test p-value as a rough indicator.
-                let p_unadjusted = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled)
-                } else {
-                    f64::NAN
-                };
-                significances_waller.push(p_unadjusted); // This is NOT the adjusted Waller p-value
-
-                // Placeholder for Waller-Duncan critical value.
-                // Using a Bonferroni-corrected t-value as a temporary approximation.
-                // A more accurate critical value depends on f_factor_value, df_factor, k_ratio.
-                let t_crit_waller_approx = if df_error_pooled > 0 && k_pairwise_comparisons > 0 {
-                    calculate_t_critical(
-                        Some(alpha / (k_pairwise_comparisons as f64)),
-                        df_error_pooled
-                    )
-                } else if df_error_pooled > 0 {
-                    calculate_t_critical(Some(alpha), df_error_pooled) // Fallback if k_pairwise_comparisons is 0 (e.g. 2 groups)
-                } else {
-                    f64::NAN
-                };
-
-                let ci_width = if !std_err.is_nan() && !t_crit_waller_approx.is_nan() {
-                    t_crit_waller_approx * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_waller.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
+        {
+            for i in 0..num_levels_with_data {
+                for j in i + 1..num_levels_with_data {
+                    let s1 = &current_level_stats[i];
+                    let s2 = &current_level_stats[j];
+                    let se = (s1.variance / (s1.n as f64) + s2.variance / (s2.n as f64)).sqrt();
+                    let sig = if (s1.mean - s2.mean).abs() / se >= m_crit { 0.0 } else { 1.0 };
+                    let margin = m_crit * se;
+                    let ci = ConfidenceInterval {
+                        lower_bound: s1.mean - s2.mean - margin,
+                        upper_bound: s1.mean - s2.mean + margin,
+                    };
+                    t3_results.push((i, j, s1.mean - s2.mean, se, sig, ci));
+                }
             }
+            factor_comparison_entries.push(
+                expand_pairwise(format!("Dunnett T3 ({})", factor_name), t3_results)
+            );
         }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Waller-Duncan (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_waller,
-            significance: significances_waller,
-            confidence_interval: confidence_intervals_waller,
-        });
-        overall_notes.push(
-            format!(
-                "Waller-Duncan test for factor '{}' is approximated. K-Ratio={}. F-value(df1={},df2={})={:.3}. Significance and CI are based on t-tests and Bonferroni-like approximation for critical values, not the true Waller-Duncan procedure.",
-                factor_name,
-                k_ratio_waller,
-                df_factor,
-                df_error_pooled,
-                f_factor_value
-            )
-        );
     }
 
-    // --- REGW F test ---
-    if config.posthoc.regwf {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_regwf: Vec<f64> = Vec::new();
-        let mut significances_regwf: Vec<f64> = Vec::new();
-        let mut confidence_intervals_regwf: Vec<ConfidenceInterval> = Vec::new();
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_regwf.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled) // Unadjusted p-value
-                } else {
-                    f64::NAN
-                };
-                significances_regwf.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled); // Standard t-critical for CI
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_regwf.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("REGW F (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_regwf,
-            significance: significances_regwf,
-            confidence_interval: confidence_intervals_regwf,
-        });
-        overall_notes.push(
-            format!("REGW F test for factor '{}' is approximated using standard t-tests for pairwise comparisons. The true REGW F procedure involves specific alpha adjustments for step-down F-tests and is primarily for homogeneous subset determination.", factor_name)
-        );
-    }
-
-    // --- REGW Q test ---
-    if config.posthoc.regwq {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_regwq: Vec<f64> = Vec::new();
-        let mut significances_regwq: Vec<f64> = Vec::new();
-        let mut confidence_intervals_regwq: Vec<ConfidenceInterval> = Vec::new();
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_regwq.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled) // Unadjusted p-value
-                } else {
-                    f64::NAN
-                };
-                significances_regwq.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled); // Standard t-critical for CI
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_regwq.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("REGW Q (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_regwq,
-            significance: significances_regwq,
-            confidence_interval: confidence_intervals_regwq,
-        });
-        overall_notes.push(
-            format!("REGW Q test for factor '{}' is approximated using standard t-tests. The true REGW Q procedure uses Studentized Range (q) statistic with specific alpha adjustments and is primarily for homogeneous subset determination.", factor_name)
-        );
-    }
-
-    // --- Student-Newman-Keuls (SNK) ---
-    if config.posthoc.snk {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_snk: Vec<f64> = Vec::new();
-        let mut significances_snk: Vec<f64> = Vec::new();
-        let mut confidence_intervals_snk: Vec<ConfidenceInterval> = Vec::new();
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_snk.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled) // Unadjusted p-value
-                } else {
-                    f64::NAN
-                };
-                significances_snk.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled); // Standard t-critical for CI
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_snk.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("SNK (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_snk,
-            significance: significances_snk,
-            confidence_interval: confidence_intervals_snk,
-        });
-        overall_notes.push(
-            format!("Student-Newman-Keuls (SNK) test for factor '{}' is approximated using standard t-tests. The true SNK procedure uses Studentized Range (q) statistic with varying critical values based on the number of means spanned, and is primarily for homogeneous subset determination.", factor_name)
-        );
-    }
-
-    // --- Tukey's b ---
-    if config.posthoc.tub {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_tub: Vec<f64> = Vec::new();
-        let mut significances_tub: Vec<f64> = Vec::new();
-        let mut confidence_intervals_tub: Vec<ConfidenceInterval> = Vec::new();
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_tub.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled) // Unadjusted p-value
-                } else {
-                    f64::NAN
-                };
-                significances_tub.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled); // Standard t-critical for CI
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_tub.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Tukey's b (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_tub,
-            significance: significances_tub,
-            confidence_interval: confidence_intervals_tub,
-        });
-        overall_notes.push(
-            format!("Tukey's b test for factor '{}' is approximated using standard t-tests. The true Tukey's b procedure uses critical values from the Studentized Range (q) statistic, averaged for Tukey HSD and SNK, and is primarily for homogeneous subset determination.", factor_name)
-        );
-    }
-
-    // --- Duncan's Multiple Range Test ---
-    if config.posthoc.dun {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_dun: Vec<f64> = Vec::new();
-        let mut significances_dun: Vec<f64> = Vec::new();
-        let mut confidence_intervals_dun: Vec<ConfidenceInterval> = Vec::new();
-
-        for i in 0..num_levels_with_data {
-            for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
-
-                let n_i = level_i_stats.n as f64;
-                let n_j = level_j_stats.n as f64;
-
-                let std_err = if n_i > 0.0 && n_j > 0.0 && !mse.is_nan() && mse >= 0.0 {
-                    (mse * (1.0 / n_i + 1.0 / n_j)).sqrt()
-                } else {
-                    f64::NAN
-                };
-                std_errors_dun.push(std_err);
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                let sig = if !t_value.is_nan() && df_error_pooled > 0 {
-                    calculate_t_significance(t_value, df_error_pooled) // Unadjusted p-value
-                } else {
-                    f64::NAN
-                };
-                significances_dun.push(sig);
-
-                let t_crit = calculate_t_critical(Some(alpha), df_error_pooled); // Standard t-critical for CI
-                let ci_width = if !std_err.is_nan() && !t_crit.is_nan() {
-                    t_crit * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_dun.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
-            }
-        }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Duncan (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_dun,
-            significance: significances_dun,
-            confidence_interval: confidence_intervals_dun,
-        });
-        overall_notes.push(
-            format!("Duncan's Multiple Range Test for factor '{}' is approximated using standard t-tests. The true Duncan procedure uses special critical values based on the number of means spanned (Duncan's New Multiple Range Test values) and is primarily for homogeneous subset determination.", factor_name)
-        );
-    }
-
-    // --- Dunnett's C (Unequal Variances) ---
     if config.posthoc.dunc {
-        let mut parameters: Vec<String> = Vec::new();
-        let mut mean_differences: Vec<f64> = Vec::new();
-        let mut std_errors_dunc: Vec<f64> = Vec::new();
-        let mut significances_dunc: Vec<f64> = Vec::new();
-        let mut confidence_intervals_dunc: Vec<ConfidenceInterval> = Vec::new();
+        let mut c_results = Vec::new();
+        if
+            let Some(q_crit) = studentized_range_critical_value(
+                alpha,
+                k_total_levels_with_data,
+                df_error_pooled
+            )
+        {
+            for i in 0..num_levels_with_data {
+                for j in i + 1..num_levels_with_data {
+                    let s1 = &current_level_stats[i];
+                    let s2 = &current_level_stats[j];
+                    let se = (s1.variance / (s1.n as f64) + s2.variance / (s2.n as f64)).sqrt();
+                    let q_val = (s1.mean - s2.mean).abs() / (se / (2.0_f64).sqrt());
+                    let sig = if q_val >= q_crit { 0.0 } else { 1.0 };
+                    let margin = (q_crit * se) / (2.0_f64).sqrt();
+                    let ci = ConfidenceInterval {
+                        lower_bound: s1.mean - s2.mean - margin,
+                        upper_bound: s1.mean - s2.mean + margin,
+                    };
+                    c_results.push((i, j, s1.mean - s2.mean, se, sig, ci));
+                }
+            }
+            factor_comparison_entries.push(
+                expand_pairwise(format!("Dunnett C ({})", factor_name), c_results)
+            );
+        }
+    }
 
-        // Dunnett's C uses separate variances, similar to Games-Howell for SE.
-        // Critical values are based on Studentized Range q, but with specific adjustments.
-        // Here, we approximate with t-tests and Welch-Satterthwaite df for p-values and CIs.
+    if config.posthoc.waller {
+        let k_ratio = config.posthoc.error_ratio as f64;
+        if
+            let Some(t_crit) = waller_duncan_critical_value(
+                k_ratio,
+                f_factor_value,
+                df_error_pooled,
+                k_total_levels_with_data
+            )
+        {
+            let waller_results = all_pairwise_results
+                .iter()
+                .map(|(i, j, mean_diff, _se, _sig, _ci)| {
+                    let n_i = current_level_stats[*i].n;
+                    let n_j = current_level_stats[*j].n;
+
+                    let se_wd = if n_i == n_j {
+                        ((mse * 2.0) / (n_i as f64)).sqrt()
+                    } else {
+                        let n_h = 2.0 / (1.0 / (n_i as f64) + 1.0 / (n_j as f64));
+                        ((mse * 2.0) / n_h).sqrt()
+                    };
+
+                    let w_val = if se_wd > 0.0 { mean_diff.abs() / se_wd } else { f64::INFINITY };
+
+                    let margin = t_crit * se_wd;
+                    let ci = ConfidenceInterval {
+                        lower_bound: *mean_diff - margin,
+                        upper_bound: *mean_diff + margin,
+                    };
+                    let sig = if w_val >= t_crit { 0.0 } else { 1.0 };
+                    (*i, *j, *mean_diff, se_wd, sig, ci)
+                })
+                .collect();
+            factor_comparison_entries.push(
+                expand_pairwise(
+                    format!("Waller-Duncan (K={}) ({})", k_ratio, factor_name),
+                    waller_results
+                )
+            );
+        } else {
+            overall_notes.push(
+                format!(
+                    "Waller-Duncan test for factor '{}' with K-ratio={} could not be calculated because the critical value function is not yet implemented.",
+                    factor_name,
+                    k_ratio
+                )
+            );
+        }
+    }
+    if config.posthoc.regwq {
+        overall_notes.push(
+            format!("REGWQ test for factor '{}' is not yet implemented. It is a step-down procedure requiring Studentized Range critical values for varying alpha levels, which are not available.", factor_name)
+        );
+    }
+    if config.posthoc.regwf {
+        overall_notes.push(
+            format!("REGWF test for factor '{}' is not yet implemented. It requires a complex step-down procedure based on F-tests with adjusted alpha levels.", factor_name)
+        );
+    }
+    if config.posthoc.dun {
+        overall_notes.push(
+            format!("Duncan's multiple range test for factor '{}' is not yet implemented. It requires Studentized Range critical values for alpha levels that vary per comparison, which are not available.", factor_name)
+        );
+    }
+
+    if config.posthoc.snk {
+        let mut snk_results = Vec::new();
+        let mut sorted_stats_with_indices: Vec<(usize, &LevelStats)> = current_level_stats
+            .iter()
+            .enumerate()
+            .collect();
+        sorted_stats_with_indices.sort_by(|a, b| a.1.mean.partial_cmp(&b.1.mean).unwrap());
 
         for i in 0..num_levels_with_data {
             for j in i + 1..num_levels_with_data {
-                let level_i_stats = &current_level_stats[i];
-                let level_j_stats = &current_level_stats[j];
-                parameters.push(format!("{} vs {}", level_i_stats.name, level_j_stats.name));
-                let mean_diff = level_i_stats.mean - level_j_stats.mean;
-                mean_differences.push(mean_diff);
+                let p = (j - i + 1) as usize; // Number of steps between means
+                if let Some(q_crit) = studentized_range_critical_value(alpha, p, df_error_pooled) {
+                    let (idx1, stats1) = sorted_stats_with_indices[i];
+                    let (idx2, stats2) = sorted_stats_with_indices[j];
 
-                let n_i = level_i_stats.n as f64;
-                let var_i = level_i_stats.variance;
-                let n_j = level_j_stats.n as f64;
-                let var_j = level_j_stats.variance;
-
-                let std_err = if
-                    n_i > 0.0 &&
-                    n_j > 0.0 &&
-                    !var_i.is_nan() &&
-                    !var_j.is_nan() &&
-                    var_i >= 0.0 &&
-                    var_j >= 0.0
-                {
-                    (var_i / n_i + var_j / n_j).sqrt() // SE for unequal variances
-                } else {
-                    f64::NAN
-                };
-                std_errors_dunc.push(std_err);
-
-                let df_dunc_approx = welch_satterthwaite_df(var_i, n_i, var_j, n_j);
-                let df_dunc_approx_usize = if !df_dunc_approx.is_nan() && df_dunc_approx >= 1.0 {
-                    df_dunc_approx.round() as usize
-                } else {
-                    0
-                };
-
-                let t_value = if !std_err.is_nan() && std_err > 0.0 {
-                    mean_diff / std_err
-                } else {
-                    f64::NAN
-                };
-
-                // Using unadjusted p-values from t-distribution with Welch-Satterthwaite df.
-                // True Dunnett's C would use a Studentized Range based significance.
-                let sig = if !t_value.is_nan() && df_dunc_approx_usize > 0 {
-                    calculate_t_significance(t_value, df_dunc_approx_usize)
-                } else {
-                    f64::NAN
-                };
-                significances_dunc.push(sig);
-
-                // CI based on t-critical value with Welch-Satterthwaite df.
-                // Approximating Dunnett's C CIs.
-                let t_crit_dunc_approx = if df_dunc_approx_usize > 0 {
-                    // For CI, a common approach is to use alpha/2 for each tail with Bonferroni for k_pairwise_comparisons.
-                    // However, Dunnett's C is complex. Sticking to a simpler t-crit for this approximation.
-                    calculate_t_critical(
-                        Some(alpha / (k_pairwise_comparisons.max(1) as f64)),
-                        df_dunc_approx_usize
-                    ) // Bonferroni style adjustment for CI
-                } else {
-                    f64::NAN
-                };
-
-                let ci_width = if !std_err.is_nan() && !t_crit_dunc_approx.is_nan() {
-                    t_crit_dunc_approx * std_err
-                } else {
-                    f64::NAN
-                };
-                confidence_intervals_dunc.push(ConfidenceInterval {
-                    lower_bound: mean_diff - ci_width,
-                    upper_bound: mean_diff + ci_width,
-                });
+                    let mean_diff_abs = (stats1.mean - stats2.mean).abs();
+                    let n1 = stats1.n as f64;
+                    let n2 = stats2.n as f64;
+                    let se = ((mse * (1.0 / n1 + 1.0 / n2)) / 2.0).sqrt();
+                    let sig = if se > 0.0 && mean_diff_abs / se >= q_crit { 0.0 } else { 1.0 };
+                    let ci = ConfidenceInterval { lower_bound: f64::NAN, upper_bound: f64::NAN }; // SNK doesn't typically provide CIs
+                    snk_results.push((idx1, idx2, stats1.mean - stats2.mean, se, sig, ci));
+                }
             }
         }
-        factor_comparison_entries.push(PostHocComparisonEntry {
-            method: format!("Dunnett's C (approx.) ({})", factor_name),
-            parameter: parameters,
-            mean_difference: mean_differences,
-            standard_error: std_errors_dunc,
-            significance: significances_dunc,
-            confidence_interval: confidence_intervals_dunc,
-        });
-        overall_notes.push(
-            format!("Dunnett's C test for factor '{}' (unequal variances) is approximated using t-tests with Welch-Satterthwaite df. The true Dunnett's C procedure uses critical values from the Studentized Range (q) statistic with adjustments for unequal variances.", factor_name)
+        factor_comparison_entries.push(
+            expand_pairwise(format!("SNK ({})", factor_name), snk_results)
+        );
+    }
+
+    if config.posthoc.tub {
+        let mut tub_results = Vec::new();
+        let mut sorted_stats_with_indices: Vec<(usize, &LevelStats)> = current_level_stats
+            .iter()
+            .enumerate()
+            .collect();
+        sorted_stats_with_indices.sort_by(|a, b| a.1.mean.partial_cmp(&b.1.mean).unwrap());
+
+        if
+            let Some(q_crit_tukey) = studentized_range_critical_value(
+                alpha,
+                k_total_levels_with_data,
+                df_error_pooled
+            )
+        {
+            for i in 0..num_levels_with_data {
+                for j in i + 1..num_levels_with_data {
+                    let p = (j - i + 1) as usize; // Number of steps between means
+                    if
+                        let Some(q_crit_snk) = studentized_range_critical_value(
+                            alpha,
+                            p,
+                            df_error_pooled
+                        )
+                    {
+                        let q_crit_tub = (q_crit_snk + q_crit_tukey) / 2.0;
+
+                        let (idx1, stats1) = sorted_stats_with_indices[i];
+                        let (idx2, stats2) = sorted_stats_with_indices[j];
+
+                        let mean_diff_abs = (stats1.mean - stats2.mean).abs();
+                        let n1 = stats1.n as f64;
+                        let n2 = stats2.n as f64;
+                        let se = ((mse * (1.0 / n1 + 1.0 / n2)) / 2.0).sqrt();
+
+                        let sig = if se > 0.0 && mean_diff_abs / se >= q_crit_tub {
+                            0.0
+                        } else {
+                            1.0
+                        };
+                        let ci = ConfidenceInterval {
+                            lower_bound: f64::NAN,
+                            upper_bound: f64::NAN,
+                        };
+
+                        tub_results.push((idx1, idx2, stats1.mean - stats2.mean, se, sig, ci));
+                    }
+                }
+            }
+        }
+        factor_comparison_entries.push(
+            expand_pairwise(format!("Tukey-b ({})", factor_name), tub_results)
         );
     }
 
     factor_comparison_entries
 }
 
+fn create_homogeneous_subsets(
+    display_name: &str,
+    factor_name: &str,
+    valid_sorted_level_stats: &[LevelStats],
+    comparison_entries: &[PostHocComparisonEntry],
+    alpha: f64,
+    df_error: usize,
+    current_level_stats: &[LevelStats],
+    mse: f64,
+    overall_notes: &mut Vec<String>
+) -> Option<PostHocHomogoneousEntry> {
+    let num_valid_levels = valid_sorted_level_stats.len();
+    if num_valid_levels < 2 {
+        return None;
+    }
+
+    let search_method_name = format!("{} ({})", display_name, factor_name);
+    let comparison = comparison_entries.iter().find(|e| e.method == search_method_name);
+
+    if comparison.is_none() {
+        overall_notes.push(
+            format!("Note: Could not find multiple comparison results for '{}' to create homogeneous subsets.", search_method_name)
+        );
+        return None;
+    }
+    let comparison = comparison.unwrap();
+
+    let mut subsets: Vec<BTreeSet<usize>> = Vec::new();
+    for i in 0..num_valid_levels {
+        let mut current_subset: BTreeSet<usize> = BTreeSet::new();
+        current_subset.insert(i);
+        for j in i + 1..num_valid_levels {
+            let level_i_name = &valid_sorted_level_stats[i].name;
+            let level_j_name = &valid_sorted_level_stats[j].name;
+
+            let param_fwd = format!("{} vs {}", level_i_name, level_j_name);
+            let param_rev = format!("{} vs {}", level_j_name, level_i_name);
+
+            let sig = comparison.parameter
+                .iter()
+                .position(|p| (p == &param_fwd || p == &param_rev))
+                .map(|idx| comparison.significance[idx])
+                .unwrap_or(1.0);
+
+            if sig > alpha {
+                current_subset.insert(j);
+            } else {
+                break;
+            }
+        }
+        subsets.push(current_subset);
+    }
+
+    // Merge subsets
+    let mut merged = true;
+    while merged {
+        merged = false;
+        let mut new_subsets: Vec<BTreeSet<usize>> = Vec::new();
+        let mut merged_indices: HashSet<usize> = HashSet::new();
+
+        for i in 0..subsets.len() {
+            if merged_indices.contains(&i) {
+                continue;
+            }
+            let mut base_subset = subsets[i].clone();
+            for j in i + 1..subsets.len() {
+                if merged_indices.contains(&j) {
+                    continue;
+                }
+                if subsets[j].is_subset(&base_subset) {
+                    merged_indices.insert(j);
+                    merged = true;
+                } else if base_subset.is_subset(&subsets[j]) {
+                    base_subset = subsets[j].clone();
+                    merged_indices.insert(i);
+                    merged_indices.insert(j);
+                    merged = true;
+                }
+            }
+            new_subsets.push(base_subset);
+        }
+        if merged {
+            subsets = new_subsets;
+        }
+    }
+
+    let mut final_subsets: Vec<BTreeSet<usize>> = Vec::new();
+    let mut assigned_levels: HashSet<usize> = HashSet::new();
+    for i in 0..num_valid_levels {
+        if assigned_levels.contains(&i) {
+            continue;
+        }
+
+        let mut best_subset: &BTreeSet<usize> = &BTreeSet::new();
+        for subset in &subsets {
+            if subset.contains(&i) && subset.len() > best_subset.len() {
+                best_subset = subset;
+            }
+        }
+        if !best_subset.is_empty() {
+            final_subsets.push(best_subset.clone());
+            for &level_idx in best_subset {
+                assigned_levels.insert(level_idx);
+            }
+        }
+    }
+
+    let mut subset_columns: Vec<Vec<f64>> =
+        vec![
+        vec![f64::NAN; num_valid_levels];
+        final_subsets.len()
+    ];
+    for (subset_idx, subset) in final_subsets.iter().enumerate() {
+        for &level_idx in subset {
+            subset_columns[subset_idx][level_idx] = valid_sorted_level_stats[level_idx].mean;
+        }
+    }
+
+    let mut subset_sigs = Vec::new();
+    for subset in &final_subsets {
+        let original_indices: Vec<usize> = subset
+            .iter()
+            .map(|&sorted_idx| valid_sorted_level_stats[sorted_idx].original_index)
+            .collect();
+        let sig = calculate_subset_significance(
+            &original_indices,
+            current_level_stats,
+            mse,
+            df_error
+        );
+        subset_sigs.push(sig);
+    }
+
+    Some(PostHocHomogoneousEntry {
+        method: search_method_name.clone(),
+        parameter: valid_sorted_level_stats
+            .iter()
+            .map(|s| s.name.clone())
+            .collect(),
+        mean_difference: valid_sorted_level_stats
+            .iter()
+            .map(|s| s.mean)
+            .collect(),
+        n: valid_sorted_level_stats
+            .iter()
+            .map(|s| s.n)
+            .collect(),
+        subsets: subset_columns
+            .into_iter()
+            .map(|s| Subset { subset: s })
+            .collect(),
+        significances: Some(subset_sigs),
+    })
+}
+
+/// Calculate homogeneous subsets for post-hoc tests
 fn calculate_homogeneous_subsets(
     factor_name: &str,
     current_level_stats: &[LevelStats],
-    comparison_entries: &[PostHocComparisonEntry], // Now used for Tukey HSD (approx)
+    comparison_entries: &[PostHocComparisonEntry],
     config: &UnivariateConfig,
     alpha: f64,
-    s_pp: f64, // Pooled standard deviation sqrt(MSE)
-    n_h: f64, // Harmonic mean of sample sizes
-    df_error: usize, // Degrees of freedom for error (MSE)
-    f_factor_value: f64, // F-statistic for the current factor. Use f64::NAN if not applicable/calculable.
-    df_factor: usize, // Degrees of freedom for the current factor (k-1)
-    k_total_levels_with_data: usize, // Renamed from _k_total_levels_with_data as it IS used in note_str
+    mse: f64,
+    df_error: usize,
     overall_notes: &mut Vec<String>
 ) -> Vec<PostHocHomogoneousEntry> {
-    let mut factor_homog_entries: Vec<PostHocHomogoneousEntry> = Vec::new();
+    let mut homog_entries: Vec<PostHocHomogoneousEntry> = Vec::new();
 
-    // Sort level_stats by mean for subset algorithms
-    let mut sorted_level_stats_with_nan: Vec<LevelStats> = current_level_stats.to_vec();
-    // Ensure means are valid for sorting, handle NaNs by placing them at the end or beginning consistently
-    sorted_level_stats_with_nan.sort_by(|a, b|
-        a.mean.partial_cmp(&b.mean).unwrap_or(std::cmp::Ordering::Less)
-    );
+    let mut sorted_level_stats = current_level_stats.to_vec();
+    sorted_level_stats.sort_by(|a, b| a.mean.partial_cmp(&b.mean).unwrap());
 
-    let num_levels = sorted_level_stats_with_nan
-        .iter()
-        .filter(|s| !s.mean.is_nan())
-        .count();
-
-    if num_levels < 2 {
-        if
-            num_levels == 1 &&
-            !sorted_level_stats_with_nan.is_empty() &&
-            !sorted_level_stats_with_nan[0].mean.is_nan()
-        {
-            overall_notes.push(
-                format!(
-                    "Factor '{}' has only one level with data ('{}'), no homogeneous subset comparisons performed.",
-                    factor_name,
-                    sorted_level_stats_with_nan
-                        .iter()
-                        .find(|s| !s.mean.is_nan())
-                        .unwrap().name
-                )
-            );
-        } else if num_levels == 0 {
-            overall_notes.push(
-                format!("Factor '{}' has no levels with valid data for homogeneous subset analysis.", factor_name)
-            );
-        }
-        return factor_homog_entries;
-    }
-
-    // Filter out levels with NaN means for actual subset processing
-    let valid_sorted_level_stats: Vec<LevelStats> = sorted_level_stats_with_nan
+    let valid_sorted_level_stats: Vec<LevelStats> = sorted_level_stats
         .into_iter()
         .filter(|s| !s.mean.is_nan())
         .collect();
-
-    let num_valid_levels = valid_sorted_level_stats.len();
-    if num_valid_levels < 2 {
-        // Re-check after filtering NaNs
-        return factor_homog_entries;
+    if valid_sorted_level_stats.len() < 2 {
+        return homog_entries;
     }
 
-    // Helper function to generate homogeneous subsets based on pairwise comparison results
-    let create_homogeneous_subsets = |
-        method_name: &str,
-        method_key: &str,
-        comparison_entries: &[PostHocComparisonEntry],
-        overall_notes: &mut Vec<String>
-    | -> Option<PostHocHomogoneousEntry> {
-        let sorted_level_names: Vec<String> = valid_sorted_level_stats
-            .iter()
-            .map(|s| s.name.clone())
-            .collect();
-        let sorted_means: Vec<f64> = valid_sorted_level_stats
-            .iter()
-            .map(|s| s.mean)
-            .collect();
-        let sorted_ns: Vec<usize> = valid_sorted_level_stats
-            .iter()
-            .map(|s| s.n)
-            .collect();
-
-        let mut subsets_data: Vec<Subset> = Vec::new();
-
-        if num_valid_levels >= 1 {
-            // Find the corresponding pairwise comparison results for this method
-            let pairwise_results = comparison_entries
-                .iter()
-                .find(|entry| entry.method.contains(method_key));
-
-            // Adjacency matrix: adj[i][j] is true if means i and j are NOT significantly different.
-            let mut adj = vec![vec![false; num_valid_levels]; num_valid_levels];
-
-            if let Some(pairwise) = pairwise_results {
-                for i in 0..num_valid_levels {
-                    adj[i][i] = true; // A mean is always compatible with itself.
-                    for j in i + 1..num_valid_levels {
-                        let level_i_name = &valid_sorted_level_stats[i].name;
-                        let level_j_name = &valid_sorted_level_stats[j].name;
-
-                        let param_idx_opt = pairwise.parameter
-                            .iter()
-                            .position(|p| {
-                                p.contains(level_i_name) &&
-                                    p.contains(level_j_name) &&
-                                    ((p.starts_with(level_i_name) && p.ends_with(level_j_name)) ||
-                                        (p.starts_with(level_j_name) && p.ends_with(level_i_name)))
-                            });
-
-                        if let Some(param_idx) = param_idx_opt {
-                            if let Some(sig) = pairwise.significance.get(param_idx) {
-                                if !sig.is_nan() && *sig >= alpha {
-                                    adj[i][j] = true;
-                                    adj[j][i] = true;
-                                }
-                            }
-                        } else {
-                            if
-                                !overall_notes
-                                    .iter()
-                                    .any(|note|
-                                        note.contains(
-                                            &format!(
-                                                "Missing pairwise comparison for {} subset: {} vs {}",
-                                                method_name,
-                                                level_i_name,
-                                                level_j_name
-                                            )
-                                        )
-                                    )
-                            {
-                                overall_notes.push(
-                                    format!(
-                                        "Warning: Missing pairwise comparison for {} subset generation between {} and {}. Assuming different.",
-                                        method_name,
-                                        level_i_name,
-                                        level_j_name
-                                    )
-                                );
-                            }
-                        }
-                    }
-                }
-
-                // Standard algorithm for homogeneous subset display:
-                // Iterate through sorted means. For each mean, form a subset with all subsequent means
-                // that are not significantly different from it AND from each other.
-                let mut means_in_a_subset_column = vec![false; num_valid_levels];
-
-                for i in 0..num_valid_levels {
-                    if means_in_a_subset_column[i] {
-                        continue;
-                    }
-
-                    let mut current_subset_group = vec![i];
-                    for j in i + 1..num_valid_levels {
-                        // Check if mean j is non-significant with mean i AND all other means currently in current_subset_group
-                        let mut compatible = true;
-                        for member_idx in &current_subset_group {
-                            if !adj[*member_idx][j] {
-                                compatible = false;
-                                break;
-                            }
-                        }
-                        if compatible {
-                            current_subset_group.push(j);
-                        }
-                    }
-                    // Add this group to subsets_data
-                    if !current_subset_group.is_empty() {
-                        let mut subset_column_values = vec![f64::NAN; num_valid_levels];
-                        for &idx in &current_subset_group {
-                            subset_column_values[idx] = sorted_means[idx];
-                            means_in_a_subset_column[idx] = true; // Mark as included in *some* column
-                        }
-                        subsets_data.push(Subset { subset: subset_column_values });
-                    }
-                }
-                // If after the above, some means are not in any column, put them in their own.
-                // This ensures all means appear.
-                for i in 0..num_valid_levels {
-                    let mean_appears_in_any_subset = subsets_data
-                        .iter()
-                        .any(|s| !s.subset[i].is_nan());
-                    if !mean_appears_in_any_subset {
-                        let mut solo_subset_col = vec![f64::NAN; num_valid_levels];
-                        solo_subset_col[i] = sorted_means[i];
-                        subsets_data.push(Subset { subset: solo_subset_col });
-                    }
-                }
-            } else {
-                // No pairwise results found for this method, create default subsets (each mean in its own column)
-                if
-                    !overall_notes
-                        .iter()
-                        .any(|note|
-                            note.contains(
-                                &format!("No pairwise {} results found for subset", method_name)
-                            )
-                        )
-                {
-                    overall_notes.push(
-                        format!(
-                            "Note: No pairwise {} results found for factor '{}' to generate homogeneous subsets. Each mean will be in its own subset column.",
-                            method_name,
-                            factor_name
-                        )
-                    );
-                }
-                for i in 0..num_valid_levels {
-                    let mut subset_column_values = vec![f64::NAN; num_valid_levels];
-                    subset_column_values[i] = sorted_means[i];
-                    subsets_data.push(Subset { subset: subset_column_values });
-                }
-            }
-
-            let note_str = format!(
-                "Homogeneous subsets for {} ('{}') are based on pairwise significance (alpha={}) from the approximated test. s_pp={:.3}, n_h={:.3}, df_error={}, k_levels={}",
-                method_name,
+    let mut create_subsets_for_method = |display_name: &str| {
+        if
+            let Some(entry) = create_homogeneous_subsets(
+                display_name,
                 factor_name,
+                &valid_sorted_level_stats,
+                comparison_entries,
                 alpha,
-                s_pp,
-                n_h,
                 df_error,
-                k_total_levels_with_data
-            );
-            if !overall_notes.iter().any(|note| note.contains(&note_str)) {
-                overall_notes.push(note_str);
-            }
+                current_level_stats,
+                mse,
+                overall_notes
+            )
+        {
+            homog_entries.push(entry);
         }
-
-        Some(PostHocHomogoneousEntry {
-            method: format!("{} ({})", method_name, factor_name),
-            parameter: sorted_level_names,
-            mean_difference: sorted_means,
-            n: sorted_ns,
-            subsets: subsets_data,
-        })
     };
 
-    // --- Homogeneous Subsets for Tukey HSD (Approximation) ---
     if config.posthoc.tu {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Tukey HSD (approx.)",
-                "Tukey HSD (approx.)",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
+        create_subsets_for_method("Tukey HSD");
     }
-
-    // --- Homogeneous Subsets for Student-Newman-Keuls (SNK) ---
-    if config.posthoc.snk {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "SNK",
-                "SNK",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Tukey's b ---
-    if config.posthoc.tub {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Tukey's b",
-                "Tukey's b",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Duncan's Multiple Range Test ---
-    if config.posthoc.dun {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Duncan",
-                "Duncan",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Ryan-Einot-Gabriel-Welsch Range Q test ---
-    if config.posthoc.regwq {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "REGW Q",
-                "REGW Q",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Ryan-Einot-Gabriel-Welsch F test ---
-    if config.posthoc.regwf {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "REGW F",
-                "REGW F",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Waller-Duncan test ---
-    if config.posthoc.waller {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Waller-Duncan",
-                "Waller-Duncan",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Scheffe ---
-    if config.posthoc.scheffe {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Scheffe",
-                "Scheffe",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
-    }
-
-    // --- Homogeneous Subsets for Gabriel's Test ---
     if config.posthoc.gabriel {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Gabriel",
-                "Gabriel",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
+        create_subsets_for_method("Gabriel");
     }
-
-    // --- Homogeneous Subsets for Hochberg's GT2 ---
     if config.posthoc.hoc {
-        if
-            let Some(entry) = create_homogeneous_subsets(
-                "Hochberg's GT2",
-                "Hochberg's GT2",
-                comparison_entries,
-                overall_notes
-            )
-        {
-            factor_homog_entries.push(entry);
-        }
+        create_subsets_for_method("Hochberg GT2");
+    }
+    if config.posthoc.snk {
+        create_subsets_for_method("SNK");
+    }
+    if config.posthoc.scheffe {
+        create_subsets_for_method("Scheffe");
+    }
+    if config.posthoc.dunc {
+        create_subsets_for_method("Dunnett C");
+    }
+    if config.posthoc.regwq {
+        create_subsets_for_method("REGWQ");
+    }
+    if config.posthoc.regwf {
+        create_subsets_for_method("REGWF");
+    }
+    if config.posthoc.waller {
+        create_subsets_for_method("Waller-Duncan");
+    }
+    if config.posthoc.tub {
+        create_subsets_for_method("Tukey-b");
+    }
+    if config.posthoc.dun {
+        create_subsets_for_method("Duncan");
     }
 
-    factor_homog_entries
+    homog_entries
 }
 
 /// Calculate post-hoc tests based on the configuration
@@ -2157,9 +1183,8 @@ pub fn calculate_posthoc_tests(
         .ok_or_else(|| "No dependent variable specified for post-hoc.".to_string())?;
 
     let factors_for_posthoc = match &config.posthoc.fix_factor_vars {
-        Some(factors) if !factors.is_empty() => factors.clone(), // Clone to own the data
+        Some(factors) if !factors.is_empty() => factors.clone(),
         _ => {
-            // No factors specified, return empty PostHoc
             return Ok(PostHoc {
                 factor_names: Vec::new(),
                 comparison: Vec::new(),
@@ -2174,8 +1199,8 @@ pub fn calculate_posthoc_tests(
     let mut collected_homog_subsets: Vec<PostHocHomogoneous> = Vec::new();
     let mut overall_notes: Vec<String> = Vec::new();
 
-    for factor_name_ref in factors_for_posthoc {
-        let factor_name = factor_name_ref.to_string(); // Work with owned String
+    for factor_name_ref in &factors_for_posthoc {
+        let factor_name = factor_name_ref.to_string();
         let factor_levels_names_initial = get_factor_levels(data, &factor_name)?;
         if factor_levels_names_initial.len() < 2 {
             overall_notes.push(
@@ -2205,115 +1230,92 @@ pub fn calculate_posthoc_tests(
             continue;
         }
 
-        current_level_stats.sort_by(|a, b| a.name.cmp(&b.name));
+        current_level_stats.sort_by(|a, b| a.original_index.cmp(&b.original_index));
 
-        let (mse, df_error_pooled, s_pp, n_h, total_n_for_factor) =
+        let (mse, df_error_pooled, _s_pp, _n_h, total_n_for_factor) =
             calculate_pooled_stats_for_posthoc(&current_level_stats);
+
+        if mse.is_nan() || df_error_pooled == 0 {
+            overall_notes.push(
+                format!("Could not calculate pooled MSE or its df_error is 0 for factor '{}'. This may affect equal variance tests.", factor_name)
+            );
+        }
 
         let mut f_factor_value = f64::NAN;
         let mut df_factor = 0;
 
         if !mse.is_nan() && mse >= 0.0 && total_n_for_factor > 0 && current_level_stats.len() > 1 {
-            // mse can be 0
-            let mut grand_sum = 0.0;
-            let mut grand_n = 0.0;
-            for stats in &current_level_stats {
-                if !stats.mean.is_nan() && stats.n > 0 {
-                    grand_sum += stats.mean * (stats.n as f64);
-                    grand_n += stats.n as f64;
-                }
-            }
+            let grand_sum: f64 = current_level_stats
+                .iter()
+                .map(|s| s.mean * (s.n as f64))
+                .sum();
+            let grand_n = total_n_for_factor as f64;
 
             if grand_n > 0.0 {
                 let grand_mean = grand_sum / grand_n;
-                let mut ss_factor = 0.0;
-                for stats in &current_level_stats {
-                    if !stats.mean.is_nan() && stats.n > 0 {
-                        ss_factor += (stats.n as f64) * (stats.mean - grand_mean).powi(2);
-                    }
-                }
+                let ss_factor: f64 = current_level_stats
+                    .iter()
+                    .map(|s| (s.n as f64) * (s.mean - grand_mean).powi(2))
+                    .sum();
                 df_factor = current_level_stats.len() - 1;
                 if df_factor > 0 {
                     let ms_factor = ss_factor / (df_factor as f64);
-                    if mse > 0.0 {
-                        // Avoid division by zero if mse is zero
+                    if mse > 1e-9 {
                         f_factor_value = ms_factor / mse;
-                    } else if ms_factor > 0.0 {
-                        // If mse is 0 but ms_factor is not, F is Inf
+                    } else if ms_factor > 1e-9 {
                         f_factor_value = f64::INFINITY;
                     } else {
-                        // Both mse and ms_factor are 0, F is NaN
                         f_factor_value = f64::NAN;
                     }
                 }
             }
         }
 
-        if mse.is_nan() || df_error_pooled == 0 {
-            overall_notes.push(
-                format!("Could not calculate pooled MSE or its df_error is 0 for factor '{}'. This may affect equal variance tests.", factor_name)
-            );
-            // Continue processing as some tests (e.g. Games-Howell) do not use pooled MSE.
-        }
-
         let num_levels_with_data_for_k = current_level_stats.len();
-        let k_pairwise_comparisons = if num_levels_with_data_for_k >= 2 {
-            (num_levels_with_data_for_k * (num_levels_with_data_for_k - 1)) / 2
-        } else {
-            0
-        };
 
-        let num_initial_levels = factor_levels_names_initial.len();
-
-        // These notes are specific to this factor's calculations for multiple comparisons
         let mut current_factor_multiple_comparison_notes: Vec<String> = Vec::new();
         let factor_comparison_results = calculate_multiple_comparisons(
             &factor_name,
             &current_level_stats,
             mse,
             df_error_pooled,
-            s_pp,
             config,
             alpha,
-            num_levels_with_data_for_k, // k_total_levels_with_data for Scheffe etc.
-            num_initial_levels, // For Dunnett
-            k_pairwise_comparisons, // For Bonferroni, Sidak, Tukey approx etc.
-            f_factor_value, // Pass F-value for the factor
-            df_factor, // Pass df for the factor
+            num_levels_with_data_for_k,
+            f_factor_value,
+            df_factor,
             &mut current_factor_multiple_comparison_notes
         );
-        overall_notes.extend(current_factor_multiple_comparison_notes.clone()); // Add to overall notes
+        overall_notes.extend(current_factor_multiple_comparison_notes.clone());
 
-        // These notes are specific to this factor's calculations for homogeneous subsets
         let mut current_factor_homog_notes: Vec<String> = Vec::new();
         let factor_homog_results = calculate_homogeneous_subsets(
             &factor_name,
             &current_level_stats,
-            &factor_comparison_results, // Pass the comparisons for this factor
+            &factor_comparison_results,
             config,
             alpha,
-            s_pp,
-            n_h,
+            mse,
             df_error_pooled,
-            f_factor_value, // Pass f_factor_value
-            df_factor, // Pass df_factor
-            num_levels_with_data_for_k,
             &mut current_factor_homog_notes
         );
-        overall_notes.extend(current_factor_homog_notes.clone()); // Add to overall notes
+        overall_notes.extend(current_factor_homog_notes.clone());
 
         processed_factor_names.push(factor_name.clone());
-        collected_comparisons.push(PostHocComparison {
-            entries: factor_comparison_results,
-            notes: Vec::new(), // Notes will be aggregated at the end for all factors
-        });
-        collected_homog_subsets.push(PostHocHomogoneous {
-            entries: factor_homog_results,
-            notes: Vec::new(), // Notes will be aggregated at the end for all factors
-        });
+        if !factor_comparison_results.is_empty() {
+            collected_comparisons.push(PostHocComparison {
+                entries: factor_comparison_results,
+                notes: Vec::new(),
+            });
+        }
+        if !factor_homog_results.is_empty() {
+            collected_homog_subsets.push(PostHocHomogoneous {
+                entries: factor_homog_results,
+                notes: Vec::new(),
+            });
+        }
     }
 
-    // Deduplicate overall_notes
     let mut unique_notes = Vec::new();
     let mut seen_notes = HashSet::new();
     for note in overall_notes {
@@ -2322,7 +1324,6 @@ pub fn calculate_posthoc_tests(
         }
     }
 
-    // Assign unique_notes to each PostHocComparison and PostHocHomogoneous object
     for comp in &mut collected_comparisons {
         comp.notes = unique_notes.clone();
     }

@@ -184,6 +184,7 @@ pub struct PostHocHomogoneousEntry {
     pub mean_difference: Vec<f64>,
     pub n: Vec<usize>,
     pub subsets: Vec<Subset>,
+    pub significances: Option<Vec<Option<f64>>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

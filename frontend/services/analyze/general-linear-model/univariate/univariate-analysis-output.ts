@@ -415,6 +415,37 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
+             * 🧐 Post Hoc Tests Result 🧐
+             * */
+            const multipleComparisonsTable = findTable("multiple_comparisons");
+            if (multipleComparisonsTable) {
+                const analyticId = await addAnalytic(logId, {
+                    title: `Multiple Comparisons`,
+                    note: "",
+                });
+                await addStatistic(analyticId, {
+                    title: `Multiple Comparisons`,
+                    description: `Pairwise comparisons for post-hoc tests.`,
+                    output_data: multipleComparisonsTable,
+                    components: `Multiple Comparisons`,
+                });
+            }
+
+            const homogeneousSubsetsTable = findTable("homogeneous_subsets");
+            if (homogeneousSubsetsTable) {
+                const analyticId = await addAnalytic(logId, {
+                    title: `Homogeneous Subsets`,
+                    note: "",
+                });
+                await addStatistic(analyticId, {
+                    title: `Homogeneous Subsets`,
+                    description: `Groups with no significant differences are clustered into homogeneous subsets.`,
+                    output_data: homogeneousSubsetsTable,
+                    components: `Homogeneous Subsets`,
+                });
+            }
+
+            /*
              * 📈 Plots Result ��
              * */
             // Since plots can have dynamic keys, we need to find all tables with 'plot_' prefix
