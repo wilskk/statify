@@ -94,8 +94,8 @@ export const UnivariateEMMeansDefault: UnivariateEMMeansType = {
 };
 
 export const UnivariateSaveDefault: UnivariateSaveType = {
-    ResWeighted: false,
-    PreWeighted: false,
+    UnstandardizedPre: false,
+    WeightedPre: false,
     StdStatistics: false,
     CooksD: false,
     Leverage: false,

@@ -154,8 +154,8 @@ export type UnivariateEMMeansProps = {
 };
 
 export type UnivariateSaveType = {
-    ResWeighted: boolean;
-    PreWeighted: boolean;
+    UnstandardizedPre: boolean;
+    WeightedPre: boolean;
     StdStatistics: boolean;
     CooksD: boolean;
     Leverage: boolean;

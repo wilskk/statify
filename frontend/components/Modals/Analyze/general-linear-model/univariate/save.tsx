@@ -100,21 +100,21 @@ export const UnivariateSave = ({
                                                         </Label>
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
-                                                                id="ResWeighted"
+                                                                id="UnstandardizedPre"
                                                                 checked={
-                                                                    saveState.ResWeighted
+                                                                    saveState.UnstandardizedPre
                                                                 }
                                                                 onCheckedChange={(
                                                                     checked
                                                                 ) =>
                                                                     handleChange(
-                                                                        "ResWeighted",
+                                                                        "UnstandardizedPre",
                                                                         checked
                                                                     )
                                                                 }
                                                             />
                                                             <label
-                                                                htmlFor="ResWeighted"
+                                                                htmlFor="UnstandardizedPre"
                                                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                                             >
                                                                 Unstandardized
@@ -122,21 +122,21 @@ export const UnivariateSave = ({
                                                         </div>
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
-                                                                id="PreWeighted"
+                                                                id="WeightedPre"
                                                                 checked={
-                                                                    saveState.PreWeighted
+                                                                    saveState.WeightedPre
                                                                 }
                                                                 onCheckedChange={(
                                                                     checked
                                                                 ) =>
                                                                     handleChange(
-                                                                        "PreWeighted",
+                                                                        "WeightedPre",
                                                                         checked
                                                                     )
                                                                 }
                                                             />
                                                             <label
-                                                                htmlFor="PreWeighted"
+                                                                htmlFor="WeightedPre"
                                                                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                                             >
                                                                 Weighted

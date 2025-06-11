@@ -231,10 +231,10 @@ pub struct EmmmeansConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SaveConfig {
-    #[serde(rename = "ResWeighted")]
-    pub res_weighted: bool,
-    #[serde(rename = "PreWeighted")]
-    pub pre_weighted: bool,
+    #[serde(rename = "UnstandardizedPre")]
+    pub unstandardized_pre: bool,
+    #[serde(rename = "WeightedPre")]
+    pub weighted_pre: bool,
     #[serde(rename = "StdStatistics")]
     pub std_statistics: bool,
     #[serde(rename = "CooksD")]

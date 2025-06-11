@@ -250,9 +250,13 @@ pub fn run_analysis(
     // Save variables if requested
     let mut saved_variables = None;
     if
-        config.save.res_weighted ||
-        config.save.pre_weighted ||
         config.save.unstandardized_res ||
+        config.save.weighted_res ||
+        config.save.standardized_res ||
+        config.save.studentized_res ||
+        config.save.deleted_res ||
+        config.save.unstandardized_pre ||
+        config.save.weighted_pre ||
         config.save.leverage ||
         config.save.cooks_d
     {

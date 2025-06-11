@@ -1,10 +1,9 @@
-// save.rs
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::SavedVariables,
 };
-use nalgebra::{ DMatrix, DVector };
+use nalgebra::DVector;
 
 use super::design_matrix::{
     create_cross_product_matrix,
@@ -17,20 +16,6 @@ pub fn save_variables(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<SavedVariables, String> {
-    if
-        !config.save.pre_weighted &&
-        !config.save.unstandardized_res &&
-        !config.save.weighted_res &&
-        !config.save.deleted_res &&
-        !config.save.standardized_res &&
-        !config.save.studentized_res &&
-        !config.save.std_statistics &&
-        !config.save.cooks_d &&
-        !config.save.leverage
-    {
-        return Err("Configuration does not request any saved variables".to_string());
-    }
-
     let mut result = SavedVariables {
         predicted_values: Vec::new(),
         weighted_predicted_values: Vec::new(),
@@ -49,6 +34,7 @@ pub fn save_variables(
 
     let n = design_info.n_samples;
     let p = design_info.p_parameters;
+    let rank = design_info.r_x_rank;
 
     if n == 0 {
         // No data, return empty result. It's not an error.
@@ -74,7 +60,7 @@ pub fn save_variables(
     let residuals = y - &y_hat;
 
     // Calculate MSE
-    let df_residual = (n - p) as f64;
+    let df_residual = (n - rank) as f64;
     if df_residual <= 0.0 {
         return Err(
             "Cannot calculate saved variables with zero or negative degrees of freedom for error.".to_string()
@@ -115,15 +101,26 @@ pub fn save_variables(
         };
 
         // Predicted values
-        if config.save.pre_weighted {
+        if config.save.unstandardized_pre {
             result.predicted_values.push(y_hat[i]);
+        }
+
+        if config.save.weighted_pre {
             result.weighted_predicted_values.push(y_hat[i] * weight.sqrt());
+        }
+
+        // Standard errors of predicted values
+        if config.save.std_statistics {
+            // Standard error of mean prediction: sqrt(MSE * h_i)
+            // where h_i = x_i' * (X'WX)^-1 * x_i
+            result.standard_errors.push((mse * h_i).sqrt());
         }
 
         // Residuals
         if config.save.unstandardized_res {
             result.residuals.push(residual);
         }
+
         if config.save.weighted_res {
             result.weighted_residuals.push(residual * weight.sqrt());
         }
@@ -155,16 +152,11 @@ pub fn save_variables(
             }
         }
 
-        // Standard errors of predicted values
-        if config.save.std_statistics {
-            result.standard_errors.push((mse * h_i).sqrt());
-        }
-
         // Cook's distances
         if config.save.cooks_d {
             if se_residual.is_finite() && se_residual > 0.0 && leverage < 1.0 && leverage >= 0.0 {
                 let stud_res = residual / se_residual;
-                let cook_d = (stud_res.powi(2) / (p as f64)) * (leverage / (1.0 - leverage));
+                let cook_d = (stud_res.powi(2) / (rank as f64)) * (leverage / (1.0 - leverage));
                 result.cook_distances.push(cook_d);
             } else {
                 result.cook_distances.push(f64::NAN);

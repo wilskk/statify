@@ -523,6 +523,7 @@ export const UnivariateDialog = ({
                                         type="button"
                                         variant="secondary"
                                         onClick={openDialog(setIsPostHocOpen)}
+                                        disabled={true}
                                     >
                                         Post Hoc...
                                     </Button>
