@@ -9,7 +9,7 @@ export interface Table {
     rows: Row[];
 }
 
-interface ColumnHeader {
+export interface ColumnHeader {
     header: string;
     key?: string;
     children?: ColumnHeader[];

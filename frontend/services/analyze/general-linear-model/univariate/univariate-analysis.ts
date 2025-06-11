@@ -82,7 +82,9 @@ export async function analyzeUnivariate({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultUnivariateAnalysis({
-    //     formattedResult: formattedResults ?? [],
-    // });
+    await resultUnivariateAnalysis({
+        formattedResult: formattedResults ?? [],
+        configData: configData,
+        variables: variables,
+    });
 }

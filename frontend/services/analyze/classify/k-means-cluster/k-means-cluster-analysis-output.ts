@@ -1,4 +1,3 @@
-// k-means-cluster-analysis-output.ts
 import { KMeansClusterFinalResultType } from "@/models/classify/k-means-cluster/k-means-cluster-worker";
 import { Table } from "@/types/Table";
 import { Variable } from "@/types/Variable";

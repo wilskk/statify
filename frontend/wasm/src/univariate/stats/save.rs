@@ -111,8 +111,6 @@ pub fn save_variables(
 
         // Standard errors of predicted values
         if config.save.std_statistics {
-            // Standard error of mean prediction: sqrt(MSE * h_i)
-            // where h_i = x_i' * (X'WX)^-1 * x_i
             result.standard_errors.push((mse * h_i).sqrt());
         }
 

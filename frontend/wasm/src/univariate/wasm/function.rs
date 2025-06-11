@@ -190,7 +190,10 @@ pub fn run_analysis(
 
     // Calcular los posthoc tests si se solicitan
     let mut posthoc_tests = None;
-    if config.posthoc.src_list.is_some() && !config.posthoc.src_list.as_ref().unwrap().is_empty() {
+    if
+        config.posthoc.fix_factor_vars.is_some() &&
+        !config.posthoc.fix_factor_vars.as_ref().unwrap().is_empty()
+    {
         logger.add_log("calculate_posthoc_tests");
         match core::calculate_posthoc_tests(&data, config) {
             Ok(tests) => {

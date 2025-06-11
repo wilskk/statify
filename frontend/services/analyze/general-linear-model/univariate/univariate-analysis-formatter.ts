@@ -1775,40 +1775,51 @@ export function transformUnivariateResult(data: any): ResultJson {
     // 13. Saved Variables
     if (data.saved_variables) {
         const vars = data.saved_variables;
+        const varKeys = Object.keys(vars).filter(
+            (key) => Array.isArray(vars[key]) && vars[key].length > 0
+        );
 
-        // Only process if we have any saved variables
-        if (
-            vars &&
-            Object.keys(vars).some(
-                (key) => Array.isArray(vars[key]) && vars[key].length > 0
-            )
-        ) {
+        if (varKeys.length > 0) {
+            const nameMapping: { [key: string]: string } = {
+                predicted_values: "PRED",
+                weighted_predicted_values: "WPRED",
+                residuals: "RESID",
+                weighted_residuals: "WRESID",
+                deleted_residuals: "DRESID",
+                standardized_residuals: "ZRESID",
+                studentized_residuals: "SRESID",
+                standard_errors: "SEPRED",
+                cook_distances: "COOK",
+                leverages: "LEVER",
+            };
+
+            const columnHeaders: any[] = [
+                { header: "Case Number", key: "case" },
+            ];
+            varKeys.forEach((key) => {
+                columnHeaders.push({
+                    header: nameMapping[key] || key,
+                    key: key,
+                });
+            });
+
             const table: Table = {
-                key: "saved_variables",
-                title: "Saved Variables",
-                columnHeaders: [
-                    { header: "Variable", key: "variable" },
-                    { header: "Values", key: "values" },
-                ],
+                key: "saved_variables_table",
+                title: "Case Diagnostics",
+                columnHeaders: columnHeaders,
                 rows: [],
             };
 
-            // Process each saved variable array
-            Object.entries(vars).forEach(([varName, values]: [string, any]) => {
-                if (Array.isArray(values) && values.length > 0) {
-                    // Format variable name to be more readable
-                    const formattedName = varName
-                        .replace(/_/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase());
-
-                    table.rows.push({
-                        rowHeader: [formattedName],
-                        values: values
-                            .map((v: any) => formatDisplayNumber(v))
-                            .join(", "),
-                    });
-                }
-            });
+            const numRows = vars[varKeys[0]].length;
+            for (let i = 0; i < numRows; i++) {
+                const row: Row = { rowHeader: [], case: String(i + 1) };
+                varKeys.forEach((key) => {
+                    const value = vars[key][i];
+                    row[key] =
+                        value !== null ? formatDisplayNumber(value) : ".";
+                });
+                table.rows.push(row);
+            }
 
             resultJson.tables.push(table);
         }

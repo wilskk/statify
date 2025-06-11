@@ -1,10 +1,15 @@
-// univariate-analysis-output.ts
 import { UnivariateFinalResultType } from "@/models/general-linear-model/univariate/univariate-worker";
-import { Table } from "@/types/Table";
+import { Table, ResultJson, ColumnHeader } from "@/types/Table";
 import { useResultStore } from "@/stores/useResultStore";
+import { UnivariateType } from "@/models/general-linear-model/univariate/univariate";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
 
 export async function resultUnivariateAnalysis({
     formattedResult,
+    configData,
+    variables,
 }: UnivariateFinalResultType) {
     try {
         const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
@@ -446,7 +451,7 @@ export async function resultUnivariateAnalysis({
             }
 
             /*
-             * 📈 Plots Result ��
+             * 📈 Plots Result 📈
              * */
             // Since plots can have dynamic keys, we need to find all tables with 'plot_' prefix
             const plotTables = formattedResult.tables.filter((table: Table) =>
@@ -475,24 +480,167 @@ export async function resultUnivariateAnalysis({
             /*
              * 💾 Saved Variables Result 💾
              * */
-            const savedVariables = findTable("saved_variables");
-            if (savedVariables) {
-                const savedVariablesId = await addAnalytic(logId, {
-                    title: `Saved Variables`,
-                    note: "",
-                });
 
-                await addStatistic(savedVariablesId, {
-                    title: `Saved Variables`,
-                    description: `Saved Variables`,
-                    output_data: savedVariables,
-                    components: `Saved Variables`,
-                });
+            const savedVariablesTable = formattedResult.tables.find(
+                (table) => table.key === "saved_variables_table"
+            );
+
+            if (
+                savedVariablesTable &&
+                savedVariablesTable.rows &&
+                savedVariablesTable.rows.length > 0
+            ) {
+                await saveUnivariateResults(
+                    savedVariablesTable,
+                    configData,
+                    variables
+                );
             }
         };
 
         await univariateAnalysisResult();
     } catch (e) {
         console.error(e);
+    }
+}
+
+async function saveUnivariateResults(
+    savedVariablesTable: Table,
+    configData: UnivariateType,
+    variables: Variable[]
+) {
+    const { addVariable } = useVariableStore.getState();
+    const { updateBulkCells } = useDataStore.getState();
+
+    const savedData: { [key: string]: (string | null)[] } = {};
+    const columnKeys = savedVariablesTable.columnHeaders
+        .map((h: ColumnHeader) => h.key)
+        .filter((k): k is string => !!k && k !== "case");
+
+    for (const key of columnKeys) {
+        savedData[key] = savedVariablesTable.rows!.map(
+            (row: any) => (row[key] as string) ?? null
+        );
+    }
+
+    let nextColumnIndex = variables.length;
+
+    const generateUniqueName = (prefix: string) => {
+        let idx = 1;
+        let name = `${prefix}_${idx}`;
+        const existingNames = [...variables.map((v) => v.name)];
+        while (existingNames.includes(name)) {
+            idx++;
+            name = `${prefix}_${idx}`;
+        }
+        existingNames.push(name);
+        return name;
+    };
+
+    const varDefs: {
+        [key: string]: {
+            dataKey: string;
+            prefix: string;
+            label: string;
+            decimals: number;
+        };
+    } = {
+        UnstandardizedPre: {
+            dataKey: "predicted_values",
+            prefix: "PRED",
+            label: "Unstandardized predicted values",
+            decimals: 3,
+        },
+        WeightedPre: {
+            dataKey: "weighted_predicted_values",
+            prefix: "WPRED",
+            label: "Weighted unstandardized predicted values",
+            decimals: 3,
+        },
+        UnstandardizedRes: {
+            dataKey: "residuals",
+            prefix: "RESID",
+            label: "Unstandardized residuals",
+            decimals: 3,
+        },
+        WeightedRes: {
+            dataKey: "weighted_residuals",
+            prefix: "WRESID",
+            label: "Weighted unstandardized residuals",
+            decimals: 3,
+        },
+        DeletedRes: {
+            dataKey: "deleted_residuals",
+            prefix: "DRESID",
+            label: "Deleted residuals",
+            decimals: 3,
+        },
+        StandardizedRes: {
+            dataKey: "standardized_residuals",
+            prefix: "ZRESID",
+            label: "Standardized residuals",
+            decimals: 3,
+        },
+        StudentizedRes: {
+            dataKey: "studentized_residuals",
+            prefix: "SRESID",
+            label: "Studentized residuals",
+            decimals: 3,
+        },
+        StdStatistics: {
+            dataKey: "standard_errors",
+            prefix: "SEPRED",
+            label: "Standard errors of predicted value",
+            decimals: 3,
+        },
+        CooksD: {
+            dataKey: "cook_distances",
+            prefix: "COOK",
+            label: "Cook's distances",
+            decimals: 3,
+        },
+        Leverage: {
+            dataKey: "leverages",
+            prefix: "LEVER",
+            label: "Uncentered leverage values",
+            decimals: 3,
+        },
+    };
+
+    for (const confKey in varDefs) {
+        if (configData.save && (configData.save as any)[confKey]) {
+            const def = (varDefs as any)[confKey];
+            const values = savedData[def.dataKey];
+
+            if (values && values.length > 0) {
+                const varName = generateUniqueName(def.prefix);
+                const newVariable: Partial<Variable> = {
+                    name: varName,
+                    columnIndex: nextColumnIndex,
+                    type: "NUMERIC",
+                    label: def.label,
+                    values: [],
+                    missing: null,
+                    measure: "scale",
+                    width: 8,
+                    decimals: def.decimals,
+                    columns: 200,
+                    align: "right",
+                };
+
+                await addVariable(newVariable);
+
+                const updates = values.map((value: any, rowIndex: number) => ({
+                    row: rowIndex,
+                    col: nextColumnIndex,
+                    value: String(value),
+                }));
+
+                if (updates.length > 0) {
+                    await updateBulkCells(updates);
+                }
+                nextColumnIndex++;
+            }
+        }
     }
 }
