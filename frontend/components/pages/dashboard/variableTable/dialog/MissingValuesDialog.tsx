@@ -17,6 +17,13 @@ import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 interface MissingValuesDialogProps {
     open: boolean;
@@ -27,12 +34,12 @@ interface MissingValuesDialogProps {
 }
 
 export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
-                                                                            open,
-                                                                            onOpenChange,
-                                                                            onSave,
-                                                                            initialMissingValues,
-                                                                            variableType = "NUMERIC"
-                                                                        }) => {
+    open,
+    onOpenChange,
+    onSave,
+    initialMissingValues,
+    variableType = "NUMERIC"
+}) => {
     const { isMobile } = useMobile();
     const [option, setOption] = useState<"none" | "discrete" | "range">("none");
     const [discreteValues, setDiscreteValues] = useState<string[]>(["", "", ""]);
@@ -340,28 +347,51 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={cn(
-                "bg-card flex flex-col",
-                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
-            )}>
-                <DialogHeader className="px-6 py-4 flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Missing Values</DialogTitle>
-                 </DialogHeader>
-                <Separator />
+            <DialogContent
+                className="w-full p-0 border border-border rounded-md shadow-lg"
+                style={{ 
+                    maxWidth: isMobile ? "95vw" : "480px",
+                    width: "100%",
+                    maxHeight: isMobile ? "100vh" : "65vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                }}
+            >
+                <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="text-sm font-semibold flex items-center">
+                            <span>Missing Values</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                                            <HelpCircle size={14} />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs">Specify which values should be treated as missing data.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
+                <Separator className="flex-shrink-0" />
 
-                <div className="flex-grow overflow-y-auto px-6 py-5">
-                    <RadioGroup value={option} onValueChange={handleOptionChange} className="space-y-4">
+                <div className="flex-grow overflow-y-auto p-3">
+                    <RadioGroup value={option} onValueChange={handleOptionChange} className="space-y-3">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="none" id="none" />
-                            <Label htmlFor="none">No missing values</Label>
+                            <Label htmlFor="none" className="text-sm">No missing values</Label>
                         </div>
 
                         <div className="flex items-start space-x-3">
                             <RadioGroupItem value="discrete" id="discrete" className="mt-1 flex-shrink-0"/>
-                            <Label htmlFor="discrete" className="flex-1 space-y-2">
+                            <Label htmlFor="discrete" className="flex-1 space-y-1.5 text-sm">
                                 Discrete missing values
                                 <div className={cn(
-                                    "gap-2",
+                                    "gap-2 mt-1.5",
                                     isMobile ? "grid grid-cols-1" : "flex space-x-2",
                                     option !== 'discrete' ? 'opacity-50' : ''
                                 )}>
@@ -373,7 +403,7 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                                             onChange={getDiscreteInputHandler(index)}
                                             placeholder={`Value ${index + 1}`}
                                             disabled={option !== 'discrete'}
-                                            className="h-9 flex-1"
+                                            className="h-7 text-sm flex-1"
                                             maxLength={isStringType ? 8 : undefined}
                                         />
                                     ))}
@@ -389,14 +419,14 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                             <Label
                                 htmlFor="range"
                                 className={cn(
-                                    "flex-1 space-y-2",
+                                    "flex-1 space-y-1.5 text-sm",
                                     isStringType && 'text-muted-foreground cursor-not-allowed'
                                 )}
                             >
                                 Range plus one optional discrete missing value
                                 {isStringType && <span className="text-xs text-muted-foreground ml-1">(Numeric only)</span>}
                                 <div className={cn(
-                                    "gap-2",
+                                    "gap-2 mt-1.5",
                                     isMobile ? "grid grid-cols-1" : "flex space-x-2",
                                     option !== 'range' || isStringType ? 'opacity-50' : ''
                                 )}>
@@ -406,7 +436,7 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                                         onChange={handleRangeMinChange}
                                         placeholder="Low"
                                         disabled={option !== 'range' || isStringType}
-                                        className="h-9 flex-1"
+                                        className="h-7 text-sm flex-1"
                                     />
                                     <Input
                                         type="text"
@@ -414,7 +444,7 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                                         onChange={handleRangeMaxChange}
                                         placeholder="High"
                                         disabled={option !== 'range' || isStringType}
-                                        className="h-9 flex-1"
+                                        className="h-7 text-sm flex-1"
                                     />
                                     <Input
                                         type="text"
@@ -422,28 +452,39 @@ export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({
                                         onChange={handleRangeDiscreteChange}
                                         placeholder="Discrete value"
                                         disabled={option !== 'range' || isStringType}
-                                        className="h-9 flex-1"
+                                        className="h-7 text-sm flex-1"
                                     />
                                 </div>
                             </Label>
                         </div>
                     </RadioGroup>
                     {(error || validationError) && (
-                        <Alert variant="destructive" className="mt-4">
-                            <AlertDescription>
+                        <Alert variant="destructive" className="mt-3 py-2 border-l-2 border-destructive">
+                            <AlertDescription className="text-sm">
                                 {error || validationError}
                             </AlertDescription>
                         </Alert>
                     )}
                 </div>
 
-                <Separator />
-                <DialogFooter className="px-6 py-4 flex-shrink-0 sm:justify-between">
-                    <div className="flex space-x-2 justify-end">
-                     <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                         Cancel
-                     </Button>
-                     <Button onClick={handleSave}>OK</Button>
+                <Separator className="flex-shrink-0" />
+                <DialogFooter className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <div className="flex gap-2 ml-auto">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="h-7 text-xs bg-primary hover:bg-primary/90" 
+                            onClick={handleSave}
+                        >
+                            OK
+                        </Button>
                     </div>
                 </DialogFooter>
             </DialogContent>

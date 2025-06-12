@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface ErrorDialogProps {
     open: boolean;
@@ -16,31 +17,48 @@ interface ErrorDialogProps {
 }
 
 const ErrorDialog: React.FC<ErrorDialogProps> = ({
-                                                     open,
-                                                     onOpenChange,
-                                                     errorMessage
-                                                 }) => {
+    open,
+    onOpenChange,
+    errorMessage
+}) => {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[450px] p-3">
-                <DialogHeader className="p-0 mb-2">
-                    <DialogTitle>IBM SPSS Statistics 25</DialogTitle>
-                </DialogHeader>
-                <div className="flex gap-4">
-                    <AlertCircle className="h-10 w-10 text-primary" />
-                    <div>
-                        <p className="text-sm mt-2 text-foreground">{errorMessage}</p>
+            <DialogContent 
+                className="w-full p-0 border border-border rounded-md"
+                style={{ 
+                    maxWidth: "450px",
+                    width: "100%",
+                    maxHeight: "300px",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                }}
+            >
+                <div className="px-3 py-2 flex-shrink-0">
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="text-sm font-semibold">
+                            IBM SPSS Statistics 25
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
+                <Separator className="flex-shrink-0" />
+                <div className="p-3 flex-grow overflow-y-auto">
+                    <div className="flex gap-3 items-start">
+                        <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                        <p className="text-xs">{errorMessage}</p>
                     </div>
                 </div>
-
-                <DialogFooter className="flex justify-center mt-4">
-                    <Button
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={() => onOpenChange(false)}
-                    >
-                        OK
-                    </Button>
+                <Separator className="flex-shrink-0" />
+                <DialogFooter className="px-3 py-2 flex-shrink-0">
+                    <div className="flex ml-auto">
+                        <Button 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={() => onOpenChange(false)}
+                        >
+                            OK
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

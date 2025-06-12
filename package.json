@@ -20,5 +20,20 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "@mantine/core": "^8.1.0",
+    "@mantine/hooks": "^8.1.0",
+    "@mantine/tiptap": "^8.1.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tiptap/extension-link": "^2.14.0",
+    "@tiptap/extension-placeholder": "^2.14.0",
+    "@tiptap/pm": "^2.14.0",
+    "@tiptap/react": "^2.14.0",
+    "@tiptap/starter-kit": "^2.14.0",
+    "quill": "^2.0.3",
+    "react-markdown": "^10.1.0",
+    "suneditor": "^2.47.5",
+    "suneditor-react": "^3.6.1"
+  }
 }

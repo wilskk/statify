@@ -20,7 +20,7 @@ export const useSelectCases = () => {
     const { closeModal } = useModalStore();
     const { variables, addVariable, updateVariable } = useVariableStore();
     const { data, updateCells } = useDataStore();
-    const { meta, setSelectCasesCondition } = useMetaStore();
+    const { meta, setFilter } = useMetaStore();
 
     const [storeVariables, setStoreVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available'} | null>(null);
@@ -43,41 +43,6 @@ export const useSelectCases = () => {
         setStoreVariables(variables.filter(v => v.name !== ""));
     }, [variables]);
     
-    // Load saved select cases condition from meta store
-    useEffect(() => {
-        if (meta.selectCasesCondition) {
-            const condition = meta.selectCasesCondition;
-            setSelectOption(condition.type);
-            setOutputOption(condition.outputOption);
-            
-            if (condition.expression) {
-                setConditionExpression(condition.expression);
-                setCurrentStatus(`Condition: ${condition.expression}`);
-            }
-            
-            if (condition.filterVariable) {
-                const variable = variables.find(v => v.name === condition.filterVariable);
-                if (variable) {
-                    setFilterVariable(variable);
-                }
-            }
-            
-            if (condition.randomSampleConfig) {
-                setRandomSampleConfig(condition.randomSampleConfig);
-                if (condition.randomSampleConfig.sampleType === "approximate" && condition.randomSampleConfig.percentage) {
-                    setCurrentStatus(`Random sample: Approximately ${condition.randomSampleConfig.percentage}% of all cases`);
-                } else if (condition.randomSampleConfig.sampleType === "exact" && condition.randomSampleConfig.exactCount) {
-                    setCurrentStatus(`Random sample: Exactly ${condition.randomSampleConfig.exactCount} cases from the first ${condition.randomSampleConfig.fromFirstCount || "all"} cases`);
-                }
-            }
-            
-            if (condition.rangeConfig) {
-                setRangeConfig(condition.rangeConfig);
-                setCurrentStatus(`Range: Cases from ${condition.rangeConfig.firstCase || "start"} to ${condition.rangeConfig.lastCase || "end"}`);
-            }
-        }
-    }, [meta.selectCasesCondition, variables]);
-
     const handleVariableSelect = (columnIndex: number, source: 'available') => {
         if (highlightedVariable?.id === columnIndex.toString() && highlightedVariable.source === source) {
             setHighlightedVariable(null);
@@ -367,15 +332,8 @@ export const useSelectCases = () => {
                 throw new Error("Please select a filter variable");
             }
 
-            // Save condition to meta store
-            await setSelectCasesCondition({
-                type: selectOption as 'all' | 'condition' | 'random' | 'time' | 'variable',
-                expression: selectOption === 'condition' ? conditionExpression : undefined,
-                filterVariable: selectOption === 'variable' && filterVariable ? filterVariable.name : undefined,
-                randomSampleConfig: selectOption === 'random' ? randomSampleConfig || undefined : undefined,
-                rangeConfig: selectOption === 'time' ? rangeConfig || undefined : undefined,
-                outputOption: outputOption as 'filter' | 'delete'
-            });
+            // Save filter variable name to meta store
+            await setFilter("filter_$");
 
             let success = false;
 
@@ -462,8 +420,8 @@ export const useSelectCases = () => {
         setRandomSampleConfig(null);
         setRangeConfig(null);
         
-        // Clear saved condition in meta store
-        setSelectCasesCondition(undefined);
+        // Clear saved filter in meta store
+        setFilter('');
     };
 
     return {

@@ -9,22 +9,7 @@ export interface Meta {
     created: Date;
     weight: string;
     dates: string;
-    selectCasesCondition?: {
-        type: 'all' | 'condition' | 'random' | 'time' | 'variable';
-        expression?: string;
-        filterVariable?: string;
-        randomSampleConfig?: {
-            sampleType: 'approximate' | 'exact';
-            percentage?: number;
-            exactCount?: number;
-            fromFirstCount?: number;
-        };
-        rangeConfig?: {
-            firstCase?: string;
-            lastCase?: string;
-        };
-        outputOption: 'filter' | 'delete';
-    };
+    filter: string;
 }
 
 export type MetaStoreError = {
@@ -44,7 +29,7 @@ interface MetaStoreState {
     loadMeta: () => Promise<void>;
     setMeta: (newMeta: Partial<Meta>) => Promise<void>;
     clearDates: () => Promise<void>;
-    setSelectCasesCondition: (condition: Meta['selectCasesCondition']) => Promise<void>;
+    setFilter: (filter: Meta['filter']) => Promise<void>;
     _saveMetaToDb: (metaToSave: Meta) => Promise<void>;
     resetMeta: () => Promise<void>;
     saveMeta: () => Promise<void>;
@@ -56,7 +41,7 @@ const initialMetaState: Meta = {
     created: new Date(),
     weight: '',
     dates: '',
-    selectCasesCondition: undefined
+    filter: ''
 };
 
 export const useMetaStore = create<MetaStoreState>()(
@@ -68,7 +53,7 @@ export const useMetaStore = create<MetaStoreState>()(
                 created: new Date(),
                 weight: '',
                 dates: '',
-                selectCasesCondition: undefined
+                filter: ''
             },
             isLoading: false,
             error: null,
@@ -128,36 +113,24 @@ export const useMetaStore = create<MetaStoreState>()(
             },
 
             setMeta: async (newMeta) => {
-                let updatedMeta: Meta | null = null;
                 set((state) => {
                     state.meta = { ...state.meta, ...newMeta };
-                    updatedMeta = state.meta;
                 });
-                if (updatedMeta) {
-                    await get()._saveMetaToDb(updatedMeta);
-                }
+                await get()._saveMetaToDb(get().meta);
             },
 
             clearDates: async () => {
-                let updatedMeta: Meta | null = null;
                 set((state) => {
                     state.meta.dates = '';
-                    updatedMeta = state.meta;
                 });
-                if (updatedMeta) {
-                    await get()._saveMetaToDb(updatedMeta);
-                }
+                await get()._saveMetaToDb(get().meta);
             },
 
-            setSelectCasesCondition: async (condition) => {
-                let updatedMeta: Meta | null = null;
+            setFilter: async (filter) => {
                 set((state) => {
-                    state.meta.selectCasesCondition = condition;
-                    updatedMeta = state.meta;
+                    state.meta.filter = filter;
                 });
-                if (updatedMeta) {
-                    await get()._saveMetaToDb(updatedMeta);
-                }
+                await get()._saveMetaToDb(get().meta);
             },
 
             resetMeta: async () => {

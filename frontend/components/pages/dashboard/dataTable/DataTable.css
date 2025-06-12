@@ -18,3 +18,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Highlight unselected row headers based on filter variable */
+.handsontable th.unselected-row-header {
+    background-color: #ffe5e5 !important;
+}

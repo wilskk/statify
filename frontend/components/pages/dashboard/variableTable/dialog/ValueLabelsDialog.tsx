@@ -16,6 +16,13 @@ import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 interface ValueLabelsDialogProps {
     open: boolean;
@@ -226,19 +233,42 @@ export const ValueLabelsDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={cn(
-                "bg-card flex flex-col",
-                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px] max-h-[85vh]"
-            )}>
-                <DialogHeader className="px-6 py-4 flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Value Labels</DialogTitle>
-                </DialogHeader>
-                <Separator />
+            <DialogContent
+                className="w-full p-0 border border-border rounded-md shadow-lg"
+                style={{ 
+                    maxWidth: isMobile ? "95vw" : "480px",
+                    width: "100%",
+                    maxHeight: isMobile ? "100vh" : "65vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                }}
+            >
+                <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="text-sm font-semibold flex items-center">
+                            <span>Value Labels</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                                            <HelpCircle size={14} />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs">Define value labels to display meaningful text instead of codes.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
+                <Separator className="flex-shrink-0" />
 
-                <div className="flex-grow overflow-y-auto px-6 py-5">
+                <div className="flex-grow overflow-y-auto p-3">
                     <div className="space-y-4">
                         <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
-                            <Label htmlFor="value" className="text-right">
+                            <Label htmlFor="value" className="text-sm text-right">
                                 Value:
                             </Label>
                             <div className="flex-1 relative">
@@ -246,7 +276,7 @@ export const ValueLabelsDialog = ({
                                     id="value"
                                     value={currentValue}
                                     onChange={handleValueChange}
-                                    className="h-9 w-full"
+                                    className="h-7 text-sm w-full"
                                     placeholder={isStringType ? "Any text or space" : "Numeric value"}
                                 />
                                 {currentValue === " " && (
@@ -256,14 +286,14 @@ export const ValueLabelsDialog = ({
                                 )}
                             </div>
 
-                            <Label htmlFor="label" className="text-right">
+                            <Label htmlFor="label" className="text-sm text-right">
                                 Label:
                             </Label>
                             <Input
                                 id="label"
                                 value={currentLabel}
                                 onChange={handleLabelChange}
-                                className="h-9 w-full"
+                                className="h-7 text-sm w-full"
                                 placeholder="Enter label (max 120 bytes)"
                             />
                         </div>
@@ -271,35 +301,37 @@ export const ValueLabelsDialog = ({
                         <div className="flex justify-end items-center gap-2">
                             <Button
                                 size="sm"
-                                variant="outline"
+                                variant="default"
                                 onClick={selectedIndex === null ? handleAdd : handleChange}
                                 disabled={!currentValue.trim() && currentValue !== " "}
+                                className="h-7 text-xs bg-primary hover:bg-primary/90"
                             >
                                 {selectedIndex === null ? "Add" : (isValueChanged() ? "Change" : "Change")}
                             </Button>
                             <Button
                                 size="sm"
-                                variant="outline"
+                                variant="destructive"
                                 onClick={handleRemove}
                                 disabled={selectedIndex === null}
+                                className="h-7 text-xs"
                             >
                                 Remove
                             </Button>
                         </div>
 
                         {error && (
-                            <Alert variant="destructive" className="mt-2">
-                                <AlertDescription>{error}</AlertDescription>
+                            <Alert variant="destructive" className="mt-2 py-2">
+                                <AlertDescription className="text-xs">{error}</AlertDescription>
                             </Alert>
                         )}
 
-                        <Label className="block pt-2 pb-1 text-sm font-medium">Defined Labels:</Label>
+                        <Label className="block pt-1 pb-1 text-sm font-medium">Defined Labels:</Label>
                         <div className={cn(
-                            "border rounded-md overflow-y-auto bg-background/50",
-                            isMobile ? "h-48" : "h-64"
+                            "border rounded-md overflow-y-auto bg-card/50",
+                            isMobile ? "h-36" : "h-44"
                         )}>
                             {values.length === 0 && (
-                                <div className="p-4 text-center text-muted-foreground">
+                                <div className="p-3 text-center text-muted-foreground text-sm">
                                     No value labels defined.
                                 </div>
                             )}
@@ -307,7 +339,7 @@ export const ValueLabelsDialog = ({
                                 <div
                                     key={index}
                                     className={cn(
-                                        "p-2 cursor-pointer border-b last:border-b-0 text-sm",
+                                        "py-1.5 px-2 cursor-pointer border-b last:border-b-0 text-sm",
                                         selectedIndex === index
                                             ? 'bg-primary/10 text-primary-foreground'
                                             : 'hover:bg-muted/50',
@@ -327,13 +359,24 @@ export const ValueLabelsDialog = ({
                     </div>
                 </div>
 
-                <Separator />
-                <DialogFooter className="px-6 py-4 flex-shrink-0 sm:justify-between">
-                    <div className="flex space-x-2 justify-end">
-                        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                <Separator className="flex-shrink-0" />
+                <DialogFooter className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <div className="flex gap-2 ml-auto">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={() => onOpenChange(false)}
+                        >
                             Cancel
                         </Button>
-                        <Button onClick={handleSave}>OK</Button>
+                        <Button 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={handleSave}
+                        >
+                            OK
+                        </Button>
                     </div>
                 </DialogFooter>
             </DialogContent>

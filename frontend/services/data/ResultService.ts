@@ -93,10 +93,20 @@ export class ResultService {
    */
   async addStatistic(analyticId: number, statistic: Statistic) {
     try {
-      const enrichedStatistic: Statistic = {
-        ...statistic,
-        analytic_id: analyticId
+      // Pastikan semua field memiliki nilai default yang masuk akal
+      const defaultValues = {
+        title: "",
+        output_data: "{}",
+        components: "",
+        description: ""
       };
+      
+      const enrichedStatistic: Statistic = {
+        ...defaultValues,
+        ...statistic, // Nilai yang disediakan akan menimpa nilai default
+        analytic_id: analyticId // Pastikan analytic_id selalu sesuai dengan parameter
+      };
+      
       return await resultRepository.saveStatistic(enrichedStatistic);
     } catch (error) {
       console.error("Error in ResultService.addStatistic:", error);
@@ -109,14 +119,19 @@ export class ResultService {
    */
   async updateStatistic(id: number, statisticData: Partial<Statistic>) {
     try {
+      // Ambil data statistik yang sudah ada dari database
+      const existingStatistic = await resultRepository.getStatistic(id);
+      if (!existingStatistic) {
+        throw new Error(`Statistic with ID ${id} not found`);
+      }
+      
+      // Gabungkan data yang sudah ada dengan perubahan baru
       const updatedStatistic: Statistic = {
-        id,
-        title: statisticData.title || "",
-        output_data: statisticData.output_data || "",
-        components: statisticData.components || "",
-        description: statisticData.description || "",
-        analytic_id: statisticData.analytic_id
+        ...existingStatistic,
+        ...statisticData,
+        id // Pastikan ID tetap sama
       };
+      
       return await resultRepository.saveStatistic(updatedStatistic);
     } catch (error) {
       console.error(`Error in ResultService.updateStatistic for ID ${id}:`, error);

@@ -15,6 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
+import { Separator } from "@/components/ui/separator";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 type VariableType =
     | "NUMERIC"
@@ -67,13 +75,13 @@ interface VariableTypeDialogProps {
 }
 
 export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
-                                                                          open,
-                                                                          onOpenChange,
-                                                                          onSave,
-                                                                          initialType,
-                                                                          initialWidth,
-                                                                          initialDecimals
-                                                                      }) => {
+    open,
+    onOpenChange,
+    onSave,
+    initialType,
+    initialWidth,
+    initialDecimals
+}) => {
     const { isMobile } = useMobile();
     const [selectedType, setSelectedType] = useState<string>(initialType);
     const [width, setWidth] = useState<number>(initialWidth);
@@ -249,26 +257,50 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={cn(
-                "p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]",
-                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px]"
-            )}>
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Variable Type</DialogTitle>
-                </DialogHeader>
+            <DialogContent
+                className="w-full p-0 border border-border rounded-md shadow-lg"
+                style={{ 
+                    maxWidth: isMobile ? "95vw" : "480px",
+                    width: "100%",
+                    maxHeight: isMobile ? "100vh" : "65vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                }}
+            >
+                <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="text-sm font-semibold flex items-center">
+                            <span>Variable Type</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                                            <HelpCircle size={14} />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs">Set the type and format properties for this variable.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
+                <Separator className="flex-shrink-0" />
 
-                <div className="flex-grow overflow-y-auto px-6 py-4">
-                    <div className={cn("gap-4", isMobile ? "grid grid-cols-1" : "grid grid-cols-2")}>
-                        <div className="space-y-1.5">
+                <div className="flex-grow overflow-y-auto p-3">
+                    <div className={cn("gap-3", isMobile ? "grid grid-cols-1" : "grid grid-cols-2")}>
+                        <div className="space-y-1">
                             <RadioGroup value={selectedType} onValueChange={setSelectedType}>
                                 {[
                                     { id: "NUMERIC", label: "Numeric" },
                                     { id: "STRING", label: "String" },
                                     { id: "DATE", label: "dd-mmm-yyyy" }
                                 ].map((type) => (
-                                    <div key={type.id} className="flex items-center space-x-2 py-1.5">
+                                    <div key={type.id} className="flex items-center space-x-2 py-1">
                                         <RadioGroupItem value={type.id} id={type.id} />
-                                        <Label htmlFor={type.id} className="text-foreground">
+                                        <Label htmlFor={type.id} className="text-sm">
                                             {type.label}
                                         </Label>
                                     </div>
@@ -276,12 +308,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                             </RadioGroup>
                         </div>
 
-                        <div className="h-72 overflow-y-auto border border-border rounded p-1.5">
-                            <div className="space-y-4">
+                        <div className="h-52 overflow-y-auto border border-border rounded-md p-2.5 bg-card/50">
+                            <div className="space-y-3">
                                 {isNumericType && (
-                                    <div className="space-y-3">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="width" className="text-foreground">
+                                    <div className="space-y-2.5">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="width" className="text-sm">
                                                 Width:
                                             </Label>
                                             <Input
@@ -291,11 +323,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 onChange={(e) => setWidth(Number(e.target.value))}
                                                 min={1}
                                                 max={64}
+                                                className="h-7 text-sm"
                                             />
                                         </div>
                                         {selectedType !== "RESTRICTED_NUMERIC" && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="decimals" className="text-foreground">
+                                            <div className="space-y-1">
+                                                <Label htmlFor="decimals" className="text-sm">
                                                     Decimal Places:
                                                 </Label>
                                                 <Input
@@ -305,6 +338,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                     onChange={(e) => setDecimals(Number(e.target.value))}
                                                     min={0}
                                                     max={16}
+                                                    className="h-7 text-sm"
                                                 />
                                             </div>
                                         )}
@@ -312,24 +346,24 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 )}
 
                                 {isDateType && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">Format:</Label>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-sm">Format:</Label>
                                             <Select value={dateFormat} onValueChange={handleDateFormatChange}>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="h-7 text-sm">
                                                     <SelectValue placeholder="Select format" />
                                                 </SelectTrigger>
-                                                <SelectContent className="max-h-72">
+                                                <SelectContent className="max-h-60">
                                                     {dateFormats.filter(format => format.value === "dd-mmm-yyyy").map(format => (
-                                                        <SelectItem key={format.value} value={format.value}>
+                                                        <SelectItem key={format.value} value={format.value} className="text-sm">
                                                             {format.label}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dateWidth" className="text-foreground">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="dateWidth" className="text-sm">
                                                 Width:
                                             </Label>
                                             <Input
@@ -337,15 +371,15 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 type="number"
                                                 value={width}
                                                 readOnly
-                                                className="bg-muted"
+                                                className="h-7 text-sm bg-muted"
                                             />
                                         </div>
                                     </div>
                                 )}
 
                                 {selectedType === "STRING" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="characters" className="text-foreground">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="characters" className="text-sm">
                                             Characters:
                                         </Label>
                                         <Input
@@ -355,6 +389,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             onChange={(e) => setWidth(Number(e.target.value))}
                                             min={1}
                                             max={64}
+                                            className="h-7 text-sm"
                                         />
                                     </div>
                                 )}
@@ -362,19 +397,35 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex items-start mt-4 text-sm">
-                        <div className="text-blue-600 mr-2 text-2xl">ⓘ</div>
+                    <div className="flex items-start mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md border-l-2 border-blue-500">
+                        <div className="text-blue-600 mr-2 flex-shrink-0">
+                            <HelpCircle size={14} />
+                        </div>
                         <div>
                             The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
                         </div>
                     </div>
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t border-border flex-shrink-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSave}>OK</Button>
+                <Separator className="flex-shrink-0" />
+                <DialogFooter className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <div className="flex gap-2 ml-auto">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="h-7 text-xs bg-primary hover:bg-primary/90" 
+                            onClick={handleSave}
+                        >
+                            OK
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

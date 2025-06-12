@@ -10,6 +10,7 @@ import { useDataTableLogic } from './hooks/useDataTableLogic';
 import { addColumns, addMultipleVariables, getVariables } from './services/storeOperations';
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useMetaStore } from '@/stores/useMetaStore';
 import './DataTable.css';
 
 registerAllModules();
@@ -42,6 +43,8 @@ export default function Index() {
     const data = useDataStore(state => state.data);
     const variables = useVariableStore(state => state.variables);
     const { viewMode } = useTableRefStore();
+    const filterVarName = useMetaStore(state => state.meta.filter);
+    const filterVarIndex = variables.find(v => v.name === filterVarName)?.columnIndex;
 
     // Debounce updates to batch rapid changes and improve performance
     const debouncedUpdateCells = useMemo(() => debounce(updateCells, 100), [updateCells]);
@@ -64,12 +67,20 @@ export default function Index() {
     } = useDataTableLogic(hotTableRef);
 
     const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
+        TH.classList.remove('grayed-row-header', 'visual-spare-header', 'unselected-row-header');
+        // Gray out spare rows beyond actual data
         if (row >= actualNumRows) {
             TH.classList.add('grayed-row-header', 'visual-spare-header');
-        } else {
-            TH.classList.remove('grayed-row-header', 'visual-spare-header');
+            return;
         }
-    }, [actualNumRows]);
+        // Highlight unselected rows: filter value 0, empty string, null, or undefined
+        if (filterVarIndex !== undefined) {
+            const val = data[row][filterVarIndex];
+            if (val === 0 || val === '' || val === null || val === undefined) {
+                TH.classList.add('unselected-row-header');
+            }
+        }
+    }, [actualNumRows, filterVarIndex, data]);
 
     const handleAfterGetColHeader = useCallback((col: number, TH: HTMLTableCellElement) => {
         TH.classList.remove('grayed-col-header', 'visual-spare-header');
