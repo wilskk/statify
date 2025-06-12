@@ -44,7 +44,7 @@ pub fn calculate_heteroscedasticity_tests(
         .collect();
     let y_aux_for_tests = DVector::from_vec(squared_residuals_data);
 
-    let z_pred_matrix_option = create_predicted_aux_matrix(&y_hat, &design_info, n_obs);
+    let z_pred_matrix_option = create_predicted_aux_matrix(&y_hat, n_obs);
 
     let mut white_test_result = None;
     let mut bp_test_result = None;
@@ -195,6 +195,18 @@ fn create_white_aux_matrix(
     let mut aux_cols: Vec<DVector<f64>> = Vec::new();
     let mut existing_col_hashes: HashSet<Vec<u64>> = HashSet::new();
 
+    // The auxiliary regression for the White test must include an intercept for the N*R^2
+    // statistic to be valid. We add one here; hashing prevents duplication.
+    let intercept_col = DVector::from_element(n_obs, 1.0f64);
+    let hash_repr: Vec<u64> = intercept_col
+        .iter()
+        .map(|&val| val.to_bits())
+        .collect();
+    if !existing_col_hashes.contains(&hash_repr) {
+        existing_col_hashes.insert(hash_repr);
+        aux_cols.push(intercept_col);
+    }
+
     // Collect original non-intercept predictor columns
     let mut original_non_intercept_predictors: Vec<(usize, DVector<f64>)> = Vec::new();
     for j in 0..design_info.x.ncols() {
@@ -283,34 +295,29 @@ fn create_white_aux_matrix(
 }
 
 // Create auxiliary matrix for predicted value tests (BP, Modified BP, F-test)
-fn create_predicted_aux_matrix(
-    y_hat: &DVector<f64>,
-    design_info: &DesignMatrixInfo,
-    n_obs: usize
-) -> Option<DMatrix<f64>> {
+fn create_predicted_aux_matrix(y_hat: &DVector<f64>, n_obs: usize) -> Option<DMatrix<f64>> {
     let mut aux_cols: Vec<DVector<f64>> = Vec::new();
     let mut existing_col_hashes: HashSet<Vec<u64>> = HashSet::new();
 
-    // Use intercept from design matrix if it exists
-    if let Some(intercept_idx) = design_info.intercept_column {
-        let intercept_col = design_info.x.column(intercept_idx).into_owned();
-        let hash_repr: Vec<u64> = intercept_col
-            .iter()
-            .map(|&val| val.to_bits())
-            .collect();
-        if !existing_col_hashes.contains(&hash_repr) {
-            existing_col_hashes.insert(hash_repr);
-            aux_cols.push(intercept_col);
-        }
-    }
-
-    // Add predicted values
-    let hash_repr: Vec<u64> = y_hat
+    // The auxiliary regression for these tests should have its own intercept,
+    // regardless of whether the main model had one.
+    let intercept_col = DVector::from_element(n_obs, 1.0f64);
+    let hash_repr: Vec<u64> = intercept_col
         .iter()
         .map(|&val| val.to_bits())
         .collect();
     if !existing_col_hashes.contains(&hash_repr) {
         existing_col_hashes.insert(hash_repr);
+        aux_cols.push(intercept_col);
+    }
+
+    // Add predicted values
+    let y_hat_hash_repr: Vec<u64> = y_hat
+        .iter()
+        .map(|&val| val.to_bits())
+        .collect();
+    if !existing_col_hashes.contains(&y_hat_hash_repr) {
+        existing_col_hashes.insert(y_hat_hash_repr);
         aux_cols.push(y_hat.clone_owned());
     }
 
@@ -367,7 +374,7 @@ fn calculate_white_test(
                             df: df_chi_sq_white,
                             p_value: p_value_white,
                             note: vec![
-                                "Auxiliary regression on original predictors (and their squares/cross-products if applicable).".to_string()
+                                "Auxiliary regression on original predictors, their squares, and cross-products.".to_string()
                             ],
                         })
                     } else {
@@ -432,7 +439,7 @@ fn calculate_bp_test(
                     df: k_total_aux.saturating_sub(1),
                     p_value: f64::NAN,
                     note: vec![
-                        "BP Test (on Z_pred): Main model sigma^2 (MLE) is zero or NaN.".to_string()
+                        "BP Test: Main model sigma^2 (MLE) is zero or NaN. Test cannot be computed.".to_string()
                     ],
                 });
             }
@@ -450,7 +457,7 @@ fn calculate_bp_test(
                     df: df_chi_sq_bp_val,
                     p_value: p_value_bp_val,
                     note: vec![
-                        "Breusch-Pagan test (ESS_aux/(2*sigma_main_mle^2)). Aux reg on predicted y.".to_string()
+                        "Breusch-Pagan test. Auxiliary regression on an intercept and predicted values.".to_string()
                     ],
                 })
             } else {
@@ -459,7 +466,7 @@ fn calculate_bp_test(
                     df: 0,
                     p_value: 1.0,
                     note: vec![
-                        "BP Test (on Z_pred): No non-intercept regressors in aux model.".to_string()
+                        "BP Test: No non-intercept regressors in auxiliary model.".to_string()
                     ],
                 })
             }
@@ -469,7 +476,7 @@ fn calculate_bp_test(
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: vec![format!("BP test (on Z_pred) aux regression failed: {}", e)],
+                note: vec![format!("BP test auxiliary regression failed: {}", e)],
             }),
     }
 }
@@ -506,7 +513,7 @@ fn calculate_modified_bp_test(
                     df: df_chi_sq_modbp,
                     p_value: p_value_modbp,
                     note: vec![
-                        "Modified Breusch-Pagan (N*R-sq version). Auxiliary regression on predicted y.".to_string()
+                        "Modified Breusch-Pagan (N*R-sq). Auxiliary regression on an intercept and predicted values.".to_string()
                     ],
                 })
             } else {
@@ -515,7 +522,7 @@ fn calculate_modified_bp_test(
                     df: 0,
                     p_value: 1.0,
                     note: vec![
-                        "Modified BP (N*R-sq on Z_pred): No non-intercept terms in aux model.".to_string()
+                        "Modified BP Test: No non-intercept terms in auxiliary model.".to_string()
                     ],
                 })
             }
@@ -525,7 +532,7 @@ fn calculate_modified_bp_test(
                 statistic: f64::NAN,
                 df: 0,
                 p_value: f64::NAN,
-                note: vec![format!("Modified BP (N*R-sq on Z_pred) aux regression failed: {}", e)],
+                note: vec![format!("Modified BP (N*R-sq) auxiliary regression failed: {}", e)],
             }),
     }
 }
@@ -558,7 +565,9 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
                     df1: df1_f,
                     df2: df2_f,
                     p_value: p_value_f_val,
-                    note: vec!["F-test. Auxiliary regression on predicted y.".to_string()],
+                    note: vec![
+                        "F-test. Auxiliary regression on an intercept and predicted values.".to_string()
+                    ],
                 })
             } else {
                 Some(FTest {
@@ -566,7 +575,7 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
                     df1: df1_f,
                     df2: df2_f,
                     p_value: f64::NAN,
-                    note: vec!["F-Test (on Z_pred): df1 or df2 is zero.".to_string()],
+                    note: vec!["F-Test: Degrees of freedom for the test are invalid.".to_string()],
                 })
             }
         }
@@ -576,7 +585,7 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
                 df1: 0,
                 df2: 0,
                 p_value: f64::NAN,
-                note: vec![format!("F-test (on Z_pred) aux regression failed: {}", e)],
+                note: vec![format!("F-test auxiliary regression failed: {}", e)],
             }),
     }
 }
