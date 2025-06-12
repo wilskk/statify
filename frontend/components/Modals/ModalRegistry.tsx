@@ -32,6 +32,13 @@ const ModalOptimalScaling = lazy(() => import('@/components/Modals/Regression/Op
 const SimpleBarModal = lazy(() => import('@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal'));
 const ChartBuilderModal = lazy(() => import('@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal'));
 
+// Lazy load time series modals
+const SmoothingModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Smoothing'));
+const DecompositionModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Decomposition'));
+const AutocorrelationModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Autocorrelation'));
+const UnitRootTestModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/UnitRootTest'));
+const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel'));
+
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
@@ -94,8 +101,8 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   ...TIME_SERIES_MODAL_COMPONENTS,
   
   // Transform modals - lazy loaded
-  [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
+  // [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
+  // [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
   
   // Regression modals - lazy loaded
   [ModalType.ModalAutomaticLinearModeling]: withSuspense(ModalAutomaticLinearModeling as any) as React.ComponentType<BaseModalProps>,
@@ -119,6 +126,13 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Chart modals - lazy loaded
   [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.SimpleBarModal]: withSuspense(SimpleBarModal as any) as React.ComponentType<BaseModalProps>,
+
+  // Time series modals - lazy loaded
+  [ModalType.Smoothing]: withSuspense(SmoothingModal as any) as React.ComponentType<BaseModalProps>,
+  [ModalType.Decomposition]: withSuspense(DecompositionModal as any) as React.ComponentType<BaseModalProps>,
+  [ModalType.Autocorrelation]: withSuspense(AutocorrelationModal as any) as React.ComponentType<BaseModalProps>,
+  [ModalType.UnitRootTest]: withSuspense(UnitRootTestModal as any) as React.ComponentType<BaseModalProps>,
+  [ModalType.BoxJenkinsModel]: withSuspense(BoxJenkinsModelModal as any) as React.ComponentType<BaseModalProps>,
 };
 
 /**
