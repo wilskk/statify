@@ -237,7 +237,7 @@ pub fn run_analysis(
 
     // Generate plots if requested
     let mut plots = None;
-    if config.plots.line_chart_type || config.plots.bar_chart_type {
+    if config.plots.fix_factor_vars.as_ref().map_or(false, |v| !v.is_empty()) {
         logger.add_log("generate_plots");
         match core::generate_plots(&data, config) {
             Ok(plot_data) => {

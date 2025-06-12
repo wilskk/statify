@@ -399,7 +399,9 @@ fn generate_univariate_test_table(
     df_error: i64,
     p_parameters: usize,
     s_rss: f64, // Sum of Squares for Error (needed for Partial Eta Squared)
-    sig_level_option: f64 // Significance level for power calculation if available
+    sig_level_option: f64, // Significance level for power calculation if available
+    est_effect_size: bool,
+    obs_power: bool
 ) -> Option<UnivariateTests> {
     if num_levels_main_effect < 2 {
         return None;
@@ -520,9 +522,11 @@ fn generate_univariate_test_table(
     let mut msh_uni = f64::NAN;
     let mut f_value_uni = f64::NAN;
     let mut sig_uni = f64::NAN;
-    let mut partial_eta_sq_uni = 0.0;
-    let mut noncent_param_uni = 0.0;
-    let mut obs_power_uni = 0.0; // Default to 0, or NAN if preferred when not calculable
+    let (mut partial_eta_sq_uni, mut noncent_param_uni, mut obs_power_uni) = (
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+    );
 
     if let Some(l_ginv_lt_uni_inv) = l_ginv_lt_uni.clone().try_inverse() {
         let ssh_matrix_uni = l_beta_uni.transpose() * l_ginv_lt_uni_inv * &l_beta_uni;
@@ -539,30 +543,42 @@ fn generate_univariate_test_table(
                 if !mse.is_nan() && mse > 1e-12 && df_error > 0 {
                     // Check mse > 0 (small epsilon for float comparison)
                     f_value_uni = msh_uni / mse;
-                    // Partial Eta Squared = SSH / (SSH + SSE)
-                    // SSE (Sum of Squares Error) is s_rss here.
-                    if !s_rss.is_nan() && (ssh_uni + s_rss).abs() > 1e-12 {
-                        partial_eta_sq_uni = ssh_uni / (ssh_uni + s_rss);
-                    }
-                    // Noncentrality parameter (lambda) for F-distribution
-                    noncent_param_uni = f_value_uni * (df_hypothesis_uni as f64);
 
-                    // Observed Power Calculation
-                    if df_error > 0 {
-                        obs_power_uni = calculate_observed_power_f(
-                            f_value_uni,
-                            df_hypothesis_uni as f64,
-                            df_error as f64,
-                            sig_level_option
-                        );
-                    } else {
-                        obs_power_uni = f64::NAN;
+                    if est_effect_size {
+                        // Partial Eta Squared = SSH / (SSH + SSE)
+                        // SSE (Sum of Squares Error) is s_rss here.
+                        if !s_rss.is_nan() && (ssh_uni + s_rss).abs() > 1e-12 {
+                            partial_eta_sq_uni = ssh_uni / (ssh_uni + s_rss);
+                        } else {
+                            partial_eta_sq_uni = 0.0;
+                        }
+                    }
+
+                    if obs_power {
+                        // Noncentrality parameter (lambda) for F-distribution
+                        noncent_param_uni = f_value_uni * (df_hypothesis_uni as f64);
+
+                        // Observed Power Calculation
+                        if df_error > 0 {
+                            obs_power_uni = calculate_observed_power_f(
+                                f_value_uni,
+                                df_hypothesis_uni as f64,
+                                df_error as f64,
+                                sig_level_option
+                            );
+                        } else {
+                            obs_power_uni = f64::NAN;
+                        }
                     }
                 } else if mse == 0.0 && msh_uni > 1e-9 {
                     f_value_uni = f64::INFINITY;
-                    partial_eta_sq_uni = if ssh_uni > 0.0 { 1.0 } else { 0.0 };
-                    noncent_param_uni = f64::INFINITY;
-                    obs_power_uni = if ssh_uni > 0.0 { 1.0 } else { 0.0 };
+                    if est_effect_size {
+                        partial_eta_sq_uni = if ssh_uni > 0.0 { 1.0 } else { 0.0 };
+                    }
+                    if obs_power {
+                        noncent_param_uni = f64::INFINITY;
+                        obs_power_uni = if ssh_uni > 0.0 { 1.0 } else { 0.0 };
+                    }
                 }
                 if !f_value_uni.is_nan() && df_error > 0 && df_hypothesis_uni > 0 {
                     sig_uni = calculate_f_significance(
@@ -579,18 +595,24 @@ fn generate_univariate_test_table(
             ssh_uni = 0.0;
             msh_uni = 0.0;
             f_value_uni = if mse > 0.0 { 0.0 } else { f64::NAN };
-            // partial_eta_sq_uni remains 0.0
-            // noncent_param_uni remains 0.0
-            obs_power_uni = if !f_value_uni.is_nan() && df_hypothesis_uni > 0 && df_error > 0 {
-                calculate_observed_power_f(
-                    f_value_uni, // which is 0.0 here if mse > 0
-                    df_hypothesis_uni as f64,
-                    df_error as f64,
-                    sig_level_option
-                )
-            } else {
-                f64::NAN
-            };
+
+            if est_effect_size {
+                partial_eta_sq_uni = 0.0;
+            }
+            if obs_power {
+                noncent_param_uni = 0.0;
+                // noncent_param_uni remains 0.0
+                obs_power_uni = if !f_value_uni.is_nan() && df_hypothesis_uni > 0 && df_error > 0 {
+                    calculate_observed_power_f(
+                        f_value_uni, // which is 0.0 here if mse > 0
+                        df_hypothesis_uni as f64,
+                        df_error as f64,
+                        sig_level_option
+                    )
+                } else {
+                    f64::NAN
+                };
+            }
 
             if !f_value_uni.is_nan() && df_hypothesis_uni > 0 && df_error > 0 {
                 sig_uni = calculate_f_significance(
@@ -1078,13 +1100,15 @@ pub fn calculate_emmeans(
             );
             emmeans_estimates_list.push(grand_mean_em_estimates_table);
 
-            emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
-                parameter: all_model_parameters_names.clone(),
-                l_label: vec!["Grand Mean".to_string()],
-                l_matrix: vec![grand_mean_l_vector],
-                contrast_information: vec!["L-Matrix for Grand Mean".to_string()],
-                notes: vec!["Defines the overall estimated grand mean.".to_string()],
-            });
+            if config.options.coefficient_matrix {
+                emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
+                    parameter: all_model_parameters_names.clone(),
+                    l_label: vec!["Grand Mean".to_string()],
+                    l_matrix: vec![grand_mean_l_vector],
+                    contrast_information: vec!["L-Matrix for Grand Mean".to_string()],
+                    notes: vec!["Defines the overall estimated grand mean.".to_string()],
+                });
+            }
             // No pairwise or univariate tests for Grand Mean
             continue; // Move to the next factor_spec_emmeans
         }
@@ -1105,15 +1129,17 @@ pub fn calculate_emmeans(
                 entries: Vec::new(),
                 notes: vec![format!("No level combinations for {}", factor_spec_emmeans)],
             });
-            emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
-                parameter: all_model_parameters_names.clone(),
-                l_label: Vec::new(),
-                l_matrix: Vec::new(),
-                contrast_information: vec![
-                    format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
-                ],
-                notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
-            });
+            if config.options.coefficient_matrix {
+                emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
+                    parameter: all_model_parameters_names.clone(),
+                    l_label: Vec::new(),
+                    l_matrix: Vec::new(),
+                    contrast_information: vec![
+                        format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
+                    ],
+                    notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
+                });
+            }
             continue;
         }
 
@@ -1129,15 +1155,17 @@ pub fn calculate_emmeans(
                     entries: Vec::new(),
                     notes: vec![format!("No level combinations for {}", factor_spec_emmeans)],
                 });
-                emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
-                    parameter: all_model_parameters_names.clone(),
-                    l_label: Vec::new(),
-                    l_matrix: Vec::new(),
-                    contrast_information: vec![
-                        format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
-                    ],
-                    notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
-                });
+                if config.options.coefficient_matrix {
+                    emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
+                        parameter: all_model_parameters_names.clone(),
+                        l_label: Vec::new(),
+                        l_matrix: Vec::new(),
+                        contrast_information: vec![
+                            format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
+                        ],
+                        notes: vec![format!("No level combinations for {}.", factor_spec_emmeans)],
+                    });
+                }
                 continue;
             }
             Ok(combos) => combos,
@@ -1182,15 +1210,19 @@ pub fn calculate_emmeans(
         );
         emmeans_estimates_list.push(em_estimates_table);
 
-        emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
-            parameter: all_model_parameters_names.clone(),
-            l_label: l_labels_for_emms,
-            l_matrix: l_matrix_rows_for_emms.clone(),
-            contrast_information: vec![format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)],
-            notes: vec![
-                format!("Defines the EMMs for {}. Each row is an L-vector.", factor_spec_emmeans)
-            ],
-        });
+        if config.options.coefficient_matrix {
+            emmeans_contrast_coeffs_list.push(ContrastCoefficientsEntry {
+                parameter: all_model_parameters_names.clone(),
+                l_label: l_labels_for_emms,
+                l_matrix: l_matrix_rows_for_emms.clone(),
+                contrast_information: vec![
+                    format!("L-Matrix for EMMEANS of {}", factor_spec_emmeans)
+                ],
+                notes: vec![
+                    format!("Defines the EMMs for {}. Each row is an L-vector.", factor_spec_emmeans)
+                ],
+            });
+        }
 
         let is_main_effect_for_pairwise_uni = current_spec_factors.len() == 1;
         if is_main_effect_for_pairwise_uni && config.emmeans.comp_main_effect {
@@ -1225,7 +1257,9 @@ pub fn calculate_emmeans(
                         df_error,
                         design_info.p_parameters,
                         swept_info.s_rss, // Pass s_rss (SSE)
-                        config.options.sig_level // Pass sig_level for power calculation
+                        config.options.sig_level, // Pass sig_level for power calculation
+                        config.options.est_effect_size,
+                        config.options.obs_power
                     )
                 {
                     emmeans_univariate_tests_list.push(univariate_table);

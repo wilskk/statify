@@ -155,34 +155,47 @@ pub fn calculate_lack_of_fit_tests(
         f64::NAN // Significance is not calculable
     };
 
-    let partial_eta_squared_lof = (
-        if (ss_lack_of_fit + ss_pure_error).abs() > 1e-9 && ss_error_total.abs() > 1e-9 {
-            // Partial Eta^2 for LOF = SS_LOF / (SS_LOF + SS_PE) = SS_LOF / SS_Error_Total
-            // This seems to be the definition of Eta^2 for LOF, not partial Eta^2 in a multi-factor sense.
-            // If SS_LOF + SS_PE = 0, then eta is 0.
-            ss_lack_of_fit / ss_error_total
-        } else {
-            0.0
-        }
-    )
-        .max(0.0)
-        .min(1.0);
-
-    let noncent_parameter_lof = if df_lack_of_fit > 0 && !f_value_lof.is_nan() {
-        (df_lack_of_fit as f64) * f_value_lof
-    } else {
-        0.0
-    };
-
-    let observed_power_lof = if df_lack_of_fit > 0 && df_pure_error > 0 && !f_value_lof.is_nan() {
-        calculate_observed_power_f(
-            f_value_lof,
-            df_lack_of_fit as f64,
-            df_pure_error as f64,
-            config.options.sig_level
+    let partial_eta_squared_lof = if config.options.est_effect_size {
+        (
+            if (ss_lack_of_fit + ss_pure_error).abs() > 1e-9 && ss_error_total.abs() > 1e-9 {
+                // Partial Eta^2 for LOF = SS_LOF / (SS_LOF + SS_PE) = SS_LOF / SS_Error_Total
+                // This seems to be the definition of Eta^2 for LOF, not partial Eta^2 in a multi-factor sense.
+                // If SS_LOF + SS_PE = 0, then eta is 0.
+                ss_lack_of_fit / ss_error_total
+            } else {
+                0.0
+            }
         )
+            .max(0.0)
+            .min(1.0)
     } else {
         f64::NAN
+    };
+
+    let (noncent_parameter_lof, observed_power_lof) = if config.options.obs_power {
+        let noncent_parameter_lof = if df_lack_of_fit > 0 && !f_value_lof.is_nan() {
+            (df_lack_of_fit as f64) * f_value_lof
+        } else {
+            0.0
+        };
+
+        let observed_power_lof = if
+            df_lack_of_fit > 0 &&
+            df_pure_error > 0 &&
+            !f_value_lof.is_nan()
+        {
+            calculate_observed_power_f(
+                f_value_lof,
+                df_lack_of_fit as f64,
+                df_pure_error as f64,
+                config.options.sig_level
+            )
+        } else {
+            f64::NAN
+        };
+        (noncent_parameter_lof, observed_power_lof)
+    } else {
+        (f64::NAN, f64::NAN)
     };
 
     Ok(LackOfFitTests {

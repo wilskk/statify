@@ -826,105 +826,100 @@ pub fn calculate_contrast_coefficients(
         });
     };
 
-    for factor_spec_str in &factors_to_process_specs {
-        let parsed_spec = parse_contrast_factor_spec(factor_spec_str)?;
+    for spec_str in &factors_to_process_specs {
+        let parsed_spec = parse_contrast_factor_spec(spec_str)?;
 
-        let levels_of_contrasted_factor = match get_factor_levels(data, &parsed_spec.factor_name) {
-            Ok(levels) => levels,
-            Err(e) => {
-                return Err(
-                    format!(
-                        "Failed to get levels for contrast factor {}: {}",
-                        parsed_spec.factor_name,
-                        e
-                    )
-                );
+        if config.options.coefficient_matrix {
+            let levels_of_contrasted_factor = match
+                get_factor_levels(data, &parsed_spec.factor_name)
+            {
+                Ok(levels) => levels,
+                Err(e) => {
+                    return Err(
+                        format!(
+                            "Failed to get levels for contrast factor {}: {}",
+                            parsed_spec.factor_name,
+                            e
+                        )
+                    );
+                }
+            };
+
+            let (l_matrix, cce_row_descriptions, l_labels) = generate_l_matrix_and_descriptions(
+                &parsed_spec,
+                &levels_of_contrasted_factor,
+                &all_model_parameters_names,
+                design_info.p_parameters,
+                &all_factors_in_model_with_their_levels
+            )?;
+
+            if l_matrix.is_empty() {
+                continue;
             }
-        };
 
-        let (l_matrix, cce_row_descriptions, l_labels) = generate_l_matrix_and_descriptions(
-            &parsed_spec,
-            &levels_of_contrasted_factor,
-            &all_model_parameters_names,
-            design_info.p_parameters,
-            &all_factors_in_model_with_their_levels
-        )?;
-
-        if l_matrix.is_empty() {
-            // No contrasts generated for this spec
-            // web_sys::console::warn_1(
-            //     &format!("No L-matrix generated for spec: {}. Skipping.", factor_spec_str).into()
-            // );
-            continue;
-        }
-
-        let cce_note_ref_part = if parsed_spec.ref_setting != "N/A" {
-            format!(", Ref: {}.", parsed_spec.ref_setting)
-        } else {
-            // If method is None, just a period. Otherwise, a period to close the method part.
-            if parsed_spec.method == ContrastMethod::None {
-                ".".to_string() // Ensure String type
+            let cce_note_ref_part = if parsed_spec.ref_setting != "N/A" {
+                format!(", Ref: {}.", parsed_spec.ref_setting)
             } else {
-                ".".to_string() // Ensure String type
-            }
-        };
+                if parsed_spec.method == ContrastMethod::None {
+                    ".".to_string()
+                } else {
+                    ".".to_string()
+                }
+            };
 
-        let cce_notes = vec![
-            format!(
-                "L-Matrix for factor spec: \"{}\". Method: {:?}, Ref: {}.",
-                factor_spec_str,
-                parsed_spec.method,
-                cce_note_ref_part
-            )
-        ];
+            let cce_notes = vec![
+                format!(
+                    "L-Matrix for factor spec: \"{}\". Method: {:?}, Ref: {}.",
+                    spec_str,
+                    parsed_spec.method,
+                    cce_note_ref_part
+                )
+            ];
 
-        let cce = ContrastCoefficientsEntry {
-            parameter: all_model_parameters_names.clone(),
-            l_label: l_labels,
-            l_matrix: l_matrix.clone(),
-            contrast_information: vec![format!("L-Matrix for: {}", factor_spec_str)],
-            notes: cce_notes,
-        };
+            let cce = ContrastCoefficientsEntry {
+                parameter: all_model_parameters_names.clone(),
+                l_label: l_labels,
+                l_matrix: l_matrix.clone(),
+                contrast_information: vec![format!("L-Matrix for: {}", spec_str)],
+                notes: cce_notes,
+            };
 
-        let contrast_result_struct = create_contrast_result(
-            &cce_row_descriptions,
-            factor_spec_str,
-            &l_matrix, // Pass the L-matrix for this specific factor contrast
-            beta_hat,
-            g_inv,
-            mse,
-            df_error as f64,
-            sig_level_config // Pass sig_level for CI
-        );
+            let contrast_result_struct = create_contrast_result(
+                &cce_row_descriptions,
+                spec_str,
+                &l_matrix,
+                beta_hat,
+                g_inv,
+                mse,
+                df_error as f64,
+                sig_level_config
+            );
 
-        let contrast_test_struct = create_contrast_test_result(
-            factor_spec_str,
-            &l_matrix, // Pass the L-matrix for this specific factor contrast
-            beta_hat,
-            g_inv,
-            mse,
-            df_error as f64
-            // design_info.p_parameters
-        );
+            let contrast_test_struct = create_contrast_test_result(
+                spec_str,
+                &l_matrix,
+                beta_hat,
+                g_inv,
+                mse,
+                df_error as f64
+            );
 
-        // Create an entry for the "Custom Hypothesis Tests Index" table
-        let method_name_str = match parsed_spec.method {
-            ContrastMethod::Deviation => "Deviation",
-            ContrastMethod::Simple => "Simple",
-            ContrastMethod::Difference => "Difference",
-            ContrastMethod::Helmert => "Helmert",
-            ContrastMethod::Repeated => "Repeated",
-            ContrastMethod::Polynomial => "Polynomial (Linear)",
-            ContrastMethod::None => "No",
-        };
+            let method_name_str = match parsed_spec.method {
+                ContrastMethod::Deviation => "Deviation",
+                ContrastMethod::Simple => "Simple",
+                ContrastMethod::Difference => "Difference",
+                ContrastMethod::Helmert => "Helmert",
+                ContrastMethod::Repeated => "Repeated",
+                ContrastMethod::Polynomial => "Polynomial (Linear)",
+                ContrastMethod::None => "No",
+            };
 
-        let detail_str = {
-            if parsed_spec.method == ContrastMethod::Polynomial {
+            let detail_str = if parsed_spec.method == ContrastMethod::Polynomial {
                 format!(" (metric = {} levels)", levels_of_contrasted_factor.len())
             } else if
                 (parsed_spec.method == ContrastMethod::Deviation ||
                     parsed_spec.method == ContrastMethod::Simple) &&
-                parsed_spec.ref_setting != "N/A" // Only show ref if applicable
+                parsed_spec.ref_setting != "N/A"
             {
                 let ref_level_name = if parsed_spec.use_first_as_ref {
                     levels_of_contrasted_factor.first().map_or("N/A", |s| s.as_str())
@@ -933,29 +928,29 @@ pub fn calculate_contrast_coefficients(
                 };
                 format!(" (omitted category/ref = {})", ref_level_name)
             } else {
-                "".to_string() // No extra detail for other methods
-            }
-        };
+                "".to_string()
+            };
 
-        let l_matrix_description_for_index = format!(
-            "{} Contrast{} for {}", // Added space before "for"
-            method_name_str,
-            detail_str,
-            parsed_spec.factor_name
-        );
+            let l_matrix_description_for_index = format!(
+                "{} Contrast{} for {}",
+                method_name_str,
+                detail_str,
+                parsed_spec.factor_name
+            );
 
-        let contrast_info_for_index = ContrastInformation {
-            contrast_name: l_matrix_description_for_index,
-            transformation_coef: "Identity Matrix".to_string(),
-            contrast_result: "Zero Matrix".to_string(),
-        };
+            let contrast_info_for_index = ContrastInformation {
+                contrast_name: l_matrix_description_for_index,
+                transformation_coef: "Identity Matrix".to_string(),
+                contrast_result: "Zero Matrix".to_string(),
+            };
 
-        processed_contrast_data_map.insert(factor_spec_str.clone(), (
-            cce,
-            contrast_result_struct,
-            contrast_test_struct,
-            contrast_info_for_index,
-        ));
+            processed_contrast_data_map.insert(spec_str.clone(), (
+                cce,
+                contrast_result_struct,
+                contrast_test_struct,
+                contrast_info_for_index,
+            ));
+        }
     }
 
     // Prepare final lists based on the original order of factors_to_process_specs

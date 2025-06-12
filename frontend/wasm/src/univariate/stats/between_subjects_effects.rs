@@ -131,7 +131,9 @@ pub fn calculate_tests_between_subjects_effects(
             df_term,
             ms_error,
             df_error,
-            config.options.sig_level
+            config.options.sig_level,
+            config.options.est_effect_size,
+            config.options.obs_power
         );
         current_source_map.insert(term_name.clone(), effect_entry);
     }
@@ -147,7 +149,7 @@ pub fn calculate_tests_between_subjects_effects(
         ss_total_corrected,
         df_total,
         &design_info,
-        config.options.sig_level
+        config
     );
 
     let mut notes = if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
@@ -264,7 +266,7 @@ fn add_model_summary_entries(
     ss_total_corrected: f64,
     df_total: usize,
     design_info: &DesignMatrixInfo,
-    sig_level: f64
+    config: &UnivariateConfig
 ) {
     if df_model_overall > 0 {
         let ms_model_corrected = ss_model_corrected / (df_model_overall as f64);
@@ -278,22 +280,34 @@ fn add_model_summary_entries(
             df_error,
             f_model_corrected
         );
-        let pes_model_corrected = if ss_total_corrected.abs() > 1e-9 {
-            (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
+
+        let pes_model_corrected = if config.options.est_effect_size {
+            if ss_total_corrected.abs() > 1e-9 {
+                (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
+            } else {
+                0.0
+            }
         } else {
-            0.0
+            f64::NAN
         };
-        let ncp_model_corrected = calculate_f_non_centrality(
-            f_model_corrected,
-            df_model_overall as f64,
-            df_error as f64
-        );
-        let power_model_corrected = calculate_observed_power_f(
-            f_model_corrected,
-            df_model_overall as f64,
-            df_error as f64,
-            sig_level
-        );
+
+        let (ncp_model_corrected, power_model_corrected) = if config.options.obs_power {
+            let ncp = calculate_f_non_centrality(
+                f_model_corrected,
+                df_model_overall as f64,
+                df_error as f64
+            );
+            let power = calculate_observed_power_f(
+                f_model_corrected,
+                df_model_overall as f64,
+                df_error as f64,
+                config.options.sig_level
+            );
+            (ncp, power)
+        } else {
+            (f64::NAN, f64::NAN)
+        };
+
         current_source_map.insert("Corrected Model".to_string(), TestEffectEntry {
             sum_of_squares: ss_model_corrected,
             df: df_model_overall,
@@ -359,7 +373,9 @@ pub fn create_effect_entry(
     df: usize,
     error_ms: f64,
     error_df: usize,
-    sig_level: f64
+    sig_level: f64,
+    est_effect_size: bool,
+    obs_power: bool
 ) -> TestEffectEntry {
     let mean_square = if df > 0 { sum_of_squares / (df as f64) } else { 0.0 };
     let f_value = if error_ms > 0.0 && mean_square > 0.0 { mean_square / error_ms } else { 0.0 };
@@ -368,19 +384,31 @@ pub fn create_effect_entry(
     } else {
         1.0
     };
-    let partial_eta_squared = if sum_of_squares >= 0.0 && error_df > 0 {
-        let error_ss = error_ms * (error_df as f64);
-        let eta_sq = sum_of_squares / (sum_of_squares + error_ss);
-        eta_sq.max(0.0).min(1.0)
+
+    let partial_eta_squared = if est_effect_size {
+        if sum_of_squares >= 0.0 && error_df > 0 {
+            let error_ss = error_ms * (error_df as f64);
+            let eta_sq = sum_of_squares / (sum_of_squares + error_ss);
+            eta_sq.max(0.0).min(1.0)
+        } else {
+            0.0
+        }
     } else {
-        0.0
+        f64::NAN
     };
-    let noncent_parameter = if f_value > 0.0 { f_value * (df as f64) } else { 0.0 };
-    let observed_power = if f_value > 0.0 {
-        calculate_observed_power_f(f_value, df as f64, error_df as f64, sig_level)
+
+    let (noncent_parameter, observed_power) = if obs_power {
+        let noncent_parameter = if f_value > 0.0 { f_value * (df as f64) } else { 0.0 };
+        let observed_power = if f_value > 0.0 {
+            calculate_observed_power_f(f_value, df as f64, error_df as f64, sig_level)
+        } else {
+            0.0
+        };
+        (noncent_parameter, observed_power)
     } else {
-        0.0
+        (f64::NAN, f64::NAN)
     };
+
     TestEffectEntry {
         sum_of_squares,
         df,

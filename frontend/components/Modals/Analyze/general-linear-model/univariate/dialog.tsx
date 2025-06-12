@@ -515,6 +515,7 @@ export const UnivariateDialog = ({
                                         type="button"
                                         variant="secondary"
                                         onClick={openDialog(setIsPlotsOpen)}
+                                        disabled={true}
                                     >
                                         Plots...
                                     </Button>

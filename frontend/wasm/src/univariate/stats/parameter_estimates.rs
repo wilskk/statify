@@ -133,25 +133,39 @@ pub fn calculate_parameter_estimates(
                 } else {
                     (*beta_val - t_crit * std_err, *beta_val + t_crit * std_err)
                 };
-                let non_cent_param = if t_val.is_nan() { f64::NAN } else { t_val.abs() };
-                let obs_power = if t_val.is_nan() || df_error_usize == 0 {
-                    f64::NAN
-                } else {
-                    calculate_observed_power_t(t_val.abs(), df_error_usize, sig_level_opt)
-                };
-                let partial_eta_sq_val = if t_val.is_nan() {
-                    f64::NAN
-                } else if df_error_val == 0.0 {
-                    if beta_val.abs() > 1e-9 { 1.0 } else { f64::NAN }
-                } else {
-                    let t_sq = t_val.powi(2);
-                    let den = t_sq + df_error_val;
-                    if den.abs() > 1e-12 {
-                        (t_sq / den).max(0.0).min(1.0)
+
+                let partial_eta_sq_val = if config.options.est_effect_size {
+                    if t_val.is_nan() {
+                        f64::NAN
+                    } else if df_error_val == 0.0 {
+                        if beta_val.abs() > 1e-9 { 1.0 } else { f64::NAN }
                     } else {
-                        if t_sq.abs() < 1e-12 { 0.0 } else { f64::NAN }
+                        let t_sq = t_val.powi(2);
+                        let den = t_sq + df_error_val;
+                        if den.abs() > 1e-12 {
+                            (t_sq / den).max(0.0).min(1.0)
+                        } else if t_sq.abs() < 1e-12 {
+                            0.0
+                        } else {
+                            f64::NAN
+                        }
                     }
+                } else {
+                    f64::NAN
                 };
+
+                let (non_cent_param, obs_power) = if config.options.obs_power {
+                    let non_cent_param = if t_val.is_nan() { f64::NAN } else { t_val.abs() };
+                    let obs_power = if t_val.is_nan() || df_error_usize == 0 {
+                        f64::NAN
+                    } else {
+                        calculate_observed_power_t(t_val.abs(), df_error_usize, sig_level_opt)
+                    };
+                    (non_cent_param, obs_power)
+                } else {
+                    (f64::NAN, f64::NAN)
+                };
+
                 (
                     *beta_val,
                     std_err,

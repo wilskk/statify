@@ -353,6 +353,7 @@ export const UnivariateSave = ({
                                             <Checkbox
                                                 id="CoeffStats"
                                                 checked={saveState.CoeffStats}
+                                                disabled={true}
                                                 onCheckedChange={(checked) =>
                                                     handleChange(
                                                         "CoeffStats",

@@ -232,6 +232,7 @@ export const UnivariateOptions = ({
                                                         checked={
                                                             optionsState.SprVsLevel
                                                         }
+                                                        disabled={true}
                                                         onCheckedChange={(
                                                             checked
                                                         ) =>
@@ -254,6 +255,7 @@ export const UnivariateOptions = ({
                                                         checked={
                                                             optionsState.ResPlot
                                                         }
+                                                        disabled={true}
                                                         onCheckedChange={(
                                                             checked
                                                         ) =>
