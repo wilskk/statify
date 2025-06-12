@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/menubar";
 
 import { useActions } from "@/hooks/actions";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { ModalType, useModal, OpenModalOptions } from "@/hooks/useModal";
 import FileMenu from "@/components/Modals/File/FileMenu";
 import EditMenu from "@/components/Modals/Edit/EditMenu";
 import DataMenu from "@/components/Modals/Data/DataMenu";

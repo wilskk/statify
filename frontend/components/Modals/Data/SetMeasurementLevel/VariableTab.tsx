@@ -93,11 +93,6 @@ const VariableTabContent: FC<VariableTabProps> = ({
                 />
             </div>
 
-            <div className="flex items-center px-6 py-3 border-t border-border bg-muted text-xs text-muted-foreground flex-shrink-0">
-                <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                <span>Variables will retain their assigned measurement level for statistical analysis</span>
-            </div>
-
             <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
                 <div className="flex justify-end space-x-3">
                     <Button size="sm" onClick={handleSave}>OK</Button>

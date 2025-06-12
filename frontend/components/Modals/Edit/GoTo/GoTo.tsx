@@ -105,19 +105,12 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                 <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
-                    className="w-full"
                 >
-                    <TabsList className="grid grid-cols-2 mb-4 bg-muted h-9">
-                        <TabsTrigger
-                            value="case"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm transition-colors duration-150"
-                        >
+                    <TabsList className="w-full mb-6">
+                        <TabsTrigger value="case" className="w-1/2">
                             Case
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="variable"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm transition-colors duration-150"
-                        >
+                        <TabsTrigger value="variable" className="w-1/2">
                             Variable
                         </TabsTrigger>
                     </TabsList>
@@ -158,7 +151,7 @@ const GoToContent: React.FC<Omit<GoToModalProps, 'onClose' | 'containerType'> & 
                                     Go to variable:
                                 </Label>
                                 <span className="text-xs text-muted-foreground">
-                                    {sortedVariables.length} variables
+                                    Total: {sortedVariables.length}
                                 </span>
                             </div>
                             <Select

@@ -7,6 +7,9 @@ import { Variable } from "@/types/Variable";
 import { WritableDraft } from 'immer';
 import { DataRow } from "@/types/Data";
 
+// Sync status types
+export type SyncStatusType = 'idle' | 'syncing' | 'error';
+
 export type CellUpdate = { row: number; col: number; value: string | number };
 export type DataStoreError = {
     message: string;
@@ -20,12 +23,17 @@ export interface DataStoreState {
     error: DataStoreError | null;
     lastUpdated: Date | null;
     hasUnsavedChanges: boolean;
+    // pending cell updates for delta sync
+    pendingUpdates: CellUpdate[];
+    syncStatus: SyncStatusType;
+    lastSyncedAtSync: Date | null;
+    syncError: string | null;
 
     loadData: () => Promise<void>;
     resetData: () => Promise<void>;
 
     setData: (newData: DataRow[]) => void;
-    saveData: () => Promise<void>;
+    saveData: (rowsToSave?: DataRow[]) => Promise<void>;
 
     updateCell: (row: number, col: number, value: string | number) => Promise<void>;
     updateCells: (updates: CellUpdate[]) => Promise<void>;
@@ -58,7 +66,11 @@ const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell'
     isLoading: false,
     error: null,
     lastUpdated: null,
-    hasUnsavedChanges: false
+    hasUnsavedChanges: false,
+    pendingUpdates: [],
+    syncStatus: 'idle',
+    lastSyncedAtSync: null,
+    syncError: null
 };
 
 const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, maxRow: number, maxCol: number, minColCount?: number): boolean => {
@@ -190,6 +202,8 @@ export const useDataStore = create<DataStoreState>()(
                     if(dataChangedInState || structureActuallyChanged) {
                         state.lastUpdated = new Date();
                         state.hasUnsavedChanges = true;
+                        // track deltas for sync
+                        state.pendingUpdates.push(...validUpdatesForPotentialChange);
                     }
                 });
             },
@@ -203,19 +217,37 @@ export const useDataStore = create<DataStoreState>()(
                 });
             },
 
-            saveData: async () => {
-                const currentData = get().data;
+            saveData: async (rowsToSave?: DataRow[]) => {
+                // mark syncing
+                set((state) => { state.syncStatus = 'syncing'; state.syncError = null; });
+                // decide full replace vs delta
+                if (rowsToSave) {
+                    await dataService.replaceAllData(rowsToSave);
+                } else if (get().pendingUpdates.length > 0) {
+                    await dataService.applyBulkUpdates(get().pendingUpdates);
+                } else {
+                    // nothing to sync
+                    set((state) => {
+                        state.syncStatus = 'idle';
+                    });
+                    return;
+                }
                 try {
-                    await dataService.replaceAllData(currentData);
-                    set((state) => { 
-                        state.error = null; 
-                        state.lastUpdated = new Date(); 
+                    // clear pending and update meta
+                    set((state) => {
+                        state.error = null;
+                        state.lastUpdated = new Date();
                         state.hasUnsavedChanges = false;
+                        state.syncStatus = 'idle';
+                        state.lastSyncedAtSync = new Date();
+                        state.pendingUpdates = [];
                     });
                 } catch (error: any) {
                     console.error("Failed to explicitly save data:", error);
-                    set((state) => {
+                    set(state => {
                         state.error = { message: error.message || "Failed to save data during explicit save", source: "saveData", originalError: error };
+                        state.syncStatus = 'error';
+                        state.syncError = error.message;
                     });
                     throw error;
                 }

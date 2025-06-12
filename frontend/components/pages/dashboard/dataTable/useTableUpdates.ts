@@ -208,7 +208,7 @@ export const useTableUpdates = ({
                 queueMicrotask(processPendingOperations);
             }
         }
-    }, [processCellUpdates, addRow, addColumn, addMultipleVariables, actualNumCols]); // Corrected addRows/addColumns to singular
+    }, [processCellUpdates, addRow, addMultipleVariables]); // Removed addColumn and actualNumCols
 
     // --- Handsontable Event Handlers ---
 

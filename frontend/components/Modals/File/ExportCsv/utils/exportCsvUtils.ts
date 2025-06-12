@@ -1,12 +1,6 @@
 import { Variable, MissingValuesSpec } from "@/types/Variable";
 import { DataRow } from "@/types/Data";
-
-export interface CsvExportOptions {
-    delimiter: string;
-    includeHeaders: boolean;
-    includeVariableProperties: boolean;
-    quoteStrings: boolean;
-}
+import { CsvExportOptions } from "../types";
 
 const escapeCsvCell = (cellValue: string | number | undefined | null, delimiter: string, quoteStrings: boolean): string => {
     if (cellValue === undefined || cellValue === null) {

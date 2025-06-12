@@ -7,10 +7,7 @@ import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/compo
 import { ANALYZE_MODAL_COMPONENTS, ANALYZE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze';
 import { EDIT_MODAL_COMPONENTS, EDIT_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Edit/';
 import { TIME_SERIES_MODAL_COMPONENTS, TIME_SERIES_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze/TimeSeries';
-
-// Lazy load transform modals
-const ComputeVariableModal = lazy(() => import('@/components/Modals/Transform/ComputeVariableModal'));
-const RecodeSameVariablesModal = lazy(() => import('@/components/Modals/Transform/recodeSameVariables'));
+import { TRANSFORM_MODAL_COMPONENTS, TRANSFORM_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Transform';
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
 const ModalAutomaticLinearModeling = lazy(() => import('@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling'));
@@ -164,8 +161,11 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
   // Time series modals - from dedicated preferences
   ...TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
   
+  // Transform modals - from dedicated preferences
+  ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,
+  
   // Chart modals yang kompleks selalu sebagai dialog
-  [ModalType.ChartBuilderModal]: "sidebar",
+  [ModalType.ChartBuilderModal]: "dialog",
   [ModalType.SimpleBarModal]: "sidebar",
   
   // Modal dengan form panjang lebih baik sebagai sidebar

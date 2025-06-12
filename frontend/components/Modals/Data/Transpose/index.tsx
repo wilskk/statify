@@ -51,30 +51,16 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
     const [highlightedVariable, setHighlightedVariable] = useState<{
         id: string;
         source: string;
-    } | null>(null);
-
-    // Initialize variables from store
+    } | null>(null);    // Initialize variables from store
     useEffect(() => {
         if (variables.length > 0) {
             // Add tempId to variables
             const varsWithTempId = prepareVariablesWithTempId(variables);
 
-            // Initialize with variables from the store
+            // Initialize with all variables in available list (no auto-selection)
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
-                // First variable as name variable by default
-                if (idx === 0) {
-                    initialName.push(v);
-                    return false;
-                }
-                // Second variable as selected by default
-                if (idx === 1) {
-                    initialSelected.push(v);
-                    return false;
-                }
-                return true;
-            });
+            const initialAvailable: Variable[] = varsWithTempId;
 
             setAvailableVariables(initialAvailable);
             setSelectedVariables(initialSelected);
@@ -290,27 +276,15 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
             console.error("Transpose operation failed:", error);
             onClose();
         }
-    };
-
-    // Handle Reset button click
+    };    // Handle Reset button click
     const handleReset = () => {
-        // Reset to initial state - use first variable as name and second as selected
+        // Reset to initial state - all variables in available list
         if (variables.length > 0) {
             const varsWithTempId = prepareVariablesWithTempId(variables);
 
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
-                if (idx === 0) {
-                    initialName.push(v);
-                    return false;
-                }
-                if (idx === 1) {
-                    initialSelected.push(v);
-                    return false;
-                }
-                return true;
-            });
+            const initialAvailable: Variable[] = varsWithTempId;
 
             setAvailableVariables(initialAvailable);
             setSelectedVariables(initialSelected);
@@ -351,10 +325,15 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
                 <div className="px-6 py-4 border-b border-border flex-shrink-0">
                     <h2 className="text-xl font-semibold">Transpose</h2>
                 </div>
-            )} */}
-
-            <div className="p-6 overflow-y-auto flex-grow">
+            )} */}            <div className="p-6 overflow-y-auto flex-grow">
                 <div className="space-y-6">
+                    {/* Information text */}
+                    <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
+                        <p className="text-sm text-accent-foreground">
+                            Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.
+                        </p>
+                    </div>
+
                     {/* Variable List Manager */}
                     <VariableListManager
                         availableVariables={availableVariables}
@@ -369,12 +348,6 @@ const TransposeContent: React.FC<TransposeModalProps> = ({
                         showArrowButtons={true}
                         availableListHeight="14rem" // approx 224px, Tailwind h-56
                     />
-
-                    {/* Info Text */}
-                    <div className="text-xs text-muted-foreground flex items-center">
-                        <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                        <span>Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.</span>
-                    </div>
                 </div>
             </div>
 

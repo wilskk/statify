@@ -15,7 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { BaseModalProps } from "@/types/modalTypes";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export enum FindReplaceMode {
     FIND = "find",
@@ -49,6 +50,9 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'onClose' |
     const [matchTo, setMatchTo] = useState<"contains" | "entire_cell" | "begins_with" | "ends_with">("contains");
     const [direction, setDirection] = useState<"up" | "down">("down");
 
+    const [findError, setFindError] = useState<string>("");
+    const [replaceError, setReplaceError] = useState<string>("");
+
     const handleFindNext = () => {
         console.log(
             `Find Next: column=${selectedColumn}, find=${findText}, matchCase=${matchCase}, matchTo=${matchTo}, direction=${direction}`
@@ -67,26 +71,37 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'onClose' |
         );
     };
 
+    const handleFindPrevious = () => {
+        console.log(
+            `Find Previous: column=${selectedColumn}, find=${findText}, matchCase=${matchCase}, matchTo=${matchTo}, direction=${direction}`
+        );
+    };
+
+    const handleFindChange = (value: string) => {
+        setFindText(value);
+        // Simple validation: check if find text is empty
+        setFindError(value.trim() === "" ? "Find text cannot be empty" : "");
+    };
+
+    const handleReplaceChange = (value: string) => {
+        setReplaceText(value);
+        // Simple validation: check if replace text is empty
+        setReplaceError(value.trim() === "" ? "Replace text cannot be empty" : "");
+    };
+
     return (
         <>
             <div className="p-6 overflow-y-auto flex-grow">
-                <div role="tablist" className="flex border-b mb-6">
-                    {([TabType.FIND, TabType.REPLACE] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            role="tab"
-                            aria-selected={activeTab === tab}
-                            className={`py-2 px-4 -mb-px border-b-2 focus:outline-none transition-colors duration-150 ease-in-out
-                                ${activeTab === tab
-                                    ? "border-primary text-primary font-semibold"
-                                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300"
-                                }`}
-                            onClick={() => setActiveTab(tab)}
-                        >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                    ))}
-                </div>
+                <Tabs value={activeTab} onValueChange={val => setActiveTab(val as TabType)} className="mb-6">
+                    <TabsList className="w-full">
+                        <TabsTrigger value={TabType.FIND} className="w-1/2">
+                            Find
+                        </TabsTrigger>
+                        <TabsTrigger value={TabType.REPLACE} className="w-1/2">
+                            Replace
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
 
                 <div className="space-y-4">
                     <div>
@@ -105,27 +120,52 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'onClose' |
                         </Select>
                     </div>
 
-                    <div>
-                        <Label htmlFor="find-input" className="text-xs font-medium text-muted-foreground">Find:</Label>
-                        <Input
-                            id="find-input"
-                            type="text"
-                            className="w-full mt-1 h-9"
-                            value={findText}
-                            onChange={(e) => setFindText(e.target.value)}
-                        />
-                    </div>
+                    {activeTab === TabType.FIND && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-baseline">
+                                <Label htmlFor="find-input" className="text-xs font-medium text-muted-foreground">
+                                    Find:
+                                </Label>
+                                {/* Bisa tambahkan info jumlah hasil jika ada */}
+                            </div>
+                            <Input
+                                id="find-input"
+                                type="text"
+                                value={findText}
+                                onChange={(e) => setFindText(e.target.value)}
+                                className={`h-9 text-sm ${findError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                aria-invalid={!!findError}
+                                aria-describedby={findError ? "find-error-message" : undefined}
+                            />
+                            {findError && (
+                                <p id="find-error-message" className="text-xs text-destructive pt-1">
+                                    {findError}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {activeTab === TabType.REPLACE && (
-                        <div>
-                            <Label htmlFor="replace-input" className="text-xs font-medium text-muted-foreground">Replace with:</Label>
+                        <div className="space-y-1">
+                            <div className="flex justify-between items-baseline">
+                                <Label htmlFor="replace-input" className="text-xs font-medium text-muted-foreground">
+                                    Replace with:
+                                </Label>
+                            </div>
                             <Input
                                 id="replace-input"
                                 type="text"
-                                className="w-full mt-1 h-9"
                                 value={replaceText}
                                 onChange={(e) => setReplaceText(e.target.value)}
+                                className={`h-9 text-sm ${replaceError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                aria-invalid={!!replaceError}
+                                aria-describedby={replaceError ? "replace-error-message" : undefined}
                             />
+                            {replaceError && (
+                                <p id="replace-error-message" className="text-xs text-destructive pt-1">
+                                    {replaceError}
+                                </p>
+                            )}
                         </div>
                     )}
 
@@ -179,16 +219,43 @@ const FindAndReplaceContent: React.FC<Omit<FindAndReplaceModalProps, 'onClose' |
                 </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-2">
-                <Button variant="outline" onClick={onClose}>Close</Button>
-                <Button variant="outline" onClick={() => alert("Help for Find/Replace")}>Help</Button>
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex flex-wrap justify-end gap-2">
+                <Button variant="outline" onClick={onClose}>
+                    Close
+                </Button>
                 {activeTab === TabType.REPLACE && (
                     <>
-                        <Button onClick={handleReplaceAll}>Replace All</Button>
-                        <Button onClick={handleReplace}>Replace</Button>
+                        <Button variant="destructive" onClick={handleReplaceAll}>
+                            Replace All
+                        </Button>
+                        <Button variant="outline" onClick={handleReplace}>
+                            Replace
+                        </Button>
                     </>
                 )}
-                <Button onClick={handleFindNext}>Find Next</Button>
+                <div className="inline-flex rounded-md shadow-sm border border-input bg-background">
+                    <button
+                        type="button"
+                        onClick={handleFindPrevious}
+                        className="px-3 py-2 flex items-center justify-center rounded-l-md transition-colors
+                            bg-primary text-primary-foreground hover:bg-primary/90"
+                        tabIndex={0}
+                        aria-label="Find Previous"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-px bg-border self-stretch" />
+                    <button
+                        type="button"
+                        onClick={handleFindNext}
+                        className="px-3 py-2 flex items-center justify-center rounded-r-md transition-colors
+                            bg-primary text-primary-foreground hover:bg-primary/90"
+                        tabIndex={0}
+                        aria-label="Find Next"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
         </>
     );
