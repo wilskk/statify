@@ -7,6 +7,13 @@ import {
     getDescriptiveModalComponent
 } from './Descriptive';
 
+// Import from CompareMeans registry via index.ts
+import {
+    COMPARE_MEANS_MODAL_COMPONENTS,
+    COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES,
+    getCompareMeansModalComponent
+} from './CompareMeans';
+
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
  * 
@@ -16,8 +23,10 @@ export const ANALYZE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseMo
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_COMPONENTS,
     
+    // Compare Means modals
+    ...COMPARE_MEANS_MODAL_COMPONENTS,
+    
     // Future categories will be added here
-    // ...COMPARE_MEANS_MODAL_COMPONENTS,
     // ...NONPARAMETRIC_MODAL_COMPONENTS,
     // etc.
 };
@@ -47,6 +56,9 @@ export function getAnalyzeModalComponent(type: ModalType): React.ComponentType<B
 export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "sidebar">> = {
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
+    
+    // Compare Means modals
+    ...COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES,
     
     // Future categories will be added here
 };

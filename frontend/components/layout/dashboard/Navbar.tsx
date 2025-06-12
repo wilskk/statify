@@ -21,6 +21,7 @@ import DataMenu from "@/components/Modals/Data/DataMenu";
 import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
 import ClassifyMenu from "@/components/Modals/Analyze/classify/classify-menu";
 import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
+import { CompareMeansMenu } from "@/components/Modals/Analyze/CompareMeans";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
@@ -85,10 +86,10 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem disabled>One-Sample T Test...</MenubarItem>
-                        <MenubarItem disabled>Independent-Samples T Test...</MenubarItem>
-                        <MenubarItem disabled>Paired-Samples T Test...</MenubarItem>
-                        <MenubarItem disabled>One-Way ANOVA...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.OneWayANOVA)}>One-Way ANOVA...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>

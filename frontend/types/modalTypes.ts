@@ -93,6 +93,12 @@ export enum ModalType {
   Ratio = "Ratio",
   PPPlots = "PPPlots",
   QQPlots = "QQPlots",
+  
+  // Compare Means modals
+  OneSampleTTest = "OneSampleTTest",
+  IndependentSamplesTTest = "IndependentSamplesTTest",
+  PairedSamplesTTest = "PairedSamplesTTest",
+  OneWayANOVA = "OneWayANOVA",
 }
 
 /**
@@ -239,6 +245,12 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.Ratio]: ModalCategory.Analyze,
   [ModalType.PPPlots]: ModalCategory.Analyze,
   [ModalType.QQPlots]: ModalCategory.Analyze,
+  
+  // Compare Means modals
+  [ModalType.OneSampleTTest]: ModalCategory.Analyze,
+  [ModalType.IndependentSamplesTTest]: ModalCategory.Analyze,
+  [ModalType.PairedSamplesTTest]: ModalCategory.Analyze,
+  [ModalType.OneWayANOVA]: ModalCategory.Analyze,
 };
 
 /**
