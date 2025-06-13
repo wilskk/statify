@@ -112,7 +112,10 @@ export const useOpenSavFileLogic = ({
                     columnIndex: colIndex,
                     name: variableName,
                     type: mapSPSSTypeToInterface(formatType),
-                    width: varInfo.printFormat?.width || (isString ? 80 : 8),
+                    // Override width for DATE type to 10
+                    width: mapSPSSTypeToInterface(formatType) === 'DATE'
+                        ? 10
+                        : varInfo.printFormat?.width || (isString ? 80 : 8),
                     decimals: varInfo.printFormat?.nbdec ?? (isString ? 0 : (varInfo.type === 0 ? 2 : 0)),
                     label: varInfo.label || "",
                     values: values,
@@ -134,7 +137,8 @@ export const useOpenSavFileLogic = ({
                     if (variable && rawDataValue !== null) {
                         if (spssDateTypes.has(variable.type) && typeof rawDataValue === 'number') {
                             const convertedDate = spssSecondsToDateString(rawDataValue);
-                            return convertedDate ?? rawDataValue;
+                            // Convert SPSS format 'dd-mm-yyyy' to 'dd/mm/yyyy'
+                            return convertedDate ? convertedDate.replace(/-/g, '/') : rawDataValue;
                         }
                         if (variable.type === 'STRING' && typeof rawDataValue !== 'string') {
                             return String(rawDataValue).trim();

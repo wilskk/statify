@@ -4,6 +4,8 @@ import { useVariableStore } from '@/stores/useVariableStore';
 import { useMetaStore } from '@/stores/useMetaStore';
 import type { Variable } from '@/types/Variable';
 import type { DataRow } from '@/types/Data';
+import { dateStringToSpssSeconds } from '@/utils/spssDateConverter';
+import { spssDateTypes } from '@/types/Variable';
 
 export function useVariableData(variableName: string) {
   const variable = useVariableStore(state => state.variables.find(v => v.name === variableName));
@@ -24,7 +26,18 @@ export function useVariableData(variableName: string) {
       }
       try {
         const result = await getVariableData(variable);
-        if (!cancelled) setData(result.data);
+        if (!cancelled) {
+          let processedData = result.data;
+          if (spssDateTypes.has(variable.type) && variable.width === 11) {
+            // Convert SPSS date format 'dd-mm-yyyy' to 'dd/mm/yyyy'
+            processedData = processedData.map(val =>
+              typeof val === 'string'
+                ? val.replace(/-/g, '/')
+                : val
+            );
+          }
+          setData(processedData);
+        }
       } catch (err: any) {
         if (!cancelled) setError(err);
       } finally {

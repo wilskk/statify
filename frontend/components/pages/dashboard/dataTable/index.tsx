@@ -11,6 +11,7 @@ import { addColumns, addMultipleVariables, getVariables } from './services/store
 import { useTableRefStore } from '@/stores/useTableRefStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useMetaStore } from '@/stores/useMetaStore';
+import { spssDateTypes } from '@/types/Variable';
 import './DataTable.css';
 
 registerAllModules();
@@ -100,6 +101,13 @@ export default function Index() {
         if (src === 'loaddata' || src.includes('contextmenu')) return;
         try {
             const updates = mapChangesToUpdates(changes);
+            // Normalize date input: replace slashes with dashes for SPSS date variables
+            updates.forEach(u => {
+                const variable = variables.find(v => v.columnIndex === u.col);
+                if (variable && spssDateTypes.has(variable.type) && variable.width === 11 && typeof u.value === 'string') {
+                    u.value = u.value.replace(/\//g, '-');
+                }
+            });
             const maxCol = updates.reduce((max, u) => Math.max(max, u.col), -1);
             const widthMap: Record<number, number> = {};
             if (maxCol >= actualNumCols) {

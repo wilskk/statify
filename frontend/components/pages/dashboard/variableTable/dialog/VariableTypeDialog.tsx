@@ -86,13 +86,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     const [selectedType, setSelectedType] = useState<string>(initialType);
     const [width, setWidth] = useState<number>(initialWidth);
     const [decimals, setDecimals] = useState<number>(initialDecimals);
-    const [dateFormat, setDateFormat] = useState<string>("dd-mmm-yyyy");
+    const [dateFormat, setDateFormat] = useState<string>("dd/mm/yyyy");
     const [dollarFormat, setDollarFormat] = useState<string>("$### ###,###.##");
     const [selectedCurrencyFormat, setSelectedCurrencyFormat] = useState<string>("CCA");
 
     const dateFormats = React.useMemo<DateFormatOption[]>(() => [
-        { value: "dd-mmm-yyyy", label: "dd-mmm-yyyy", type: "DATE", width: 11 },
-        { value: "dd-mmm-yy", label: "dd-mmm-yy", type: "DATE", width: 9 },
+        { value: "dd/mm/yyyy", label: "dd/mm/yyyy", type: "DATE", width: 10 },
         { value: "mm/dd/yyyy", label: "mm/dd/yyyy", type: "ADATE", width: 10 },
         { value: "mm/dd/yy", label: "mm/dd/yy", type: "ADATE", width: 8 },
         { value: "dd.mm.yyyy", label: "dd.mm.yyyy", type: "EDATE", width: 10 },
@@ -124,7 +123,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
         { value: "Monday, Tuesday, ...", label: "Monday, Tuesday, ...", type: "WKDAY", width: 9 },
         { value: "Mon, Tue, Wed, ...", label: "Mon, Tue, Wed, ...", type: "WKDAY", width: 3 },
         { value: "January, February, ...", label: "January, February, ...", type: "MONTH", width: 9 },
-        { value: "Jan, Feb, Mar, ...", label: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 }
+        { value: "Jan, Feb, Mar, ...", label: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 },
     ], []);
 
     // Dollar format options
@@ -140,7 +139,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     ], []);
 
     useEffect(() => {
-        const defaultDateFormat = dateFormats.find(f => f.value === "dd-mmm-yyyy");
+        const defaultDateFormat = dateFormats.find(f => f.value === dateFormat);
         if (defaultDateFormat) {
             if (selectedType === "DATE") {
                 setWidth(defaultDateFormat.width);
@@ -296,7 +295,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 {[
                                     { id: "NUMERIC", label: "Numeric" },
                                     { id: "STRING", label: "String" },
-                                    { id: "DATE", label: "dd-mmm-yyyy" }
+                                    { id: "DATE", label: "dd/mm/yyyy" }
                                 ].map((type) => (
                                     <div key={type.id} className="flex items-center space-x-2 py-1">
                                         <RadioGroupItem value={type.id} id={type.id} />
@@ -354,7 +353,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                     <SelectValue placeholder="Select format" />
                                                 </SelectTrigger>
                                                 <SelectContent className="max-h-60">
-                                                    {dateFormats.filter(format => format.value === "dd-mmm-yyyy").map(format => (
+                                                    {dateFormats.filter(format => format.type === selectedType).map(format => (
                                                         <SelectItem key={format.value} value={format.value} className="text-sm">
                                                             {format.label}
                                                         </SelectItem>
