@@ -45,6 +45,16 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
   const [homoscedasticityTestError, setHomoscedasticityTestError] = useState<string | null>(null);
   const [homoscedasticityTestSuccess, setHomoscedasticityTestSuccess] = useState(false);
   
+  // Add states for multicollinearity test
+  const [isTestingMulticollinearity, setIsTestingMulticollinearity] = useState(false);
+  const [multicollinearityTestError, setMulticollinearityTestError] = useState<string | null>(null);
+  const [multicollinearityTestSuccess, setMulticollinearityTestSuccess] = useState(false);
+  
+  // Add states for autocorrelation test
+  const [isTestingAutocorrelation, setIsTestingAutocorrelation] = useState(false);
+  const [autocorrelationTestError, setAutocorrelationTestError] = useState<string | null>(null);
+  const [autocorrelationTestSuccess, setAutocorrelationTestSuccess] = useState(false);
+  
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
 
@@ -461,6 +471,381 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
     }
   };
 
+  const handleTestMulticollinearityClick = async () => {
+    try {
+      setIsTestingMulticollinearity(true);
+      setMulticollinearityTestError(null);
+      setMulticollinearityTestSuccess(false);
+      
+      if (selectedIndependentVariables.length < 2) {
+        throw new Error('Please select at least two independent variables to test for multicollinearity');
+      }
+      
+      console.log("Starting multicollinearity test with data:", {
+        dataLength: data.length,
+        independentVars: selectedIndependentVariables.map(v => v.name)
+      });
+      
+      const independentVarIndices = selectedIndependentVariables.map(v => v.columnIndex);
+      
+      // Extract data for analysis
+      const independentData = independentVarIndices.map(index => 
+        data.map(row => parseFloat(String(row[index])))
+      );
+      
+      console.log("Data extraction:", {
+        independentDataLength: independentData.length,
+        independentSample: independentData.map(arr => arr.slice(0, 5))
+      });
+      
+      // Filter out rows with missing values
+      const validIndices = Array(data.length).fill(true);
+      
+      for (const indepData of independentData) {
+        for (let i = 0; i < indepData.length; i++) {
+          if (isNaN(indepData[i])) {
+            validIndices[i] = false;
+          }
+        }
+      }
+      
+      const filteredIndependentData = independentData.map(indepData => 
+        indepData.filter((_, idx) => validIndices[idx])
+      );
+      
+      console.log("Filtered data:", {
+        validCount: validIndices.filter(Boolean).length,
+        filteredIndependentLength: filteredIndependentData.map(arr => arr.length)
+      });
+      
+      // Make sure we have data to analyze
+      if (filteredIndependentData.some(arr => arr.length === 0)) {
+        throw new Error("No valid data available for analysis after filtering missing values");
+      }
+      
+      // Prepare variable info for the worker
+      const independentVariableInfos = selectedIndependentVariables.map(v => ({
+        name: v.name,
+        label: v.label
+      }));
+      
+      // Create log message
+      const logMessage = `TESTING LINEAR REGRESSION ASSUMPTIONS
+      /TEST MULTICOLLINEARITY 
+      /INDEPENDENT ${selectedIndependentVariables.map(v => v.name).join(' ')}.`;
+      
+      const log = { log: logMessage };
+      const logId = await addLog(log);
+      
+      const analytic = {
+        title: "Linear Regression Assumption Tests",
+        note: "Multicollinearity Test",
+      };
+      const analyticId = await addAnalytic(logId, analytic);
+      
+      // Create and start the worker
+      const multicollinearityWorker = new Worker('/workers/Regression/Assumption Test/multicollinearity.js');
+      
+      // Prepare the data to send to the worker
+      const workerData = {
+        independentData: filteredIndependentData,
+        independentVariableInfos: independentVariableInfos
+      };
+      
+      console.log("Sending data to multicollinearity worker:", {
+        independentDataLength: workerData.independentData.length,
+        variablesCount: workerData.independentVariableInfos.length
+      });
+      
+      multicollinearityWorker.postMessage(workerData);
+      
+      multicollinearityWorker.onmessage = async (e: MessageEvent) => {
+        const response = e.data;
+        
+        if (response.error) {
+          console.error("Multicollinearity test worker error:", response.error);
+          setMulticollinearityTestError(response.error);
+        } else {
+          console.log("Multicollinearity test results:", response);
+          
+          // Save the results to statistics store
+          const multicollinearityStat = {
+            title: "Multicollinearity Test Results",
+            output_data: JSON.stringify(response),
+            components: "MulticollinearityTest",
+            description: "Tests for correlation among independent variables"
+          };
+          
+          await addStatistic(analyticId, multicollinearityStat);
+          setMulticollinearityTestSuccess(true);
+        }
+        
+        setIsTestingMulticollinearity(false);
+        multicollinearityWorker.terminate();
+      };
+      
+      multicollinearityWorker.onerror = (error: ErrorEvent) => {
+        console.error("Multicollinearity test worker error:", error);
+        setMulticollinearityTestError(error.message);
+        setIsTestingMulticollinearity(false);
+        multicollinearityWorker.terminate();
+      };
+      
+    } catch (error) {
+      console.error("Error in multicollinearity test:", error);
+      setMulticollinearityTestError(error instanceof Error ? error.message : 'Unknown error');
+      setIsTestingMulticollinearity(false);
+    }
+  };
+
+  const handleTestAutocorrelationClick = async () => {
+    try {
+      setIsTestingAutocorrelation(true);
+      setAutocorrelationTestError(null);
+      setAutocorrelationTestSuccess(false);
+      
+      if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
+        throw new Error('Please select a dependent variable and at least one independent variable');
+      }
+      
+      console.log("Starting autocorrelation test with data:", {
+        dataLength: data.length,
+        dependentVar: selectedDependentVariable.name,
+        independentVars: selectedIndependentVariables.map(v => v.name)
+      });
+      
+      const dependentVarIndex = selectedDependentVariable.columnIndex;
+      const independentVarIndices = selectedIndependentVariables.map(v => v.columnIndex);
+      
+      // Extract data for analysis
+      const dependentData = data.map(row => parseFloat(String(row[dependentVarIndex])));
+      const independentData = independentVarIndices.map(index => 
+        data.map(row => parseFloat(String(row[index])))
+      );
+      
+      console.log("Data extraction:", {
+        dependentDataLength: dependentData.length,
+        independentDataLength: independentData.length,
+        dependentSample: dependentData.slice(0, 5),
+        independentSample: independentData.map(arr => arr.slice(0, 5))
+      });
+      
+      // Filter out rows with missing values
+      const validIndices = dependentData.map((value, idx) => {
+        if (isNaN(value)) return false;
+        
+        for (const indepData of independentData) {
+          if (isNaN(indepData[idx])) return false;
+        }
+        
+        return true;
+      });
+      
+      const filteredDependentData = dependentData.filter((_, idx) => validIndices[idx]);
+      const filteredIndependentData = independentData.map(indepData => 
+        indepData.filter((_, idx) => validIndices[idx])
+      );
+      
+      console.log("Filtered data:", {
+        validCount: validIndices.filter(Boolean).length,
+        filteredDependentLength: filteredDependentData.length,
+        filteredIndependentLength: filteredIndependentData.length
+      });
+      
+      // Make sure we have data to analyze
+      if (filteredDependentData.length === 0 || filteredIndependentData.some(arr => arr.length === 0)) {
+        throw new Error("No valid data available for analysis after filtering missing values");
+      }
+      
+      // Calculate residuals using OLS regression
+      // We need to first fit a regression model to get residuals
+      const X: number[][] = [];
+      for (let i = 0; i < filteredDependentData.length; i++) {
+        const row = [1]; // Intercept term
+        for (let j = 0; j < filteredIndependentData.length; j++) {
+          row.push(filteredIndependentData[j][i]);
+        }
+        X.push(row);
+      }
+      
+      const y = filteredDependentData;
+      
+      // Simple OLS implementation using matrix operations
+      // X'X
+      const XtX: number[][] = [];
+      for (let i = 0; i < X[0].length; i++) {
+        XtX[i] = [];
+        for (let j = 0; j < X[0].length; j++) {
+          let sum = 0;
+          for (let k = 0; k < X.length; k++) {
+            sum += X[k][i] * X[k][j];
+          }
+          XtX[i][j] = sum;
+        }
+      }
+      
+      // X'y
+      const Xty: number[] = [];
+      for (let i = 0; i < X[0].length; i++) {
+        let sum = 0;
+        for (let k = 0; k < X.length; k++) {
+          sum += X[k][i] * y[k];
+        }
+        Xty[i] = sum;
+      }
+      
+      // Solve for coefficients using Gaussian elimination
+      // Combine XtX and Xty for solving
+      const augmentedMatrix: number[][] = XtX.map((row, i) => [...row, Xty[i]]);
+      
+      // Gaussian elimination
+      const n = augmentedMatrix.length;
+      
+      // Forward elimination
+      for (let i = 0; i < n; i++) {
+        // Search for maximum in this column
+        let maxEl = Math.abs(augmentedMatrix[i][i]);
+        let maxRow = i;
+        
+        for (let k = i + 1; k < n; k++) {
+          if (Math.abs(augmentedMatrix[k][i]) > maxEl) {
+            maxEl = Math.abs(augmentedMatrix[k][i]);
+            maxRow = k;
+          }
+        }
+        
+        // Swap maximum row with current row
+        if (maxRow !== i) {
+          const temp = augmentedMatrix[i];
+          augmentedMatrix[i] = augmentedMatrix[maxRow];
+          augmentedMatrix[maxRow] = temp;
+        }
+        
+        // Make all rows below this one 0 in current column
+        for (let k = i + 1; k < n; k++) {
+          const factor = -augmentedMatrix[k][i] / augmentedMatrix[i][i];
+          
+          for (let j = i; j <= n; j++) {
+            if (i === j) {
+              augmentedMatrix[k][j] = 0;
+            } else {
+              augmentedMatrix[k][j] += factor * augmentedMatrix[i][j];
+            }
+          }
+        }
+      }
+      
+      // Back substitution
+      const coefficients = new Array(n).fill(0);
+      
+      for (let i = n - 1; i >= 0; i--) {
+        coefficients[i] = augmentedMatrix[i][n] / augmentedMatrix[i][i];
+        
+        for (let k = i - 1; k >= 0; k--) {
+          augmentedMatrix[k][n] -= augmentedMatrix[k][i] * coefficients[i];
+        }
+      }
+      
+      // Calculate fitted values and residuals
+      const fittedValues = [];
+      const residuals = [];
+      
+      for (let i = 0; i < X.length; i++) {
+        let fitted = 0;
+        for (let j = 0; j < coefficients.length; j++) {
+          fitted += X[i][j] * coefficients[j];
+        }
+        fittedValues.push(fitted);
+        residuals.push(y[i] - fitted);
+      }
+      
+      console.log("Calculated residuals for autocorrelation test:", {
+        residualsLength: residuals.length,
+        residualsSample: residuals.slice(0, 5)
+      });
+
+      // Debug: Check for invalid values in residuals
+      console.log("Residuals validation:", {
+        hasNaN: residuals.some(isNaN),
+        hasInfinity: residuals.some(val => !isFinite(val)),
+        min: Math.min(...residuals),
+        max: Math.max(...residuals),
+        allZero: residuals.every(val => val === 0)
+      });
+
+      // Create log message
+      const logMessage = `TESTING LINEAR REGRESSION ASSUMPTIONS
+      /TEST AUTOCORRELATION 
+      /DEPENDENT ${selectedDependentVariable.name} 
+      /INDEPENDENT ${selectedIndependentVariables.map(v => v.name).join(' ')}.`;
+      
+      const log = { log: logMessage };
+      const logId = await addLog(log);
+      
+      const analytic = {
+        title: "Linear Regression Assumption Tests",
+        note: "Autocorrelation Test",
+      };
+      const analyticId = await addAnalytic(logId, analytic);
+      
+      // Create and start the worker
+      const autocorrelationWorker = new Worker('/workers/Regression/Assumption Test/autocorrelation.js');
+      
+      // Prepare the data to send to the worker
+      const workerData = {
+        residuals: residuals
+      };
+      
+      console.log("Sending data to autocorrelation worker:", {
+        residualsLength: workerData.residuals.length,
+        residualsSample: workerData.residuals.slice(0, 5)
+      });
+      
+      autocorrelationWorker.postMessage(workerData);
+      
+      autocorrelationWorker.onmessage = async (e: MessageEvent) => {
+        const response = e.data;
+        
+        if (response.error) {
+          console.error("Autocorrelation test worker error:", response.error);
+          setAutocorrelationTestError(response.error);
+        } else {
+          console.log("Autocorrelation test results:", response);
+          // Add more detailed logging of results
+          console.log("Full autocorrelation results:", JSON.stringify(response.results));
+          console.log("DW Statistic value:", response.results?.durbinWatsonStatistic);
+          console.log("Interpretation:", response.results?.interpretation);
+          
+          // Save the results to statistics store
+          const autocorrelationStat = {
+            title: "Autocorrelation Test Results",
+            output_data: JSON.stringify(response),
+            components: "AutocorrelationTest",
+            description: "Tests for correlation between residuals over time"
+          };
+          
+          await addStatistic(analyticId, autocorrelationStat);
+          setAutocorrelationTestSuccess(true);
+        }
+        
+        setIsTestingAutocorrelation(false);
+        autocorrelationWorker.terminate();
+      };
+      
+      autocorrelationWorker.onerror = (error: ErrorEvent) => {
+        console.error("Autocorrelation test worker error:", error);
+        setAutocorrelationTestError(error.message);
+        setIsTestingAutocorrelation(false);
+        autocorrelationWorker.terminate();
+      };
+      
+    } catch (error) {
+      console.error("Error in autocorrelation test:", error);
+      setAutocorrelationTestError(error instanceof Error ? error.message : 'Unknown error');
+      setIsTestingAutocorrelation(false);
+    }
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div className="space-y-2">
@@ -496,6 +881,32 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
                   </div>
                 </ScrollArea>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="font-bold">Multicollinearity Checking</Label>
+        <Card className="border rounded-md">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-muted-foreground">Check for correlation among independent variables</p>
+              </div>
+              <Button 
+                disabled={selectedIndependentVariables.length < 2 || isTestingMulticollinearity}
+                onClick={handleTestMulticollinearityClick}
+              >
+                {isTestingMulticollinearity ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  'Check Multicollinearity'
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -545,6 +956,38 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
           <AlertTitle>Homoscedasticity Test Success</AlertTitle>
           <AlertDescription>
             Homoscedasticity test completed successfully. Check the Output View to see the results.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {multicollinearityTestError && (
+        <Alert variant="destructive">
+          <AlertTitle>Multicollinearity Test Error</AlertTitle>
+          <AlertDescription>{multicollinearityTestError}</AlertDescription>
+        </Alert>
+      )}
+
+      {multicollinearityTestSuccess && (
+        <Alert>
+          <AlertTitle>Multicollinearity Check Success</AlertTitle>
+          <AlertDescription>
+            Multicollinearity check completed successfully. Check the Output View to see the results.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {autocorrelationTestError && (
+        <Alert variant="destructive">
+          <AlertTitle>Autocorrelation Test Error</AlertTitle>
+          <AlertDescription>{autocorrelationTestError}</AlertDescription>
+        </Alert>
+      )}
+
+      {autocorrelationTestSuccess && (
+        <Alert>
+          <AlertTitle>Autocorrelation Test Success</AlertTitle>
+          <AlertDescription>
+            Autocorrelation test completed successfully. Check the Output View to see the results.
           </AlertDescription>
         </Alert>
       )}
@@ -621,23 +1064,21 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
             <div className="flex justify-between items-center">
               <div>
-                <Label className="font-semibold">Multicollinearity Test</Label>
-                <p className="text-xs text-muted-foreground">Tests for correlation among independent variables</p>
-              </div>
-              <Button disabled={selectedIndependentVariables.length < 2}>
-                Test Multicollinearity
-              </Button>
-            </div>
-
-            <Separator className="my-2" />
-
-            <div className="flex justify-between items-center">
-              <div>
                 <Label className="font-semibold">Autocorrelation Test</Label>
                 <p className="text-xs text-muted-foreground">Tests for correlation between residuals</p>
               </div>
-              <Button disabled={!selectedDependentVariable || selectedIndependentVariables.length === 0}>
-                Test Autocorrelation
+              <Button 
+                onClick={handleTestAutocorrelationClick}
+                disabled={isTestingAutocorrelation || !selectedDependentVariable || selectedIndependentVariables.length === 0}
+              >
+                {isTestingAutocorrelation ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  'Test Autocorrelation'
+                )}
               </Button>
             </div>
           </CardContent>

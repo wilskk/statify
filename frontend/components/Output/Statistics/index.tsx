@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import LinearityTest from './LinearityTest';
 import NormalityTest from './NormalityTest';
 import HomoscedasticityTest from './HomoscedasticityTest';
+import AutocorrelationTest from './AutocorrelationTest';
+import MulticollinearityTest from './MulticollinearityTest';
 
 // Define the StatisticsComponentsRegistry interface
 interface StatisticsComponentsRegistry {
@@ -21,6 +23,12 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
   
   // Add HomoscedasticityTest component
   'HomoscedasticityTest': HomoscedasticityTest,
+  
+  // Add AutocorrelationTest component
+  'AutocorrelationTest': AutocorrelationTest,
+  
+  // Add MulticollinearityTest component
+  'MulticollinearityTest': MulticollinearityTest,
   
   // Add more components as they are created
   // 'MulticollinearityTest': MulticollinearityTest,
