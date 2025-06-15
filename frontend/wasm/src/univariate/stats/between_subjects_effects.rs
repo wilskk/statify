@@ -268,103 +268,173 @@ fn add_model_summary_entries(
     design_info: &DesignMatrixInfo,
     config: &UnivariateConfig
 ) {
-    if df_model_overall > 0 {
-        let ms_model_corrected = ss_model_corrected / (df_model_overall as f64);
-        let f_model_corrected = if ms_error > 1e-9 {
-            ms_model_corrected / ms_error
-        } else {
-            f64::NAN
-        };
-        let sig_model_corrected = calculate_f_significance(
-            df_model_overall,
-            df_error,
-            f_model_corrected
-        );
+    let has_intercept = config.model.intercept;
+    if has_intercept {
+        // Standard (with intercept): Corrected Model, Error, Corrected Total, Total
+        if df_model_overall > 0 {
+            let ms_model_corrected = ss_model_corrected / (df_model_overall as f64);
+            let f_model_corrected = if ms_error > 1e-9 {
+                ms_model_corrected / ms_error
+            } else {
+                f64::NAN
+            };
+            let sig_model_corrected = calculate_f_significance(
+                df_model_overall,
+                df_error,
+                f_model_corrected
+            );
 
-        let pes_model_corrected = if config.options.est_effect_size {
-            if ss_total_corrected.abs() > 1e-9 {
-                (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
+            let pes_model_corrected = if config.options.est_effect_size {
+                if ss_total_corrected.abs() > 1e-9 {
+                    (ss_model_corrected / ss_total_corrected).max(0.0).min(1.0)
+                } else {
+                    0.0
+                }
+            } else {
+                f64::NAN
+            };
+
+            let (ncp_model_corrected, power_model_corrected) = if config.options.obs_power {
+                let ncp = calculate_f_non_centrality(
+                    f_model_corrected,
+                    df_model_overall as f64,
+                    df_error as f64
+                );
+                let power = calculate_observed_power_f(
+                    f_model_corrected,
+                    df_model_overall as f64,
+                    df_error as f64,
+                    config.options.sig_level
+                );
+                (ncp, power)
+            } else {
+                (f64::NAN, f64::NAN)
+            };
+
+            current_source_map.insert("Corrected Model".to_string(), TestEffectEntry {
+                sum_of_squares: ss_model_corrected,
+                df: df_model_overall,
+                mean_square: ms_model_corrected,
+                f_value: f_model_corrected,
+                significance: sig_model_corrected,
+                partial_eta_squared: pes_model_corrected,
+                noncent_parameter: ncp_model_corrected,
+                observed_power: power_model_corrected,
+            });
+        }
+
+        current_source_map.insert("Error".to_string(), TestEffectEntry {
+            sum_of_squares: ss_error,
+            df: df_error,
+            mean_square: ms_error,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
+        });
+
+        current_source_map.insert("Corrected Total".to_string(), TestEffectEntry {
+            sum_of_squares: ss_total_corrected,
+            df: df_total,
+            mean_square: if df_total > 0 {
+                ss_total_corrected / (df_total as f64)
             } else {
                 0.0
-            }
-        } else {
-            f64::NAN
-        };
+            },
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
+        });
 
-        let (ncp_model_corrected, power_model_corrected) = if config.options.obs_power {
-            let ncp = calculate_f_non_centrality(
-                f_model_corrected,
-                df_model_overall as f64,
-                df_error as f64
-            );
-            let power = calculate_observed_power_f(
-                f_model_corrected,
-                df_model_overall as f64,
-                df_error as f64,
-                config.options.sig_level
-            );
-            (ncp, power)
-        } else {
-            (f64::NAN, f64::NAN)
-        };
-
-        current_source_map.insert("Corrected Model".to_string(), TestEffectEntry {
-            sum_of_squares: ss_model_corrected,
-            df: df_model_overall,
-            mean_square: ms_model_corrected,
-            f_value: f_model_corrected,
-            significance: sig_model_corrected,
-            partial_eta_squared: pes_model_corrected,
-            noncent_parameter: ncp_model_corrected,
-            observed_power: power_model_corrected,
+        let ss_total_uncorrected = design_info.y
+            .iter()
+            .map(|val| val.powi(2))
+            .sum::<f64>();
+        let df_total_uncorrected = design_info.n_samples;
+        current_source_map.insert("Total".to_string(), TestEffectEntry {
+            sum_of_squares: ss_total_uncorrected,
+            df: df_total_uncorrected,
+            mean_square: if df_total_uncorrected > 0 {
+                ss_total_uncorrected / (df_total_uncorrected as f64)
+            } else {
+                0.0
+            },
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
+        });
+    } else {
+        // No intercept: Model, Error, Total (no corrected model/total)
+        // Model SS = Total SS - Error SS, df = rank(X)
+        let ss_total = design_info.y
+            .iter()
+            .map(|val| val.powi(2))
+            .sum::<f64>();
+        let df_total = design_info.n_samples;
+        let ss_model = (ss_total - ss_error).max(0.0);
+        let df_model = design_info.r_x_rank;
+        if df_model > 0 {
+            let ms_model = ss_model / (df_model as f64);
+            let f_model = if ms_error > 1e-9 { ms_model / ms_error } else { f64::NAN };
+            let sig_model = calculate_f_significance(df_model, df_error, f_model);
+            let pes_model = if config.options.est_effect_size {
+                if ss_total.abs() > 1e-9 { (ss_model / ss_total).max(0.0).min(1.0) } else { 0.0 }
+            } else {
+                f64::NAN
+            };
+            let (ncp_model, power_model) = if config.options.obs_power {
+                let ncp = calculate_f_non_centrality(f_model, df_model as f64, df_error as f64);
+                let power = calculate_observed_power_f(
+                    f_model,
+                    df_model as f64,
+                    df_error as f64,
+                    config.options.sig_level
+                );
+                (ncp, power)
+            } else {
+                (f64::NAN, f64::NAN)
+            };
+            current_source_map.insert("Model".to_string(), TestEffectEntry {
+                sum_of_squares: ss_model,
+                df: df_model,
+                mean_square: ms_model,
+                f_value: f_model,
+                significance: sig_model,
+                partial_eta_squared: pes_model,
+                noncent_parameter: ncp_model,
+                observed_power: power_model,
+            });
+        }
+        current_source_map.insert("Error".to_string(), TestEffectEntry {
+            sum_of_squares: ss_error,
+            df: df_error,
+            mean_square: ms_error,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
+        });
+        current_source_map.insert("Total".to_string(), TestEffectEntry {
+            sum_of_squares: ss_total,
+            df: df_total,
+            mean_square: if df_total > 0 {
+                ss_total / (df_total as f64)
+            } else {
+                0.0
+            },
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: f64::NAN,
+            noncent_parameter: f64::NAN,
+            observed_power: f64::NAN,
         });
     }
-
-    current_source_map.insert("Error".to_string(), TestEffectEntry {
-        sum_of_squares: ss_error,
-        df: df_error,
-        mean_square: ms_error,
-        f_value: f64::NAN,
-        significance: f64::NAN,
-        partial_eta_squared: f64::NAN,
-        noncent_parameter: f64::NAN,
-        observed_power: f64::NAN,
-    });
-
-    current_source_map.insert("Corrected Total".to_string(), TestEffectEntry {
-        sum_of_squares: ss_total_corrected,
-        df: df_total,
-        mean_square: if df_total > 0 {
-            ss_total_corrected / (df_total as f64)
-        } else {
-            0.0
-        },
-        f_value: f64::NAN,
-        significance: f64::NAN,
-        partial_eta_squared: f64::NAN,
-        noncent_parameter: f64::NAN,
-        observed_power: f64::NAN,
-    });
-
-    let ss_total_uncorrected = design_info.y
-        .iter()
-        .map(|val| val.powi(2))
-        .sum::<f64>();
-    let df_total_uncorrected = design_info.n_samples;
-    current_source_map.insert("Total".to_string(), TestEffectEntry {
-        sum_of_squares: ss_total_uncorrected,
-        df: df_total_uncorrected,
-        mean_square: if df_total_uncorrected > 0 {
-            ss_total_uncorrected / (df_total_uncorrected as f64)
-        } else {
-            0.0
-        },
-        f_value: f64::NAN,
-        significance: f64::NAN,
-        partial_eta_squared: f64::NAN,
-        noncent_parameter: f64::NAN,
-        observed_power: f64::NAN,
-    });
 }
 
 /// Membuat TestEffectEntry dengan statistik yang dihitung

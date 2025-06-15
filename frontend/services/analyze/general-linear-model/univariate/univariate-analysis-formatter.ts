@@ -149,7 +149,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                         /\s+/g,
                         "_"
                     )}`,
-                    title: "Levene's Test of Equality of Error Variances<sup>a</sup>",
+                    title: "Levene's Test of Equality of Error Variancesᵃ",
                     subtitle: `Dependent Variable: ${test.dependent_variable}`,
                     columnHeaders: [
                         { header: "F", key: "f" },
@@ -193,7 +193,7 @@ export function transformUnivariateResult(data: any): ResultJson {
         } else {
             const table: Table = {
                 key: "levene_test",
-                title: "Levene's Test of Equality of Error Variances<sup>a,b</sup>",
+                title: "Levene's Test of Equality of Error Variancesᵃᵇ",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "", key: "based_on" },
@@ -292,7 +292,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const table: Table = {
                 key: "hetero_breusch_pagan",
-                title: "Breusch-Pagan Test for Heteroskedasticity<sup>a,b,c</sup>",
+                title: "Breusch-Pagan Test for Heteroskedasticityᵃᵇᶜ",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -345,7 +345,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const table: Table = {
                 key: "hetero_modified_breusch_pagan",
-                title: "Modified Breusch-Pagan Test for Heteroskedasticity<sup>a,b,c</sup>",
+                title: "Modified Breusch-Pagan Test for Heteroskedasticityᵃᵇᶜ",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -398,7 +398,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const table: Table = {
                 key: "hetero_white",
-                title: "White Test for Heteroskedasticity<sup>a,b,c</sup>",
+                title: "White Test for Heteroskedasticityᵃᵇᶜ",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "Chi-Square", key: "statistic" },
@@ -451,7 +451,7 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const table: Table = {
                 key: "hetero_f_test",
-                title: "F Test for Heteroskedasticity<sup>a,b,c</sup>",
+                title: "F Test for Heteroskedasticityᵃᵇᶜ",
                 columnHeaders: [
                     { header: "", key: "dependent_variable" },
                     { header: "F", key: "statistic" },
@@ -574,7 +574,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                     key: "partial_eta_squared",
                 },
                 { header: "Noncent. Parameter", key: "noncent_parameter" },
-                { header: "Observed Power<sup>b</sup>", key: "observed_power" },
+                { header: "Observed Powerᵇ", key: "observed_power" },
             ],
             rows: [],
         };
@@ -584,12 +584,14 @@ export function transformUnivariateResult(data: any): ResultJson {
 
             const sourceOrder = [
                 "Corrected Model",
+                "Model",
                 "Intercept",
                 ...allSourceNames
                     .filter(
                         (s: string) =>
                             ![
                                 "Corrected Model",
+                                "Model",
                                 "Intercept",
                                 "Error",
                                 "Total",
@@ -623,7 +625,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                     rowHeader: [
                         sourceName === "Corrected Model" &&
                         sumOfSquares !== null
-                            ? `${sourceName}<sup>a</sup>`
+                            ? `${sourceName}ᵃ`
                             : sourceName,
                     ],
                     sum_of_squares: sumOfSquares,
@@ -746,7 +748,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                     key: "noncent_parameter",
                 },
                 {
-                    header: `Observed Power<sup>${alphaNoteLetter || ""}</sup>`,
+                    header: `Observed Power${alphaNoteLetter ? `ᵃ` : ""}`,
                     key: "observed_power",
                 },
             ],
@@ -768,7 +770,7 @@ export function transformUnivariateResult(data: any): ResultJson {
             if (estimate.is_redundant) {
                 table.rows.push({
                     rowHeader: [estimate.parameter],
-                    b: `0<sup>${redundantNoteLetter || "a"}</sup>`,
+                    b: `0${redundantNoteLetter || "a"}`,
                     ...redundantRowValues,
                 });
             } else {
@@ -864,7 +866,7 @@ export function transformUnivariateResult(data: any): ResultJson {
             const table: Table = {
                 key: "general_estimable_function",
                 title: `General Estimable Function${
-                    designNoteLetter ? `<sup>${designNoteLetter}</sup>` : ""
+                    designNoteLetter ? `ᵃ` : ""
                 }`,
                 columnHeaders,
                 rows: [],
@@ -1567,9 +1569,9 @@ export function transformUnivariateResult(data: any): ResultJson {
                         { header: `(J) ${factorName}`, key: "j_level" },
                         { header: "Mean Difference (I-J)", key: "mean_diff" },
                         { header: "Std. Error", key: "std_error" },
-                        { header: "Sig.a", key: "sig" },
+                        { header: "Sig.ᵃ", key: "sig" },
                         {
-                            header: `95% Confidence Interval for Differencea`,
+                            header: `95% Confidence Interval for Differenceᵃ`,
                             key: "ci",
                             children: [
                                 { header: "Lower Bound", key: "lower_bound" },
@@ -1661,7 +1663,7 @@ export function transformUnivariateResult(data: any): ResultJson {
                             header: "Noncent. Parameter",
                             key: "noncent_parameter",
                         },
-                        { header: "Observed Powera", key: "observed_power" },
+                        { header: "Observed Powerᵃ", key: "observed_power" },
                     ],
                     rows: [],
                 };

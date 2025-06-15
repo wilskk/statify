@@ -220,7 +220,7 @@ export async function resultUnivariateAnalysis({
                 const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: (table as any).subtitle || "",
+                    note: "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
@@ -357,7 +357,7 @@ export async function resultUnivariateAnalysis({
                 const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: (table as any).subtitle || "",
+                    note: "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
@@ -392,7 +392,7 @@ export async function resultUnivariateAnalysis({
                 const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: (table as any).subtitle || "",
+                    note: "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,
@@ -409,7 +409,7 @@ export async function resultUnivariateAnalysis({
                 const tableData = JSON.stringify({ tables: [table] });
                 const analyticId = await addAnalytic(logId, {
                     title: table.title,
-                    note: (table as any).subtitle || "",
+                    note: "",
                 });
                 await addStatistic(analyticId, {
                     title: table.title,

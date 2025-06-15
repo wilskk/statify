@@ -210,103 +210,92 @@ pub fn calculate_general_estimable_function(
         collected_l_functions.push((expected_l_number, expected_l_label, l_vec, description));
     };
 
-    // --- Generate L-vectors for Covariates ---
+    // --- Generate L-vectors for model parameters ---
+    // The L-vector for the Intercept IS the vector for the mean of the all-pivot-levels cell.
+    // For other effects, the L-vector is a contrast relative to the pivot level(s).
+    if let Some(k) = all_model_param_names.iter().position(|p| p == "Intercept") {
+        if !is_redundant_vec[k] {
+            let l_vec_intercept = get_coeffs_for_cell_mean(
+                &base_all_pivot_levels,
+                &all_model_param_names,
+                &factor_details
+            );
+            let mu_notation = generate_mu_notation(&base_all_pivot_levels, &all_factors_ordered);
+            let desc = format!("Mean of all-pivot cell {}", mu_notation);
+            add_to_collection_if_valid(l_vec_intercept, desc, k + 1, format!("L{}", k + 1));
+        }
+    }
+
     for (k, param_name) in all_model_param_names.iter().enumerate() {
+        if param_name == "Intercept" || is_redundant_vec[k] {
+            continue; // Skip intercept (handled) and redundant params
+        }
+
+        let l_num = k + 1;
+        let l_label_str = format!("L{}", l_num);
+
         if covariate_names_set.contains(param_name) {
             let mut l_vec_covariate = vec![0i32; all_model_param_names.len()];
             l_vec_covariate[k] = 1;
-            let l_num = k + 1;
-            let l_label_str = format!("L{}", l_num);
             let description = format!("Covariate: {}", param_name);
             add_to_collection_if_valid(l_vec_covariate, description, l_num, l_label_str);
         }
     }
-    // --- End L-vectors for Covariates ---
 
-    // 1. Mean of the All-Pivot-Levels Cell (L1 / Intercept)
-    // Generating L1 (Intercept)...
-    let l_vec_l1 = get_coeffs_for_cell_mean(
-        &base_all_pivot_levels,
-        &all_model_param_names,
-        &factor_details
-    );
-    let mu_notation_l1 = generate_mu_notation(&base_all_pivot_levels, &all_factors_ordered); // Notation based on intended full pivot cell
-    match all_model_param_names.iter().position(|p_name| p_name == "Intercept") {
-        Some(k) => {
-            let l_num = k + 1;
-            let l_label_str = format!("L{}", l_num);
-            add_to_collection_if_valid(
-                l_vec_l1,
-                format!("Mean of all-pivot cell {}", mu_notation_l1),
-                l_num,
-                l_label_str
-            );
-        }
-        None => {
-            return Err("'Intercept' parameter not found for L1 generation!".to_string());
-        }
-    }
-
-    // 2. Main Effects
-    // Generating Main Effects...
+    // Main Effects
     for factor_of_interest_name in &all_factors_ordered {
         if let Some(detail_factor_of_interest) = factor_details.get(factor_of_interest_name) {
             let pivot_level_for_factor_of_interest = &detail_factor_of_interest.pivot_level;
             for non_pivot_level in detail_factor_of_interest.levels
                 .iter()
                 .filter(|l| *l != pivot_level_for_factor_of_interest) {
-                let mut cell_a_levels = base_all_pivot_levels.clone();
-                cell_a_levels.insert(factor_of_interest_name.clone(), non_pivot_level.clone());
-
-                let cell_b_levels = base_all_pivot_levels.clone();
-                // No need to insert for FoI in cell_b, it's already at its pivot from base_all_pivot_levels.
-                // base_all_pivot_levels has FoI at its pivot. If FoI is the only factor, cell_b is just {FoI:pivot}
-
-                let coeffs_a = get_coeffs_for_cell_mean(
-                    &cell_a_levels,
-                    &all_model_param_names,
-                    &factor_details
-                );
-                let coeffs_b = get_coeffs_for_cell_mean(
-                    &cell_b_levels,
-                    &all_model_param_names,
-                    &factor_details
-                );
-
-                let l_vec_sme: Vec<i32> = coeffs_a
-                    .iter()
-                    .zip(coeffs_b.iter())
-                    .map(|(a, b)| a - b)
-                    .collect();
-
-                let mu_a_notation = generate_mu_notation(&cell_a_levels, &all_factors_ordered);
-                let mu_b_notation = generate_mu_notation(&cell_b_levels, &all_factors_ordered);
-                let desc = format!(
-                    "Main Effect {}({} vs {} | Others at Pivot): {} - {}",
-                    factor_of_interest_name,
-                    non_pivot_level,
-                    pivot_level_for_factor_of_interest,
-                    mu_a_notation,
-                    mu_b_notation
-                );
-
                 let param_to_find = format!("[{}={}]", factor_of_interest_name, non_pivot_level);
-                match all_model_param_names.iter().position(|p_name| p_name == &param_to_find) {
-                    Some(k) => {
-                        let l_num = k + 1;
-                        let l_label_str = format!("L{}", l_num);
-                        add_to_collection_if_valid(l_vec_sme, desc, l_num, l_label_str);
+                if let Some(k) = all_model_param_names.iter().position(|p| p == &param_to_find) {
+                    if is_redundant_vec[k] {
+                        continue;
                     }
-                    None => {
-                        return Err(format!("Main effect parameter not found: {}", param_to_find));
-                    }
+
+                    let mut cell_a_levels = base_all_pivot_levels.clone();
+                    cell_a_levels.insert(factor_of_interest_name.clone(), non_pivot_level.clone());
+                    let cell_b_levels = base_all_pivot_levels.clone();
+
+                    let coeffs_a = get_coeffs_for_cell_mean(
+                        &cell_a_levels,
+                        &all_model_param_names,
+                        &factor_details
+                    );
+                    let coeffs_b = get_coeffs_for_cell_mean(
+                        &cell_b_levels,
+                        &all_model_param_names,
+                        &factor_details
+                    );
+
+                    let l_vec_sme: Vec<i32> = coeffs_a
+                        .iter()
+                        .zip(coeffs_b.iter())
+                        .map(|(a, b)| a - b)
+                        .collect();
+
+                    let mu_a_notation = generate_mu_notation(&cell_a_levels, &all_factors_ordered);
+                    let mu_b_notation = generate_mu_notation(&cell_b_levels, &all_factors_ordered);
+                    let desc = format!(
+                        "Main Effect {}({} vs {} | Others at Pivot): {} - {}",
+                        factor_of_interest_name,
+                        non_pivot_level,
+                        pivot_level_for_factor_of_interest,
+                        mu_a_notation,
+                        mu_b_notation
+                    );
+
+                    let l_num = k + 1;
+                    let l_label_str = format!("L{}", l_num);
+                    add_to_collection_if_valid(l_vec_sme, desc, l_num, l_label_str);
                 }
             }
         }
     }
 
-    // 3. N-way Interactions
-    // Generating N-way Interactions...
+    // N-way Interactions
     for k_interaction_way in 2..=all_factors_ordered.len() {
         for interacting_factors_names_tuple in all_factors_ordered
             .iter()
@@ -346,117 +335,107 @@ pub fn calculate_general_estimable_function(
             for specific_non_pivot_levels_for_interaction_instance in level_choices_for_each_interacting_factor
                 .into_iter()
                 .multi_cartesian_product() {
-                let mut l_vec_interaction = vec![0i32; all_model_param_names.len()];
-                let mut contrast_description_terms: Vec<String> = Vec::new();
-
-                let interaction_levels_desc_parts: Vec<String> = interacting_factors_names_tuple
-                    .iter()
-                    .zip(specific_non_pivot_levels_for_interaction_instance.iter())
-                    .map(|(f_name, non_pivot_level)| {
-                        format!(
-                            "{} ({} vs {})",
-                            f_name,
-                            non_pivot_level,
-                            factor_details.get(f_name.as_str()).unwrap().pivot_level
-                        )
-                    })
-                    .collect();
-                let full_desc_prefix = format!(
-                    "Interaction {} | Non-involved at Pivot",
-                    interaction_levels_desc_parts.join(", ")
-                );
-
-                for i_term_construction in 0..1 << k_interaction_way {
-                    let mut current_cell_levels_map = base_levels_for_interaction_context.clone(); // Start with non-involved factors at their standard pivots
-                    let mut num_pivot_levels_for_interacting_factors_in_this_term = 0;
-                    for (
-                        idx_in_interaction,
-                        interacting_factor_name,
-                    ) in interacting_factors_names_tuple.iter().enumerate() {
-                        let factor_detail_for_interacting = factor_details
-                            .get(interacting_factor_name)
-                            .unwrap();
-                        let level_for_this_interacting_factor_in_term = if
-                            ((i_term_construction >> idx_in_interaction) & 1) == 1
-                        {
-                            &specific_non_pivot_levels_for_interaction_instance[idx_in_interaction]
-                        } else {
-                            num_pivot_levels_for_interacting_factors_in_this_term += 1;
-                            &factor_detail_for_interacting.pivot_level
-                        };
-                        current_cell_levels_map.insert(
-                            interacting_factor_name.clone(),
-                            level_for_this_interacting_factor_in_term.clone()
-                        );
-                    }
-
-                    let cell_coeffs = get_coeffs_for_cell_mean(
-                        &current_cell_levels_map,
-                        &all_model_param_names,
-                        &factor_details
-                    );
-                    let mu_term_notation = generate_mu_notation(
-                        &current_cell_levels_map,
-                        &all_factors_ordered
-                    );
-
-                    let num_non_pivot_levels_for_interacting_factors_in_this_term =
-                        k_interaction_way - num_pivot_levels_for_interacting_factors_in_this_term;
-                    let sign = if
-                        num_non_pivot_levels_for_interacting_factors_in_this_term % 2 == 0
-                    {
-                        1i32
-                    } else {
-                        -1i32
-                    };
-
-                    if cell_coeffs.iter().all(|&c| c == 0) {
-                        // If this specific cell was zeroed out, its mu notation reflects that it contributes nothing
-                        // Don't add to description terms, or add as "+0" or similar if explicitly needed.
-                        // For now, just skip adding it to the sum for l_vec_interaction and description.
-                    } else {
-                        if sign == 1 {
-                            contrast_description_terms.push(format!("+{}", mu_term_notation));
-                        } else {
-                            contrast_description_terms.push(format!("-{}", mu_term_notation));
-                        }
-                        for (j_coeff_idx, coeff_val) in cell_coeffs.iter().enumerate() {
-                            l_vec_interaction[j_coeff_idx] += sign * coeff_val;
-                        }
-                    }
-                }
-                contrast_description_terms.sort_by_key(|k| k.starts_with('-'));
-
                 let param_name_parts: Vec<String> = interacting_factors_names_tuple
                     .iter()
                     .zip(specific_non_pivot_levels_for_interaction_instance.iter())
                     .map(|(factor_name, level)| format!("[{}={}]", factor_name, level))
                     .collect();
                 let param_to_find = param_name_parts.join("*");
-                match all_model_param_names.iter().position(|p_name| p_name == &param_to_find) {
-                    Some(k) => {
-                        let l_num = k + 1;
-                        let l_label_str = format!("L{}", l_num);
-                        add_to_collection_if_valid(
-                            l_vec_interaction,
-                            format!(
-                                "{}: {}",
-                                full_desc_prefix,
-                                contrast_description_terms.join(" ")
-                            ),
-                            l_num,
-                            l_label_str
-                        );
+
+                if let Some(k) = all_model_param_names.iter().position(|p| p == &param_to_find) {
+                    if is_redundant_vec[k] {
+                        continue;
                     }
-                    None => {
-                        return Err(
+
+                    let mut l_vec_interaction = vec![0i32; all_model_param_names.len()];
+                    let mut contrast_description_terms: Vec<String> = Vec::new();
+
+                    let interaction_levels_desc_parts: Vec<String> = interacting_factors_names_tuple
+                        .iter()
+                        .zip(specific_non_pivot_levels_for_interaction_instance.iter())
+                        .map(|(f_name, non_pivot_level)| {
                             format!(
-                                "Interaction parameter not found: {}. (param_parts: {:?})",
-                                param_to_find,
-                                param_name_parts
+                                "{} ({} vs {})",
+                                f_name,
+                                non_pivot_level,
+                                factor_details.get(f_name.as_str()).unwrap().pivot_level
                             )
+                        })
+                        .collect();
+                    let full_desc_prefix = format!(
+                        "Interaction {} | Non-involved at Pivot",
+                        interaction_levels_desc_parts.join(", ")
+                    );
+
+                    for i_term_construction in 0..1 << k_interaction_way {
+                        let mut current_cell_levels_map =
+                            base_levels_for_interaction_context.clone();
+                        let mut num_pivot_levels_for_interacting_factors_in_this_term = 0;
+                        for (
+                            idx_in_interaction,
+                            interacting_factor_name,
+                        ) in interacting_factors_names_tuple.iter().enumerate() {
+                            let factor_detail_for_interacting = factor_details
+                                .get(interacting_factor_name)
+                                .unwrap();
+                            let level_for_this_interacting_factor_in_term = if
+                                ((i_term_construction >> idx_in_interaction) & 1) == 1
+                            {
+                                &specific_non_pivot_levels_for_interaction_instance[
+                                    idx_in_interaction
+                                ]
+                            } else {
+                                num_pivot_levels_for_interacting_factors_in_this_term += 1;
+                                &factor_detail_for_interacting.pivot_level
+                            };
+                            current_cell_levels_map.insert(
+                                interacting_factor_name.clone(),
+                                level_for_this_interacting_factor_in_term.clone()
+                            );
+                        }
+
+                        let cell_coeffs = get_coeffs_for_cell_mean(
+                            &current_cell_levels_map,
+                            &all_model_param_names,
+                            &factor_details
                         );
+                        let mu_term_notation = generate_mu_notation(
+                            &current_cell_levels_map,
+                            &all_factors_ordered
+                        );
+
+                        let num_non_pivot_levels_for_interacting_factors_in_this_term =
+                            k_interaction_way -
+                            num_pivot_levels_for_interacting_factors_in_this_term;
+                        let sign = if
+                            num_non_pivot_levels_for_interacting_factors_in_this_term % 2 == 0
+                        {
+                            1i32
+                        } else {
+                            -1i32
+                        };
+
+                        if !cell_coeffs.iter().all(|&c| c == 0) {
+                            if sign == 1 {
+                                contrast_description_terms.push(format!("+{}", mu_term_notation));
+                            } else {
+                                contrast_description_terms.push(format!("-{}", mu_term_notation));
+                            }
+                            for (j_coeff_idx, coeff_val) in cell_coeffs.iter().enumerate() {
+                                l_vec_interaction[j_coeff_idx] += sign * coeff_val;
+                            }
+                        }
                     }
+                    contrast_description_terms.sort_by_key(|k| k.starts_with('-'));
+
+                    let l_num = k + 1;
+                    let l_label_str = format!("L{}", l_num);
+                    add_to_collection_if_valid(
+                        l_vec_interaction,
+                        format!("{}: {}", full_desc_prefix, contrast_description_terms.join(" ")),
+                        l_num,
+                        l_label_str
+                    );
                 }
             }
         }
