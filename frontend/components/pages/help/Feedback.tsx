@@ -44,6 +44,4 @@ export const Feedback = () => {
       </form>
     </div>
   );
-};
-
-export default Feedback; 
+}; 

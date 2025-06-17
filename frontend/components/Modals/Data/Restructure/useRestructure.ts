@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
+import { restructureData } from "./restructureService";
 
 export enum RestructureMethod {
     VariablesToCases = "variables_to_cases",
@@ -238,18 +239,9 @@ export const useRestructure = (): UseRestructureReturn => {
                 }
             };
 
-            console.log("Restructuring configuration:", config);
-            
-            // TODO: Implement actual API call to backend restructuring service
-            // const result = await restructureData(config);
-            
-            // For demonstration, show success message
-            alert(`Data restructuring completed successfully!\n\nMethod: ${
-                method === RestructureMethod.VariablesToCases ? 'Variables to Cases' :
-                method === RestructureMethod.CasesToVariables ? 'Cases to Variables' :
-                'Transpose All Data'
-            }\nVariables processed: ${selectedVariables.length}`);
-            
+            const { data: newData, variables: newVars } = restructureData(data, variables, config);
+            useDataStore.getState().setData(newData);
+            useVariableStore.getState().overwriteVariables(newVars);
             onClose();
         } catch (error) {
             console.error("Error during data restructuring:", error);

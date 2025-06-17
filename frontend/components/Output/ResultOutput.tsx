@@ -2,12 +2,24 @@
 import React, { useState } from "react";
 import DataTableRenderer from "@/components/Output/table/data-table";
 import { Card } from "@/components/ui/card";
+import dynamic from 'next/dynamic';
 import { useResultStore } from "@/stores/useResultStore";
 import GeneralChartContainer from "./Chart/GeneralChartContainer";
-import SimpleRichTextEditor from "@/components/Editor/SimpleRichTextEditor";
+const TiptapEditor = dynamic(() => import('@/components/Output/Editor/TiptapEditor'), {
+  ssr: false,
+  loading: () => <div className="border rounded-md p-2 min-h-[120px] bg-background w-full" />
+});
 import { Edit } from "lucide-react";
 
 const ResultOutput: React.FC = () => {
+
+
+  const testData = {
+    "tables": [
+      {
+      }
+    ]
+  };
   const { logs, updateStatistic } = useResultStore();
   const [editingDescriptionId, setEditingDescriptionId] = useState<number | null>(null);
   const [descriptionValues, setDescriptionValues] = useState<Record<number, string>>({});
@@ -156,7 +168,7 @@ const ResultOutput: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            <SimpleRichTextEditor 
+                            <TiptapEditor 
                               value={isEditing ? descriptionValues[statId] || '' : stat.description || ''}
                               onChange={(value) => handleDescriptionChange(statId, value)}
                               editable={isEditing}

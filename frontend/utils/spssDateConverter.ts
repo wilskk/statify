@@ -30,3 +30,30 @@ export function dateStringToSpssSeconds(dateString: string): number | null {
   const spssSeconds = Math.round(diffMillis / 1000);
   return spssSeconds;
 }
+
+/**
+ * Converts SPSS seconds back to a 'dd-mm-yyyy' date string.
+ * Returns null for invalid input.
+ *
+ * @param spssSeconds The number of seconds since 14 Oct 1582.
+ * @returns A date string in 'dd-mm-yyyy' format or null.
+ */
+export function spssSecondsToDateString(spssSeconds: number): string | null {
+  if (typeof spssSeconds !== 'number' || isNaN(spssSeconds)) {
+    return null;
+  }
+
+  const targetMillis = SPSS_EPOCH_MILLIS + (spssSeconds * 1000);
+  const date = new Date(targetMillis);
+
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const year = date.getUTCFullYear();
+
+  return `${day}-${month}-${year}`;
+}

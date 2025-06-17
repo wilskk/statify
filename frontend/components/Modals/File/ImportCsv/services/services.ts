@@ -1,4 +1,4 @@
-import { useDataStore, CellUpdate } from "@/stores/useDataStore";
+import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { Variable } from "@/types/Variable";
 import { CSVProcessingOptions } from "../types";
@@ -45,24 +45,10 @@ export const importCsvDataService = {
         const dataStore = useDataStore.getState();
         const variableStore = useVariableStore.getState();
 
-        for (const variable of variables) {
-            await variableStore.addVariable(variable);
-        }
+        // Bulk replace variables
+        await variableStore.overwriteVariables(variables);
 
-        if (data.length > 0) {
-            const rowIndices = Array.from({ length: data.length }, (_, i) => i);
-            await dataStore.addRows(rowIndices);
-        }
-
-        const allUpdates: CellUpdate[] = [];
-        data.forEach((row, rowIndex) => {
-            row.forEach((value, colIndex) => {
-                allUpdates.push({ row: rowIndex, col: colIndex, value });
-            });
-        });
-
-        if (allUpdates.length > 0) {
-            await dataStore.updateCells(allUpdates);
-        }
+        // Bulk replace data
+        dataStore.setData(data);
     }
 }; 

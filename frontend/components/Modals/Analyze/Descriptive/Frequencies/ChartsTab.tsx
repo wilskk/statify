@@ -4,16 +4,10 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { ChartsSettingsResult } from "./hooks";
 
 export interface ChartsTabProps {
-    showCharts: boolean;
-    setShowCharts: React.Dispatch<React.SetStateAction<boolean>>;
-    chartType: "none" | "barCharts" | "pieCharts" | "histograms";
-    setChartType: React.Dispatch<React.SetStateAction<"none" | "barCharts" | "pieCharts" | "histograms">>;
-    chartValues: "frequencies" | "percentages";
-    setChartValues: React.Dispatch<React.SetStateAction<"frequencies" | "percentages">>;
-    showNormalCurve: boolean;
-    setShowNormalCurve: React.Dispatch<React.SetStateAction<boolean>>;
+    settings: ChartsSettingsResult;
     containerType?: "dialog" | "sidebar";
     tourActive?: boolean;
     currentStep?: number;
@@ -21,19 +15,23 @@ export interface ChartsTabProps {
 }
 
 const ChartsTab: FC<ChartsTabProps> = ({
-    showCharts,
-    setShowCharts,
-    chartType,
-    setChartType,
-    chartValues,
-    setChartValues,
-    showNormalCurve,
-    setShowNormalCurve,
+    settings,
     containerType = "dialog",
     tourActive = false,
     currentStep = 0,
     tourSteps = [],
 }) => {
+    const {
+        showCharts,
+        setShowCharts,
+        chartType,
+        setChartType,
+        chartValues,
+        setChartValues,
+        showNormalCurve,
+        setShowNormalCurve,
+    } = settings;
+
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {
         return disabled ? "text-muted-foreground" : "";

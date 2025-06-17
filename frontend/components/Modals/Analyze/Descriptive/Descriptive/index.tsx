@@ -18,7 +18,6 @@ import { HelpCircle } from "lucide-react";
 import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
-import { useDataFetching } from "./hooks/useDataFetching";
 import { BaseModalProps } from "@/types/modalTypes";
 import { useTourGuide } from "./hooks/useTourGuide";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
@@ -46,7 +45,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
 
     const {
         displayStatistics,
-        setDisplayStatistics,
+        updateStatistic,
         displayOrder,
         setDisplayOrder,
         saveStandardized,
@@ -55,10 +54,10 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     } = useStatisticsSettings();
 
     const { 
-        isLoading,
-        errorMsg, 
+        isCalculating,
+        error: errorMsg, 
         runAnalysis,
-        cancelAnalysis
+        cancelCalculation
     } = useDescriptivesAnalysis({
         selectedVariables,
         displayStatistics,
@@ -89,8 +88,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
     const handleReset = useCallback(() => {
         resetVariableSelection();
         resetStatisticsSettings();
-        cancelAnalysis();
-    }, [resetVariableSelection, resetStatisticsSettings, cancelAnalysis]);
+        cancelCalculation();
+    }, [resetVariableSelection, resetStatisticsSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'statistics') {
@@ -100,9 +99,9 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
 
     useEffect(() => {
         return () => {
-            cancelAnalysis();
+            cancelCalculation();
         };
-    }, [cancelAnalysis]);
+    }, [cancelCalculation]);
 
     return (
         <>
@@ -154,7 +153,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                 <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
                     <StatisticsTab
                         displayStatistics={displayStatistics}
-                        setDisplayStatistics={setDisplayStatistics}
+                        updateStatistic={updateStatistic}
                         displayOrder={displayOrder}
                         setDisplayOrder={setDisplayOrder}
                         tourActive={tourActive}
@@ -194,7 +193,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         variant="outline"
                         className="mr-2"
                         onClick={handleReset}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Reset
                     </Button>
@@ -202,16 +201,16 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                         variant="outline"
                         className="mr-2"
                         onClick={onClose}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Cancel
                     </Button>
                     <Button
                         id="descriptive-ok-button"
                         onClick={runAnalysis}
-                        disabled={isLoading || selectedVariables.length === 0}
+                        disabled={isCalculating || selectedVariables.length === 0}
                     >
-                        {isLoading ? "Processing..." : "OK"}
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>

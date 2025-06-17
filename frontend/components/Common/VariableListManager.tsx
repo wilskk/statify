@@ -1,6 +1,6 @@
 import React, { FC, useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from "lucide-react";
+import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, FileQuestion } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
@@ -34,6 +34,7 @@ interface VariableListManagerProps {
     // Display customization
     getVariableIcon?: (variable: Variable) => React.ReactNode;
     getDisplayName?: (variable: Variable) => string;
+    isVariableDisabled?: (variable: Variable) => boolean;
     showArrowButtons?: boolean;
     availableListHeight?: string;
     
@@ -52,6 +53,8 @@ const defaultGetVariableIcon = (variable: Variable) => {
             return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         case "ordinal":
             return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
+        case "unknown":
+            return <FileQuestion size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         default:
             return variable.type === "STRING"
                 ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
@@ -85,6 +88,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     // Display customization (with defaults)
     getVariableIcon = defaultGetVariableIcon,
     getDisplayName = defaultGetDisplayName,
+    isVariableDisabled,
     showArrowButtons = true,
     availableListHeight = '300px',
     
@@ -362,7 +366,10 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
         const listConfig = allLists.find(l => l.id === listId);
         const itemsDraggableInList = (listConfig as TargetListConfig)?.draggableItems !== false;
-        const isDraggable = itemsDraggableInList || listId === 'available';
+        const isActuallyDraggable = itemsDraggableInList || listId === 'available';
+
+        // Check if the item is disabled based on the prop from the parent
+        const isDisabled = isVariableDisabled ? isVariableDisabled(variable) : false;
 
         const isBeingDragged = draggedItem?.variable[variableIdKey] === variable[variableIdKey];
         const isHighlighted = highlightedVariable?.id === varId && highlightedVariable.source === listId;
@@ -379,7 +386,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         <div
                             className={`
                                 flex items-center p-1 border rounded-md group relative transition-all duration-150 ease-in-out text-sm
-                                ${isDraggable ? 'cursor-grab' : 'cursor-default'}
+                                ${isActuallyDraggable && !isDisabled ? 'cursor-grab' : 'cursor-default'}
+                                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                                 ${isBeingDragged ? "opacity-40 bg-accent" : "hover:bg-accent"}
                                 ${isHighlighted ? "bg-accent border-primary" : "border-border"}
                                 ${isDropTargetIndicator ? "border-t-[3px] border-t-primary pt-[1px]" : "pt-1"}
@@ -402,13 +410,13 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                                 borderRightColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                                 borderBottomColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                             }}
-                            onClick={() => handleVariableSelect(variable, listId)}
-                            onDoubleClick={() => handleVariableDoubleClick(variable, listId)}
-                            draggable={isDraggable}
-                            onDragStart={(e) => isDraggable && handleDragStart(e, variable, listId)}
+                            onClick={() => !isDisabled && handleVariableSelect(variable, listId)}
+                            onDoubleClick={() => !isDisabled && handleVariableDoubleClick(variable, listId)}
+                            draggable={isActuallyDraggable && !isDisabled}
+                            onDragStart={(e) => isActuallyDraggable && !isDisabled && handleDragStart(e, variable, listId)}
                             onDragEnd={handleDragEnd}
-                            onDragOver={(e) => handleItemDragOver(e, index, listId)}
-                            onDrop={(e) => handleDrop(e, listId, index)}
+                            onDragOver={(e) => !isDisabled && handleItemDragOver(e, index, listId)}
+                            onDrop={(e) => !isDisabled && handleDrop(e, listId, index)}
                         >
                             <div className="flex items-center w-full truncate">
                                 {itemsDraggableInList && (

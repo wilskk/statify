@@ -1,6 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import '@/app/globals.css'
+import 'quill/dist/quill.core.css';
+import 'quill/dist/quill.snow.css';
 import React from "react";
 import { ThemeProvider } from "@/components/theme-provider"
 

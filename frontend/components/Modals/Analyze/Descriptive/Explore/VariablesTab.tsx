@@ -2,7 +2,7 @@ import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { VariablesTabProps, HighlightedVariable } from "./types";
+import { VariablesTabProps } from "./types";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
@@ -104,7 +104,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'dependent' || listId === 'factor') {
-            reorderVariables(listId as 'dependent' | 'factor', variables);
+            reorderVariables(listId, variables);
         }
         // Cannot reorder 'label' or 'available'
     }, [reorderVariables]);

@@ -9,7 +9,7 @@ import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 export interface StatisticsTabProps {
     displayStatistics: DescriptiveStatisticsOptions;
-    setDisplayStatistics: Dispatch<SetStateAction<DescriptiveStatisticsOptions>>;
+    updateStatistic: (key: keyof DescriptiveStatisticsOptions, value: boolean) => void;
     displayOrder: DisplayOrderType;
     setDisplayOrder: Dispatch<SetStateAction<DisplayOrderType>>;
     tourActive?: boolean;
@@ -19,7 +19,7 @@ export interface StatisticsTabProps {
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
     displayStatistics,
-    setDisplayStatistics,
+    updateStatistic,
     displayOrder,
     setDisplayOrder,
     tourActive = false,
@@ -46,7 +46,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="mean"
                             checked={displayStatistics.mean}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, mean: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('mean', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="mean" className="text-sm cursor-pointer">Mean</Label>
@@ -55,7 +55,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="median"
                             checked={displayStatistics.median}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, median: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('median', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="median" className="text-sm cursor-pointer">Median</Label>
@@ -64,7 +64,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="sum"
                             checked={displayStatistics.sum}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, sum: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('sum', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="sum" className="text-sm cursor-pointer">Sum</Label>
@@ -80,7 +80,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="stdDev"
                             checked={displayStatistics.stdDev}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, stdDev: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('stdDev', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="stdDev" className="text-sm cursor-pointer">Std. deviation</Label>
@@ -89,7 +89,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="minimum"
                             checked={displayStatistics.minimum}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, minimum: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('minimum', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="minimum" className="text-sm cursor-pointer">Minimum</Label>
@@ -98,7 +98,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="variance"
                             checked={displayStatistics.variance}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, variance: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('variance', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="variance" className="text-sm cursor-pointer">Variance</Label>
@@ -107,7 +107,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="maximum"
                             checked={displayStatistics.maximum}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, maximum: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('maximum', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="maximum" className="text-sm cursor-pointer">Maximum</Label>
@@ -116,7 +116,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="range"
                             checked={displayStatistics.range}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, range: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('range', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="range" className="text-sm cursor-pointer">Range</Label>
@@ -125,7 +125,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="standardError"
                             checked={displayStatistics.standardError}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, standardError: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('standardError', !!checked)}
                             className="mr-2"
                         />
                         <Label htmlFor="standardError" className="text-sm cursor-pointer">S.E. mean</Label>
@@ -141,7 +141,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="kurtosis"
                             checked={displayStatistics.kurtosis}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, kurtosis: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('kurtosis', !!checked)}
                             className="mr-2 border-[#CCCCCC]"
                         />
                         <Label htmlFor="kurtosis" className="text-sm cursor-pointer">Kurtosis</Label>
@@ -150,7 +150,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Checkbox
                             id="skewness"
                             checked={displayStatistics.skewness}
-                            onCheckedChange={(checked) => setDisplayStatistics({...displayStatistics, skewness: !!checked})}
+                            onCheckedChange={(checked) => updateStatistic('skewness', !!checked)}
                             className="mr-2 border-[#CCCCCC]"
                         />
                         <Label htmlFor="skewness" className="text-sm cursor-pointer">Skewness</Label>

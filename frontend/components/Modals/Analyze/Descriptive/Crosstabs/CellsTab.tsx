@@ -1,42 +1,12 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { CellsTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
-// Define the union type for nonintegerWeights
-type NonintegerWeightsType = 'roundCell' | 'roundCase' | 'truncateCell' | 'truncateCase' | 'noAdjustment';
-
 const CellsTab: FC<CellsTabProps> = ({
-    observedCounts,
-    expectedCounts,
-    hideSmallCounts,
-    smallCountThreshold,
-    rowPercentages,
-    columnPercentages,
-    totalPercentages,
-    compareColumnProportions,
-    adjustPValues,
-    unstandardizedResiduals,
-    standardizedResiduals,
-    adjustedStandardizedResiduals,
-    nonintegerWeights,
-    setObservedCounts,
-    setExpectedCounts,
-    setHideSmallCounts,
-    setSmallCountThreshold,
-    setRowPercentages,
-    setColumnPercentages,
-    setTotalPercentages,
-    setCompareColumnProportions,
-    setAdjustPValues,
-    setUnstandardizedResiduals,
-    setStandardizedResiduals,
-    setAdjustedStandardizedResiduals,
-    setNonintegerWeights,
-    containerType = "dialog",
+    options,
+    setOptions,
     tourActive = false,
     currentStep = 0,
     tourSteps = [],
@@ -45,20 +15,28 @@ const CellsTab: FC<CellsTabProps> = ({
     
     const countsStep = getStepIndex('crosstabs-counts-section');
     const percentagesStep = getStepIndex('crosstabs-percentages-section');
-    const residualsStep = getStepIndex('crosstabs-residuals-section');
-    const weightsStep = getStepIndex('crosstabs-noninteger-weights-section');
+
+    const handleCellChange = (key: keyof typeof options.cells, value: boolean) => {
+        setOptions(prev => ({
+            ...prev,
+            cells: {
+                ...prev.cells,
+                [key]: value,
+            }
+        }));
+    };
 
     return (
-        <div className="p-6">
-            <div className="grid grid-cols-2 gap-6">
+        <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div id="crosstabs-counts-section" className="bg-card border border-border rounded-md p-4 relative">
                     <div className="text-sm font-medium mb-3">Counts</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
                             <Checkbox
                                 id="observedCounts"
-                                checked={observedCounts}
-                                onCheckedChange={(checked) => setObservedCounts(!!checked)}
+                                checked={options.cells.observed}
+                                onCheckedChange={(checked) => handleCellChange('observed', !!checked)}
                                 className="mr-2"
                             />
                             <Label htmlFor="observedCounts" className="text-sm cursor-pointer">
@@ -69,83 +47,26 @@ const CellsTab: FC<CellsTabProps> = ({
                         <div className="flex items-center">
                             <Checkbox
                                 id="expectedCounts"
-                                checked={expectedCounts}
-                                onCheckedChange={(checked) => setExpectedCounts(!!checked)}
+                                checked={options.cells.expected}
+                                onCheckedChange={(checked) => handleCellChange('expected', !!checked)}
                                 className="mr-2"
                             />
                             <Label htmlFor="expectedCounts" className="text-sm cursor-pointer">
                                 Expected
                             </Label>
                         </div>
-
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="hideSmallCounts"
-                                checked={hideSmallCounts}
-                                onCheckedChange={(checked) => setHideSmallCounts(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="hideSmallCounts" className="text-sm cursor-pointer">
-                                Hide small counts
-                            </Label>
-                        </div>
-
-                        <div className="flex items-center ml-6">
-                            <Label htmlFor="smallCountThreshold" className="text-sm mr-2">
-                                Less than
-                            </Label>
-                            <Input
-                                id="smallCountThreshold"
-                                value={smallCountThreshold}
-                                onChange={(e) => setSmallCountThreshold(e.target.value)}
-                                className="h-8 text-sm w-16"
-                                disabled={!hideSmallCounts}
-                            />
-                        </div>
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === countsStep} />
                 </div>
 
-                <div className="bg-card border border-border rounded-md p-4">
-                    <div className="text-sm font-medium mb-3">Z-test</div>
-                    <div className="space-y-2">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="compareColumnProportions"
-                                checked={compareColumnProportions}
-                                onCheckedChange={(checked) => setCompareColumnProportions(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="compareColumnProportions" className="text-sm cursor-pointer">
-                                Compare column proportions
-                            </Label>
-                        </div>
-
-                        <div className="flex items-center ml-6">
-                            <Checkbox
-                                id="adjustPValues"
-                                checked={adjustPValues}
-                                onCheckedChange={(checked) => setAdjustPValues(!!checked)}
-                                className="mr-2"
-                                disabled={!compareColumnProportions}
-                            />
-                            <Label htmlFor="adjustPValues" className="text-sm cursor-pointer">
-                                Adjust p-values (Bonferroni method)
-                            </Label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mt-6">
                 <div id="crosstabs-percentages-section" className="bg-card border border-border rounded-md p-4 relative">
                     <div className="text-sm font-medium mb-3">Percentages</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
                             <Checkbox
                                 id="rowPercentages"
-                                checked={rowPercentages}
-                                onCheckedChange={(checked) => setRowPercentages(!!checked)}
+                                checked={options.cells.row}
+                                onCheckedChange={(checked) => handleCellChange('row', !!checked)}
                                 className="mr-2"
                             />
                             <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">
@@ -156,8 +77,8 @@ const CellsTab: FC<CellsTabProps> = ({
                         <div className="flex items-center">
                             <Checkbox
                                 id="columnPercentages"
-                                checked={columnPercentages}
-                                onCheckedChange={(checked) => setColumnPercentages(!!checked)}
+                                checked={options.cells.column}
+                                onCheckedChange={(checked) => handleCellChange('column', !!checked)}
                                 className="mr-2"
                             />
                             <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">
@@ -168,8 +89,8 @@ const CellsTab: FC<CellsTabProps> = ({
                         <div className="flex items-center">
                             <Checkbox
                                 id="totalPercentages"
-                                checked={totalPercentages}
-                                onCheckedChange={(checked) => setTotalPercentages(!!checked)}
+                                checked={options.cells.total}
+                                onCheckedChange={(checked) => handleCellChange('total', !!checked)}
                                 className="mr-2"
                             />
                             <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">
@@ -179,108 +100,6 @@ const CellsTab: FC<CellsTabProps> = ({
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === percentagesStep} />
                 </div>
-
-                <div id="crosstabs-residuals-section" className="bg-card border border-border rounded-md p-4 relative">
-                    <div className="text-sm font-medium mb-3">Residuals</div>
-                    <div className="space-y-2">
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="unstandardizedResiduals"
-                                checked={unstandardizedResiduals}
-                                onCheckedChange={(checked) => setUnstandardizedResiduals(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="unstandardizedResiduals" className="text-sm cursor-pointer">
-                                Unstandardized
-                            </Label>
-                        </div>
-
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="standardizedResiduals"
-                                checked={standardizedResiduals}
-                                onCheckedChange={(checked) => setStandardizedResiduals(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="standardizedResiduals" className="text-sm cursor-pointer">
-                                Standardized
-                            </Label>
-                        </div>
-
-                        <div className="flex items-center">
-                            <Checkbox
-                                id="adjustedStandardizedResiduals"
-                                checked={adjustedStandardizedResiduals}
-                                onCheckedChange={(checked) => setAdjustedStandardizedResiduals(!!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="adjustedStandardizedResiduals" className="text-sm cursor-pointer">
-                                Adjusted standardized
-                            </Label>
-                        </div>
-                    </div>
-                    <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
-                </div>
-            </div>
-
-            <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 mt-6 relative">
-                <div className="text-sm font-medium mb-3">Noninteger Weights</div>
-                <RadioGroup
-                    value={nonintegerWeights}
-                    onValueChange={(value) => setNonintegerWeights(value as typeof nonintegerWeights)}
-                    className="grid grid-cols-2 gap-2"
-                >
-                    <div className="flex items-center">
-                        <RadioGroupItem
-                            value="roundCell"
-                            id="roundCell"
-                        />
-                        <Label htmlFor="roundCell" className="text-sm ml-2 cursor-pointer">
-                            Round cell counts
-                        </Label>
-                    </div>
-
-                    <div className="flex items-center">
-                        <RadioGroupItem
-                            value="roundCase"
-                            id="roundCase"
-                        />
-                        <Label htmlFor="roundCase" className="text-sm ml-2 cursor-pointer">
-                            Round case weights
-                        </Label>
-                    </div>
-
-                    <div className="flex items-center">
-                        <RadioGroupItem
-                            value="truncateCell"
-                            id="truncateCell"
-                        />
-                        <Label htmlFor="truncateCell" className="text-sm ml-2 cursor-pointer">
-                            Truncate cell counts
-                        </Label>
-                    </div>
-
-                    <div className="flex items-center">
-                        <RadioGroupItem
-                            value="truncateCase"
-                            id="truncateCase"
-                        />
-                        <Label htmlFor="truncateCase" className="text-sm ml-2 cursor-pointer">
-                            Truncate case weights
-                        </Label>
-                    </div>
-
-                    <div className="flex items-center">
-                        <RadioGroupItem
-                            value="noAdjustment"
-                            id="noAdjustment"
-                        />
-                        <Label htmlFor="noAdjustment" className="text-sm ml-2 cursor-pointer">
-                            No adjustments
-                        </Label>
-                    </div>
-                </RadioGroup>
-                <ActiveElementHighlight active={tourActive && currentStep === weightsStep} />
             </div>
         </div>
     );

@@ -1,4 +1,61 @@
-# Restructure Data Feature
+# Restructure Data Component
+
+## Overview
+
+This component provides a user-friendly, multi-step wizard for restructuring datasets. The functionality is designed to be analogous to the **Restructure Data Wizard** found in statistical software like **SPSS**, making it intuitive for users familiar with that environment.
+
+The primary purpose of this module is to gather user specifications for a data restructuring task and package them into a configuration object. It does **not** perform the data transformation itself; instead, it prepares the configuration to be sent to a backend service for processing.
+
+## Component Architecture
+
+The feature is broken down into several key files:
+
+-   `index.tsx`: The main entry point that integrates the UI (`RestructureUI`) with the state management and logic (`useRestructure` hook).
+-   `RestructureUI.tsx`: A presentational component responsible for rendering the wizard's user interface. It is driven entirely by the state and handlers provided by the `useRestructure` hook.
+-   `useRestructure.ts`: The logical core of the component. This custom React hook manages the wizard's state, including the current step, selected method, variable lists, user-selected options, and input validation.
+-   `types.ts`: Contains all relevant TypeScript interfaces and enums, such as `RestructureMethod`, `RestructureConfig`, and the hook's return type `UseRestructureReturn`.
+-   `RestructureTest.tsx`: A test file for the component.
+
+## Logic and Flow (Comparison to SPSS)
+
+The wizard guides the user through a three-step process:
+
+### Step 1: Select Restructure Method
+
+The user chooses one of three restructuring methods, which directly correspond to the main options in SPSS:
+
+1.  **Variables to Cases**: This is used to convert data from a "wide" format to a "long" format. For example, if a dataset has columns like `Test1`, `Test2`, and `Test3`, this method would transform them into a single `Test_Score` column, with a new `Index` column identifying which original test the score belongs to.
+2.  **Cases to Variables**: This is the inverse operation, used to convert data from a "long" format to a "wide" format. For example, it can take rows of measurements over time and pivot them into distinct columns like `Time1_Score`, `Time2_Score`, etc.
+3.  **Transpose All Data**: This performs a simple, complete transposition of the dataset, swapping all rows and columns.
+
+### Step 2: Configure Variables
+
+Based on the method selected in Step 1, the user configures the variables for the operation using a drag-and-drop interface (`VariableListManager`):
+
+-   For **Variables to Cases**, the user must select:
+    -   **Variables to Restructure**: The set of variables (columns) to be converted into rows.
+    -   **Index Variables**: One or more variables that identify the groups of new cases (e.g., a subject ID that remains constant across the new rows).
+-   For **Cases to Variables**, the user must select:
+    -   **Variables to Restructure**: The variable whose values will be restructured.
+    -   **Identifier Variables**: The variable whose unique values will form the new column names (e.g., a 'Time' variable with values 'T1', 'T2').
+-   For **Transpose**, no variable selection is needed as the entire dataset is affected.
+
+### Step 3: Set Options
+
+The user can configure final options for the new dataset. These also mirror options available in SPSS:
+
+-   For **Variables to Cases**:
+    -   `Create count variable`: Adds a column counting non-missing values.
+    -   `Create index variable`: Adds a column identifying the original variable for each new case.
+-   For **Cases to Variables**:
+    -   `Drop empty variables`: Removes new columns that contain only missing values after restructuring.
+
+## Data Handling and Backend Integration
+
+A critical aspect of this component's logic is that it is a **frontend configuration client**. The `handleFinish` function in the `useRestructure` hook performs a final validation and then assembles all the user's choices into a `RestructureConfig` object.
+
+The code includes a `TODO` comment indicating that this `config` object is intended to be sent to a backend API endpoint for the actual data processing. The current implementation concludes by showing a success alert for demonstration purposes.
+
 
 This document explains the functionality of the Restructure Data feature, which allows users to restructure datasets in different ways to support various types of analyses.
 

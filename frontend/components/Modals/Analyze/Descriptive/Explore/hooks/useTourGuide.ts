@@ -48,15 +48,6 @@ const baseTourSteps: TourStep[] = [
   },
   // Statistics Tab
   {
-    title: "Display Options",
-    content: "Choose whether to show statistics, plots, or both in the output.",
-    targetId: "explore-display-options",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📺",
-    requiredTab: TABS.STATISTICS
-  },
-  {
     title: "Descriptives",
     content: "Enable this to see descriptive statistics. You can also set a custom confidence interval for the mean.",
     targetId: "explore-descriptives-section",
@@ -73,35 +64,6 @@ const baseTourSteps: TourStep[] = [
     defaultHorizontalPosition: null,
     icon: "➕",
     requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Plots Tab",
-    content: "Next, let's configure which plots to generate.",
-    targetId: "explore-plots-tab-trigger",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "🎨",
-    requiredTab: TABS.STATISTICS,
-    forceChangeTab: true
-  },
-  // Plots Tab
-  {
-    title: "Boxplots & Descriptive Plots",
-    content: "Choose how boxplots are displayed and select descriptive plots like stem-and-leaf or histograms.",
-    targetId: "explore-boxplots-descriptive-section",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📊",
-    requiredTab: TABS.PLOTS
-  },
-  {
-    title: "Normality Plots",
-    content: "Enable this option to generate normality plots along with statistical tests for normality.",
-    targetId: "explore-normality-plots-section",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: null,
-    icon: "📉",
-    requiredTab: TABS.PLOTS
   },
 ];
 

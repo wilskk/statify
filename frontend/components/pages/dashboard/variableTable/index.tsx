@@ -11,7 +11,7 @@ import { VariableTypeDialog } from "./dialog/VariableTypeDialog";
 import { ValueLabelsDialog } from "./dialog/ValueLabelsDialog";
 import { MissingValuesDialog } from "./dialog/MissingValuesDialog";
 
-import { colHeaders, columns, DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH, DEFAULT_VARIABLE_DECIMALS, COLUMN_INDEX } from "./tableConfig";
+import { colHeaders, columns, DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH, DEFAULT_VARIABLE_DECIMALS, COLUMN_INDEX, DATE_VARIABLE_TYPES } from "./tableConfig";
 import { useVariableTableLogic } from './hooks/useVariableTableLogic';
 import { VariableType } from "@/types/Variable"; // Import VariableType
 import './VariableTable.css'; // Import CSS
@@ -105,7 +105,9 @@ export default function VariableTable() {
             const currentMeasure = currentVar?.measure;
 
             let allowedMeasures: string[] = [];
-            if (currentType === 'STRING') {
+            if (currentType && DATE_VARIABLE_TYPES.includes(currentType)) {
+                allowedMeasures = ['scale'];
+            } else if (currentType === 'STRING') {
                 allowedMeasures = ['nominal', 'ordinal'];
             } else {
                 allowedMeasures = ['nominal', 'ordinal', 'scale'];

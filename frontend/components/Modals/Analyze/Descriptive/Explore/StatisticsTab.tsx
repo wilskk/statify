@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatisticsTabProps } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
     showDescriptives,
@@ -18,8 +17,6 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     setShowOutliers,
     showPercentiles,
     setShowPercentiles,
-    displayOption,
-    setDisplayOption,
     containerType = "dialog",
     tourActive = false,
     currentStep = 0,
@@ -28,32 +25,9 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
     const descriptivesStep = getStepIndex('explore-descriptives-section');
     const additionalStatsStep = getStepIndex('explore-additional-stats-section');
-    const displayStep = getStepIndex('explore-display-options');
-
+    
     return (
         <div className="space-y-4">
-            <div id="explore-display-options" className="p-4 border rounded-md relative">
-                <Label className="text-sm font-medium">Display</Label>
-                <RadioGroup
-                    value={displayOption}
-                    onValueChange={(value) => setDisplayOption(value as 'both' | 'statistics' | 'plots')}
-                    className="flex items-center space-x-4 mt-2"
-                >
-                    <div className="flex items-center">
-                        <RadioGroupItem value="both" id="displayBoth" />
-                        <Label htmlFor="displayBoth" className="ml-2 text-sm cursor-pointer">Both</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <RadioGroupItem value="statistics" id="displayStatistics" />
-                        <Label htmlFor="statistics" className="ml-2 text-sm cursor-pointer">Statistics</Label>
-                    </div>
-                    <div className="flex items-center">
-                        <RadioGroupItem value="plots" id="displayPlots" />
-                        <Label htmlFor="plots" className="ml-2 text-sm cursor-pointer">Plots</Label>
-                    </div>
-                </RadioGroup>
-                <ActiveElementHighlight active={tourActive && currentStep === displayStep} />
-            </div>
             <div id="explore-descriptives-section" className="p-4 border rounded-md relative">
                 {/* Descriptives Checkbox */}
                 <div className="flex items-center space-x-2">

@@ -214,7 +214,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     parsedSheets,
 }) => {
     const { setData, resetData } = useDataStore();
-    const { resetVariables, addVariable } = useVariableStore();
+    const { resetVariables, overwriteVariables } = useVariableStore();
 
     const [sheetNames, setSheetNames] = useState<string[]>([]);
     const [parsedSheetsState, setParsedSheetsState] = useState<SheetData[]>(parsedSheets);
@@ -360,11 +360,11 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             }
 
             const variables = generateVariablesFromData(processedFullData, actualHeaders, readEmptyCellsAs);
-            for (const newVar of variables) {
-                await addVariable(newVar);
-            }
+            // Bulk replace variables
+            await overwriteVariables(variables);
 
-            await setData(processedFullData);
+            // Bulk replace data
+            setData(processedFullData);
             onClose();
         } catch (e: any) {
             console.error("Error processing Excel import: ", e);

@@ -25,6 +25,11 @@ const VARIABLE_TYPES: VariableType[] = [
   'RESTRICTED_NUMERIC'
 ];
 
+export const DATE_VARIABLE_TYPES: VariableType[] = [
+  'DATE','ADATE','EDATE','SDATE','JDATE','QYR','MOYR',
+  'WKYR','DATETIME','TIME','DTIME','WKDAY','MONTH'
+];
+
 // Updated column configs to match new order and data indices
 export const columns: Handsontable.GridSettings['columns'] = [
     { data: 0, type: 'text', numericFormat: undefined, width: 200 },        // Name

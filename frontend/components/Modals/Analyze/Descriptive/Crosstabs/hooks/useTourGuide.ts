@@ -4,13 +4,12 @@ import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes'
 // Constants
 const TABS = {
   VARIABLES: 'variables' as const,
-  STATISTICS: 'statistics' as const,
   CELLS: 'cells' as const,
 };
 
 const TIMEOUT_DELAY = 200;
 
-export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS | typeof TABS.CELLS;
+export type TabType = typeof TABS.VARIABLES | typeof TABS.CELLS;
 
 // Extended TourStep with required tab property
 export type TourStep = BaseTourStep & {
@@ -55,69 +54,13 @@ const baseTourSteps: TourStep[] = [
     requiredTab: TABS.VARIABLES
   },
   {
-    title: "Layer Variables",
-    content: "You can add layer variables to create separate tables for each category of the layer variable.",
-    targetId: "crosstabs-layer-variables",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: 'left',
-    icon: "📑",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Display Options",
-    content: "Choose to display clustered bar charts or suppress the tables from the output.",
-    targetId: "crosstabs-display-options",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: 'right',
-    icon: "⚙️",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Statistics Tab",
-    content: "Click here to configure statistical tests for your analysis.",
-    targetId: "crosstabs-statistics-tab-trigger",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📈",
-    requiredTab: TABS.VARIABLES,
-    forceChangeTab: true
-  },
-  // Statistics Tab
-  {
-    title: "Chi-square & Correlations",
-    content: "Select fundamental tests like Chi-square for association and correlations for linear relationships.",
-    targetId: "crosstabs-chi-square-correlations",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "🔗",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Nominal Statistics",
-    content: "Choose statistics for nominal data, like Phi and Cramer's V.",
-    targetId: "crosstabs-nominal-statistics",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: null,
-    icon: "🏷️",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Ordinal Statistics",
-    content: "For ordinal data, you can select statistics like Gamma and Kendall's tau.",
-    targetId: "crosstabs-ordinal-statistics",
-    defaultPosition: 'top',
-    defaultHorizontalPosition: null,
-    icon: "🔢",
-    requiredTab: TABS.STATISTICS
-  },
-  {
     title: "Cells Tab",
     content: "Now, let's customize what is displayed in each cell of the table.",
     targetId: "crosstabs-cells-tab-trigger",
     defaultPosition: 'bottom',
     defaultHorizontalPosition: null,
     icon: "🔢",
-    requiredTab: TABS.STATISTICS,
+    requiredTab: TABS.VARIABLES,
     forceChangeTab: true
   },
   // Cells Tab

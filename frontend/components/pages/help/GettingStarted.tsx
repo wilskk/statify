@@ -18,6 +18,4 @@ export const GettingStarted = () => {
       </div>
     </div>
   );
-};
-
-export default GettingStarted; 
+}; 

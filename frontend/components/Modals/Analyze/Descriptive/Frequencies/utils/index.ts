@@ -1,1 +1,1 @@
-export * from './formatFrequencyTable'; 
+export * from './formatters';

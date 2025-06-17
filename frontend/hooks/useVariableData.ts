@@ -51,42 +51,82 @@ export function useVariableData(variableName: string) {
   return { data, loading, error, variable };
 }
 
-export function useFilteredData(): { data: DataRow[]; variable?: Variable } {
-  const data = useDataStore(state => state.data);
-  const variables = useVariableStore(state => state.variables);
-  const filterVarName = useMetaStore(state => state.meta.filter);
-  const filterVariable = variables.find(v => v.name === filterVarName);
-
-  const filtered = useMemo(() => {
-    if (!filterVariable) return data;
-    const idx = filterVariable.columnIndex;
-    return data.filter(row => {
-      const val = row[idx];
-      return val !== 0 && val !== '' && val !== null && val !== undefined;
-    });
-  }, [data, filterVariable]);
-
-  return { data: filtered, variable: filterVariable };
+/**
+ * Interface for the return value of useAnalysisData.
+ */
+export interface AnalysisData {
+  /** The processed data, filtered by the active 'select case' variable. */
+  data: DataRow[];
+  /** An array of weights corresponding to each row in `data`. Defaults to 1 if no weight variable is set. */
+  weights: number[];
+  /** The variable currently used for filtering ('select case'). */
+  filterVariable?: Variable;
+  /** The variable currently used for weighting. */
+  weightVariable?: Variable;
 }
 
-export function useWeightedData(): { data: DataRow[]; weights: number[]; variable?: Variable } {
-  const data = useDataStore(state => state.data);
+/**
+ * A centralized hook to get data for statistical analysis.
+ * It automatically applies 'select case' (filtering) and 'weight' logic
+ * based on the global settings in `useMetaStore`.
+ *
+ * @returns {AnalysisData} An object containing the filtered data, corresponding weights, and the variables used.
+ */
+export function useAnalysisData(): AnalysisData {
+  const allData = useDataStore(state => state.data);
   const variables = useVariableStore(state => state.variables);
-  const weightVarName = useMetaStore(state => state.meta.weight);
-  const weightVariable = variables.find(v => v.name === weightVarName);
+  const { filter: filterVarName, weight: weightVarName } = useMetaStore(state => state.meta);
 
-  const result = useMemo(() => {
-    const weights = data.map(row => {
-      if (weightVariable) {
-        const val = row[weightVariable.columnIndex];
-        if (typeof val === 'number') return val;
-        const num = parseFloat(String(val));
-        return isNaN(num) ? 0 : num;
-      }
-      return 1;
+  const filterVariable = useMemo(() => 
+    variables.find(v => v.name === filterVarName),
+    [variables, filterVarName]
+  );
+  
+  const weightVariable = useMemo(() =>
+    variables.find(v => v.name === weightVarName),
+    [variables, weightVarName]
+  );
+
+  const filteredData = useMemo(() => {
+    if (!filterVariable) {
+      return allData;
+    }
+    const filterColumnIndex = filterVariable.columnIndex;
+    return allData.filter(row => {
+      const value = row[filterColumnIndex];
+      // A case is included if the filter variable value is not 0, empty, null, or undefined.
+      return value !== 0 && value !== '' && value !== null && value !== undefined;
     });
-    return { data, weights, variable: weightVariable };
-  }, [data, weightVariable]);
+  }, [allData, filterVariable]);
 
-  return result;
+  const weights = useMemo(() => {
+    return filteredData.map(row => {
+      if (!weightVariable) {
+        return 1; // Default weight is 1
+      }
+      const weightColumnIndex = weightVariable.columnIndex;
+      const value = row[weightColumnIndex];
+      
+      if (typeof value === 'number' && !isNaN(value) && value > 0) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const num = parseFloat(value);
+        if (!isNaN(num) && num > 0) {
+          return num;
+        }
+      }
+      // Cases with invalid, zero, or negative weights are typically excluded
+      // from analysis by statistical procedures, but here we'll return 0
+      // and let the specific procedure handle it.
+      return 0;
+    });
+  }, [filteredData, weightVariable]);
+
+  return {
+    data: filteredData,
+    weights,
+    filterVariable,
+    weightVariable
+  };
 }

@@ -5,17 +5,12 @@ import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { TourStep } from "./hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { VariableSelectionResult } from "./hooks/useVariableSelection";
+import { DisplaySettingsResult } from "./hooks/useDisplaySettings";
 
 export interface VariablesTabProps {
-    availableVariables: Variable[];
-    selectedVariables: Variable[];
-    highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'selected' } | null>>;
-    moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
-    showFrequencyTables: boolean;
-    setShowFrequencyTables: React.Dispatch<React.SetStateAction<boolean>>;
+    variableSelection: VariableSelectionResult;
+    displaySettings: DisplaySettingsResult;
     containerType?: "dialog" | "sidebar";
     tourActive?: boolean;
     currentStep?: number;
@@ -23,20 +18,25 @@ export interface VariablesTabProps {
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
-    availableVariables,
-    selectedVariables,
-    highlightedVariable,
-    setHighlightedVariable,
-    moveToSelectedVariables,
-    moveToAvailableVariables,
-    reorderVariables = () => { console.warn("reorderVariables not implemented upstream"); },
-    showFrequencyTables,
-    setShowFrequencyTables,
+    variableSelection,
+    displaySettings,
     containerType = "dialog",
     tourActive = false,
     currentStep = 0,
     tourSteps = [],
 }) => {
+    const {
+        availableVariables,
+        selectedVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToSelectedVariables,
+        moveToAvailableVariables,
+        reorderVariables,
+    } = variableSelection;
+
+    const { showFrequencyTables, setShowFrequencyTables } = displaySettings;
+    
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
     // --- Adapt props for VariableListManager ---
