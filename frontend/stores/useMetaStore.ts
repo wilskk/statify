@@ -31,6 +31,22 @@ export interface Meta {
     dates: string;
     singleVarRules: SingleVariableRule[];
     crossVarRules: CrossVariableRule[];
+    selectCasesCondition?: {
+        type: 'all' | 'condition' | 'random' | 'time' | 'variable';
+        expression?: string;
+        filterVariable?: string;
+        randomSampleConfig?: {
+            sampleType: 'approximate' | 'exact';
+            percentage?: number;
+            exactCount?: number;
+            fromFirstCount?: number;
+        };
+        rangeConfig?: {
+            firstCase?: string;
+            lastCase?: string;
+        };
+        outputOption: 'filter' | 'delete';
+    };
 }
 
 export type MetaStoreError = {
@@ -52,6 +68,7 @@ interface MetaStoreState {
     clearDates: () => Promise<void>;
     setSingleVarRules: (rules: SingleVariableRule[]) => Promise<void>;
     setCrossVarRules: (rules: CrossVariableRule[]) => Promise<void>;
+    setSelectCasesCondition: (condition: Meta['selectCasesCondition']) => Promise<void>;
     _saveMetaToDb: (metaToSave: Meta) => Promise<void>;
     resetMeta: () => Promise<void>;
     saveMeta: () => Promise<void>;
@@ -64,7 +81,8 @@ const initialMetaState: Meta = {
     weight: '',
     dates: '',
     singleVarRules: [],
-    crossVarRules: []
+    crossVarRules: [],
+    selectCasesCondition: undefined
 };
 
 export const useMetaStore = create<MetaStoreState>()(
@@ -173,6 +191,17 @@ export const useMetaStore = create<MetaStoreState>()(
                 let updatedMeta: Meta | null = null;
                 set((state) => {
                     state.meta.crossVarRules = rules;
+                    updatedMeta = state.meta;
+                });
+                if (updatedMeta) {
+                    await get()._saveMetaToDb(updatedMeta);
+                }
+            },
+
+            setSelectCasesCondition: async (condition) => {
+                let updatedMeta: Meta | null = null;
+                set((state) => {
+                    state.meta.selectCasesCondition = condition;
                     updatedMeta = state.meta;
                 });
                 if (updatedMeta) {

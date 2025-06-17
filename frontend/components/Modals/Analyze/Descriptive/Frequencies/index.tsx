@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/tabs";
 import { useVariableStore } from "@/stores/useVariableStore";
 import type { Variable } from "@/types/Variable";
-import { useFrequenciesAnalysis } from "@/hooks/useFrequenciesAnalysis";
-import type { StatisticsOptions } from "@/types/Analysis";
-import type { ChartOptions } from "@/types/Analysis";
+import { useFrequenciesAnalysis } from "./hooks/useFrequenciesAnalysis";
+import type { StatisticsOptions } from "./types";
+import type { ChartOptions } from "./types";
 
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
@@ -117,7 +117,7 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         };
     }, [showCharts, chartType, chartValues, showNormalCurve]);
 
-    const { isCalculating, errorMsg, runAnalysis } = useFrequenciesAnalysis({
+    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useFrequenciesAnalysis({
         selectedVariables,
         showFrequencyTables,
         showStatistics,
@@ -194,8 +194,8 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setSelectedVariables([]);
 
         setShowFrequencyTables(true);
-        setShowStatistics(true);
         setShowCharts(false);
+        setShowStatistics(true);
 
         setQuartilesChecked(false);
         setCutPointsChecked(false);
@@ -204,169 +204,184 @@ const Index: FC<FrequenciesModalProps> = ({ onClose }) => {
         setPercentileValues([]);
         setCurrentPercentileInput("");
         setSelectedPercentileItem(null);
+
         setMeanChecked(false);
         setMedianChecked(false);
         setModeChecked(false);
         setSumChecked(false);
+
         setStdDevChecked(false);
         setVarianceChecked(false);
         setRangeChecked(false);
         setMinChecked(false);
         setMaxChecked(false);
         setSeMeanChecked(false);
-        setKurtosisChecked(false);
-        setSkewnessChecked(false);
 
+        setSkewnessChecked(false);
+        setKurtosisChecked(false);
+        
         setChartType("none");
         setChartValues("frequencies");
         setShowNormalCurve(false);
 
-        setHighlightedVariable(null);
+        setResetChartsCounter(prev => prev + 1);
 
-        setActiveTab("variables");
+        if (cancelAnalysis) {
+            cancelAnalysis();
+        }
     };
 
+    useEffect(() => {
+        return () => {
+            if (cancelAnalysis) {
+                cancelAnalysis();
+            }
+        };
+    }, [cancelAnalysis]);
+
     return (
-        <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
-            </DialogHeader>
+        <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Frequencies</DialogTitle>
+                </DialogHeader>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-border flex-shrink-0">
-                    <TabsList className="bg-muted rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-                        {/* <TabsTrigger
-                            value="charts"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Charts
-                        </TabsTrigger> */}
-                    </TabsList>
-                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+                    <div className="border-b border-border flex-shrink-0">
+                        <TabsList className="bg-muted rounded-none h-9 p-0">
+                            <TabsTrigger
+                                value="variables"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                            >
+                                Variables
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="statistics"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
+                            >
+                                Statistics
+                            </TabsTrigger>
+                            {/* <TabsTrigger
+                                value="charts"
+                                className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            >
+                                Charts
+                            </TabsTrigger> */}
+                        </TabsList>
+                    </div>
 
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <VariablesTab
-                        availableVariables={availableVariables}
-                        selectedVariables={selectedVariables}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        moveToSelectedVariables={moveToSelectedVariables}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        reorderVariables={reorderVariables}
-                        showFrequencyTables={showFrequencyTables}
-                        setShowFrequencyTables={setShowFrequencyTables}
-                    />
-                </TabsContent>
-
-                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                    <StatisticsTab
-                        showStatistics={showStatistics}
-                        setShowStatistics={setShowStatistics}
-                        quartilesChecked={quartilesChecked}
-                        setQuartilesChecked={setQuartilesChecked}
-                        cutPointsChecked={cutPointsChecked}
-                        setCutPointsChecked={setCutPointsChecked}
-                        cutPointsValue={cutPointsValue}
-                        setCutPointsValue={setCutPointsValue}
-                        enablePercentiles={enablePercentiles}
-                        setEnablePercentiles={setEnablePercentiles}
-                        percentileValues={percentileValues}
-                        setPercentileValues={setPercentileValues}
-                        currentPercentileInput={currentPercentileInput}
-                        setCurrentPercentileInput={setCurrentPercentileInput}
-                        selectedPercentileItem={selectedPercentileItem}
-                        setSelectedPercentileItem={setSelectedPercentileItem}
-                        meanChecked={meanChecked}
-                        setMeanChecked={setMeanChecked}
-                        medianChecked={medianChecked}
-                        setMedianChecked={setMedianChecked}
-                        modeChecked={modeChecked}
-                        setModeChecked={setModeChecked}
-                        sumChecked={sumChecked}
-                        setSumChecked={setSumChecked}
-                        stdDevChecked={stdDevChecked}
-                        setStdDevChecked={setStdDevChecked}
-                        varianceChecked={varianceChecked}
-                        setVarianceChecked={setVarianceChecked}
-                        rangeChecked={rangeChecked}
-                        setRangeChecked={setRangeChecked}
-                        minChecked={minChecked}
-                        setMinChecked={setMinChecked}
-                        maxChecked={maxChecked}
-                        setMaxChecked={setMaxChecked}
-                        seMeanChecked={seMeanChecked}
-                        setSeMeanChecked={setSeMeanChecked}
-                        skewnessChecked={skewnessChecked}
-                        setSkewnessChecked={setSkewnessChecked}
-                        kurtosisChecked={kurtosisChecked}
-                        setKurtosisChecked={setKurtosisChecked}
-                    />
-                </TabsContent>
-
-                <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
-                    {activeTab === "charts" && (
-                        <ChartsTab
-                            showCharts={showCharts}
-                            setShowCharts={setShowCharts}
-                            chartType={chartType}
-                            setChartType={setChartType}
-                            chartValues={chartValues}
-                            setChartValues={setChartValues}
-                            showNormalCurve={showNormalCurve}
-                            setShowNormalCurve={setShowNormalCurve}
+                    <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                        <VariablesTab
+                            availableVariables={availableVariables}
+                            selectedVariables={selectedVariables}
+                            highlightedVariable={highlightedVariable}
+                            setHighlightedVariable={setHighlightedVariable}
+                            moveToSelectedVariables={moveToSelectedVariables}
+                            moveToAvailableVariables={moveToAvailableVariables}
+                            reorderVariables={reorderVariables}
+                            showFrequencyTables={showFrequencyTables}
+                            setShowFrequencyTables={setShowFrequencyTables}
                         />
-                    )}
-                </TabsContent>
-            </Tabs>
+                    </TabsContent>
 
-            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+                    <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
+                        <StatisticsTab
+                            showStatistics={showStatistics}
+                            setShowStatistics={setShowStatistics}
+                            quartilesChecked={quartilesChecked}
+                            setQuartilesChecked={setQuartilesChecked}
+                            cutPointsChecked={cutPointsChecked}
+                            setCutPointsChecked={setCutPointsChecked}
+                            cutPointsValue={cutPointsValue}
+                            setCutPointsValue={setCutPointsValue}
+                            enablePercentiles={enablePercentiles}
+                            setEnablePercentiles={setEnablePercentiles}
+                            percentileValues={percentileValues}
+                            setPercentileValues={setPercentileValues}
+                            currentPercentileInput={currentPercentileInput}
+                            setCurrentPercentileInput={setCurrentPercentileInput}
+                            selectedPercentileItem={selectedPercentileItem}
+                            setSelectedPercentileItem={setSelectedPercentileItem}
+                            meanChecked={meanChecked}
+                            setMeanChecked={setMeanChecked}
+                            medianChecked={medianChecked}
+                            setMedianChecked={setMedianChecked}
+                            modeChecked={modeChecked}
+                            setModeChecked={setModeChecked}
+                            sumChecked={sumChecked}
+                            setSumChecked={setSumChecked}
+                            stdDevChecked={stdDevChecked}
+                            setStdDevChecked={setStdDevChecked}
+                            varianceChecked={varianceChecked}
+                            setVarianceChecked={setVarianceChecked}
+                            rangeChecked={rangeChecked}
+                            setRangeChecked={setRangeChecked}
+                            minChecked={minChecked}
+                            setMinChecked={setMinChecked}
+                            maxChecked={maxChecked}
+                            setMaxChecked={setMaxChecked}
+                            seMeanChecked={seMeanChecked}
+                            setSeMeanChecked={setSeMeanChecked}
+                            skewnessChecked={skewnessChecked}
+                            setSkewnessChecked={setSkewnessChecked}
+                            kurtosisChecked={kurtosisChecked}
+                            setKurtosisChecked={setKurtosisChecked}
+                        />
+                    </TabsContent>
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                        onClick={runAnalysis}
-                        disabled={isCalculating || selectedVariables.length === 0}
-                    >
-                        {isCalculating ? "Calculating..." : "OK"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={handleReset}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={onClose}
-                        disabled={isCalculating}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        disabled={isCalculating}
-                    >
-                        Help
-                    </Button>
-                </div>
-            </DialogFooter>
-        </DialogContent>
+                    <TabsContent value="charts" className="p-6 overflow-y-auto flex-grow">
+                        {activeTab === "charts" && (
+                            <ChartsTab
+                                showCharts={showCharts}
+                                setShowCharts={setShowCharts}
+                                chartType={chartType}
+                                setChartType={setChartType}
+                                chartValues={chartValues}
+                                setChartValues={setChartValues}
+                                showNormalCurve={showNormalCurve}
+                                setShowNormalCurve={setShowNormalCurve}
+                            />
+                        )}
+                    </TabsContent>
+                </Tabs>
+
+                {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+                <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+                    <div className="flex justify-end space-x-3">
+                        <Button
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
+                            onClick={runAnalysis}
+                            disabled={isLoading || selectedVariables.length === 0}
+                        >
+                            {isLoading ? "Calculating..." : "OK"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-8 px-4"
+                            onClick={handleReset}
+                        >
+                            Reset
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-8 px-4"
+                            onClick={onClose}
+                            disabled={isLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-8 px-4"
+                            disabled={isLoading}
+                        >
+                            Help
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 

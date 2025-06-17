@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -21,12 +22,17 @@ import VariableListManager, { TargetListConfig } from "@/components/Common/Varia
 
 interface TransposeModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
+// Content component separated from container logic
+const TransposeContent: React.FC<TransposeModalProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
     // Get store data
     const { variables, overwriteVariables } = useVariableStore();
-    const { data, setDataAndSync } = useDataStore();
+    const { data, setData } = useDataStore();
 
     // Prepare variables with tempId
     const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
@@ -45,30 +51,16 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
     const [highlightedVariable, setHighlightedVariable] = useState<{
         id: string;
         source: string;
-    } | null>(null);
-
-    // Initialize variables from store
+    } | null>(null);    // Initialize variables from store
     useEffect(() => {
         if (variables.length > 0) {
             // Add tempId to variables
             const varsWithTempId = prepareVariablesWithTempId(variables);
 
-            // Initialize with variables from the store
+            // Initialize with all variables in available list (no auto-selection)
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
-                // First variable as name variable by default
-                if (idx === 0) {
-                    initialName.push(v);
-                    return false;
-                }
-                // Second variable as selected by default
-                if (idx === 1) {
-                    initialSelected.push(v);
-                    return false;
-                }
-                return true;
-            });
+            const initialAvailable: Variable[] = varsWithTempId;
 
             setAvailableVariables(initialAvailable);
             setSelectedVariables(initialSelected);
@@ -276,7 +268,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
             }
 
             // Step 5: Update data and variables in stores
-            await setDataAndSync(transposedData);
+            await setData(transposedData);
             await overwriteVariables(transposedVariables);
 
             onClose();
@@ -284,27 +276,15 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
             console.error("Transpose operation failed:", error);
             onClose();
         }
-    };
-
-    // Handle Reset button click
+    };    // Handle Reset button click
     const handleReset = () => {
-        // Reset to initial state - use first variable as name and second as selected
+        // Reset to initial state - all variables in available list
         if (variables.length > 0) {
             const varsWithTempId = prepareVariablesWithTempId(variables);
 
             const initialSelected: Variable[] = [];
             const initialName: Variable[] = [];
-            const initialAvailable: Variable[] = varsWithTempId.filter((v, idx) => {
-                if (idx === 0) {
-                    initialName.push(v);
-                    return false;
-                }
-                if (idx === 1) {
-                    initialSelected.push(v);
-                    return false;
-                }
-                return true;
-            });
+            const initialAvailable: Variable[] = varsWithTempId;
 
             setAvailableVariables(initialAvailable);
             setSelectedVariables(initialSelected);
@@ -319,7 +299,7 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
         id: 'selected',
         title: 'Variable(s):',
         variables: selectedVariables,
-        height: '8rem', // approx 128px, Tailwind h-32
+        height: '11.5rem', // approx 160px, Tailwind h-40
         droppable: true,
         draggableItems: true
     };
@@ -335,13 +315,25 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-md p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-xl font-semibold">Transpose</DialogTitle>
-            </DialogHeader>
-
-            <div className="p-6 overflow-y-auto flex-grow">
+        <>
+            {containerType === "dialog" && (
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Transpose</DialogTitle>
+                </DialogHeader>
+            )}
+            {/* {containerType === "sidebar" && (
+                <div className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <h2 className="text-xl font-semibold">Transpose</h2>
+                </div>
+            )} */}            <div className="p-6 overflow-y-auto flex-grow">
                 <div className="space-y-6">
+                    {/* Information text */}
+                    <div className="mb-4 p-3 border-l-2 border-primary bg-accent rounded-sm">
+                        <p className="text-sm text-accent-foreground">
+                            Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.
+                        </p>
+                    </div>
+
                     {/* Variable List Manager */}
                     <VariableListManager
                         availableVariables={availableVariables}
@@ -356,16 +348,10 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                         showArrowButtons={true}
                         availableListHeight="14rem" // approx 224px, Tailwind h-56
                     />
-
-                    {/* Info Text */}
-                    <div className="text-xs text-muted-foreground flex items-center">
-                        <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                        <span>Variables become cases and cases become variables. The name variable (optional) provides names for the new variables.</span>
-                    </div>
                 </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
@@ -400,8 +386,34 @@ const TransposeModal: React.FC<TransposeModalProps> = ({ onClose }) => {
                         Help
                     </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const TransposeModal: React.FC<TransposeModalProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <TransposeContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-md p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <TransposeContent onClose={onClose} containerType={containerType} />
+            </DialogContent>
+        </Dialog>
     );
 };
 

@@ -47,7 +47,7 @@ export const useTableUpdates = ({
         addColumn,
         deleteRow,
         deleteColumn,
-        updateBulkCells,
+        updateCells,
     } = useDataStore();
 
     const {
@@ -127,7 +127,7 @@ export const useTableUpdates = ({
 
         if (cellUpdates.length > 0) {
             try {
-                await updateBulkCells(cellUpdates);
+                await updateCells(cellUpdates);
 
                 if (maxColIndex > -1) {
                     console.log(`[processCellUpdates] Calling ensureCompleteVariables up to index: ${maxColIndex}`);
@@ -139,7 +139,7 @@ export const useTableUpdates = ({
                 // TODO: Add user feedback
             }
         }
-    }, [variables, updateBulkCells, ensureCompleteVariables]); // Dependencies: variables for type checking, store actions
+    }, [variables, updateCells, ensureCompleteVariables]);
 
     const processPendingOperations = useCallback(async () => {
         if (isProcessing.current || pendingOperations.current.length === 0) return;
@@ -208,7 +208,7 @@ export const useTableUpdates = ({
                 queueMicrotask(processPendingOperations);
             }
         }
-    }, [processCellUpdates, addRow, addMultipleVariables]); // Update dependencies
+    }, [processCellUpdates, addRow, addMultipleVariables]); // Removed addColumn and actualNumCols
 
     // --- Handsontable Event Handlers ---
 

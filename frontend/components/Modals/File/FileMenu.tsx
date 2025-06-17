@@ -63,6 +63,9 @@ const FileMenu: React.FC = () => {
                         <MenubarItem onClick={() => openModal(ModalType.ImportCSV)}>
                             CSV Data...
                         </MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.ImportClipboard)}>
+                            From Clipboard...
+                        </MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSeparator />

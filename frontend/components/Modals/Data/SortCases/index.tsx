@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -23,9 +24,14 @@ interface SortVariableConfig {
 
 interface SortCasesModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
-const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
+// Content component separated from container logic
+const SortCasesContent: React.FC<SortCasesModalProps> = ({ 
+    onClose,
+    containerType = "dialog"
+}) => {
     const { sortData } = useDataStore();
     const { variables } = useVariableStore();
 
@@ -280,15 +286,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                 await sortData(variable.columnIndex, direction);
             }
 
-            if (saveSortedData && fileName) {
-                // In a real implementation, this would save to a file
-                console.log(`Saving sorted data to ${fileName}`);
-
-                if (createIndex) {
-                    console.log("Creating index for sorted data");
-                }
-            }
-
             onClose();
         } catch (error) {
             console.error("Error during sort operation:", error);
@@ -303,9 +300,6 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
         setAvailableVariables(prepareVariablesWithTempId([...availableVariables, ...sortedVariables].sort((a, b) => a.columnIndex - b.columnIndex)));
         setSortByConfigs([]);
         setDefaultSortOrder("asc");
-        setSaveSortedData(false);
-        setFileName("");
-        setCreateIndex(false);
         setHighlightedVariable(null);
     };
 
@@ -320,10 +314,12 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-lg p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-xl font-semibold">Sort Cases</DialogTitle>
-            </DialogHeader>
+        <>
+            {containerType === "dialog" && (
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Sort Cases</DialogTitle>
+                </DialogHeader>
+            )}
 
             <div className="p-6 overflow-y-auto flex-grow">
                 <div className="grid grid-cols-1 gap-6">
@@ -346,62 +342,10 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                     {/* Default sort order controls (when no variable is selected) */}
                     {renderDefaultSortOrderControls()}
 
-                    {/* Save Options Section */}
-                    <div className="mt-2 border border-border p-4 rounded-md">
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <Checkbox
-                                    id="saveSortedData"
-                                    checked={saveSortedData}
-                                    onCheckedChange={(checked) => setSaveSortedData(!!checked)}
-                                    className="mr-2"
-                                />
-                                <Label htmlFor="saveSortedData" className="text-sm cursor-pointer">
-                                    Save file with sorted data
-                                </Label>
-                            </div>
-
-                            {saveSortedData && (
-                                <div className="ml-6 space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-8 text-xs"
-                                            onClick={() => {
-                                                // In a real implementation, this would open a file picker
-                                                const fakeFile = "sorted_data.csv";
-                                                setFileName(fakeFile);
-                                            }}
-                                        >
-                                            File...
-                                        </Button>
-                                        {fileName && (
-                                            <span className="text-xs text-muted-foreground">
-                                                Selected File: {fileName}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center">
-                                        <Checkbox
-                                            id="createIndex"
-                                            checked={createIndex}
-                                            onCheckedChange={(checked) => setCreateIndex(!!checked)}
-                                            className="mr-2"
-                                        />
-                                        <Label htmlFor="createIndex" className="text-sm cursor-pointer">
-                                            Create an index
-                                        </Label>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
+            <div className={`${containerType === "dialog" ? "px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md" : "px-6 py-4 border-t border-border bg-muted flex-shrink-0"}`}>
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
@@ -431,8 +375,36 @@ const SortCasesModal: React.FC<SortCasesModalProps> = ({ onClose }) => {
                         Help
                     </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const SortCasesModal: React.FC<SortCasesModalProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    {/* Title for sidebar version */}
+                    {/* <h2 className="text-lg font-semibold px-6 py-4 border-b border-border">Sort Cases</h2> */}
+                    <SortCasesContent onClose={onClose} containerType={containerType} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-lg p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <SortCasesContent onClose={onClose} containerType={containerType} />
+            </DialogContent>
+        </Dialog>
     );
 };
 

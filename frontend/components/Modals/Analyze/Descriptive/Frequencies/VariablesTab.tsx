@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
     highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
@@ -14,6 +14,7 @@ interface VariablesTabProps {
     reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
     showFrequencyTables: boolean;
     setShowFrequencyTables: React.Dispatch<React.SetStateAction<boolean>>;
+    containerType?: "dialog" | "sidebar";
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -26,7 +27,9 @@ const VariablesTab: FC<VariablesTabProps> = ({
     reorderVariables = () => { console.warn("reorderVariables not implemented upstream"); },
     showFrequencyTables,
     setShowFrequencyTables,
+    containerType = "dialog"
 }) => {
+    const variableIdKeyToUse: keyof Variable = 'tempId';
 
     // --- Adapt props for VariableListManager ---
 
@@ -34,10 +37,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const targetLists: TargetListConfig[] = [
         {
             id: 'selected',
-            title: 'Selected Variables:',
+            title: 'Variable(s):',
             variables: selectedVariables,
-            height: '18rem', // Replaced 300px with 18rem (Tailwind h-72)
-            draggableItems: true, // Allow reordering within selected
+            height: '300px', // Changed to fixed height
+            draggableItems: true,
             droppable: true
         }
     ];
@@ -68,26 +71,24 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
-        if (listId === 'selected' && reorderVariables) {
-             // Assuming reorderVariables still expects the source 'selected'
-            reorderVariables('selected', variables);
+        if (listId === 'selected') {
+            if (reorderVariables) reorderVariables('selected', variables);
         }
-        // Note: Reordering 'available' list is not typically needed/supported by this component's logic
     }, [reorderVariables]);
 
     // 5. Create footer rendering function
     const renderSelectedFooter = useCallback((listId: string) => {
         if (listId === 'selected') {
             return (
-                <div className="mt-2">
+                <div className="mt-4">
                     <div className="flex items-center">
                         <Checkbox
-                            id="frequencyTables"
+                            id="displayFrequencyTables"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
-                            className="mr-2 h-4 w-4"
+                            className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
-                        <Label htmlFor="frequencyTables" className="text-sm cursor-pointer">
+                        <Label htmlFor="displayFrequencyTables" className="text-sm cursor-pointer">
                             Display frequency tables
                         </Label>
                     </div>
@@ -102,12 +103,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
         <VariableListManager
             availableVariables={availableVariables}
             targetLists={targetLists}
-            variableIdKey="tempId" // Standardize on tempId
+            variableIdKey={variableIdKeyToUse}
             highlightedVariable={managerHighlightedVariable}
             setHighlightedVariable={setManagerHighlightedVariable}
             onMoveVariable={handleMoveVariable}
             onReorderVariable={handleReorderVariables}
-            // Using default getVariableIcon and getDisplayName
             renderListFooter={renderSelectedFooter}
         />
     );

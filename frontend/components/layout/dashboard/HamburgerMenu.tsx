@@ -7,6 +7,7 @@ import {
     SheetHeader,
     SheetTitle,
     SheetTrigger,
+    SheetDescription,
 } from "@/components/ui/sheet"
 import {
     Accordion,
@@ -71,6 +72,9 @@ const HamburgerMenu: React.FC = () => {
                 <SheetContent side="left" className="overflow-y-auto w-[85vw] sm:w-[300px] p-0 border-r border-border bg-background">
                     <SheetHeader className="px-4 py-3 border-b border-border">
                         <SheetTitle className="text-sm font-medium text-foreground">Menu</SheetTitle>
+                        <SheetDescription className="sr-only">
+                            Main navigation menu for the application.
+                        </SheetDescription>
                     </SheetHeader>
                     <div className="py-1 overflow-y-auto">
                         <Accordion type="multiple" className="w-full">
@@ -142,18 +146,18 @@ const HamburgerMenu: React.FC = () => {
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col space-y-0.5 pl-4 pr-0 pb-1 pt-0 bg-background">
                                     <DrawerMenuItem onClick={() => openModal(ModalType.DefineVarProps)}>Define Variable Properties...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.SetMeasurementLevel)}>Set Measurement Level...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.DefineDateTime)}>Define Date and Time...</DrawerMenuItem>
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.SetMeasurementLevel)}>Set Measurement Level...</DrawerMenuItem> */}
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.DefineDateTime)}>Define Date and Time...</DrawerMenuItem> */}
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.DuplicateCases)}>Identify Duplicate Cases...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.UnusualCases)}>Identify Unusual Cases...</DrawerMenuItem>
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.DuplicateCases)}>Identify Duplicate Cases...</DrawerMenuItem> */}
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.UnusualCases)}>Identify Unusual Cases...</DrawerMenuItem> */}
                                     <DrawerMenuSeparator />
                                     <DrawerMenuItem onClick={() => openModal(ModalType.SortCases)}>Sort Cases...</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => openModal(ModalType.SortVars)}>Sort Variables...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.Transpose)}>Transpose...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.Aggregate)}>Aggregate...</DrawerMenuItem>
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.Transpose)}>Transpose...</DrawerMenuItem> */}
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.Aggregate)}>Aggregate...</DrawerMenuItem> */}
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => openModal(ModalType.WeightCases)}>Weight Cases...</DrawerMenuItem>
+                                    {/* <DrawerMenuItem onClick={() => openModal(ModalType.WeightCases)}>Weight Cases...</DrawerMenuItem> */}
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -203,10 +207,10 @@ const HamburgerMenu: React.FC = () => {
                                         <AccordionItem value="desc-stats" className="border-0">
                                             <NestedAccordionTrigger>Descriptive Statistics</NestedAccordionTrigger>
                                             <AccordionContent className="flex flex-col space-y-0.5 pl-6 pr-0 pb-1 pt-0 bg-accent">
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.Descriptive)}>Descriptives...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.Explore)}>Explore...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</DrawerMenuItem>
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies...</DrawerMenuItem> */}
+                                                <DrawerMenuItem onClick={() => openModal(ModalType.Descriptives)}>Descriptives...</DrawerMenuItem>
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.Explore)}>Explore...</DrawerMenuItem> */}
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</DrawerMenuItem> */}
                                                 <DrawerMenuSeparator />
                                                 {/* Ratio: Opens a modal for ratio statistics */}
                                                 {/* <DrawerMenuItem onClick={() => openModal(ModalType.Ratio)}>Ratio...</DrawerMenuItem> */}
@@ -219,9 +223,9 @@ const HamburgerMenu: React.FC = () => {
                                         <AccordionItem value="compare-means" className="border-0">
                                             <NestedAccordionTrigger>Compare Means</NestedAccordionTrigger>
                                             <AccordionContent className="flex flex-col space-y-0.5 pl-3 pr-0 pb-1 pt-0 bg-accent">
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</DrawerMenuItem>
-                                                <DrawerMenuItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</DrawerMenuItem>
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.OneSampleTTest)}>One-Sample T Test...</DrawerMenuItem> */}
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>Independent-Samples T Test...</DrawerMenuItem> */}
+                                                {/* <DrawerMenuItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>Paired-Samples T Test...</DrawerMenuItem> */}
                                                 <DrawerMenuItem disabled>One-Way ANOVA...</DrawerMenuItem>
                                             </AccordionContent>
                                         </AccordionItem>
@@ -292,12 +296,12 @@ const HamburgerMenu: React.FC = () => {
                                                     <AccordionItem value="legacy-dialogs-nonparametric" className="border-0">
                                                         <NestedAccordionTrigger>Legacy Dialogs</NestedAccordionTrigger>
                                                         <AccordionContent className="flex flex-col space-y-0.5 pl-6 pr-0 pb-1 pt-0 bg-accent">
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.Runs)}>Runs...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</DrawerMenuItem>
-                                                            <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</DrawerMenuItem>
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.ChiSquare)}>Chi-square...</DrawerMenuItem> */}
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.Runs)}>Runs...</DrawerMenuItem> */}
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>2 Independent Samples...</DrawerMenuItem> */}
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.KIndependentSamples)}>K Independent Samples...</DrawerMenuItem> */}
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>2 Related Samples...</DrawerMenuItem> */}
+                                                            {/* <DrawerMenuItem onClick={() => openModal(ModalType.KRelatedSamples)}>K Related Samples...</DrawerMenuItem> */}
                                                         </AccordionContent>
                                                     </AccordionItem>
                                                 </Accordion>

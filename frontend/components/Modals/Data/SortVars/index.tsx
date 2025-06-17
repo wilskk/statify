@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -14,6 +15,7 @@ import { Variable } from "@/types/Variable";
 
 interface SortVariablesModalProps {
     onClose: () => void;
+    containerType?: "dialog" | "sidebar";
 }
 
 // Map UI column names to variable field names
@@ -45,9 +47,12 @@ const fieldToColumnIndex: Record<string, number> = {
     "role": 10
 };
 
-const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
+// Content component separated from container logic
+const SortVariablesContent: React.FC<SortVariablesModalProps> = ({ 
+    onClose,
+}) => {
     const { variables, sortVariables } = useVariableStore();
-    const { data, setDataAndSync } = useDataStore();
+    const { data, setData } = useDataStore();
 
     const [columns] = useState<string[]>([
         "Name",
@@ -146,7 +151,7 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 });
 
                 // Update the data in the store
-                await setDataAndSync(newData);
+                await setData(newData);
             }
 
             onClose();
@@ -164,76 +169,54 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
     };
 
     return (
-        <DialogContent className="max-w-md">
-            <DialogHeader>
-                <DialogTitle>Sort Variables</DialogTitle>
-            </DialogHeader>
-
-            <div className="mb-4">
-                <p className="font-semibold mb-2">Variable View Columns</p>
-                <ul className="border border-border p-2 h-40 overflow-auto">
-                    {columns.map((col) => (
-                        <li
-                            key={col}
-                            className={`p-1 cursor-pointer hover:bg-accent ${
-                                selectedColumn === col ? "bg-muted" : ""
-                            }`}
-                            onClick={() => handleSelectColumn(col)}
-                        >
-                            {col}
-                        </li>
-                    ))}
-                </ul>
-            </div>
-
-            <div className="mb-4">
-                <p className="font-semibold mb-2">Sort Order</p>
-                <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                            type="radio"
-                            name="sortOrder"
-                            checked={sortOrder === "asc"}
-                            onChange={() => setSortOrder("asc")}
-                        />
-                        Ascending
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                            type="radio"
-                            name="sortOrder"
-                            checked={sortOrder === "desc"}
-                            onChange={() => setSortOrder("desc")}
-                        />
-                        Descending
-                    </label>
+        <>
+            {/* Standardized content area */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow">
+                <div>
+                    <p className="font-semibold mb-2">Variable View Columns</p>
+                    <ul className="border border-border p-2 h-40 overflow-auto">
+                        {columns.map((col) => (
+                            <li
+                                key={col}
+                                className={`p-1 cursor-pointer hover:bg-accent ${
+                                    selectedColumn === col ? "bg-muted" : ""
+                                }`}
+                                onClick={() => handleSelectColumn(col)}
+                            >
+                                {col}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
-            </div>
 
-            <div className="mb-4 border border-border p-2 rounded">
-                <label className="flex items-center gap-2 mb-2">
-                    <input
-                        type="checkbox"
-                        checked={savePreSortedOrder}
-                        onChange={() => setSavePreSortedOrder((prev) => !prev)}
-                    />
-                    Save the current (pre-sorted) variable order in a new attribute
-                </label>
-                {savePreSortedOrder && (
-                    <div className="mt-2">
-                        <label className="block mb-1">Attribute name:</label>
-                        <input
-                            type="text"
-                            value={attributeName}
-                            onChange={(e) => setAttributeName(e.target.value)}
-                            className="border border-input p-1 w-full"
-                            disabled={!savePreSortedOrder}
-                        />
+                <div>
+                    <p className="font-semibold mb-2">Sort Order</p>
+                    <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                checked={sortOrder === "asc"}
+                                onChange={() => setSortOrder("asc")}
+                            />
+                            Ascending
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                checked={sortOrder === "desc"}
+                                onChange={() => setSortOrder("desc")}
+                            />
+                            Descending
+                        </label>
                     </div>
-                )}
+                </div>
+
             </div>
 
-            <DialogFooter>
+            {/* Standardized action buttons footer */}
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 flex justify-end space-x-3">
                 <Button onClick={handleOk}>
                     OK
                 </Button>
@@ -246,8 +229,41 @@ const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ onClose }) => {
                 <Button variant="outline" onClick={() => alert("Help dialog here")}>
                     Help
                 </Button>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const SortVariablesModal: React.FC<SortVariablesModalProps> = ({ 
+    onClose,
+    containerType = "dialog" 
+}) => {
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <SortVariablesContent onClose={onClose} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent with standardized structure
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                {/* Dialog Header */}
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Sort Variables</DialogTitle>
+                </DialogHeader>
+                 {/* Content Wrapper */}
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <SortVariablesContent onClose={onClose} />
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

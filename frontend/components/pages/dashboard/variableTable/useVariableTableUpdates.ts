@@ -29,7 +29,7 @@ export function useVariableTableUpdates() {
     } = useVariableStore();
 
     const {
-        addColumn,
+        addColumns,
         deleteColumn,
         validateVariableData,
         ensureColumns
@@ -68,8 +68,8 @@ export function useVariableTableUpdates() {
                         const newVarData = { ...variableData, columnIndex: row };
                         // addVariable handles insertion vs append logic within the store
                         await addVariable(newVarData);
-                        // addColumn handles adding the corresponding data column
-                        await addColumn(row);
+                        // addColumns handles adding the corresponding data column
+                        await addColumns([row]);
 
                     } else {
                         console.log(`Variable already exists at index: ${row}. Skipping creation.`);
@@ -109,8 +109,8 @@ export function useVariableTableUpdates() {
 
                     // addVariable handles the insertion logic (shifting indices)
                     await addVariable({ columnIndex: row });
-                    // addColumn handles inserting the data column at the same index
-                    await addColumn(row);
+                    // addColumns handles inserting the data column at the same index
+                    await addColumns([row]);
 
                     break;
                 }
@@ -154,7 +154,7 @@ export function useVariableTableUpdates() {
         updateMultipleFields,
         deleteVariable,
         ensureCompleteVariables,
-        addColumn,
+        addColumns,
         deleteColumn,
         validateVariableData,
         ensureColumns

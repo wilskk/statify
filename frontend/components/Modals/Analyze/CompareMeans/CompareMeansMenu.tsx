@@ -17,15 +17,15 @@ const CompareMeansMenu: FC = () => {
                 Compare Means
             </MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>
+                {/* <MenubarItem onClick={() => openModal(ModalType.OneSampleTTest)}>
                     One-Sample T-Test...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.IndependentSamplesTTest)}>
                     Independent-Samples T-Test...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.PairedSamplesTTest)}>
                     Paired-Samples T-Test...
-                </MenubarItem>
+                </MenubarItem> */}
                 <MenubarItem>
                     One-Way ANOVA...
                 </MenubarItem>

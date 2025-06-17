@@ -11,18 +11,20 @@ import {
     GripVertical,
     InfoIcon
 } from "lucide-react";
+import { HighlightedVariableInfo } from "./types";
+import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    highlightedVariable: { columnIndex: number, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ columnIndex: number, source: 'available' | 'selected' } | null>>;
+    highlightedVariable: HighlightedVariableInfo | null;
+    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
     moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
     moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
     reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
     saveStandardized: boolean;
-    setSaveStandardized: React.Dispatch<React.SetStateAction<boolean>>;
+    setSaveStandardized: Dispatch<SetStateAction<boolean>>;
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -36,7 +38,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     saveStandardized,
     setSaveStandardized
 }) => {
-    const variableIdKeyToUse: keyof Variable = 'columnIndex';
+    const variableIdKeyToUse: keyof Variable = 'tempId';
 
     // Filter availableVariables to include only NUMERIC and DATE types
     const filteredAvailableVariables = useMemo(() => {
@@ -57,17 +59,13 @@ const VariablesTab: FC<VariablesTabProps> = ({
     ];
 
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.columnIndex.toString(), source: highlightedVariable.source }
+        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
         : null;
 
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
-        const colIndex = value ? parseInt(value.id, 10) : null;
-        if (value && (value.source === 'available' || value.source === 'selected') && colIndex !== null && !isNaN(colIndex)) {
-            setHighlightedVariable({ columnIndex: colIndex, source: value.source as 'available' | 'selected' });
+        if (value && (value.source === 'available' || value.source === 'selected')) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'selected' });
         } else {
-            if (value && (isNaN(colIndex ?? NaN))) {
-                 console.warn(`Could not parse columnIndex from id: ${value.id}. Check variable data consistency.`);
-            }
             setHighlightedVariable(null);
         }
     }, [setHighlightedVariable]);

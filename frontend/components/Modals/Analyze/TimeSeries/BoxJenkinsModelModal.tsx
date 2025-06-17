@@ -44,7 +44,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
 
     // Store references
     const { variables, loadVariables, addVariable } = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { getTypeDate, getYear, getWeek, getDay, setTypeDate, setYear, setWeek, setDay } = useTimeSeriesStore();
     
@@ -334,7 +334,7 @@ const BoxJenkinsModelModal: FC<BoxJenkinsModelModalProps> = ({ onClose }) => {
         
         // Use bulk update to efficiently add all data
         if (updates.length > 0) {
-            await updateBulkCells(updates);
+            await updateCells(updates);
         }
         
         // Reload variables to reflect changes

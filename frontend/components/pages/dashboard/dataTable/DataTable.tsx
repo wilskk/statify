@@ -6,6 +6,7 @@ import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/dist/handsontable.full.min.css';
 
 import { useTableRefStore } from '@/stores/useTableRefStore';
+import { useDataStore } from '@/stores/useDataStore';
 import { useDataTableLogic } from './useDataTableLogic';
 import './DataTable.css';
 
@@ -14,6 +15,7 @@ registerAllModules();
 export default function DataTable() {
     const hotTableRef = useRef<HotTableClass>(null);
     const { setDataTableRef } = useTableRefStore();
+    const updateCells = useDataStore.getState().updateCells;
 
     const {
         displayMatrix,
@@ -109,6 +111,15 @@ export default function DataTable() {
                 afterValidate={handleAfterValidate}
                 afterGetRowHeader={handleAfterGetRowHeader}
                 afterGetColHeader={handleAfterGetColHeader}
+                afterChange={(changes, source) => {
+                    if (!changes || source === 'loadData') return;
+                    const updates = changes.map(([row, prop, , newValue]) => ({
+                        row: row as number,
+                        col: typeof prop === 'string' ? parseInt(prop, 10) : (prop as number),
+                        value: newValue as string | number,
+                    }));
+                    updateCells(updates);
+                }}
             />
         </div>
     );

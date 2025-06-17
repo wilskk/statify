@@ -161,28 +161,6 @@ const SaveTab: React.FC<SaveTabProps> = ({
                     </div>
                 </div>
             </div>
-
-            <div className="border border-border rounded-md p-6">
-                <div className="text-sm font-medium mb-4">Export Model File</div>
-                <div className="flex items-center">
-                    <Label htmlFor="exportFile" className="text-xs whitespace-nowrap mr-2">
-                        File:
-                    </Label>
-                    <Input
-                        id="exportFile"
-                        value={exportFilePath}
-                        onChange={(e) => setExportFilePath(e.target.value)}
-                        className="h-8 text-sm mr-2"
-                    />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                    >
-                        Browse...
-                    </Button>
-                </div>
-            </div>
         </>
     );
 };

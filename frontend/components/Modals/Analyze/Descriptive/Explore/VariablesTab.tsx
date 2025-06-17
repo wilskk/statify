@@ -2,27 +2,10 @@ import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { VariablesTabProps, HighlightedVariable } from "./types";
 
 // Source types remain the same, but used internally by the parent mostly
 type AllSource = 'available' | 'dependent' | 'factor' | 'label';
-
-interface VariablesTabProps {
-    availableVariables: Variable[];
-    dependentVariables: Variable[];
-    factorVariables: Variable[];
-    labelVariable: Variable | null;
-    // Highlight state uses tempId, compatible with manager using string ID
-    highlightedVariable: {tempId: string, source: AllSource} | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{tempId: string, source: AllSource} | null>>;
-
-    moveToAvailableVariables: (variable: Variable, source: 'dependent' | 'factor' | 'label', targetIndex?: number) => void;
-    moveToDependentVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToFactorVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToLabelVariable: (variable: Variable) => void;
-    reorderVariables: (source: 'dependent' | 'factor', variables: Variable[]) => void; // Only dependent/factor reorderable
-
-    errorMsg: string | null;
-}
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
@@ -36,7 +19,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToFactorVariables,
     moveToLabelVariable,
     reorderVariables,
-    errorMsg
+    errorMsg,
+    containerType = "dialog"
 }) => {
 
     // --- Adapt props for VariableListManager ---
@@ -111,7 +95,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'dependent' || listId === 'factor') {
-            reorderVariables(listId, variables);
+            reorderVariables(listId as 'dependent' | 'factor', variables);
         }
         // Cannot reorder 'label' or 'available'
     }, [reorderVariables]);
