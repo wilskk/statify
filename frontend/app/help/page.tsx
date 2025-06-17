@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
 	GettingStarted,
-	StatisticsGuide,
 	FAQ,
 	Feedback,
 	HelpContent
@@ -17,45 +16,27 @@ export default function HelpPage() {
 	const [expandedKeys, setExpandedKeys] = useState<Set<string>>(
 		new Set(["statistics-guide"])
 	);
+	const [mounted, setMounted] = useState(false);
+
+	// Untuk animasi mounting
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	const sectionsData: SectionItem[] = [
 		{
 			key: "getting-started",
-			label: "Getting Started",
+			label: "Panduan Memulai",
 			content: <GettingStarted />
 		},
 		{
-			key: "statistics-guide",
-			label: "Statistics Guide",
-			content: <StatisticsGuide section={activeChild || undefined} />,
-			children: [
-				{
-					key: "descriptive",
-					label: "Descriptive",
-					parentKey: "statistics-guide",
-					children: [
-						{ key: "frequencies", label: "Frequencies", parentKey: "descriptive", childContent: "frequencies" },
-						{ key: "descriptive-analysis", label: "Descriptive", parentKey: "descriptive", childContent: "descriptive-analysis" },
-						{ key: "explore", label: "Explore", parentKey: "descriptive", childContent: "explore" },
-						{ key: "crosstabs", label: "Crosstabs", parentKey: "descriptive", childContent: "crosstabs" },
-					]
-				},
-				{ key: "time-series", label: "Time Series", parentKey: "statistics-guide", childContent: "time-series" },
-				{ key: "non-parametric", label: "Non-Parametric Test", parentKey: "statistics-guide", childContent: "non-parametric" },
-				{ key: "parametric", label: "Parametric Test", parentKey: "statistics-guide", childContent: "parametric" },
-				{ key: "linear-model", label: "Linear Model", parentKey: "statistics-guide", childContent: "linear-model" },
-				{ key: "classification", label: "Classification", parentKey: "statistics-guide", childContent: "classification" },
-				{ key: "regression", label: "Regression", parentKey: "statistics-guide", childContent: "regression" },
-			]
-		},
-		{
 			key: "faq",
-			label: "Frequently Asked Questions",
+			label: "Pertanyaan Umum",
 			content: <FAQ />
 		},
 		{
 			key: "feedback",
-			label: "Send Feedback",
+			label: "Kirim Masukan",
 			content: <Feedback />
 		},
 	];
@@ -67,7 +48,12 @@ export default function HelpPage() {
 	const filteredSectionsResult = sectionsData.filter(
 		(s) =>
 			s.label.toLowerCase().includes(searchLower) ||
-			(s.children && s.children.some(child => child.label.toLowerCase().includes(searchLower)))
+			(s.children && s.children.some(child => 
+				child.label.toLowerCase().includes(searchLower) || 
+				(child.children && child.children.some(subchild => 
+					subchild.label.toLowerCase().includes(searchLower)
+				))
+			))
 	);
 
 	const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +61,7 @@ export default function HelpPage() {
 		
 		// If the current selected section isn't in the search results,
 		// select the first result automatically
-		if (search && filteredSectionsResult.length > 0 && 
+		if (e.target.value && filteredSectionsResult.length > 0 && 
 			!filteredSectionsResult.some(s => s.key === selected)) {
 			setSelected(filteredSectionsResult[0].key);
 			setActiveChild(null);
@@ -136,7 +122,7 @@ export default function HelpPage() {
 	const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;
 
 	return (
-		<div className="bg-gray-50 min-h-screen">
+		<div className={`bg-background min-h-screen transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
 			<HelpContent
 				sections={sectionsData}
 				selectedSectionKey={selected}

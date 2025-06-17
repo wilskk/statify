@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import ReactDOMServer from 'react-dom/server';
+import { getVariableIcon } from '@/components/Common/iconHelper';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { getColumnConfig, getDefaultSpareColumnConfig } from '../utils/utils';
@@ -27,17 +29,22 @@ export const useTableStructure = (
 ) => {
     const data = useDataStore((state) => state.data);
     const variables = useVariableStore((state) => state.variables);
+    const variableMap = useMemo(() => new Map(variables.map(v => [v.columnIndex, v])), [variables]);
 
     const colHeaders = useMemo(() => {
         const headers = Array.from({ length: targetVisualDataCols }, (_, index) => {
-            const variable = variables.find(v => v.columnIndex === index);
-            return (variable?.name && variable.name.trim() !== '')
-                   ? variable.name
-                   : 'var'; // Change default header to just 'var'
+            const variable = variableMap.get(index);
+            if (variable) {
+                const iconElement = getVariableIcon(variable);
+                const iconHtml = ReactDOMServer.renderToStaticMarkup(iconElement);
+                const variableName = (variable.name && variable.name.trim() !== '') ? variable.name : 'var';
+                return `<div class="col-header-container">${iconHtml}<span class="colHeader">${variableName}</span></div>`;
+            }
+            return 'var';
         });
-        headers.push('var'); // Change spare header text to 'var' as well
+        headers.push('var');
         return headers;
-    }, [variables, targetVisualDataCols]);
+    }, [variableMap, targetVisualDataCols]);
 
     const displayMatrix = useMemo(() => {
         const matrix: (string | number | null)[][] = [];
@@ -112,6 +119,7 @@ export const useTableStructure = (
     }
 
     const columns = useMemo(() => {
+        const variableMap = new Map(variables.map(v => [v.columnIndex, v]));
         const getAlignmentClass = (align: VariableAlign | undefined): string => {
             switch (align) {
                 case 'left': return 'htLeft';
@@ -133,7 +141,7 @@ export const useTableStructure = (
         const generatedColumns = Array(displayNumCols).fill(null).map((_, colIndex) => {
             if (colIndex < actualNumCols) {
                 // Existing variable column: editable with alignment and truncate for strings
-                const variable = variables.find(v => v.columnIndex === colIndex);
+                const variable = variableMap.get(colIndex);
                 const baseConfig = getColumnConfig(variable);
                 const alignClass = getAlignmentClass(variable?.align);
                 const truncateClass = variable?.type === 'STRING' ? 'truncate-cell' : '';

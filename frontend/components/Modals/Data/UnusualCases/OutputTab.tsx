@@ -2,7 +2,7 @@ import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { OutputTabProps } from "../types";
+import { OutputTabProps } from "./types";
 
 const OutputTab: React.FC<OutputTabProps> = ({
     showUnusualCasesList,

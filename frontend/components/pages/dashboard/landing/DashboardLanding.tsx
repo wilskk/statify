@@ -5,6 +5,8 @@ import { DataAction, ResourceItem } from './types';
 import { DataActionCard } from './DataActionCard';
 import { ResourceCard } from './ResourceCard';
 
+export * from './types';
+
 interface DashboardLandingProps {
     dataActions: DataAction[];
     resources: ResourceItem[];

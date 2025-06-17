@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { EditorContent, useEditor, BubbleMenu, FloatingMenu } from "@tiptap/react";
+import { EditorContent, useEditor, BubbleMenu, FloatingMenu, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
@@ -51,6 +51,38 @@ const TiptapEditableView: React.FC<Omit<SimpleRichTextEditorProps, 'editable'>> 
     },
   });
 
+  const editorState = useEditorState({
+    editor,
+    selector: (state) => {
+      const { editor } = state;
+      if (!editor) {
+        return {
+          isBold: false, isItalic: false, isStrike: false, isCode: false,
+          isH2: false, isH3: false, isBulletList: false, isOrderedList: false, isBlockquote: false,
+          canToggleBold: false, canToggleItalic: false, canToggleStrike: false, canToggleCode: false,
+          canUndo: false, canRedo: false,
+        };
+      }
+      return {
+        isBold: editor.isActive("bold"),
+        isItalic: editor.isActive("italic"),
+        isStrike: editor.isActive("strike"),
+        isCode: editor.isActive("code"),
+        isH2: editor.isActive("heading", { level: 2 }),
+        isH3: editor.isActive("heading", { level: 3 }),
+        isBulletList: editor.isActive("bulletList"),
+        isOrderedList: editor.isActive("orderedList"),
+        isBlockquote: editor.isActive("blockquote"),
+        canToggleBold: editor.can().chain().focus().toggleBold().run(),
+        canToggleItalic: editor.can().chain().focus().toggleItalic().run(),
+        canToggleStrike: editor.can().chain().focus().toggleStrike().run(),
+        canToggleCode: editor.can().chain().focus().toggleCode().run(),
+        canUndo: editor.can().chain().focus().undo().run(),
+        canRedo: editor.can().chain().focus().redo().run(),
+      };
+    },
+  });
+
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value || "<p></p>", false);
@@ -64,16 +96,42 @@ const TiptapEditableView: React.FC<Omit<SimpleRichTextEditorProps, 'editable'>> 
     );
 
   const MenuBar: React.FC = () => {
-    if (!editor) return null;
+    if (!editor || !editorState) return null;
     return (
       <div className="flex flex-wrap gap-1 border rounded mb-2 p-1 bg-muted/50">
-        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={buttonClass(editor.isActive("bold"))}>B</button>
-        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={buttonClass(editor.isActive("italic"))}>I</button>
-        <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} className={buttonClass(editor.isActive("strike"))}>S</button>
-        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={buttonClass(editor.isActive("bulletList"))}>•</button>
-        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={buttonClass(editor.isActive("orderedList"))}>1.</button>
-        <button type="button" onClick={() => editor.chain().focus().undo().run()} className={buttonClass(false)}>↺</button>
-        <button type="button" onClick={() => editor.chain().focus().redo().run()} className={buttonClass(false)}>↻</button>
+        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} disabled={!editorState.canToggleBold} className={buttonClass(editorState.isBold)}>
+          Bold
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} disabled={!editorState.canToggleItalic} className={buttonClass(editorState.isItalic)}>
+          Italic
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleStrike().run()} disabled={!editorState.canToggleStrike} className={buttonClass(editorState.isStrike)}>
+          Strike
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleCode().run()} disabled={!editorState.canToggleCode} className={buttonClass(editorState.isCode)}>
+          Code
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={buttonClass(editorState.isH2)}>
+          H2
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={buttonClass(editorState.isH3)}>
+          H3
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={buttonClass(editorState.isBulletList)}>
+          Bullet list
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={buttonClass(editorState.isOrderedList)}>
+          Ordered list
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().toggleBlockquote().run()} className={buttonClass(editorState.isBlockquote)}>
+          Blockquote
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().undo().run()} disabled={!editorState.canUndo}>
+          Undo
+        </button>
+        <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={!editorState.canRedo}>
+          Redo
+        </button>
       </div>
     );
   };

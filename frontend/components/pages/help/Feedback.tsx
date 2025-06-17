@@ -1,47 +1,75 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { SendHorizontal } from "lucide-react";
 
 export const Feedback = () => {
   return (
-    <div>
-      <p className="mb-4">We value your feedback and continuously strive to improve Statify based on your suggestions.</p>
-      <form className="space-y-4 mt-2">
-        <label className="block">
-          <span className="text-sm font-medium">Your Email (optional)</span>
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            className="mt-1"
-          />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Feedback Type</span>
-          <select className="mt-1 w-full border rounded p-2">
-            <option>Feature Request</option>
-            <option>Bug Report</option>
-            <option>General Feedback</option>
-            <option>Other</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium">Message</span>
-          <textarea
-            className="mt-1 w-full border rounded p-2 min-h-[120px] resize-y"
-            placeholder="Describe your issue or suggestion..."
-            required
-          />
-        </label>
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="contactConsent" className="rounded" />
-          <label htmlFor="contactConsent" className="text-sm">I consent to being contacted about this feedback</label>
-        </div>
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
-          Submit Feedback
-        </button>
-      </form>
-    </div>
+    <Card className="border-border bg-card">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold">Kirim Masukan</CardTitle>
+        <CardDescription>
+          Kami sangat menghargai masukan Anda dan terus berupaya meningkatkan Statify berdasarkan saran Anda.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Anda (opsional)</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="anda@contoh.com"
+              className="w-full"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="feedbackType">Jenis Masukan</Label>
+            <Select>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih jenis masukan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="feature">Permintaan Fitur</SelectItem>
+                  <SelectItem value="bug">Laporan Bug</SelectItem>
+                  <SelectItem value="general">Masukan Umum</SelectItem>
+                  <SelectItem value="other">Lainnya</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="message">Pesan</Label>
+            <Textarea
+              id="message"
+              placeholder="Jelaskan masalah atau saran Anda..."
+              className="min-h-[120px] resize-y"
+              required
+            />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox id="contactConsent" />
+            <Label htmlFor="contactConsent" className="text-sm">
+              Saya setuju untuk dihubungi terkait masukan ini
+            </Label>
+          </div>
+        </form>
+      </CardContent>
+      <CardFooter>
+        <Button type="submit" className="w-full sm:w-auto">
+          <SendHorizontal className="mr-2 h-4 w-4" />
+          Kirim Masukan
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }; 

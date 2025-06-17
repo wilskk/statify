@@ -74,12 +74,6 @@ const baseTourSteps: TourStep[] = [
         defaultHorizontalPosition: 'left',
         icon: "ℹ️",
     },
-     {
-        id: "excel-applyHeaderStyling",
-        name: "applyHeaderStyling",
-        label: "Apply basic header styling",
-        tooltip: "Adds formatting to header rows to improve readability"
-      },
     {
         title: "Gaya Header",
         content: "Terapkan styling dasar (seperti tebal) pada baris header untuk keterbacaan yang lebih baik.",

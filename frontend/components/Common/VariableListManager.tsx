@@ -1,6 +1,7 @@
 import React, { FC, useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, FileQuestion } from "lucide-react";
+import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
+import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from 'lucide-react';
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
@@ -44,23 +45,7 @@ interface VariableListManagerProps {
     renderRightColumnFooter?: () => React.ReactNode;
 }
 
-// Helper function to get variable icon (default implementation)
-const defaultGetVariableIcon = (variable: Variable) => {
-    switch (variable.measure) {
-        case "scale":
-            return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        case "nominal":
-            return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        case "ordinal":
-            return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        case "unknown":
-            return <FileQuestion size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        default:
-            return variable.type === "STRING"
-                ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
-                : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-    }
-};
+
 
 // Helper function to get display name (default implementation)
 const defaultGetDisplayName = (variable: Variable): string => {

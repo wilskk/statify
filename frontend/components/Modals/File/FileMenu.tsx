@@ -30,7 +30,7 @@ const FileMenu: React.FC = () => {
                     Save
                 </MenubarItem>
                 <MenubarItem onClick={() => handleAction({ actionType: "SaveAs" })}>
-                    Save As...
+                    Save As
                 </MenubarItem>
                 <MenubarSub>
                     <MenubarItem onClick={() => openModal(ModalType.OpenData)}>
@@ -58,13 +58,13 @@ const FileMenu: React.FC = () => {
                     <MenubarSubTrigger>Import Data</MenubarSubTrigger>
                     <MenubarSubContent>
                         <MenubarItem onClick={() => openModal(ModalType.ImportExcel)}>
-                            Excel...
+                            Excel
                         </MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.ImportCSV)}>
-                            CSV Data...
+                            CSV Data
                         </MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.ImportClipboard)}>
-                            From Clipboard...
+                            From Clipboard
                         </MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
@@ -79,10 +79,10 @@ const FileMenu: React.FC = () => {
                         {/*  Database...*/}
                         {/*</MenubarItem>*/}
                         <MenubarItem onClick={() => openModal(ModalType.ExportExcel)}>
-                            Excel...
+                            Excel
                         </MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.ExportCSV)}>
-                            CSV Data...
+                            CSV Data
                         </MenubarItem>
                         {/*<MenubarItem onClick={() => openModal(ModalType.ExportTabDelimited)}>Tab-delimited...</MenubarItem>*/}
                         {/*<MenubarItem onClick={() => openModal(ModalType.ExportFixedText)}>Fixed Text...</MenubarItem>*/}

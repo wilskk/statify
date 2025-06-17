@@ -1,6 +1,7 @@
 import React, { cloneElement } from "react";
 import { Input } from "@/components/ui/input";
-import { ChevronRight } from "lucide-react";
+import { Search, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Recursive type for nested sections
 export type SectionItem = {
@@ -41,33 +42,36 @@ export const HelpContent: React.FC<HelpContentProps> = ({
 			const hasChildren = item.children && item.children.length > 0;
 
 			return (
-				<div key={item.key}>
+				<div key={item.key} className="animate-fadeIn" style={{ animationDelay: `${level * 50}ms` }}>
 					<a
 						href="#"
 						onClick={e => {
 							e.preventDefault();
 							onSectionSelect(item.key);
 						}}
-						className={`flex items-center justify-between w-full px-4 py-2 text-left rounded-md transition-colors duration-150 ${
+						className={cn(
+							"flex items-center justify-between w-full px-4 py-2.5 text-left rounded-md transition-all duration-200",
 							isActiveChild
-								? "bg-blue-100 text-blue-600 font-semibold"
+								? "bg-primary/10 text-primary font-medium"
 								: isSelected && !activeChildKey && level === 0
-								? "bg-gray-200 text-gray-800 font-semibold"
-								: "text-gray-600 hover:bg-gray-100"
-						}`}
+								? "bg-accent text-accent-foreground font-medium"
+								: "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
+							level > 0 && "text-sm"
+						)}
 						style={{ paddingLeft: `${1 + level * 1.5}rem` }}
 					>
 						<span>{item.label}</span>
 						{hasChildren && (
 							<ChevronRight
-								className={`w-5 h-5 transition-transform duration-200 ${
-									isExpanded ? "rotate-90" : ""
-								}`}
+								className={cn(
+									"w-4 h-4 text-muted-foreground transition-transform duration-200",
+									isExpanded && "transform rotate-90"
+								)}
 							/>
 						)}
 					</a>
 					{hasChildren && isExpanded && (
-						<div className="mt-1">
+						<div className="mt-1 space-y-1 overflow-hidden">
 							{renderSidebarItems(item.children!, level + 1)}
 						</div>
 					)}
@@ -78,7 +82,7 @@ export const HelpContent: React.FC<HelpContentProps> = ({
 
 	const renderContent = () => {
 		const selectedSection = sections.find(s => s.key === selectedSectionKey);
-		if (!selectedSection) return <div className="prose max-w-none"><h2>Welcome to the Help Center</h2><p>Please select a topic from the sidebar to get started.</p></div>;
+		if (!selectedSection) return <div className="prose max-w-none"><h2>Selamat datang di Pusat Bantuan</h2><p>Silakan pilih topik dari sidebar untuk memulai.</p></div>;
 
 		// If there's an active child, we need to render the parent's content
 		// but pass in the child's key to identify the sub-content.
@@ -107,25 +111,33 @@ export const HelpContent: React.FC<HelpContentProps> = ({
 	};
 
 	return (
-		<div className="flex h-full">
-			{/* Sidebar */}
-			<aside className="w-1/4 min-h-screen bg-white border-r p-4 space-y-4">
-				<h2 className="text-xl font-bold text-gray-800">Help Center</h2>
-				<Input
-					type="search"
-					placeholder="Search..."
-					value={searchValue}
-					onChange={onSearchChange}
-					className="w-full"
-				/>
-				<nav className="space-y-1">
+		<div className="flex flex-col lg:flex-row h-full min-h-[calc(100vh-4rem)]">
+			{/* Sidebar - Collapsible on mobile */}
+			<aside className="w-full lg:w-1/4 lg:min-h-screen bg-card border-r shadow-sm p-4 space-y-4">
+				<h2 className="text-2xl font-bold text-foreground">Pusat Bantuan</h2>
+				<div className="relative">
+					<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+					<Input
+						type="search"
+						placeholder="Cari panduan..."
+						value={searchValue}
+						onChange={onSearchChange}
+						className="w-full pl-9 bg-background/50"
+					/>
+				</div>
+				
+				<div className="h-px bg-border my-4"></div>
+				
+				<nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-12rem)]">
 					{renderSidebarItems(displaySections)}
 				</nav>
 			</aside>
 
 			{/* Main Content */}
-			<main className="w-3/4 p-8 overflow-y-auto">
-				{renderContent()}
+			<main className="w-full lg:w-3/4 p-6 lg:p-8 overflow-y-auto bg-background animate-fadeIn">
+				<div className="max-w-4xl mx-auto">
+					{renderContent()}
+				</div>
 			</main>
 		</div>
 	);

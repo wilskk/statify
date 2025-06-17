@@ -39,25 +39,25 @@ const Navbar: React.FC = () => {
           <MenubarMenu>
             <MenubarTrigger>Transform</MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.ComputeVariable)}>Compute Variable...</MenubarItem>
-                <MenubarItem disabled>Programmability Transformation...</MenubarItem>
-                <MenubarItem disabled>Count Values within Cases...</MenubarItem>
-                <MenubarItem disabled>Shift Values...</MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.ComputeVariable)}>Compute Variable</MenubarItem>
+                <MenubarItem disabled>Programmability Transformation</MenubarItem>
+                <MenubarItem disabled>Count Values within Cases</MenubarItem>
+                <MenubarItem disabled>Shift Values</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.RecodeSameVariables)}>Recode into Same Variables...</MenubarItem>
-                <MenubarItem disabled>Recode into Different Variables...</MenubarItem>
-                <MenubarItem disabled>Automatic Recode...</MenubarItem>
-                <MenubarItem disabled>Create Dummy Variables...</MenubarItem>
-                <MenubarItem disabled>Visual Binning...</MenubarItem>
-                <MenubarItem disabled>Optimal Binning...</MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.RecodeSameVariables)}>Recode into Same Variables</MenubarItem>
+                <MenubarItem disabled>Recode into Different Variables</MenubarItem>
+                <MenubarItem disabled>Automatic Recode</MenubarItem>
+                <MenubarItem disabled>Create Dummy Variables</MenubarItem>
+                <MenubarItem disabled>Visual Binning</MenubarItem>
+                <MenubarItem disabled>Optimal Binning</MenubarItem>
                 <MenubarItem disabled>Prepare Data for Modeling</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>Rank Cases...</MenubarItem>
+                <MenubarItem disabled>Rank Cases</MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>Date and Time Wizard...</MenubarItem>
-                <MenubarItem disabled>Create Time Series...</MenubarItem>
-                <MenubarItem disabled>Replace Missing Values...</MenubarItem>
-                <MenubarItem disabled>Random Number Generators...</MenubarItem>
+                <MenubarItem disabled>Date and Time Wizard</MenubarItem>
+                <MenubarItem disabled>Create Time Series</MenubarItem>
+                <MenubarItem disabled>Replace Missing Values</MenubarItem>
+                <MenubarItem disabled>Random Number Generators</MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem disabled>Run Pending Transforms</MenubarItem>
             </MenubarContent>
@@ -68,27 +68,27 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Descriptive Statistics</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>Descriptives...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Explore)}>Explore...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Frequencies)}>Frequencies</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>Descriptives</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Explore)}>Explore</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs</MenubarItem>
                         <MenubarSeparator />
                         {/* Ratio: Opens a modal for ratio statistics */}
-                        <MenubarItem onClick={() => openModal(ModalType.Ratio)}>Ratio...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.Ratio)}>Ratio</MenubarItem>
                         <MenubarSeparator />
                         {/* P-P Plots: Opens a modal for P-P plot generation */}
-                        <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>P-P Plots...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>P-P Plots</MenubarItem>
                         {/* Q-Q Plots: Opens a modal for Q-Q plot generation */}
-                        <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots...</MenubarItem>
+                        <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
                     <MenubarSubTrigger>Compare Means</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem disabled>One-Sample T Test...</MenubarItem>
-                        <MenubarItem disabled>Independent-Samples T Test...</MenubarItem>
-                        <MenubarItem disabled>Paired-Samples T Test...</MenubarItem>
-                        <MenubarItem disabled>One-Way ANOVA...</MenubarItem>
+                        <MenubarItem disabled>One-Sample T Test</MenubarItem>
+                        <MenubarItem disabled>Independent-Samples T Test</MenubarItem>
+                        <MenubarItem disabled>Paired-Samples T Test</MenubarItem>
+                        <MenubarItem disabled>One-Way ANOVA</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>

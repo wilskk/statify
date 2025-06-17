@@ -59,7 +59,7 @@ const EditMenu: React.FC = () => {
                 <MenubarItem
                     onClick={() => handleAction({ actionType: "PasteVariables" })}
                 >
-                    Paste Variables...
+                    Paste Variables
                 </MenubarItem>
                 <MenubarItem
                     onClick={() =>
@@ -88,17 +88,17 @@ const EditMenu: React.FC = () => {
                 <MenubarSeparator />
                 {/*<MenubarItem>Search Data Files</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND })}>
-                    Find...
+                    Find
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.REPLACE })}>
-                    Replace...
+                    Replace
                 </MenubarItem>
                 {/*<MenubarItem>Find Next</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE })}>
-                    Go to Case...
+                    Go to Case
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.VARIABLE })}>
-                    Go to Variable...
+                    Go to Variable
                 </MenubarItem>
                 {/*<MenubarItem>Go to Imputation...</MenubarItem>*/}
                 {/*<MenubarSeparator />*/}

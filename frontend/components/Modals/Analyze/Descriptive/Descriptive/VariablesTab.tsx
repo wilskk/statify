@@ -148,7 +148,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     className="mr-2 h-4 w-4"
                 />
                 <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
-                    Treat 'unknown' as Scale and allow selection
+                    Treat &apos;unknown&apos; as Scale and allow selection
                 </Label>
             </div>
         </>

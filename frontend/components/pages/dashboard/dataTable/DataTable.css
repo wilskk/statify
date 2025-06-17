@@ -1,4 +1,19 @@
 /* components/dataTable/DataTable.css */
+
+.col-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0 5px; /* Add some padding */
+}
+
+.col-header-container .colHeader {
+    margin-left: 5px; /* Space between icon and text */
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Add ellipsis for long text */
+}
 .handsontable th.grayed-row-header,
 .handsontable th.grayed-col-header {
     color: hsl(var(--muted-foreground));

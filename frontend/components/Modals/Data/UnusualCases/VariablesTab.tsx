@@ -2,8 +2,8 @@ import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import type { Variable } from "@/types/Variable"; // Import Variable directly
-import type { VariablesTabProps, UnusualCasesSource } from "../types"; // Import props from ../types
+import type { Variable } from "@/types/Variable";
+import type { VariablesTabProps, UnusualCasesSource } from "./types";
 
 // // Possible sources within this specific modal's variable lists (MOVED TO TYPES.TS)
 // type UnusualCasesSource = 'available' | 'analysis' | 'identifier';

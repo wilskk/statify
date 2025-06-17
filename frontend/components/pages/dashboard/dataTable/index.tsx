@@ -43,6 +43,7 @@ export default function Index() {
     const updateCells = useDataStore(state => state.updateCells);
     const data = useDataStore(state => state.data);
     const variables = useVariableStore(state => state.variables);
+    const variableMap = useMemo(() => new Map(variables.map(v => [v.columnIndex, v])), [variables]);
     const { viewMode } = useTableRefStore();
     const filterVarName = useMetaStore(state => state.meta.filter);
     const filterVarIndex = variables.find(v => v.name === filterVarName)?.columnIndex;
@@ -94,7 +95,6 @@ export default function Index() {
         }
     }, [actualNumCols]);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleAfterChange = useCallback(async (changes: any[] | null, source: any) => {
         if (!changes) return;
         const src = String(source).toLowerCase();
@@ -103,7 +103,7 @@ export default function Index() {
             const updates = mapChangesToUpdates(changes);
             // Normalize date input: replace slashes with dashes for SPSS date variables
             updates.forEach(u => {
-                const variable = variables.find(v => v.columnIndex === u.col);
+                const variable = variableMap.get(u.col);
                 if (variable && spssDateTypes.has(variable.type) && variable.width === 11 && typeof u.value === 'string') {
                     u.value = u.value.replace(/\//g, '-');
                 }

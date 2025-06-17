@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { OptionsTabProps } from "../types";
+import { OptionsTabProps } from "./types";
 
 const OptionsTab: React.FC<OptionsTabProps> = ({
     identificationCriteria,
