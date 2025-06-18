@@ -17,34 +17,50 @@ const ClassifyMenu: React.FC = () => {
         <MenubarSub>
             <MenubarSubTrigger>Classify</MenubarSubTrigger>
             <MenubarSubContent>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalTwoStepCluster)}
+                >
                     TwoStep Cluster
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalKMeansCluster)}
+                >
                     K-Means Cluster
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() =>
+                        openModal(ModalType.ModalHierarchicalCluster)
+                    }
+                >
                     Hierarchical Cluster
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalClusterSilhouettes)}
+                >
                     Cluster Silhouettes
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>
+                <MenubarItem onClick={() => openModal(ModalType.ModalTree)}>
                     Tree
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalDiscriminant)}
+                >
                     Discriminant
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalNearestNeighbor)}
+                >
                     Nearest Neighbor
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem disabled>
+                <MenubarItem onClick={() => openModal(ModalType.ModalROCCurve)}>
                     ROC Curve
                 </MenubarItem>
-                <MenubarItem disabled>
+                <MenubarItem
+                    onClick={() => openModal(ModalType.ModalROCAnalysis)}
+                >
                     ROC Analysis
                 </MenubarItem>
             </MenubarSubContent>

@@ -1,21 +1,24 @@
-import { ModalType, BaseModalProps } from '@/types/modalTypes';
+import { ModalType, BaseModalProps } from "@/types/modalTypes";
 
 // Import from Descriptive registry via index.ts
-import { 
+import {
     DESCRIPTIVE_MODAL_COMPONENTS,
     DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
-    getDescriptiveModalComponent
-} from './Descriptive';
+    getDescriptiveModalComponent,
+} from "./Descriptive";
 
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
- * 
+ *
  * This will gradually be expanded to include other analyze categories beyond Descriptive
  */
-export const ANALYZE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModalProps>> = {
+export const ANALYZE_MODAL_COMPONENTS: Record<
+    string,
+    React.ComponentType<BaseModalProps>
+> = {
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_COMPONENTS,
-    
+
     // Future categories will be added here
     // ...COMPARE_MEANS_MODAL_COMPONENTS,
     // ...NONPARAMETRIC_MODAL_COMPONENTS,
@@ -24,39 +27,43 @@ export const ANALYZE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseMo
 
 /**
  * getAnalyzeModalComponent - Get an analyze modal component by type
- * 
+ *
  * @param type - The type of modal to retrieve
  * @returns The React component for the specified modal type, or null if not found
  */
-export function getAnalyzeModalComponent(type: ModalType): React.ComponentType<BaseModalProps> | null {
+export function getAnalyzeModalComponent(
+    type: ModalType
+): React.ComponentType<BaseModalProps> | null {
     const Component = ANALYZE_MODAL_COMPONENTS[type];
-    
+
     if (!Component) {
         console.warn(`No analyze modal component registered for type: ${type}`);
         return null;
     }
-    
+
     return Component;
 }
 
 /**
  * ANALYZE_MODAL_CONTAINER_PREFERENCES - Container preferences for analyze modals
- * 
+ *
  * Combines preferences from all analyze sub-categories
  */
-export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "sidebar">> = {
+export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
+    Record<ModalType, "dialog" | "sidebar">
+> = {
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
-    
+
     // Future categories will be added here
 };
 
 /**
  * isAnalyzeModal - Check if a modal type belongs to the Analyze category
- * 
+ *
  * @param type - The modal type to check
  * @returns Whether the modal is an Analyze modal
  */
 export const isAnalyzeModal = (type: ModalType): boolean => {
     return type in ANALYZE_MODAL_COMPONENTS;
-}; 
+};

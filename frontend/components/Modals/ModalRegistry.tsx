@@ -1,211 +1,371 @@
-import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps, ModalCategory } from '@/types/modalTypes';
+import React, { lazy, Suspense } from "react";
+import { ModalType, BaseModalProps, ModalCategory } from "@/types/modalTypes";
 
 // Import modal registries
-import { FILE_MODAL_COMPONENTS, FILE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/File/';
-import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Data/';
-import { ANALYZE_MODAL_COMPONENTS, ANALYZE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze';
-import { EDIT_MODAL_COMPONENTS, EDIT_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Edit/';
-import { TRANSFORM_MODAL_COMPONENTS, TRANSFORM_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Transform';
+import {
+    FILE_MODAL_COMPONENTS,
+    FILE_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/File/";
+import {
+    DATA_MODAL_COMPONENTS,
+    DATA_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/Data/";
+import {
+    ANALYZE_MODAL_COMPONENTS,
+    ANALYZE_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/Analyze";
+import {
+    EDIT_MODAL_COMPONENTS,
+    EDIT_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/Edit/";
+import {
+    TRANSFORM_MODAL_COMPONENTS,
+    TRANSFORM_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/Transform";
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
-const ModalAutomaticLinearModeling = lazy(() => import('@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling'));
-const ModalLinear = lazy(() => import('@/components/Modals/Regression/Linear/ModalLinear'));
-const Statistics = lazy(() => import('@/components/Modals/Regression/Linear/Statistics'));
-const SaveLinear = lazy(() => import('@/components/Modals/Regression/Linear/SaveLinear'));
-const OptionsLinear = lazy(() => import('@/components/Modals/Regression/Linear/OptionsLinear'));
-const PlotsLinear = lazy(() => import('@/components/Modals/Regression/Linear/PlotsLinear'));
-const ModalCurveEstimation = lazy(() => import('@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation'));
-const ModalPartialLeastSquares = lazy(() => import('@/components/Modals/Regression/PartialLeastSquares/ModalPartialLeastSquares'));
-const ModalBinaryLogistic = lazy(() => import('@/components/Modals/Regression/BinaryLogistic/ModalBinaryLogistic'));
-const ModalMultinomialLogistic = lazy(() => import('@/components/Modals/Regression/MultinomialLogistic/ModalMultinomialLogistic'));
-const ModalOrdinal = lazy(() => import('@/components/Modals/Regression/Ordinal/ModalOrdinal'));
-const ModalProbit = lazy(() => import('@/components/Modals/Regression/Probit/ModalProbit'));
-const ModalNonlinear = lazy(() => import('@/components/Modals/Regression/Nonlinear/ModalNonlinear'));
-const ModalTwoStageLeastSquares = lazy(() => import('@/components/Modals/Regression/TwoStageLeastSquares/ModalTwoStageLeastSquares'));
-const ModalWeightEstimation = lazy(() => import('@/components/Modals/Regression/WeightEstimation/ModalWeightEstimation'));
-const ModalQuantiles = lazy(() => import('@/components/Modals/Regression/Quantiles/ModalQuantiles'));
-const ModalOptimalScaling = lazy(() => import('@/components/Modals/Regression/OptimalScaling/ModalOptimalScaling'));
+const ModalAutomaticLinearModeling = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling"
+        )
+);
+const ModalLinear = lazy(
+    () => import("@/components/Modals/Regression/Linear/ModalLinear")
+);
+const Statistics = lazy(
+    () => import("@/components/Modals/Regression/Linear/Statistics")
+);
+const SaveLinear = lazy(
+    () => import("@/components/Modals/Regression/Linear/SaveLinear")
+);
+const OptionsLinear = lazy(
+    () => import("@/components/Modals/Regression/Linear/OptionsLinear")
+);
+const PlotsLinear = lazy(
+    () => import("@/components/Modals/Regression/Linear/PlotsLinear")
+);
+const ModalCurveEstimation = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation"
+        )
+);
+const ModalPartialLeastSquares = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/PartialLeastSquares/ModalPartialLeastSquares"
+        )
+);
+const ModalBinaryLogistic = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/BinaryLogistic/ModalBinaryLogistic"
+        )
+);
+const ModalMultinomialLogistic = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/MultinomialLogistic/ModalMultinomialLogistic"
+        )
+);
+const ModalOrdinal = lazy(
+    () => import("@/components/Modals/Regression/Ordinal/ModalOrdinal")
+);
+const ModalProbit = lazy(
+    () => import("@/components/Modals/Regression/Probit/ModalProbit")
+);
+const ModalNonlinear = lazy(
+    () => import("@/components/Modals/Regression/Nonlinear/ModalNonlinear")
+);
+const ModalTwoStageLeastSquares = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/TwoStageLeastSquares/ModalTwoStageLeastSquares"
+        )
+);
+const ModalWeightEstimation = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/WeightEstimation/ModalWeightEstimation"
+        )
+);
+const ModalQuantiles = lazy(
+    () => import("@/components/Modals/Regression/Quantiles/ModalQuantiles")
+);
+const ModalOptimalScaling = lazy(
+    () =>
+        import(
+            "@/components/Modals/Regression/OptimalScaling/ModalOptimalScaling"
+        )
+);
 
 // Lazy load chart modals
-const SimpleBarModal = lazy(() => import('@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal'));
-const ChartBuilderModal = lazy(() => import('@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal'));
+const SimpleBarModal = lazy(
+    () =>
+        import(
+            "@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal"
+        )
+);
+const ChartBuilderModal = lazy(
+    () => import("@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal")
+);
 
 // Lazy load time series modals
-const SmoothingModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/SmoothingModal'));
-const DecompositionModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/DecompositionModal'));
-const AutocorrelationModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/AutocorrelationModal'));
-const UnitRootTestModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/UnitRootTestModal'));
-const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal'));
+const SmoothingModal = lazy(
+    () => import("@/components/Modals/Analyze/TimeSeries/SmoothingModal")
+);
+const DecompositionModal = lazy(
+    () => import("@/components/Modals/Analyze/TimeSeries/DecompositionModal")
+);
+const AutocorrelationModal = lazy(
+    () => import("@/components/Modals/Analyze/TimeSeries/AutocorrelationModal")
+);
+const UnitRootTestModal = lazy(
+    () => import("@/components/Modals/Analyze/TimeSeries/UnitRootTestModal")
+);
+const BoxJenkinsModelModal = lazy(
+    () => import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal")
+);
+
+// Lazy load classification modals
+const KMeansClusterModal = lazy(
+    () =>
+        import(
+            "@/components/Modals/Analyze/classify/k-means-cluster/k-means-cluster-main"
+        )
+);
 
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
 const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
-  <div className="p-6 text-center">
-    <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
-    <p className="text-sm text-muted-foreground">Loading...</p>
-  </div>
+    <div className="p-6 text-center">
+        <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
 );
 
 /**
  * Tipe registry komponen modal
- * 
+ *
  * Memetakan setiap ModalType ke komponen React yang sesuai
  */
 type ModalComponentRegistry = {
-  [key in ModalType]?: React.ComponentType<BaseModalProps>;
+    [key in ModalType]?: React.ComponentType<BaseModalProps>;
 };
 
 /**
  * withSuspense - HOC untuk membungkus komponen lazy-loaded dengan Suspense
- * 
+ *
  * @param Component - Komponen yang di-lazy load
  * @returns Komponen yang dibungkus dengan Suspense
  */
-function withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
-  const WrappedComponent = (props: BaseModalProps) => (
-    <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
-      <Component {...props} />
-    </Suspense>
-  );
-  
-  WrappedComponent.displayName = `withSuspense(${Component.displayName || Component.name || 'Component'})`;
-  return WrappedComponent;
+function withSuspense(
+    Component: React.ComponentType<BaseModalProps>
+): React.ComponentType<BaseModalProps> {
+    const WrappedComponent = (props: BaseModalProps) => (
+        <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
+            <Component {...props} />
+        </Suspense>
+    );
+
+    WrappedComponent.displayName = `withSuspense(${
+        Component.displayName || Component.name || "Component"
+    })`;
+    return WrappedComponent;
 }
 
 /**
  * MODAL_COMPONENTS - Registry utama semua komponen modal
- * 
+ *
  * Ini adalah registry terpusat yang memetakan setiap ModalType ke komponen React spesifik.
  * Ketika menambahkan modal baru, cukup mendaftarkannya disini.
- * 
+ *
  * Note: Menggunakan 'as' type assertion untuk mengatasi perbedaan props
  * karena BaseModalProps sudah memiliki semua props yang diperlukan sebagai optional.
  */
 export const MODAL_COMPONENTS: ModalComponentRegistry = {
-  // File modals - from dedicated registry
-  ...FILE_MODAL_COMPONENTS,
-  
-  // Edit modals - from dedicated registry
-  ...EDIT_MODAL_COMPONENTS,
-  
-  // Data modals - from dedicated registry
-  ...DATA_MODAL_COMPONENTS,
-  
-  // Analyze modals - from dedicated registry
-  ...ANALYZE_MODAL_COMPONENTS,
-  
-  // Transform modals - from dedicated registry
-  ...TRANSFORM_MODAL_COMPONENTS,
-  
-  // Regression modals - lazy loaded
-  [ModalType.ModalAutomaticLinearModeling]: withSuspense(ModalAutomaticLinearModeling as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalLinear]: withSuspense(ModalLinear as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Statistics]: withSuspense(Statistics as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.SaveLinear]: withSuspense(SaveLinear as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.OptionsLinear]: withSuspense(OptionsLinear as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.PlotsLinear]: withSuspense(PlotsLinear as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalCurveEstimation]: withSuspense(ModalCurveEstimation as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalPartialLeastSquares]: withSuspense(ModalPartialLeastSquares as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalBinaryLogistic]: withSuspense(ModalBinaryLogistic as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalMultinomialLogistic]: withSuspense(ModalMultinomialLogistic as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalOrdinal]: withSuspense(ModalOrdinal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalProbit]: withSuspense(ModalProbit as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalNonlinear]: withSuspense(ModalNonlinear as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalWeightEstimation]: withSuspense(ModalWeightEstimation as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalTwoStageLeastSquares]: withSuspense(ModalTwoStageLeastSquares as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalQuantiles]: withSuspense(ModalQuantiles as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalOptimalScaling]: withSuspense(ModalOptimalScaling as any) as React.ComponentType<BaseModalProps>,
-  
-  // Chart modals - lazy loaded
-  [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.SimpleBarModal]: withSuspense(SimpleBarModal as any) as React.ComponentType<BaseModalProps>,
-  
-  // Time series modals - lazy loaded
-  [ModalType.Smoothing]: withSuspense(SmoothingModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Decomposition]: withSuspense(DecompositionModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Autocorrelation]: withSuspense(AutocorrelationModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.UnitRootTest]: withSuspense(UnitRootTestModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.BoxJenkinsModel]: withSuspense(BoxJenkinsModelModal as any) as React.ComponentType<BaseModalProps>,
+    // File modals - from dedicated registry
+    ...FILE_MODAL_COMPONENTS,
+
+    // Edit modals - from dedicated registry
+    ...EDIT_MODAL_COMPONENTS,
+
+    // Data modals - from dedicated registry
+    ...DATA_MODAL_COMPONENTS,
+
+    // Analyze modals - from dedicated registry
+    ...ANALYZE_MODAL_COMPONENTS,
+
+    // Transform modals - from dedicated registry
+    ...TRANSFORM_MODAL_COMPONENTS,
+
+    // Regression modals - lazy loaded
+    [ModalType.ModalAutomaticLinearModeling]: withSuspense(
+        ModalAutomaticLinearModeling as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalLinear]: withSuspense(
+        ModalLinear as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.Statistics]: withSuspense(
+        Statistics as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.SaveLinear]: withSuspense(
+        SaveLinear as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.OptionsLinear]: withSuspense(
+        OptionsLinear as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.PlotsLinear]: withSuspense(
+        PlotsLinear as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalCurveEstimation]: withSuspense(
+        ModalCurveEstimation as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalPartialLeastSquares]: withSuspense(
+        ModalPartialLeastSquares as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalBinaryLogistic]: withSuspense(
+        ModalBinaryLogistic as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalMultinomialLogistic]: withSuspense(
+        ModalMultinomialLogistic as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalOrdinal]: withSuspense(
+        ModalOrdinal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalProbit]: withSuspense(
+        ModalProbit as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalNonlinear]: withSuspense(
+        ModalNonlinear as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalWeightEstimation]: withSuspense(
+        ModalWeightEstimation as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalTwoStageLeastSquares]: withSuspense(
+        ModalTwoStageLeastSquares as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalQuantiles]: withSuspense(
+        ModalQuantiles as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalOptimalScaling]: withSuspense(
+        ModalOptimalScaling as any
+    ) as React.ComponentType<BaseModalProps>,
+
+    // Chart modals - lazy loaded
+    [ModalType.ChartBuilderModal]: withSuspense(
+        ChartBuilderModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.SimpleBarModal]: withSuspense(
+        SimpleBarModal as any
+    ) as React.ComponentType<BaseModalProps>,
+
+    // Time series modals - lazy loaded
+    [ModalType.Smoothing]: withSuspense(
+        SmoothingModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.Decomposition]: withSuspense(
+        DecompositionModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.Autocorrelation]: withSuspense(
+        AutocorrelationModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.UnitRootTest]: withSuspense(
+        UnitRootTestModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.BoxJenkinsModel]: withSuspense(
+        BoxJenkinsModelModal as any
+    ) as React.ComponentType<BaseModalProps>,
+
+    // Classification modals - lazy loaded
+    [ModalType.ModalKMeansCluster]: withSuspense(
+        KMeansClusterModal as any
+    ) as React.ComponentType<BaseModalProps>,
 };
 
 /**
  * getModalComponent - Fungsi untuk mendapatkan komponen modal berdasarkan tipe
- * 
+ *
  * @param type - Tipe modal yang diinginkan
  * @returns Komponen React untuk tipe modal tersebut, atau null jika tidak ditemukan
  */
-export function getModalComponent(type: ModalType): React.ComponentType<BaseModalProps> | null {
-  const Component = MODAL_COMPONENTS[type];
-  
-  if (!Component) {
-    console.warn(`No component registered for modal type: ${type}`);
-    return null;
-  }
-  
-  return Component;
+export function getModalComponent(
+    type: ModalType
+): React.ComponentType<BaseModalProps> | null {
+    const Component = MODAL_COMPONENTS[type];
+
+    if (!Component) {
+        console.warn(`No component registered for modal type: ${type}`);
+        return null;
+    }
+
+    return Component;
 }
 
 /**
  * MODAL_CONTAINER_PREFERENCES - Preferensi container untuk modal tertentu
- * 
+ *
  * Beberapa modal mungkin lebih cocok ditampilkan dalam format tertentu.
  * Misalnya, modal kompleks seperti ChartBuilder lebih baik selalu dialog.
- * 
+ *
  */
-export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "sidebar">> = {
-  // Data modals - from dedicated preferences
-  ...DATA_MODAL_CONTAINER_PREFERENCES,
-  
-  // File modals - from dedicated preferences
-  ...FILE_MODAL_CONTAINER_PREFERENCES,
-  
-  // Edit modals - from dedicated preferences
-  ...EDIT_MODAL_CONTAINER_PREFERENCES,
-  
-  // Analyze modals - from dedicated preferences
-  ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
-  
-  // Transform modals - from dedicated preferences
-  ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,
-  
-  // Chart modals yang kompleks selalu sebagai dialog
-  [ModalType.ChartBuilderModal]: "dialog",
-  [ModalType.SimpleBarModal]: "sidebar",
-  
-  // Modal dengan form panjang lebih baik sebagai sidebar
-  [ModalType.ModalLinear]: "sidebar",
-  [ModalType.ModalCurveEstimation]: "sidebar",
-  [ModalType.ModalBinaryLogistic]: "sidebar",
+export const MODAL_CONTAINER_PREFERENCES: Partial<
+    Record<ModalType, "dialog" | "sidebar">
+> = {
+    // Data modals - from dedicated preferences
+    ...DATA_MODAL_CONTAINER_PREFERENCES,
+
+    // File modals - from dedicated preferences
+    ...FILE_MODAL_CONTAINER_PREFERENCES,
+
+    // Edit modals - from dedicated preferences
+    ...EDIT_MODAL_CONTAINER_PREFERENCES,
+
+    // Analyze modals - from dedicated preferences
+    ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
+
+    // Transform modals - from dedicated preferences
+    ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,
+
+    // Chart modals yang kompleks selalu sebagai dialog
+    [ModalType.ChartBuilderModal]: "dialog",
+    [ModalType.SimpleBarModal]: "sidebar",
+
+    // Modal dengan form panjang lebih baik sebagai sidebar
+    [ModalType.ModalLinear]: "sidebar",
+    [ModalType.ModalCurveEstimation]: "sidebar",
+    [ModalType.ModalBinaryLogistic]: "sidebar",
+    [ModalType.ModalKMeansCluster]: "sidebar",
 };
 
 /**
  * getModalContainerType - Fungsi untuk menentukan jenis container yang sesuai
- * 
+ *
  * @param type - Tipe modal
  * @param fallback - Jenis container default jika tidak ada preferensi
  * @param isMobile - Flag untuk menandakan apakah pengguna menggunakan perangkat mobile
  * @returns Jenis container yang sesuai ("dialog" atau "sidebar")
  */
 export function getModalContainerType(
-  type: ModalType,
-  fallback: "dialog" | "sidebar" = "dialog",
-  isMobile: boolean = false
+    type: ModalType,
+    fallback: "dialog" | "sidebar" = "dialog",
+    isMobile: boolean = false
 ): "dialog" | "sidebar" {
-  // Mobile devices always use dialog
-  if (isMobile) {
-    return "dialog";
-  }
-  
-  // Check for modal-specific preference
-  const preference = MODAL_CONTAINER_PREFERENCES[type];
-  
-  // If no preference is defined, use the fallback
-  if (!preference) {
-    return fallback;
-  }
-  
-  // Return the explicit preference
-  return preference;
-} 
+    // Mobile devices always use dialog
+    if (isMobile) {
+        return "dialog";
+    }
+
+    // Check for modal-specific preference
+    const preference = MODAL_CONTAINER_PREFERENCES[type];
+
+    // If no preference is defined, use the fallback
+    if (!preference) {
+        return fallback;
+    }
+
+    // Return the explicit preference
+    return preference;
+}

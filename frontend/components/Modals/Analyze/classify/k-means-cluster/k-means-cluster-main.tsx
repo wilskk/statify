@@ -9,16 +9,13 @@ import { KMeansClusterDialog } from "@/components/Modals/Analyze/classify/k-mean
 import { KMeansClusterIterate } from "@/components/Modals/Analyze/classify/k-means-cluster/iterate";
 import { KMeansClusterSave } from "@/components/Modals/Analyze/classify/k-means-cluster/save";
 import { KMeansClusterOptions } from "@/components/Modals/Analyze/classify/k-means-cluster/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeKMeansCluster } from "@/services/analyze/classify/k-means-cluster/k-means-cluster-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
-export const KMeansClusterContainer = ({
-    onClose,
-}: KMeansClusterContainerProps) => {
+const KMeansClusterContainer = ({ onClose }: KMeansClusterContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
     const tempVariables = useMemo(
@@ -105,54 +102,53 @@ export const KMeansClusterContainer = ({
     };
 
     return (
-        <Dialog open={isMainOpen} onOpenChange={handleClose}>
-            <DialogTitle></DialogTitle>
-            <DialogContent>
-                <KMeansClusterDialog
-                    isMainOpen={isMainOpen}
-                    setIsMainOpen={setIsMainOpen}
-                    setIsIterateOpen={setIsIterateOpen}
-                    setIsSaveOpen={setIsSaveOpen}
-                    setIsOptionsOpen={setIsOptionsOpen}
-                    updateFormData={(field, value) =>
-                        updateFormData("main", field, value)
-                    }
-                    data={formData.main}
-                    globalVariables={tempVariables}
-                    onContinue={(mainData) => executeKMeansCluster(mainData)}
-                    onReset={resetFormData}
-                />
+        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+            <KMeansClusterDialog
+                isMainOpen={isMainOpen}
+                setIsMainOpen={setIsMainOpen}
+                setIsIterateOpen={setIsIterateOpen}
+                setIsSaveOpen={setIsSaveOpen}
+                setIsOptionsOpen={setIsOptionsOpen}
+                updateFormData={(field, value) =>
+                    updateFormData("main", field, value)
+                }
+                data={formData.main}
+                globalVariables={tempVariables}
+                onContinue={(mainData) => executeKMeansCluster(mainData)}
+                onReset={resetFormData}
+            />
 
-                {/* Iterate */}
-                <KMeansClusterIterate
-                    isIterateOpen={isIterateOpen}
-                    setIsIterateOpen={setIsIterateOpen}
-                    updateFormData={(field, value) =>
-                        updateFormData("iterate", field, value)
-                    }
-                    data={formData.iterate}
-                />
+            {/* Iterate */}
+            <KMeansClusterIterate
+                isIterateOpen={isIterateOpen}
+                setIsIterateOpen={setIsIterateOpen}
+                updateFormData={(field, value) =>
+                    updateFormData("iterate", field, value)
+                }
+                data={formData.iterate}
+            />
 
-                {/* Save */}
-                <KMeansClusterSave
-                    isSaveOpen={isSaveOpen}
-                    setIsSaveOpen={setIsSaveOpen}
-                    updateFormData={(field, value) =>
-                        updateFormData("save", field, value)
-                    }
-                    data={formData.save}
-                />
+            {/* Save */}
+            <KMeansClusterSave
+                isSaveOpen={isSaveOpen}
+                setIsSaveOpen={setIsSaveOpen}
+                updateFormData={(field, value) =>
+                    updateFormData("save", field, value)
+                }
+                data={formData.save}
+            />
 
-                {/* Options */}
-                <KMeansClusterOptions
-                    isOptionsOpen={isOptionsOpen}
-                    setIsOptionsOpen={setIsOptionsOpen}
-                    updateFormData={(field, value) =>
-                        updateFormData("options", field, value)
-                    }
-                    data={formData.options}
-                />
-            </DialogContent>
-        </Dialog>
+            {/* Options */}
+            <KMeansClusterOptions
+                isOptionsOpen={isOptionsOpen}
+                setIsOptionsOpen={setIsOptionsOpen}
+                updateFormData={(field, value) =>
+                    updateFormData("options", field, value)
+                }
+                data={formData.options}
+            />
+        </div>
     );
 };
+
+export default KMeansClusterContainer;
