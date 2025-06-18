@@ -104,7 +104,6 @@
     "@types/pdfkit": "^0.13.0",
     "@types/pdfmake": "^0.2.11",
     "@types/raf": "^3.4.3",
-    "@types/react": "^18.0.0",
     "@types/react-chartjs-2": "^2.5.7",
     "@types/react-dom": "^18.0.0",
     "@types/react-modal": "^3.16.3",
@@ -118,10 +117,7 @@
     "mini-css-extract-plugin": "^2.9.2",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
-    "typescript": "^5"
-  },
-  "overrides": {
-    "@types/react": "19.0.4",
-    "@types/react-dom": "19.0.2"
+    "typescript": "^5",
+    "@types/react": "^18.0.0"
   }
 }
