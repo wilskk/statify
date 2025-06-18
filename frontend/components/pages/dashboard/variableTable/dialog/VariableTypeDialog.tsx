@@ -139,21 +139,9 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     ], []);
 
     useEffect(() => {
-        const defaultDateFormat = dateFormats.find(f => f.value === dateFormat);
-        if (defaultDateFormat) {
-            if (selectedType === "DATE") {
-                setWidth(defaultDateFormat.width);
-            }
-        }
-
-        const defaultDollarFormat = dollarFormats.find(f => f.value === "$### ###,###.##");
-        if (defaultDollarFormat) {
-            if (selectedType === "DOLLAR") {
-                setWidth(defaultDollarFormat.width);
-                setDecimals(defaultDollarFormat.decimals);
-            }
-        }
-    }, [selectedType, dateFormats, dollarFormats]);
+        setDateFormat(initialType);
+        setDollarFormat(initialType === 'DOLLAR' ? "$### ###,###.##" : initialType);
+    }, [initialType]);
 
     // Set default values based on type
     useEffect(() => {
@@ -180,8 +168,15 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                 setWidth(format.width);
                 setDecimals(format.decimals);
             } else {
-                setWidth(8);
-                setDecimals(2);
+                // Fallback for DOLLAR if format not found (e.g., during initial load)
+                const defaultFormat = dollarFormats.find(f => f.value === "$### ###,###.##");
+                if(defaultFormat){
+                    setWidth(defaultFormat.width);
+                    setDecimals(defaultFormat.decimals);
+                } else {
+                    setWidth(8);
+                    setDecimals(2);
+                }
             }
         } else if (selectedType === "CUSTOM_CURRENCY") {
             setWidth(8);

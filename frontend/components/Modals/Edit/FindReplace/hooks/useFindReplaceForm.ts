@@ -74,133 +74,84 @@ export const useFindReplaceForm = ({
         // setFindError(""); // Avoid clearing find error here, let actions decide
     }, [dataTableRef]);
 
-    const performSearch = useCallback(() => {
-        // Case 1: In Replace tab and Find input is empty - don't search, don't error on findText.
+    const performSearchCallback = useCallback(() => {
+        // The search logic is now wrapped in a stable callback
         if (activeTab === TabType.REPLACE && !findText.trim()) {
-            clearSearch(); // Clear previous results if any
-            // setFindError(""); // No error for empty find in replace mode
+            clearSearch();
             return;
         }
-
-        // Case 2: Find input is empty (and not covered by case 1, so must be Find tab)
         if (!findText.trim()) {
             setFindError("Find text cannot be empty.");
-            // To prevent results from a previous non-empty search lingering when input becomes empty then non-empty again before debounce clears it via useEffect.
-            setSearchResults([]); 
+            setSearchResults([]);
             setCurrentSearchResultIndex(-1);
             return;
         }
-
-        // Case 3: Column not selected
         if (selectedColumnIndex === -1) {
             setFindError("Please select a valid column.");
-            // To prevent results from a previous valid column search lingering.
-            setSearchResults([]); 
+            setSearchResults([]);
             setCurrentSearchResultIndex(-1);
             return;
         }
-
-        // If all checks pass, error will be cleared by useEffect before debounce, 
-        // or by this function if results are found.
-        // setFindError(""); // Moved to useEffect initiating the search process
 
         const currentSearchOptions = { findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab };
         if (JSON.stringify(currentSearchOptions) === JSON.stringify(lastSearchOptions) && searchResults.length > 0) {
             return;
         }
-
         const results: Array<{row: number, col: number}> = [];
         const searchData = data;
-
         for (let r = 0; r < searchData.length; r++) {
             const cellValue = searchData[r]?.[selectedColumnIndex];
-            let actualValue = String(cellValue === null || cellValue === undefined ? "" : cellValue);
+            let actualValue = String(cellValue ?? "");
             let term = findText;
-
             if (!matchCase) {
                 actualValue = actualValue.toLowerCase();
                 term = term.toLowerCase();
             }
-
             let isMatch = false;
             switch (matchTo) {
-                case "contains":
-                    isMatch = actualValue.includes(term);
-                    break;
-                case "entire_cell":
-                    isMatch = actualValue === term;
-                    break;
-                case "begins_with":
-                    isMatch = actualValue.startsWith(term);
-                    break;
-                case "ends_with":
-                    isMatch = actualValue.endsWith(term);
-                    break;
+                case "contains": isMatch = actualValue.includes(term); break;
+                case "entire_cell": isMatch = actualValue === term; break;
+                case "begins_with": isMatch = actualValue.startsWith(term); break;
+                case "ends_with": isMatch = actualValue.endsWith(term); break;
             }
-
-            if (isMatch) {
-                results.push({ row: r, col: selectedColumnIndex });
-            }
+            if (isMatch) results.push({ row: r, col: selectedColumnIndex });
         }
         setSearchResults(results);
         setCurrentSearchResultIndex(-1);
         setLastSearchOptions(currentSearchOptions);
+        setFindError(results.length === 0 ? "No results found." : "");
+    }, [data, findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab, lastSearchOptions, clearSearch, searchResults.length]);
 
-        if (results.length === 0) {
-             setFindError("No results found."); // Set error if no results
-        } else {
-            setFindError(""); // Clear error if results are found
-        }
-    }, [data, findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab, lastSearchOptions, clearSearch]);
-
-
-    // This useEffect triggers search or clears results based on input changes with debounce
+    const performSearchRef = useRef(performSearchCallback);
     useEffect(() => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
+        performSearchRef.current = performSearchCallback;
+    });
+
+    useEffect(() => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
         if (findText.trim() === "") {
             clearSearch();
             setIsLoadingSearch(false);
-            setFindError(""); // Clear error when input is actively cleared
+            setFindError("");
             return;
         }
-
         if (selectedColumnIndex === -1) {
-            clearSearch(); 
+            clearSearch();
             setIsLoadingSearch(false);
             setFindError("Please select a column to search in.");
             return;
         }
 
-        // If conditions are met for a search, clear previous error and set loading.
-        setFindError(""); // Clear any previous error message before starting new search process 
+        setFindError("");
         setIsLoadingSearch(true);
-
         debounceTimerRef.current = setTimeout(() => {
-            performSearch(); // This will set findError accordingly
+            performSearchRef.current();
             setIsLoadingSearch(false);
-        }, 2000);
+        }, 500); // Reduced debounce time for better UX
 
-        return () => { // Cleanup on unmount or before re-run
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
-        };
-    }, [
-        findText, 
-        selectedColumnName, // Ensures effect runs if column name changes (indirectly selectedColumnIndex)
-        selectedColumnIndex, 
-        matchCase, 
-        matchTo, 
-        activeTab, 
-        direction, 
-        performSearch, // useCallback ensures stable reference
-        clearSearch    // useCallback ensures stable reference
-    ]);
-    // Note: selectedColumnName is included because selectedColumnIndex depends on it.
-
+        return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
+    }, [findText, selectedColumnIndex, matchCase, matchTo, activeTab, direction, clearSearch]);
 
     const navigateToResult = useCallback((index: number) => {
         if (index >= 0 && index < searchResults.length) {
@@ -208,7 +159,7 @@ export const useFindReplaceForm = ({
             const hotInstance = dataTableRef?.current?.hotInstance;
             if (hotInstance) {
                 hotInstance.selectCell(row, col);
-                hotInstance.scrollViewportTo(row, col, true, true); // scroll to cell, bringing it to top-left if possible
+                hotInstance.scrollViewportTo(row, col, true, true);
             }
             setCurrentSearchResultIndex(index);
         } else {
@@ -218,16 +169,15 @@ export const useFindReplaceForm = ({
         }
     }, [searchResults, dataTableRef]);
 
+    const performSearch = performSearchCallback; // Keep the name for other handlers
 
     const handleFindNext = () => {
         if(searchResults.length === 0 || JSON.stringify(lastSearchOptions) !== JSON.stringify({ findText, selectedColumnIndex, matchCase, matchTo, direction, activeTab })){
-            performSearch(); // Perform search if no results or options changed
-            // After performSearch, searchResults and currentSearchResultIndex are updated.
-            // We want to navigate to the first result if any.
-             if (searchResults.length > 0) { // Check searchResults directly as state update might be async
+            performSearch(); 
+             if (searchResults.length > 0) { 
                 navigateToResult(0);
             } else {
-                navigateToResult(-1); // No results
+                navigateToResult(-1);
             }
             return;
         }

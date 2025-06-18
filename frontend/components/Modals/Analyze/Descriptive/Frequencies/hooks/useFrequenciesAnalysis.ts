@@ -7,7 +7,7 @@ import type {
   FrequencyTable,
   DescriptiveStatistics
 } from '../types';
-import { useAnalysisData } from '@/hooks/useVariableData';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { formatFrequencyTable, formatStatisticsTable } from '../utils';
 
 export interface FrequenciesAnalysisResult {

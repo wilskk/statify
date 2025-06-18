@@ -25,7 +25,6 @@ export function useVariableTableUpdates() {
         addVariable,
         addMultipleVariables,
         updateMultipleFields,
-        deleteVariable,
         ensureCompleteVariables,
         insertVariableAt,
         removeVariableAt
@@ -33,7 +32,6 @@ export function useVariableTableUpdates() {
 
     const {
         addColumns,
-        deleteColumn,
         validateVariableData,
         ensureColumns
     } = useDataStore();
@@ -168,10 +166,8 @@ export function useVariableTableUpdates() {
         addVariable,
         addMultipleVariables,
         updateMultipleFields,
-        deleteVariable,
         ensureCompleteVariables,
         addColumns,
-        deleteColumn,
         validateVariableData,
         ensureColumns,
         insertVariableAt,

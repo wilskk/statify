@@ -227,7 +227,7 @@ export const usePropertiesEditor = ({
     const handleVariableChange = useCallback((index: number) => {
         saveCurrentVariableToModifiedList(); // Save state of the outgoing variable
         setSelectedVariableIndex(index);
-    }, [modifiedVariables, saveCurrentVariableToModifiedList]);
+    }, [saveCurrentVariableToModifiedList]);
 
     const handleVariableFieldChange = useCallback((field: keyof Variable, value: any) => {
         if (!currentVariable) return;

@@ -148,7 +148,7 @@ export default function Index() {
         } catch (error) {
             console.error('Error in handleAfterChange:', error);
         }
-    }, [debouncedUpdateCells, actualNumCols]);
+    }, [debouncedUpdateCells, actualNumCols, variableMap]);
 
     // When switching back to numeric mode, convert any remaining labels to codes
     useEffect(() => {
@@ -166,7 +166,7 @@ export default function Index() {
             });
             if (updates.length) updateCells(updates);
         }
-    }, [viewMode]);
+    }, [viewMode, data, variables, updateCells]);
 
     // Cancel pending debounced calls on unmount
     useEffect(() => {

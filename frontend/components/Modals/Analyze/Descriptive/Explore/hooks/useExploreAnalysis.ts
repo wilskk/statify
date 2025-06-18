@@ -3,7 +3,7 @@ import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
 import { ExploreAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatDescriptivesTable, formatMEstimatorsTable, formatPercentilesTable, formatExtremeValuesTable } from '../utils';
-import { useAnalysisData } from '@/hooks/useVariableData';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 
 interface GroupedData {
     [key: string]: {

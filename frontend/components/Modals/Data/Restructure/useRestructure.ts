@@ -255,7 +255,9 @@ export const useRestructure = (): UseRestructureReturn => {
         identifierVariables,
         createCount,
         createIndex,
-        dropEmptyVariables
+        dropEmptyVariables,
+        data,
+        variables
     ]);
 
     // Variable movement handlers

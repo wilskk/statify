@@ -8,7 +8,7 @@ import {
 } from '../types';
 import { formatDescriptiveTableOld } from '../formatDescriptiveTable';
 import { useZScoreProcessing } from './useZScoreProcessing';
-import { useAnalysisData } from '@/hooks/useVariableData';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,

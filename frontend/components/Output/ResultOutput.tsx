@@ -115,7 +115,7 @@ const ResultOutput: React.FC = () => {
 
                           <div
                             id={`output-${analytic.id}-${stat.id}`}
-                            className="mb-3 rounded-md overflow-hidden"
+                            className={`mb-6 rounded-md ${!isFirstAppearance ? 'mt-8' : ''}`}
                           >
                             {(() => {
                               const parsedData =
@@ -124,7 +124,9 @@ const ResultOutput: React.FC = () => {
                                   : stat.output_data;
                               if (parsedData.tables) {
                                 return (
-                                  <DataTableRenderer data={stat.output_data} />
+                                  <div className="overflow-x-auto pb-2">
+                                    <DataTableRenderer data={stat.output_data} />
+                                  </div>
                                 );
                               } else if (parsedData.charts) {
                                 return (
@@ -142,7 +144,7 @@ const ResultOutput: React.FC = () => {
                             })()}
                           </div>
                           
-                          <div className="mt-2 mb-8 relative">
+                          <div className="mt-4 mb-10 relative">
                             <div className="flex items-center justify-between mb-2">
                               <div className="text-xs font-medium text-muted-foreground">Deskripsi</div>
                               {!isEditing ? (

@@ -72,7 +72,7 @@ export function useVariableTableDialogs() {
         }
         await updateMultipleFields(rowIndex, { values: newValueLabels });
         setShowValuesDialog(false);
-    }, [selectedCell, updateMultipleFields, insertVariableAt]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, insertVariableAt]);
 
     const handleMissingChange = useCallback(async (newMissingSpec: MissingChangePayload) => {
         if (!selectedCell) return;
@@ -82,7 +82,7 @@ export function useVariableTableDialogs() {
         }
         await updateMultipleFields(rowIndex, { missing: newMissingSpec });
         setShowMissingDialog(false);
-    }, [selectedCell, updateMultipleFields, insertVariableAt]);
+    }, [selectedCell, selectedVariable, updateMultipleFields, insertVariableAt]);
 
     // --- End Dialog Update Handlers ---
 

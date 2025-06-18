@@ -82,7 +82,7 @@ export const useContextMenuLogic = ({
             const end = Math.max(range.from.row, range.to.row);
             removeRows(Array.from({ length: end - start + 1 }, (_, i) => start + i));
         }
-    }, [getSelectedCell]);
+    }, [getSelectedCell, hotTableRef]);
 
     const handleRemoveColumn = useCallback(() => {
         const { col } = getSelectedCell();
@@ -93,7 +93,7 @@ export const useContextMenuLogic = ({
             const end = Math.max(range.from.col, range.to.col);
             removeColumns(start, end - start + 1);
         }
-    }, [getSelectedCell]);
+    }, [getSelectedCell, hotTableRef]);
 
     // --- Context Menu Configuration ---
 

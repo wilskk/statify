@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
-import type { Variable, DescriptiveStatistics, ZScoreData, DataRow } from '@/types';
+import type { Variable } from '@/types/Variable';
+import type { DataRow } from '@/types/Data';
+import type { DescriptiveStatistics, ZScoreData } from '@/components/Modals/Analyze/Descriptive/Descriptive/types';
 
 interface DescriptiveResults {
     [key: string]: DescriptiveStatistics & { zScores?: ZScoreData };

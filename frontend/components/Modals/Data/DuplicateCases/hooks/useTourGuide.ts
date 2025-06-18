@@ -170,6 +170,12 @@ export const useTourGuide = (
     }
   }, [getRequiredTabForStep, tabControl, switchTabIfNeeded]);
 
+  const endTour = useCallback(() => {
+    setTourActive(false);
+    setCurrentStep(0);
+    clearTimeoutCallback();
+  }, [clearTimeoutCallback]);
+
   const nextStep = useCallback(() => {
     const nextStepIndex = currentStep + 1;
     if (nextStepIndex < tourSteps.length) {
@@ -182,7 +188,7 @@ export const useTourGuide = (
     } else {
       endTour();
     }
-  }, [currentStep, tourSteps, switchTabIfNeeded]);
+  }, [currentStep, tourSteps, switchTabIfNeeded, endTour]);
 
   const prevStep = useCallback(() => {
     const prevStepIndex = currentStep - 1;
@@ -192,12 +198,6 @@ export const useTourGuide = (
       setCurrentStep(prevStepIndex);
     }
   }, [currentStep, getRequiredTabForStep, switchTabIfNeeded]);
-
-  const endTour = useCallback(() => {
-    setTourActive(false);
-    setCurrentStep(0);
-    clearTimeoutCallback();
-  }, [clearTimeoutCallback]);
 
   const currentTargetElement = useMemo(() => {
     if (!tourActive) return null;

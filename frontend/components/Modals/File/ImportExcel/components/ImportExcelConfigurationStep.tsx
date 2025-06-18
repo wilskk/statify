@@ -312,7 +312,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             setPreviewColumnHeaders(result.headers);
         }
         setIsLoadingPreview(false);
-    }, [range, firstLineContains, readHiddenRowsCols, readEmptyCellsAs, selectedSheet, parsedSheetsState, currentParseOptions]);
+    }, [selectedSheet, parsedSheetsState, currentParseOptions]);
 
     useEffect(() => {
         updatePreview();

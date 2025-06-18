@@ -136,7 +136,7 @@ export const TourPopup: FC<{
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [targetElement, position, horizontalPosition]);
+  }, [targetElement, position, horizontalPosition, step]);
 
   // Dynamic arrow styling
   const getArrowStyles = () => {

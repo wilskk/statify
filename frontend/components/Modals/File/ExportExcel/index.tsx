@@ -362,7 +362,7 @@ export const ExportExcel: FC<ExportExcelProps> = ({
     // Menyesuaikan langkah-langkah tour berdasarkan tipe container
     useEffect(() => {
         const adjustedSteps = baseTourSteps.map(step => {
-            if (containerType === "sidebar" || containerType === "panel") {
+            if (containerType === "sidebar") {
                 return { ...step, horizontalPosition: "left" as HorizontalPosition, position: undefined };
             } else {
                 return { ...step, horizontalPosition: null, position: step.defaultPosition };

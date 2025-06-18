@@ -47,15 +47,15 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return `${variable.label} [${variable.name}]`;
     };
 
-    const isVariableDisabled = (variable: Variable): boolean => {
-        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') && 
+    const isVariableDisabled = useCallback((variable: Variable): boolean => {
+        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
                                 (variable.measure === 'scale' || variable.measure === 'ordinal');
         
         if (isNormallyValid) return false;
         if (variable.measure === 'unknown') return !allowUnknown;
         
         return true;
-    };
+    }, [allowUnknown]);
 
     const handleDoubleClick = (variable: Variable, sourceListId: string) => {
         // Prevent moving from available to selected if it's disabled
@@ -103,7 +103,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
         } else if (toListId === 'available') {
             moveToAvailableVariables(variable, targetIndex);
         }
-    }, [moveToSelectedVariables, moveToAvailableVariables, allowUnknown]);
+    }, [moveToSelectedVariables, moveToAvailableVariables, isVariableDisabled]);
 
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'selected') {
