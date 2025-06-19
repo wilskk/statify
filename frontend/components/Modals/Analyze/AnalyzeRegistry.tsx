@@ -6,6 +6,10 @@ import {
     DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
     getDescriptiveModalComponent,
 } from "./Descriptive";
+import {
+    CLASSIFY_MODAL_COMPONENTS,
+    CLASSIFY_MODAL_CONTAINER_PREFERENCES,
+} from "./classify";
 
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
@@ -18,6 +22,7 @@ export const ANALYZE_MODAL_COMPONENTS: Record<
 > = {
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_COMPONENTS,
+    ...CLASSIFY_MODAL_COMPONENTS,
 
     // Future categories will be added here
     // ...COMPARE_MEANS_MODAL_COMPONENTS,
@@ -54,6 +59,7 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
 > = {
     // Descriptive modals
     ...DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES,
+    ...CLASSIFY_MODAL_CONTAINER_PREFERENCES,
 
     // Future categories will be added here
 };

@@ -101,52 +101,103 @@ const KMeansClusterContainer = ({ onClose }: KMeansClusterContainerProps) => {
         onClose();
     };
 
+    const openSection = (section: "main" | "iterate" | "save" | "options") => {
+        // Close all sections first
+        setIsMainOpen(false);
+        setIsIterateOpen(false);
+        setIsSaveOpen(false);
+        setIsOptionsOpen(false);
+
+        // Open the requested section
+        switch (section) {
+            case "main":
+                setIsMainOpen(true);
+                break;
+            case "iterate":
+                setIsIterateOpen(true);
+                break;
+            case "save":
+                setIsSaveOpen(true);
+                break;
+            case "options":
+                setIsOptionsOpen(true);
+                break;
+        }
+    };
+
+    const handleContinue = () => {
+        openSection("main");
+    };
+
+    const handleCancel = () => {
+        openSection("main");
+    };
+
     return (
         <div className="flex-grow overflow-y-auto flex flex-col h-full">
-            <KMeansClusterDialog
-                isMainOpen={isMainOpen}
-                setIsMainOpen={setIsMainOpen}
-                setIsIterateOpen={setIsIterateOpen}
-                setIsSaveOpen={setIsSaveOpen}
-                setIsOptionsOpen={setIsOptionsOpen}
-                updateFormData={(field, value) =>
-                    updateFormData("main", field, value)
-                }
-                data={formData.main}
-                globalVariables={tempVariables}
-                onContinue={(mainData) => executeKMeansCluster(mainData)}
-                onReset={resetFormData}
-            />
+            {isMainOpen && (
+                <KMeansClusterDialog
+                    isMainOpen={isMainOpen}
+                    setIsMainOpen={(value) =>
+                        value ? openSection("main") : setIsMainOpen(false)
+                    }
+                    setIsIterateOpen={(value) =>
+                        value ? openSection("iterate") : setIsIterateOpen(false)
+                    }
+                    setIsSaveOpen={(value) =>
+                        value ? openSection("save") : setIsSaveOpen(false)
+                    }
+                    setIsOptionsOpen={(value) =>
+                        value ? openSection("options") : setIsOptionsOpen(false)
+                    }
+                    updateFormData={(field, value) =>
+                        updateFormData("main", field, value)
+                    }
+                    data={formData.main}
+                    globalVariables={tempVariables}
+                    onContinue={(mainData) => executeKMeansCluster(mainData)}
+                    onReset={resetFormData}
+                />
+            )}
 
-            {/* Iterate */}
-            <KMeansClusterIterate
-                isIterateOpen={isIterateOpen}
-                setIsIterateOpen={setIsIterateOpen}
-                updateFormData={(field, value) =>
-                    updateFormData("iterate", field, value)
-                }
-                data={formData.iterate}
-            />
+            {isIterateOpen && (
+                <KMeansClusterIterate
+                    isIterateOpen={isIterateOpen}
+                    setIsIterateOpen={(value) =>
+                        value ? openSection("iterate") : handleContinue()
+                    }
+                    updateFormData={(field, value) =>
+                        updateFormData("iterate", field, value)
+                    }
+                    data={formData.iterate}
+                />
+            )}
 
-            {/* Save */}
-            <KMeansClusterSave
-                isSaveOpen={isSaveOpen}
-                setIsSaveOpen={setIsSaveOpen}
-                updateFormData={(field, value) =>
-                    updateFormData("save", field, value)
-                }
-                data={formData.save}
-            />
+            {isSaveOpen && (
+                <KMeansClusterSave
+                    isSaveOpen={isSaveOpen}
+                    setIsSaveOpen={(value) =>
+                        value ? openSection("save") : handleContinue()
+                    }
+                    updateFormData={(field, value) =>
+                        updateFormData("save", field, value)
+                    }
+                    data={formData.save}
+                />
+            )}
 
-            {/* Options */}
-            <KMeansClusterOptions
-                isOptionsOpen={isOptionsOpen}
-                setIsOptionsOpen={setIsOptionsOpen}
-                updateFormData={(field, value) =>
-                    updateFormData("options", field, value)
-                }
-                data={formData.options}
-            />
+            {isOptionsOpen && (
+                <KMeansClusterOptions
+                    isOptionsOpen={isOptionsOpen}
+                    setIsOptionsOpen={(value) =>
+                        value ? openSection("options") : handleContinue()
+                    }
+                    updateFormData={(field, value) =>
+                        updateFormData("options", field, value)
+                    }
+                    data={formData.options}
+                />
+            )}
         </div>
     );
 };

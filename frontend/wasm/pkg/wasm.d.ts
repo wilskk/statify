@@ -62,13 +62,13 @@ export class Decomposition {
   calculate_centered_moving_average(): Float64Array;
   multiplicative_decomposition(trend: string): Float64Array;
   additive_decomposition(): Float64Array;
-  calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
   decomposition_evaluation(forecast: Float64Array): any;
   calculate_multiplicative_seasonal_component(centered_ma: Float64Array): Float64Array;
   calculate_multiplicative_trend_component(trend: string, deseasonalizing: Float64Array): Float64Array;
   linear_trend(deseasonalizing: Float64Array): Float64Array;
   exponential_trend(deseasonalizing: Float64Array): Float64Array;
   calculate_additive_trend_component(centered_ma: Float64Array): Float64Array;
+  calculate_additive_seasonal_component(detrended: Float64Array): Float64Array;
 }
 export class Smoothing {
   free(): void;
@@ -121,6 +121,7 @@ export interface InitOutput {
   readonly smoothing_calculate_des: (a: number, b: number) => [number, number];
   readonly smoothing_calculate_holt: (a: number, b: number, c: number) => [number, number];
   readonly smoothing_calculate_winter: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+  readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
   readonly __wbg_decomposition_free: (a: number, b: number) => void;
   readonly decomposition_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => number;
   readonly decomposition_get_data: (a: number) => [number, number];
@@ -141,7 +142,6 @@ export interface InitOutput {
   readonly decomposition_calculate_centered_moving_average: (a: number) => [number, number];
   readonly decomposition_multiplicative_decomposition: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_additive_decomposition: (a: number) => [number, number];
-  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_decomposition_evaluation: (a: number, b: number, c: number) => any;
   readonly __wbg_autocorrelation_free: (a: number, b: number) => void;
   readonly autocorrelation_new: (a: number, b: number, c: number, d: number, e: number) => number;
@@ -165,7 +165,6 @@ export interface InitOutput {
   readonly autocorrelation_set_lb: (a: number, b: number, c: number) => void;
   readonly autocorrelation_set_df_lb: (a: number, b: number, c: number) => void;
   readonly autocorrelation_set_pvalue_lb: (a: number, b: number, c: number) => void;
-  readonly smoothing_smoothing_evaluation: (a: number, b: number, c: number) => any;
   readonly mse: (a: number, b: number, c: number, d: number) => number;
   readonly rmse: (a: number, b: number, c: number, d: number) => number;
   readonly mae: (a: number, b: number, c: number, d: number) => number;
@@ -176,6 +175,7 @@ export interface InitOutput {
   readonly decomposition_linear_trend: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_exponential_trend: (a: number, b: number, c: number) => [number, number];
   readonly decomposition_calculate_additive_trend_component: (a: number, b: number, c: number) => [number, number];
+  readonly decomposition_calculate_additive_seasonal_component: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_calculate_acf: (a: number, b: number, c: number) => [number, number];
   readonly autocorrelation_calculate_acf_se: (a: number, b: number, c: number) => [number, number];
   readonly partial_kj: (a: number, b: number, c: number, d: number) => number;

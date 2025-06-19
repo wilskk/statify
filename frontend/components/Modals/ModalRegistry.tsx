@@ -128,14 +128,6 @@ const BoxJenkinsModelModal = lazy(
     () => import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal")
 );
 
-// Lazy load classification modals
-const KMeansClusterModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/classify/k-means-cluster/k-means-cluster-main"
-        )
-);
-
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
@@ -278,11 +270,6 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
     [ModalType.BoxJenkinsModel]: withSuspense(
         BoxJenkinsModelModal as any
     ) as React.ComponentType<BaseModalProps>,
-
-    // Classification modals - lazy loaded
-    [ModalType.ModalKMeansCluster]: withSuspense(
-        KMeansClusterModal as any
-    ) as React.ComponentType<BaseModalProps>,
 };
 
 /**
@@ -337,7 +324,6 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<
     [ModalType.ModalLinear]: "sidebar",
     [ModalType.ModalCurveEstimation]: "sidebar",
     [ModalType.ModalBinaryLogistic]: "sidebar",
-    [ModalType.ModalKMeansCluster]: "sidebar",
 };
 
 /**
