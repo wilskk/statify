@@ -1,20 +1,10 @@
 import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
     ResizableHandle,
     ResizablePanel,
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
 import {
     UnivariateDialogProps,
     UnivariateMainType,
@@ -146,447 +136,366 @@ export const UnivariateDialog = ({
         closeModal();
     };
 
+    if (!isMainOpen) return null;
+
     return (
-        <>
-            {/* Main Dialog */}
-            <Dialog open={isMainOpen} onOpenChange={handleDialog}>
-                <DialogTrigger asChild>
-                    <Button variant="outline">Univariate</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Univariate</DialogTitle>
-                    </DialogHeader>
-                    <Separator />
-                    <div className="flex items-center space-x-2">
-                        <ResizablePanelGroup
-                            direction="horizontal"
-                            className="min-h-[400px] rounded-lg border md:min-w-[200px]"
-                        >
-                            {/* Variable List */}
-                            <ResizablePanel defaultSize={25}>
-                                <ScrollArea>
-                                    <div className="flex flex-col gap-1 justify-start items-start h-[500px] w-full p-2">
-                                        {availableVariables.map(
-                                            (
-                                                variable: string,
-                                                index: number
-                                            ) => (
-                                                <Badge
-                                                    key={index}
-                                                    className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                    variant="outline"
-                                                    draggable
-                                                    onDragStart={(e) =>
-                                                        e.dataTransfer.setData(
-                                                            "text",
-                                                            variable
-                                                        )
-                                                    }
-                                                >
-                                                    {variable}
-                                                </Badge>
-                                            )
+        <div className="flex flex-col h-full">
+            <div className="flex items-center space-x-2 p-4">
+                <ResizablePanelGroup
+                    direction="horizontal"
+                    className="min-h-[400px] rounded-lg border md:min-w-[200px]"
+                >
+                    {/* Variable List */}
+                    <ResizablePanel defaultSize={25}>
+                        <ScrollArea>
+                            <div className="flex flex-col gap-1 justify-start items-start h-[500px] w-full p-2">
+                                {availableVariables.map(
+                                    (variable: string, index: number) => (
+                                        <Badge
+                                            key={index}
+                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                                            variant="outline"
+                                            draggable
+                                            onDragStart={(e) =>
+                                                e.dataTransfer.setData(
+                                                    "text",
+                                                    variable
+                                                )
+                                            }
+                                        >
+                                            {variable}
+                                        </Badge>
+                                    )
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+
+                    {/* Defining Variable */}
+                    <ResizablePanel defaultSize={55}>
+                        <div className="flex flex-col gap-2 p-2">
+                            <div className="w-full">
+                                <Label className="font-bold">
+                                    Dependent Variables:{" "}
+                                </Label>
+                                <div className="flex items-center space-x-2">
+                                    <div
+                                        className="w-full min-h-[40px] p-2 border rounded"
+                                        onDrop={(e) => {
+                                            handleDrop(
+                                                "DepVar",
+                                                e.dataTransfer.getData("text")
+                                            );
+                                        }}
+                                        onDragOver={(e) => e.preventDefault()}
+                                    >
+                                        {mainState.DepVar ? (
+                                            <Badge
+                                                className="text-start text-sm font-light p-2 cursor-pointer"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    handleRemoveVariable(
+                                                        "DepVar"
+                                                    )
+                                                }
+                                            >
+                                                {mainState.DepVar}
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-sm font-light text-gray-500">
+                                                Drop variables here.
+                                            </span>
                                         )}
                                     </div>
-                                </ScrollArea>
-                            </ResizablePanel>
-                            <ResizableHandle withHandle />
-
-                            {/* Defining Variable */}
-                            <ResizablePanel defaultSize={55}>
-                                <div className="flex flex-col gap-2 p-2">
-                                    <div className="w-full">
-                                        <Label className="font-bold">
-                                            Dependent Variables:{" "}
-                                        </Label>
-                                        <div className="flex items-center space-x-2">
-                                            <div
-                                                className="w-full min-h-[40px] p-2 border rounded"
-                                                onDrop={(e) => {
-                                                    handleDrop(
-                                                        "DepVar",
-                                                        e.dataTransfer.getData(
-                                                            "text"
-                                                        )
-                                                    );
-                                                }}
-                                                onDragOver={(e) =>
-                                                    e.preventDefault()
-                                                }
-                                            >
-                                                {mainState.DepVar ? (
-                                                    <Badge
-                                                        className="text-start text-sm font-light p-2 cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleRemoveVariable(
-                                                                "DepVar"
+                                    <input
+                                        type="hidden"
+                                        value={mainState.DepVar ?? ""}
+                                        name="DepVar"
+                                    />
+                                </div>
+                            </div>
+                            <div className="w-full">
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        const variable =
+                                            e.dataTransfer.getData("text");
+                                        handleDrop("FixFactor", variable);
+                                    }}
+                                >
+                                    <Label className="font-bold">
+                                        Fixed Factor(s):
+                                    </Label>
+                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
+                                        <ScrollArea>
+                                            <div className="w-full h-[80px]">
+                                                {mainState.FixFactor &&
+                                                mainState.FixFactor.length >
+                                                    0 ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        {mainState.FixFactor.map(
+                                                            (
+                                                                variable,
+                                                                index
+                                                            ) => (
+                                                                <Badge
+                                                                    key={index}
+                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
+                                                                    variant="outline"
+                                                                    onClick={() =>
+                                                                        handleRemoveVariable(
+                                                                            "FixFactor",
+                                                                            variable
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {variable}
+                                                                </Badge>
                                                             )
-                                                        }
-                                                    >
-                                                        {mainState.DepVar}
-                                                    </Badge>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-sm font-light text-gray-500">
                                                         Drop variables here.
                                                     </span>
                                                 )}
                                             </div>
-                                            <input
-                                                type="hidden"
-                                                value={mainState.DepVar ?? ""}
-                                                name="DepVar"
-                                            />
-                                        </div>
+                                        </ScrollArea>
                                     </div>
-                                    <div className="w-full">
-                                        <div
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop(
-                                                    "FixFactor",
-                                                    variable
-                                                );
-                                            }}
-                                        >
-                                            <Label className="font-bold">
-                                                Fixed Factor(s):{" "}
-                                            </Label>
-                                            <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                                <ScrollArea>
-                                                    <div className="w-full h-[80px]">
-                                                        {mainState.FixFactor &&
-                                                        mainState.FixFactor
-                                                            .length > 0 ? (
-                                                            <div className="flex flex-col gap-1">
-                                                                {mainState.FixFactor.map(
-                                                                    (
-                                                                        variable,
-                                                                        index
-                                                                    ) => (
-                                                                        <Badge
-                                                                            key={
-                                                                                index
-                                                                            }
-                                                                            className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleRemoveVariable(
-                                                                                    "FixFactor",
-                                                                                    variable
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                variable
-                                                                            }
-                                                                        </Badge>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-sm font-light text-gray-500">
-                                                                Drop variables
-                                                                here.
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-                                            <input
-                                                type="hidden"
-                                                value={
-                                                    mainState.FixFactor ?? ""
-                                                }
-                                                name="Independents"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="w-full">
-                                        <div
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop(
-                                                    "RandFactor",
-                                                    variable
-                                                );
-                                            }}
-                                        >
-                                            <Label className="font-bold">
-                                                Random Factor(s):{" "}
-                                            </Label>
-                                            <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                                <ScrollArea>
-                                                    <div className="w-full h-[80px]">
-                                                        {mainState.RandFactor &&
-                                                        mainState.RandFactor
-                                                            .length > 0 ? (
-                                                            <div className="flex flex-col gap-1">
-                                                                {mainState.RandFactor.map(
-                                                                    (
-                                                                        variable,
-                                                                        index
-                                                                    ) => (
-                                                                        <Badge
-                                                                            key={
-                                                                                index
-                                                                            }
-                                                                            className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleRemoveVariable(
-                                                                                    "RandFactor",
-                                                                                    variable
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                variable
-                                                                            }
-                                                                        </Badge>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-sm font-light text-gray-500">
-                                                                Drop variables
-                                                                here.
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-                                            <input
-                                                type="hidden"
-                                                value={
-                                                    mainState.RandFactor ?? ""
-                                                }
-                                                name="Independents"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="w-full">
-                                        <div
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop("Covar", variable);
-                                            }}
-                                        >
-                                            <Label className="font-bold">
-                                                Covariate(s):{" "}
-                                            </Label>
-                                            <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                                <ScrollArea>
-                                                    <div className="w-full h-[80px]">
-                                                        {mainState.Covar &&
-                                                        mainState.Covar.length >
-                                                            0 ? (
-                                                            <div className="flex flex-col gap-1">
-                                                                {mainState.Covar.map(
-                                                                    (
-                                                                        variable,
-                                                                        index
-                                                                    ) => (
-                                                                        <Badge
-                                                                            key={
-                                                                                index
-                                                                            }
-                                                                            className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleRemoveVariable(
-                                                                                    "Covar",
-                                                                                    variable
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                variable
-                                                                            }
-                                                                        </Badge>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-sm font-light text-gray-500">
-                                                                Drop variables
-                                                                here.
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-                                            <input
-                                                type="hidden"
-                                                value={mainState.Covar ?? ""}
-                                                name="Independents"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="w-full">
-                                        <Label className="font-bold">
-                                            WLS Weight:{" "}
-                                        </Label>
-                                        <div className="flex items-center space-x-2">
-                                            <div
-                                                className="w-full min-h-[40px] p-2 border rounded"
-                                                onDrop={(e) => {
-                                                    handleDrop(
-                                                        "WlsWeight",
-                                                        e.dataTransfer.getData(
-                                                            "text"
-                                                        )
-                                                    );
-                                                }}
-                                                onDragOver={(e) =>
-                                                    e.preventDefault()
-                                                }
-                                            >
-                                                {mainState.WlsWeight ? (
-                                                    <Badge
-                                                        className="text-start text-sm font-light p-2 cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleRemoveVariable(
-                                                                "WlsWeight"
+                                    <input
+                                        type="hidden"
+                                        value={mainState.FixFactor ?? ""}
+                                        name="FixFactor"
+                                    />
+                                </div>
+                            </div>
+                            <div className="w-full">
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        const variable =
+                                            e.dataTransfer.getData("text");
+                                        handleDrop("RandFactor", variable);
+                                    }}
+                                >
+                                    <Label className="font-bold">
+                                        Random Factor(s):
+                                    </Label>
+                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
+                                        <ScrollArea>
+                                            <div className="w-full h-[80px]">
+                                                {mainState.RandFactor &&
+                                                mainState.RandFactor.length >
+                                                    0 ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        {mainState.RandFactor.map(
+                                                            (
+                                                                variable,
+                                                                index
+                                                            ) => (
+                                                                <Badge
+                                                                    key={index}
+                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
+                                                                    variant="outline"
+                                                                    onClick={() =>
+                                                                        handleRemoveVariable(
+                                                                            "RandFactor",
+                                                                            variable
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {variable}
+                                                                </Badge>
                                                             )
-                                                        }
-                                                    >
-                                                        {mainState.WlsWeight}
-                                                    </Badge>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-sm font-light text-gray-500">
                                                         Drop variables here.
                                                     </span>
                                                 )}
                                             </div>
-                                            <input
-                                                type="hidden"
-                                                value={
-                                                    mainState.WlsWeight ?? ""
-                                                }
-                                                name="WlsWeight"
-                                            />
-                                        </div>
+                                        </ScrollArea>
                                     </div>
+                                    <input
+                                        type="hidden"
+                                        value={mainState.RandFactor ?? ""}
+                                        name="RandFactor"
+                                    />
                                 </div>
-                            </ResizablePanel>
-
-                            {/* Tools Area */}
-                            <ResizablePanel defaultSize={20}>
-                                <div className="flex flex-col h-full items-start justify-start gap-1 p-2">
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsModelOpen)}
-                                    >
-                                        Model...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsContrastOpen)}
-                                    >
-                                        Contrast...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsPlotsOpen)}
-                                        disabled={true}
-                                    >
-                                        Plots...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsPostHocOpen)}
-                                        disabled={true}
-                                    >
-                                        Post Hoc...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsEMMeansOpen)}
-                                    >
-                                        EM Means...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsSaveOpen)}
-                                    >
-                                        Save...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsOptionsOpen)}
-                                    >
-                                        Options...
-                                    </Button>
-                                    <Button
-                                        className="w-full"
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={openDialog(setIsBootstrapOpen)}
-                                        disabled={true}
-                                    >
-                                        Bootstrap...
-                                    </Button>
+                            </div>
+                            <div className="w-full">
+                                <div
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        const variable =
+                                            e.dataTransfer.getData("text");
+                                        handleDrop("Covar", variable);
+                                    }}
+                                >
+                                    <Label className="font-bold">
+                                        Covariate(s):
+                                    </Label>
+                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
+                                        <ScrollArea>
+                                            <div className="w-full h-[80px]">
+                                                {mainState.Covar &&
+                                                mainState.Covar.length > 0 ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        {mainState.Covar.map(
+                                                            (
+                                                                variable,
+                                                                index
+                                                            ) => (
+                                                                <Badge
+                                                                    key={index}
+                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
+                                                                    variant="outline"
+                                                                    onClick={() =>
+                                                                        handleRemoveVariable(
+                                                                            "Covar",
+                                                                            variable
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {variable}
+                                                                </Badge>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-light text-gray-500">
+                                                        Drop variables here.
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
+                                    <input
+                                        type="hidden"
+                                        value={mainState.Covar ?? ""}
+                                        name="Covar"
+                                    />
                                 </div>
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    </div>
-                    <DialogFooter className="sm:justify-start">
-                        <Button type="button" onClick={handleContinue}>
-                            OK
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={onReset}
-                        >
-                            Reset
-                        </Button>
-                        <DialogClose asChild>
-                            <Button type="button" variant="secondary">
-                                Cancel
-                            </Button>
-                        </DialogClose>
-                        <Button type="button" variant="secondary">
-                            Help
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+                            </div>
+                            <div className="w-full">
+                                <Label className="font-bold">WLS Weight:</Label>
+                                <div className="flex items-center space-x-2">
+                                    <div
+                                        className="w-full min-h-[40px] p-2 border rounded"
+                                        onDrop={(e) => {
+                                            handleDrop(
+                                                "WlsWeight",
+                                                e.dataTransfer.getData("text")
+                                            );
+                                        }}
+                                        onDragOver={(e) => e.preventDefault()}
+                                    >
+                                        {mainState.WlsWeight ? (
+                                            <Badge
+                                                className="text-start text-sm font-light p-2 cursor-pointer"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    handleRemoveVariable(
+                                                        "WlsWeight"
+                                                    )
+                                                }
+                                            >
+                                                {mainState.WlsWeight}
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-sm font-light text-gray-500">
+                                                Drop variables here.
+                                            </span>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="hidden"
+                                        value={mainState.WlsWeight ?? ""}
+                                        name="WlsWeight"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={20}>
+                        <div className="flex flex-col w-full h-full items-center justify-between p-2">
+                            <div className="flex flex-col gap-2 w-full">
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsModelOpen)}
+                                >
+                                    Model
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsContrastOpen)}
+                                >
+                                    Contrasts
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsPlotsOpen)}
+                                >
+                                    Plots
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsPostHocOpen)}
+                                >
+                                    Post Hoc
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsEMMeansOpen)}
+                                >
+                                    EM Means
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsSaveOpen)}
+                                >
+                                    Save
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsOptionsOpen)}
+                                >
+                                    Options
+                                </Button>
+                                <Button
+                                    className="w-full"
+                                    variant="secondary"
+                                    onClick={openDialog(setIsBootstrapOpen)}
+                                >
+                                    Bootstrap
+                                </Button>
+                            </div>
+                        </div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
+            </div>
+            <div className="flex-grow" />
+            <div className="flex justify-end p-4 bg-gray-100">
+                <div className="flex space-x-2">
+                    <Button onClick={handleContinue}>OK</Button>
+                    <Button variant="ghost" onClick={handleDialog}>
+                        Cancel
+                    </Button>
+                    <Button variant="ghost" onClick={onReset}>
+                        Reset
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 };

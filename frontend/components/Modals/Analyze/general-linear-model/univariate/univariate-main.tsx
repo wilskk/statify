@@ -14,7 +14,6 @@ import { UnivariateEMMeans } from "@/components/Modals/Analyze/general-linear-mo
 import { UnivariateSave } from "@/components/Modals/Analyze/general-linear-model/univariate/save";
 import { UnivariateOptions } from "@/components/Modals/Analyze/general-linear-model/univariate/options";
 import { UnivariateBootstrap } from "@/components/Modals/Analyze/general-linear-model/univariate/bootstrap";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
@@ -196,21 +195,101 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
         onClose();
     };
 
+    const openSection = (
+        section:
+            | "main"
+            | "model"
+            | "contrast"
+            | "plots"
+            | "posthoc"
+            | "emmeans"
+            | "save"
+            | "options"
+            | "bootstrap"
+    ) => {
+        // Close all sections first
+        setIsMainOpen(false);
+        setIsModelOpen(false);
+        setIsContrastOpen(false);
+        setIsPlotsOpen(false);
+        setIsPostHocOpen(false);
+        setIsEMMeansOpen(false);
+        setIsSaveOpen(false);
+        setIsOptionsOpen(false);
+        setIsBootstrapOpen(false);
+
+        // Open the requested section
+        switch (section) {
+            case "main":
+                setIsMainOpen(true);
+                break;
+            case "model":
+                setIsModelOpen(true);
+                break;
+            case "contrast":
+                setIsContrastOpen(true);
+                break;
+            case "plots":
+                setIsPlotsOpen(true);
+                break;
+            case "posthoc":
+                setIsPostHocOpen(true);
+                break;
+            case "emmeans":
+                setIsEMMeansOpen(true);
+                break;
+            case "save":
+                setIsSaveOpen(true);
+                break;
+            case "options":
+                setIsOptionsOpen(true);
+                break;
+            case "bootstrap":
+                setIsBootstrapOpen(true);
+                break;
+        }
+    };
+
+    const handleContinue = () => {
+        openSection("main");
+    };
+
     return (
-        <Dialog open={isMainOpen} onOpenChange={handleClose}>
-            <DialogTitle></DialogTitle>
-            <DialogContent>
+        <div className="flex-grow overflow-y-auto flex flex-col h-full">
+            {isMainOpen && (
                 <UnivariateDialog
                     isMainOpen={isMainOpen}
-                    setIsMainOpen={setIsMainOpen}
-                    setIsModelOpen={setIsModelOpen}
-                    setIsContrastOpen={setIsContrastOpen}
-                    setIsPlotsOpen={setIsPlotsOpen}
-                    setIsPostHocOpen={setIsPostHocOpen}
-                    setIsEMMeansOpen={setIsEMMeansOpen}
-                    setIsSaveOpen={setIsSaveOpen}
-                    setIsOptionsOpen={setIsOptionsOpen}
-                    setIsBootstrapOpen={setIsBootstrapOpen}
+                    setIsMainOpen={(value) =>
+                        value ? openSection("main") : setIsMainOpen(false)
+                    }
+                    setIsModelOpen={(value) =>
+                        value ? openSection("model") : setIsModelOpen(false)
+                    }
+                    setIsContrastOpen={(value) =>
+                        value
+                            ? openSection("contrast")
+                            : setIsContrastOpen(false)
+                    }
+                    setIsPlotsOpen={(value) =>
+                        value ? openSection("plots") : setIsPlotsOpen(false)
+                    }
+                    setIsPostHocOpen={(value) =>
+                        value ? openSection("posthoc") : setIsPostHocOpen(false)
+                    }
+                    setIsEMMeansOpen={(value) =>
+                        value ? openSection("emmeans") : setIsEMMeansOpen(false)
+                    }
+                    setIsSaveOpen={(value) =>
+                        value ? openSection("save") : setIsSaveOpen(false)
+                    }
+                    setIsOptionsOpen={(value) =>
+                        value ? openSection("options") : setIsOptionsOpen(false)
+                    }
+                    setIsBootstrapOpen={(value) =>
+                        value
+                            ? openSection("bootstrap")
+                            : setIsBootstrapOpen(false)
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("main", field, value)
                     }
@@ -219,87 +298,106 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                     onContinue={(mainData) => executeUnivariate(mainData)}
                     onReset={resetFormData}
                 />
+            )}
 
-                {/* Model */}
+            {isModelOpen && (
                 <UnivariateModel
                     isModelOpen={isModelOpen}
-                    setIsModelOpen={setIsModelOpen}
+                    setIsModelOpen={(value) =>
+                        value ? openSection("model") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("model", field, value)
                     }
                     data={formData.model}
                 />
+            )}
 
-                {/* Contrast */}
+            {isContrastOpen && (
                 <UnivariateContrast
                     isContrastOpen={isContrastOpen}
-                    setIsContrastOpen={setIsContrastOpen}
+                    setIsContrastOpen={(value) =>
+                        value ? openSection("contrast") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("contrast", field, value)
                     }
                     data={formData.contrast}
                 />
+            )}
 
-                {/* Plots */}
+            {isPlotsOpen && (
                 <UnivariatePlots
                     isPlotsOpen={isPlotsOpen}
-                    setIsPlotsOpen={setIsPlotsOpen}
+                    setIsPlotsOpen={(value) =>
+                        value ? openSection("plots") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("plots", field, value)
                     }
                     data={formData.plots}
                 />
-
-                {/* PostHoc */}
+            )}
+            {isPostHocOpen && (
                 <UnivariatePostHoc
                     isPostHocOpen={isPostHocOpen}
-                    setIsPostHocOpen={setIsPostHocOpen}
+                    setIsPostHocOpen={(value) =>
+                        value ? openSection("posthoc") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("posthoc", field, value)
                     }
                     data={formData.posthoc}
                 />
-
-                {/* EMMeans */}
+            )}
+            {isEMMeansOpen && (
                 <UnivariateEMMeans
                     isEMMeansOpen={isEMMeansOpen}
-                    setIsEMMeansOpen={setIsEMMeansOpen}
+                    setIsEMMeansOpen={(value) =>
+                        value ? openSection("emmeans") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("emmeans", field, value)
                     }
                     data={formData.emmeans}
                 />
-
-                {/* Save */}
+            )}
+            {isSaveOpen && (
                 <UnivariateSave
                     isSaveOpen={isSaveOpen}
-                    setIsSaveOpen={setIsSaveOpen}
+                    setIsSaveOpen={(value) =>
+                        value ? openSection("save") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("save", field, value)
                     }
                     data={formData.save}
                 />
-
-                {/* Options */}
+            )}
+            {isOptionsOpen && (
                 <UnivariateOptions
                     isOptionsOpen={isOptionsOpen}
-                    setIsOptionsOpen={setIsOptionsOpen}
+                    setIsOptionsOpen={(value) =>
+                        value ? openSection("options") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("options", field, value)
                     }
                     data={formData.options}
                 />
-
-                {/* Bootstrap */}
+            )}
+            {isBootstrapOpen && (
                 <UnivariateBootstrap
                     isBootstrapOpen={isBootstrapOpen}
-                    setIsBootstrapOpen={setIsBootstrapOpen}
+                    setIsBootstrapOpen={(value) =>
+                        value ? openSection("bootstrap") : handleContinue()
+                    }
                     updateFormData={(field, value) =>
                         updateFormData("bootstrap", field, value)
                     }
                     data={formData.bootstrap}
                 />
-            </DialogContent>
-        </Dialog>
+            )}
+        </div>
     );
 };

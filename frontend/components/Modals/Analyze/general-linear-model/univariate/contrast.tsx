@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
     UnivariateContrastProps,
     UnivariateContrastType,
@@ -156,164 +148,152 @@ export const UnivariateContrast = ({
         setIsContrastOpen(false);
     };
 
+    if (!isContrastOpen) return null;
+
     return (
-        <>
-            {/* Contrast Dialog */}
-            <Dialog open={isContrastOpen} onOpenChange={setIsContrastOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Univariate: Contrast</DialogTitle>
-                    </DialogHeader>
-                    <Separator />
-                    <div className="flex flex-col gap-2">
-                        <div className="w-full">
-                            <Label className="font-bold">Factors: </Label>
-                            <ScrollArea className="h-[150px] w-full p-2 border rounded">
-                                <div className="flex flex-col gap-1 justify-start items-start">
-                                    {availableVariables.map(
-                                        (variable: string, index: number) => (
-                                            <Badge
-                                                key={index}
-                                                className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                variant={
-                                                    selectedVariable ===
-                                                    variable
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                                onClick={() =>
-                                                    handleVariableClick(
-                                                        variable
-                                                    )
-                                                }
-                                            >
-                                                {formattedVariables[variable] ||
-                                                    variable}
-                                            </Badge>
-                                        )
-                                    )}
-                                </div>
-                            </ScrollArea>
-                        </div>
-                        <ResizablePanelGroup
-                            direction="vertical"
-                            className="min-h-[150px] max-w-md rounded-lg border md:min-w-[200px]"
-                        >
-                            <ResizablePanel defaultSize={100}>
-                                <div className="flex flex-col gap-2 p-2">
-                                    <Label className="font-bold">
-                                        Change Contrast
-                                    </Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Label className="w-[250px]">
-                                            Contrast:{" "}
-                                        </Label>
-                                        <Select
-                                            value={
-                                                contrastState.ContrastMethod ??
-                                                ""
+        <div className="flex flex-col h-full">
+            <div className="flex flex-col items-start gap-2 p-4">
+                <div className="flex flex-col gap-2">
+                    <div className="w-full">
+                        <Label className="font-bold">Factors: </Label>
+                        <ScrollArea className="h-[150px] w-full p-2 border rounded">
+                            <div className="flex flex-col gap-1 justify-start items-start">
+                                {availableVariables.map(
+                                    (variable: string, index: number) => (
+                                        <Badge
+                                            key={index}
+                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                                            variant={
+                                                selectedVariable === variable
+                                                    ? "default"
+                                                    : "outline"
                                             }
-                                            onValueChange={(value) =>
-                                                handleChange(
-                                                    "ContrastMethod",
-                                                    value
-                                                )
+                                            onClick={() =>
+                                                handleVariableClick(variable)
                                             }
                                         >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="w-[150px]">
-                                                <SelectGroup>
-                                                    {CONTRASTMETHOD.map(
-                                                        (method, index) => (
-                                                            <SelectItem
-                                                                key={index}
-                                                                value={
-                                                                    method.value
-                                                                }
-                                                            >
-                                                                {method.name}
-                                                            </SelectItem>
-                                                        )
-                                                    )}
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <RadioGroup
+                                            {formattedVariables[variable] ||
+                                                variable}
+                                        </Badge>
+                                    )
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    <ResizablePanelGroup
+                        direction="vertical"
+                        className="min-h-[150px] max-w-md rounded-lg border md:min-w-[200px]"
+                    >
+                        <ResizablePanel defaultSize={100}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <Label className="font-bold">
+                                    Change Contrast
+                                </Label>
+                                <div className="flex items-center space-x-2">
+                                    <Label className="w-[250px]">
+                                        Contrast:{" "}
+                                    </Label>
+                                    <Select
                                         value={
-                                            contrastState.Last
-                                                ? "Last"
-                                                : "First"
+                                            contrastState.ContrastMethod ?? ""
                                         }
-                                        disabled={
-                                            contrastState.ContrastMethod?.toLowerCase() !==
-                                                "deviation" &&
-                                            contrastState.ContrastMethod?.toLowerCase() !==
-                                                "simple"
+                                        onValueChange={(value) =>
+                                            handleChange(
+                                                "ContrastMethod",
+                                                value
+                                            )
                                         }
-                                        onValueChange={handleRefGrp}
                                     >
-                                        <div className="flex items-center justify between space-x-2">
-                                            <Label>References: </Label>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="w-[150px]">
+                                            <SelectGroup>
+                                                {CONTRASTMETHOD.map(
+                                                    (method, index) => (
+                                                        <SelectItem
+                                                            key={index}
+                                                            value={method.value}
+                                                        >
+                                                            {method.name}
+                                                        </SelectItem>
+                                                    )
+                                                )}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <RadioGroup
+                                    value={
+                                        contrastState.Last ? "Last" : "First"
+                                    }
+                                    disabled={
+                                        contrastState.ContrastMethod?.toLowerCase() !==
+                                            "deviation" &&
+                                        contrastState.ContrastMethod?.toLowerCase() !==
+                                            "simple"
+                                    }
+                                    onValueChange={handleRefGrp}
+                                >
+                                    <div className="flex items-center justify between space-x-2">
+                                        <Label>References: </Label>
+                                        <div className="flex items-center space-x-2">
                                             <div className="flex items-center space-x-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem
-                                                        value="Last"
-                                                        id="Last"
-                                                    />
-                                                    <Label htmlFor="Last">
-                                                        Last
-                                                    </Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem
-                                                        value="First"
-                                                        id="First"
-                                                    />
-                                                    <Label htmlFor="First">
-                                                        First
-                                                    </Label>
-                                                </div>
+                                                <RadioGroupItem
+                                                    value="Last"
+                                                    id="Last"
+                                                />
+                                                <Label htmlFor="Last">
+                                                    Last
+                                                </Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <RadioGroupItem
+                                                    value="First"
+                                                    id="First"
+                                                />
+                                                <Label htmlFor="First">
+                                                    First
+                                                </Label>
                                             </div>
                                         </div>
-                                    </RadioGroup>
-                                    <div className="flex justify-end pt-2">
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            onClick={handleChangeClick}
-                                            disabled={!selectedVariable}
-                                        >
-                                            Change
-                                        </Button>
                                     </div>
+                                </RadioGroup>
+                                <div className="flex justify-end pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={handleChangeClick}
+                                        disabled={!selectedVariable}
+                                    >
+                                        Change
+                                    </Button>
                                 </div>
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    </div>
-                    <DialogFooter className="sm:justify-start">
-                        <Button
-                            disabled={isContinueDisabled}
-                            type="button"
-                            onClick={handleContinue}
-                        >
-                            Continue
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setIsContrastOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="button" variant="secondary">
-                            Help
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+                            </div>
+                        </ResizablePanel>
+                    </ResizablePanelGroup>
+                </div>
+            </div>
+            <div className="flex-grow" />
+            <div className="flex justify-start gap-2 p-4 border-t">
+                <Button
+                    disabled={isContinueDisabled}
+                    type="button"
+                    onClick={handleContinue}
+                >
+                    Continue
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsContrastOpen(false)}
+                >
+                    Cancel
+                </Button>
+                <Button type="button" variant="secondary">
+                    Help
+                </Button>
+            </div>
+        </div>
     );
 };

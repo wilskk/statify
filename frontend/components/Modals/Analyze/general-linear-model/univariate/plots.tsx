@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
     UnivariatePlotsProps,
     UnivariatePlotsType,
@@ -231,447 +223,402 @@ export const UnivariatePlots = ({
         setIsPlotsOpen(false);
     };
 
+    if (!isPlotsOpen) return null;
+
     return (
-        <>
-            {/* Plots Dialog */}
-            <Dialog open={isPlotsOpen} onOpenChange={setIsPlotsOpen}>
-                <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>Univariate: Plots</DialogTitle>
-                    </DialogHeader>
-                    <Separator />
-                    <div className="h-[450px] flex flex-col gap-2">
-                        <ScrollArea>
-                            <ResizablePanelGroup
-                                direction="vertical"
-                                className="min-h-[725px] max-w-lg rounded-lg border md:min-w-[200px]"
-                            >
-                                <ResizablePanel defaultSize={40}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <ResizablePanelGroup direction="horizontal">
-                                            <ResizablePanel defaultSize={50}>
-                                                <div className="flex flex-col gap-2 p-2">
-                                                    <Label>Factors: </Label>
-                                                    <ScrollArea className="h-[200px] border rounded">
-                                                        <div className="flex flex-col gap-1 p-2">
-                                                            {availableVariables.map(
-                                                                (
-                                                                    variable,
-                                                                    index
-                                                                ) => (
-                                                                    <Badge
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                                        variant={
-                                                                            selectedVariable ===
-                                                                            variable
-                                                                                ? "default"
-                                                                                : "outline"
-                                                                        }
-                                                                        onClick={() =>
-                                                                            handleVariableClick(
-                                                                                variable
-                                                                            )
-                                                                        }
-                                                                        draggable
-                                                                        onDragStart={(
-                                                                            e
-                                                                        ) =>
-                                                                            e.dataTransfer.setData(
-                                                                                "text",
-                                                                                variable
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            variable
-                                                                        }
-                                                                    </Badge>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    </ScrollArea>
+        <div className="flex flex-col h-full">
+            <div className="flex h-[450px] flex-col gap-2 p-4">
+                <ScrollArea>
+                    <ResizablePanelGroup
+                        direction="vertical"
+                        className="min-h-[725px] max-w-lg rounded-lg border md:min-w-[200px]"
+                    >
+                        <ResizablePanel defaultSize={40}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <ResizablePanelGroup direction="horizontal">
+                                    <ResizablePanel defaultSize={50}>
+                                        <div className="flex flex-col gap-2 p-2">
+                                            <Label>Factors: </Label>
+                                            <ScrollArea className="h-[200px] border rounded">
+                                                <div className="flex flex-col gap-1 p-2">
+                                                    {availableVariables.map(
+                                                        (variable, index) => (
+                                                            <Badge
+                                                                key={index}
+                                                                className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                                                                variant={
+                                                                    selectedVariable ===
+                                                                    variable
+                                                                        ? "default"
+                                                                        : "outline"
+                                                                }
+                                                                onClick={() =>
+                                                                    handleVariableClick(
+                                                                        variable
+                                                                    )
+                                                                }
+                                                                draggable
+                                                                onDragStart={(
+                                                                    e
+                                                                ) =>
+                                                                    e.dataTransfer.setData(
+                                                                        "text",
+                                                                        variable
+                                                                    )
+                                                                }
+                                                            >
+                                                                {variable}
+                                                            </Badge>
+                                                        )
+                                                    )}
                                                 </div>
-                                            </ResizablePanel>
-                                            <ResizableHandle withHandle />
-                                            <ResizablePanel defaultSize={50}>
-                                                <div className="flex flex-col gap-4 p-2">
-                                                    <div
-                                                        className="flex flex-col gap-2"
-                                                        onDragOver={(e) =>
-                                                            e.preventDefault()
-                                                        }
-                                                        onDrop={(e) => {
-                                                            const variable =
-                                                                e.dataTransfer.getData(
-                                                                    "text"
-                                                                );
-                                                            handleDrop(
-                                                                "AxisList",
-                                                                variable
-                                                            );
-                                                        }}
-                                                    >
-                                                        <Label>
-                                                            Horizontal Axis:{" "}
-                                                        </Label>
-                                                        <div className="w-full border rounded p-2 min-h-10">
-                                                            {plotsState.AxisList ? (
-                                                                <Badge
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "AxisList"
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        plotsState.AxisList
-                                                                    }
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-sm font-light text-gray-500">
-                                                                    Drop
-                                                                    variable
-                                                                    here.
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        className="flex flex-col gap-2"
-                                                        onDragOver={(e) =>
-                                                            e.preventDefault()
-                                                        }
-                                                        onDrop={(e) => {
-                                                            const variable =
-                                                                e.dataTransfer.getData(
-                                                                    "text"
-                                                                );
-                                                            handleDrop(
-                                                                "LineList",
-                                                                variable
-                                                            );
-                                                        }}
-                                                    >
-                                                        <Label>
-                                                            Separate Lines:{" "}
-                                                        </Label>
-                                                        <div className="w-full border rounded p-2 min-h-10">
-                                                            {plotsState.LineList ? (
-                                                                <Badge
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "LineList"
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        plotsState.LineList
-                                                                    }
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-sm font-light text-gray-500">
-                                                                    Drop
-                                                                    variable
-                                                                    here.
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        className="flex flex-col gap-2"
-                                                        onDragOver={(e) =>
-                                                            e.preventDefault()
-                                                        }
-                                                        onDrop={(e) => {
-                                                            const variable =
-                                                                e.dataTransfer.getData(
-                                                                    "text"
-                                                                );
-                                                            handleDrop(
-                                                                "PlotList",
-                                                                variable
-                                                            );
-                                                        }}
-                                                    >
-                                                        <Label>
-                                                            Separate Plots:{" "}
-                                                        </Label>
-                                                        <div className="w-full border rounded p-2 min-h-10">
-                                                            {plotsState.PlotList ? (
-                                                                <Badge
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "PlotList"
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        plotsState.PlotList
-                                                                    }
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-sm font-light text-gray-500">
-                                                                    Drop
-                                                                    variable
-                                                                    here.
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </ResizablePanel>
-                                        </ResizablePanelGroup>
-                                    </div>
-                                </ResizablePanel>
-                                <ResizableHandle />
-                                <ResizablePanel defaultSize={25}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <div className="flex justify-between items-center">
-                                            <Label>Plots: </Label>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={handleAddPlot}
-                                                    disabled={isAddButtonDisabled()}
-                                                >
-                                                    Add
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={handleChangePlot}
-                                                    disabled={!selectedPlot}
-                                                >
-                                                    Change
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={handleRemovePlot}
-                                                    disabled={!selectedPlot}
-                                                >
-                                                    Remove
-                                                </Button>
-                                            </div>
+                                            </ScrollArea>
                                         </div>
-                                        <ScrollArea className="h-[125px] border rounded">
-                                            <div className="flex flex-col gap-1 p-2">
-                                                {plotsList.map(
-                                                    (plot, index) => (
+                                    </ResizablePanel>
+                                    <ResizableHandle withHandle />
+                                    <ResizablePanel defaultSize={50}>
+                                        <div className="flex flex-col gap-4 p-2">
+                                            <div
+                                                className="flex flex-col gap-2"
+                                                onDragOver={(e) =>
+                                                    e.preventDefault()
+                                                }
+                                                onDrop={(e) => {
+                                                    const variable =
+                                                        e.dataTransfer.getData(
+                                                            "text"
+                                                        );
+                                                    handleDrop(
+                                                        "AxisList",
+                                                        variable
+                                                    );
+                                                }}
+                                            >
+                                                <Label>Horizontal Axis: </Label>
+                                                <div className="w-full border rounded p-2 min-h-10">
+                                                    {plotsState.AxisList ? (
                                                         <Badge
-                                                            key={index}
-                                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                            variant={
-                                                                selectedPlot ===
-                                                                plot
-                                                                    ? "default"
-                                                                    : "outline"
-                                                            }
+                                                            className="text-start text-sm font-light p-2 cursor-pointer"
+                                                            variant="outline"
                                                             onClick={() =>
-                                                                handlePlotClick(
-                                                                    plot
+                                                                handleRemoveVariable(
+                                                                    "AxisList"
                                                                 )
                                                             }
                                                         >
-                                                            {plot}
+                                                            {
+                                                                plotsState.AxisList
+                                                            }
                                                         </Badge>
-                                                    )
-                                                )}
+                                                    ) : (
+                                                        <span className="text-sm font-light text-gray-500">
+                                                            Drop variable here.
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </ScrollArea>
-                                    </div>
-                                </ResizablePanel>
-                                <ResizableHandle />
-                                <ResizablePanel defaultSize={15}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <Label className="font-bold">
-                                            Chart Type
-                                        </Label>
-                                        <RadioGroup
-                                            value={
-                                                plotsState.LineChartType
-                                                    ? "LineChartType"
-                                                    : "BarChartType"
-                                            }
-                                            onValueChange={handleChartGrp}
-                                        >
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem
-                                                    value="LineChartType"
-                                                    id="LineChartType"
-                                                />
-                                                <Label htmlFor="LineChartType">
-                                                    Line Chart
-                                                </Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem
-                                                    value="BarChartType"
-                                                    id="BarChartType"
-                                                />
-                                                <Label htmlFor="BarChartType">
-                                                    Bar Chart
-                                                </Label>
-                                            </div>
-                                        </RadioGroup>
-                                    </div>
-                                </ResizablePanel>
-                                <ResizableHandle />
-                                <ResizablePanel defaultSize={20}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <Label className="font-bold">
-                                            Error Bars
-                                        </Label>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="IncludeErrorBars"
-                                                checked={
-                                                    plotsState.IncludeErrorBars
+                                            <div
+                                                className="flex flex-col gap-2"
+                                                onDragOver={(e) =>
+                                                    e.preventDefault()
                                                 }
-                                                onCheckedChange={(checked) =>
+                                                onDrop={(e) => {
+                                                    const variable =
+                                                        e.dataTransfer.getData(
+                                                            "text"
+                                                        );
+                                                    handleDrop(
+                                                        "LineList",
+                                                        variable
+                                                    );
+                                                }}
+                                            >
+                                                <Label>Separate Lines: </Label>
+                                                <div className="w-full border rounded p-2 min-h-10">
+                                                    {plotsState.LineList ? (
+                                                        <Badge
+                                                            className="text-start text-sm font-light p-2 cursor-pointer"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                handleRemoveVariable(
+                                                                    "LineList"
+                                                                )
+                                                            }
+                                                        >
+                                                            {
+                                                                plotsState.LineList
+                                                            }
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-sm font-light text-gray-500">
+                                                            Drop variable here.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="flex flex-col gap-2"
+                                                onDragOver={(e) =>
+                                                    e.preventDefault()
+                                                }
+                                                onDrop={(e) => {
+                                                    const variable =
+                                                        e.dataTransfer.getData(
+                                                            "text"
+                                                        );
+                                                    handleDrop(
+                                                        "PlotList",
+                                                        variable
+                                                    );
+                                                }}
+                                            >
+                                                <Label>Separate Plots: </Label>
+                                                <div className="w-full border rounded p-2 min-h-10">
+                                                    {plotsState.PlotList ? (
+                                                        <Badge
+                                                            className="text-start text-sm font-light p-2 cursor-pointer"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                handleRemoveVariable(
+                                                                    "PlotList"
+                                                                )
+                                                            }
+                                                        >
+                                                            {
+                                                                plotsState.PlotList
+                                                            }
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-sm font-light text-gray-500">
+                                                            Drop variable here.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </ResizablePanel>
+                                </ResizablePanelGroup>
+                            </div>
+                        </ResizablePanel>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={25}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <div className="flex justify-between items-center">
+                                    <Label>Plots: </Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleAddPlot}
+                                            disabled={isAddButtonDisabled()}
+                                        >
+                                            Add
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleChangePlot}
+                                            disabled={!selectedPlot}
+                                        >
+                                            Change
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleRemovePlot}
+                                            disabled={!selectedPlot}
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                </div>
+                                <ScrollArea className="h-[125px] border rounded">
+                                    <div className="flex flex-col gap-1 p-2">
+                                        {plotsList.map((plot, index) => (
+                                            <Badge
+                                                key={index}
+                                                className="w-full text-start text-sm font-light p-2 cursor-pointer"
+                                                variant={
+                                                    selectedPlot === plot
+                                                        ? "default"
+                                                        : "outline"
+                                                }
+                                                onClick={() =>
+                                                    handlePlotClick(plot)
+                                                }
+                                            >
+                                                {plot}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        </ResizablePanel>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={15}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <Label className="font-bold">Chart Type</Label>
+                                <RadioGroup
+                                    value={
+                                        plotsState.LineChartType
+                                            ? "LineChartType"
+                                            : "BarChartType"
+                                    }
+                                    onValueChange={handleChartGrp}
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem
+                                            value="LineChartType"
+                                            id="LineChartType"
+                                        />
+                                        <Label htmlFor="LineChartType">
+                                            Line Chart
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem
+                                            value="BarChartType"
+                                            id="BarChartType"
+                                        />
+                                        <Label htmlFor="BarChartType">
+                                            Bar Chart
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                        </ResizablePanel>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={20}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <Label className="font-bold">Error Bars</Label>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="IncludeErrorBars"
+                                        checked={plotsState.IncludeErrorBars}
+                                        onCheckedChange={(checked) =>
+                                            handleChange(
+                                                "IncludeErrorBars",
+                                                checked
+                                            )
+                                        }
+                                    />
+                                    <label
+                                        htmlFor="IncludeErrorBars"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        Include Error Bars
+                                    </label>
+                                </div>
+                                <RadioGroup
+                                    value={
+                                        plotsState.ConfidenceInterval
+                                            ? "ConfidenceInterval"
+                                            : "StandardError"
+                                    }
+                                    disabled={!plotsState.IncludeErrorBars}
+                                    onValueChange={handleErrorBarsGrp}
+                                >
+                                    <div className="flex items-center space-x-2 pl-6">
+                                        <RadioGroupItem
+                                            value="ConfidenceInterval"
+                                            id="ConfidenceInterval"
+                                        />
+                                        <Label htmlFor="ConfidenceInterval">
+                                            Confidence Interval (95.0%)
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2 pl-6">
+                                        <RadioGroupItem
+                                            value="StandardError"
+                                            id="StandardError"
+                                        />
+                                        <Label htmlFor="StandardError">
+                                            Standard Error
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2 pl-6">
+                                        <Label className="w-[75px]">
+                                            Multiplier:
+                                        </Label>
+                                        <div className="w-[75px]">
+                                            <Input
+                                                id="Multiplier"
+                                                type="number"
+                                                placeholder=""
+                                                value={
+                                                    plotsState.Multiplier ?? ""
+                                                }
+                                                disabled={
+                                                    !plotsState.StandardError
+                                                }
+                                                onChange={(e) =>
                                                     handleChange(
-                                                        "IncludeErrorBars",
-                                                        checked
+                                                        "Multiplier",
+                                                        Number(e.target.value)
                                                     )
                                                 }
                                             />
-                                            <label
-                                                htmlFor="IncludeErrorBars"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Include Error Bars
-                                            </label>
                                         </div>
-                                        <RadioGroup
-                                            value={
-                                                plotsState.ConfidenceInterval
-                                                    ? "ConfidenceInterval"
-                                                    : "StandardError"
-                                            }
-                                            disabled={
-                                                !plotsState.IncludeErrorBars
-                                            }
-                                            onValueChange={handleErrorBarsGrp}
-                                        >
-                                            <div className="flex items-center space-x-2 pl-6">
-                                                <RadioGroupItem
-                                                    value="ConfidenceInterval"
-                                                    id="ConfidenceInterval"
-                                                />
-                                                <Label htmlFor="ConfidenceInterval">
-                                                    Confidence Interval (95.0%)
-                                                </Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2 pl-6">
-                                                <RadioGroupItem
-                                                    value="StandardError"
-                                                    id="StandardError"
-                                                />
-                                                <Label htmlFor="StandardError">
-                                                    Standard Error
-                                                </Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2 pl-6">
-                                                <Label className="w-[75px]">
-                                                    Multiplier:
-                                                </Label>
-                                                <div className="w-[75px]">
-                                                    <Input
-                                                        id="Multiplier"
-                                                        type="number"
-                                                        placeholder=""
-                                                        value={
-                                                            plotsState.Multiplier ??
-                                                            ""
-                                                        }
-                                                        disabled={
-                                                            !plotsState.StandardError
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleChange(
-                                                                "Multiplier",
-                                                                Number(
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        </RadioGroup>
                                     </div>
-                                </ResizablePanel>
-                            </ResizablePanelGroup>
-                        </ScrollArea>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="IncludeRefLineForGrandMean"
-                                checked={plotsState.IncludeRefLineForGrandMean}
-                                onCheckedChange={(checked) =>
-                                    handleChange(
-                                        "IncludeRefLineForGrandMean",
-                                        checked
-                                    )
-                                }
-                            />
-                            <label
-                                htmlFor="IncludeRefLineForGrandMean"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Include Reference Line for Grand Mean
-                            </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="YAxisStart0"
-                                checked={plotsState.YAxisStart0}
-                                onCheckedChange={(checked) =>
-                                    handleChange("YAxisStart0", checked)
-                                }
-                            />
-                            <label
-                                htmlFor="YAxisStart0"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Y Axis Start at 0
-                            </label>
-                        </div>
-                    </div>
-                    <DialogFooter className="sm:justify-start">
-                        <Button
-                            disabled={isContinueDisabled}
-                            type="button"
-                            onClick={handleContinue}
-                        >
-                            Continue
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setIsPlotsOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="button" variant="secondary">
-                            Help
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+                                </RadioGroup>
+                            </div>
+                        </ResizablePanel>
+                    </ResizablePanelGroup>
+                </ScrollArea>
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="IncludeRefLineForGrandMean"
+                        checked={plotsState.IncludeRefLineForGrandMean}
+                        onCheckedChange={(checked) =>
+                            handleChange("IncludeRefLineForGrandMean", checked)
+                        }
+                    />
+                    <label
+                        htmlFor="IncludeRefLineForGrandMean"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        Include Reference Line for Grand Mean
+                    </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox
+                        id="YAxisStart0"
+                        checked={plotsState.YAxisStart0}
+                        onCheckedChange={(checked) =>
+                            handleChange("YAxisStart0", checked)
+                        }
+                    />
+                    <label
+                        htmlFor="YAxisStart0"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        Y Axis Start at 0
+                    </label>
+                </div>
+            </div>
+            <div className="flex-grow" />
+            <div className="flex justify-start gap-2 p-4 border-t">
+                <Button
+                    disabled={isContinueDisabled}
+                    type="button"
+                    onClick={handleContinue}
+                >
+                    Continue
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsPlotsOpen(false)}
+                >
+                    Cancel
+                </Button>
+                <Button type="button" variant="secondary">
+                    Help
+                </Button>
+            </div>
+        </div>
     );
 };

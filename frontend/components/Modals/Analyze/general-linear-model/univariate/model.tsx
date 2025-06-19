@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
     UnivariateModelProps,
     UnivariateModelType,
@@ -382,530 +374,497 @@ export const UnivariateModel = ({
         setIsModelOpen(false);
     };
 
+    if (!isModelOpen) return null;
+
     return (
-        <>
-            {/* Model Dialog */}
-            <Dialog open={isModelOpen} onOpenChange={setIsModelOpen}>
-                <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Univariate: Model</DialogTitle>
-                    </DialogHeader>
-                    <Separator />
-                    <div className="h-[500px] flex flex-col gap-2">
-                        <ScrollArea>
-                            <ResizablePanelGroup
-                                direction="vertical"
-                                className="min-h-[450px] max-w-2xl rounded-lg border md:min-w-[200px]"
-                            >
-                                <ResizablePanel defaultSize={15}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <Label className="font-bold">
-                                            Specify Model
-                                        </Label>
-                                        <RadioGroup
-                                            value={
-                                                modelState.NonCust
-                                                    ? "NonCust"
-                                                    : modelState.Custom
-                                                    ? "Custom"
-                                                    : "BuildCustomTerm"
-                                            }
-                                            onValueChange={handleSpecifyGrp}
-                                        >
-                                            <div className="grid grid-cols-3">
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem
-                                                        value="NonCust"
-                                                        id="NonCust"
-                                                    />
-                                                    <Label htmlFor="NonCust">
-                                                        Full Factorial
-                                                    </Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem
-                                                        value="Custom"
-                                                        id="Custom"
-                                                    />
-                                                    <Label htmlFor="Custom">
-                                                        Build Terms
-                                                    </Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem
-                                                        value="BuildCustomTerm"
-                                                        id="BuildCustomTerm"
-                                                    />
-                                                    <Label htmlFor="BuildCustomTerm">
-                                                        Build Custom Terms
-                                                    </Label>
-                                                </div>
-                                            </div>
-                                        </RadioGroup>
+        <div className="flex flex-col h-full">
+            <div className="flex flex-col items-start gap-2 p-4 h-[600px]">
+                <ScrollArea>
+                    <ResizablePanelGroup
+                        direction="vertical"
+                        className="min-h-[550px] rounded-lg border md:min-w-[200px]"
+                    >
+                        <ResizablePanel defaultSize={15}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <Label className="font-bold">
+                                    Specify Model
+                                </Label>
+                                <RadioGroup
+                                    value={
+                                        modelState.NonCust
+                                            ? "NonCust"
+                                            : modelState.Custom
+                                            ? "Custom"
+                                            : "BuildCustomTerm"
+                                    }
+                                    onValueChange={handleSpecifyGrp}
+                                >
+                                    <div className="grid grid-cols-3">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem
+                                                value="NonCust"
+                                                id="NonCust"
+                                            />
+                                            <Label htmlFor="NonCust">
+                                                Full Factorial
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem
+                                                value="Custom"
+                                                id="Custom"
+                                            />
+                                            <Label htmlFor="Custom">
+                                                Build Terms
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem
+                                                value="BuildCustomTerm"
+                                                id="BuildCustomTerm"
+                                            />
+                                            <Label htmlFor="BuildCustomTerm">
+                                                Build Custom Terms
+                                            </Label>
+                                        </div>
                                     </div>
-                                </ResizablePanel>
-                                <ResizableHandle />
-                                <ResizablePanel defaultSize={55}>
-                                    <ResizablePanelGroup direction="horizontal">
-                                        <ResizablePanel defaultSize={30}>
-                                            <div className="w-full p-2">
-                                                <Label>
-                                                    Factor & Covariates:{" "}
-                                                </Label>
-                                                <ScrollArea className="h-[200px] p-2 border rounded overflow-hidden">
-                                                    <div className="flex flex-col gap-1 justify-start items-start">
-                                                        {availableVariables.map(
-                                                            (
-                                                                variable: string,
-                                                                index: number
-                                                            ) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    className={`w-full text-start text-sm font-light p-2 cursor-pointer ${
-                                                                        selectedVariables.includes(
-                                                                            variable
-                                                                        )
-                                                                            ? "bg-blue-500 text-white"
-                                                                            : ""
-                                                                    }`}
-                                                                    variant={
-                                                                        selectedVariables.includes(
-                                                                            variable
-                                                                        )
-                                                                            ? "default"
-                                                                            : "outline"
-                                                                    }
-                                                                    draggable={
-                                                                        !modelState.NonCust &&
-                                                                        !modelState.BuildCustomTerm
-                                                                    }
-                                                                    onDragStart={(
-                                                                        e
-                                                                    ) =>
-                                                                        e.dataTransfer.setData(
-                                                                            "text",
-                                                                            variable
-                                                                        )
-                                                                    }
-                                                                    onClick={(
-                                                                        e
-                                                                    ) =>
-                                                                        handleVariableClick(
-                                                                            variable,
-                                                                            e as any
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {variable}
-                                                                </Badge>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-                                        </ResizablePanel>
-                                        <ResizableHandle />
-                                        <ResizablePanel defaultSize={30}>
-                                            <div className="flex flex-col gap-2 p-2">
-                                                <Label className="font-bold">
-                                                    Build Term(s):
-                                                </Label>
-                                                <div className="flex items-center space-x-2">
-                                                    <Label className="w-[75px]">
-                                                        Type:
-                                                    </Label>
-                                                    <Select
-                                                        value={
-                                                            modelState.BuildTermMethod ??
-                                                            ""
-                                                        }
-                                                        onValueChange={(
-                                                            value
-                                                        ) =>
-                                                            handleChange(
-                                                                "BuildTermMethod",
-                                                                value
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            modelState.NonCust ||
-                                                            modelState.BuildCustomTerm
-                                                        }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="w-[150px]">
-                                                            <SelectGroup>
-                                                                {BUILDTERMMETHOD.map(
-                                                                    (
-                                                                        method,
-                                                                        index
-                                                                    ) => (
-                                                                        <SelectItem
-                                                                            key={
-                                                                                index
-                                                                            }
-                                                                            value={
-                                                                                method.value
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                method.name
-                                                                            }
-                                                                        </SelectItem>
-                                                                    )
-                                                                )}
-                                                            </SelectGroup>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    {/* Tambahkan tombol Add di bawah Select untuk mode Custom */}
-                                                </div>
-                                                {modelState.Custom && (
-                                                    <div className="mt-2 flex justify-end">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="default"
-                                                            disabled={
-                                                                selectedVariables.length ===
-                                                                    0 ||
-                                                                !modelState.BuildTermMethod
+                                </RadioGroup>
+                            </div>
+                        </ResizablePanel>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={55}>
+                            <ResizablePanelGroup direction="horizontal">
+                                <ResizablePanel defaultSize={30}>
+                                    <div className="w-full p-2">
+                                        <Label>Factor & Covariates: </Label>
+                                        <ScrollArea className="h-[200px] p-2 border rounded overflow-hidden">
+                                            <div className="flex flex-col gap-1 justify-start items-start">
+                                                {availableVariables.map(
+                                                    (
+                                                        variable: string,
+                                                        index: number
+                                                    ) => (
+                                                        <Badge
+                                                            key={index}
+                                                            className={`w-full text-start text-sm font-light p-2 cursor-pointer ${
+                                                                selectedVariables.includes(
+                                                                    variable
+                                                                )
+                                                                    ? "bg-blue-500 text-white"
+                                                                    : ""
+                                                            }`}
+                                                            variant={
+                                                                selectedVariables.includes(
+                                                                    variable
+                                                                )
+                                                                    ? "default"
+                                                                    : "outline"
                                                             }
-                                                            onClick={
-                                                                handleAddByBuildTermMethod
+                                                            draggable={
+                                                                !modelState.NonCust &&
+                                                                !modelState.BuildCustomTerm
+                                                            }
+                                                            onDragStart={(e) =>
+                                                                e.dataTransfer.setData(
+                                                                    "text",
+                                                                    variable
+                                                                )
+                                                            }
+                                                            onClick={(e) =>
+                                                                handleVariableClick(
+                                                                    variable,
+                                                                    e as any
+                                                                )
                                                             }
                                                         >
-                                                            Add
-                                                        </Button>
-                                                    </div>
+                                                            {variable}
+                                                        </Badge>
+                                                    )
                                                 )}
                                             </div>
-                                        </ResizablePanel>
-                                        <ResizableHandle />
-                                        <ResizablePanel defaultSize={40}>
-                                            <div className="w-full p-2">
-                                                <div
-                                                    className="flex flex-col w-full gap-2"
-                                                    onDragOver={(e) =>
-                                                        modelState.Custom
-                                                            ? e.preventDefault()
-                                                            : null
-                                                    }
-                                                    onDrop={(e) => {
-                                                        if (modelState.Custom) {
-                                                            const variable =
-                                                                e.dataTransfer.getData(
-                                                                    "text"
-                                                                );
-                                                            handleDrop(
-                                                                "FactorsModel",
-                                                                variable
-                                                            );
-                                                        }
-                                                    }}
-                                                >
-                                                    <Label>Model: </Label>
-                                                    <div className="w-full h-[200px] p-2 border rounded overflow-hidden">
-                                                        <ScrollArea>
-                                                            <div className="w-full h-[180px]">
-                                                                {modelState.FactorsModel &&
-                                                                modelState
-                                                                    .FactorsModel
-                                                                    .length >
-                                                                    0 ? (
-                                                                    <div className="flex flex-col gap-1">
-                                                                        {modelState.FactorsModel.map(
-                                                                            (
-                                                                                variable,
-                                                                                index
-                                                                            ) => (
-                                                                                <Badge
-                                                                                    key={
-                                                                                        index
-                                                                                    }
-                                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                                    variant={
-                                                                                        selectedVariable ===
-                                                                                        variable
-                                                                                            ? "default"
-                                                                                            : "outline"
-                                                                                    }
-                                                                                    onClick={() =>
-                                                                                        handleVariableClick(
-                                                                                            variable
-                                                                                        )
-                                                                                    }
-                                                                                >
-                                                                                    {
-                                                                                        variable
-                                                                                    }
-                                                                                </Badge>
-                                                                            )
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-sm font-light text-gray-500">
-                                                                        {modelState.Custom
-                                                                            ? "Drop variables here."
-                                                                            : modelState.BuildCustomTerm
-                                                                            ? "Use the buttons below to build and add terms."
-                                                                            : "Select a model specification method."}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </ScrollArea>
-                                                    </div>
-                                                    <input
-                                                        type="hidden"
-                                                        value={
-                                                            modelState.FactorsModel ??
-                                                            ""
-                                                        }
-                                                        name="Independents"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </ResizablePanel>
-                                    </ResizablePanelGroup>
+                                        </ScrollArea>
+                                    </div>
                                 </ResizablePanel>
                                 <ResizableHandle />
                                 <ResizablePanel defaultSize={30}>
                                     <div className="flex flex-col gap-2 p-2">
-                                        <Label>Build Term:</Label>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[150px]">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !modelState.BuildCustomTerm ||
-                                                                !selectedVariable ||
-                                                                (currentBuildTerm.length >
-                                                                    0 &&
-                                                                    !currentBuildTerm.includes(
-                                                                        "{variable}"
-                                                                    ) && // Aktif jika ada placeholder
-                                                                    !currentBuildTerm.endsWith(
-                                                                        " * "
-                                                                    ) &&
-                                                                    !currentBuildTerm.endsWith(
-                                                                        "("
-                                                                    ))
-                                                            }
-                                                            onClick={
-                                                                handleArrowClick
-                                                            }
-                                                            title="Insert Variable"
-                                                        >
-                                                            →
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !modelState.BuildCustomTerm ||
-                                                                currentBuildTerm.trim() ===
-                                                                    "" ||
-                                                                currentBuildTerm.includes(
-                                                                    "{variable}"
-                                                                ) || // Tidak aktif jika ada placeholder
-                                                                currentBuildTerm.endsWith(
-                                                                    " * "
-                                                                ) ||
-                                                                currentBuildTerm.endsWith(
-                                                                    "("
-                                                                )
-                                                            }
-                                                            onClick={
-                                                                handleByClick
-                                                            }
-                                                            title="By"
-                                                        >
-                                                            By *
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !modelState.BuildCustomTerm ||
-                                                                currentBuildTerm.trim() ===
-                                                                    "" || // Periksa apakah term kosong
-                                                                currentBuildTerm.includes(
-                                                                    "{variable}"
-                                                                ) || // Tidak aktif jika ada placeholder
-                                                                currentBuildTerm.endsWith(
-                                                                    " * "
-                                                                ) ||
-                                                                currentBuildTerm.endsWith(
-                                                                    "("
-                                                                )
-                                                            }
-                                                            onClick={
-                                                                handleWithinClick
-                                                            }
-                                                            title="Within"
-                                                        >
-                                                            (Within)
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !modelState.BuildCustomTerm ||
-                                                                currentBuildTerm.length ===
-                                                                    0
-                                                            }
-                                                            onClick={
-                                                                handleClearTermClick
-                                                            }
-                                                            title="Clear Term"
-                                                        >
-                                                            Clear Term
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !modelState.BuildCustomTerm ||
-                                                                currentBuildTerm.length ===
-                                                                    0 ||
-                                                                currentBuildTerm.includes(
-                                                                    "{variable}"
-                                                                ) || // Tidak aktif jika ada placeholder
-                                                                currentBuildTerm.endsWith(
-                                                                    " * "
-                                                                ) ||
-                                                                currentBuildTerm.endsWith(
-                                                                    "("
-                                                                )
-                                                            }
-                                                            onClick={
-                                                                handleAddTermClick
-                                                            }
-                                                            title="Add"
-                                                        >
-                                                            Add
-                                                        </Button>
-                                                    </TableHead>
-                                                    <TableHead>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                !selectedVariable ||
-                                                                !(
-                                                                    modelState.FactorsModel ||
-                                                                    []
-                                                                ).includes(
-                                                                    selectedVariable
-                                                                )
-                                                            }
-                                                            onClick={
-                                                                handleRemoveTermClick
-                                                            }
-                                                            title="Remove"
-                                                        >
-                                                            Remove
-                                                        </Button>
-                                                    </TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                <TableRow>
-                                                    <TableCell
-                                                        colSpan={6}
-                                                        className="p-2 border"
-                                                    >
-                                                        <div className="p-2 rounded-md min-h-[30px]">
-                                                            {currentBuildTerm ||
-                                                                "(Empty)"}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
+                                        <Label className="font-bold">
+                                            Build Term(s):
+                                        </Label>
+                                        <div className="flex items-center space-x-2">
+                                            <Label className="w-[75px]">
+                                                Type:
+                                            </Label>
+                                            <Select
+                                                value={
+                                                    modelState.BuildTermMethod ??
+                                                    ""
+                                                }
+                                                onValueChange={(value) =>
+                                                    handleChange(
+                                                        "BuildTermMethod",
+                                                        value
+                                                    )
+                                                }
+                                                disabled={
+                                                    modelState.NonCust ||
+                                                    modelState.BuildCustomTerm
+                                                }
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="w-[150px]">
+                                                    <SelectGroup>
+                                                        {BUILDTERMMETHOD.map(
+                                                            (method, index) => (
+                                                                <SelectItem
+                                                                    key={index}
+                                                                    value={
+                                                                        method.value
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        method.name
+                                                                    }
+                                                                </SelectItem>
+                                                            )
+                                                        )}
+                                                    </SelectGroup>
+                                                </SelectContent>
+                                            </Select>
+                                            {/* Tambahkan tombol Add di bawah Select untuk mode Custom */}
+                                        </div>
+                                        {modelState.Custom && (
+                                            <div className="mt-2 flex justify-end">
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    disabled={
+                                                        selectedVariables.length ===
+                                                            0 ||
+                                                        !modelState.BuildTermMethod
+                                                    }
+                                                    onClick={
+                                                        handleAddByBuildTermMethod
+                                                    }
+                                                >
+                                                    Add
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ResizablePanel>
+                                <ResizableHandle />
+                                <ResizablePanel defaultSize={40}>
+                                    <div className="w-full p-2">
+                                        <div
+                                            className="flex flex-col w-full gap-2"
+                                            onDragOver={(e) =>
+                                                modelState.Custom
+                                                    ? e.preventDefault()
+                                                    : null
+                                            }
+                                            onDrop={(e) => {
+                                                if (modelState.Custom) {
+                                                    const variable =
+                                                        e.dataTransfer.getData(
+                                                            "text"
+                                                        );
+                                                    handleDrop(
+                                                        "FactorsModel",
+                                                        variable
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            <Label>Model: </Label>
+                                            <div className="w-full h-[200px] p-2 border rounded overflow-hidden">
+                                                <ScrollArea>
+                                                    <div className="w-full h-[180px]">
+                                                        {modelState.FactorsModel &&
+                                                        modelState.FactorsModel
+                                                            .length > 0 ? (
+                                                            <div className="flex flex-col gap-1">
+                                                                {modelState.FactorsModel.map(
+                                                                    (
+                                                                        variable,
+                                                                        index
+                                                                    ) => (
+                                                                        <Badge
+                                                                            key={
+                                                                                index
+                                                                            }
+                                                                            className="text-start text-sm font-light p-2 cursor-pointer"
+                                                                            variant={
+                                                                                selectedVariable ===
+                                                                                variable
+                                                                                    ? "default"
+                                                                                    : "outline"
+                                                                            }
+                                                                            onClick={() =>
+                                                                                handleVariableClick(
+                                                                                    variable
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                variable
+                                                                            }
+                                                                        </Badge>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm font-light text-gray-500">
+                                                                {modelState.Custom
+                                                                    ? "Drop variables here."
+                                                                    : modelState.BuildCustomTerm
+                                                                    ? "Use the buttons below to build and add terms."
+                                                                    : "Select a model specification method."}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </ScrollArea>
+                                            </div>
+                                            <input
+                                                type="hidden"
+                                                value={
+                                                    modelState.FactorsModel ??
+                                                    ""
+                                                }
+                                                name="Independents"
+                                            />
+                                        </div>
                                     </div>
                                 </ResizablePanel>
                             </ResizablePanelGroup>
-                        </ScrollArea>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="flex items-center space-x-2">
-                                <Label className="w-[200px]">
-                                    Sum of Squares:
-                                </Label>
-                                <Select
-                                    value={modelState.SumOfSquareMethod ?? ""}
-                                    onValueChange={(value) =>
-                                        handleChange("SumOfSquareMethod", value)
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="w-full">
-                                        <SelectGroup>
-                                            {SUMSQUARESMETHOD.map(
-                                                (method, index) => (
-                                                    <SelectItem
-                                                        key={index}
-                                                        value={method.value}
-                                                    >
-                                                        {method.name}
-                                                    </SelectItem>
-                                                )
-                                            )}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
+                        </ResizablePanel>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={30}>
+                            <div className="flex flex-col gap-2 p-2">
+                                <Label>Build Term:</Label>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[150px]">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !modelState.BuildCustomTerm ||
+                                                        !selectedVariable ||
+                                                        (currentBuildTerm.length >
+                                                            0 &&
+                                                            !currentBuildTerm.includes(
+                                                                "{variable}"
+                                                            ) && // Aktif jika ada placeholder
+                                                            !currentBuildTerm.endsWith(
+                                                                " * "
+                                                            ) &&
+                                                            !currentBuildTerm.endsWith(
+                                                                "("
+                                                            ))
+                                                    }
+                                                    onClick={handleArrowClick}
+                                                    title="Insert Variable"
+                                                >
+                                                    →
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !modelState.BuildCustomTerm ||
+                                                        currentBuildTerm.trim() ===
+                                                            "" ||
+                                                        currentBuildTerm.includes(
+                                                            "{variable}"
+                                                        ) || // Tidak aktif jika ada placeholder
+                                                        currentBuildTerm.endsWith(
+                                                            " * "
+                                                        ) ||
+                                                        currentBuildTerm.endsWith(
+                                                            "("
+                                                        )
+                                                    }
+                                                    onClick={handleByClick}
+                                                    title="By"
+                                                >
+                                                    By *
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !modelState.BuildCustomTerm ||
+                                                        currentBuildTerm.trim() ===
+                                                            "" || // Periksa apakah term kosong
+                                                        currentBuildTerm.includes(
+                                                            "{variable}"
+                                                        ) || // Tidak aktif jika ada placeholder
+                                                        currentBuildTerm.endsWith(
+                                                            " * "
+                                                        ) ||
+                                                        currentBuildTerm.endsWith(
+                                                            "("
+                                                        )
+                                                    }
+                                                    onClick={handleWithinClick}
+                                                    title="Within"
+                                                >
+                                                    (Within)
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !modelState.BuildCustomTerm ||
+                                                        currentBuildTerm.length ===
+                                                            0
+                                                    }
+                                                    onClick={
+                                                        handleClearTermClick
+                                                    }
+                                                    title="Clear Term"
+                                                >
+                                                    Clear Term
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !modelState.BuildCustomTerm ||
+                                                        currentBuildTerm.length ===
+                                                            0 ||
+                                                        currentBuildTerm.includes(
+                                                            "{variable}"
+                                                        ) || // Tidak aktif jika ada placeholder
+                                                        currentBuildTerm.endsWith(
+                                                            " * "
+                                                        ) ||
+                                                        currentBuildTerm.endsWith(
+                                                            "("
+                                                        )
+                                                    }
+                                                    onClick={handleAddTermClick}
+                                                    title="Add"
+                                                >
+                                                    Add
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={
+                                                        !selectedVariable ||
+                                                        !(
+                                                            modelState.FactorsModel ||
+                                                            []
+                                                        ).includes(
+                                                            selectedVariable
+                                                        )
+                                                    }
+                                                    onClick={
+                                                        handleRemoveTermClick
+                                                    }
+                                                    title="Remove"
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={6}
+                                                className="p-2 border"
+                                            >
+                                                <div className="p-2 rounded-md min-h-[30px]">
+                                                    {currentBuildTerm ||
+                                                        "(Empty)"}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="Intercept"
-                                    checked={modelState.Intercept}
-                                    onCheckedChange={(checked) =>
-                                        handleChange("Intercept", checked)
-                                    }
-                                />
-                                <label
-                                    htmlFor="Intercept"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Include Intercept in Model
-                                </label>
-                            </div>
-                        </div>
+                        </ResizablePanel>
+                    </ResizablePanelGroup>
+                </ScrollArea>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center space-x-2">
+                        <Label className="w-[200px]">Sum of Squares:</Label>
+                        <Select
+                            value={modelState.SumOfSquareMethod ?? ""}
+                            onValueChange={(value) =>
+                                handleChange("SumOfSquareMethod", value)
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="w-full">
+                                <SelectGroup>
+                                    {SUMSQUARESMETHOD.map((method, index) => (
+                                        <SelectItem
+                                            key={index}
+                                            value={method.value}
+                                        >
+                                            {method.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <DialogFooter className="sm:justify-start">
-                        <Button
-                            disabled={isContinueDisabled}
-                            type="button"
-                            onClick={handleContinue}
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="Intercept"
+                            checked={modelState.Intercept}
+                            onCheckedChange={(checked) =>
+                                handleChange("Intercept", checked)
+                            }
+                        />
+                        <label
+                            htmlFor="Intercept"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                            Continue
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setIsModelOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="button" variant="secondary">
-                            Help
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+                            Include Intercept in Model
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div className="flex-grow" />
+            <div className="flex justify-start gap-2 p-4 border-t">
+                <Button
+                    disabled={isContinueDisabled}
+                    type="button"
+                    onClick={handleContinue}
+                >
+                    Continue
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setIsModelOpen(false)}
+                >
+                    Cancel
+                </Button>
+                <Button type="button" variant="secondary">
+                    Help
+                </Button>
+            </div>
+        </div>
     );
 };
