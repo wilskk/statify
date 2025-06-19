@@ -151,9 +151,9 @@ export const UnivariateContrast = ({
     if (!isContrastOpen) return null;
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4">
-                <div className="flex flex-col gap-2">
+        <div className="flex flex-col w-full h-full">
+            <div className="w-full flex flex-col items-start gap-2 p-4">
+                <div className="w-full flex flex-col gap-2">
                     <div className="w-full">
                         <Label className="font-bold">Factors: </Label>
                         <ScrollArea className="h-[150px] w-full p-2 border rounded">
@@ -182,7 +182,7 @@ export const UnivariateContrast = ({
                     </div>
                     <ResizablePanelGroup
                         direction="vertical"
-                        className="min-h-[150px] max-w-md rounded-lg border md:min-w-[200px]"
+                        className="w-full min-h-[150px] rounded-lg border md:min-w-[200px]"
                     >
                         <ResizablePanel defaultSize={100}>
                             <div className="flex flex-col gap-2 p-2">

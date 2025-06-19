@@ -4,7 +4,6 @@ import {
     UnivariateOptionsProps,
     UnivariateOptionsType,
 } from "@/models/general-linear-model/univariate/univariate";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     ResizableHandle,
     ResizablePanel,
@@ -65,369 +64,351 @@ export const UnivariateOptions = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex h-[450px] flex-col gap-2 p-4">
-                <ScrollArea>
-                    <ResizablePanelGroup
-                        direction="vertical"
-                        className="min-h-[450px] max-w-xl rounded-lg border md:min-w-[200px]"
-                    >
-                        <ResizablePanel defaultSize={40}>
-                            <div className="flex flex-col gap-2 p-2">
-                                <Label className="font-bold">Display</Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="DescStats"
-                                                checked={optionsState.DescStats}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "DescStats",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="DescStats"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Descriptive Statistics
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="EstEffectSize"
-                                                checked={
-                                                    optionsState.EstEffectSize
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "EstEffectSize",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="EstEffectSize"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Estimates of Effect Size
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="ObsPower"
-                                                checked={optionsState.ObsPower}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "ObsPower",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="ObsPower"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Observed Power
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="ParamEst"
-                                                checked={optionsState.ParamEst}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "ParamEst",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="ParamEst"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Parameter Estimates
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="CoefficientMatrix"
-                                                checked={
-                                                    optionsState.CoefficientMatrix
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "CoefficientMatrix",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="CoefficientMatrix"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Contrast Coefficient Matrix
-                                            </label>
-                                        </div>
+            <div className="flex flex-col gap-2 p-4">
+                <ResizablePanelGroup
+                    direction="vertical"
+                    className="w-full min-h-[450px] rounded-lg border md:min-w-[200px]"
+                >
+                    <ResizablePanel defaultSize={40}>
+                        <div className="flex flex-col gap-2 p-2">
+                            <Label className="font-bold">Display</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="DescStats"
+                                            checked={optionsState.DescStats}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "DescStats",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="DescStats"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Descriptive Statistics
+                                        </label>
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="HomogenTest"
-                                                checked={
-                                                    optionsState.HomogenTest
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "HomogenTest",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="HomogenTest"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Homogenity Tests
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="SprVsLevel"
-                                                checked={
-                                                    optionsState.SprVsLevel
-                                                }
-                                                disabled={true}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "SprVsLevel",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="SprVsLevel"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Spread-Vs.-Level Plots
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="ResPlot"
-                                                checked={optionsState.ResPlot}
-                                                disabled={true}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "ResPlot",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="ResPlot"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Residual Plots
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="LackOfFit"
-                                                checked={optionsState.LackOfFit}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "LackOfFit",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="LackOfFit"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Lack of Fit Test
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="GeneralFun"
-                                                checked={
-                                                    optionsState.GeneralFun
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "GeneralFun",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="GeneralFun"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                General Estimable Function(s)
-                                            </label>
-                                        </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="EstEffectSize"
+                                            checked={optionsState.EstEffectSize}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "EstEffectSize",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="EstEffectSize"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Estimates of Effect Size
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="ObsPower"
+                                            checked={optionsState.ObsPower}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "ObsPower",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="ObsPower"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Observed Power
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="ParamEst"
+                                            checked={optionsState.ParamEst}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "ParamEst",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="ParamEst"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Parameter Estimates
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="CoefficientMatrix"
+                                            checked={
+                                                optionsState.CoefficientMatrix
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "CoefficientMatrix",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="CoefficientMatrix"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Contrast Coefficient Matrix
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="HomogenTest"
+                                            checked={optionsState.HomogenTest}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "HomogenTest",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="HomogenTest"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Homogenity Tests
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="SprVsLevel"
+                                            checked={optionsState.SprVsLevel}
+                                            disabled={true}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "SprVsLevel",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="SprVsLevel"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Spread-Vs.-Level Plots
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="ResPlot"
+                                            checked={optionsState.ResPlot}
+                                            disabled={true}
+                                            onCheckedChange={(checked) =>
+                                                handleChange("ResPlot", checked)
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="ResPlot"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Residual Plots
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="LackOfFit"
+                                            checked={optionsState.LackOfFit}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "LackOfFit",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="LackOfFit"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Lack of Fit Test
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="GeneralFun"
+                                            checked={optionsState.GeneralFun}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "GeneralFun",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="GeneralFun"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            General Estimable Function(s)
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                        </ResizablePanel>
-                        <ResizableHandle />
-                        <ResizablePanel defaultSize={22}>
-                            <div className="flex flex-col gap-2 p-2">
-                                <Label className="font-bold">
-                                    Heteroscedasticity Tests
-                                </Label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="ModBruschPagan"
-                                                checked={
-                                                    optionsState.ModBruschPagan
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "ModBruschPagan",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="ModBruschPagan"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Modified Brusch-Pagan Test
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="BruschPagan"
-                                                checked={
-                                                    optionsState.BruschPagan
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "BruschPagan",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="BruschPagan"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Brusch-Pagan Test
-                                            </label>
-                                        </div>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={22}>
+                        <div className="flex flex-col gap-2 p-2">
+                            <Label className="font-bold">
+                                Heteroscedasticity Tests
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="ModBruschPagan"
+                                            checked={
+                                                optionsState.ModBruschPagan
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "ModBruschPagan",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="ModBruschPagan"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Modified Brusch-Pagan Test
+                                        </label>
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="FTest"
-                                                checked={optionsState.FTest}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "FTest",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="FTest"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                F Test
-                                            </label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="WhiteTest"
-                                                checked={optionsState.WhiteTest}
-                                                onCheckedChange={(checked) =>
-                                                    handleChange(
-                                                        "WhiteTest",
-                                                        checked
-                                                    )
-                                                }
-                                            />
-                                            <label
-                                                htmlFor="WhiteTest"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                White&apos;s Test
-                                            </label>
-                                        </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="BruschPagan"
+                                            checked={optionsState.BruschPagan}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "BruschPagan",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="BruschPagan"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Brusch-Pagan Test
+                                        </label>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="FTest"
+                                            checked={optionsState.FTest}
+                                            onCheckedChange={(checked) =>
+                                                handleChange("FTest", checked)
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="FTest"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            F Test
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="WhiteTest"
+                                            checked={optionsState.WhiteTest}
+                                            onCheckedChange={(checked) =>
+                                                handleChange(
+                                                    "WhiteTest",
+                                                    checked
+                                                )
+                                            }
+                                        />
+                                        <label
+                                            htmlFor="WhiteTest"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            White&apos;s Test
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                        </ResizablePanel>
-                        <ResizableHandle />
-                        <ResizablePanel defaultSize={38}>
-                            <div className="flex flex-col gap-2 p-2">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="ParamEstRobStdErr"
-                                        checked={optionsState.ParamEstRobStdErr}
-                                        onCheckedChange={(checked) =>
-                                            handleChange(
-                                                "ParamEstRobStdErr",
-                                                checked
-                                            )
-                                        }
-                                    />
-                                    <label
-                                        htmlFor="ParamEstRobStdErr"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                        Parameter Estimates with Robust Standard
-                                        Errors
-                                    </label>
-                                </div>
-                                <RadioGroup
-                                    value={
-                                        optionsState.HC0
-                                            ? "HC0"
-                                            : optionsState.HC1
-                                            ? "HC1"
-                                            : optionsState.HC2
-                                            ? "HC2"
-                                            : optionsState.HC3
-                                            ? "HC3"
-                                            : optionsState.HC4
-                                            ? "HC4"
-                                            : "HC3"
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={38}>
+                        <div className="flex flex-col gap-2 p-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="ParamEstRobStdErr"
+                                    checked={optionsState.ParamEstRobStdErr}
+                                    onCheckedChange={(checked) =>
+                                        handleChange(
+                                            "ParamEstRobStdErr",
+                                            checked
+                                        )
                                     }
-                                    disabled={!optionsState.ParamEstRobStdErr}
-                                    onValueChange={handleStdErrGrp}
+                                />
+                                <label
+                                    htmlFor="ParamEstRobStdErr"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
-                                    <div className="flex items-center space-x-2 pl-6">
-                                        <RadioGroupItem value="HC0" id="HC0" />
-                                        <Label htmlFor="HC0">HC0</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2 pl-6">
-                                        <RadioGroupItem value="HC1" id="HC1" />
-                                        <Label htmlFor="HC1">HC1</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2 pl-6">
-                                        <RadioGroupItem value="HC2" id="HC2" />
-                                        <Label htmlFor="HC2">HC2</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2 pl-6">
-                                        <RadioGroupItem value="HC3" id="HC3" />
-                                        <Label htmlFor="HC3">HC3</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2 pl-6">
-                                        <RadioGroupItem value="HC4" id="HC4" />
-                                        <Label htmlFor="HC4">HC4</Label>
-                                    </div>
-                                </RadioGroup>
+                                    Parameter Estimates with Robust Standard
+                                    Errors
+                                </label>
                             </div>
-                        </ResizablePanel>
-                    </ResizablePanelGroup>
-                </ScrollArea>
+                            <RadioGroup
+                                value={
+                                    optionsState.HC0
+                                        ? "HC0"
+                                        : optionsState.HC1
+                                        ? "HC1"
+                                        : optionsState.HC2
+                                        ? "HC2"
+                                        : optionsState.HC3
+                                        ? "HC3"
+                                        : optionsState.HC4
+                                        ? "HC4"
+                                        : "HC3"
+                                }
+                                disabled={!optionsState.ParamEstRobStdErr}
+                                onValueChange={handleStdErrGrp}
+                            >
+                                <div className="flex items-center space-x-2 pl-6">
+                                    <RadioGroupItem value="HC0" id="HC0" />
+                                    <Label htmlFor="HC0">HC0</Label>
+                                </div>
+                                <div className="flex items-center space-x-2 pl-6">
+                                    <RadioGroupItem value="HC1" id="HC1" />
+                                    <Label htmlFor="HC1">HC1</Label>
+                                </div>
+                                <div className="flex items-center space-x-2 pl-6">
+                                    <RadioGroupItem value="HC2" id="HC2" />
+                                    <Label htmlFor="HC2">HC2</Label>
+                                </div>
+                                <div className="flex items-center space-x-2 pl-6">
+                                    <RadioGroupItem value="HC3" id="HC3" />
+                                    <Label htmlFor="HC3">HC3</Label>
+                                </div>
+                                <div className="flex items-center space-x-2 pl-6">
+                                    <RadioGroupItem value="HC4" id="HC4" />
+                                    <Label htmlFor="HC4">HC4</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
                 <div className="flex items-center space-x-2">
                     <Label className="w-[150px]">Significance Level:</Label>
                     <div className="w-[75px]">

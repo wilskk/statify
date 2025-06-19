@@ -176,7 +176,7 @@ export const UnivariateEMMeans = ({
             <div className="flex flex-col items-start gap-2 p-4">
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="min-h-[250px] max-w-xl rounded-lg border md:min-w-[200px]"
+                    className="w-full min-h-[400px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={100}>
                         <div className="flex flex-col gap-2 p-2">
@@ -189,7 +189,7 @@ export const UnivariateEMMeans = ({
                                         <Label>
                                             Factor(s) and Factor Interactions:{" "}
                                         </Label>
-                                        <ScrollArea className="h-[175px] w-full p-2 border rounded overflow-hidden">
+                                        <ScrollArea className="h-[300px] w-full p-2 border rounded overflow-hidden">
                                             <div className="flex flex-col gap-1 justify-start items-start">
                                                 {availableVariables.map(
                                                     (

@@ -191,7 +191,7 @@ export const UnivariateBootstrap = ({
                 </div>
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="min-h-[330px] max-w-lg rounded-lg border md:min-w-[200px]"
+                    className="w-full min-h-[330px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={30}>
                         <div className="flex flex-col h-full gap-2 p-2">

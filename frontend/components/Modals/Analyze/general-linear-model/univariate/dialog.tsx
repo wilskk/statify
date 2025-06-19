@@ -485,16 +485,23 @@ export const UnivariateDialog = ({
                 </ResizablePanelGroup>
             </div>
             <div className="flex-grow" />
-            <div className="flex justify-end p-4 bg-gray-100">
-                <div className="flex space-x-2">
-                    <Button onClick={handleContinue}>OK</Button>
-                    <Button variant="ghost" onClick={handleDialog}>
-                        Cancel
-                    </Button>
-                    <Button variant="ghost" onClick={onReset}>
-                        Reset
-                    </Button>
-                </div>
+            <div className="flex justify-start gap-2 p-4 border-t">
+                <Button type="button" onClick={handleContinue}>
+                    OK
+                </Button>
+                <Button type="button" variant="secondary" onClick={onReset}>
+                    Reset
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleDialog}
+                >
+                    Cancel
+                </Button>
+                <Button type="button" variant="secondary">
+                    Help
+                </Button>
             </div>
         </div>
     );
