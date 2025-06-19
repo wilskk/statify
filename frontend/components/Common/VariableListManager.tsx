@@ -1,52 +1,51 @@
 import React, { FC, useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Ruler, Shapes, BarChartHorizontal, InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from "lucide-react";
+import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
+import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from 'lucide-react';
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
 // Define the structure for configuring target lists
 export interface TargetListConfig {
-    id: string; // Unique identifier for the list (e.g., 'selected', 'rows', 'factors')
-    title: string; // Display title for the list
-    variables: Variable[]; // The array of variables currently in this list
-    height: string; // CSS height for the list container
-    maxItems?: number; // Optional limit for the number of items
-    droppable?: boolean; // Whether items can be dropped into this list (defaults to true)
+    id: string;               // Unique identifier for the list (e.g., 'selected', 'rows', 'factors')
+    title: string;            // Display title for the list
+    variables: Variable[];    // The array of variables currently in this list
+    height: string;           // CSS height for the list container
+    maxItems?: number;        // Optional limit for the number of items
+    droppable?: boolean;      // Whether items can be dropped into this list (defaults to true)
     draggableItems?: boolean; // Whether items *within* this list can be dragged (defaults to true)
 }
 
 // Props for the reusable component
 interface VariableListManagerProps {
+    // Core data props
     availableVariables: Variable[];
     targetLists: TargetListConfig[];
     variableIdKey: keyof Variable; // Key to use for unique identification ('tempId' or 'columnIndex')
-    highlightedVariable: { id: string, source: string } | null; // Use generic 'id' and 'source'
+    
+    // Selection state
+    highlightedVariable: { id: string, source: string } | null;
     setHighlightedVariable: (value: { id: string, source: string } | null) => void;
+    
+    // Event handlers
     onMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
     onReorderVariable: (listId: string, variables: Variable[]) => void;
-    getVariableIcon?: (variable: Variable) => React.ReactNode; // Optional custom icon function
-    getDisplayName?: (variable: Variable) => string; // Optional custom display name function
-    renderListFooter?: (listId: string) => React.ReactNode; // Optional footer for specific lists
-    onVariableDoubleClick?: (variable: Variable, sourceListId: string) => void; // Optional double click handler
-    showArrowButtons?: boolean; // Whether to show arrow buttons between lists
-    availableListHeight?: string; // Optional height for the available variables list
+    onVariableDoubleClick?: (variable: Variable, sourceListId: string) => void;
+    
+    // Display customization
+    getVariableIcon?: (variable: Variable) => React.ReactNode;
+    getDisplayName?: (variable: Variable) => string;
+    isVariableDisabled?: (variable: Variable) => boolean;
+    showArrowButtons?: boolean;
+    availableListHeight?: string;
+    
+    // Custom content rendering
+    renderListFooter?: (listId: string) => React.ReactNode;
+    renderExtraInfoContent?: () => React.ReactNode;
+    renderRightColumnFooter?: () => React.ReactNode;
 }
 
-// Helper function to get variable icon (default implementation)
-const defaultGetVariableIcon = (variable: Variable) => {
-    switch (variable.measure) {
-        case "scale":
-            return <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        case "nominal":
-            return <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        case "ordinal":
-            return <BarChartHorizontal size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-        default:
-            return variable.type === "STRING"
-                ? <Shapes size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
-                : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
-    }
-};
+
 
 // Helper function to get display name (default implementation)
 const defaultGetDisplayName = (variable: Variable): string => {
@@ -56,44 +55,56 @@ const defaultGetDisplayName = (variable: Variable): string => {
     return variable.name;
 };
 
-
 const VariableListManager: FC<VariableListManagerProps> = ({
-                                                               availableVariables,
-                                                               targetLists,
-                                                               variableIdKey,
-                                                               highlightedVariable,
-                                                               setHighlightedVariable,
-                                                               onMoveVariable,
-                                                               onReorderVariable,
-                                                               getVariableIcon = defaultGetVariableIcon,
-                                                               getDisplayName = defaultGetDisplayName,
-                                                               renderListFooter,
-                                                               onVariableDoubleClick,
-                                                               showArrowButtons = true,
-                                                               availableListHeight = '300px', // Default height of 300px if not provided
-                                                           }) => {
+    // Core data props
+    availableVariables,
+    targetLists,
+    variableIdKey,
+    
+    // Selection state
+    highlightedVariable,
+    setHighlightedVariable,
+    
+    // Event handlers
+    onMoveVariable,
+    onReorderVariable,
+    onVariableDoubleClick,
+    
+    // Display customization (with defaults)
+    getVariableIcon = defaultGetVariableIcon,
+    getDisplayName = defaultGetDisplayName,
+    isVariableDisabled,
+    showArrowButtons = true,
+    availableListHeight = '300px',
+    
+    // Custom content rendering
+    renderListFooter,
+    renderExtraInfoContent,
+    renderRightColumnFooter,
+}) => {
+    // State for drag and drop operations
     const [draggedItem, setDraggedItem] = useState<{ variable: Variable, sourceListId: string } | null>(null);
-    const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null); // Store the ID of the list being dragged over
+    const [isDraggingOver, setIsDraggingOver] = useState<string | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
     // Use the mobile hook to detect mobile devices and orientation
     const { isMobile, isPortrait } = useMobile();
 
+    // Combine available variables and target lists for unified handling
     const allLists = useMemo(() => [
         { id: 'available', title: 'Available Variables', variables: availableVariables, height: availableListHeight },
         ...targetLists
     ], [availableVariables, targetLists, availableListHeight]);
 
     // --- Drag and Drop Handlers ---
-
     const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, variable: Variable, sourceListId: string) => {
-        console.log(`[VariableListManager] handleDragStart - variableId: ${variable?.[variableIdKey]}, sourceListId: ${sourceListId}`);
         const varId = variable[variableIdKey];
         if (varId === undefined || varId === null) {
             console.error("Variable is missing the unique key:", variableIdKey);
             e.preventDefault();
             return;
         }
+        
         e.dataTransfer.setData('application/json', JSON.stringify({
             variableId: varId,
             sourceListId: sourceListId
@@ -104,7 +115,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     }, [variableIdKey, setHighlightedVariable]);
 
     const handleDragEnd = useCallback(() => {
-        console.log("[VariableListManager] handleDragEnd called");
         setDraggedItem(null);
         setIsDraggingOver(null);
         setDragOverIndex(null);
@@ -116,12 +126,15 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         const targetDroppable = (targetListConfig as TargetListConfig)?.droppable !== false; // Default true
 
         // Prevent dropping into non-droppable lists or lists that are full
-        if (!targetDroppable || (targetListConfig?.maxItems && targetListConfig.variables.length >= targetListConfig.maxItems && draggedItem?.sourceListId !== targetListId)) {
+        if (!targetDroppable || (targetListConfig?.maxItems && 
+            targetListConfig.variables.length >= targetListConfig.maxItems && 
+            draggedItem?.sourceListId !== targetListId)) {
             e.dataTransfer.dropEffect = 'none';
             setIsDraggingOver(null); // Ensure visual feedback matches drop effect
         } else {
             e.dataTransfer.dropEffect = 'move';
             setIsDraggingOver(targetListId);
+            
             // If dragging to a different list, clear the index indicator
             if (draggedItem && draggedItem.sourceListId !== targetListId && dragOverIndex !== null) {
                 setDragOverIndex(null);
@@ -136,46 +149,40 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         const itemsDraggable = (listConfig as TargetListConfig)?.draggableItems !== false; // Default true
 
         if (draggedItem && draggedItem.sourceListId === listId && itemsDraggable) {
+            // Dragging within the same list for reordering
             e.dataTransfer.dropEffect = 'move';
             setDragOverIndex(targetIndex);
         } else if (!draggedItem || draggedItem.sourceListId !== listId) {
-            // Allow drop effect if dropping from another list (handled by handleDragOver)
-            // but don't set dragOverIndex unless it's for reordering within the same list
+            // Dropping from another list - don't show item-level drop indicator
             if (dragOverIndex !== null) {
                 setDragOverIndex(null);
             }
+            
             // Ensure the general drop effect is still 'move' if the list is droppable
             const targetListConfig = allLists.find(l => l.id === listId);
             const targetDroppable = (targetListConfig as TargetListConfig)?.droppable !== false;
-            if (targetDroppable) {
-                e.dataTransfer.dropEffect = 'move';
-            } else {
-                e.dataTransfer.dropEffect = 'none';
-            }
+            e.dataTransfer.dropEffect = targetDroppable ? 'move' : 'none';
         } else {
             e.dataTransfer.dropEffect = 'none'; // Cannot reorder if draggableItems is false
         }
-
     }, [draggedItem, dragOverIndex, allLists]);
 
     const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        // Check if the relatedTarget (where the mouse is going) is still inside the current element
+        // Check if the mouse is actually leaving the container
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
             setIsDraggingOver(null);
             setDragOverIndex(null);
         }
     }, []);
 
-
     const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetListId: string, targetIndex?: number) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent drop from bubbling to parent container if dropping on item
-        console.log(`[VariableListManager] handleDrop fired for targetListId: ${targetListId}, targetIndex: ${targetIndex}`);
-
+        e.stopPropagation(); // Prevent drop from bubbling to parent container
+        
         const targetListConfig = allLists.find(l => l.id === targetListId);
         const targetDroppable = (targetListConfig as TargetListConfig)?.droppable !== false;
 
-        // Adjusted condition: Allow drop onto 'available' even if not explicitly 'droppable' in config
+        // Allow drop onto 'available' even if not explicitly 'droppable' in config
         if (!targetDroppable && targetListId !== 'available') {
             handleDragEnd(); // Clean up state even if drop is invalid
             return;
@@ -186,7 +193,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             if (!dataString) throw new Error("No drag data found");
 
             const { variableId, sourceListId } = JSON.parse(dataString);
-            console.log(`[VariableListManager] Drop data - variableId: ${variableId}, sourceListId: ${sourceListId}`);
             if (!variableId || !sourceListId) throw new Error("Invalid drag data structure");
 
             const sourceList = allLists.find(l => l.id === sourceListId)?.variables;
@@ -195,39 +201,33 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             const variableToMove = sourceList.find(v => v[variableIdKey] === variableId);
             if (!variableToMove) throw new Error(`Variable with ID ${variableId} not found in source list ${sourceListId}`);
 
-            // --- Overwrite Logic for Single-Item Lists (like 'label') ---
+            // --- Handle single-item list overwrite logic ---
             const isReplacingSingleItem = sourceListId !== targetListId &&
                 targetListConfig?.maxItems === 1 &&
                 targetListConfig.variables.length === 1;
 
-            // --- Check Max Items Constraint (Modified) ---
-            // Prevent drop only if it exceeds maxItems AND we are NOT replacing the single item
+            // Check max items constraint (prevent drop only if exceeding maxItems AND not replacing single item)
             if (sourceListId !== targetListId &&
                 targetListConfig?.maxItems &&
                 targetListConfig.variables.length >= targetListConfig.maxItems &&
-                !isReplacingSingleItem) // Allow drop if we are replacing
-            {
-                console.warn(`Cannot drop into list '${targetListId}'. Max items (${targetListConfig.maxItems}) reached.`);
+                !isReplacingSingleItem) {
                 handleDragEnd();
                 return;
             }
 
-            // --- Perform Overwrite (if necessary) ---
+            // Perform overwrite if needed (move existing variable back to available first)
             if (isReplacingSingleItem && targetListConfig) {
                 const existingVariable = targetListConfig.variables[0];
-                // Move the existing variable back to 'available' first
                 onMoveVariable(existingVariable, targetListId, 'available');
             }
 
-
-            // --- Logic for Moving/Reordering ---
+            // --- Handle move or reorder operations ---
             if (sourceListId === targetListId) {
                 // Reordering within the same list
                 const listConfig = allLists.find(l => l.id === targetListId) as TargetListConfig | undefined;
-                const itemsDraggable = listConfig?.draggableItems !== false; // Default true
+                const itemsDraggable = listConfig?.draggableItems !== false;
 
                 if (!itemsDraggable) {
-                    console.warn(`Items in list '${targetListId}' are not reorderable.`);
                     handleDragEnd();
                     return;
                 }
@@ -237,29 +237,22 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                     const sourceIndex = currentList.findIndex(v => v[variableIdKey] === variableId);
 
                     if (sourceIndex === -1) throw new Error("Dragged item not found in list for reorder");
-                    // Allow dropping at the same position if replacing during reorder isn't logical here
                     if (sourceIndex === targetIndex) {
                         handleDragEnd();
                         return;
                     }
 
                     const [movedVariable] = currentList.splice(sourceIndex, 1);
-                    // Adjust target index based on movement direction ONLY if targetIndex is not 0
-                    // If targetIndex is 0, we always insert at the beginning.
-                    // If sourceIndex < targetIndex, we insert before the original targetIndex position.
-                    const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex -1 : targetIndex;
-
+                    // Adjust target index based on movement direction
+                    const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
                     currentList.splice(adjustedTargetIndex, 0, movedVariable);
 
                     onReorderVariable(targetListId, currentList);
                 }
             } else {
                 // Moving between different lists
-                // Use the provided targetIndex if dropping on an item, otherwise append (undefined index)
-                const effectiveTargetIndex = typeof targetIndex === 'number' ? targetIndex : undefined;
-                onMoveVariable(variableToMove, sourceListId, targetListId, effectiveTargetIndex);
+                onMoveVariable(variableToMove, sourceListId, targetListId, targetIndex);
             }
-
         } catch (error) {
             console.error('[VariableListManager handleDrop] Error:', error);
         } finally {
@@ -267,11 +260,12 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         }
     }, [allLists, variableIdKey, onReorderVariable, onMoveVariable, handleDragEnd]);
 
-
     // --- Selection and Double Click Handlers ---
     const handleVariableSelect = useCallback((variable: Variable, sourceListId: string) => {
         const varId = variable[variableIdKey]?.toString();
         if (varId === undefined || varId === null) return;
+        
+        // Toggle selection if already selected
         if (highlightedVariable?.id === varId && highlightedVariable.source === sourceListId) {
             setHighlightedVariable(null);
         } else {
@@ -280,9 +274,16 @@ const VariableListManager: FC<VariableListManagerProps> = ({
     }, [highlightedVariable, setHighlightedVariable, variableIdKey]);
 
     const handleVariableDoubleClick = useCallback((variable: Variable, sourceListId: string) => {
+        // Use custom handler if provided
+        if (onVariableDoubleClick) {
+            onVariableDoubleClick(variable, sourceListId);
+            return;
+        }
+        
+        // Default double-click behavior: move between available and first target list
         const targetListId = sourceListId === 'available'
-            ? targetLists.find(l => l.droppable !== false && (!l.maxItems || l.variables.length < l.maxItems || l.maxItems === 1))?.id // Prioritize non-full or single-item lists
-            : 'available'; // Default move back to available
+            ? targetLists.find(l => l.droppable !== false && (!l.maxItems || l.variables.length < l.maxItems || l.maxItems === 1))?.id
+            : 'available';
 
         if (targetListId) {
             const targetListConfig = allLists.find(l => l.id === targetListId);
@@ -290,17 +291,15 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 targetListConfig?.maxItems === 1 &&
                 targetListConfig.variables.length === 1;
 
-            // Check max items constraint, allowing for replacement
+            // Check max items constraint
             if (targetListId !== 'available' &&
                 targetListConfig?.maxItems &&
                 targetListConfig.variables.length >= targetListConfig.maxItems &&
-                !isReplacingSingleItem)
-            {
-                console.warn(`Cannot move to list '${targetListId}'. Max items (${targetListConfig.maxItems}) reached.`);
-                return; // Do nothing if the target list is full and not replacing
+                !isReplacingSingleItem) {
+                return;
             }
 
-            // Perform overwrite if necessary
+            // Perform overwrite if needed
             if (isReplacingSingleItem && targetListConfig) {
                 const existingVariable = targetListConfig.variables[0];
                 onMoveVariable(existingVariable, targetListId, 'available');
@@ -308,10 +307,8 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
             // Move the double-clicked variable
             onMoveVariable(variable, sourceListId, targetListId);
-        } else {
-            console.warn("Could not determine valid target list for double click.");
         }
-    }, [targetLists, onMoveVariable, allLists]);
+    }, [targetLists, onMoveVariable, allLists, onVariableDoubleClick]);
 
     // --- Arrow Button Handlers ---
     const handleArrowButtonClick = useCallback((targetListId: string) => {
@@ -321,10 +318,9 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
         // From available to target list
         if (source === 'available') {
-            const variable = availableVariables.find(v => {
-                // Using type assertion as a last resort for TypeScript
-                return String((v as any)[variableIdKey]) === id;
-            });
+            const variable = availableVariables.find(v => 
+                String(v[variableIdKey]) === id
+            );
 
             if (variable) {
                 onMoveVariable(variable, 'available', targetListId);
@@ -335,10 +331,9 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             const listConfig = targetLists.find(l => l.id === targetListId);
             if (!listConfig) return;
 
-            const variable = listConfig.variables.find(v => {
-                // Using type assertion as a last resort for TypeScript
-                return String((v as any)[variableIdKey]) === id;
-            });
+            const variable = listConfig.variables.find(v => 
+                String(v[variableIdKey]) === id
+            );
 
             if (variable) {
                 onMoveVariable(variable, targetListId, 'available');
@@ -351,19 +346,23 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         const varId = variable[variableIdKey]?.toString();
         if (varId === undefined || varId === null) {
             console.warn("Variable missing ID for rendering:", variable);
-            return null; // Don't render item if it lacks a unique ID
+            return null;
         }
 
         const listConfig = allLists.find(l => l.id === listId);
-        // Determine if items *within* this list can be reordered or dragged *from*
         const itemsDraggableInList = (listConfig as TargetListConfig)?.draggableItems !== false;
-        const isDraggable = itemsDraggableInList || listId === 'available';
+        const isActuallyDraggable = itemsDraggableInList || listId === 'available';
+
+        // Check if the item is disabled based on the prop from the parent
+        const isDisabled = isVariableDisabled ? isVariableDisabled(variable) : false;
 
         const isBeingDragged = draggedItem?.variable[variableIdKey] === variable[variableIdKey];
         const isHighlighted = highlightedVariable?.id === varId && highlightedVariable.source === listId;
-        // Show drop indicator *above* the item at targetIndex if dragging within the same list
-        const isDropTargetIndicator = itemsDraggableInList && draggedItem?.sourceListId === listId && dragOverIndex === index && draggedItem && !isBeingDragged;
-
+        const isDropTargetIndicator = itemsDraggableInList && 
+            draggedItem?.sourceListId === listId && 
+            dragOverIndex === index && 
+            draggedItem && 
+            !isBeingDragged;
 
         return (
             <TooltipProvider key={varId}>
@@ -372,36 +371,46 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                         <div
                             className={`
                                 flex items-center p-1 border rounded-md group relative transition-all duration-150 ease-in-out text-sm
-                                ${isDraggable ? 'cursor-grab' : 'cursor-default'}
+                                ${isActuallyDraggable && !isDisabled ? 'cursor-grab' : 'cursor-default'}
+                                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
                                 ${isBeingDragged ? "opacity-40 bg-accent" : "hover:bg-accent"}
                                 ${isHighlighted ? "bg-accent border-primary" : "border-border"}
                                 ${isDropTargetIndicator ? "border-t-[3px] border-t-primary pt-[1px]" : "pt-1"}
                             `}
                             style={{
-                                // More precise styling based on state
+                                // Border styling
                                 borderTopStyle: isDropTargetIndicator ? 'solid' : 'solid',
                                 borderTopWidth: isDropTargetIndicator ? '3px' : '1px',
-                                borderTopColor: isDropTargetIndicator ? 'hsl(var(--primary))' : (isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'),
-                                paddingTop: isDropTargetIndicator ? '1px' : '4px', // Adjust padding for border
+                                borderTopColor: isDropTargetIndicator 
+                                    ? 'hsl(var(--primary))' 
+                                    : (isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'),
+                                paddingTop: isDropTargetIndicator ? '1px' : '4px',
                                 paddingBottom: '4px',
+                                
                                 // Consistent side/bottom borders
-                                borderLeftWidth: '1px', borderRightWidth: '1px', borderBottomWidth: '1px',
+                                borderLeftWidth: '1px', 
+                                borderRightWidth: '1px', 
+                                borderBottomWidth: '1px',
                                 borderLeftColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                                 borderRightColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                                 borderBottomColor: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                             }}
-                            onClick={() => handleVariableSelect(variable, listId)}
-                            onDoubleClick={() => handleVariableDoubleClick(variable, listId)}
-                            draggable={isDraggable}
-                            onDragStart={(e) => isDraggable && handleDragStart(e, variable, listId)}
+                            onClick={() => !isDisabled && handleVariableSelect(variable, listId)}
+                            onDoubleClick={() => !isDisabled && handleVariableDoubleClick(variable, listId)}
+                            draggable={isActuallyDraggable && !isDisabled}
+                            onDragStart={(e) => isActuallyDraggable && !isDisabled && handleDragStart(e, variable, listId)}
                             onDragEnd={handleDragEnd}
-                            onDragOver={(e) => handleItemDragOver(e, index, listId)}
-                            // No onDragLeave needed here, handled by the list container
-                            onDrop={(e) => handleDrop(e, listId, index)} // Pass index for item-specific drop
+                            onDragOver={(e) => !isDisabled && handleItemDragOver(e, index, listId)}
+                            onDrop={(e) => !isDisabled && handleDrop(e, listId, index)}
                         >
                             <div className="flex items-center w-full truncate">
-                                {itemsDraggableInList && <GripVertical size={14} className="text-muted-foreground mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />}
-                                {!itemsDraggableInList && <div className="w-[14px] mr-1 flex-shrink-0"></div> /* Placeholder */}
+                                {itemsDraggableInList && (
+                                    <GripVertical 
+                                        size={14} 
+                                        className="text-muted-foreground mr-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" 
+                                    />
+                                )}
+                                {!itemsDraggableInList && <div className="w-[14px] mr-1 flex-shrink-0"></div>}
                                 {getVariableIcon(variable)}
                                 <span className="truncate">{getDisplayName(variable)}</span>
                             </div>
@@ -415,22 +424,21 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     };
 
-
     const renderList = (listConfig: TargetListConfig | { id: string, title: string, variables: Variable[], height: string }) => {
         const { id, title, variables, height } = listConfig;
+        
         // Check if it's a full TargetListConfig or just the basic available list structure
         const isTargetConfig = 'droppable' in listConfig || 'draggableItems' in listConfig || 'maxItems' in listConfig;
-        const config = isTargetConfig ? listConfig as TargetListConfig : null; // Cast for accessing specific props
+        const config = isTargetConfig ? listConfig as TargetListConfig : null;
 
         // Determine if items can be dropped INTO this list container
-        const droppable = id !== 'available' && (!config || config.droppable !== false); // Can drop into targets unless explicitly false
-
+        const droppable = id !== 'available' && (!config || config.droppable !== false);
         const showDropPlaceholder = variables.length === 0 && droppable;
 
         // Adjust the height for single-item lists
         const isSingleItemList = config?.maxItems === 1;
         const adjustedHeight = isSingleItemList
-            ? variables.length === 0 ? "46px" : "auto" // Enough height for placeholder or exactly fit content
+            ? variables.length === 0 ? "46px" : "auto"
             : height;
 
         // Adjust overflow for single-item lists
@@ -468,25 +476,31 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         };
 
         return (
-            <div key={id} className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}>
+            <div 
+                key={id} 
+                className={`flex flex-col ${id !== 'available' ? 'mb-2' : ''}`}
+                id={id === 'selected' ? 'selected-variables-list-container' : undefined}
+            >
                 {title && (
-                    <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center">
+                    <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6">
                         {id !== 'available' && renderArrowButton()}
                         <span className="flex-1">{title}</span>
                     </div>
                 )}
                 <div
+                    data-list-id={id}
+                    id={id === 'selected' ? 'selected-variables-list' : undefined}
                     className={`
                         border p-1 rounded-md w-full transition-colors relative bg-background
                         ${overflowStyle}
                         ${isDraggingOver === id && droppable ? "border-primary bg-accent" : "border-border"}
                         ${!droppable && id !== 'available' ? 'bg-muted cursor-not-allowed' : ''}
+                        ${id === 'selected' ? 'tour-target-selected-variables' : ''}
                     `}
                     style={{ height: adjustedHeight, minHeight: isSingleItemList ? "auto" : "" }}
                     onDragOver={(e) => handleDragOver(e, id)}
                     onDragLeave={handleDragLeave}
-                    // Handle drop on the empty area of the list (appends to the end if droppable)
-                    onDrop={(e) => handleDrop(e, id)} // Pass undefined index for drop on container
+                    onDrop={(e) => handleDrop(e, id)} // Drop on container (append to end)
                 >
                     {showDropPlaceholder && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-2">
@@ -517,21 +531,29 @@ const VariableListManager: FC<VariableListManagerProps> = ({
 
     return (
         <div className={`${useVerticalLayout ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}`}>
-            {/* Available Variables Column */}
+            {/* Available Variables Column (Left) */}
             <div className={`${useVerticalLayout ? 'w-full' : 'col-span-1'} flex flex-col`}>
                 {renderList(allLists.find(l => l.id === 'available')!)}
-                {/* General Helper Text - Hidden in mobile portrait mode */}
+                
+                {/* Helper Text and Extra Content */}
                 {(!isMobile || !isPortrait) && (
-                    <div className="text-xs mt-2 text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
-                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
-                        <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
+                    <div className="flex flex-col mt-2 space-y-2">
+                        <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                            <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
+                            <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
+                        </div>
+                        {renderExtraInfoContent && renderExtraInfoContent()}
                     </div>
                 )}
             </div>
 
-            {/* Target Variables Column */}
-            <div className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}>
+            {/* Target Lists Column (Right) */}
+            <div 
+                className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}
+                id="selected-variables-wrapper"
+            >
                 {targetLists.map(listConfig => renderList(listConfig))}
+                {renderRightColumnFooter && renderRightColumnFooter()}
             </div>
         </div>
     );

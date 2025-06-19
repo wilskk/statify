@@ -2,38 +2,40 @@ import React from 'react';
 import { ModalType, BaseModalProps } from '@/types/modalTypes';
 
 // Import edit modal components
-import { FindAndReplaceModal, FindReplaceMode } from './FindReplace/FindReplace';
+import { FindAndReplaceModal } from './FindReplace/FindReplace';
+import { FindReplaceMode } from './FindReplace/types';
 import GoToModal, { GoToMode } from './GoTo/GoTo';
+
+/**
+ * Pre-defined modal components
+ * 
+ * Define components outside the registry to maintain stable references and preserve state
+ */
+// Find and Replace Modal
+const FindAndReplaceModalWrapper: React.FC<BaseModalProps & { initialTab?: FindReplaceMode }> = (props) => {
+  // Extract initialTab from props if it exists
+  const { initialTab, ...otherProps } = props;
+  return <FindAndReplaceModal {...otherProps} initialTab={initialTab} defaultTab={FindReplaceMode.FIND} />;
+};
+FindAndReplaceModalWrapper.displayName = 'FindAndReplaceModal';
+
+// Go To Modal
+const GoToModalWrapper: React.FC<BaseModalProps & { initialMode?: GoToMode }> = (props) => {
+  // Extract initialMode from props if it exists
+  const { initialMode, ...otherProps } = props;
+  return <GoToModal {...otherProps} initialMode={initialMode} defaultMode={GoToMode.CASE} />;
+};
+GoToModalWrapper.displayName = 'GoToModal';
 
 /**
  * EDIT_MODAL_COMPONENTS - Registry for edit modal components
  * 
  * Maps each edit-related ModalType to its corresponding React component
+ * Using stable component references to preserve state during re-renders
  */
 export const EDIT_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModalProps>> = {
-  [ModalType.Find]: ((props: BaseModalProps) => {
-    const FindComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.FIND} />;
-    FindComp.displayName = 'FindModal';
-    return <FindComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.Replace]: ((props: BaseModalProps) => {
-    const ReplaceComp = () => <FindAndReplaceModal {...props} mode={FindReplaceMode.REPLACE} />;
-    ReplaceComp.displayName = 'ReplaceModal';
-    return <ReplaceComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.GoToCase]: ((props: BaseModalProps) => {
-    const GoToCaseComp = () => <GoToModal {...props} mode={GoToMode.CASE} />;
-    GoToCaseComp.displayName = 'GoToCaseModal';
-    return <GoToCaseComp />;
-  }) as React.ComponentType<BaseModalProps>,
-  
-  [ModalType.GoToVariable]: ((props: BaseModalProps) => {
-    const GoToVarComp = () => <GoToModal {...props} mode={GoToMode.VARIABLE} />;
-    GoToVarComp.displayName = 'GoToVariableModal';
-    return <GoToVarComp />;
-  }) as React.ComponentType<BaseModalProps>
+  [ModalType.FindAndReplace]: FindAndReplaceModalWrapper,
+  [ModalType.GoTo]: GoToModalWrapper
 };
 
 /**
@@ -60,10 +62,8 @@ export function getEditModalComponent(type: ModalType): React.ComponentType<Base
  * and screen space requirements.
  */
 export const EDIT_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "sidebar">> = {
-  [ModalType.Find]: "sidebar",
-  [ModalType.Replace]: "sidebar",
-  [ModalType.GoToCase]: "sidebar",
-  [ModalType.GoToVariable]: "sidebar",
+  [ModalType.FindAndReplace]: "sidebar",
+  [ModalType.GoTo]: "sidebar",
 };
 
 /**
@@ -71,9 +71,7 @@ export const EDIT_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
  */
 export const isEditModal = (type: ModalType): boolean => {
   return [
-    ModalType.Find,
-    ModalType.Replace,
-    ModalType.GoToCase,
-    ModalType.GoToVariable
+    ModalType.FindAndReplace,
+    ModalType.GoTo
   ].includes(type);
 }; 

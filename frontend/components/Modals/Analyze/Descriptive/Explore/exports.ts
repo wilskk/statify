@@ -1,7 +1,6 @@
 // Export sub-components
 export { default as VariablesTab } from './VariablesTab';
 export { default as StatisticsTab } from './StatisticsTab';
-export { default as PlotsTab } from './PlotsTab';
 
 // Export types
 export * from './types';

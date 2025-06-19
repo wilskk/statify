@@ -47,7 +47,7 @@ export interface ChartOptions {
     showNormalCurveOnHistogram: boolean;
 }
 
-// === Analysis Params ===
+// === Main Hook Params ===
 export interface FrequenciesAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
     selectedVariables: Variable[];
     showFrequencyTables: boolean;
@@ -57,166 +57,83 @@ export interface FrequenciesAnalysisParams extends Pick<BaseModalProps, 'onClose
     chartOptions: ChartOptions | null;
 }
 
-// === Results Types ===
-export interface FrequenciesResults {
-    frequencies?: RawFrequencyData[];
-    descriptive?: any;
-}
-
-// === Worker Types ===
+// === Worker I/O Types ===
 export interface WorkerInput {
     variableData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    }[];
-    weightVariableData: any[] | null;
-    statisticsOptions?: StatisticsOptions | null;
-    chartOptions?: ChartOptions | null;
-}
-
-export interface WorkerCalculationPromise {
-    resolve: (result: { frequencies?: RawFrequencyData[]; descriptive?: any; } | null) => void;
-    reject: (reason: any) => void;
-}
-
-export interface FrequencyWorkerResult {
-    success: boolean;
-    frequencies?: RawFrequencyData[];
-    error?: string;
-}
-
-export interface DescriptiveWorkerResult {
-    success: boolean;
-    descriptive?: any;
-    error?: string;
-}
-
-// For variable selection
-export interface VariableSelectionResult {
-    availableVariables: Variable[];
-    selectedVariables: Variable[];
-    highlightedVariable: Variable | null;
-    setHighlightedVariable: (variable: Variable | null) => void;
-    moveToSelectedVariables: (variable: Variable) => void;
-    moveToAvailableVariables: (variable: Variable) => void;
-    reorderVariables: (startIndex: number, endIndex: number) => void;
-    resetVariableSelection: () => void;
-}
-
-// For statistics settings management
-export interface StatisticsSettingsResult {
-    showStatistics: boolean;
-    setShowStatistics: (show: boolean) => void;
-    quartilesChecked: boolean;
-    setQuartilesChecked: (checked: boolean) => void;
-    cutPointsChecked: boolean;
-    setCutPointsChecked: (checked: boolean) => void;
-    cutPointsValue: number;
-    setCutPointsValue: (value: number) => void;
-    enablePercentiles: boolean;
-    setEnablePercentiles: (enable: boolean) => void;
-    percentileValues: string[];
-    setPercentileValues: (values: string[]) => void;
-    currentPercentileInput: string;
-    setCurrentPercentileInput: (value: string) => void;
-    selectedPercentileItem: number;
-    setSelectedPercentileItem: (index: number) => void;
-    meanChecked: boolean;
-    setMeanChecked: (checked: boolean) => void;
-    medianChecked: boolean;
-    setMedianChecked: (checked: boolean) => void;
-    modeChecked: boolean;
-    setModeChecked: (checked: boolean) => void;
-    sumChecked: boolean;
-    setSumChecked: (checked: boolean) => void;
-    stdDevChecked: boolean;
-    setStdDevChecked: (checked: boolean) => void;
-    varianceChecked: boolean;
-    setVarianceChecked: (checked: boolean) => void;
-    rangeChecked: boolean;
-    setRangeChecked: (checked: boolean) => void;
-    minChecked: boolean;
-    setMinChecked: (checked: boolean) => void;
-    maxChecked: boolean;
-    setMaxChecked: (checked: boolean) => void;
-    seMeanChecked: boolean;
-    setSeMeanChecked: (checked: boolean) => void;
-    skewnessChecked: boolean;
-    setSkewnessChecked: (checked: boolean) => void;
-    kurtosisChecked: boolean;
-    setKurtosisChecked: (checked: boolean) => void;
-    getCurrentStatisticsOptions: () => StatisticsOptions | null;
-    resetStatisticsSettings: () => void;
-}
-
-// For charts settings management
-export interface ChartsSettingsResult {
-    showCharts: boolean;
-    setShowCharts: (show: boolean) => void;
-    chartType: string;
-    setChartType: (type: string) => void;
-    chartValues: string;
-    setChartValues: (values: string) => void;
-    showNormalCurve: boolean;
-    setShowNormalCurve: (show: boolean) => void;
-    getCurrentChartOptions: () => ChartOptions | null;
-    resetChartsSettings: () => void;
-}
-
-// For data fetching from variables
-export interface FetchedData {
-    variableData: {
         variable: Variable;
-        data: any[];
+        data: (string | number)[];
     }[];
-    weightVariableData: any[] | null;
+    weightVariableData: number[] | null;
+    options: {
+        displayFrequency: boolean;
+        displayDescriptive: boolean;
+        statisticsOptions: StatisticsOptions | null;
+        chartOptions: ChartOptions | null;
+    };
 }
 
-// For data fetching hook
-export interface DataFetchingResult {
-    fetchData: (variables: Variable[]) => Promise<FetchedData>;
-    isLoading: boolean;
-    error: string | null;
+export interface FrequencyTableRow {
+    label: string;
+    frequency: number;
+    percent?: number;
+    validPercent?: number;
+    cumulativePercent?: number;
 }
 
-// For worker communication
-export interface FrequenciesWorkerResult {
-    calculate: (data: any, options: any) => Promise<any>;
-    isCalculating: boolean;
-    error: string | null;
-    cancelCalculation: () => void;
+export interface FrequencyTable {
+    title: string;
+    rows: FrequencyTableRow[];
+    summary: {
+        valid: number;
+        missing: number;
+        total: number;
+    };
 }
 
-// For table formatting
+export interface DescriptiveStatistics {
+    N?: number;
+    Missing?: number;
+    Mean?: number | null;
+    Median?: number | null;
+    Mode?: number | null;
+    Sum?: number | null;
+    StdDev?: number | null;
+    Variance?: number | null;
+    Minimum?: number | null;
+    Maximum?: number | null;
+    Range?: number | null;
+    SEMean?: number | null;
+    Kurtosis?: number | null;
+    SEKurtosis?: number | null;
+    Skewness?: number | null;
+    SESkewness?: number | null;
+    Percentiles?: { [key: string]: number | null };
+}
+
+export interface CombinedResults {
+    statistics: { [variableName: string]: DescriptiveStatistics };
+    frequencyTables: { [variableName: string]: FrequencyTable };
+}
+
+export interface WorkerResult {
+    success: boolean;
+    results?: CombinedResults;
+    error?: string;
+}
+
+export interface FrequenciesResult {
+    variable: Variable;
+    stats?: DescriptiveStatistics;
+    frequencyTable?: FrequencyTable;
+}
+
 export interface TableColumnHeader {
-    header: string;
-    key?: string;
-    children?: TableColumnHeader[];
+  header: string;
+  key?: string;
+  children?: TableColumnHeader[];
 }
 
 export interface TableRow {
-    rowHeader: (string | null)[];
-    children?: TableRow[];
-    [key: string]: any;
-}
-
-// For raw frequency data structure
-export interface RawFrequencyData {
-    variableLabel: string;
-    validRowsData: {
-        label: string;
-        frequency: number;
-        percent: number;
-        validPercent: number;
-        cumulativePercent: number;
-    }[];
-    missingRowsData: {
-        label: string;
-        frequency: number;
-        percent: number;
-        isSystem: boolean;
-    }[];
-    totalN: number;
-    validN: number;
-    totalMissingN: number;
+  rowHeader: string[];
+  [key: string]: any;
 } 

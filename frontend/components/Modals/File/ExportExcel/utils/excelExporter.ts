@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { DataRow } from '@/types/Data';
 import { Variable } from '@/types/Variable';
 // import { Meta } from '@/types/Meta'; // Assuming Meta might not be available or needed directly here for now
-import { ExcelUtilOptions } from '../ExportExcel.types';
+import { ExcelUtilOptions } from '../types';
 
 /**
  * Generates an Excel Workbook object from data, variables, and metadata.

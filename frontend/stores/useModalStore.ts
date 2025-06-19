@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { ModalType } from "@/types/modalTypes";
+import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
+import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 
 /**
  * ModalProps - Interface untuk props yang diteruskan ke modal
@@ -13,6 +15,18 @@ import { ModalType } from "@/types/modalTypes";
 export interface ModalProps {
   [key: string]: any;
 }
+
+// Legacy modal types that are now handled by other modals
+const LEGACY_MODAL_MAPPINGS: Record<string, { type: ModalType, props?: ModalProps }> = {
+  // Old Find modal now maps to FindAndReplace with Find tab
+  "Find": { type: ModalType.FindAndReplace, props: { initialTab: FindReplaceMode.FIND } },
+  // Old Replace modal now maps to FindAndReplace with Replace tab
+  "Replace": { type: ModalType.FindAndReplace, props: { initialTab: FindReplaceMode.REPLACE } },
+  // Old GoToCase modal now maps to GoTo with Case mode
+  "GoToCase": { type: ModalType.GoTo, props: { initialMode: GoToMode.CASE } },
+  // Old GoToVariable modal now maps to GoTo with Variable mode
+  "GoToVariable": { type: ModalType.GoTo, props: { initialMode: GoToMode.VARIABLE } },
+};
 
 /**
  * ModalInstance - Representasi sebuah modal dalam store
@@ -62,6 +76,17 @@ export const useModalStore = create<ModalStoreState>()(
     
     // Aksi dasar
     openModal: (type, props) => {
+      // Check if this is a legacy modal type that needs to be mapped
+      const legacyMapping = LEGACY_MODAL_MAPPINGS[type];
+      if (legacyMapping) {
+        console.warn(`Modal type "${type}" is deprecated. Use "${legacyMapping.type}" instead.`);
+        // Merge any provided props with the legacy mapping props
+        const mergedProps = { ...legacyMapping.props, ...props };
+        // Use the mapped type and merged props
+        type = legacyMapping.type;
+        props = mergedProps;
+      }
+      
       // Buat ID unik untuk instance modal ini
       const modalInstance: ModalInstance = { 
         type, 

@@ -1,51 +1,51 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
-interface OutputTabProps {
-    showUnusualCasesList: boolean;
-    setShowUnusualCasesList: (value: boolean) => void;
-    peerGroupNorms: boolean;
-    setPeerGroupNorms: (value: boolean) => void;
-    anomalyIndices: boolean;
-    setAnomalyIndices: (value: boolean) => void;
-    reasonOccurrence: boolean;
-    setReasonOccurrence: (value: boolean) => void;
-    caseProcessed: boolean;
-    setCaseProcessed: (value: boolean) => void;
-}
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { OutputTabProps } from "./types";
 
 const OutputTab: React.FC<OutputTabProps> = ({
-                                                 showUnusualCasesList,
-                                                 setShowUnusualCasesList,
-                                                 peerGroupNorms,
-                                                 setPeerGroupNorms,
-                                                 anomalyIndices,
-                                                 setAnomalyIndices,
-                                                 reasonOccurrence,
-                                                 setReasonOccurrence,
-                                                 caseProcessed,
-                                                 setCaseProcessed
-                                             }) => {
+    showUnusualCasesList,
+    setShowUnusualCasesList,
+    peerGroupNorms,
+    setPeerGroupNorms,
+    anomalyIndices,
+    setAnomalyIndices,
+    reasonOccurrence,
+    setReasonOccurrence,
+    caseProcessed,
+    setCaseProcessed,
+    tourActive,
+    currentStep,
+    tourSteps = []
+}) => {
+    const listStepIndex = tourSteps.findIndex(step => step.targetId === 'unusual-cases-unusual-list');
+    const peerStepIndex = tourSteps.findIndex(step => step.targetId === 'unusual-cases-peer-group-table');
+    const summaryStepIndex = tourSteps.findIndex(step => step.targetId === 'unusual-cases-case-summary');
+
     return (
         <>
-            <div className="flex items-center mb-4">
-                <Checkbox
-                    id="unusualCasesList"
-                    checked={showUnusualCasesList}
-                    onCheckedChange={(checked) => setShowUnusualCasesList(!!checked)}
-                    className="mr-2"
-                />
-                <Label htmlFor="unusualCasesList" className="text-sm cursor-pointer">
-                    List of unusual cases and reasons why they are considered unusual
-                </Label>
+            <div id="unusual-cases-unusual-list" className="relative p-1">
+                <ActiveElementHighlight active={!!(tourActive && currentStep === listStepIndex)} />
+                <div className="flex items-center">
+                    <Checkbox
+                        id="unusualCasesList"
+                        checked={showUnusualCasesList}
+                        onCheckedChange={(checked) => setShowUnusualCasesList(!!checked)}
+                        className="mr-2"
+                    />
+                    <Label htmlFor="unusualCasesList" className="text-sm cursor-pointer">
+                        List of unusual cases and reasons why they are considered unusual
+                    </Label>
+                </div>
             </div>
 
-            <div className="border border-border rounded-md p-6">
+            <div className="border border-border rounded-md p-6 mt-4">
                 <div className="text-sm font-medium mb-4">Summaries</div>
 
                 <div className="space-y-6">
-                    <div>
+                    <div id="unusual-cases-peer-group-table" className="relative p-1">
+                        <ActiveElementHighlight active={!!(tourActive && currentStep === peerStepIndex)} />
                         <div className="flex items-center">
                             <Checkbox
                                 id="peerGroupNorms"
@@ -98,7 +98,8 @@ const OutputTab: React.FC<OutputTabProps> = ({
                         </p>
                     </div>
 
-                    <div>
+                    <div id="unusual-cases-case-summary" className="relative p-1">
+                        <ActiveElementHighlight active={!!(tourActive && currentStep === summaryStepIndex)} />
                         <div className="flex items-center">
                             <Checkbox
                                 id="caseProcessed"

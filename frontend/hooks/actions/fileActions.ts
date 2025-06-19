@@ -114,7 +114,13 @@ export const useFileActions = () => {
                     filteredVariables.forEach(variable => {
                         if (variable.columnIndex !== undefined && variable.columnIndex < actualColCount) {
                             const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
-                            record[name] = row[variable.columnIndex];
+                            const cellValue = row[variable.columnIndex];
+                            // Convert DATE from 'dd/mm/yyyy' to 'dd-mm-yyyy' for SPSS
+                            if (variable.type === 'DATE' && typeof cellValue === 'string') {
+                                record[name] = cellValue.replace(/\//g, '-');
+                            } else {
+                                record[name] = cellValue;
+                            }
                         }
                     });
                     return record;

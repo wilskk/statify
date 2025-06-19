@@ -63,6 +63,7 @@ export const uploadSavFile = (req: Request, res: Response) => {
 
 export const createSavFile = (req: Request, res: Response) => {
     const { data, variables } = req.body;
+    console.log('Received SAV writer request:', { data, variables });
 
     if (!data || !variables) {
         res.status(400).json({ error: "Parameter data dan variables wajib disediakan." });
@@ -72,8 +73,8 @@ export const createSavFile = (req: Request, res: Response) => {
     try {
         const filteredVariables = variables.filter((variable: any) => {
             if (variable.type === "DATE") {
-                if (variable.width !== 11) {
-                    console.warn(`Variabel ${variable.name} dengan tipe DATE diabaikan: width harus 11 (format: dd-mmm-yyyy).`);
+                if (variable.width !== 10) {
+                    console.warn(`Variabel ${variable.name} dengan tipe DATE diabaikan: width harus 10 (format: dd/mm/yyyy).`);
                     return false;
                 }
                 return true;
@@ -189,6 +190,13 @@ export const createSavFile = (req: Request, res: Response) => {
 
                 if (variable.type === VariableType.String) {
                     result[varName] = String(rawValue || '');
+                } else if (variable.type === VariableType.Date) {
+                    // Pass raw date string 'DD-MM-YYYY' directly to sav-writer
+                    if (typeof rawValue === 'string') {
+                        result[varName] = rawValue;
+                    } else {
+                        result[varName] = null;
+                    }
                 } else {
                     // For numeric types
                     const numValue = Number(rawValue);

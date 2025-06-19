@@ -1,104 +1,32 @@
 "use client";
 
-import React, { FC, useState, useEffect } from "react";
+import React, { FC } from "react";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Calendar, Clock, Info } from "lucide-react";
-import { useMetaStore } from "@/stores/useMetaStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import {
-    TimeComponent,
-    getTimeComponentsFromCase,
-    formatDateForMetaStore,
-    formatCurrentDates,
-    createDateVariables,
-    getMaxRow
-} from "./dateUtils";
-
-interface DefineDateTimeProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
+import { DefineDateTimeProps } from "./types";
+import { useDefineDateTime } from "./hooks/useDefineDateTime";
 
 // Main content component that's agnostic of container type
 const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
-    const { meta, setMeta } = useMetaStore();
-    const { variables, addVariable, resetVariables } = useVariableStore();
-    const { updateCells, data } = useDataStore();
-
-    const [casesAreOptions] = useState<string[]>([
-        "Years",
-        "Years, quarters",
-        "Years, months",
-        "Years, quarters, months",
-        "Days",
-        "Weeks, days",
-        "Weeks, work days(5)",
-        "Weeks, work days(6)",
-        "Hours",
-        "Days, hours",
-        "Days, work hour(8)",
-        "Weeks, days, hours",
-        "Weeks, work days, hours",
-        "Minutes",
-        "Hours, minutes",
-        "Days, hours, minutes",
-        "Seconds",
-        "Minutes, seconds",
-        "Hours, minutes, seconds",
-        "Not dated"
-    ]);
-    const [selectedCase, setSelectedCase] = useState<string>("Years, quarters");
-
-    const [timeComponents, setTimeComponents] = useState<TimeComponent[]>([
-        { name: "Year", value: 1900 },
-        { name: "Quarter", value: 1, periodicity: 4 }
-    ]);
-
-    useEffect(() => {
-        const components = getTimeComponentsFromCase(selectedCase);
-        console.log("Selected case:", selectedCase);
-        console.log("Generated components:", components);
-        setTimeComponents(components);
-    }, [selectedCase]);
-
-    const handleInputChange = (index: number, value: number) => {
-        const updatedComponents = [...timeComponents];
-        updatedComponents[index].value = value;
-        setTimeComponents(updatedComponents);
-    };
-
-    const handleOk = async () => {
-        const dateString = formatDateForMetaStore(selectedCase, timeComponents);
-        setMeta({ dates: dateString });
-
-        await createDateVariables(
-            selectedCase,
-            timeComponents,
-            variables,
-            addVariable,
-            resetVariables,
-            updateCells,
-            getMaxRow(data)
-        );
-
-        onClose();
-    };
-
-    const handleReset = () => {
-        setSelectedCase("Years, quarters");
-    };
+    const {
+        casesAreOptions,
+        selectedCase,
+        setSelectedCase,
+        timeComponents,
+        handleInputChange,
+        handleOk,
+        handleReset,
+        currentDatesFormatted
+    } = useDefineDateTime(onClose);
 
     return (
         <>
@@ -106,6 +34,12 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
             <div className="w-full flex flex-col flex-grow overflow-hidden">
                 {/* Scrollable area for the grid */}
                 <div className="flex-grow p-6 overflow-y-auto">
+                    <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
+                        <Info size={14} className="text-accent-foreground h-4 w-4 flex-shrink-0" />
+                        <p className="text-accent-foreground text-xs">
+                            Define date and time formats for your variables. Variables with successfully defined formats will be moved to the &apos;Dated&apos; list.
+                        </p>
+                    </div>
                     <div className="grid grid-cols-2 gap-4 h-full"> {/* Grid takes full height of scrollable parent */}
                         {/* Left Column */}
                         <div className="flex flex-col space-y-2 h-full"> {/* Takes full height of grid cell */}
@@ -142,7 +76,7 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
                                 <Label className="text-xs font-semibold mb-1 block text-foreground">Current Dates:</Label>
                                 <div className="flex items-center">
                                     <Clock size={14} className="text-muted-foreground mr-1 flex-shrink-0" />
-                                    <span className="text-xs text-foreground">{formatCurrentDates(selectedCase, timeComponents)}</span>
+                                    <span className="text-xs text-foreground">{currentDatesFormatted}</span>
                                 </div>
                             </div>
                         </div>
@@ -202,19 +136,27 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
             </div>
 
             {/* Footer (OK, Reset, Cancel, Help buttons) */}
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button onClick={handleOk}>
-                        OK
-                    </Button>
-                    <Button variant="outline" onClick={handleReset}>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div />
+                {/* Right: Buttons */}
+                <div>
+                    <Button
+                        variant="outline"
+                        onClick={handleReset}
+                        className="mr-2"
+                    >
                         Reset
                     </Button>
-                    <Button variant="outline" onClick={onClose}>
+                    <Button
+                        variant="outline"
+                        onClick={onClose}
+                        className="mr-2"
+                    >
                         Cancel
                     </Button>
-                    <Button variant="outline" onClick={() => alert("Help dialog here")}>
-                        Help
+                    <Button onClick={handleOk}>
+                        OK
                     </Button>
                 </div>
             </div>
