@@ -1,17 +1,7 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface OptionsTabProps {
-    displayStatistics: {
-        descriptive: boolean;
-        quartiles: boolean;
-    };
-    setDisplayStatistics: React.Dispatch<React.SetStateAction<{
-        descriptive: boolean;
-        quartiles: boolean;
-    }>>;
-}
+import { OptionsTabProps } from "./types";
 
 const OptionsTab: FC<OptionsTabProps> = ({
     displayStatistics,

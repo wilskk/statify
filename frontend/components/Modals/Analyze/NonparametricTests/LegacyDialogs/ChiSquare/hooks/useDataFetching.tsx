@@ -7,36 +7,26 @@ export const useDataFetching = (props?: DataFetchingProps): DataFetchingResult =
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Function to fetch data for the specified variables and grouping variable
-  const fetchData = useCallback(async (variables: Variable[], groupVariable: Variable): Promise<FetchedData> => {
+  // Function to fetch data for the specified variables
+  const fetchData = useCallback(async (variables: Variable[]): Promise<FetchedData> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Fetch test variables data
-      const variableDataPromises = variables.map(variable => 
+      const dataPromises = variables.map(variable => 
         useDataStore.getState().getVariableData(variable)
       );
       
-      // Fetch grouping variable data
-      const groupDataPromise = useDataStore.getState().getVariableData(groupVariable);
-      
-      // Wait for all data to be fetched
-      const [variableData, groupData] = await Promise.all([
-        Promise.all(variableDataPromises),
-        groupDataPromise
-      ]);
+      const variableData = await Promise.all(dataPromises);
       
       return {
-        variableData: variableData,
-        groupData: groupData
+        variableData: variableData
       };
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred while fetching data');
       return {
-        variableData: null,
-        groupData: null
+        variableData: null
       };
     } finally {
       setIsLoading(false);

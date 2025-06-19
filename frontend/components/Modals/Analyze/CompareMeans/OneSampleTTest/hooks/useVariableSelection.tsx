@@ -1,20 +1,45 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import type { Variable } from '@/types/Variable';
-import { VariableSelectionProps, VariableSelectionResult, HighlightedVariableInfo } from '../types';
+import { Variable } from '@/types/Variable';
+import {
+  VariableSelectionProps,
+  VariableSelectionResult,
+  HighlightedVariable
+} from '../types';
 
-export const useVariableSelection = (props?: VariableSelectionProps): VariableSelectionResult => {
-  const variables = useVariableStore(state => state.variables);
-  
-  // State for variable lists
-  const [availableVariables, setAvailableVariables] = useState<Variable[]>(() => {
-    // Filter to only include numeric variables for t-test
-    const validVars = variables.filter(v => v.type === 'NUMERIC' && v.name !== "");
-    return props?.initialVariables || validVars;
-  });
-  
-  const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-  const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
+export const useVariableSelection = ({
+  initialVariables = []
+}: VariableSelectionProps = {}): VariableSelectionResult => {
+  const { variables } = useVariableStore();
+  const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+  const [selectedVariables, setSelectedVariables] = useState<Variable[]>(initialVariables);
+  const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariable | null>(null);
+
+  useEffect(() => {
+    const globalVarsWithTempId = variables.map(v => ({
+      ...v,
+      tempId: v.tempId || `temp_id_${v.columnIndex}`
+    }));
+    const globalVarTempIds = new Set(globalVarsWithTempId.map(v => v.tempId));
+
+    // Synchronize selectedVariables with global store: remove any selected variables that no longer exist globally.
+    const stillExistingSelectedVars = selectedVariables.filter(sv => 
+        sv.tempId && globalVarTempIds.has(sv.tempId)
+    );
+
+    if (stillExistingSelectedVars.length !== selectedVariables.length || 
+        !stillExistingSelectedVars.every((val, index) => val.tempId === selectedVariables[index]?.tempId)) {
+        setSelectedVariables(stillExistingSelectedVars);
+    }
+    
+    // Update availableVariables based on the potentially updated selectedVariables list.
+    const currentSelectedTempIds = new Set(stillExistingSelectedVars.filter(v => v.tempId).map(v => v.tempId!));
+    const newAvailableVariables = globalVarsWithTempId.filter(
+      v => v.name !== "" && v.tempId && !currentSelectedTempIds.has(v.tempId)
+    );
+    setAvailableVariables(newAvailableVariables);
+
+  }, [variables, selectedVariables]);
 
   // Function to move a variable from available to selected
   const moveToSelectedVariables = useCallback((variable: Variable, targetIndex?: number) => {
@@ -22,7 +47,7 @@ export const useVariableSelection = (props?: VariableSelectionProps): VariableSe
     
     setSelectedVariables(prev => {
       const newList = [...prev];
-      if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newList.length) {
+      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
         newList.splice(targetIndex, 0, variable);
       } else {
         newList.push(variable);
@@ -36,34 +61,23 @@ export const useVariableSelection = (props?: VariableSelectionProps): VariableSe
   // Function to move a variable from selected to available
   const moveToAvailableVariables = useCallback((variable: Variable, targetIndex?: number) => {
     setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-    
+
     setAvailableVariables(prev => {
       const newList = [...prev];
-      
-      // If target index is specified, insert at that position
-      if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newList.length) {
+      if (prev.some(v => v.tempId === variable.tempId)) {
+        return prev;
+      }
+      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
         newList.splice(targetIndex, 0, variable);
       } else {
-        // Otherwise, insert in original order from the variables array
-        const originalIndex = variables.findIndex(v => v.tempId === variable.tempId);
-        
-        // Find where to insert to maintain the original order
-        let insertIndex = 0;
-        while (
-          insertIndex < newList.length &&
-          variables.findIndex(v => v.tempId === newList[insertIndex].tempId) < originalIndex
-        ) {
-          insertIndex++;
-        }
-        
-        newList.splice(insertIndex, 0, variable);
+        newList.push(variable);
       }
-      
+      newList.sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
       return newList;
     });
     
     setHighlightedVariable(null);
-  }, [variables]);
+  }, []);
 
   // Function to reorder variables within a list
   const reorderVariables = useCallback((source: 'available' | 'selected', reorderedVariables: Variable[]) => {

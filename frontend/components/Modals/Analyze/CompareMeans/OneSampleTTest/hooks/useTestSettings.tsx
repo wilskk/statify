@@ -1,22 +1,32 @@
 import { useState, useCallback } from 'react';
-import { TestSettingsProps, TestSettingsResult } from '../types';
+import { TestSettingsProps, TestSettingsResult, TestSettingsOptions } from '../types';
 
-export const useTestSettings = (props?: TestSettingsProps): TestSettingsResult => {
-  const [testValue, setTestValue] = useState<number>(props?.initialTestValue ?? 0);
-  const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(props?.initialEstimateEffectSize ?? false);
+export const useTestSettings = (): TestSettingsResult => {
+  const [testValue, setTestValue] = useState<number>(0);
+  const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(true);
 
   // Reset function
   const resetTestSettings = useCallback(() => {
-    setTestValue(props?.initialTestValue ?? 0);
-    setEstimateEffectSize(props?.initialEstimateEffectSize ?? false);
-  }, [props?.initialTestValue, props?.initialEstimateEffectSize]);
+    setTestValue(0);
+    setEstimateEffectSize(true);
+  }, []);
+
+  // Generic update function for any test setting
+  const updateTestSettings = useCallback(<T extends boolean | number>(key: keyof TestSettingsOptions, value: T) => {
+    if (key === 'testValue' && typeof value === 'number') {
+      setTestValue(value);
+    } else if (key === 'estimateEffectSize' && typeof value === 'boolean') {
+      setEstimateEffectSize(value);
+    }
+  }, []);
 
   return {
     testValue,
     setTestValue,
     estimateEffectSize,
     setEstimateEffectSize,
-    resetTestSettings
+    resetTestSettings,
+    updateTestSettings
   };
 };
 

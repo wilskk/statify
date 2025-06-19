@@ -5,34 +5,10 @@ import { CornerDownLeft, CornerDownRight, Ruler, Shapes, BarChartHorizontal, Inf
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Variable } from "@/types/Variable";
-
-interface VariablesTabProps {
-    listVariables: Variable[];
-    testVariables: Variable[];
-    groupingVariable: Variable | null;
-    group1: number | null;
-    group2: number | null;
-    highlightedVariable: { id: string, source: 'available' | 'selected' | 'grouping' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ id: string, source: 'available' | 'selected' | 'grouping' } | null>>;
-    testType: {
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    };
-    setTestType: React.Dispatch<React.SetStateAction<{
-        kruskalWallisH: boolean;
-        median: boolean;
-        jonckheereTerpstra: boolean;
-    }>>;
-    handleSelectedVariable: (variable: Variable) => void;
-    handleDeselectVariable: (variable: Variable) => void;
-    handleSelectGroupVariable: (variable: Variable) => void;
-    handleDeselectGroupVariable: () => void;
-    setShowDefineGroupsModal: React.Dispatch<React.SetStateAction<boolean>>;
-}
+import { VariablesTabProps } from "./types";
 
 const VariablesTab: FC<VariablesTabProps> = ({
-    listVariables,
+    availableVariables,
     testVariables,
     groupingVariable,
     group1,
@@ -41,11 +17,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
     setHighlightedVariable,
     testType,
     setTestType,
-    handleSelectedVariable,
-    handleDeselectVariable,
-    handleSelectGroupVariable,
-    handleDeselectGroupVariable,
-    setShowDefineGroupsModal
+    handleVariableSelect,
+    handleVariableDoubleClick,
+    handleDefineGroupsClick,
+    moveToAvailableVariables,
+    moveToTestVariable,
+    moveToGroupingVariable,
+    reorderVariables,
+    errorMsg
 }) => {
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
@@ -69,52 +48,20 @@ const VariablesTab: FC<VariablesTabProps> = ({
         return variable.name;
     };
 
-    const handleVariableSelect = (variable: Variable, source: 'available' | 'selected' | 'grouping') => {
-        const variableId = variable.columnIndex.toString();
-        
-        if (highlightedVariable?.id === variableId && highlightedVariable.source === source) {
-            setHighlightedVariable(null);
-        } else {
-            setHighlightedVariable({ id: variableId, source });
-        }
-    };
-
-    const handleVariableDoubleClick = (variable: Variable, source: 'available' | 'selected' | 'grouping') => {
-        if (source === 'available') {
-            // Determine if it should go to test variables or grouping variable
-            if (!groupingVariable) {
-                // Ask user if they want to use it as a grouping variable
-                const useAsGrouping = window.confirm(`Use ${getDisplayName(variable)} as grouping variable?`);
-                if (useAsGrouping) {
-                    handleSelectGroupVariable(variable);
-                } else {
-                    handleSelectedVariable(variable);
-                }
-            } else {
-                // Already have a grouping variable, so add to test variables
-                handleSelectedVariable(variable);
-            }
-        } else if (source === 'selected') {
-            handleDeselectVariable(variable);
-        } else if (source === 'grouping') {
-            handleDeselectGroupVariable();
-        }
-    };
-
     return (
         <div className="grid grid-cols-7 gap-4">
-            {/* List Variables */}
+            {/* Available Variables */}
             <div className="col-span-3" style={{height: "325.5px"}}>
                 <div className="text-sm mb-2 font-medium">List Variables:</div>
                 <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto" style={{height: "273.5px"}}>
                     <div className="space-y-1">
-                        {listVariables.map((variable) => (
+                        {availableVariables.map((variable) => (
                             <TooltipProvider key={variable.columnIndex}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div
                                             className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                                highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'available'
+                                                highlightedVariable?.tempId === variable.columnIndex.toString() && highlightedVariable.source === 'available'
                                                     ? "bg-[#E6E6E6] border-[#888888]"
                                                     : "border-[#CCCCCC]"
                                             }`}
@@ -153,11 +100,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             if (!highlightedVariable) return;
                             
                             if (highlightedVariable.source === 'available') {
-                                const variable = listVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-                                if (variable) handleSelectedVariable(variable);
+                                const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.tempId);
+                                if (variable) moveToTestVariable(variable);
                             } else if (highlightedVariable.source === 'selected') {
-                                const variable = testVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-                                if (variable) handleDeselectVariable(variable);
+                                const variable = testVariables.find(v => v.columnIndex.toString() === highlightedVariable.tempId);
+                                if (variable) moveToAvailableVariables(variable, 'selected');
                             }
                         }}
                         disabled={!highlightedVariable || highlightedVariable.source === 'grouping'}
@@ -179,10 +126,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             if (!highlightedVariable) return;
                             
                             if (highlightedVariable.source === 'available') {
-                                const variable = listVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-                                if (variable) handleSelectGroupVariable(variable);
+                                const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.tempId);
+                                if (variable) moveToGroupingVariable(variable);
                             } else if (highlightedVariable.source === 'grouping') {
-                                handleDeselectGroupVariable();
+                                const variable = groupingVariable;
+                                if (variable) moveToAvailableVariables(variable, 'grouping');
                             }
                         }}
                         disabled={
@@ -212,7 +160,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                         <TooltipTrigger asChild>
                                             <div
                                                 className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                                    highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === 'selected'
+                                                    highlightedVariable?.tempId === variable.columnIndex.toString() && highlightedVariable.source === 'selected'
                                                         ? "bg-[#E6E6E6] border-[#888888]"
                                                         : "border-[#CCCCCC]"
                                                 }`}
@@ -245,7 +193,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     <TooltipTrigger asChild>
                                         <div
                                             className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                                highlightedVariable?.id === groupingVariable.columnIndex.toString() && highlightedVariable.source === 'grouping'
+                                                highlightedVariable?.tempId === groupingVariable.columnIndex.toString() && highlightedVariable.source === 'grouping'
                                                     ? "bg-[#E6E6E6] border-[#888888]"
                                                     : "border-[#CCCCCC]"
                                             }`}
@@ -280,7 +228,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                             variant="outline"
                             size="sm"
                             className="w-full h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                            onClick={() => setShowDefineGroupsModal(true)}
+                            onClick={handleDefineGroupsClick}
                             disabled={!groupingVariable}
                         >
                             Define Range...
@@ -324,6 +272,11 @@ const VariablesTab: FC<VariablesTabProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Error message */}
+            {errorMsg && (
+                <div className="col-span-7 mt-2 text-red-600 text-sm">{errorMsg}</div>
+            )}
         </div>
     );
 };

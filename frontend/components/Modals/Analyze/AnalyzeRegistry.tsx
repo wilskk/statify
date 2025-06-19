@@ -14,6 +14,13 @@ import {
     getCompareMeansModalComponent
 } from './CompareMeans';
 
+// Import from NonparametricTests registry via index.ts
+import {
+    NONPARAMETRIC_TEST_MODAL_COMPONENTS,
+    NONPARAMETRIC_TEST_MODAL_CONTAINER_PREFERENCES,
+    getNonparametricTestModalComponent
+} from './NonparametricTests';
+
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
  * 
@@ -25,6 +32,9 @@ export const ANALYZE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseMo
     
     // Compare Means modals
     ...COMPARE_MEANS_MODAL_COMPONENTS,
+    
+    // Nonparametric Tests modals
+    ...NONPARAMETRIC_TEST_MODAL_COMPONENTS,
     
     // Future categories will be added here
     // ...NONPARAMETRIC_MODAL_COMPONENTS,
@@ -59,6 +69,9 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dia
     
     // Compare Means modals
     ...COMPARE_MEANS_MODAL_CONTAINER_PREFERENCES,
+    
+    // Nonparametric Tests modals
+    ...NONPARAMETRIC_TEST_MODAL_CONTAINER_PREFERENCES,
     
     // Future categories will be added here
 };

@@ -99,6 +99,14 @@ export enum ModalType {
   IndependentSamplesTTest = "IndependentSamplesTTest",
   PairedSamplesTTest = "PairedSamplesTTest",
   OneWayANOVA = "OneWayANOVA",
+  
+  // Nonparametric Tests modals
+  ChiSquare = "ChiSquare",
+  Runs = "Runs",
+  TwoIndependentSamples = "TwoIndependentSamples",
+  KIndependentSamples = "KIndependentSamples",
+  TwoRelatedSamples = "TwoRelatedSamples",
+  KRelatedSamples = "KRelatedSamples",
 }
 
 /**
@@ -251,6 +259,14 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.IndependentSamplesTTest]: ModalCategory.Analyze,
   [ModalType.PairedSamplesTTest]: ModalCategory.Analyze,
   [ModalType.OneWayANOVA]: ModalCategory.Analyze,
+  
+  // Nonparametric Tests modals
+  [ModalType.ChiSquare]: ModalCategory.Analyze,
+  [ModalType.Runs]: ModalCategory.Analyze,
+  [ModalType.TwoIndependentSamples]: ModalCategory.Analyze,
+  [ModalType.KIndependentSamples]: ModalCategory.Analyze,
+  [ModalType.TwoRelatedSamples]: ModalCategory.Analyze,
+  [ModalType.KRelatedSamples]: ModalCategory.Analyze,
 };
 
 /**

@@ -3,23 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Variable } from "@/types/Variable";
-import { HighlightedVariableInfo } from "./types";
-import { Dispatch, SetStateAction } from "react";
+import { VariablesTabProps } from "./types";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-
-export interface VariablesTabProps {
-    availableVariables: Variable[];
-    selectedVariables: Variable[];
-    highlightedVariable: HighlightedVariableInfo | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
-    moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-    testValue: number;
-    setTestValue: Dispatch<SetStateAction<number>>;
-    estimateEffectSize: boolean;
-    setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
-}
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
@@ -32,7 +17,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     testValue,
     setTestValue,
     estimateEffectSize,
-    setEstimateEffectSize
+    setEstimateEffectSize,
 }) => {
     const variableIdKeyToUse: keyof Variable = 'tempId';
 

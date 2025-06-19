@@ -1,480 +1,104 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
-import { Button } from "@/components/ui/button";
+
+import React, { FC, useState, useCallback, useEffect } from "react";
 import {
-DialogContent,
-DialogFooter,
-DialogHeader,
-DialogTitle
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
 } from "@/components/ui/dialog";
 import {
-Tabs,
-TabsContent,
-TabsList,
-TabsTrigger
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger
 } from "@/components/ui/tabs";
-import { useDataStore } from "@/stores/useDataStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useResultStore } from "@/stores/useResultStore";
-import type { Variable } from "@/types/Variable";
+import { Button } from "@/components/ui/button";
+import { useVariableSelection } from "./hooks/useVariableSelection";
+import { useTestSettings } from "./hooks/useTestSettings";
+import { usePairedSamplesTTestAnalysis } from "./hooks/usePairedSamplesTTestAnalysis";
+import { useDataFetching } from "./hooks/useDataFetching";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
 
-interface PairedSamplesTTestModalProps {
-    onClose: () => void;
-}
+// Komponen utama konten PairedSamplesTTest yang agnostik terhadap container
+const PairedSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
+    const [activeTab, setActiveTab] = useState<"variables">("variables");
+    
+    const {
+        availableVariables,
+        testVariables1,
+        testVariables2,
+        highlightedVariable,
+        selectedPair,
+        setHighlightedVariable,
+        setSelectedPair,
+        handleSelectedVariable,
+        handleDeselectVariable,
+        handleMoveVariableBetweenLists,
+        handleMoveUpPair,
+        handleMoveDownPair,
+        handleRemovePair,
+        isPairValid,
+        areAllPairsValid,
+        hasDuplicatePairs,
+        resetVariableSelection
+    } = useVariableSelection();
 
-const Index: FC<PairedSamplesTTestModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState("variables");
-    const [listVariables, setListVariables] = useState<Variable[]>([]);
-    const [testVariables1, setTestVariables1] = useState<Variable[]>([]);
-    const [testVariables2, setTestVariables2] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected1' | 'selected2', rowIndex?: number} | null>(null);
-    const [selectedPair, setSelectedPair] = useState<number | null>(null);
-    const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(false);
-    const [calculateStandardizer, setCalculateStandardizer] = useState({
-        standardDeviation: true,
-        correctedStandardDeviation: false,
-        averageOfVariances: false
+    const {
+        estimateEffectSize,
+        setEstimateEffectSize,
+        calculateStandardizer,
+        setCalculateStandardizer,
+        resetTestSettings
+    } = useTestSettings();
+
+    const { 
+        isLoading,
+        errorMsg, 
+        runAnalysis,
+        cancelAnalysis
+    } = usePairedSamplesTTestAnalysis({
+        testVariables1,
+        testVariables2,
+        calculateStandardizer,
+        estimateEffectSize,
+        areAllPairsValid,
+        hasDuplicatePairs,
+        onClose
     });
 
-    const [isCalculating, setIsCalculating] = useState<boolean>(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetTestSettings();
+        cancelAnalysis();
+    }, [resetVariableSelection, resetTestSettings, cancelAnalysis]);
 
-    const variables = useVariableStore.getState().variables;
-    const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+    const handleTabChange = useCallback((value: string) => {
+        if (value === 'variables') {
+            setActiveTab(value);
+        }
+    }, [setActiveTab]);
 
-    // Initialize available variables on component mount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        setListVariables(validVars);
-    }, [variables]);
-
-    const handleSelectedVariable = (variable: Variable, targetList: 'list1' | 'list2') => {
-        // Cek untuk menemukan slot kosong di testVariables1 atau testVariables2
-        const emptySlot1 = testVariables1.findIndex(v => v === undefined);
-        const emptySlot2 = testVariables2.findIndex(v => v === undefined);
-        
-        // Jika ada slot kosong
-        if (emptySlot1 !== -1 || emptySlot2 !== -1) {
-            // Prioritaskan untuk mengisi slot kosong dengan urutan: pair terkecil, variable1, variable2
-            if (emptySlot1 !== -1 && (emptySlot1 < emptySlot2 || emptySlot2 === -1)) {
-                // Periksa apakah variable ini sudah ada di variable2 pada pair yang sama
-                if (testVariables2[emptySlot1] && testVariables2[emptySlot1].columnIndex === variable.columnIndex) {
-                    setErrorMsg("The pair must contain two different variables.");
-                    return;
-                }
-                
-                // Isi slot kosong di variable1
-                setTestVariables1(prev => {
-                    const newArray = [...prev];
-                    newArray[emptySlot1] = variable;
-                    return newArray;
-                });
-                setErrorMsg(null);
-            } else if (emptySlot2 !== -1) {
-                // Periksa apakah variable ini sudah ada di variable1 pada pair yang sama
-                if (testVariables1[emptySlot2] && testVariables1[emptySlot2].columnIndex === variable.columnIndex) {
-                    setErrorMsg("The pair must contain two different variables.");
-                    return;
-                }
-                
-                // Isi slot kosong di variable2
-                setTestVariables2(prev => {
-                    const newArray = [...prev];
-                    newArray[emptySlot2] = variable;
-                    return newArray;
-                });
-                setErrorMsg(null);
-            }
-        } else {
-            // Jika tidak ada slot kosong, tambahkan ke array yang sesuai
-            if (targetList === 'list1') {
-                // Periksa apakah variable ini sudah ada di variable2 dengan indeks sama
-                if (testVariables2.length > 0 && 
-                    testVariables2[testVariables1.length] && 
-                    testVariables2[testVariables1.length].columnIndex === variable.columnIndex) {
-                    setErrorMsg("The pair must contain two different variables.");
-                    return;
-                }
-                
-                setTestVariables1(prev => [...prev, variable]);
-                setErrorMsg(null);
-            } else {
-                // Periksa apakah variable ini sudah ada di variable1 dengan indeks sama
-                if (testVariables1.length > 0 && 
-                    testVariables1[testVariables2.length] && 
-                    testVariables1[testVariables2.length].columnIndex === variable.columnIndex) {
-                    setErrorMsg("The pair must contain two different variables.");
-                    return;
-                }
-                
-                setTestVariables2(prev => [...prev, variable]);
-                setErrorMsg(null);
-            }
-        }
-        
-        // Tidak menghapus variabel dari listVariables sehingga tetap tersedia
-        setHighlightedVariable(null);
-    };
-
-    const handleDeselectVariable = (variable: Variable, sourceList: 'list1' | 'list2', rowIndex?: number) => {
-        // Jika rowIndex diberikan, hapus variabel hanya pada baris tersebut
-        if (rowIndex !== undefined) {
-            if (sourceList === 'list1') {
-                const otherVariable = testVariables2[rowIndex];
-                
-                // Cek apakah slot di variable2 kosong
-                if (!otherVariable) {
-                    // Hapus baris sepenuhnya - pair dibawahnya akan naik
-                    setTestVariables1(prev => {
-                        const newArray = [...prev];
-                        newArray.splice(rowIndex, 1);
-                        return newArray;
-                    });
-                    setTestVariables2(prev => {
-                        const newArray = [...prev];
-                        newArray.splice(rowIndex, 1);
-                        return newArray;
-                    });
-                } else {
-                    // Jika variable2 tidak kosong, hanya kosongkan slot ini
-                    setTestVariables1(prev => {
-                        const newArray = [...prev];
-                        newArray[rowIndex] = undefined as any;
-                        return newArray;
-                    });
-                }
-            } else { // sourceList === 'list2'
-                const otherVariable = testVariables1[rowIndex];
-                
-                // Cek apakah slot di variable1 kosong
-                if (!otherVariable) {
-                    // Hapus baris sepenuhnya - pair dibawahnya akan naik
-                    setTestVariables1(prev => {
-                        const newArray = [...prev];
-                        newArray.splice(rowIndex, 1);
-                        return newArray;
-                    });
-                    setTestVariables2(prev => {
-                        const newArray = [...prev];
-                        newArray.splice(rowIndex, 1);
-                        return newArray;
-                    });
-                } else {
-                    // Jika variable1 tidak kosong, hanya kosongkan slot ini
-                    setTestVariables2(prev => {
-                        const newArray = [...prev];
-                        newArray[rowIndex] = undefined as any;
-                        return newArray;
-                    });
-                }
-            }
-        } else {
-            // Perilaku lama, hapus semua instance variabel
-            if (sourceList === 'list1') {
-                setTestVariables1(prev => prev.filter(v => v && v.columnIndex !== variable.columnIndex));
-            } else {
-                setTestVariables2(prev => prev.filter(v => v && v.columnIndex !== variable.columnIndex));
-            }
-        }
-        
-        setHighlightedVariable(null);
-    };
-
-    const handleMoveVariableBetweenLists = (index: number) => {
-        // Move variable from list1 to list2 or vice versa
-        const temp = testVariables1[index];
-        setTestVariables1(prev => {
-            const newArray = [...prev];
-            newArray[index] = testVariables2[index];
-            return newArray;
-        });
-        setTestVariables2(prev => {
-            const newArray = [...prev];
-            newArray[index] = temp;
-            return newArray;
-        });
-    };
-
-    const handleMoveUpPair = (index: number) => {
-        if (index > 0) {
-            setTestVariables1(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index - 1]] = [newArray[index - 1], newArray[index]];
-                return newArray;
-            });
-            
-            setTestVariables2(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index - 1]] = [newArray[index - 1], newArray[index]];
-                return newArray;
-            });
-            
-            setSelectedPair(index - 1);
-        }
-    };
-
-    const handleMoveDownPair = (index: number) => {
-        if (index < testVariables1.length - 1) {
-            setTestVariables1(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index + 1]] = [newArray[index + 1], newArray[index]];
-                return newArray;
-            });
-            
-            setTestVariables2(prev => {
-                const newArray = [...prev];
-                [newArray[index], newArray[index + 1]] = [newArray[index + 1], newArray[index]];
-                return newArray;
-            });
-            
-            setSelectedPair(index + 1);
-        }
-    };
-
-    const handleRemovePair = (index: number) => {
-        // Tidak perlu mengembalikan variabel ke listVariables karena variabel tidak dihapus
-        
-        setTestVariables1(prev => prev.filter((_, i) => i !== index));
-        setTestVariables2(prev => prev.filter((_, i) => i !== index));
-        setSelectedPair(null);
-    };
-
-    const isPairValid = (index: number): boolean => {
-        // Pastikan kedua variabel di pair ada dan berbeda
-        if (!testVariables1[index] || !testVariables2[index]) {
-            return false;
-        }
-        
-        // Cek apakah variabel berbeda (berdasarkan columnIndex)
-        return testVariables1[index].columnIndex !== testVariables2[index].columnIndex;
-    };
-
-    const areAllPairsValid = (): boolean => {
-        if (testVariables1.length === 0 || testVariables2.length === 0) {
-            return false;
-        }
-        
-        if (testVariables1.length !== testVariables2.length) {
-            return false;
-        }
-        
-        // Cek semua pair apakah valid
-        for (let i = 0; i < testVariables1.length; i++) {
-            if (!isPairValid(i)) {
-                return false;
-            }
-        }
-        
-        return true;
-    };
-
-    const hasDuplicatePairs = (): boolean => {
-        const pairSignatures = new Set<string>();
-        
-        for (let i = 0; i < testVariables1.length; i++) {
-            if (testVariables1[i] && testVariables2[i]) {
-                // Buat signature unik untuk setiap pasangan
-                const var1Id = testVariables1[i].columnIndex;
-                const var2Id = testVariables2[i].columnIndex;
-                const pairSignature = `${var1Id}-${var2Id}`;
-                
-                // Cek apakah signature ini sudah ada
-                if (pairSignatures.has(pairSignature)) {
-                    return true; // Ditemukan duplikat
-                }
-                
-                pairSignatures.add(pairSignature);
-            }
-        }
-        
-        return false;
-    };
-
-    const handleReset = () => {
-        setListVariables(variables.filter(v => v.name !== ""));
-        setTestVariables1([]);
-        setTestVariables2([]);
-        setHighlightedVariable(null);
-        setSelectedPair(null);
-        setCalculateStandardizer({
-            standardDeviation: true,
-            correctedStandardDeviation: false,
-            averageOfVariances: false
-        });
-        setEstimateEffectSize(false);
-        setErrorMsg(null);
-    };
-
-    const handleRunTest = async () => {
-        if (testVariables1.length < 1 || testVariables2.length < 1 || testVariables1.length !== testVariables2.length) {
-            setErrorMsg("Please select at least one pair of variables.");
-            return;
-        }
-        
-        if (!areAllPairsValid()) {
-            setErrorMsg("All pairs must contain two different variables.");
-            return;
-        }
-        
-        if (hasDuplicatePairs()) {
-            setErrorMsg("The grid contains a duplicate pair.");
-            return;
-        }
-        
-        if (!calculateStandardizer.standardDeviation && !calculateStandardizer.correctedStandardDeviation && !calculateStandardizer.averageOfVariances) {
-            setErrorMsg("Please select at least one test type.");
-            return;
-        }
-        
-        setErrorMsg(null);
-        setIsCalculating(true);
-
-        try {
-            // 1. Prepare variable data using useDataStore's getVariableData
-            const variableData1Promises = [];
-            const variableData2Promises = [];
-            
-            for (const varDef of testVariables1) {
-                variableData1Promises.push(useDataStore.getState().getVariableData(varDef));
-            }
-            
-            for (const varDef of testVariables2) {
-                variableData2Promises.push(useDataStore.getState().getVariableData(varDef));
-            }
-            
-            const variableData1 = await Promise.all(variableData1Promises);
-            const variableData2 = await Promise.all(variableData2Promises);
-
-            // 2. Create worker and set up handlers
-            const worker = new Worker("/workers/PairedSamplesTTest/index.js",  { type: 'module' });
-
-            // Set a timeout to prevent worker hanging
-            const timeoutId = setTimeout(() => {
-                worker.terminate();
-                setErrorMsg("Analysis timed out. Please try again with fewer variables.");
-                setIsCalculating(false);
-            }, 60000); // 60 second timeout
-
-            worker.onmessage = async (e) => {
-                clearTimeout(timeoutId);
-                const wData = e.data;
-
-                if (wData.success) {
-                    try {
-                        // Save results to database
-                        const variableNames1 = testVariables1.map(v => v.name);
-                        const variableNames2 = testVariables2.map(v => v.name);
-                        let logParts = [`T-TEST PAIRS=${variableNames1.join(" ")} WITH ${variableNames2.join(" ")} (PAIRED)`];
-
-                        if (estimateEffectSize) {
-                            if (calculateStandardizer.standardDeviation === true) {
-                                logParts.push(`{ES DISPLAY(TRUE) STANDARDIZER(SD)}`);
-                            } else if (calculateStandardizer.correctedStandardDeviation === true) {
-                                logParts.push(`{ES DISPLAY(TRUE) STANDARDIZER(CORRECTED_SD)}`);
-                            } else if (calculateStandardizer.averageOfVariances === true) {
-                                logParts.push(`{ES DISPLAY(TRUE) STANDARDIZER(AVERAGE)}`);
-                            }
-                        } else {
-                            logParts.push(`{ES DISPLAY(FALSE)}`);
-                        }
-
-                        logParts.push(`{CRITERIA=CI(.9500)`);
-                        
-                        // Join all parts with spaces
-                        let logMsg = logParts.join(' ');
-
-                        const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "T-Test", note: "" });
-
-                        if (wData.statistics) {
-                            await addStatistic(analyticId, {
-                                title: "Paired Samples Statistics",
-                                output_data: wData.statistics,
-                                components: "Paired Samples Statistics",
-                                description: ""
-                            });
-                        }
-
-                        if (wData.correlations) {
-                            await addStatistic(analyticId, {
-                                title: "Paired Samples Correlations",
-                                output_data: wData.correlations,
-                                components: "Paired Samples Correlations",
-                                description: ""
-                            });
-                        }
-
-                        if (wData.test) {
-                            await addStatistic(analyticId, {
-                                title: "Paired Samples Test",
-                                output_data: wData.test,
-                                components: "Paired Samples Test",
-                                description: ""
-                            });
-                        }
-
-                        setIsCalculating(false);
-                        worker.terminate();
-                        onClose();
-                    } catch (err) {
-                        console.error(err);
-                        setErrorMsg(`Error saving results.`);
-                        setIsCalculating(false);
-                        worker.terminate();
-                    }
-                } else {
-                    setErrorMsg(wData.error || "Worker returned an error.");
-                    setIsCalculating(false);
-                    worker.terminate();
-                }
-            };
-
-            worker.onerror = (event) => {
-                clearTimeout(timeoutId);
-                console.error("Worker error:", event);
-                setIsCalculating(false);
-                setErrorMsg("Worker error occurred. Check console for details.");
-                worker.terminate();
-            };
-
-            // 3. Send data to worker - using the new format with variableData
-            worker.postMessage({
-                variableData1:variableData1,
-                variableData2:variableData2,
-                calculateStandardizer:calculateStandardizer,
-                estimateEffectSize:estimateEffectSize
-            });
-        
-        } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
-            setIsCalculating(false);
-        }
-    };
+        return () => {
+            cancelAnalysis();
+        };
+    }, [cancelAnalysis]);
 
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Paired-Samples T-Test</DialogTitle>
-            </DialogHeader>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-[#E6E6E6] flex-shrink-0">
-                    <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
+        <>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
                     </TabsList>
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
-                        listVariables={listVariables}
+                        listVariables={availableVariables}
                         testVariables1={testVariables1}
                         testVariables2={testVariables2}
                         highlightedVariable={highlightedVariable}
@@ -495,16 +119,16 @@ const Index: FC<PairedSamplesTTestModalProps> = ({ onClose }) => {
                 </TabsContent>
             </Tabs>
 
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
-            
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
-                        className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleRunTest}
+                        onClick={runAnalysis}
                         disabled={
-                            isCalculating ||
+                            isLoading ||
                             !areAllPairsValid() ||
+                            hasDuplicatePairs() ||
                             (
                                 !calculateStandardizer.standardDeviation &&
                                 !calculateStandardizer.correctedStandardDeviation &&
@@ -512,28 +136,61 @@ const Index: FC<PairedSamplesTTestModalProps> = ({ onClose }) => {
                             )
                         }
                     >
-                        {isCalculating ? "Calculating..." : "OK"}
+                        {isLoading ? "Processing..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={handleReset}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={onClose}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
+                    <Button
+                        variant="outline"
+                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
+                        disabled={isLoading}
+                    >
+                        Help
+                    </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
     );
 };
 
-export default Index;
+// Komponen PairedSamplesTTest yang menjadi titik masuk utama
+const PairedSamplesTTest: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    // Render berdasarkan containerType
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <PairedSamplesTTestContent onClose={onClose} {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    // Default dialog view with proper Dialog components
+    return (
+        <DialogContent className="max-w-[800px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Paired-Samples T Test</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <PairedSamplesTTestContent onClose={onClose} {...props} />
+            </div>
+        </DialogContent>
+    );
+}
+
+export default PairedSamplesTTest;
+export { PairedSamplesTTestContent };

@@ -29,7 +29,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                             onCheckedChange={(checked) => 
                                 setDisplayStatistics({ ...displayStatistics, descriptive: !!checked })
                             }
-                            className="border-[#CCCCCC]"
                         />
                         <Label htmlFor="descriptive" className="text-sm">Descriptive</Label>
                     </div>
@@ -40,7 +39,6 @@ const OptionsTab: FC<OptionsTabProps> = ({
                             onCheckedChange={(checked) => 
                                 setDisplayStatistics({ ...displayStatistics, quartiles: !!checked })
                             }
-                            className="border-[#CCCCCC]"
                         />
                         <Label htmlFor="quartiles" className="text-sm">Quartiles</Label>
                     </div>

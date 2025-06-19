@@ -1,11 +1,13 @@
 "use client";
-import React, { useState, useEffect, FC } from "react";
+
+import React, { FC, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
     DialogFooter,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
+    Dialog
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -13,23 +15,32 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { useDataStore } from "@/stores/useDataStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useResultStore } from "@/stores/useResultStore";
 import type { Variable } from "@/types/Variable";
+import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";
-import StatisticsTab from "./StatisticsTab";
+import OptionsTab from "./OptionsTab";
+import { 
+    useVariableSelection,
+    useKRelatedSamplesAnalysis
+} from "./hooks";
+import { HighlightedVariable } from "./types";
 
-interface KRelatedSamplesModalProps {
-    onClose: () => void;
-}
+// Komponen konten yang digunakan baik untuk sidebar maupun dialog
+const KRelatedSamplesContent: FC<BaseModalProps> = ({ onClose }) => {
+    const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
 
-const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState("variables");
-    const [listVariables, setListVariables] = useState<Variable[]>([]);
-    const [testVariables, setTestVariables] = useState<Variable[]>([]);
-    const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'selected'} | null>(null);
+    const {
+        availableVariables,
+        testVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToTestVariable,
+        moveToAvailableVariables,
+        reorderVariables,
+        resetVariableSelection
+    } = useVariableSelection();
+    
     const [testType, setTestType] = useState({
         friedman: true,
         kendallsW: false,
@@ -41,41 +52,54 @@ const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
         quartile: false,
     });
 
-    const [isCalculating, setIsCalculating] = useState<boolean>(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // Handle variable selection
+    const handleVariableSelect = useCallback((variable: Variable, source: 'available' | 'selected') => {
+        if (!variable) return;
+        setHighlightedVariable(variable.columnIndex ? { tempId: variable.columnIndex.toString(), source } : null);
+    }, [setHighlightedVariable]);
 
-    const variables = useVariableStore.getState().variables;
-    const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+    // Handle variable movement between lists
+    const handleVariableDoubleClick = useCallback((variable: Variable, source: 'available' | 'selected') => {
+        if (!variable) return;
 
-    // Initialize available variables on component mount
+        // Different handling based on source
+        switch (source) {
+            case 'available':
+                // Move from available to test variables
+                moveToTestVariable(variable);
+                break;
+                
+            case 'selected':
+                // Move from test variables to available
+                moveToAvailableVariables(variable, 'selected');
+                break;
+        }
+    }, [moveToTestVariable, moveToAvailableVariables]);
+
+    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useKRelatedSamplesAnalysis({
+        testVariables,
+        testType,
+        displayStatistics,
+        onClose
+    });
+
+    // Cleanup on unmount
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "");
-        setListVariables(validVars);
-    }, [variables]);
+        return () => {
+            if (cancelAnalysis) {
+                cancelAnalysis();
+            }
+        };
+    }, [cancelAnalysis]);
 
-    const handleSelectedVariable = (variable: Variable) => {
-        setTestVariables(prev => [...prev, variable]);
-        setListVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
-
-    const handleDeselectVariable = (variable: Variable) => {
-        setListVariables((prev) => {
-            const newList = [...prev, variable];
-            return newList.sort((a, b) => {
-                const indexA = variables.findIndex(v => v.columnIndex === a.columnIndex);
-                const indexB = variables.findIndex(v => v.columnIndex === b.columnIndex);
-                return indexA - indexB;
-            });
-        });
-        setTestVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
-        setHighlightedVariable(null);
-    };
+    const handleTabChange = useCallback((value: string) => {
+        if (value === 'variables' || value === 'options') {
+            setActiveTab(value as "variables" | "options");
+        }
+    }, [setActiveTab]);
 
     const handleReset = () => {
-        setListVariables(variables.filter(v => v.name !== ""));
-        setTestVariables([]);
-        setHighlightedVariable(null);
+        resetVariableSelection();
         setTestType({
             friedman: true,
             kendallsW: false,
@@ -85,147 +109,11 @@ const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
             descriptive: false,
             quartile: false,
         });
-        setErrorMsg(null);
-    };
-
-    const handleRunTest = async () => {
-        if (testVariables.length < 2) {
-            setErrorMsg("Please select at least two variable.");
-            return;
-        }
-        setErrorMsg(null);
-        setIsCalculating(true);
-    
-        try {
-            // 1. Prepare variable data using useDataStore's getVariableData
-            const variableDataPromises = [];
-            for (const varDef of testVariables) {
-                variableDataPromises.push(useDataStore.getState().getVariableData(varDef));
-            }
-            const variableData = await Promise.all(variableDataPromises);
-
-            // 2. Create worker and set up handlers
-            const worker = new Worker("/workers/KRelatedSamples/index.js",  { type: 'module' });
-
-            // Set a timeout to prevent worker hanging
-            const timeoutId = setTimeout(() => {
-                worker.terminate();
-                setErrorMsg("Analysis timed out. Please try again with fewer variables.");
-                setIsCalculating(false);
-            }, 60000); // 60 second timeout
-
-            worker.onmessage = async (e) => {
-                clearTimeout(timeoutId);
-                const wData = e.data;
-
-                if (wData.success) {
-                    try {
-                        // Save results to database
-                        const variableNames = testVariables.map(v => v.name);
-                        let logParts = ['NPAR TESTS'];
-
-                        // Only add tests that are enabled
-                        if (wData.testType.friedman) {
-                            logParts.push(`{FRIEDMAN=${variableNames.join(" ")}}`);
-                        }
-
-                        if (wData.testType.kendallsW) {
-                            logParts.push(`{KENDALL=${variableNames.join(" ")}}`);
-                        }
-
-                        if (wData.testType.cochransQ) {
-                            logParts.push(`{COCHRAN=${variableNames.join(" ")}}`);
-                        }
-
-                        if (wData.displayStatistics.descriptive && wData.displayStatistics.quartile) {
-                            logParts.push(`{STATISTICS DESCRIPTIVES QUARTILES}`);
-                        } else if (wData.displayStatistics.descriptive) {
-                            logParts.push(`{STATISTICS DESCRIPTIVES}`);
-                        } else if (wData.displayStatistics.quartile) {
-                            logParts.push(`{STATISTICS QUARTILES}`);
-                        }
-
-                        // Join all parts with spaces
-                        let logMsg = logParts.join(' ');
-
-                        // If no tests are selected, provide a default message
-                        if (logParts.length === 1) {
-                            logMsg = 'NPAR TESTS {No specific tests selected}';
-                        }
-
-                        const logId = await addLog({ log: logMsg });
-                        const analyticId = await addAnalytic(logId, { title: "NPar Tests", note: "" });
-
-                        if (wData.displayStatistics.descriptive || wData.displayStatistics.quartile) {
-                            await addStatistic(analyticId, {
-                                title: "Descriptive Statistics",
-                                output_data: wData.descriptives,
-                                components: "Descriptive Statistics",
-                                description: ""
-                            });
-                        }
-
-                        if (wData.testType.friedman) {
-                            await addStatistic(analyticId, {
-                                title: "Ranks",
-                                output_data: wData.ranks,
-                                components: "Friedman Test",
-                                description: ""
-                            });
-
-                            await addStatistic(analyticId, {
-                                title: "Test Statistics",
-                                output_data: wData.friedmanTest,
-                                components: "Friedman Test",
-                                description: ""
-                            });
-                        }
-
-                        setIsCalculating(false);
-                        worker.terminate();
-                        onClose();
-                    } catch (err) {
-                        console.error(err);
-                        setErrorMsg(`Error saving results.`);
-                        setIsCalculating(false);
-                        worker.terminate();
-                    }
-                } else {
-                    setErrorMsg(wData.error || "Worker returned an error.");
-                    setIsCalculating(false);
-                    worker.terminate();
-                }
-            };
-
-            worker.onerror = (event) => {
-                clearTimeout(timeoutId);
-                console.error("Worker error:", event);
-                setIsCalculating(false);
-                setErrorMsg("Worker error occurred. Check console for details.");
-                worker.terminate();
-            };
-
-            // 3. Send data to worker - using the new format with variableData
-            worker.postMessage({
-                variableData:variableData,
-                testType:testType,
-                displayStatistics:displayStatistics
-            });
-        
-        } catch (ex) {
-            console.error(ex);
-            setErrorMsg("Something went wrong.");
-            setIsCalculating(false);
-        }
     };
 
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Tests for Several Related Samples</DialogTitle>
-            </DialogHeader>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+        <>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-[#E6E6E6] flex-shrink-0">
                     <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
                         <TabsTrigger
@@ -235,44 +123,46 @@ const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
                             Variables
                         </TabsTrigger>
                         <TabsTrigger
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+                            value="options"
+                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
-                            Statistics
+                            Options
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
-                        listVariables={listVariables}
+                        availableVariables={availableVariables}
                         testVariables={testVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
                         testType={testType}
                         setTestType={setTestType}
-                        handleSelectedVariable={handleSelectedVariable}
-                        handleDeselectVariable={handleDeselectVariable}
+                        handleVariableSelect={handleVariableSelect}
+                        handleVariableDoubleClick={handleVariableDoubleClick}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        moveToTestVariable={moveToTestVariable}
+                        reorderVariables={reorderVariables}
+                        errorMsg={errorMsg}
                     />
                 </TabsContent>
 
-                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                    <StatisticsTab
+                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
+                    <OptionsTab
                         displayStatistics={displayStatistics}
                         setDisplayStatistics={setDisplayStatistics}
                     />
                 </TabsContent>
             </Tabs>
-
-            {errorMsg && <div className="px-6 py-2 text-red-600">{errorMsg}</div>}
             
-            <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+            <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
                         className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                        onClick={handleRunTest}
+                        onClick={runAnalysis}
                         disabled={
-                            isCalculating ||
+                            isLoading ||
                             testVariables.length < 2 ||
                             (
                                 testType.friedman === false &&
@@ -281,13 +171,13 @@ const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
                             )
                         }
                     >
-                        {isCalculating ? "Calculating..." : "OK"}
+                        {isLoading ? "Calculating..." : "OK"}
                     </Button>
                     <Button
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={handleReset}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Reset
                     </Button>
@@ -295,13 +185,41 @@ const Index: FC<KRelatedSamplesModalProps> = ({ onClose }) => {
                         variant="outline"
                         className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
                         onClick={onClose}
-                        disabled={isCalculating}
+                        disabled={isLoading}
                     >
                         Cancel
                     </Button>
                 </div>
-            </DialogFooter>
-        </DialogContent>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles rendering based on containerType
+const Index: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    // If sidebar mode, use div container without header
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <KRelatedSamplesContent onClose={onClose} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, use Dialog and DialogContent
+    return (
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-[800px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Tests for Several Related Samples</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <KRelatedSamplesContent onClose={onClose} />
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

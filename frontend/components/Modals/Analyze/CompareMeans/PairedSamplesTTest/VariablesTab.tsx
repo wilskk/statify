@@ -1,19 +1,20 @@
-import React, { FC } from "react";
+import React, { FC, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CornerDownLeft, CornerDownRight, Ruler, Shapes, BarChartHorizontal, InfoIcon, ArrowUp, ArrowDown, MoveHorizontal } from "lucide-react";
+import { ArrowUp, ArrowDown, MoveHorizontal, InfoIcon, ChevronRight, ChevronLeft } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { Variable } from "@/types/Variable";
+import { HighlightedVariableInfo } from "./types";
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     listVariables: Variable[];
     testVariables1: Variable[];
     testVariables2: Variable[];
-    highlightedVariable: { id: string, source: 'available' | 'selected1' | 'selected2', rowIndex?: number } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ id: string, source: 'available' | 'selected1' | 'selected2', rowIndex?: number } | null>>;
+    highlightedVariable: HighlightedVariableInfo | null;
+    setHighlightedVariable: React.Dispatch<React.SetStateAction<HighlightedVariableInfo | null>>;
     selectedPair: number | null;
     setSelectedPair: React.Dispatch<React.SetStateAction<number | null>>;
     estimateEffectSize: boolean;
@@ -55,19 +56,20 @@ const VariablesTab: FC<VariablesTabProps> = ({
     handleMoveDownPair,
     handleRemovePair,
 }) => {
+    // Filter availableVariables to include only NUMERIC types
+    const filteredListVariables = useMemo(() => {
+        return listVariables.filter(variable => variable.type === 'NUMERIC');
+    }, [listVariables]);
+
     const getVariableIcon = (variable: Variable) => {
-        switch (variable.measure) {
-            case "scale":
-                return <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            case "nominal":
-                return <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            case "ordinal":
-                return <BarChartHorizontal size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-            default:
-                return variable.type === "STRING"
-                    ? <Shapes size={14} className="text-[#888888] mr-1 flex-shrink-0" />
-                    : <Ruler size={14} className="text-[#888888] mr-1 flex-shrink-0" />;
-        }
+        const measureClass = variable.measure || "scale";
+        return (
+            <span className={`inline-block w-3 h-3 mr-1 rounded-full ${
+                measureClass === "scale" ? "bg-blue-500" : 
+                measureClass === "nominal" ? "bg-green-500" : 
+                measureClass === "ordinal" ? "bg-orange-500" : "bg-gray-500"
+            }`} />
+        );
     };
 
     const getDisplayName = (variable: Variable): string => {
@@ -78,26 +80,27 @@ const VariablesTab: FC<VariablesTabProps> = ({
     };
 
     const handleVariableSelect = (variable: Variable, source: 'available' | 'selected1' | 'selected2', rowIndex?: number) => {
-        // Untuk variabel dari list tersedia, gunakan logika lama
         if (source === 'available') {
-            if (highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source) {
+            if (highlightedVariable && highlightedVariable.tempId === variable.tempId && highlightedVariable.source === source) {
                 setHighlightedVariable(null);
             } else {
-                setHighlightedVariable({ id: variable.columnIndex.toString(), source });
+                setHighlightedVariable({ 
+                    tempId: variable.tempId || '',  // Ensure tempId is never undefined
+                    source 
+                });
                 setSelectedPair(null);
             }
-        } 
-        // Untuk variabel dari table, tambahkan indeks baris
-        else {
-            if (highlightedVariable?.id === variable.columnIndex.toString() && 
+        } else {
+            if (highlightedVariable && 
+                highlightedVariable.tempId === variable.tempId && 
                 highlightedVariable.source === source && 
                 highlightedVariable.rowIndex === rowIndex) {
                 setHighlightedVariable(null);
             } else {
                 setHighlightedVariable({ 
-                    id: variable.columnIndex.toString(), 
+                    tempId: variable.tempId || '',  // Ensure tempId is never undefined
                     source,
-                    rowIndex // Tambahkan rowIndex ke state
+                    rowIndex
                 });
                 setSelectedPair(null);
             }
@@ -119,10 +122,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
         }
     };
 
-    const handleMoveButton = () => {
+    const handleMoveButton = (direction: 'toRight' | 'toLeft') => {
         if (highlightedVariable) {
-            if (highlightedVariable.source === 'available') {
-                const variable = listVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
+            if (highlightedVariable.source === 'available' && direction === 'toRight') {
+                const variable = filteredListVariables.find(v => v.tempId === highlightedVariable.tempId);
                 if (variable) {
                     // Auto-determine which list needs a variable
                     if (testVariables1.length <= testVariables2.length) {
@@ -131,16 +134,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         handleSelectedVariable(variable, 'list2');
                     }
                 }
-            } else if (highlightedVariable.source === 'selected1' && highlightedVariable.rowIndex !== undefined) {
+            } else if (highlightedVariable.source === 'selected1' && direction === 'toLeft' && highlightedVariable.rowIndex !== undefined) {
                 const variable = testVariables1[highlightedVariable.rowIndex];
                 if (variable) {
-                    // Hanya deselect variabel pada baris spesifik - handleDeselectVariable akan menangani kasus khusus
                     handleDeselectVariable(variable, 'list1', highlightedVariable.rowIndex);
                 }
-            } else if (highlightedVariable.source === 'selected2' && highlightedVariable.rowIndex !== undefined) {
+            } else if (highlightedVariable.source === 'selected2' && direction === 'toLeft' && highlightedVariable.rowIndex !== undefined) {
                 const variable = testVariables2[highlightedVariable.rowIndex];
                 if (variable) {
-                    // Hanya deselect variabel pada baris spesifik - handleDeselectVariable akan menangani kasus khusus
                     handleDeselectVariable(variable, 'list2', highlightedVariable.rowIndex);
                 }
             }
@@ -152,215 +153,204 @@ const VariablesTab: FC<VariablesTabProps> = ({
         setHighlightedVariable(null);
     };
 
-    const renderVariableList = (variables: Variable[], source: 'available' | 'selected1' | 'selected2', height: string) => (
-        <div className="border border-[#E6E6E6] p-2 rounded-md overflow-y-auto overflow-x-hidden" style={{ height }}>
-            <div className="space-y-1">
-                {variables.map((variable) => (
-                    <TooltipProvider key={variable.columnIndex}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div
-                                    className={`flex items-center p-1 cursor-pointer border rounded-md hover:bg-[#F7F7F7] ${
-                                        highlightedVariable?.id === variable.columnIndex.toString() && highlightedVariable.source === source
-                                            ? "bg-[#E6E6E6] border-[#888888]"
-                                            : "border-[#CCCCCC]"
-                                    }`}
-                                    onClick={() => handleVariableSelect(variable, source)}
-                                    onDoubleClick={() => handleVariableDoubleClick(variable, source)}
-                                >
-                                    <div className="flex items-center w-full">
-                                        {getVariableIcon(variable)}
-                                        <span className="text-xs truncate">{getDisplayName(variable)}</span>
-                                    </div>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                                <p className="text-xs">{getDisplayName(variable)}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-            </div>
-        </div>
-    );
-
     return (
-        <div className="grid grid-cols-12 gap-2">
-            {/* List Variables */}
-            <div className="col-span-4" style={{height: "340px"}}>
-                <div className="text-sm mb-2 font-medium">List Variables:</div>
-                {renderVariableList(listVariables, 'available', '288px')}
-                <div className="text-xs mt-2 text-[#888888] flex items-center">
-                    <InfoIcon size={14} className="mr-1 flex-shrink-0" />
-                    <span>Double-click to move variables between lists.</span>
+        <div className="grid grid-cols-12 gap-4">
+            {/* Left Column: Available Variables */}
+            <div className="col-span-4">
+                <div className="flex flex-col h-full">
+                    <div className="text-sm font-medium mb-2">Available Variables:</div>
+                    <div className="flex-grow border rounded-md overflow-auto h-[340px]">
+                        <div className="p-2 space-y-1">
+                            {filteredListVariables.map((variable) => (
+                                <TooltipProvider key={variable.tempId}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div
+                                                className={`flex items-center p-1 rounded-md cursor-pointer hover:bg-gray-100 ${
+                                                    highlightedVariable && highlightedVariable.tempId === variable.tempId && 
+                                                    highlightedVariable.source === 'available' 
+                                                        ? 'bg-gray-200' 
+                                                        : ''
+                                                }`}
+                                                onClick={() => handleVariableSelect(variable, 'available')}
+                                                onDoubleClick={() => handleVariableDoubleClick(variable, 'available')}
+                                            >
+                                                {getVariableIcon(variable)}
+                                                <span className="text-sm truncate">{getDisplayName(variable)}</span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            <p>{getDisplayName(variable)}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            ))}
+                            {filteredListVariables.length === 0 && (
+                                <div className="p-2 text-sm text-gray-500 italic">No numeric variables available</div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="text-xs mt-2 text-gray-500 flex items-center">
+                        <InfoIcon size={14} className="mr-1" />
+                        <span>Double-click to add variables to pairs</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Move Buttons */}
-            <div className="col-span-1 flex flex-col items-center justify-center">
+            {/* Middle: Move Controls */}
+            <div className="col-span-1 flex flex-col items-center justify-center gap-2">
                 <Button
                     variant="outline"
-                    size="sm"
-                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                    onClick={handleMoveButton}
-                    disabled={!highlightedVariable}
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleMoveButton('toRight')}
+                    disabled={!highlightedVariable || highlightedVariable.source !== 'available'}
                 >
-                    {highlightedVariable?.source === 'available' ?
-                        <CornerDownRight size={16} /> :
-                        <CornerDownLeft size={16} />
-                    }
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleMoveButton('toLeft')}
+                    disabled={!highlightedVariable || highlightedVariable.source === 'available'}
+                >
+                    <ChevronLeft className="h-4 w-4" />
                 </Button>
             </div>
 
-            {/* Test Pairs Table */}
-            <div className="col-span-6" style={{height: "340px"}}>
-                <div className="text-sm mb-2 font-medium">Paired Variables:</div>
-                <div className="mb-2 border border-[#E6E6E6] rounded-md overflow-auto" style={{height: "288px"}}>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-12 text-center">Pair</TableHead>
-                                <TableHead>Variable 1</TableHead>
-                                <TableHead>Variable 2</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {testVariables1.length === 0 && testVariables2.length === 0 ? (
+            {/* Right Column: Paired Variables */}
+            <div className="col-span-6">
+                <div className="flex flex-col h-full">
+                    <div className="text-sm font-medium mb-2">Paired Variables:</div>
+                    <div className="flex-grow border rounded-md overflow-auto h-[340px]">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center text-[#888888]">
-                                        No variables selected for testing
-                                    </TableCell>
+                                    <TableHead className="w-12 text-center">Pair</TableHead>
+                                    <TableHead>Variable 1</TableHead>
+                                    <TableHead>Variable 2</TableHead>
                                 </TableRow>
-                            ) : (
-                                Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, index) => (
-                                    <TableRow 
-                                        key={index}
-                                        className={selectedPair === index && !highlightedVariable ? "" : ""}
-                                    >
-                                        <TableCell 
-                                            className={`text-center cursor-pointer ${
-                                                selectedPair === index && !highlightedVariable 
-                                                ? "bg-[#E6E6E6] hover:bg-[#E6E6E6]" 
-                                                : "hover:bg-[#F7F7F7]"
-                                            }`}
-                                            onClick={() => {
-                                                handlePairClick(index);
-                                                setHighlightedVariable(null);
-                                            }}
-                                        >
-                                            {index + 1}
-                                        </TableCell>
-                                        <TableCell 
-                                            className={`cursor-pointer ${
-                                                highlightedVariable?.source === 'selected1' && 
-                                                testVariables1[index] && 
-                                                highlightedVariable.id === testVariables1[index].columnIndex.toString() &&
-                                                highlightedVariable.rowIndex === index
-                                                    ? "bg-[#E6E6E6] border-[#888888] hover:bg-[#E6E6E6]" 
-                                                    : selectedPair === index && !highlightedVariable
-                                                        ? "bg-[#E6E6E6] hover:bg-[#E6E6E6]"
-                                                        : "hover:bg-[#F7F7F7]"
-                                            }`}
-                                            onClick={() => {
-                                                setSelectedPair(null);
-                                                if (testVariables1[index]) {
-                                                    handleVariableSelect(testVariables1[index], 'selected1', index);
-                                                }
-                                            }}
-                                            onDoubleClick={() => {
-                                                if (testVariables1[index]) {
-                                                    handleVariableDoubleClick(testVariables1[index], 'selected1', index);
-                                                }
-                                            }}
-                                        >
-                                            {testVariables1[index] ? (
-                                                <div className="flex items-center">
-                                                    {getVariableIcon(testVariables1[index])}
-                                                    <span className="text-xs">{getDisplayName(testVariables1[index])}</span>
-                                                </div>
-                                            ) : ""}
-                                        </TableCell>
-                                        <TableCell 
-                                            className={`cursor-pointer ${
-                                                highlightedVariable?.source === 'selected2' && 
-                                                testVariables2[index] && 
-                                                highlightedVariable.id === testVariables2[index].columnIndex.toString() &&
-                                                highlightedVariable.rowIndex === index
-                                                    ? "bg-[#E6E6E6] border-[#888888] hover:bg-[#E6E6E6]" 
-                                                    : selectedPair === index && !highlightedVariable
-                                                        ? "bg-[#E6E6E6] hover:bg-[#E6E6E6]"
-                                                        : "hover:bg-[#F7F7F7]"
-                                            }`}
-                                            onClick={() => {
-                                                setSelectedPair(null);
-                                                if (testVariables2[index]) {
-                                                    handleVariableSelect(testVariables2[index], 'selected2', index);
-                                                }
-                                            }}
-                                            onDoubleClick={() => {
-                                                if (testVariables2[index]) {
-                                                    handleVariableDoubleClick(testVariables2[index], 'selected2', index);
-                                                }
-                                            }}
-                                        >
-                                            {testVariables2[index] ? (
-                                                <div className="flex items-center">
-                                                    {getVariableIcon(testVariables2[index])}
-                                                    <span className="text-xs">{getDisplayName(testVariables2[index])}</span>
-                                                </div>
-                                            ) : ""}
+                            </TableHeader>
+                            <TableBody>
+                                {testVariables1.length === 0 && testVariables2.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center text-gray-500 py-4">
+                                            No variables selected for testing
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-                <div className="flex items-center">
-                    <Checkbox
-                        id="estimate-effect-size"
-                        checked={estimateEffectSize}
-                        onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
-                        className="mr-2 border-[#CCCCCC]"
-                        disabled
-                    />
-                    <Label htmlFor="estimate-effect-size">Estimate effect sizes</Label>
+                                ) : (
+                                    Array.from({ length: Math.max(testVariables1.length, testVariables2.length) }).map((_, index) => (
+                                        <TableRow 
+                                            key={index}
+                                            className={selectedPair === index ? "bg-gray-100" : ""}
+                                        >
+                                            <TableCell 
+                                                className="text-center cursor-pointer hover:bg-gray-100"
+                                                onClick={() => handlePairClick(index)}
+                                            >
+                                                {index + 1}
+                                            </TableCell>
+                                            <TableCell 
+                                                className={`cursor-pointer ${
+                                                    highlightedVariable && highlightedVariable.source === 'selected1' && 
+                                                    testVariables1[index] && 
+                                                    highlightedVariable.tempId === testVariables1[index].tempId &&
+                                                    highlightedVariable.rowIndex === index
+                                                        ? "bg-gray-200" 
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() => {
+                                                    if (testVariables1[index]) {
+                                                        handleVariableSelect(testVariables1[index], 'selected1', index);
+                                                    }
+                                                }}
+                                                onDoubleClick={() => {
+                                                    if (testVariables1[index]) {
+                                                        handleVariableDoubleClick(testVariables1[index], 'selected1', index);
+                                                    }
+                                                }}
+                                            >
+                                                {testVariables1[index] ? (
+                                                    <div className="flex items-center">
+                                                        {getVariableIcon(testVariables1[index])}
+                                                        <span className="text-sm">{getDisplayName(testVariables1[index])}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400 italic">Empty</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell 
+                                                className={`cursor-pointer ${
+                                                    highlightedVariable && highlightedVariable.source === 'selected2' && 
+                                                    testVariables2[index] && 
+                                                    highlightedVariable.tempId === testVariables2[index].tempId &&
+                                                    highlightedVariable.rowIndex === index
+                                                        ? "bg-gray-200" 
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                                onClick={() => {
+                                                    if (testVariables2[index]) {
+                                                        handleVariableSelect(testVariables2[index], 'selected2', index);
+                                                    }
+                                                }}
+                                                onDoubleClick={() => {
+                                                    if (testVariables2[index]) {
+                                                        handleVariableDoubleClick(testVariables2[index], 'selected2', index);
+                                                    }
+                                                }}
+                                            >
+                                                {testVariables2[index] ? (
+                                                    <div className="flex items-center">
+                                                        {getVariableIcon(testVariables2[index])}
+                                                        <span className="text-sm">{getDisplayName(testVariables2[index])}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400 italic">Empty</span>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
             </div>
 
-            {/* Pair Manipulation Buttons */}
-            <div className="col-span-1 flex flex-col items-center justify-start gap-4 pt-8">
+            {/* Far Right: Pair Control Buttons */}
+            <div className="col-span-1 flex flex-col items-center justify-start gap-2 pt-10">
                 <Button
                     variant="outline"
-                    size="sm"
-                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => selectedPair !== null && handleMoveUpPair(selectedPair)}
                     disabled={selectedPair === null || selectedPair === 0}
                 >
-                    <ArrowUp size={16} />
+                    <ArrowUp className="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
-                    size="sm"
-                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => selectedPair !== null && handleMoveDownPair(selectedPair)}
                     disabled={selectedPair === null || selectedPair === Math.max(testVariables1.length, testVariables2.length) - 1}
                 >
-                    <ArrowDown size={16} />
+                    <ArrowDown className="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
-                    size="sm"
-                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
+                    size="icon"
+                    className="h-8 w-8"
                     onClick={() => selectedPair !== null && handleMoveVariableBetweenLists(selectedPair)}
                     disabled={selectedPair === null}
                 >
-                    <MoveHorizontal size={16} />
+                    <MoveHorizontal className="h-4 w-4" />
                 </Button>
                 <Button
                     variant="outline"
-                    size="sm"
-                    className="p-0 w-8 h-8 border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] text-red-500 hover:text-red-700"
+                    size="icon"
+                    className="h-8 w-8 text-red-500"
                     onClick={() => selectedPair !== null && handleRemovePair(selectedPair)}
                     disabled={selectedPair === null}
                 >
@@ -368,11 +358,23 @@ const VariablesTab: FC<VariablesTabProps> = ({
                 </Button>
             </div>
 
-            {/* Calculate standardizer using */}
+            {/* Options Section */}
             <div className="col-span-12 mt-4">
-                <div className="text-sm font-medium mb-2">Calculate standardizer using</div>
-                <div className="border p-4 rounded-md flex flex-col gap-4">
-                    <div className="flex items-center">
+                <div className="flex flex-col gap-4 border rounded-md p-4">
+                    {/* Effect Size Option */}
+                    <div className="flex items-center mb-2">
+                        <Checkbox
+                            id="estimate-effect-size"
+                            checked={estimateEffectSize}
+                            onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="estimate-effect-size">Estimate effect sizes</Label>
+                    </div>
+
+                    {/* Standardizer Options */}
+                    <div>
+                        <Label className="text-sm font-medium mb-2 block">Calculate standardizer using:</Label>
                         <RadioGroup
                             value={
                                 calculateStandardizer.standardDeviation ? "standardDeviation" :
@@ -386,8 +388,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     averageOfVariances: value === "averageOfVariances"
                                 });
                             }}
-                            disabled={!estimateEffectSize}
-                            className="flex flex-col gap-4"
+                            className="space-y-2"
                         >
                             <div className="flex items-center">
                                 <RadioGroupItem
@@ -395,7 +396,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="standard-deviation-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="standard-deviation-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Standard deviation of the difference</Label>
+                                <Label htmlFor="standard-deviation-option">Standard deviation of the difference</Label>
                             </div>
                             <div className="flex items-center">
                                 <RadioGroupItem
@@ -403,7 +404,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="corrected-standard-deviation-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="corrected-standard-deviation-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Corrected standard deviation of the difference</Label>
+                                <Label htmlFor="corrected-standard-deviation-option">Corrected standard deviation of the difference</Label>
                             </div>
                             <div className="flex items-center">
                                 <RadioGroupItem
@@ -411,7 +412,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
                                     id="average-of-variances-option"
                                     className="mr-2"
                                 />
-                                <Label htmlFor="average-of-variances-option" className={`${!estimateEffectSize ? 'opacity-50' : ''}`}>Average of variances</Label>
+                                <Label htmlFor="average-of-variances-option">Average of variances</Label>
                             </div>
                         </RadioGroup>
                     </div>

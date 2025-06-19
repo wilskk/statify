@@ -8,12 +8,12 @@ export const useVariableSelection = (props?: VariableSelectionProps): VariableSe
   
   // State for variable lists
   const [availableVariables, setAvailableVariables] = useState<Variable[]>(() => {
+    // Include all valid variables for ChiSquare test
     const validVars = variables.filter(v => v.name !== "");
     return props?.initialVariables || validVars;
   });
   
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
-  const [groupingVariable, setGroupingVariableState] = useState<Variable | null>(null);
   const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
 
   // Function to move a variable from available to selected
@@ -65,37 +65,6 @@ export const useVariableSelection = (props?: VariableSelectionProps): VariableSe
     setHighlightedVariable(null);
   }, [variables]);
 
-  // Set grouping variable with special handling
-  const setGroupingVariable = useCallback((variable: Variable | null) => {
-    // If there's already a grouping variable, move it back to available variables
-    if (groupingVariable && variable !== groupingVariable) {
-      setAvailableVariables(prev => {
-        const newList = [...prev];
-        
-        // Find where to insert to maintain the original order
-        const originalIndex = variables.findIndex(v => v.tempId === groupingVariable.tempId);
-        let insertIndex = 0;
-        while (
-          insertIndex < newList.length &&
-          variables.findIndex(v => v.tempId === newList[insertIndex].tempId) < originalIndex
-        ) {
-          insertIndex++;
-        }
-        
-        newList.splice(insertIndex, 0, groupingVariable);
-        return newList;
-      });
-    }
-    
-    // If setting a new grouping variable, remove it from available variables
-    if (variable) {
-      setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-    }
-    
-    setGroupingVariableState(variable);
-    setHighlightedVariable(null);
-  }, [groupingVariable, variables]);
-
   // Function to reorder variables within a list
   const reorderVariables = useCallback((source: 'available' | 'selected', reorderedVariables: Variable[]) => {
     if (source === 'available') {
@@ -110,19 +79,16 @@ export const useVariableSelection = (props?: VariableSelectionProps): VariableSe
     const validVars = variables.filter(v => v.name !== "");
     setAvailableVariables(validVars);
     setSelectedVariables([]);
-    setGroupingVariableState(null);
     setHighlightedVariable(null);
   }, [variables]);
 
   return {
     availableVariables,
     selectedVariables,
-    groupingVariable,
     highlightedVariable,
     setHighlightedVariable,
     moveToSelectedVariables,
     moveToAvailableVariables,
-    setGroupingVariable,
     reorderVariables,
     resetVariableSelection
   };

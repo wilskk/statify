@@ -3,19 +3,77 @@ import type { Dispatch, SetStateAction } from 'react';
 import { BaseModalProps } from '@/types/modalTypes';
 
 // ---------------------------------
-// Test Settings Types
+// Variable Selection Types
 // ---------------------------------
-export interface OneSampleTTestOptions {
+export interface HighlightedVariable {
+  tempId: string;
+  source: 'available' | 'selected';
+}
+
+// ---------------------------------
+// Variables Tab Types
+// ---------------------------------
+export interface VariablesTabProps {
+  availableVariables: Variable[];
+  selectedVariables: Variable[];
+  highlightedVariable: HighlightedVariable | null;
+  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
+  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
+  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
+  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
   testValue: number;
+  setTestValue: Dispatch<SetStateAction<number>>;
   estimateEffectSize: boolean;
+  setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
 }
 
 // ---------------------------------
 // Variable Selection Types
 // ---------------------------------
-export interface HighlightedVariableInfo {
-  tempId: string;
-  source: 'available' | 'selected';
+export interface VariableSelectionProps {
+  initialVariables?: Variable[];
+}
+
+// ---------------------------------
+// Variable Selection Result Types
+// ---------------------------------
+export interface VariableSelectionResult {
+  availableVariables: Variable[];
+  selectedVariables: Variable[];
+  highlightedVariable: HighlightedVariable | null;
+  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
+  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
+  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
+  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
+  resetVariableSelection: () => void;
+}
+
+// ---------------------------------
+// Test Settings Types
+// ---------------------------------
+export interface TestSettingsProps {
+  initialTestValue?: number;
+  initialEstimateEffectSize?: boolean;
+}
+
+// ---------------------------------
+// Test Settings Result Types
+// ---------------------------------
+export interface TestSettingsResult {
+  testValue: number;
+  setTestValue: Dispatch<SetStateAction<number>>;
+  estimateEffectSize: boolean;
+  setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
+  resetTestSettings: () => void;
+  updateTestSettings: (key: keyof TestSettingsOptions, value: boolean) => void;
+}
+
+// ---------------------------------
+// Test Settings Options Types
+// ---------------------------------
+export interface TestSettingsOptions {
+  testValue: number;
+  estimateEffectSize: boolean;
 }
 
 // ---------------------------------
@@ -26,7 +84,17 @@ export interface FetchedData {
 }
 
 // ---------------------------------
-// Worker Types
+// Data Fetching Result Types
+// ---------------------------------
+export interface DataFetchingResult {
+  isLoading: boolean;
+  error: string | null;
+  fetchData: (variables: Variable[]) => Promise<FetchedData>;
+  clearError: () => void;
+}
+
+// ---------------------------------
+// One Sample T Test Worker Result Types
 // ---------------------------------
 export interface OneSampleTTestWorkerResult {
   success: boolean;
@@ -60,55 +128,9 @@ export interface WorkerCalculationPromise {
   reject: (reason: any) => void;
 }
 
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
-export interface VariableSelectionProps {
-  initialVariables?: Variable[];
-}
-
-export interface VariableSelectionResult {
-  availableVariables: Variable[];
-  selectedVariables: Variable[];
-  highlightedVariable: HighlightedVariableInfo | null;
-  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
-  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-  resetVariableSelection: () => void;
-}
-
-export interface TestSettingsProps {
-  initialTestValue?: number;
-  initialEstimateEffectSize?: boolean;
-}
-
-export interface TestSettingsResult {
-  testValue: number;
-  setTestValue: Dispatch<SetStateAction<number>>;
-  estimateEffectSize: boolean;
-  setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
-  resetTestSettings: () => void;
-}
-
-export interface DataFetchingProps {
-}
-
-export interface DataFetchingResult {
-  isLoading: boolean;
-  error: string | null;
-  fetchData: (variables: Variable[]) => Promise<FetchedData>;
-  clearError: () => void;
-}
-
-export interface OneSampleTTestWorkerProps {
-  workerUrl?: string;
-  timeoutDuration?: number;
-}
-
 export interface OneSampleTTestWorkerHookResult {
   isCalculating: boolean;
-  error: string | undefined;
+  error: string | null;
   calculate: (input: WorkerInput) => Promise<OneSampleTTestWorkerResult | null>;
   cancelCalculation: () => void;
 }

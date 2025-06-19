@@ -1,14 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { 
-  IndependentSamplesTTestWorkerProps, 
-  IndependentSamplesTTestWorkerHookResult, 
-  WorkerInput, 
-  IndependentSamplesTTestWorkerResult,
-  WorkerCalculationPromise 
-} from '../types';
+import { ChiSquareWorkerProps, ChiSquareWorkerHookResult, WorkerInput, ChiSquareWorkerResult, WorkerCalculationPromise } from '../types';
 
-export const useIndependentSamplesTTestWorker = (props?: IndependentSamplesTTestWorkerProps): IndependentSamplesTTestWorkerHookResult => {
-  const workerUrl = props?.workerUrl || '/workers/IndependentSamplesTTest/index.js';
+export const useChiSquareWorker = (props?: ChiSquareWorkerProps): ChiSquareWorkerHookResult => {
+  const workerUrl = props?.workerUrl || '/workers/ChiSquare/index.js';
   const timeoutDuration = props?.timeoutDuration || 60000; // Default 60s timeout
 
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
@@ -84,12 +78,12 @@ export const useIndependentSamplesTTestWorker = (props?: IndependentSamplesTTest
   }, [workerUrl]);
 
   // Main function to perform calculations
-  const calculate = useCallback((input: WorkerInput): Promise<IndependentSamplesTTestWorkerResult | null> => {
+  const calculate = useCallback((input: WorkerInput): Promise<ChiSquareWorkerResult | null> => {
     setError(undefined);
     setIsCalculating(true);
     
     // Create a new promise to handle the worker response
-    return new Promise<IndependentSamplesTTestWorkerResult | null>((resolve, reject) => {
+    return new Promise<ChiSquareWorkerResult | null>((resolve, reject) => {
       calculationPromiseRef.current = { resolve, reject };
       
       // Create a new worker
@@ -149,4 +143,4 @@ export const useIndependentSamplesTTestWorker = (props?: IndependentSamplesTTest
   };
 };
 
-export default useIndependentSamplesTTestWorker; 
+export default useChiSquareWorker; 

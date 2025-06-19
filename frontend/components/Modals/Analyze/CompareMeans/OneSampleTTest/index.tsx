@@ -1,9 +1,9 @@
 "use client";
 
 import React, { FC, useState, useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
     DialogTitle
 } from "@/components/ui/dialog";
@@ -13,11 +13,9 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useTestSettings } from "./hooks/useTestSettings";
 import { useOneSampleTTestAnalysis } from "./hooks/useOneSampleTTestAnalysis";
-import { useDataFetching } from "./hooks/useDataFetching";
 import { BaseModalProps } from "@/types/modalTypes";
 
 import VariablesTab from "./VariablesTab";

@@ -1,98 +1,120 @@
 "use client";
 
-import React, { FC, useState, useCallback, useEffect } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogFooter,
-    Dialog
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
 
-import {
+import VariablesTab from "./VariablesTab";
+import { DefineGroupsDialog } from "./dialogs/DefineGroupsDialog";
+import { 
     useVariableSelection,
-    useTestSettings,
-    useModalSettings,
+    useGroupSettings,
     useIndependentSamplesTTestAnalysis
 } from "./hooks";
+import { DefineGroupsOptions, HighlightedVariable } from "./types";
 
-import VariablesTab from "./VariablesTab";
-
-// Komponen utama konten IndependentSamplesTTest yang agnostik terhadap container
+// Komponen konten yang digunakan baik untuk sidebar maupun dialog
 const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
     const [activeTab, setActiveTab] = useState<"variables">("variables");
-    
+
     const {
         availableVariables,
-        selectedVariables,
+        testVariables,
         groupingVariable,
         highlightedVariable,
         setHighlightedVariable,
-        moveToSelectedVariables,
+        moveToTestVariable,
+        moveToGroupingVariable,
         moveToAvailableVariables,
-        setGroupingVariable,
         reorderVariables,
         resetVariableSelection
     } = useVariableSelection();
 
-    const {
-        estimateEffectSize,
-        setEstimateEffectSize,
-        defineGroups,
-        setDefineGroups,
-        group1,
-        setGroup1,
-        group2,
-        setGroup2,
-        cutPointValue,
-        setCutPointValue,
-        resetTestSettings
-    } = useTestSettings();
+    const [showDefineGroupsModal, setShowDefineGroupsModal] = useState<boolean>(false);
+    const [group1, setGroup1] = useState<number | null>(null);
+    const [group2, setGroup2] = useState<number | null>(null);
+    const [cutPointValue, setCutPointValue] = useState<number | null>(null);
+    const [defineGroups, setDefineGroups] = useState<DefineGroupsOptions>({
+        useSpecifiedValues: true,
+        cutPoint: false,
+        group1: null,
+        group2: null,
+        cutPointValue: null
+    });
 
-    const {
-        showDefineGroupsModal,
-        setShowDefineGroupsModal,
-        tempDefineGroups,
-        setTempDefineGroups,
-        tempGroup1,
-        setTempGroup1,
-        tempGroup2,
-        setTempGroup2,
-        tempCutPointValue,
-        setTempCutPointValue,
-        groupRangeError,
-        setGroupRangeError,
-        resetModalSettings,
-        applyGroupSettings
-    } = useModalSettings(
-        { groupingVariable },
-        defineGroups,
-        setDefineGroups,
-        group1,
-        setGroup1,
-        group2,
-        setGroup2,
-        cutPointValue,
-        setCutPointValue
-    );
+    const [tempDefineGroups, setTempDefineGroups] = useState<DefineGroupsOptions>({
+        useSpecifiedValues: true,
+        cutPoint: false,
+        group1: null,
+        group2: null,
+        cutPointValue: null
+    });
+    const [tempGroup1, setTempGroup1] = useState<number | null>(null);
+    const [tempGroup2, setTempGroup2] = useState<number | null>(null);
+    const [tempCutPointValue, setTempCutPointValue] = useState<number | null>(null);
+    const [groupRangeError, setGroupRangeError] = useState<string | null>(null);
+    
+    const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(false);
+    
+    // Initialize temp values when modal is shown
+    useEffect(() => {
+        if (showDefineGroupsModal) {
+            setTempGroup1(group1);
+            setTempGroup2(group2);
+            setTempCutPointValue(cutPointValue);
+            setTempDefineGroups({
+                ...defineGroups
+            });
+        }
+    }, [showDefineGroupsModal, group1, group2, cutPointValue, defineGroups]);
 
-    const { 
-        isLoading,
-        errorMsg, 
-        runAnalysis,
-        cancelAnalysis
-    } = useIndependentSamplesTTestAnalysis({
-        selectedVariables,
+    // Handle variable selection
+    const handleVariableSelect = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping') => {
+        if (!variable) return;
+        setHighlightedVariable(variable.columnIndex ? { tempId: variable.columnIndex.toString(), source } : null);
+    }, [setHighlightedVariable]);
+
+    // Handle variable movement between lists
+    const handleMoveVariable = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping', targetIndex?: number) => {
+        if (!variable) return;
+
+        // Different handling based on source
+        switch (source) {
+            case 'available':
+                // Move from available to test variables
+                moveToTestVariable(variable, targetIndex);
+                break;
+                
+            case 'selected':
+                // Move from test variables to available
+                moveToAvailableVariables(variable, 'selected', targetIndex);
+                break;
+                
+            case 'grouping':
+                // Move from grouping to available
+                if (groupingVariable && groupingVariable.id === variable.id) {
+                    moveToAvailableVariables(variable, 'grouping', targetIndex);
+                }
+                break;
+        }
+    }, [groupingVariable, moveToTestVariable, moveToAvailableVariables]);
+
+    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useIndependentSamplesTTestAnalysis({
+        testVariables,
         groupingVariable,
         defineGroups,
         group1,
@@ -102,12 +124,14 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
         onClose
     });
 
-    const handleReset = useCallback(() => {
-        resetVariableSelection();
-        resetTestSettings();
-        resetModalSettings();
-        cancelAnalysis();
-    }, [resetVariableSelection, resetTestSettings, resetModalSettings, cancelAnalysis]);
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (cancelAnalysis) {
+                cancelAnalysis();
+            }
+        };
+    }, [cancelAnalysis]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables') {
@@ -115,11 +139,71 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
         }
     }, [setActiveTab]);
 
-    useEffect(() => {
-        return () => {
-            cancelAnalysis();
-        };
-    }, [cancelAnalysis]);
+    const handleReset = () => {
+        resetVariableSelection();
+        setEstimateEffectSize(false);
+        setDefineGroups({
+            useSpecifiedValues: true,
+            cutPoint: false,
+            group1: null,
+            group2: null,
+            cutPointValue: null
+        });
+        setGroup1(null);
+        setGroup2(null);
+        setCutPointValue(null);
+        setGroupRangeError(null);
+    };
+
+    // Placeholder for Paste functionality
+    const handlePaste = () => {
+        console.log("Paste action triggered");
+        // TODO: Implement paste logic if needed
+    };
+
+    // Placeholder for Help functionality
+    const handleHelp = () => {
+        console.log("Help action triggered");
+        // TODO: Implement help logic if needed
+    };
+
+    // Apply changes from Define Groups dialog
+    const applyDefineGroups = () => {
+        if (tempDefineGroups.useSpecifiedValues) {
+            if (tempGroup1 !== null && !Number.isInteger(tempGroup1)) {
+                setGroupRangeError("Minimum value must be an integer");
+                return;
+            }
+            
+            if (tempGroup2 !== null && !Number.isInteger(tempGroup2)) {
+                setGroupRangeError("Maximum value must be an integer");
+                return;
+            }
+            
+            // Ensure values are integers by rounding them
+            const group1Value = tempGroup1 !== null ? Math.floor(tempGroup1) : null;
+            const group2Value = tempGroup2 !== null ? Math.floor(tempGroup2) : null;
+            
+            setGroup1(group1Value);
+            setGroup2(group2Value);
+        } else {
+            if (tempCutPointValue !== null && !Number.isInteger(tempCutPointValue)) {
+                setGroupRangeError("Cut point must be an integer");
+                return;
+            }
+            
+            setCutPointValue(tempCutPointValue);
+        }
+        
+        setDefineGroups({
+            useSpecifiedValues: tempDefineGroups.useSpecifiedValues,
+            cutPoint: tempDefineGroups.cutPoint,
+            group1: tempGroup1,
+            group2: tempGroup2,
+            cutPointValue: tempCutPointValue
+        });
+        setShowDefineGroupsModal(false);
+    };
 
     return (
         <>
@@ -133,40 +217,47 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
-                        selectedVariables={selectedVariables}
+                        testVariables={testVariables}
                         groupingVariable={groupingVariable}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        moveToSelectedVariables={moveToSelectedVariables}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        setGroupingVariable={setGroupingVariable}
-                        reorderVariables={reorderVariables}
-                        estimateEffectSize={estimateEffectSize}
-                        setEstimateEffectSize={setEstimateEffectSize}
                         defineGroups={defineGroups}
                         group1={group1}
                         group2={group2}
                         cutPointValue={cutPointValue}
-                        setShowDefineGroupsModal={setShowDefineGroupsModal}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        estimateEffectSize={estimateEffectSize}
+                        handleVariableSelect={handleVariableSelect}
+                        handleVariableDoubleClick={handleMoveVariable}
+                        handleDefineGroupsClick={() => setShowDefineGroupsModal(true)} 
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        moveToTestVariable={moveToTestVariable}
+                        moveToGroupingVariable={moveToGroupingVariable}
+                        reorderVariables={reorderVariables}
+                        errorMsg={errorMsg}
                     />
                 </TabsContent>
             </Tabs>
-
-            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
-
+            
             <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
                 <div className="flex justify-end space-x-3">
                     <Button
                         onClick={runAnalysis}
                         disabled={
                             isLoading ||
-                            selectedVariables.length < 1 ||
+                            testVariables.length < 1 ||
                             !groupingVariable ||
                             (defineGroups.useSpecifiedValues && (!group1 || !group2)) ||
                             (defineGroups.cutPoint && !cutPointValue)
                         }
                     >
                         {isLoading ? "Processing..." : "OK"}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handlePaste}
+                        disabled={isLoading}
+                    >
+                        Paste
                     </Button>
                     <Button
                         variant="outline"
@@ -184,7 +275,7 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
                     </Button>
                     <Button
                         variant="outline"
-                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
+                        onClick={handleHelp}
                         disabled={isLoading}
                     >
                         Help
@@ -192,163 +283,63 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* Define Groups Modal */}
-            {showDefineGroupsModal && (
-                <Dialog open onOpenChange={() => {
-                    setShowDefineGroupsModal(false);
-                    resetModalSettings();
-                }}>
-                    <DialogContent className="max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Define Groups</DialogTitle>
-                        </DialogHeader>
-                        <RadioGroup
-                            value={tempDefineGroups.useSpecifiedValues ? "Use specified values" : "Cut point"}
-                            onValueChange={(value) => setTempDefineGroups({
-                                ...tempDefineGroups,
-                                useSpecifiedValues: value === "Use specified values",
-                                cutPoint: value === "Cut point"
-                            })}
-                        >
-                            <div className="grid grid-cols-9 gap-2 items-center justify-items-center" style={{ gridTemplateColumns: "20px 62.836px auto auto auto auto auto auto auto" }}>
-                                <RadioGroupItem id="use-specified-values" value="Use specified values"/>
-                                <Label htmlFor="use-specified-values" className="text-sm col-span-8 justify-self-start">Use specified values</Label>
-                                <label className={`col-span-2 text-sm justify-self-end ${!tempDefineGroups.useSpecifiedValues ? 'opacity-50' : ''}`} htmlFor="group1">Group 1:</label>
-                                <input
-                                    id="group1"
-                                    type="number"
-                                    step="1"
-                                    disabled={tempDefineGroups.cutPoint}
-                                    value={tempGroup1 !== null ? tempGroup1 : ""}
-                                    onChange={(e) => {
-                                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                                        setTempGroup1(value);
-                                        
-                                        // Validate for integer
-                                        if (value !== null && !Number.isInteger(value)) {
-                                            setGroupRangeError("Values must be integers");
-                                        } else if (value !== null && tempGroup2 !== null && value >= tempGroup2) {
-                                            setGroupRangeError("Minimum must be less than maximum");
-                                        } else {
-                                            setGroupRangeError(null);
-                                        }
-                                    }}
-                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
-                                        tempDefineGroups.cutPoint 
-                                            ? 'text-muted-foreground' 
-                                            : ''
-                                    }`}
-                                />
-                                <label className={`col-span-2 text-sm justify-self-end ${!tempDefineGroups.useSpecifiedValues ? 'opacity-50' : ''}`} htmlFor="group2">Group 2:</label>
-                                <input
-                                    id="group2"
-                                    type="number"
-                                    step="2"
-                                    disabled={tempDefineGroups.cutPoint}
-                                    value={tempGroup2 !== null ? tempGroup2 : ""}
-                                    onChange={(e) => {
-                                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                                        setTempGroup2(value);
-                                        
-                                        // Validate for integer
-                                        if (value !== null && !Number.isInteger(value)) {
-                                            setGroupRangeError("Values must be integers");
-                                        } else if (value !== null && tempGroup1 !== null && value <= tempGroup1) {
-                                            setGroupRangeError("Maximum must be greater than minimum");
-                                        } else {
-                                            setGroupRangeError(null);
-                                        }
-                                    }}
-                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
-                                        tempDefineGroups.cutPoint 
-                                            ? 'text-muted-foreground' 
-                                            : ''
-                                    }`}
-                                />
-                                <RadioGroupItem id="cut-point" value="Cut point" />
-                                <Label htmlFor="cut-point" className="text-sm">Cut point:</Label>
-                                <input
-                                    id="cut-point"
-                                    type="number"
-                                    step="1"
-                                    disabled={tempDefineGroups.useSpecifiedValues}
-                                    value={tempCutPointValue !== null ? tempCutPointValue : ""}
-                                    onChange={(e) => {
-                                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                                        setTempCutPointValue(value);
-                                        
-                                        // Validate for integer
-                                        if (value !== null && !Number.isInteger(value)) {
-                                            setGroupRangeError("Value must be an integer");
-                                        } else {
-                                            setGroupRangeError(null);
-                                        }
-                                    }}
-                                    className={`col-span-7 border rounded w-full px-2 ml-2 ${
-                                        tempDefineGroups.useSpecifiedValues 
-                                            ? 'text-muted-foreground' 
-                                            : ''
-                                    }`}
-                                />
-                            </div>
-                        </RadioGroup>
-                        {groupRangeError && (
-                            <div className="mt-2 text-destructive text-sm">{groupRangeError}</div>
-                        )}
-                        <DialogFooter>
-                            <Button 
-                                onClick={applyGroupSettings}
-                                disabled={
-                                    (tempDefineGroups.useSpecifiedValues && (tempGroup1 === null || tempGroup2 === null || tempGroup1 >= tempGroup2)) ||
-                                    (tempDefineGroups.cutPoint && tempCutPointValue === null) ||
-                                    groupRangeError !== null
-                                }
-                            >
-                                Continue
-                            </Button>
-                            <Button 
-                                variant="outline"
-                                onClick={() => {
-                                    setShowDefineGroupsModal(false);
-                                    resetModalSettings();
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            )}
+            {/* Define Groups Dialog */}
+            <DefineGroupsDialog
+                open={showDefineGroupsModal}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setShowDefineGroupsModal(false);
+                        // Reset temp values to current values when closing
+                        setTempGroup1(group1);
+                        setTempGroup2(group2);
+                        setTempCutPointValue(cutPointValue);
+                        setTempDefineGroups({
+                            ...defineGroups
+                        });
+                    }
+                }}
+                tempDefineGroups={tempDefineGroups}
+                setTempDefineGroups={setTempDefineGroups}
+                tempGroup1={tempGroup1}
+                setTempGroup1={setTempGroup1}
+                tempGroup2={tempGroup2}
+                setTempGroup2={setTempGroup2}
+                tempCutPointValue={tempCutPointValue}
+                setTempCutPointValue={setTempCutPointValue}
+                groupRangeError={groupRangeError}
+                setGroupRangeError={setGroupRangeError}
+                onApply={applyDefineGroups}
+            />
         </>
     );
 };
 
-// Komponen IndependentSamplesTTest yang menjadi titik masuk utama
-const IndependentSamplesTTest: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // Render berdasarkan containerType
+// Komponen utama yang menangani rendering berdasarkan containerType
+const Index: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
+    // Jika sidebar mode, gunakan div container tanpa header
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <IndependentSamplesTTestContent onClose={onClose} {...props} />
+                    <IndependentSamplesTTestContent onClose={onClose} />
                 </div>
             </div>
         );
     }
 
-    // Default dialog view with proper Dialog components
+    // Untuk mode dialog, gunakan Dialog dan DialogContent
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Independent-Samples T Test</DialogTitle>
-            </DialogHeader>
-
-            <div className="flex-grow flex flex-col overflow-hidden">
-                <IndependentSamplesTTestContent onClose={onClose} {...props} />
-            </div>
-        </DialogContent>
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-xl font-semibold">Independent-Samples T-Test</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <IndependentSamplesTTestContent onClose={onClose} />
+                </div>
+            </DialogContent>
+        </Dialog>
     );
-}
+};
 
-export default IndependentSamplesTTest;
-export { IndependentSamplesTTestContent };
+export default Index;
