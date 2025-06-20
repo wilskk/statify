@@ -28,8 +28,9 @@ import {
     ChevronRightIcon
 } from 'lucide-react';
 
-import { useActions, ActionPayload } from "@/hooks/actions";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { useModal, ModalType } from "@/hooks/useModal";
+import { useFileMenuActions } from "@/components/Modals/File/hooks/useFileMenuActions";
+import { useEditMenuActions } from "@/components/Modals/Edit/hooks/useEditMenuActions";
 import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
 import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 // NOTE: We don't need useMobile *inside* this component,
@@ -60,7 +61,8 @@ const DrawerMenuSeparator = () => <hr className="my-0.5 border-border" />
 
 const HamburgerMenu: React.FC = () => {
     const { openModal } = useModal();
-    const { handleAction } = useActions();
+    const { handleAction: handleFileAction } = useFileMenuActions();
+    const { handleAction: handleEditAction } = useEditMenuActions();
 
     return (
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
@@ -90,9 +92,9 @@ const HamburgerMenu: React.FC = () => {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col space-y-0.5 pl-4 pr-0 pb-1 pt-0 bg-background">
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'New' })}>New</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Save' })}>Save</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'SaveAs' })}>Save As...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleFileAction({ actionType: 'New' })}>New</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleFileAction({ actionType: 'Save' })}>Save</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleFileAction({ actionType: 'SaveAs' })}>Save As...</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => openModal(ModalType.OpenData)}>Open Data</DrawerMenuItem>
                                     {/* Import Data Items */}
                                     <DrawerMenuItem onClick={() => openModal(ModalType.ImportExcel)}>Import Excel...</DrawerMenuItem>
@@ -104,7 +106,7 @@ const HamburgerMenu: React.FC = () => {
                                     <DrawerMenuSeparator />
                                     <DrawerMenuItem onClick={() => openModal(ModalType.Print)}>Print...</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Exit' })}>Exit</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleFileAction({ actionType: 'Exit' })}>Exit</DrawerMenuItem>
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -117,19 +119,19 @@ const HamburgerMenu: React.FC = () => {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="flex flex-col space-y-0.5 pl-4 pr-0 pb-1 pt-0 bg-background">
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Cut' })}>Cut</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Copy' })}>Copy</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'CopyWithVariableNames' })} disabled={false}>Copy with Variable Names</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'CopyWithVariableLabels' })} disabled={false}>Copy with Variable Labels</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('Cut')}>Cut</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('Copy')}>Copy</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('CopyWithVariableNames')} disabled={false}>Copy with Variable Names</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('CopyWithVariableLabels')} disabled={false}>Copy with Variable Labels</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Paste' })}>Paste</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'PasteVariables' })} disabled={false}>Paste Variables...</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'PasteWithVariableNames' })} disabled={false}>Paste with Variable Names</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('Paste')}>Paste</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('PasteVariables')} disabled={false}>Paste Variables...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('PasteWithVariableNames')} disabled={false}>Paste with Variable Names</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'Clear' })}>Clear</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('Clear')}>Clear</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'InsertVariable' })} disabled={false}>Insert Variable</DrawerMenuItem>
-                                    <DrawerMenuItem onClick={() => handleAction({ actionType: 'InsertCases' })} disabled={false}>Insert Cases</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('InsertVariable')} disabled={false}>Insert Variable</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => handleEditAction('InsertCases')} disabled={false}>Insert Cases</DrawerMenuItem>
                                     <DrawerMenuSeparator />
                                     <DrawerMenuItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND })}>Find...</DrawerMenuItem>
                                     <DrawerMenuItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.REPLACE })}>Replace...</DrawerMenuItem>

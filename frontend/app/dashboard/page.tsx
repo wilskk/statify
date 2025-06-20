@@ -8,8 +8,8 @@ import { useModal, ModalType } from '@/hooks/useModal';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { DashboardLandingSkeleton } from '@/components/ui/Skeletons';
-import { ExampleDatasetModal } from '@/components/pages/dashboard/landing/ExampleDatasetModal';
-import { DashboardLanding, ResourceItem, DataAction } from '@/components/pages/dashboard/landing/DashboardLanding';
+import { ExampleDatasetModal } from '@/app/dashboard/components/landing/ExampleDatasetModal';
+import { DashboardLanding, ResourceItem, DataAction } from '@/app/dashboard/components/landing/DashboardLanding';
 
 export default function DashboardPage() {
     const router = useRouter();

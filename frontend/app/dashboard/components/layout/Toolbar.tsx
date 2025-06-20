@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { useMobile } from "@/hooks/useMobile";
-import { useActions } from '@/hooks/actions';
+import { useFileMenuActions } from '@/components/Modals/File/hooks/useFileMenuActions';
 import { ModalType, useModal } from '@/hooks/useModal';
 // import { ModeToggle } from "@/components/mode-toggle";
 import { useTableRefStore } from '@/stores/useTableRefStore';
@@ -27,7 +27,7 @@ export default function Toolbar() {
     const [hoveredTool, setHoveredTool] = useState<string | null>(null);
     const { isMobile } = useMobile();
     const pathname = usePathname();
-    const { handleAction } = useActions();
+    const { handleAction: handleFileAction } = useFileMenuActions();
     const { openModal } = useModal();
     const { viewMode, toggleViewMode } = useTableRefStore();
 
@@ -35,7 +35,7 @@ export default function Toolbar() {
 
     const fileTools = [
         { name: 'Open Data', icon: <FolderOpen size={16} />, onClick: () => openModal(ModalType.OpenData) },
-        { name: 'Save Document', icon: <Save size={16} />, onClick: () => handleAction({ actionType: 'Save' }) },
+        { name: 'Save Document', icon: <Save size={16} />, onClick: () => handleFileAction({ actionType: 'Save' }) },
         { name: 'Print', icon: <Printer size={16} />, onClick: () => openModal(ModalType.Print) },
     ];
 
