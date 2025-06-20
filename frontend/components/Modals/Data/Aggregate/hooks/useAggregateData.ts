@@ -9,7 +9,7 @@ import {
     mapUIFunctionToCalculationFunction,
     getFunctionDisplay,
     calculateAggregateValue
-} from "../utils";
+} from "../Utils";
 
 export const useAggregateData = () => {
     const { variables } = useVariableStore();
