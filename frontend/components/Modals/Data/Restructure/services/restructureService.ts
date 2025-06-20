@@ -1,6 +1,6 @@
 import { DataRow } from "@/types/Data";
 import { Variable } from "@/types/Variable";
-import { RestructureConfig, RestructureMethod } from "@/components/Modals/Data/Restructure/types";
+import { RestructureConfig, RestructureMethod } from "../types";
 
 /**
  * Entry point for restructuring data and variables.
@@ -197,4 +197,4 @@ function transposeAll(
     });
   }
   return { data: newData, variables: newVars };
-}
+} 

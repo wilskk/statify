@@ -36,6 +36,8 @@ interface VariablesTabProps {
     breakVariables: Variable[];
     aggregatedVariables: AggregatedVariable[];
     highlightedVariable: {id: string, source: 'available' | 'break' | 'aggregated'} | null;
+    addNumberOfCases: boolean;
+    setAddNumberOfCases: (value: boolean) => void;
     breakName: string;
     setBreakName: (value: string) => void;
     handleVariableSelect: (columnIndex: number, source: 'available' | 'break' | 'aggregated') => void;
@@ -65,6 +67,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
     breakVariables,
     aggregatedVariables,
     highlightedVariable,
+    addNumberOfCases,
+    setAddNumberOfCases,
     breakName,
     setBreakName,
     handleVariableSelect,
@@ -538,16 +542,22 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
                     <div className="flex items-center mt-1 gap-2 relative" id="aggregate-n-cases-wrapper">
                         <div className="flex items-center gap-1">
-                            <Checkbox id="number-cases" className="w-3 h-3" />
+                            <Checkbox 
+                                id="number-cases" 
+                                className="w-3 h-3"
+                                checked={addNumberOfCases}
+                                onCheckedChange={(checked) => setAddNumberOfCases(!!checked)}
+                            />
                             <Label htmlFor="number-cases" className={cn("text-xs", isStepActive("aggregate-n-cases-wrapper") && "text-primary")}>Number of cases</Label>
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <Label className={cn("text-xs", isStepActive("aggregate-n-cases-wrapper") && "text-primary")}>Name:</Label>
+                            <Label className={cn("text-xs", isStepActive("aggregate-n-cases-wrapper") && "text-primary", !addNumberOfCases && "text-muted-foreground/50")}>Name:</Label>
                             <Input
                                 value={breakName}
                                 onChange={(e) => setBreakName(e.target.value)}
                                 className="h-6 text-xs w-24"
+                                disabled={!addNumberOfCases}
                             />
                         </div>
                         <ActiveElementHighlight active={isStepActive("aggregate-n-cases-wrapper")} />

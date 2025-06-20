@@ -3,16 +3,17 @@ import { useMetaStore } from "@/stores/useMetaStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { TimeComponent } from "../types";
+import { Variable } from "@/types/Variable";
 import {
     getTimeComponentsFromCase,
     formatDateForMetaStore,
     formatCurrentDates,
-    createDateVariables,
     getMaxRow
-} from "../dateUtils";
+} from "../utils/dateTimeFormatters";
+import { prepareDateVariables } from "../services/dateTimeService";
 
 export const useDefineDateTime = (onClose: () => void) => {
-    const { meta, setMeta } = useMetaStore();
+    const { setMeta } = useMetaStore();
     const { variables, addVariable, resetVariables } = useVariableStore();
     const { updateCells, data } = useDataStore();
 
@@ -41,7 +42,6 @@ export const useDefineDateTime = (onClose: () => void) => {
     const [selectedCase, setSelectedCase] = useState<string>("Not dated");
 
     const [timeComponents, setTimeComponents] = useState<TimeComponent[]>(() => {
-        // Initialize with the default selectedCase
         return getTimeComponentsFromCase("Not dated");
     });
 
@@ -59,24 +59,36 @@ export const useDefineDateTime = (onClose: () => void) => {
     }, []);
 
     const handleOk = useCallback(async () => {
+        // Handle "Not dated" case first
+        if (selectedCase === "Not dated") {
+            await resetVariables();
+            setMeta({ dates: "" });
+            onClose();
+            return;
+        }
+
         const dateString = formatDateForMetaStore(selectedCase, timeComponents);
         setMeta({ dates: dateString });
 
-        await createDateVariables(
-            selectedCase,
+        const { variablesToCreate, cellUpdates } = prepareDateVariables(
             timeComponents,
             variables,
-            addVariable,
-            resetVariables,
-            updateCells,
             getMaxRow(data)
         );
+
+        for (const variable of variablesToCreate) {
+            await addVariable(variable as Variable);
+        }
+
+        if (cellUpdates.length > 0) {
+            await updateCells(cellUpdates);
+        }
+
         onClose();
     }, [selectedCase, timeComponents, variables, addVariable, resetVariables, updateCells, data, setMeta, onClose]);
 
     const handleReset = useCallback(() => {
         setSelectedCase("Not dated");
-        // The useEffect will then update timeComponents
     }, []);
 
     const currentDatesFormatted = formatCurrentDates(selectedCase, timeComponents);
@@ -86,7 +98,6 @@ export const useDefineDateTime = (onClose: () => void) => {
         selectedCase,
         setSelectedCase,
         timeComponents,
-        // setTimeComponents, // Not directly needed by component if only handleInputChange is used
         handleInputChange,
         handleOk,
         handleReset,

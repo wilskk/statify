@@ -2,39 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
-import { restructureData } from "./restructureService";
+import { restructureData } from "../services/restructureService";
+import { RestructureConfig } from "../types";
 
 export enum RestructureMethod {
     VariablesToCases = "variables_to_cases",
     CasesToVariables = "cases_to_variables",
     TransposeAllData = "transpose_all_data",
-}
-
-export interface RestructureConfig {
-    method: RestructureMethod;
-    selectedVariables: Array<{
-        name: string;
-        columnIndex: number;
-        type: string;
-        measure: string;
-    }>;
-    indexVariables: Array<{
-        name: string;
-        columnIndex: number;
-        type: string;
-        measure: string;
-    }>;
-    identifierVariables: Array<{
-        name: string;
-        columnIndex: number;
-        type: string;
-        measure: string;
-    }>;
-    options: {
-        createCount: boolean;
-        createIndex: boolean;
-        dropEmptyVariables: boolean;
-    };
 }
 
 export interface UseRestructureReturn {
@@ -135,7 +109,7 @@ export const useRestructure = (): UseRestructureReturn => {
                 errors.push("Please select a restructure method.");
             }
         } else if (currentStep === 2) {
-            if (selectedVariables.length === 0) {
+            if (method !== RestructureMethod.TransposeAllData && selectedVariables.length === 0) {
                 errors.push("Please select at least one variable to restructure.");
             }
             
@@ -179,26 +153,36 @@ export const useRestructure = (): UseRestructureReturn => {
             setValidationErrors([]);
             
             // Move to variable selection
-            setCurrentStep(2);
-            setActiveTab("variables");
+            if (method === RestructureMethod.TransposeAllData) {
+                setCurrentStep(3);
+                setActiveTab("options");
+            } else {
+                setCurrentStep(2);
+                setActiveTab("variables");
+            }
         } else if (currentStep === 2) {
             // Move to options
             setCurrentStep(3);
             setActiveTab("options");
         }
-    }, [currentStep, validateCurrentStep]);
+    }, [currentStep, validateCurrentStep, method]);
 
     const handleBack = useCallback(() => {
         setValidationErrors([]);
         
         if (currentStep === 3) {
-            setCurrentStep(2);
-            setActiveTab("variables");
+             if (method === RestructureMethod.TransposeAllData) {
+                setCurrentStep(1);
+                setActiveTab("type");
+            } else {
+                setCurrentStep(2);
+                setActiveTab("variables");
+            }
         } else if (currentStep === 2) {
             setCurrentStep(1);
             setActiveTab("type");
         }
-    }, [currentStep]);
+    }, [currentStep, method]);
 
     // Finish handler
     const handleFinish = useCallback(async (onClose: () => void) => {
@@ -263,58 +247,27 @@ export const useRestructure = (): UseRestructureReturn => {
     // Variable movement handlers
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
         // Remove from source list
-        if (fromListId === 'available') {
-            setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        } else if (fromListId === 'selected') {
-            setSelectedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        } else if (fromListId === 'index') {
-            setIndexVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        } else if (fromListId === 'identifier') {
-            setIdentifierVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
-        }
+        const sourceSetter = fromListId === 'available' ? setAvailableVariables :
+                             fromListId === 'selected' ? setSelectedVariables :
+                             fromListId === 'index' ? setIndexVariables :
+                             fromListId === 'identifier' ? setIdentifierVariables : null;
+        sourceSetter?.(prev => prev.filter(v => v.tempId !== variable.tempId));
 
         // Add to target list
-        if (toListId === 'available') {
-            setAvailableVariables(prev => {
-                const newList = [...prev];
-                if (targetIndex !== undefined) {
-                    newList.splice(targetIndex, 0, variable);
-                } else {
-                    newList.push(variable);
-                }
-                return newList;
-            });
-        } else if (toListId === 'selected') {
-            setSelectedVariables(prev => {
-                const newList = [...prev];
-                if (targetIndex !== undefined) {
-                    newList.splice(targetIndex, 0, variable);
-                } else {
-                    newList.push(variable);
-                }
-                return newList;
-            });
-        } else if (toListId === 'index') {
-            setIndexVariables(prev => {
-                const newList = [...prev];
-                if (targetIndex !== undefined) {
-                    newList.splice(targetIndex, 0, variable);
-                } else {
-                    newList.push(variable);
-                }
-                return newList;
-            });
-        } else if (toListId === 'identifier') {
-            setIdentifierVariables(prev => {
-                const newList = [...prev];
-                if (targetIndex !== undefined) {
-                    newList.splice(targetIndex, 0, variable);
-                } else {
-                    newList.push(variable);
-                }
-                return newList;
-            });
-        }
+        const targetSetter = toListId === 'available' ? setAvailableVariables :
+                             toListId === 'selected' ? setSelectedVariables :
+                             toListId === 'index' ? setIndexVariables :
+                             toListId === 'identifier' ? setIdentifierVariables : null;
+        targetSetter?.(prev => {
+            const newList = [...prev];
+            if (targetIndex !== undefined) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            if(toListId === 'available') newList.sort((a,b) => a.columnIndex - b.columnIndex);
+            return newList;
+        });
 
         setHighlightedVariable(null);
     }, []);
@@ -364,4 +317,4 @@ export const useRestructure = (): UseRestructureReturn => {
         validateCurrentStep,
         prepareVariablesWithTempId,
     };
-};
+}; 

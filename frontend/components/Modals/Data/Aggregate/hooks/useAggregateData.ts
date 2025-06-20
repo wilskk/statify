@@ -51,6 +51,7 @@ export const useAggregateData = () => {
     // Options Tab state
     const [isAlreadySorted, setIsAlreadySorted] = useState<boolean>(false);
     const [sortBeforeAggregating, setSortBeforeAggregating] = useState<boolean>(false);
+    const [addNumberOfCases, setAddNumberOfCases] = useState<boolean>(false);
     const [breakName, setBreakName] = useState<string>("N_BREAK");
 
     const getDisplayName = useCallback((variable: Variable | AggregatedVariable): string => {
@@ -356,6 +357,7 @@ export const useAggregateData = () => {
         setHighlightedVariable(null);
         setIsAlreadySorted(false);
         setSortBeforeAggregating(false);
+        setAddNumberOfCases(false);
         setBreakName("N_BREAK");
         setSaveOption("ADD");
         setDatasetName("");
@@ -365,6 +367,25 @@ export const useAggregateData = () => {
     const handleConfirm = useCallback(async (closeModal: () => void) => {
         const variableStore = useVariableStore.getState();
         setStatisticProgress(true);
+
+        // Validation for number of cases variable
+        if (addNumberOfCases) {
+            if (!breakName.trim()) {
+                setErrorMessage("The name for the 'Number of cases' variable cannot be empty.");
+                setErrorDialogOpen(true);
+                setStatisticProgress(false);
+                return;
+            }
+            const allNewVarNames = aggregatedVariables.map(v => v.name);
+            const allExistingVarNames = variableStore.variables.map(v => v.name);
+
+            if (allExistingVarNames.includes(breakName) || allNewVarNames.includes(breakName)) {
+                setErrorMessage(`The variable name '${breakName}' already exists.`);
+                setErrorDialogOpen(true);
+                setStatisticProgress(false);
+                return;
+            }
+        }
 
         const groups: Record<string, { rowIndex: number; row: (string | number)[] }[]> = {};
         data.forEach((row, rowIndex) => {
@@ -439,10 +460,41 @@ export const useAggregateData = () => {
             totalVarCount++;
         }
 
+        // Add number of cases variable if requested
+        if (addNumberOfCases) {
+            const numberOfCasesData: (number | null)[] = new Array(data.length).fill(null);
+
+            for (const groupKey in groups) {
+                const groupRows = groups[groupKey];
+                // The unweighted number of cases is simply the length of the group
+                const count = groupRows.length;
+
+                groupRows.forEach((item) => {
+                    numberOfCasesData[item.rowIndex] = count;
+                    bulkUpdates.push({
+                        row: item.rowIndex,
+                        col: totalVarCount,
+                        value: count
+                    });
+                });
+            }
+
+            const newVariable = {
+                columnIndex: totalVarCount,
+                name: breakName,
+                type: "NUMERIC" as VariableType,
+                width: 8,
+                decimals: 0,
+                label: `Number of cases in break group`,
+            };
+            await variableStore.addVariable(newVariable as any);
+            totalVarCount++;
+        }
+
         await updateCells(bulkUpdates);
         setStatisticProgress(false);
         closeModal();
-    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, updateCells]);
+    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, updateCells, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
 
     return {
         availableVariables, setAvailableVariables,
@@ -468,6 +520,7 @@ export const useAggregateData = () => {
         saveOption, setSaveOption,
         isAlreadySorted, setIsAlreadySorted,
         sortBeforeAggregating, setSortBeforeAggregating,
+        addNumberOfCases, setAddNumberOfCases,
         breakName, setBreakName,
         getDisplayName,
         handleVariableSelect,

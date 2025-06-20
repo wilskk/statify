@@ -1,0 +1,113 @@
+"use client";
+
+import React from "react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { SortVarsUIProps } from "./types";
+import { HelpCircle } from "lucide-react";
+
+const SortVarsUIContent: React.FC<SortVarsUIProps> = ({ 
+    onClose,
+    columns,
+    selectedColumn,
+    sortOrder,
+    handleSelectColumn,
+    setSortOrder,
+    handleOk,
+    handleReset,
+}) => {
+    return (
+        <>
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow">
+                <div>
+                    <p className="font-semibold mb-2">Variable View Columns</p>
+                    <ul className="border border-border p-2 h-40 overflow-auto">
+                        {columns.map((col: string) => (
+                            <li
+                                key={col}
+                                className={`p-1 cursor-pointer hover:bg-accent ${
+                                    selectedColumn === col ? "bg-muted" : ""
+                                }`}
+                                onClick={() => handleSelectColumn(col)}
+                            >
+                                {col}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div>
+                    <p className="font-semibold mb-2">Sort Order</p>
+                    <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                value="asc"
+                                checked={sortOrder === "asc"}
+                                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                            />
+                            Ascending
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="sortOrder"
+                                value="desc"
+                                checked={sortOrder === "desc"}
+                                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                            />
+                            Descending
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                <div>
+                    <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
+                    <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleOk}>OK</Button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+
+export const SortVarsUI: React.FC<SortVarsUIProps> = ({ 
+    onClose,
+    containerType = "dialog",
+    ...props
+}) => {
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <SortVarsUIContent onClose={onClose} {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-md p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold">Sort Variables</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    <SortVarsUIContent onClose={onClose} {...props} />
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}; 

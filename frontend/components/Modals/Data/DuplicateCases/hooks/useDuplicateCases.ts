@@ -204,14 +204,33 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         try {
             const workerResult: any = await processWithWorker();
             const { result, statistics } = workerResult;
-            if (moveMatchingToTop && result.reorderedData) { // check if reorderedData exists
+
+            // Step 1: Reorder data if requested. This should happen before adding new columns.
+            if (moveMatchingToTop && result.reorderedData) {
                 await setData(result.reorderedData);
             }
+            
+            // Step 2: Create new indicator variables and populate their values into the dataset.
             await createIndicatorVariables(result);
-            if (displayFrequencies && statistics) { // check if statistics exist
+            
+            // Step 3: Filter the data based on the newly created primary case indicator, if requested.
+            // This happens after indicators are created and populated.
+            if (filterByIndicator) {
+                const currentData = useDataStore.getState().data;
+                const primaryVar = useVariableStore.getState().variables.find(v => v.name === primaryName);
+                // Ensure primaryVar is found and its columnIndex is valid for the current data shape
+                if (primaryVar && currentData.length > 0 && primaryVar.columnIndex < currentData[0].length) {
+                    const filteredData = currentData.filter(row => row[primaryVar.columnIndex] === 1);
+                    await setData(filteredData);
+                }
+            }
+
+            // Step 4: Display frequencies in the output log if requested.
+            if (displayFrequencies && statistics) { 
                 await createOutputLog(statistics);
             }
-            onClose(); // Call the onClose passed from props
+
+            onClose();
         } catch (error: any) {
             console.error("Error processing duplicates:", error);
             setErrorMessage(error.message || "An error occurred while processing duplicates.");
