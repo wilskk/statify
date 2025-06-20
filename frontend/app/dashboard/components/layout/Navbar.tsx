@@ -13,8 +13,7 @@ import {
   MenubarSubContent,
 } from "@/components/ui/menubar";
 
-import { useActions } from "@/hooks/actions";
-import { ModalType, useModal, OpenModalOptions } from "@/hooks/useModal";
+import { ModalType, useModal } from "@/hooks/useModal";
 import FileMenu from "@/components/Modals/File/FileMenu";
 import EditMenu from "@/components/Modals/Edit/EditMenu";
 import DataMenu from "@/components/Modals/Data/DataMenu";
@@ -24,7 +23,6 @@ import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduct
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
-  const { handleAction } = useActions();
 
   const commonMenubarClasses = "ml-0 flex px-2 py-1 border-0";
 

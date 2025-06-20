@@ -1,7 +1,7 @@
 import { Check, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function ComparisonSection() {
+export const ComparisonSection = () => {
     const statifyFeatures = [
         "100% Gratis untuk digunakan",
         "Open Source - dapat dikustomisasi",

@@ -2,9 +2,9 @@ import React, { FC } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { DescriptiveStatisticsOptions, DisplayOrderType } from "./types";
+import { DescriptiveStatisticsOptions, DisplayOrderType } from "../types";
 import { Dispatch, SetStateAction } from "react";
-import { TourStep } from "./hooks/useTourGuide";
+import { TourStep } from "../hooks/useTourGuide";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 export interface StatisticsTabProps {
@@ -186,4 +186,4 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     );
 };
 
-export default StatisticsTab;
+export default StatisticsTab; 

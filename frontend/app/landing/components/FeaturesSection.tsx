@@ -1,7 +1,7 @@
 import { BarChart2, Database, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function FeaturesSection() {
+export const FeaturesSection = () => {
     const features = [
         {
             icon: <BarChart2 className="h-10 w-10 text-primary" />,
@@ -21,7 +21,7 @@ export default function FeaturesSection() {
     ];
 
     return (
-        <section id="features" className="py-16 bg-muted">
+        <section id="features" className="py-24 w-full bg-muted/40">
             <div className="container mx-auto px-4 md:px-8 max-w-6xl">
                 <div className="text-center mb-12">
                     <h2 className="text-2xl font-semibold text-foreground mb-4">Fitur Utama</h2>

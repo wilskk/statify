@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 
-export default function HeroSection() {
+export const HeroSection = () => {
     return (
         <section id="home" className="pt-32 pb-16 w-full bg-background">
             <div className="container px-4 md:px-8 max-w-3xl mx-auto text-center">

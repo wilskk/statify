@@ -1,8 +1,8 @@
 "use client"; // Make this layout a Client Component
 
 import "@/app/globals.css";
-import Header from "@/components/layout/dashboard/Header";
-import Footer from "@/components/layout/dashboard/Footer";
+import Header from "@/app/dashboard/components/layout/Header";
+import Footer from "@/app/dashboard/components/layout/Footer";
 import React, { useState, lazy, Suspense, useEffect } from "react";
 import DataLoader from "@/components/ui/DataLoader";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";

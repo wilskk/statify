@@ -3,11 +3,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Variable } from "@/types/Variable";
-import { HighlightedVariableInfo } from "./types";
+import { HighlightedVariableInfo } from "../types";
 import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
-import { TourStep } from "./hooks/useTourGuide";
+import { TourStep } from "../hooks/useTourGuide";
 import { InfoIcon } from "lucide-react";
 
 export interface VariablesTabProps {
@@ -183,4 +183,4 @@ const VariablesTab: FC<VariablesTabProps> = ({
     );
 };
 
-export default VariablesTab;
+export default VariablesTab; 

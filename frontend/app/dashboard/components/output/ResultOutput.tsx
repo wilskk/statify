@@ -1,10 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import DataTableRenderer from "@/components/Output/table/data-table";
+import DataTableRenderer from "@/components/Output/Table/data-table";
 import { Card } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
 import { useResultStore } from "@/stores/useResultStore";
-import GeneralChartContainer from "./Chart/GeneralChartContainer";
+import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 const TiptapEditor = dynamic(() => import('@/components/Output/Editor/TiptapEditor'), {
   ssr: false,
   loading: () => <div className="border rounded-md p-2 min-h-[120px] bg-background w-full" />

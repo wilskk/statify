@@ -1,7 +1,8 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Quote } from 'lucide-react';
 
-export default function TestimonialsSection() {
+export const TestimonialsSection = () => {
     const testimonials = [
         {
             quote: "Statify sangat membantu penelitian saya. Interfacenya intuitif dan saya bisa mengakses dari mana saja tanpa biaya.",
@@ -21,7 +22,7 @@ export default function TestimonialsSection() {
     ];
 
     return (
-        <section id="testimonials" className="py-16 bg-muted">
+        <section id="testimonials" className="py-24 w-full bg-background">
             <div className="container mx-auto px-4 md:px-8 max-w-6xl">
                 <div className="text-center mb-12">
                     <h2 className="text-2xl font-semibold text-foreground mb-4">Testimoni Pengguna</h2>

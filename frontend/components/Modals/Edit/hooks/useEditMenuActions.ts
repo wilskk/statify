@@ -11,7 +11,7 @@ type ValidAlterAction =
     | 'insert_col_end'
     | 'remove_col';
 
-export type EditActionType =
+export type EditMenuActionType =
     | "Undo"
     | "Redo"
     | "Cut"
@@ -25,11 +25,11 @@ export type EditActionType =
     | "InsertVariable"
     | "InsertCases";
 
-export const useEditActions = () => {
+export const useEditMenuActions = () => {
     const { getVariableByColumnIndex } = useVariableStore();
     const { dataTableRef } = useTableRefStore();
 
-    const handleAction = useCallback(async (actionType: EditActionType) => {
+    const handleAction = useCallback(async (actionType: EditMenuActionType) => {
         const hotInstance = dataTableRef?.current?.hotInstance;
         if (!hotInstance) {
             console.warn("Handsontable instance is not available.");
@@ -262,4 +262,4 @@ export const useEditActions = () => {
     return {
         handleAction
     };
-};
+}; 

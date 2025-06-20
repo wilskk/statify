@@ -1,4 +1,4 @@
-export * from './Frequencies';
+export * from './Crosstabs';
 export * from './DescriptiveAnalysis';
 export * from './Explore';
-export * from './Crosstabs'; 
+export * from './Frequencies'; 

@@ -1,4 +1,3 @@
-// components/Modals/File/fileActions.ts
 import { useModal } from "@/hooks/useModal";
 import { useDataStore } from "@/stores/useDataStore";
 import { useVariableStore } from "@/stores/useVariableStore";
@@ -7,18 +6,18 @@ import { useMetaStore } from "@/stores/useMetaStore";
 import { useRouter } from 'next/navigation';
 import { createSavFile, downloadBlobAsFile } from '@/services/api';
 
-export type FileActionType =
+export type FileMenuActionType =
     | "New"
     | "Save"
     | "SaveAs"
     | "Exit";
 
 interface FileActionPayload {
-    actionType: FileActionType;
+    actionType: FileMenuActionType;
     data?: any;
 }
 
-export const useFileActions = () => {
+export const useFileMenuActions = () => {
     const { openModal } = useModal();
     const router = useRouter();
 
@@ -104,7 +103,7 @@ export const useFileActions = () => {
                         decimal: variable.decimals,
                         alignment: variable.align.toLowerCase(),
                         measure: variable.measure.toLowerCase(),
-                        columns: variable.columns,
+columns: variable.columns,
                         valueLabels
                     };
                 });
@@ -155,4 +154,4 @@ export const useFileActions = () => {
     };
 
     return { handleAction };
-};
+}; 

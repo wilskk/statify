@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
+import {
 	GettingStarted,
 	FAQ,
 	Feedback,
-	HelpContent
-} from "@/components/pages/help";
-import type { SectionItem } from "@/components/pages/help";
+	HelpContent,
+	Frequencies,
+	DescriptiveAnalysis,
+	Explore,
+	Crosstabs,
+	type SectionItem,
+} from "@/app/help/components";
 
 export default function HelpPage() {
 	const [selected, setSelected] = useState("getting-started");

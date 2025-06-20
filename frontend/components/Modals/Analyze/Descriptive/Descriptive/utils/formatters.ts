@@ -1,7 +1,7 @@
-import { DescriptiveStatisticsOptions, DisplayOrderType, DescriptiveResult, DescriptiveStats } from './types';
+import { DescriptiveStatisticsOptions, DisplayOrderType, DescriptiveResult, DescriptiveStats } from '../types';
 import { spssDateTypes } from '@/types/Variable';
 import { spssSecondsToDateString } from '@/utils/spssDateConverter';
-import type { TableRow, TableColumnHeader } from './types';
+import type { TableRow, TableColumnHeader } from '../types';
 
 export interface DescriptiveTable {
   title: string;
