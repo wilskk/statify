@@ -4,7 +4,7 @@ import { DataRow } from "@/types/Data";
 import { Variable } from "@/types/Variable";
 import { Log } from "@/types/Result";
 // Path to utils is one level up from services directory
-import { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../utils"; 
+import { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../print.utils"; 
 
 const PAGE_MARGIN = 14;
 const PAGE_TOP_MARGIN = 10;

@@ -7,7 +7,7 @@ import {
     excelStyleTextToColumns,
     getDelimiterCharacter,
     parsePreviewData
-} from "../utils/utils";
+} from "../importClipboard.utils";
 
 export const useImportClipboardProcessor = () => {
     const { setData } = useDataStore();

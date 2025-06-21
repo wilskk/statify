@@ -20,7 +20,7 @@ import {
     parseSheetForPreview,
     processSheetForImport,
     generateVariablesFromData
-} from "../utils/utils";
+} from "../importExcel.utils";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";

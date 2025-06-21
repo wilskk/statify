@@ -1,53 +1,74 @@
-# ImportCsv Component
+# Fitur Modal: Impor dari CSV
 
-## Overview
+Dokumen ini memberikan ringkasan teknis untuk fitur **Impor dari CSV**, mengikuti panduan arsitektur utama untuk komponen modal.
 
-The `ImportCsv` component facilitates importing data from CSV (Comma Separated Values) files. It guides the user through a two-step process: selecting a CSV file and then configuring parsing options before the data is imported into the application.
+## 1. Ringkasan Fungsionalitas
 
-## Features
+Fitur ini memungkinkan pengguna untuk mengimpor data dari file CSV (`.csv`). Prosesnya dirancang dalam dua tahap untuk memastikan fleksibilitas dan pengalaman pengguna yang baik:
 
--   **File Selection (`ImportCsvSelection` step)**:
-    -   Allows users to browse and select a local CSV file.
-    -   Displays the name of the selected file.
-    -   Handles file reading and shows loading states or errors during this phase.
--   **Parsing Configuration (`ImportCsvConfiguration` step)**:
-    -   Once the file is read, users can specify how the CSV data should be interpreted.
-    -   **First Line Contains Headers**: Option to treat the first line of the CSV as column headers (variable names).
-    -   **Trim Whitespace**: Options to remove leading and/or trailing whitespace from data cells.
-    -   **Delimiter**: Choose the character separating values (e.g., comma, semicolon, tab).
-    -   **Decimal Separator**: Specify the character used for decimal points in numbers (e.g., period, comma).
-    -   **Text Qualifier**: Define the character used to enclose text strings that may contain delimiters (e.g., double quote, single quote).
-    -   (Likely) A preview of the parsed data based on selected options.
--   **Import Data**: Finalizes the import process based on the configuration.
--   **Navigation**: Allows users to go back from the configuration step to the file selection step.
+1.  **Pemilihan File**: Pengguna memilih file `.csv` dari sistem lokal mereka melalui dialog file atau dengan mekanisme *drag-and-drop*.
+2.  **Konfigurasi Parsing**: Setelah file terbaca, pengguna dapat mengonfigurasi bagaimana data teks harus diurai. Opsi yang tersedia meliputi:
+    -   **Baris Pertama sebagai Header**: Menggunakan baris pertama sebagai nama variabel.
+    -   **Delimiter**: Karakter pemisah nilai (Koma, Titik Koma, Tab).
+    -   **Simbol Desimal**: Karakter yang digunakan untuk angka desimal (Titik atau Koma).
+    -   **Text Qualifier**: Karakter yang membungkus teks (misalnya, kutip ganda).
+    -   Opsi untuk memangkas spasi di awal dan akhir nilai.
 
-## Workflow Stages
+Untuk menjaga responsivitas antarmuka, proses *parsing* CSV yang berat didelegasikan ke **Web Worker**.
 
-The component operates in two main stages:
+## 2. Struktur Direktori & Tanggung Jawab
 
-1.  **Select File (`select`)**:
-    -   Managed by the `ImportCsvSelection` sub-component.
-    -   User selects a `.csv` file from their local system.
-    -   The `useImportCsvFileReader` hook is used to read the file content.
-    -   Upon successful file read, the component transitions to the configuration stage.
+-   **`/` (Root)**
+    -   **`index.tsx`**: **Orchestrator**. Mengelola tahap proses (`select` atau `configure`) dan merender komponen yang sesuai.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang relevan untuk fitur ini.
+    -   **`README.md`**: (File ini) Dokumentasi fitur.
+    -   **`importCsvUtils.ts`**: Berisi fungsi utilitas dan kelas *error* kustom.
 
-2.  **Configure Parsing (`configure`)**:
-    -   Managed by the `ImportCsvConfiguration` sub-component.
-    -   The content of the selected file is passed to this stage.
-    -   User adjusts various parsing options as defined in `CSVProcessingOptions` (`types.ts`).
-    -   (Typically) A preview of the data is shown, updating as options change.
-    -   User can initiate the final import or go back to re-select a file.
+-   **`components/`**
+    -   **`ImportCsvSelection.tsx`**: Komponen UI untuk tahap pemilihan file.
+    -   **`ImportCsvConfiguration.tsx`**: Komponen UI untuk tahap konfigurasi *parsing* dan menampilkan pratinjau file.
 
-## Component Props
+-   **`hooks/`**
+    -   **`useImportCsvFileReader.ts`**: Hook untuk membaca konten file dari `File` object secara asinkron.
+    -   **`useImportCsvProcessor.ts`**: Hook yang dipanggil oleh `ConfigurationStep` untuk memulai proses impor final.
+    -   **`useCsvWorker.ts`**: (Tidak digunakan secara langsung oleh komponen) Hook yang membungkus logika interaksi dengan Web Worker, menyediakan fungsi `parse`. *Saat ini, `useImportCsvProcessor` memanggil service secara langsung.*
 
-The `ImportCsv` main component accepts the following props:
+-   **`services/`**
+    -   **`services.ts`**: Berisi `importCsvDataService` untuk mengabstraksi pembaruan *store* (reset dan populasi data) dan `parseCsvWithWorker` untuk mengelola interaksi dengan Web Worker. Ini adalah lapisan perantara antara UI dan logika bisnis/data.
 
--   `onClose: () => void`: A mandatory function called when the import modal should be closed.
--   `containerType: "dialog" | "sidebar"`: Specifies the rendering context (e.g., dialog or sidebar), influencing layout or behavior. This prop is mandatory.
+-   **`utils/`**
+    -   **`importCsvUtils.ts`**: Berisi fungsi utilitas dan kelas *error* kustom. *Catatan: Logika parsing utama sekarang ada di dalam Web Worker.*
 
-## Usage
+-   **`public/workers/file-management/`**
+    -   **`csvWorker.js`**: Skrip **Web Worker**. Di sinilah logika *parsing* CSV yang intensif sumber daya dijalankan untuk mencegah pemblokiran *thread* utama.
 
-The `ImportCsv` component is designed to be embedded within a modal or a similar container managed by a parent component (e.g., `ModalRenderer`).
+## 3. Alur Kerja (Workflow)
+
+1.  **Inisialisasi (Selection Step)**: Pengguna membuka modal. `index.tsx` merender `ImportCsvSelection`.
+2.  **Pemilihan File**: Pengguna memilih file. `handleFileSelect` di `index.tsx` memperbarui *state* `file`.
+3.  **Lanjut ke Konfigurasi**: Pengguna menekan "Continue". Hook `useImportCsvFileReader` dipanggil untuk membaca konten file.
+4.  **Render Konfigurasi**: Setelah konten file berhasil dibaca, `index.tsx` mengubah *stage* menjadi `configure` dan merender `ImportCsvConfiguration`, meneruskan konten file.
+5.  **Penyesuaian Opsi**: Pengguna menyesuaikan opsi *parsing* di `ImportCsvConfiguration`.
+6.  **Finalisasi Impor**: Pengguna menekan "Import".
+    -   `ImportCsvConfiguration` memanggil fungsi `processCSV` dari *hook* `useImportCsvProcessor`.
+    -   `useImportCsvProcessor` memanggil `importCsvDataService.resetStores()` untuk membersihkan data lama.
+    -   Kemudian, ia memanggil `parseCsvWithWorker` dari `services.ts`.
+    -   **Web Worker** menerima konten file dan opsi, melakukan *parsing*, lalu mengirim kembali data terstruktur (variabel dan baris data).
+    -   Setelah menerima hasil dari *worker*, `useImportCsvProcessor` memanggil `importCsvDataService.populateStores()` untuk mengisi *store* Zustand dengan data baru.
+7.  **Selesai**: Modal ditutup setelah impor berhasil.
+
+## 4. Properti Komponen (`ImportCsvProps`)
+
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* untuk menutup modal.
+-   `containerType: "dialog" | "sidebar"`: **(Wajib)** Menentukan konteks render.
+
+## 5. Ketergantungan Utama (Dependencies)
+
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`) melalui lapisan layanan.
+    -   Komponen UI dari `@/components/ui/*`.
+-   **Arsitektural**:
+    -   **Web Worker API**: Ketergantungan fundamental untuk *offloading* proses *parsing* CSV dari *thread* utama.
 
 ```tsx
 import ImportCsv from "./ImportCsv"; // Adjust path as necessary
@@ -75,43 +96,3 @@ const MyDataManagementPage = () => {
     );
 };
 ```
-
-## Dependencies
-
--   React
--   `@/components/ui/dialog` (likely for `DialogHeader`, `DialogTitle`, etc., used within sub-components or if not fully abstracted by `ModalRenderer`)
--   `@/components/ui/button`
--   `lucide-react` (for icons like `ArrowLeft`)
--   `./components/ImportCsvSelection.tsx`
--   `./components/ImportCsvConfiguration.tsx`
--   `./hooks/useImportCsvFileReader.ts` (for reading file content)
--   `./types.ts` (for `CSVProcessingOptions` and other related types)
--   `@/types/ui` (for `ContainerType`)
-
-## Structure
-
--   `index.tsx`: The main `ImportCsv` component that orchestrates the two stages (`select` and `configure`).
--   `types.ts`: Defines TypeScript interfaces, primarily `CSVProcessingOptions`.
--   `components/`:
-    -   `ImportCsvSelection.tsx`: UI and logic for the file selection step.
-    -   `ImportCsvConfiguration.tsx`: UI and logic for configuring CSV parsing options and previewing data.
--   `hooks/`:
-    -   `useImportCsvFileReader.ts`: Custom hook to handle asynchronous file reading and manage related state (content, loading, errors).
--   `services/`: (Potentially) If there are specific service calls for CSV processing beyond client-side parsing.
--   `utils/`: For utility functions related to CSV parsing or data transformation if not handled within hooks or components directly.
-
-## Web Worker Integration
-
--   **csvWorker.js**: Located at `public/workers/file-management/csvWorker.js`, handles CSV parsing off the main thread to keep UI responsive.
--   **Service**: `services/services.ts` exports `parseCsvWithWorker(fileContent, options)` and `ProcessedCsvData` type to interact with the worker.
--   **Hook**: `hooks/useCsvWorker.ts` wraps `parseCsvWithWorker`, providing `parse`, `isProcessing`, and `error` state for components.
-
-## Updated Structure
-
--   `public/workers/file-management/csvWorker.js`: Web Worker script for CSV parsing.
--   `services/services.ts`: Includes `importCsvDataService` and `parseCsvWithWorker`.
--   `hooks/useImportCsvFileReader.ts`: Reads raw file content.
--   `hooks/useCsvWorker.ts`: Manages worker parsing.
--   `hooks/useImportCsvProcessor.ts`: Populates stores via service using worker-parsed data.
-
-# End of README
