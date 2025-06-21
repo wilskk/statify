@@ -79,6 +79,8 @@ describe('useImportClipboardLogic', () => {
     // Go to configure stage first
     act(() => {
       result.current.handleTextPaste('a\tb');
+    });
+    act(() => {
       result.current.handleContinueToConfigure();
     });
     expect(result.current.stage).toBe('configure');

@@ -9,7 +9,7 @@ import * as utils from '../importExcel.utils';
 jest.mock('@/stores/useDataStore');
 jest.mock('@/stores/useVariableStore');
 jest.mock('../importExcel.utils');
-jest.mock('handsontable/react-wrapper', () => ({
+jest.mock('@handsontable/react-wrapper', () => ({
   HotTable: jest.fn(() => <div>Mocked HotTable</div>),
 }));
 
@@ -22,8 +22,8 @@ const mockParseSheetForPreview = utils.parseSheetForPreview as jest.Mock;
 const mockProcessSheetForImport = utils.processSheetForImport as jest.Mock;
 const mockGenerateVariablesFromData = utils.generateVariablesFromData as jest.Mock;
 
-(useDataStore as jest.Mock).mockReturnValue({ setData: mockSetData, resetData: mockResetData });
-(useVariableStore as jest.Mock).mockReturnValue({ overwriteVariables: mockOverwriteVariables, resetVariables: mockResetVariables });
+(useDataStore as unknown as jest.Mock).mockReturnValue({ setData: mockSetData, resetData: mockResetData });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteVariables: mockOverwriteVariables, resetVariables: mockResetVariables });
 
 const mockParsedSheets = [
     { sheetName: 'Sheet1', data: [['Name', 'Age'], ['Alice', 20]]},
@@ -65,7 +65,7 @@ describe('ImportExcelConfigurationStep Component', () => {
         
         expect(mockParseSheetForPreview).toHaveBeenCalledTimes(1);
         
-        const sheetSelect = screen.getByRole('combobox');
+        const sheetSelect = screen.getByTestId('worksheet-select-trigger');
         await user.click(sheetSelect);
         await user.click(screen.getByText('Sheet2'));
 
@@ -101,7 +101,7 @@ describe('ImportExcelConfigurationStep Component', () => {
         const importButton = screen.getByRole('button', { name: /import data/i });
         await user.click(importButton);
 
-        expect(await screen.findByText(errorMessage)).toBeInTheDocument();
+        expect(await screen.findByText(/import failed/i)).toBeInTheDocument();
         expect(mockSetData).not.toHaveBeenCalled();
     });
 

@@ -214,7 +214,7 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
         if(file && file.name.endsWith('.sav')) clearError(); 
     };
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -224,7 +224,7 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
         }
     };
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
         e.preventDefault();
         e.stopPropagation();
     };
@@ -261,7 +261,8 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                 </div>
             </div>
             <div className="p-6 flex-grow flex flex-col">
-                <div
+                <label
+                    htmlFor="sav-file-upload-step"
                     id="opensav-dropzone-wrapper"
                     className={cn(`
                         border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors flex-1 mb-4 relative`,
@@ -269,7 +270,6 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                         error && !selectedFile ? "border-destructive bg-destructive/5 hover:border-destructive/60" : "border-input hover:border-primary/80 hover:bg-muted/50"
                     )}
                     style={{ width: "100%" }}
-                    onClick={() => document.getElementById("sav-file-upload-step")?.click()}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                 >
@@ -291,10 +291,10 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                         className="hidden"
                     />
                     <ActiveElementHighlight active={tourActive && currentStep === 0} />
-                </div>
+                </label>
 
                 {selectedFile && !error && ( 
-                    <div className="mb-4 p-3 bg-muted/50 border border-border rounded-md flex items-center justify-between">
+                    <div data-testid="selected-file-info" className="mb-4 p-3 bg-muted/50 border border-border rounded-md flex items-center justify-between">
                         <div className="flex items-center overflow-hidden">
                             <FileText size={20} className="mr-2.5 text-primary flex-shrink-0" />
                             <div className="overflow-hidden">

@@ -1,11 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OpenSavFileModal } from '../index';
 import { useOpenSavFileLogic } from '../hooks/useOpenSavFileLogic';
 
 // Mock the logic hook
 jest.mock('../hooks/useOpenSavFileLogic');
-const mockedUseOpenSavFileLogic = useOpenSavFileLogic as jest.Mock;
+const mockedUseOpenSavFileLogic = useOpenSavFileLogic as unknown as jest.Mock;
 
 describe('OpenSavFileModal Component', () => {
   const mockHandleFileChange = jest.fn();
@@ -52,8 +52,9 @@ describe('OpenSavFileModal Component', () => {
   
   it('displays the selected file name and enables the Open button', () => {
     setupMockHook({ file: mockFile });
-    render(<OpenSavFileModal onClose={mockHandleModalClose} containerType="dialog" />);
-    expect(screen.getByText(mockFile.name)).toBeInTheDocument();
+    const { getByTestId } = render(<OpenSavFileModal onClose={mockHandleModalClose} containerType="dialog" />);
+    const selectedFileDisplay = getByTestId('selected-file-info');
+    expect(within(selectedFileDisplay).getByText(mockFile.name)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open/i })).not.toBeDisabled();
   });
 

@@ -22,9 +22,9 @@ jest.mock('xlsx', () => ({
 
 const mockedUseToast = useToast as jest.Mock;
 const mockedToast = jest.fn();
-const mockedUseDataStore = useDataStore as jest.Mock;
-const mockedUseVariableStore = useVariableStore as jest.Mock;
-const mockedUseMetaStore = useMetaStore as jest.Mock;
+const mockedUseDataStore = useDataStore as unknown as jest.Mock;
+const mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
+const mockedUseMetaStore = useMetaStore as unknown as jest.Mock;
 const mockedGenerateExcelWorkbook = excelExporter.generateExcelWorkbook as jest.Mock;
 const mockedXLSXWriteFile = XLSX.writeFile as jest.Mock;
 
@@ -115,6 +115,8 @@ describe('useExportExcelLogic', () => {
     });
     const { result } = renderHook(() => useExportExcelLogic({ onClose: mockOnClose }));
 
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     await act(async () => {
       await result.current.handleExport();
     });
@@ -125,5 +127,7 @@ describe('useExportExcelLogic', () => {
       variant: 'destructive',
     });
     expect(mockOnClose).not.toHaveBeenCalled();
+    
+    consoleErrorSpy.mockRestore();
   });
 }); 

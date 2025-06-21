@@ -1,15 +1,25 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ImportClipboardConfigurationStep } from '../components/ImportClipboardConfigurationStep';
 import { useImportClipboardProcessor } from '../hooks/useImportClipboardProcessor';
-import * as Handsontable from 'handsontable/react-wrapper';
 
 // Mock dependencies
 jest.mock('../hooks/useImportClipboardProcessor');
 const mockedUseImportClipboardProcessor = useImportClipboardProcessor as jest.Mock;
 
-jest.mock('handsontable/react-wrapper', () => ({
-  HotTable: jest.fn(() => <div>Mocked HotTable</div>),
+jest.mock('@handsontable/react-wrapper', () => ({
+  HotTable: React.forwardRef((props: any, ref: any) => {
+    // Mock the ref with a dummy hotInstance and updateSettings method
+    if (ref) {
+      ref.current = {
+        hotInstance: {
+          updateSettings: jest.fn(),
+        },
+      };
+    }
+    return <div>Mocked HotTable</div>;
+  }),
 }));
 
 describe('ImportClipboardConfigurationStep Component', () => {

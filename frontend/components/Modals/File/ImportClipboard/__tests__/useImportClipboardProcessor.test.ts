@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useImportClipboardProcessor } from '../hooks/useImportClipboardProcessor';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
@@ -16,8 +16,8 @@ const mockedSetData = jest.fn();
 const mockedOverwriteVariables = jest.fn();
 const mockedExcelStyleParser = utils.excelStyleTextToColumns as jest.Mock;
 
-(useDataStore as jest.Mock).mockReturnValue({ setData: mockedSetData });
-(useVariableStore as jest.Mock).mockReturnValue({ overwriteVariables: mockedOverwriteVariables });
+(useDataStore as unknown as jest.Mock).mockReturnValue({ setData: mockedSetData });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteVariables: mockedOverwriteVariables });
 
 
 describe('useImportClipboardProcessor', () => {
@@ -32,14 +32,12 @@ describe('useImportClipboardProcessor', () => {
     mockedExcelStyleParser.mockReturnValue(parsedData);
     const { result } = renderHook(() => useImportClipboardProcessor());
 
-    await act(async () => {
-      await result.current.processClipboardData(sampleText, {
-        delimiter: 'comma',
-        firstRowAsHeader: true,
-        trimWhitespace: true,
-        skipEmptyRows: true,
-        detectDataTypes: true,
-      });
+    await result.current.processClipboardData(sampleText, {
+      delimiter: 'comma',
+      firstRowAsHeader: true,
+      trimWhitespace: true,
+      skipEmptyRows: true,
+      detectDataTypes: true,
     });
 
     expect(mockedSetData).toHaveBeenCalledWith([['1', 'Alice'], ['2', 'Bob']]);
@@ -58,14 +56,12 @@ describe('useImportClipboardProcessor', () => {
     mockedExcelStyleParser.mockReturnValue(dataOnly);
     const { result } = renderHook(() => useImportClipboardProcessor());
 
-    await act(async () => {
-      await result.current.processClipboardData(sampleText, {
-        delimiter: 'comma',
-        firstRowAsHeader: false,
-        trimWhitespace: true,
-        skipEmptyRows: true,
-        detectDataTypes: true,
-      });
+    await result.current.processClipboardData(sampleText, {
+      delimiter: 'comma',
+      firstRowAsHeader: false,
+      trimWhitespace: true,
+      skipEmptyRows: true,
+      detectDataTypes: true,
     });
 
     expect(mockedSetData).toHaveBeenCalledWith(dataOnly);
@@ -94,15 +90,13 @@ describe('useImportClipboardProcessor', () => {
     const preProcessedData = [['pre', 'processed'], ['data', 'here']];
     const { result } = renderHook(() => useImportClipboardProcessor());
 
-    await act(async () => {
-      await result.current.processClipboardData(sampleText, {
-        delimiter: 'comma',
-        firstRowAsHeader: true,
-        trimWhitespace: true,
-        skipEmptyRows: true,
-        detectDataTypes: true,
-        excelProcessedData: preProcessedData,
-      });
+    await result.current.processClipboardData(sampleText, {
+      delimiter: 'comma',
+      firstRowAsHeader: true,
+      trimWhitespace: true,
+      skipEmptyRows: true,
+      detectDataTypes: true,
+      excelProcessedData: preProcessedData,
     });
 
     expect(mockedExcelStyleParser).not.toHaveBeenCalled();

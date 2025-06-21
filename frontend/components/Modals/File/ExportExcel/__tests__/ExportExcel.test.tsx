@@ -6,7 +6,7 @@ import { ExportExcelLogicState } from '../types';
 
 // Mock the logic hook
 jest.mock('../hooks/useExportExcelLogic');
-const mockedUseExportExcelLogic = useExportExcelLogic as jest.Mock;
+const mockedUseExportExcelLogic = useExportExcelLogic as unknown as jest.Mock;
 
 describe('ExportExcel Component', () => {
   const mockOnClose = jest.fn();
@@ -45,12 +45,10 @@ describe('ExportExcel Component', () => {
     expect(screen.getByLabelText(/represent missing data with sysmis text/i)).not.toBeChecked();
   });
 
-  it('should call handleFilenameChange on filename input', async () => {
-    const user = userEvent.setup();
+  it('should call handleFilenameChange on filename input', () => {
     render(<ExportExcel onClose={mockOnClose} />);
     const filenameInput = screen.getByLabelText(/file name/i);
-    await user.clear(filenameInput);
-    await user.type(filenameInput, 'new-name');
+    fireEvent.change(filenameInput, { target: { value: 'new-name' } });
     expect(mockHandleFilenameChange).toHaveBeenCalledWith('new-name');
   });
 

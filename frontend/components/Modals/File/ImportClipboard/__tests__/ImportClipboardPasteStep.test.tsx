@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ImportClipboardPasteStep } from '../components/ImportClipboardPasteStep';
@@ -35,10 +36,28 @@ describe('ImportClipboardPasteStep Component', () => {
 
   it('calls onTextPaste when user types in the textarea', async () => {
     const user = userEvent.setup();
-    render(<ImportClipboardPaste-Step {...defaultProps} />);
+    const mockOnTextPaste = jest.fn();
+
+    const TestWrapper = () => {
+      const [pastedText, setPastedText] = React.useState('');
+      const handleTextPaste = (text: string) => {
+        setPastedText(text);
+        mockOnTextPaste(text);
+      };
+      return (
+        <ImportClipboardPasteStep
+          {...defaultProps}
+          pastedText={pastedText}
+          onTextPaste={handleTextPaste}
+        />
+      );
+    };
+
+    render(<TestWrapper />);
     const textarea = screen.getByPlaceholderText('Paste your tabular data here...');
     await user.type(textarea, 'hello');
-    expect(mockOnTextPaste).toHaveBeenCalledWith('hello');
+    expect(mockOnTextPaste).toHaveBeenLastCalledWith('hello');
+    expect(mockOnTextPaste).toHaveBeenCalledTimes(5);
   });
 
   it('calls onContinue when the continue button is clicked and text is present', async () => {

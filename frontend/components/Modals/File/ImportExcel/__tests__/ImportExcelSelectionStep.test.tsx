@@ -32,7 +32,7 @@ describe('ImportExcelSelectionStep Component', () => {
   it('calls onFileSelect when a file is chosen', async () => {
     render(<ImportExcelSelectionStep {...defaultProps} />);
     const file = new File(['hello'], 'hello.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const input = screen.getByLabelText(/click to select an excel file/i, { selector: 'input' });
+    const input = screen.getByLabelText(/click to select an excel file/i);
 
     await userEvent.upload(input, file);
     
@@ -68,8 +68,8 @@ describe('ImportExcelSelectionStep Component', () => {
     const file = new File(['hello'], 'my-data.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     render(<ImportExcelSelectionStep {...defaultProps} selectedFile={file} isLoading={true} />);
     
-    expect(screen.getByRole('button', { name: /continue/i })).toHaveAttribute('data-loading', 'true');
-    expect(screen.getByTestId('loader')).toBeInTheDocument(); // Assuming loader has data-testid="loader"
+    expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('clears the file when the "X" button is clicked', async () => {
@@ -79,7 +79,7 @@ describe('ImportExcelSelectionStep Component', () => {
 
     expect(screen.getByText('my-data.xlsx')).toBeInTheDocument();
     
-    const clearButton = screen.getByRole('button', { name: /remove file/i }); // Assuming accessible name for the button
+    const clearButton = screen.getByRole('button', { name: /remove file/i });
     await user.click(clearButton);
 
     expect(mockOnFileSelect).toHaveBeenCalledWith(null);
