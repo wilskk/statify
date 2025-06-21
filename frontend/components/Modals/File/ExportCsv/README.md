@@ -1,81 +1,61 @@
-# ExportCsv Component
+# Fitur Modal: Ekspor ke CSV
 
-The `ExportCsv` component provides a user interface for exporting data to a CSV (Comma Separated Values) file. It allows users to customize various export settings before generating the file.
+Dokumen ini memberikan ringkasan teknis untuk fitur **Ekspor ke CSV**, mengikuti panduan arsitektur utama untuk komponen modal.
 
-## Features
+## 1. Ringkasan Fungsionalitas
 
-- **File Name:** Specify a custom name for the exported CSV file.
-- **Delimiter:** Choose the character used to separate values in the CSV file.
-    - Comma (`,`)
-    - Semicolon (`;`)
-    - Pipe (`|`)
-    - Tab (`\t`)
-- **Include Headers:** Option to include variable names as the first row (header row) in the CSV file.
-- **Include Variable Properties:** Option to include variable properties as the first row in the CSV file. (This appears to be distinct from headers, possibly for metadata).
-- **Quote Strings:** Option to enclose all string values in quotes.
-- **Encoding:** Select the character encoding for the CSV file.
-    - UTF-8
-    - UTF-16 LE
-    - Windows-1252
-- **Export Action:** Initiates the CSV export process with the selected options.
-- **Close Action:** Closes the export dialog or interface.
+Fitur ini memungkinkan pengguna untuk mengekspor dataset aktif ke dalam file CSV (Comma-Separated Values). Pengguna dapat mengonfigurasi beberapa aspek dari file yang dihasilkan, termasuk:
 
-## Component Props
+-   Nama file kustom.
+-   **Delimiter**: Karakter pemisah nilai (Koma, Titik Koma, Pipa, atau Tab).
+-   **Header**: Opsi untuk menyertakan nama variabel dan/atau properti variabel sebagai header.
+-   **Enkapsulasi Teks**: Opsi untuk mengapit semua nilai string dengan tanda kutip.
+-   **Pengkodean (Encoding)**: Pilihan pengkodean karakter untuk file (UTF-8, UTF-16 LE, dll.).
 
-The `ExportCsv` component accepts the following props:
+## 2. Struktur Direktori & Tanggung Jawab
 
-- `initialFilename?: string`: (Optional) The initial value for the file name input.
-- `initialDelimiter?: string`: (Optional) The initial delimiter to be selected. Defaults to comma (`,`) if not specified by the underlying `useExportCsv` hook.
-- `initialIncludeHeaders?: boolean`: (Optional) The initial state for the "Include Headers" checkbox. Defaults to `true` if not specified by the underlying `useExportCsv` hook.
-- `initialIncludeVariableProperties?: boolean`: (Optional) The initial state for the "Include Variable Properties" checkbox. Defaults to `false` if not specified by the underlying `useExportCsv` hook.
-- `initialQuoteStrings?: boolean`: (Optional) The initial state for the "Quote Strings" checkbox. Defaults to `true` if not specified by the underlying `useExportCsv` hook.
-- `initialEncoding?: string`: (Optional) The initial encoding to be selected. Defaults to `utf-8` if not specified by the underlying `useExportCsv` hook.
-- `onClose: () => void`: A mandatory function to be called when the export interface is to be closed.
-- `containerType?: "dialog" | "sidebar"`: (Optional) Specifies the type of container in which the component is rendered, which might affect its layout or behavior.
+Struktur fitur ini dirancang sesuai dengan *feature-sliced design*.
 
-## Usage
+-   **`/` (Root)**
+    -   **`index.tsx`**: **Orchestrator**. Komponen utama yang merakit antarmuka pengguna (UI). Komponen ini tidak mengandung logika bisnis, tetapi menyambungkan state dan *handler* dari `useExportCsv` ke elemen-elemen UI. Ia juga mengintegrasikan *hook* `useTourGuide` untuk fitur tur interaktif.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang digunakan dalam fitur ini (`ExportCsvProps`, `CsvExportOptions`, dll.).
+    -   **`README.md`**: (File ini) Dokumentasi ini.
 
-This component is typically used within a modal or a sidebar to provide users with CSV export functionality. It relies on the `useExportCsv` hook to manage the state and logic of the export options and the export process itself.
+-   **`hooks/`**
+    -   **`useExportCsv.ts`**: **Jantung Logika**. Hook ini mengelola semua *state management* (nama file, opsi ekspor) dan logika inti. Ia berinteraksi dengan *store* Zustand untuk mengambil data, memvalidasi, dan memicu proses ekspor dengan memanggil utilitas `generateCsvContent`.
+    -   **`useTourGuide.ts`**: Hook yang didedikasikan untuk mengelola logika dan state dari fitur tur interaktif.
 
-```tsx
-import ExportCsv from "./ExportCsv"; // Adjust path as necessary
+-   **`utils/`**
+    -   **`exportCsvUtils.ts`**: Berisi fungsi murni (`pure function`) `generateCsvContent` yang bertanggung jawab untuk membangun konten string CSV dari data mentah berdasarkan opsi yang diberikan.
 
-// Example usage:
-const MyPageComponent = () => {
-    const handleCloseExport = () => {
-        console.log("Export Csv dialog closed");
-        // Logic to hide the export UI
-    };
+## 3. Alur Kerja (Workflow)
 
-    return (
-        <ExportCsv
-            onClose={handleCloseExport}
-            initialFilename="my_data_export"
-            initialDelimiter=";"
-            containerType="dialog"
-        />
-    );
-};
-```
+1.  **Inisialisasi**: Pengguna membuka modal. `index.tsx` dirender, dan `useExportCsv` menginisialisasi *state* dengan nilai *default*.
+2.  **Konfigurasi**: Pengguna berinteraksi dengan UI (mengubah nama file, memilih delimiter). Setiap perubahan memanggil *handler* dari `useExportCsv` untuk memperbarui *state*.
+3.  **Eksekusi**: Pengguna menekan tombol "Ekspor".
+    -   Fungsi `handleExport` di dalam `useExportCsv` dipanggil.
+    -   Hook mengambil data terbaru dari `useDataStore` dan `useVariableStore`.
+    -   Data dan opsi diteruskan ke utilitas `generateCsvContent` untuk membuat string CSV.
+    -   Sebuah `Blob` dibuat dari string tersebut dengan *encoding* yang dipilih.
+    -   URL objek dibuat dari `Blob`, dan sebuah elemen `<a>` sementara digunakan untuk memicu unduhan di browser.
+4.  **Feedback**: *Toast* notifikasi (sukses atau gagal) ditampilkan. Modal ditutup jika ekspor berhasil.
 
-## Dependencies
+## 4. Properti Komponen (`ExportCsvProps`)
 
-- React
-- `@/components/ui/button`
-- `@/components/ui/input`
-- `@/components/ui/label`
-- `@/components/ui/checkbox`
-- `@/components/ui/select`
-- `@/components/ui/tooltip`
-- `lucide-react` (for icons like `Loader2`, `InfoIcon`, `HelpCircle`)
-- `../hooks/useExportCsv` (custom hook for export logic)
-- `./types` (for `ExportCsvProps` and other related types)
+Komponen `ExportCsv` menerima properti berikut:
 
-## Structure
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* yang dipanggil untuk menutup modal.
+-   `containerType?: "dialog" | "sidebar" | "panel"`: **(Opsional)** Menentukan konteks render, yang digunakan terutama untuk menyesuaikan posisi fitur tur.
+-   Selain itu, komponen juga menerima `UseExportCsvOptions` (seperti `initialFilename`, `initialDelimiter`) untuk mengatur nilai awal pada form ekspor.
 
-- `index.tsx`: Contains the main React component UI and logic.
-- `types.ts`: Defines TypeScript interfaces for props and options.
-- `hooks/`: Likely contains the `useExportCsv.ts` hook.
-- `services/`: May contain services related to data fetching or processing for export (if any).
-- `components/`: May contain sub-components used within `ExportCsv` (if any).
-- `utils/`: May contain utility functions used by the component or its parts (if any). 
+## 5. Ketergantungan Utama (Dependencies)
+
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`) untuk akses data.
+    -   `@/hooks/use-toast` untuk menampilkan notifikasi.
+    -   `@/hooks/useModal` untuk menutup modal.
+    -   Komponen UI dari `@/components/ui/*`.
+-   **Eksternal**:
+    -   `framer-motion`: Untuk animasi pada fitur tur.
+-   **Browser API**:
+    -   `Blob` dan `URL.createObjectURL` untuk pembuatan dan pengunduhan file.

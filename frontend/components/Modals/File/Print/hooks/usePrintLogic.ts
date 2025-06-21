@@ -15,7 +15,7 @@ import {
     PaperSize,
     SelectedOptions
 } from "../types"; // sebelumnya "../types/types"
-import { generateAutoTableDataFromString } from "../utils"; // Only this is needed from main utils
+import { generateAutoTableDataFromString } from "../print.utils"; // Only this is needed from main utils
 import {
     addDataGridView,
     addVariableView,

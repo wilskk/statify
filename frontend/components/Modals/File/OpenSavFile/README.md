@@ -1,47 +1,68 @@
-# OpenSavFileModal Component
+# Fitur Modal: Buka File SAV
 
-## Overview
+Dokumen ini memberikan ringkasan teknis untuk fitur **Buka File SAV**, mengikuti panduan arsitektur utama untuk komponen modal.
 
-The `OpenSavFileModal` component provides a user interface for selecting and opening SPSS statistics data files (`.sav` files). It allows users to either browse for a file or use drag-and-drop, then initiates the file processing.
+## 1. Ringkasan Fungsionalitas
 
-## Features
+Fitur ini menyediakan antarmuka bagi pengguna untuk membuka file data statistik SPSS (`.sav`). Berbeda dengan proses impor CSV atau Excel yang terjadi di sisi klien (menggunakan Web Worker), pemrosesan file `.sav` dilakukan sepenuhnya di **sisi server (backend)**.
 
--   **File Selection**: Users can select a `.sav` file using a standard file input or by dragging and dropping a file onto a designated area.
--   **File Validation**: Primarily checks for the `.sav` extension. Further validation might occur during processing.
--   **Selected File Display**: Shows the name and size of the selected file.
--   **Remove Selected File**: Allows users to clear the current file selection.
--   **Error Handling**: Displays errors related to file selection (e.g., wrong file type if explicitly checked before processing) or issues during the file processing/opening stage.
--   **Loading State**: Indicates when the file is being processed.
--   **Responsive Design**: Adapts to mobile and portrait orientations for better usability.
+Modal ini terdiri dari satu langkah sederhana:
 
-## Component Structure
+-   **Pemilihan File**: Pengguna memilih file `.sav` dari sistem lokal mereka melalui dialog file atau dengan mekanisme *drag-and-drop*. Setelah dipilih, file tersebut dikirim ke backend untuk diproses.
 
-The `OpenSavFileModal` (exported from `index.tsx`) wraps an internal step component (`OpenSavFileStep`). The overall logic, including file handling and processing initiation, is managed by the `useOpenSavFileLogic` hook.
+## 2. Struktur Direktori & Tanggung Jawab
 
--   `OpenSavFileStep`: Contains the UI for file selection (input, drag-and-drop area), displaying file information, errors, and action buttons (Cancel, Open).
+-   **`/` (Root)**
+    -   **`index.tsx`**: **Orchestrator**. Merender komponen UI `OpenSavFileStep` dan menghubungkannya dengan `useOpenSavFileLogic`. Bertanggung jawab juga untuk mengelola fitur tur.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang relevan.
+    -   **`README.md`**: (File ini) Dokumentasi fitur.
+    -   **`openSavFileUtils.ts`**: Berisi fungsi utilitas murni (`pure function`), seperti `mapSPSSTypeToInterface`, untuk membantu proses pemetaan data dari format SPSS ke format internal aplikasi.
 
-## Component Props
+-   **`hooks/`**
+    -   **`useOpenSavFileLogic.ts`**: **Jantung Logika**. Hook ini mengelola seluruh alur kerja:
+        -   Mengelola state file yang dipilih, status *loading*, dan pesan *error*.
+        -   Memanggil `services.ts` untuk mengirim file ke backend.
+        -   Menerima data JSON yang telah diproses dari backend.
+        -   Mentransformasi dan memetakan data JSON (metadata, variabel, dan baris data) ke dalam struktur data yang digunakan oleh aplikasi (Zustand stores).
+        -   Memperbarui *store* data, variabel, dan meta.
 
-The main `OpenSavFileModal` component accepts:
+-   **`services/`**
+    -   **`services.ts`**: Bertindak sebagai lapisan abstraksi untuk panggilan API. Fungsi `processSavFile` di sini membungkus panggilan API sesungguhnya yang mengirimkan file ke backend.
 
--   `onClose: () => void`: A mandatory function called when the modal should be closed (e.g., by clicking "Cancel" or after successful processing).
--   `containerType?: string`: (Optional, though often a required prop like `"dialog" | "sidebar"` in similar components) Specifies the rendering context, which might influence layout or styling.
+-   **`openSavFileUtils.ts`**: Berisi fungsi utilitas murni (`pure function`), seperti `mapSPSSTypeToInterface`, untuk membantu proses pemetaan data dari format SPSS ke format internal aplikasi.
 
-Props for the internal `OpenSavFileStep` (managed by `OpenSavFileModal` via the hook):
+## 3. Alur Kerja (Workflow)
 
--   `onClose: () => void`: To close the modal.
--   `onFileSelect: (file: File | null) => void`: Callback when a file is selected or cleared.
--   `onSubmit: () => Promise<void>`: Callback to initiate file processing.
--   `isLoading: boolean`: Indicates if processing is in progress.
--   `error: string | null`: Displays any error messages.
--   `selectedFile: File | null`: The currently selected file.
--   `isMobile: boolean`: Flag for mobile view.
--   `isPortrait: boolean`: Flag for portrait orientation.
--   `clearError: () => void`: Function to clear current errors.
+1.  **Inisialisasi**: Pengguna membuka modal. `index.tsx` merender `OpenSavFileStep`.
+2.  **Pemilihan File**: Pengguna memilih sebuah file `.sav`. `handleFileChange` dari `useOpenSavFileLogic` memperbarui *state* dan melakukan validasi ekstensi file sederhana.
+3.  **Pengiriman ke Backend**: Pengguna menekan tombol "Open".
+    -   Fungsi `handleSubmit` di dalam `useOpenSavFileLogic` dipanggil.
+    -   *Store* data dan variabel direset.
+    -   Sebuah `FormData` object dibuat yang berisi file tersebut.
+    -   `services.ts` dipanggil untuk mengirim `FormData` ke API endpoint di backend.
+4.  **Pemrosesan di Backend**: Server menerima file `.sav`, mem-parsing-nya, dan mengembalikan data terstruktur dalam format JSON.
+5.  **Pemetaan Data di Frontend**:
+    -   `useOpenSavFileLogic` menerima respons JSON.
+    -   Hook ini memetakan `sysvars` (system variables) menjadi `Variable[]`, `valueLabels` menjadi `ValueLabel[]`, dan `rows` menjadi matriks data 2D.
+    -   Fungsi dari `openSavFileUtils.ts` dan `spssDateConverter` digunakan selama proses pemetaan.
+6.  **Pembaruan Store**: Data dan variabel yang telah ditransformasi dimuat ke dalam *store* Zustand.
+7.  **Selesai**: Modal ditutup setelah data berhasil dimuat.
 
-## Usage
+## 4. Properti Komponen (`OpenSavFileProps`)
 
-The `OpenSavFileModal` is typically used within a modal management system.
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* untuk menutup modal.
+-   `containerType?: string`: **(Opsional)** Menentukan konteks render.
+
+## 5. Ketergantungan Utama (Dependencies)
+
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`, `useMetaStore`).
+    -   Komponen UI dari `@/components/ui/*`.
+    -   Layanan API (`@/services/api`) yang dipanggil melalui `services.ts`.
+-   **Eksternal**:
+    -   `framer-motion`: Untuk animasi pada fitur tur.
+-   **Arsitektural**:
+    -   **API Backend**: Ketergantungan fundamental pada endpoint server yang mampu mem-parsing file `.sav`.
 
 ```tsx
 import OpenSavFileModal from "./OpenSavFileModal"; // Adjust path as necessary
@@ -85,4 +106,4 @@ const MyDataApplication = () => {
 -   `types.ts`: Defines all TypeScript interfaces related to the component and its hook.
 -   `hooks/`: Contains `useOpenSavFileLogic.ts`.
 -   `services/`: May contain services for actual `.sav` file parsing if this logic is complex and separated (e.g., interacting with a backend or a WebAssembly SPSS reader).
--   `utils/`: May contain utility functions, for example, for specific client-side file checks or transformations if not part of the main hook/service. 
+-   `openSavFileUtils.ts`: May contain utility functions, for example, for specific client-side file checks or transformations if not part of the main hook/service. 

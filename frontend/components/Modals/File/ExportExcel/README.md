@@ -1,34 +1,63 @@
-# ExportExcel Component
+# Fitur Modal: Ekspor ke Excel
 
-The `ExportExcel` component provides a user interface for exporting data to an Excel file (either `.xlsx` or `.xls` format). It enables users to customize various export settings before generating the Excel workbook.
+Dokumen ini memberikan ringkasan teknis untuk fitur **Ekspor ke Excel**, mengikuti panduan arsitektur utama untuk komponen modal.
 
-## Features
+## 1. Ringkasan Fungsionalitas
 
-- **File Name:** Specify a custom name for the exported Excel file.
-- **Format:** Choose the Excel file format:
-    - XLSX (Excel Workbook)
-    - XLS (Excel 97-2003 Workbook)
-- **Options:** A range of checkboxes to control the content and styling of the Excel file:
-    - **Include variable names as header row:** Adds a header row with variable names to the main data sheet.
-    - **Include a separate sheet with variable properties:** Creates an additional sheet in the workbook detailing properties of each variable.
-    - **Include a separate sheet with file metadata:** Adds another sheet containing metadata about the file or dataset.
-    - **Write value labels instead of values:** For categorical variables, exports the descriptive labels instead of the underlying numerical or coded values.
-    - **Apply basic styling to header row:** Adds basic formatting (e.g., bolding) to the header row if included.
-- **Export Action:** Initiates the Excel export process with the selected options.
-- **Cancel/Close Action:** Closes the export dialog or interface.
+Fitur ini memungkinkan pengguna untuk mengekspor dataset aktif ke dalam file Microsoft Excel (`.xlsx` atau `.xls`). Pengguna dapat mengonfigurasi beberapa aspek dari file yang dihasilkan melalui sebuah antarmuka (UI), termasuk:
 
-## Component Props
+-   Nama file kustom.
+-   Format file (XLSX atau XLS).
+-   Penyertaan nama variabel sebagai header.
+-   Penyertaan sheet tambahan untuk properti variabel dan metadata file.
+-   Opsi styling dasar untuk header.
+-   Representasi data yang hilang.
 
-The `ExportExcel` component accepts the following props:
+## 2. Struktur Direktori & Tanggung Jawab
 
-- `onClose: () => void`: A mandatory function that is called when the export interface is to be closed.
-- `containerType?: "dialog" | "sidebar"`: (Optional) Specifies the type of container in which the component is rendered. This might influence its layout or behavior, and is typically passed down from a `ModalRenderer` or similar parent component.
+Struktur fitur ini dirancang sesuai dengan *feature-sliced design* yang diamanatkan.
 
-*Note: The actual export logic, including management of `exportOptions` and `isExporting` state, is handled by the internal `useExportExcelLogic` hook.*
+-   **`/` (Root)**
+    -   **`index.tsx`**: **Orchestrator**. Komponen utama yang merakit UI. Komponen ini tidak mengandung logika bisnis, tetapi menyambungkan state dan *handler* dari `useExportExcelLogic` ke elemen-elemen UI. Juga bertanggung jawab untuk mengelola fitur *tour* interaktif.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang digunakan dalam fitur ini (`ExportExcelProps`, `ExportExcelLogicState`, dll.).
+    -   **`README.md`**: (File ini) Dokumentasi ini.
 
-## Usage
+-   **`hooks/`**
+    -   **`useExportExcelLogic.ts`**: **Jantung Logika**. Hook ini mengelola semua *state management* (nama file, opsi ekspor) dan logika inti. Ia berinteraksi dengan *store* Zustand untuk mengambil data, memvalidasi, dan memicu proses ekspor.
 
-This component is designed to be used within a modal or sidebar, offering users a way to configure and trigger Excel exports.
+-   **`utils/`**
+    -   **`excelExporter.ts`**: Berisi fungsi murni (`pure function`) `generateExcelWorkbook` yang bertanggung jawab untuk membangun objek *workbook* Excel dari data mentah menggunakan pustaka `xlsx`.
+    -   **`constants.ts`**: Menyimpan konstanta statis seperti format Excel yang didukung dan konfigurasi untuk opsi-opsi di UI.
+
+## 3. Alur Kerja (Workflow)
+
+1.  **Inisialisasi**: Pengguna membuka modal. `index.tsx` dirender, dan `useExportExcelLogic` menginisialisasi *state* dengan nilai *default* (misalnya, mengambil nama file dari `metaStore`).
+2.  **Konfigurasi**: Pengguna berinteraksi dengan UI (mengubah nama file, mencentang opsi). Setiap perubahan memanggil *handler* dari `useExportExcelLogic` untuk memperbarui *state*.
+3.  **Eksekusi**: Pengguna menekan tombol "Ekspor".
+    -   Fungsi `handleExport` di dalam *hook* dipanggil.
+    -   *Hook* mengambil data terbaru dari `useDataStore`, `useVariableStore`, dan `useMetaStore`.
+    -   Jika data tidak ada, eksekusi berhenti dan *toast* notifikasi error ditampilkan.
+    -   Data dan opsi diteruskan ke utilitas `generateExcelWorkbook`.
+    -   Fungsi utilitas mengembalikan objek *workbook* `xlsx`.
+    -   *Hook* memanggil `XLSX.writeFile` untuk membuat file dan memicu unduhan di browser.
+4.  **Feedback**: *Toast* notifikasi (sukses atau gagal) ditampilkan kepada pengguna. Modal ditutup jika ekspor berhasil.
+
+## 4. Properti Komponen (`ExportExcelProps`)
+
+Komponen `ExportExcel` menerima properti berikut dari `ModalRenderer`:
+
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* yang dipanggil untuk menutup modal.
+-   `containerType?: "dialog" | "sidebar"`: **(Opsional)** Menentukan konteks render (dialog atau sidebar), yang digunakan untuk menyesuaikan tata letak dan perilaku, terutama untuk fitur *tour*.
+
+## 5. Ketergantungan Utama (Dependencies)
+
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`, `useMetaStore`) untuk akses data.
+    -   `@/hooks/use-toast` untuk menampilkan notifikasi.
+    -   Komponen UI dari `@/components/ui/*`.
+-   **Eksternal**:
+    -   `xlsx`: Untuk logika inti pembuatan file Excel.
+    -   `framer-motion`: Untuk animasi pada UI, khususnya pada *tour* dan *highlight*.
 
 ```tsx
 import ExportExcel from "./ExportExcel"; // Adjust path as necessary
