@@ -103,7 +103,7 @@ export const usePropertiesEditor = ({
             setVariableGridData(prev => ({ ...prev, [currentVarTempId]: newGridData }));
             setUnlabeledValuesCount(calculateUnlabeledValues(uniqueValuesData, currentVariable.values || []));
         }
-    }, [currentVariable, getUniqueValuesWithCounts, calculateUnlabeledValues, variableGridData, caseLimit, valueLimit]);
+    }, [currentVariable, calculateUnlabeledValues, variableGridData, caseLimit, valueLimit]);
 
     // Function to save the current variable's state to modifiedVariables list
     const saveCurrentVariableToModifiedList = useCallback(() => {

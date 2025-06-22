@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -41,6 +42,9 @@ export const FindAndReplaceModal: React.FC<FindAndReplaceModalProps> = ({
                             <X className="h-4 w-4" /><span className="sr-only">Close</span>
                         </Button>
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Find and replace text within the selected column.
+                    </DialogDescription>
                 </DialogHeader>
                 <FindReplaceContent onClose={onClose} {...contentProps} />
             </DialogContent>

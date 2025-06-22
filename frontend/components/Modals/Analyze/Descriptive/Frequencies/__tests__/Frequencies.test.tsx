@@ -15,10 +15,17 @@ import { BaseModalProps } from '@/types/modalTypes';
 // Mock the custom hooks module
 jest.mock('../hooks');
 
-// Mock the tab components for isolation
-jest.mock('../VariablesTab', () => () => <div data-testid="variables-tab">VariablesTab</div>);
-jest.mock('../StatisticsTab', () => () => <div data-testid="statistics-tab">StatisticsTab</div>);
-jest.mock('../ChartsTab', () => () => <div data-testid="charts-tab">ChartsTab</div>);
+const MockVariablesTab = () => <div data-testid="variables-tab">VariablesTab</div>;
+MockVariablesTab.displayName = 'VariablesTab';
+jest.mock('../VariablesTab', () => MockVariablesTab);
+
+const MockStatisticsTab = () => <div data-testid="statistics-tab">StatisticsTab</div>;
+MockStatisticsTab.displayName = 'StatisticsTab';
+jest.mock('../StatisticsTab', () => MockStatisticsTab);
+
+const MockChartsTab = () => <div data-testid="charts-tab">ChartsTab</div>;
+MockChartsTab.displayName = 'ChartsTab';
+jest.mock('../ChartsTab', () => MockChartsTab);
 
 // Type-safe casting for mocked hooks
 const mockedUseVariableSelection = useVariableSelection as jest.Mock;
@@ -39,7 +46,7 @@ describe('Frequencies Modal', () => {
   const mockOnClose = jest.fn();
 
   // Helper to set up mock implementations
-  const setupMocks = (selectedVariables: any[] = [], isLoading = false) => {
+  const setupMocks = (selectedVariables: any[] = [], isCalculating = false) => {
     mockedUseVariableSelection.mockReturnValue({
       selectedVariables,
       resetVariableSelection: mockResetVariableSelection,
@@ -66,7 +73,7 @@ describe('Frequencies Modal', () => {
       resetDisplaySettings: mockResetDisplaySettings,
     });
     mockedUseFrequenciesAnalysis.mockReturnValue({
-      isLoading,
+      isCalculating,
       errorMsg: null,
       runAnalysis: mockRunAnalysis,
       cancelAnalysis: mockCancelAnalysis,

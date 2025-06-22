@@ -2,21 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 import db from '@/lib/db';
-
-export interface Meta {
-    name: string;
-    location: string;
-    created: Date;
-    weight: string;
-    dates: string;
-    filter: string;
-}
-
-export type MetaStoreError = {
-    message: string;
-    source: string;
-    originalError?: any;
-};
+import { Meta, MetaStoreError } from '@/types/Meta';
 
 const META_DB_ID = 'appMeta';
 

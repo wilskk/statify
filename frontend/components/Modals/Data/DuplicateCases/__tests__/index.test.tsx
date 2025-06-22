@@ -16,10 +16,18 @@ jest.mock('../hooks/useTourGuide', () => ({
 }));
 
 // Mock child components
-jest.mock('../VariableTab', () => () => <div data-testid="variable-tab">VariableTab</div>);
-jest.mock('../OptionsTab', () => () => <div data-testid="options-tab">OptionsTab</div>);
+const MockVariableTab = () => <div data-testid="variable-tab">VariableTab</div>;
+MockVariableTab.displayName = 'VariableTab';
+jest.mock('../VariableTab', () => MockVariableTab);
+
+const MockOptionsTab = () => <div data-testid="options-tab">OptionsTab</div>;
+MockOptionsTab.displayName = 'OptionsTab';
+jest.mock('../OptionsTab', () => MockOptionsTab);
+
+const MockTourPopup = () => <div data-testid="tour-popup">TourPopup</div>;
+MockTourPopup.displayName = 'TourPopup';
 jest.mock('@/components/Common/TourComponents', () => ({
-  TourPopup: () => <div data-testid="tour-popup">TourPopup</div>,
+  TourPopup: MockTourPopup,
 }));
 
 // Mock lucide-react icons
