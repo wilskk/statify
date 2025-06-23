@@ -7,7 +7,7 @@ import { Variable, ValueLabel, MissingValuesSpec, MissingRange, spssDateTypes, V
 import { processSavFile } from "../services/services"; // Path updated
 import { spssSecondsToDateString } from "@/lib/spssDateConverter";
 import { UseOpenSavFileLogicProps, UseOpenSavFileLogicOutput } from "../types"; // Path updated
-import { mapSPSSTypeToInterface } from "../utils/utils"; // Path updated
+import { mapSPSSTypeToInterface } from "../openSavFileUtils";
 
 // ========================= HOOK LOGIC =========================
 // Main logic hook

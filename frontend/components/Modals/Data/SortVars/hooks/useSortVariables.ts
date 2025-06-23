@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { Variable } from "@/types/Variable";
+import { sortDataColumns } from "../services/sortVarsService";
 
 // Map UI column names to variable field names
 const columnToFieldMap: Record<string, keyof Variable> = {
@@ -37,122 +38,76 @@ interface UseSortVariablesProps {
 }
 
 export const useSortVariables = ({ onClose }: UseSortVariablesProps) => {
-    const { variables, sortVariables } = useVariableStore();
+    const { variables, sortVariables, overwriteVariables } = useVariableStore();
     const { data, setData } = useDataStore();
 
     const [columns] = useState<string[]>([
-        "Name",
-        "Type",
-        "Width",
-        "Decimals",
-        "Label",
-        "Values",
-        "Missing",
-        "Columns",
-        "Align",
-        "Measure",
+        "Name", "Type", "Width", "Decimals", "Label", 
+        "Values", "Missing", "Columns", "Align", "Measure",
     ]);
 
     const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-    const [savePreSortedOrder, setSavePreSortedOrder] = useState<boolean>(false);
-    const [attributeName, setAttributeName] = useState<string>("");
-
+    
     const handleSelectColumn = (column: string) => {
         setSelectedColumn(column);
     };
 
-    const saveOriginalOrder = () => {
-        if (!attributeName.trim() || !savePreSortedOrder) return;
-
-        try {
-            const originalOrder = variables.map((variable, index) => ({
-                name: variable.name,
-                position: index
-            }));
-
-            localStorage.setItem(`variableOrder_${attributeName}`, JSON.stringify(originalOrder));
-        } catch (error) {
-            console.error("Error saving original order:", error);
-            // Potentially notify user via UI state
-        }
-    };
-
     const handleOk = async () => {
         if (!selectedColumn) {
-            alert("Please select a column to sort"); // Consider replacing alert with UI notification
+            alert("Please select a column to sort by.");
             return;
         }
 
         try {
             const fieldName = columnToFieldMap[selectedColumn];
-            if (!fieldName) {
-                throw new Error(`Column ${selectedColumn} not found in mapping`);
-            }
-
+            if (!fieldName) throw new Error(`Column ${selectedColumn} not found in mapping.`);
+            
             const columnIndex = fieldToColumnIndex[fieldName as string];
-            if (columnIndex === undefined) {
-                throw new Error(`Field ${fieldName} not found in column index mapping`);
-            }
+            if (columnIndex === undefined) throw new Error(`Field ${fieldName} not found.`);
 
-            if (savePreSortedOrder) {
-                saveOriginalOrder();
-            }
+            const originalVariables = [...variables];
+            
+            const sortedVariables = [...variables].sort((a, b) => {
+                const valA = a[fieldName];
+                const valB = b[fieldName];
 
-            const originalVariableOrder = [...variables];
-            await sortVariables(sortOrder, columnIndex);
+                // Handle null/undefined values to be treated as "less than"
+                if (valA == null && valB == null) return 0; // Both are null, treat as equal
+                if (valA == null) return -1; // Nulls come first
+                if (valB == null) return 1;  // Nulls come first
+
+                if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+                if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+                return 0;
+            }).map((v, index) => ({ ...v, columnIndex: index }));
+            
+            overwriteVariables(sortedVariables);
 
             if (data.length > 0) {
-                const columnMapping = new Map<number, number>();
-                variables.forEach((variable) => {
-                    const originalVariable = originalVariableOrder.find(v => v.id === variable.id);
-                    if (originalVariable) {
-                        columnMapping.set(originalVariable.columnIndex, variable.columnIndex);
-                    }
-                });
-
-                const newData = data.map(row => {
-                    const newRow = Array(row.length).fill("");
-                    originalVariableOrder.forEach(variable => {
-                        const oldIndex = variable.columnIndex;
-                        const newIndex = columnMapping.get(oldIndex);
-
-                        if (newIndex !== undefined && oldIndex < row.length) {
-                            newRow[newIndex] = row[oldIndex];
-                        }
-                    });
-                    return newRow;
-                });
-                await setData(newData);
+                const newData = sortDataColumns(data, originalVariables, sortedVariables);
+                setData(newData);
             }
+
             onClose();
         } catch (error) {
             console.error("Error sorting variables:", error);
-            alert("An error occurred while sorting variables"); // Consider replacing alert with UI notification
+            alert("An error occurred while sorting variables.");
         }
     };
 
     const handleReset = () => {
         setSelectedColumn(null);
         setSortOrder("asc");
-        setSavePreSortedOrder(false);
-        setAttributeName("");
     };
 
     return {
         columns,
         selectedColumn,
         sortOrder,
-        savePreSortedOrder,
-        attributeName,
         handleSelectColumn,
         setSortOrder,
-        setSavePreSortedOrder,
-        setAttributeName,
         handleOk,
         handleReset,
-        // Exposing variables and data for potential direct use if needed, though typically props would flow down
-        variables, 
-        data 
     };
 }; 

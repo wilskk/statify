@@ -2,9 +2,9 @@ import React from 'react';
 import { ModalType, BaseModalProps } from '@/types/modalTypes';
 
 // Import edit modal components
-import { FindAndReplaceModal } from './FindReplace/FindReplace';
+import { FindAndReplaceModal } from './FindReplace';
 import { FindReplaceMode } from './FindReplace/types';
-import GoToModal, { GoToMode } from './GoTo/GoTo';
+import GoToModal, { GoToMode } from './GoTo';
 
 /**
  * Pre-defined modal components

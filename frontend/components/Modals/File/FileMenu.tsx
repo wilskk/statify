@@ -12,12 +12,12 @@ import {
     MenubarSubTrigger,
     MenubarSubContent,
 } from "@/components/ui/menubar";
-import { useActions } from "@/hooks/actions";
+import { useFileMenuActions } from "./hooks/useFileMenuActions";
 import { ModalType, useModal } from "@/hooks/useModal";
 
 const FileMenu: React.FC = () => {
     const { openModal } = useModal();
-    const { handleAction } = useActions();
+    const { handleAction } = useFileMenuActions();
 
     return (
         <MenubarMenu>

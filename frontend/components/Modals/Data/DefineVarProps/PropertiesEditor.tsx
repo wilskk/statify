@@ -33,6 +33,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PropertiesEditorProps } from "./types";
 import { usePropertiesEditor } from "./hooks/usePropertiesEditor";
 import { Variable } from "@/types/Variable";
+import { DATE_FORMAT_SPECS, isDateType } from "./constants/dateSpecs";
+import { getFormattedTypeName, formatDropdownText } from "./utils/typeFormatters";
 
 // Register all Handsontable modules
 registerAllModules();
@@ -43,44 +45,6 @@ const MEASURE_OPTIONS = ["scale", "ordinal", "nominal"];
 const TYPE_OPTIONS = [
     "NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "DATE", "DOLLAR",
     "CCA", "CCB", "CCC", "CCD", "CCE", "PERCENT", "STRING", "RESTRICTED_NUMERIC"
-];
-
-// Date format specifications
-const DATE_FORMAT_SPECS = [
-    { format: "dd-mmm-yyyy", type: "DATE", width: 11 },
-    { format: "dd-mmm-yy", type: "DATE", width: 9 },
-    { format: "mm/dd/yyyy", type: "ADATE", width: 10 },
-    { format: "mm/dd/yy", type: "ADATE", width: 8 },
-    { format: "dd.mm.yyyy", type: "EDATE", width: 10 },
-    { format: "dd.mm.yy", type: "EDATE", width: 8 },
-    { format: "yyyy/mm/dd", type: "SDATE", width: 10 },
-    { format: "yy/mm/dd", type: "SDATE", width: 8 },
-    { format: "yydddd", type: "JDATE", width: 5 },
-    { format: "yyyyddd", type: "JDATE", width: 7 },
-    { format: "q Q yyyy", type: "QYR", width: 8 },
-    { format: "q Q yy", type: "QYR", width: 6 },
-    { format: "mmm yyyy", type: "MOYR", width: 8 },
-    { format: "mmm yy", type: "MOYR", width: 6 },
-    { format: "ww WK yyyy", type: "WKYR", width: 10 },
-    { format: "ww WK yy", type: "WKYR", width: 8 },
-    { format: "dd-mmm-yyyy hh:mm", type: "DATETIME", width: 17 },
-    { format: "dd-mmm-yyyy hh:mm:ss", type: "DATETIME", width: 20 },
-    { format: "dd-mmm-yyyy hh:mm:ss.ss", type: "DATETIME", width: 23 },
-    { format: "mm/dd/yyyy hh:mm", type: "DATETIME", width: 16 },
-    { format: "mm/dd/yyyy hh:mm:ss", type: "DATETIME", width: 19 },
-    { format: "yyyy-mm-dd hh:mm:ss.ss", type: "DATETIME", width: 22 },
-    { format: "mm:ss", type: "TIME", width: 5 },
-    { format: "mm:ss.ss", type: "TIME", width: 8 },
-    { format: "hh:mm", type: "TIME", width: 5 },
-    { format: "hh:mm:ss", type: "TIME", width: 8 },
-    { format: "hh:mm:ss.ss", type: "TIME", width: 11 },
-    { format: "ddd hh:mm", type: "DTIME", width: 9 },
-    { format: "ddd hh:mm:ss", type: "DTIME", width: 12 },
-    { format: "ddd hh:mm:ss.ss", type: "DTIME", width: 15 },
-    { format: "Monday, Tuesday, ...", type: "WKDAY", width: 9 },
-    { format: "Mon, Tue, Wed, ...", type: "WKDAY", width: 3 },
-    { format: "January, February, ...", type: "MONTH", width: 9 },
-    { format: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 }
 ];
 
 const getVariableIcon = (variable: Variable | null) => {
@@ -94,30 +58,6 @@ const getVariableIcon = (variable: Variable | null) => {
                 ? <Shapes size={12} className="text-muted-foreground mr-1 flex-shrink-0" />
                 : <Ruler size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
     }
-};
-
-const getFormattedTypeName = (type: string): string => {
-    switch (type) {
-        case "NUMERIC": return "Numeric";
-        case "COMMA": return "Comma";
-        case "DOT": return "Dot";
-        case "SCIENTIFIC": return "Scientific";
-        case "DATE": return "Date";
-        case "DOLLAR": return "Dollar";
-        case "CCA": return "Currency A";
-        case "CCB": return "Currency B";
-        case "CCC": return "Currency C";
-        case "CCD": return "Currency D";
-        case "CCE": return "Currency E";
-        case "PERCENT": return "Percent";
-        case "STRING": return "String";
-        case "RESTRICTED_NUMERIC": return "Restricted Numeric";
-        default: return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
-    }
-};
-
-const formatDropdownText = (text: string): string => {
-    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
 const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
@@ -148,8 +88,6 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         handleSuggestMeasurement, 
         handleAcceptSuggestion, 
         handleSave,             
-        isDateType,             
-        DATE_FORMAT_SPECS       
     } = usePropertiesEditor({
         initialVariables,
         caseLimit,

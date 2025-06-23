@@ -10,6 +10,10 @@ const SaveTab: React.FC<SaveTabProps> = ({
     setSaveAnomalyIndex,
     anomalyIndexName,
     setAnomalyIndexName,
+    savePeerGroups,
+    setSavePeerGroups,
+    saveReasons,
+    setSaveReasons,
     replaceExisting,
     setReplaceExisting,
     tourActive,
@@ -54,6 +58,40 @@ const SaveTab: React.FC<SaveTabProps> = ({
                             disabled={!saveAnomalyIndex}
                         />
                     </div>
+                </div>
+
+                <div className="p-1">
+                    <div className="flex items-center">
+                        <Checkbox
+                            id="savePeerGroups"
+                            checked={savePeerGroups}
+                            onCheckedChange={(checked) => setSavePeerGroups(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="savePeerGroups" className="text-sm font-medium cursor-pointer">
+                            Peer group membership
+                        </Label>
+                    </div>
+                    <p className="text-xs mt-2 ml-6 text-muted-foreground">
+                        Saves peer group ID, size, and percentage size for each case.
+                    </p>
+                </div>
+
+                <div className="p-1">
+                     <div className="flex items-center">
+                        <Checkbox
+                            id="saveReasons"
+                            checked={saveReasons}
+                            onCheckedChange={(checked) => setSaveReasons(!!checked)}
+                            className="mr-2"
+                        />
+                        <Label htmlFor="saveReasons" className="text-sm font-medium cursor-pointer">
+                            Reasons for unusualness
+                        </Label>
+                    </div>
+                    <p className="text-xs mt-2 ml-6 text-muted-foreground">
+                        Saves the variable, its value, and its deviation from the peer norm for each reason.
+                    </p>
                 </div>
 
                 <div className="border-t border-border pt-4 mt-6">

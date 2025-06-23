@@ -20,7 +20,7 @@ import {
     parseSheetForPreview,
     processSheetForImport,
     generateVariablesFromData
-} from "../utils/utils";
+} from "../importExcel.utils";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -431,7 +431,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                         <div id="excel-config-worksheet-wrapper" className="flex-1 min-w-0 relative">
                             <Label htmlFor="worksheet-select" className={cn("text-xs font-medium text-muted-foreground", tourActive && currentStep === 0 && "text-primary")}>Worksheet</Label>
                             <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={isLoadingPreview || isProcessing || sheetNames.length === 0}>
-                                <SelectTrigger id="worksheet-select" className="w-full mt-1 h-9">
+                                <SelectTrigger className="w-full mt-1" data-testid="worksheet-select-trigger">
                                     <SelectValue placeholder={sheetNames.length === 0 ? "No sheets found" : "Select a sheet"} />
                                 </SelectTrigger>
                                 <SelectContent>

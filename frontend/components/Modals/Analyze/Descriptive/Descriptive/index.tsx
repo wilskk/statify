@@ -24,8 +24,8 @@ import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourCompo
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
-import VariablesTab from "./VariablesTab";
-import StatisticsTab from "./StatisticsTab";
+import VariablesTab from "./components/VariablesTab";
+import StatisticsTab from "./components/StatisticsTab";
 import { TabControlProps } from "./hooks/useTourGuide";
 
 // Komponen utama konten Descriptives yang agnostik terhadap container

@@ -51,6 +51,10 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
         handleReorderVariable,
         handleReset,
         handleConfirm,
+        displayFrequencies,
+        setDisplayFrequencies,
+        filterByIndicator,
+        setFilterByIndicator,
     } = useDuplicateCases({ onClose, activeTab, setActiveTab });
 
     const tabControl = useMemo((): TabControlProps => ({
@@ -111,20 +115,24 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
     };
 
     const optionsTabProps: OptionsTabProps = {
-        primaryCaseIndicator: primaryCaseIndicator === "first",
-        setPrimaryCaseIndicator: (value: boolean) => setPrimaryCaseIndicator(value ? "first" : "last"),
-        primaryName,
-        setPrimaryName,
-        sequentialCount,
-        setSequentialCount,
-        sequentialName,
-        setSequentialName,
-        moveMatchingToTop,
-        setMoveMatchingToTop,
-        containerType,
-        tourActive,
-        currentStep,
-        tourSteps
+        primaryCaseIndicator: primaryCaseIndicator,
+        setPrimaryCaseIndicator: setPrimaryCaseIndicator,
+        primaryName: primaryName,
+        setPrimaryName: setPrimaryName,
+        sequentialCount: sequentialCount,
+        setSequentialCount: setSequentialCount,
+        sequentialName: sequentialName,
+        setSequentialName: setSequentialName,
+        moveMatchingToTop: moveMatchingToTop,
+        setMoveMatchingToTop: setMoveMatchingToTop,
+        displayFrequencies: displayFrequencies,
+        setDisplayFrequencies: setDisplayFrequencies,
+        filterByIndicator: filterByIndicator,
+        setFilterByIndicator: setFilterByIndicator,
+        containerType: containerType,
+        tourActive: tourActive,
+        currentStep: currentStep,
+        tourSteps: tourSteps
     };
 
     return (

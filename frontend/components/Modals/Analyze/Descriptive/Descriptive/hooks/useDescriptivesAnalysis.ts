@@ -6,7 +6,7 @@ import {
     DescriptiveResult, 
     ZScoreData
 } from '../types';
-import { formatDescriptiveTableOld } from '../formatDescriptiveTable';
+import { formatDescriptiveTableOld } from '../utils/formatters';
 import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
 

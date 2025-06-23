@@ -1,53 +1,50 @@
-# Transpose Data Feature
+# Fitur: Transpose Data
 
-This document explains the functionality of the Transpose Data feature, which allows users to switch rows and columns in their dataset.
+Dokumen ini menjelaskan fungsionalitas dan arsitektur dari fitur "Transpose Data", yang memungkinkan pengguna untuk menukar baris dan kolom dalam dataset mereka.
 
-## Overview
+## Ringkasan Fungsionalitas
 
-The Transpose Data feature enables users to flip the orientation of their dataset, transforming rows into columns and columns into rows. This operation is useful for changing data layout, preparing data for specific analyses, or creating a different view of the same information.
+Fitur Transpose mengubah orientasi dataset, mengubah variabel menjadi kasus dan sebaliknya.
 
-## Options Explained
+-   **Seleksi Variabel**: Pengguna memilih variabel mana dari dataset yang akan diubah menjadi baris dalam dataset baru.
+-   **Variabel Penamaan (Opsional)**: Pengguna dapat memilih satu variabel yang nilainya akan digunakan sebagai nama untuk variabel (kolom) baru yang terbentuk setelah transposisi.
+    -   Jika tidak ada variabel penamaan yang dipilih, nama default (`Var1`, `Var2`, dst.) akan dibuat.
+-   **Variabel ID Otomatis**: Sebuah variabel baru bernama `case_lbl` akan otomatis dibuat untuk menyimpan nama-nama variabel asli yang ditransposisi, berfungsi sebagai pengidentifikasi untuk baris-baris baru.
 
-### Variable Selection
+## Arsitektur & Pola Desain
 
-#### Variables to Transpose
+Fitur ini mengikuti panduan arsitektur utama untuk komponen modal, dengan pemisahan yang jelas antara logika, UI, dan layanan.
 
-These are the variables that will be transposed in the operation. You can select any subset of variables from your dataset to include in the transposition.
+```
+/Transpose
+├── 📂 hooks/
+│   └── 📄 useTranspose.ts       // Mengelola state & logika UI.
+├── 📂 services/
+│   └── 📄 transposeService.ts  // Logika bisnis inti untuk transposisi data.
+├── 📄 index.tsx                 // Titik masuk & perakit (Orchestrator).
+├── 📄 README.md                 // Dokumen ini.
+├── 📄 TransposeUI.tsx           // Komponen UI (Presentational).
+└── 📄 types.ts                 // Definisi tipe TypeScript.
+```
 
-#### Name Variable
+-   **`index.tsx` (Orchestrator)**: Hanya bertindak sebagai perakit. Ia memanggil *hook* `useTranspose` dan menyambungkan propertinya ke komponen `TransposeUI`.
+-   **`TransposeUI.tsx` (Komponen UI)**: Komponen "bodoh" yang bertanggung jawab untuk menampilkan semua elemen antarmuka pengguna, termasuk daftar variabel dan tombol.
+-   **`hooks/useTranspose.ts` (Hook Logika)**: Mengelola state UI (seperti variabel mana yang tersedia, dipilih, dan untuk penamaan) dan menangani interaksi pengguna, mendelegasikan pemrosesan data ke *service*.
+-   **`services/transposeService.ts` (Service)**: Berisi fungsi murni `transposeDataService` yang melakukan semua pekerjaan berat: mengambil data, variabel yang dipilih, dan variabel penamaan, lalu mengembalikan dataset dan daftar variabel baru yang sudah ditransposisi.
+-   **`types.ts` (Definisi Tipe)**: Mengekspor semua tipe dan *props* yang diperlukan untuk memastikan keamanan tipe di seluruh fitur.
 
-The name variable determines what will be used for the names of the new variables created after transposition:
-- If specified, the values from this variable will be used as names for the newly created variables
-- If not specified, the system will generate default names (case1, case2, etc.)
+## Alur Kerja
 
-### Transposition Options
-
-#### Create Variable Names from First Row of Data
-
-When enabled, the values from the first row of data in the selected variables are used as the names for the new variables, and the first row of data is excluded from the transposed dataset.
-
-#### Keep Original Variable as ID Variable
-
-When enabled, a selected variable is kept as an identifier in the transposed dataset. This variable's values will not be transposed but will instead be used to identify the new rows.
-
-## Algorithm Details
-
-The transpose operation works as follows:
-
-1. **Preparation**:
-   - Selected variables are identified for transposition
-   - If a name variable is specified, its values are extracted for use as new variable names
-   - If "Create Variable Names from First Row" is enabled, values from the first row are captured
-
-2. **Transposition Process**:
-   - Each row in the original dataset becomes a column in the new dataset
-   - Each column in the original dataset becomes a row in the new dataset
-   - If an ID variable is kept, its values are preserved as identifiers for the new rows
-
-3. **Name Assignment**:
-   - New variable names are assigned based on the selected naming option
-   - Names are validated and modified if needed to ensure they are valid variable names
-   - Default names are generated for any missing or invalid names
+1.  **Inisialisasi**: `useTranspose` mengambil daftar variabel saat ini dari `useVariableStore`.
+2.  **Interaksi Pengguna**: Pengguna menyeret variabel ke dalam daftar "Variable(s)" dan (opsional) ke daftar "Name Variable".
+3.  **Eksekusi**:
+    -   Pengguna mengklik "OK".
+    -   `handleOk` di dalam `useTranspose` dipanggil.
+    -   Ia memanggil `transposeDataService`, memberikan data saat ini dan variabel yang dipilih pengguna.
+    -   *Service* melakukan transposisi, membuat variabel `case_lbl`, dan membuat nama variabel baru.
+    -   Hasilnya (data baru dan variabel baru) dikembalikan ke *hook*.
+4.  **Pembaruan State**: *Hook* `useTranspose` memperbarui `useDataStore` dan `useVariableStore` dengan data dan variabel baru.
+5.  **Selesai**: Modal ditutup.
 
 ## Usage Examples
 

@@ -14,7 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon, Database, RotateCcw, ArrowRightLeft, AlertTriangle, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
-import { RestructureMethod, UseRestructureReturn } from "./useRestructure";
+import { RestructureMethod } from "./types";
+import { UseRestructureReturn } from "./hooks/useRestructure";
 
 interface RestructureUIProps {
     hook: UseRestructureReturn;

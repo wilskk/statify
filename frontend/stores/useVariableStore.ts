@@ -4,7 +4,7 @@ import { devtools } from "zustand/middleware";
 import { variableService } from "@/services/data";
 import { Variable } from "@/types/Variable";
 import { v4 as uuidv4 } from 'uuid';
-import { transformVariablesToTableData } from '@/components/pages/dashboard/variableTable/utils';
+import { transformVariablesToTableData } from '@/app/dashboard/components/variableTable/utils';
 import { useDataStore } from '@/stores/useDataStore';
 
 export type VariableStoreError = {

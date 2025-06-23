@@ -34,6 +34,7 @@ export interface UseImportExcelLogicOutput {
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setError: React.Dispatch<React.SetStateAction<string | null>>;
     setStage: React.Dispatch<React.SetStateAction<ImportExcelStage>>;
+    setParsedSheets: React.Dispatch<React.SetStateAction<SheetData[] | null>>;
 }
 
 // Props untuk komponen utama ImportExcel (sebelumnya ImportExcelUIProps)

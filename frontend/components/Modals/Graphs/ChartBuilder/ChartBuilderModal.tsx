@@ -23,7 +23,7 @@ import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
 import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import ResultOutput from "@/components/Output/ResultOutput";
+import ResultOutput from "@/app/dashboard/components/output/ResultOutput";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import { X } from "lucide-react";
 
@@ -50,7 +50,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
   const { addStatistic, addLog, addAnalytic } = useResultStore();
   // const { data, loadData } = useDataStore(); // Mengambil data dari store
-  const [showResult, setShowResult] = useState(false);
 
   const variables = useVariableStore.getState().variables;
   const data = useDataStore((state) => state.data);
@@ -243,7 +242,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
             setIsCalculating(false);
             onClose(); // Tutup modal
-            setShowResult(true);
           } catch (err) {
             console.error("Error during post-chart actions:", err);
             setErrorMsg("Terjadi kesalahan saat menyimpan hasil.");
@@ -338,10 +336,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
     return true; // Jika semua validasi lolos
   };
-
-  if (showResult) {
-    return <ResultOutput />;
-  }
 
   // Content for both dialog and sidebar rendering
   const ModalContent = () => (

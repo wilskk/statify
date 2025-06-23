@@ -1,69 +1,72 @@
-# Restructure Data Component
+# Restructure Data Wizard
 
-## Overview
+## 1. Overview
 
-This component provides a user-friendly, multi-step wizard for restructuring datasets. The functionality is designed to be analogous to the **Restructure Data Wizard** found in statistical software like **SPSS**, making it intuitive for users familiar with that environment.
+This component provides a user-friendly, multi-step wizard for restructuring datasets, analogous to the **Restructure Data Wizard** found in statistical software like SPSS. It allows users to transform data between "wide" and "long" formats, or transpose the entire dataset.
 
-The primary purpose of this module is to gather user specifications for a data restructuring task and package them into a configuration object. It does **not** perform the data transformation itself; instead, it prepares the configuration to be sent to a backend service for processing.
+The entire restructuring process is handled on the **frontend**. The wizard guides the user through specifying the transformation, and upon completion, the logic is executed by a client-side service which then updates the application's state with the newly structured data and variables.
 
-## Component Architecture
+## 2. Component Architecture
 
-The feature is broken down into several key files:
+The feature is architecturally divided into several key files to separate concerns:
 
--   `index.tsx`: The main entry point that integrates the UI (`RestructureUI`) with the state management and logic (`useRestructure` hook).
--   `RestructureUI.tsx`: A presentational component responsible for rendering the wizard's user interface. It is driven entirely by the state and handlers provided by the `useRestructure` hook.
--   `useRestructure.ts`: The logical core of the component. This custom React hook manages the wizard's state, including the current step, selected method, variable lists, user-selected options, and input validation.
--   `types.ts`: Contains all relevant TypeScript interfaces and enums, such as `RestructureMethod`, `RestructureConfig`, and the hook's return type `UseRestructureReturn`.
--   `RestructureTest.tsx`: A test file for the component.
+-   **`index.tsx`**: The main entry point that integrates the UI (`RestructureUI`) with the state management and logic from the `useRestructure` hook.
+-   **`RestructureUI.tsx`**: A presentational component responsible for rendering the wizard's tab-based user interface. It is driven entirely by the state and handlers provided by the `useRestructure` hook.
+-   **`useRestructure.ts`**: The logical core of the component. This custom hook manages the wizard's state, including the current step, selected method, variable lists, user-selected options, and input validation. It orchestrates the entire process.
+-   **`restructureService.ts`**: This is the service layer that contains the pure data transformation logic. It receives the current data, variables, and a configuration object from the hook, performs the restructuring, and returns the new data and variable definitions.
+-   **`types.ts`**: Contains all relevant TypeScript interfaces and enums for the feature (`RestructureMethod`, `RestructureConfig`, etc.).
 
-## Logic and Flow (Comparison to SPSS)
+## 3. Wizard Logic and Flow
 
-The wizard guides the user through a three-step process:
+The wizard guides the user through a three-step process, enforced by tab navigation that is enabled/disabled based on step completion.
 
 ### Step 1: Select Restructure Method
 
-The user chooses one of three restructuring methods, which directly correspond to the main options in SPSS:
+The user chooses one of three restructuring methods:
 
-1.  **Variables to Cases**: This is used to convert data from a "wide" format to a "long" format. For example, if a dataset has columns like `Test1`, `Test2`, and `Test3`, this method would transform them into a single `Test_Score` column, with a new `Index` column identifying which original test the score belongs to.
-2.  **Cases to Variables**: This is the inverse operation, used to convert data from a "long" format to a "wide" format. For example, it can take rows of measurements over time and pivot them into distinct columns like `Time1_Score`, `Time2_Score`, etc.
-3.  **Transpose All Data**: This performs a simple, complete transposition of the dataset, swapping all rows and columns.
+1.  **Variables to Cases**: Converts data from a "wide" format to a "long" format. Multiple columns (e.g., `Test1`, `Test2`) are stacked into fewer columns (e.g., a single `Test_Score` column and an `Index` column).
+2.  **Cases to Variables**: The inverse operation, converting data from "long" to "wide". Rows of measurements are pivoted into distinct columns.
+3.  **Transpose All Data**: Performs a simple, complete transposition of the dataset, swapping all rows and columns.
 
 ### Step 2: Configure Variables
 
-Based on the method selected in Step 1, the user configures the variables for the operation using a drag-and-drop interface (`VariableListManager`):
+Based on the chosen method, the user configures the variables for the operation using a drag-and-drop interface:
 
--   For **Variables to Cases**, the user must select:
+-   **Variables to Cases**:
     -   **Variables to Restructure**: The set of variables (columns) to be converted into rows.
-    -   **Index Variables**: One or more variables that identify the groups of new cases (e.g., a subject ID that remains constant across the new rows).
--   For **Cases to Variables**, the user must select:
-    -   **Variables to Restructure**: The variable whose values will be restructured.
-    -   **Identifier Variables**: The variable whose unique values will form the new column names (e.g., a 'Time' variable with values 'T1', 'T2').
--   For **Transpose**, no variable selection is needed as the entire dataset is affected.
+    -   **Index Variables**: Variables that identify the groups of new cases (e.g., a subject ID).
+-   **Cases to Variables**:
+    -   **Identifier Variables**: The variable whose unique values will form the new column names (e.g., a 'Time' variable).
+    -   **Variables to Restructure**: The variable whose values will be restructured into the new columns.
+-   **Transpose All Data**: No variable selection is needed.
 
-### Step 3: Set Options
+The hook (`useRestructure.ts`) includes validation to ensure that the appropriate variables are selected for the chosen method before allowing the user to proceed.
 
-The user can configure final options for the new dataset. These also mirror options available in SPSS:
+### Step 3: Set Options and Finish
 
--   For **Variables to Cases**:
-    -   `Create count variable`: Adds a column counting non-missing values.
-    -   `Create index variable`: Adds a column identifying the original variable for each new case.
--   For **Cases to Variables**:
+The user configures final, method-specific options:
+
+-   **Variables to Cases**:
+    -   `Create count variable`: Adds a column counting non-missing values from the original restructured variables.
+    -   `Create index variable`: Adds a column identifying the original variable name for each new case.
+-   **Cases to Variables**:
     -   `Drop empty variables`: Removes new columns that contain only missing values after restructuring.
 
-## Data Handling and Backend Integration
+Upon clicking "Finish", the `useRestructure` hook assembles a `RestructureConfig` object and passes it, along with the data and variables, to the `restructureData` function in `restructureService.ts`. The service returns the transformed data, which is then used to update the global `useDataStore` and `useVariableStore`.
+
+## 4. Data Handling and Backend Integration
 
 A critical aspect of this component's logic is that it is a **frontend configuration client**. The `handleFinish` function in the `useRestructure` hook performs a final validation and then assembles all the user's choices into a `RestructureConfig` object.
 
 The code includes a `TODO` comment indicating that this `config` object is intended to be sent to a backend API endpoint for the actual data processing. The current implementation concludes by showing a success alert for demonstration purposes.
 
-
 This document explains the functionality of the Restructure Data feature, which allows users to restructure datasets in different ways to support various types of analyses.
 
-## Overview
+## 5. Overview
 
 The Restructure Data feature allows users to transform the structure of their dataset to facilitate different analytical approaches. It supports converting variables to cases, cases to variables, and transposing all data. This wizard-based interface guides users through selecting a restructuring method, configuring variables, and setting options.
 
-## Options Explained
+## 6. Options Explained
 
 ### Restructure Methods
 
@@ -116,7 +119,7 @@ When enabled, creates a variable that identifies which original variable each ca
 
 When enabled, removes variables that contain only missing values after restructuring.
 
-## Algorithm Details
+## 7. Algorithm Details
 
 The restructuring algorithms work as follows:
 
@@ -138,7 +141,7 @@ The restructuring algorithms work as follows:
    - The first row becomes the variable names for the transposed dataset
    - All data points are rotated accordingly
 
-## Usage Examples
+## 8. Usage Examples
 
 ### Long to Wide Format (Cases to Variables)
 
@@ -164,14 +167,14 @@ To completely transpose your dataset (rows become columns, columns become rows):
 2. No variable selection is needed
 3. Click Finish to process
 
-## Notes
+## 9. Notes
 
 - The restructuring process creates a new dataset; it does not modify your original data.
 - Variable types (numeric, string, etc.) are preserved during restructuring when possible.
 - When creating new variables, appropriate variable types are assigned based on the source data.
 - For large datasets, the restructuring process may take some time to complete.
 
-## Implementation Details
+## 10. Implementation Details
 
 The Restructure Data feature is implemented as a wizard-based interface with three steps:
 
@@ -194,7 +197,7 @@ The Restructure Data feature is implemented as a wizard-based interface with thr
 
 Each step includes validation to ensure the user has provided all necessary inputs before proceeding. The wizard provides back/next navigation to move between steps, and includes a summary of selected options before finalizing.
 
-## Sample Test Data
+## 11. Sample Test Data
 
 To test the Restructure Data feature, different sample datasets would be needed based on the restructuring method:
 

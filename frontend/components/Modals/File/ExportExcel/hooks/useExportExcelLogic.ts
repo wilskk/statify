@@ -44,8 +44,8 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
             return;
         }
 
-        try {
-            startExportTransition(async () => {
+        startExportTransition(async () => {
+            try {
                 // Map options to the format expected by the utility function
                 const utilOptions: ExcelUtilOptions = {
                     includeHeaders: exportOptions.includeHeaders,
@@ -70,15 +70,15 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                 });
 
                 onClose();
-            });
-        } catch (error) {
-            console.error("Export error:", error);
-            toast({
-                title: "Export Failed",
-                description: error instanceof Error ? error.message : "An unexpected error occurred during export.",
-                variant: "destructive"
-            });
-        }
+            } catch (error) {
+                console.error("Export error:", error);
+                toast({
+                    title: "Export Failed",
+                    description: error instanceof Error ? error.message : "An unexpected error occurred during export.",
+                    variant: "destructive"
+                });
+            }
+        });
     };
 
     return {
