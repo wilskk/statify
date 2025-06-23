@@ -19,7 +19,7 @@ import FileMenu from "@/components/Modals/File/FileMenu";
 import EditMenu from "@/components/Modals/Edit/EditMenu";
 import DataMenu from "@/components/Modals/Data/DataMenu";
 import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
-import ClassifyMenu from "@/components/Modals/Analyze/classify/classify-menu";
+import ClassifyMenu from "@/components/Modals/Analyze/Classify/classify-menu";
 import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
 
 const Navbar: React.FC = () => {
