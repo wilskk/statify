@@ -10,7 +10,7 @@ export const useStatisticsSettings = ({
   initialDisplayStatistics = {},
   initialDisplayOrder = 'variableList',
   initialSaveStandardized = false
-}: StatisticsSettingsProps = {}): StatisticsSettingsResult => {
+}: Omit<StatisticsSettingsProps, 'resetStatisticsSettings'> = {}) => {
   const defaultStatistics: DescriptiveStatisticsOptions = {
     mean: true,
     stdDev: true,

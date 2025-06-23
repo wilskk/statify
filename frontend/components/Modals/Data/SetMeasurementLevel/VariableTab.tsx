@@ -7,26 +7,27 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import { VariableTabProps } from "./types"; // Import from new types.ts
 
 // Props interface for VariableTab component
-interface VariableTabProps {
-    onClose: () => void;
-    unknownVariables: Variable[];
-    nominalVariables: Variable[];
-    ordinalVariables: Variable[];
-    scaleVariables: Variable[];
-    highlightedVariable: { id: string, source: string } | null;
-    setHighlightedVariable: (value: { id: string, source: string } | null) => void;
-    handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
-    handleReorderVariable: (listId: string, variables: Variable[]) => void;
-    handleSave: () => void;
-    handleReset: () => void;
-    containerType?: "dialog" | "sidebar";
-}
+// interface VariableTabProps { // This will be removed
+//     onClose: () => void;
+//     unknownVariables: Variable[];
+//     nominalVariables: Variable[];
+//     ordinalVariables: Variable[];
+//     scaleVariables: Variable[];
+//     highlightedVariable: { id: string, source: string } | null;
+//     setHighlightedVariable: (value: { id: string, source: string } | null) => void;
+//     handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
+//     handleReorderVariable: (listId: string, variables: Variable[]) => void;
+//     handleSave: () => void;
+//     handleReset: () => void;
+//     containerType?: "dialog" | "sidebar";
+// }
 
 // The content component that's shared between dialog and sidebar
 const VariableTabContent: FC<VariableTabProps> = ({
@@ -93,13 +94,30 @@ const VariableTabContent: FC<VariableTabProps> = ({
                 />
             </div>
 
-            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
-                <div className="flex justify-end space-x-3">
-                    <Button size="sm" onClick={handleSave}>OK</Button>
-                    {/* <Button variant="outline" size="sm">Paste</Button> */}
-                    <Button variant="outline" size="sm" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-                    <Button variant="outline" size="sm">Help</Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon (Removed) */}
+                <div className="flex items-center text-muted-foreground">
+                    {/* <HelpCircle size={18} className="mr-1" /> */}
+                </div>
+                {/* Right: Buttons */} 
+                <div>
+                    {/* <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button> */}
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave}>
+                        OK
+                    </Button>
                 </div>
             </div>
         </>

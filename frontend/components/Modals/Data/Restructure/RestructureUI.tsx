@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon, Database, RotateCcw, ArrowRightLeft, AlertTriangle } from "lucide-react";
+import { InfoIcon, Database, RotateCcw, ArrowRightLeft, AlertTriangle, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { RestructureMethod, UseRestructureReturn } from "./useRestructure";
@@ -424,23 +424,28 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
             </div>
 
             {/* Footer */}
-            <div className="border-t p-4">
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon */}
+                <div className="flex items-center text-muted-foreground cursor-pointer hover:text-primary transition-colors">
+                    <HelpCircle size={18} className="mr-1" />
+                </div>
+                {/* Right: Buttons */}
                 <div className="flex justify-between">
                     <Button 
                         variant="outline" 
                         onClick={handleBack}
                         disabled={!stepConfig.canGoBack}
+                        className="mr-2"
                     >
                         Back
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={onClose}>
+                        <Button variant="outline" onClick={onClose} className="mr-2">
                             Cancel
                         </Button>
                         {stepConfig.showFinish ? (
                             <Button 
                                 onClick={() => handleFinish(onClose)}
-                                className="bg-blue-600 hover:bg-blue-700"
                             >
                                 Finish
                             </Button>
@@ -448,7 +453,6 @@ export const RestructureUI: React.FC<RestructureUIProps> = ({ hook, onClose }) =
                             <Button 
                                 onClick={handleNext}
                                 disabled={!stepConfig.canProceed}
-                                className="bg-blue-600 hover:bg-blue-700"
                             >
                                 Next
                             </Button>

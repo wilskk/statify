@@ -17,7 +17,6 @@ const WeightCases = lazy(() => import('@/components/Modals/Data/WeightCases'));
 const DuplicateCases = lazy(() => import('@/components/Modals/Data/DuplicateCases'));
 const SelectCases = lazy(() => import('@/components/Modals/Data/SelectCases'));
 const UnusualCases = lazy(() => import('@/components/Modals/Data/UnusualCases'));
-const DefineValidationRules = lazy(() => import('@/components/Modals/Data/Validate/DefineValidationRules'));
 
 /**
  * LoadingModal - Displayed while modal components are loading
@@ -67,9 +66,6 @@ export const DATA_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModal
   [ModalType.Transpose]: withSuspense(Transpose as any),
   [ModalType.Restructure]: withSuspense(Restructure as any),
   [ModalType.Aggregate]: withSuspense(Aggregate as any),
-  
-  // Validation
-  [ModalType.DefineValidationRules]: withSuspense(DefineValidationRules as any),
 };
 
 /**
@@ -114,7 +110,4 @@ export const DATA_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   [ModalType.Transpose]: "sidebar",
   [ModalType.Restructure]: "sidebar",
   [ModalType.Aggregate]: "sidebar",
-  
-  // Validation
-  [ModalType.DefineValidationRules]: "sidebar",
 }; 

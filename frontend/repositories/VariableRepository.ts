@@ -31,26 +31,9 @@ export class VariableRepository {
 
   async saveVariable(variable: Variable): Promise<number> {
     try {
-      // If variable has an ID, update it, otherwise add it
-      if (variable.id !== undefined) {
-        await db.variables.update(variable.id, {
-          columnIndex: variable.columnIndex,
-          name: variable.name,
-          type: variable.type,
-          width: variable.width,
-          decimals: variable.decimals,
-          label: variable.label,
-          values: variable.values,
-          missing: variable.missing,
-          columns: variable.columns,
-          align: variable.align,
-          measure: variable.measure,
-          role: variable.role
-        });
-        return variable.id;
-      } else {
-        return await db.variables.add(variable);
-      }
+      // Insert or update variable in one step
+      const id = await db.variables.put(variable);
+      return id;
     } catch (error) {
       console.error("Failed to save variable:", error);
       throw error;
@@ -87,12 +70,8 @@ export class VariableRepository {
 
   async saveValueLabel(valueLabel: ValueLabel): Promise<number> {
     try {
-      if (valueLabel.id !== undefined) {
-        await db.valueLabels.update(valueLabel.id, valueLabel);
-        return valueLabel.id;
-      } else {
-        return await db.valueLabels.add(valueLabel);
-      }
+      // Insert or update value label in one step
+      return await db.valueLabels.put(valueLabel);
     } catch (error) {
       console.error("Failed to save value label:", error);
       throw error;
@@ -128,18 +107,11 @@ export class VariableRepository {
 
   async updateValueLabelsVariableName(oldName: string, newName: string): Promise<void> {
     try {
-      // Get all value labels for the old variable name
-      const valueLabels = await this.getValueLabels(oldName);
-      
-      // Update each value label with the new variable name
-      await db.transaction('rw', db.valueLabels, async () => {
-        for (const valueLabel of valueLabels) {
-          await db.valueLabels.update(valueLabel.id!, {
-            ...valueLabel,
-            variableName: newName
-          });
-        }
-      });
+      // Bulk update variableName for matching value labels
+      await db.valueLabels
+        .where('variableName')
+        .equals(oldName)
+        .modify({ variableName: newName });
     } catch (error) {
       console.error(`Failed to update value labels from ${oldName} to ${newName}:`, error);
       throw error;

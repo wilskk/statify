@@ -390,18 +390,18 @@ export const formatMEstimatorsTable = (results: ExploreAggregatedResults, params
         columnHeaders = [
             { header: '', key: 'rowHeader1' },
             { header: factorVarName, key: 'rowHeader2' },
-            { header: "Huber's M-Estimator<sup>a</sup>", key: 'huber' },
-            { header: "Tukey's Biweight<sup>b</sup>", key: 'tukey' },
-            { header: "Hampel's M-Estimator<sup>c</sup>", key: 'hampel' },
-            { header: "Andrews' Wave<sup>d</sup>", key: 'andrews' }
+            { header: "Huber's M-Estimator", key: 'huber' },
+            { header: "Tukey's Biweight", key: 'tukey' },
+            { header: "Hampel's M-Estimator", key: 'hampel' },
+            { header: "Andrews' Wave", key: 'andrews' }
         ];
     } else {
         columnHeaders = [
             { header: '', key: 'rowHeader1' },
-            { header: "Huber's M-Estimator<sup>a</sup>", key: 'huber' },
-            { header: "Tukey's Biweight<sup>b</sup>", key: 'tukey' },
-            { header: "Hampel's M-Estimator<sup>c</sup>", key: 'hampel' },
-            { header: "Andrews' Wave<sup>d</sup>", key: 'andrews' }
+            { header: "Huber's M-Estimator", key: 'huber' },
+            { header: "Tukey's Biweight", key: 'tukey' },
+            { header: "Hampel's M-Estimator", key: 'hampel' },
+            { header: "Andrews' Wave", key: 'andrews' }
         ];
     }
     
@@ -662,7 +662,7 @@ export const formatExtremeValuesTable = (results: ExploreAggregatedResults, para
     }
     
     return {
-        title: "Extreme Values" + (footnotes.length > 0 ? "<sup>a</sup>" : ""),
+        title: "Extreme Values",
         columnHeaders: columnHeaders,
         rows: rows,
         footnotes: footnotes.length > 0 ? footnotes : undefined,

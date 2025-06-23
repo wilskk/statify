@@ -3,12 +3,15 @@
 import "@/app/globals.css";
 import Header from "@/components/layout/dashboard/Header";
 import Footer from "@/components/layout/dashboard/Footer";
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, lazy, Suspense, useEffect } from "react";
 import DataLoader from "@/components/ui/DataLoader";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useMobile } from "@/hooks/useMobile";
 import { useModal } from "@/hooks/useModal";
 import dynamic from 'next/dynamic';
+import { OnbordaProvider, Onborda } from "onborda";
+import { TourCard } from "@/components/ui/TourCard";
+import { dashboardTours } from "@/constants/tours";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
@@ -62,90 +65,136 @@ export default function DashboardLayout({
         return topModalId === modalId;
     };
 
-    return (
-        <>
-            <DataLoader />
+    // Add custom CSS for tour inside resizable panel
+    useEffect(() => {
+        // Create style element
+        const style = document.createElement('style');
+        style.id = 'onborda-custom-styles';
+        style.innerHTML = `
+            .onborda-tooltip {
+                position: absolute !important;
+                left: auto !important;
+                top: auto !important;
+                transform: none !important;
+                z-index: 9999 !important;
+            }
+            .resize-content {
+                position: relative !important; 
+                overflow: visible !important;
+            }
+            .tour-card {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .arrow-container {
+                position: relative !important;
+                z-index: 10000 !important;
+            }
+        `;
+        
+        // Add style to document head
+        document.head.appendChild(style);
+        
+        // Clean up
+        return () => {
+            const existingStyle = document.getElementById('onborda-custom-styles');
+            if (existingStyle) existingStyle.remove();
+        };
+    }, []);
 
-            <div className="h-screen w-full flex flex-col dashboard-layout">
-                <header className="flex-shrink-0 z-50 flex items-center justify-between">
-                   <Header />
-                   <SyncStatusClient />
-                </header>
-                <main className="flex-grow overflow-hidden relative bg-muted w-full">
-                    {isMobile ? (
-                        // Tampilan Mobile: Konten utama penuh lebar, modal sebagai dialog
-                        <div className="h-full overflow-y-auto hide-scrollbar-x">
-                            <LoadingOverlay>
-                                {children}
-                            </LoadingOverlay>
-                            {/* Render modal sebagai dialog di mobile */}
-                            {hasOpenModal && (
-                                <Suspense fallback={<ModalLoading />}>
-                                    <ModalManager 
-                                        customFilter={showOnlyTopModal} 
-                                        containerType="dialog" 
-                                    />
-                                </Suspense>
-                            )}
-                        </div>
-                    ) : (
-                        // Tampilan Desktop: Panel yang dapat diubah ukurannya untuk konten utama dan sidebar
-                        <ResizablePanelGroup 
-                            direction="horizontal"
-                            key={desktopPanelGroupKey}
-                            className="overflow-hidden w-full"
-                        >
-                            <ResizablePanel 
-                                defaultSize={hasOpenModal ? (100 - sidebarWidth) : 100}
-                                minSize={hasOpenModal ? (100 - MAX_SIDEBAR_WIDTH) : 100} 
-                                maxSize={hasOpenModal ? (100 - MIN_SIDEBAR_WIDTH) : 100}
-                                order={1}
-                                className="transition-all duration-300 ease-in-out"
-                            >
-                                <div className="h-full overflow-y-auto overflow-x-hidden w-full">
-                                    <LoadingOverlay>
-                                        {children}
-                                    </LoadingOverlay>
-                                </div>
-                            </ResizablePanel>
-                            
-                            {/* Handle hanya ditampilkan ketika sidebar aktif */} 
-                            {hasOpenModal && <ResizableHandle withHandle className="bg-border" />}
-                            
-                            <ResizablePanel 
-                                defaultSize={hasOpenModal ? sidebarWidth : 0} // Collapse jika tidak ada modal
-                                minSize={hasOpenModal ? MIN_SIDEBAR_WIDTH : 0} 
-                                maxSize={hasOpenModal ? MAX_SIDEBAR_WIDTH : 0}
-                                onResize={(size) => {
-                                    // Hanya izinkan resize dan update state jika sidebar seharusnya terbuka
-                                    if (hasOpenModal) {
-                                        setSidebarWidth(size);
-                                    }
-                                }}
-                                collapsible={true}
-                                collapsedSize={0}
-                                order={2}
-                                className="transition-all duration-300 ease-in-out"
-                            >
-                                {/* Render modal sebagai sidebar panel di desktop */}
+    return (
+        <OnbordaProvider>
+            <Onborda
+                steps={dashboardTours as any}
+                showOnborda={false}
+                shadowRgb="55,48,163"
+                shadowOpacity="0.3"
+                cardComponent={TourCard}
+                cardTransition={{ duration: 0.3, type: "tween" }}
+            >
+                <DataLoader />
+
+                <div className="h-screen w-full flex flex-col dashboard-layout">
+                    <header className="flex-shrink-0 z-50 flex items-center justify-between">
+                       <Header />
+                       <SyncStatusClient />
+                    </header>
+                    <main className="flex-grow overflow-hidden relative bg-muted w-full">
+                        {isMobile ? (
+                            // Tampilan Mobile: Konten utama penuh lebar, modal sebagai dialog
+                            <div className="h-full overflow-y-auto hide-scrollbar-x">
+                                <LoadingOverlay>
+                                    {children}
+                                </LoadingOverlay>
+                                {/* Render modal sebagai dialog di mobile */}
                                 {hasOpenModal && (
                                     <Suspense fallback={<ModalLoading />}>
-                                        <div className="h-full w-full resize-content">
-                                            <ModalManager 
-                                                customFilter={showOnlyTopModal} 
-                                                containerType="sidebar" 
-                                            />
-                                        </div>
+                                        <ModalManager 
+                                            customFilter={showOnlyTopModal} 
+                                            containerType="dialog" 
+                                        />
                                     </Suspense>
                                 )}
-                            </ResizablePanel>
-                        </ResizablePanelGroup>
-                    )}
-                </main>
-                <footer className="flex-shrink-0 border-t border-border">
-                    <Footer />
-                </footer>
-            </div>
-        </>
+                            </div>
+                        ) : (
+                            // Tampilan Desktop: Panel yang dapat diubah ukurannya untuk konten utama dan sidebar
+                            <ResizablePanelGroup 
+                                direction="horizontal"
+                                key={desktopPanelGroupKey}
+                                className="overflow-hidden w-full"
+                            >
+                                <ResizablePanel 
+                                    defaultSize={hasOpenModal ? (100 - sidebarWidth) : 100}
+                                    minSize={hasOpenModal ? (100 - MAX_SIDEBAR_WIDTH) : 100} 
+                                    maxSize={hasOpenModal ? (100 - MIN_SIDEBAR_WIDTH) : 100}
+                                    order={1}
+                                    className="transition-all duration-300 ease-in-out"
+                                >
+                                    <div className="h-full overflow-y-auto overflow-x-hidden w-full">
+                                        <LoadingOverlay>
+                                            {children}
+                                        </LoadingOverlay>
+                                    </div>
+                                </ResizablePanel>
+                                
+                                {/* Handle hanya ditampilkan ketika sidebar aktif */} 
+                                {hasOpenModal && <ResizableHandle withHandle className="bg-border" />}
+                                
+                                <ResizablePanel 
+                                    defaultSize={hasOpenModal ? sidebarWidth : 0} // Collapse jika tidak ada modal
+                                    minSize={hasOpenModal ? MIN_SIDEBAR_WIDTH : 0} 
+                                    maxSize={hasOpenModal ? MAX_SIDEBAR_WIDTH : 0}
+                                    onResize={(size) => {
+                                        // Hanya izinkan resize dan update state jika sidebar seharusnya terbuka
+                                        if (hasOpenModal) {
+                                            setSidebarWidth(size);
+                                        }
+                                    }}
+                                    collapsible={true}
+                                    collapsedSize={0}
+                                    order={2}
+                                    className="transition-all duration-300 ease-in-out"
+                                >
+                                    {/* Render modal sebagai sidebar panel di desktop */}
+                                    {hasOpenModal && (
+                                        <Suspense fallback={<ModalLoading />}>
+                                            <div className="h-full w-full resize-content">
+                                                <ModalManager 
+                                                    customFilter={showOnlyTopModal} 
+                                                    containerType="sidebar" 
+                                                />
+                                            </div>
+                                        </Suspense>
+                                    )}
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        )}
+                    </main>
+                    <footer className="flex-shrink-0 border-t border-border">
+                        <Footer />
+                    </footer>
+                </div>
+            </Onborda>
+        </OnbordaProvider>
     );
 }

@@ -1,16 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import type { Variable } from '@/types/Variable';
 import type { 
-  StatisticsOptions, 
-  ChartOptions, 
   FrequenciesAnalysisParams,
-  FrequenciesResults,
-  RawFrequencyData
+  WorkerResult,
+  FrequencyTable,
+  DescriptiveStatistics
 } from '../types';
-import { useDataFetching } from './useDataFetching';
-import { useFrequenciesWorker } from './useFrequenciesWorker';
-import { formatFrequencyTable } from '../utils';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
+import { formatFrequencyTable, formatStatisticsTable } from '../utils';
 
 export interface FrequenciesAnalysisResult {
   isLoading: boolean;
@@ -19,166 +17,148 @@ export interface FrequenciesAnalysisResult {
   cancelAnalysis: () => void;
 }
 
+interface FrequenciesResult {
+  variable: Variable;
+  stats?: DescriptiveStatistics;
+  frequencyTable?: FrequencyTable;
+}
+
 export const useFrequenciesAnalysis = ({
     selectedVariables,
-    showFrequencyTables,
-    showStatistics,
     statisticsOptions,
-  showCharts,
-  chartOptions,
+    chartOptions,
     onClose,
+    ...displayOptions
 }: FrequenciesAnalysisParams): FrequenciesAnalysisResult => {
+    const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const { addLog, addAnalytic, addStatistic } = useResultStore();
-  
-  // Use the data fetching hook
-  const { fetchData, error: fetchError, isLoading: isFetching } = useDataFetching();
-  
-  // Use the worker hook
-  const { calculate, error: workerError, isCalculating, cancelCalculation } = useFrequenciesWorker();
+    const analysisData = useAnalysisData();
+    const workerRef = useRef<Worker | null>(null);
+    const resultsRef = useRef<FrequenciesResult[]>([]);
+    const processedCountRef = useRef(0);
 
-  // Sync fetch error and worker error to our error state
-  useEffect(() => {
-    if (fetchError) {
-      setErrorMsg(fetchError);
-    } else if (workerError) {
-      setErrorMsg(workerError);
-    } else {
-      setErrorMsg(null);
-    }
-  }, [fetchError, workerError]);
-
-  const runAnalysis = useCallback(async () => {
-    if (selectedVariables.length === 0) {
-      setErrorMsg("Please select at least one variable.");
-      return;
-    }
-    
-    setErrorMsg(null);
-
-    try {
-      // Use the data fetching hook to fetch variable data
-      const { variableData, weightVariableData } = await fetchData(selectedVariables);
-      
-      // Check if data fetching was successful
-      if (!variableData) {
-        // Error already set by fetchData
-        return;
-      }
-
-      // Determine which calculations to run
-      const calculateFrequencies = showFrequencyTables;
-      const calculateDescriptives = showStatistics && statisticsOptions !== null;
-
-      if (!calculateFrequencies && !calculateDescriptives) {
-        setErrorMsg("Please select at least one analysis option (Frequency Tables or Statistics).");
-        return;
-      }
-
-      // Use the worker hook to calculate statistics
-      const result = await calculate(
-        {
-          variableData, 
-          weightVariableData,
-          statisticsOptions,
-          chartOptions
-        },
-        {
-          calculateFrequencies,
-          calculateDescriptives
+    const cancelAnalysis = useCallback(() => {
+        if (workerRef.current) {
+            workerRef.current.terminate();
+            workerRef.current = null;
         }
-      );
+        setIsLoading(false);
+    }, []);
 
-      // Check if calculation was successful
-      if (!result) {
-        // Error already set by worker hook
-        return;
-      }
+    useEffect(() => {
+        return () => cancelAnalysis();
+    }, [cancelAnalysis]);
 
-      // Process the successful result
-                try {
-                    const variableNames = selectedVariables.map(v => v.name);
-                    const executedActions = [];
-
-        if (result.frequencies) executedActions.push("Frequencies");
-        if (result.descriptive) executedActions.push("Statistics");
-
-                    if (executedActions.length === 0) {
-                         console.warn("Workers finished, but no results were generated.");
-          setErrorMsg("Analysis completed but produced no output.");
-          return;
-                    }
-
-                    const logMsg = `${executedActions.join(' & ').toUpperCase()} VARIABLES=${variableNames.join(", ")}`;
-                    const logId = await addLog({ log: logMsg });
-
-                    const analyticId = await addAnalytic(logId, {
-                        title: executedActions.join(' & '),
-                        note: `Analysis performed on: ${variableNames.join(", ")}`
-                    });
-
-        const statisticsToAdd: any[] = [];
-
-        // Add Descriptive Statistics
-        if (result.descriptive) {
-                        statisticsToAdd.push({
-            title: result.descriptive.title,
-            output_data: JSON.stringify(result.descriptive.output_data),
-            components: result.descriptive.components,
-            description: result.descriptive.description
-          });
+    const runAnalysis = useCallback(async () => {
+        if (selectedVariables.length === 0) {
+            setErrorMsg("Please select at least one variable.");
+            return;
+        }
+        
+        if (!displayOptions.showFrequencyTables && !displayOptions.showStatistics) {
+            setErrorMsg("Please select at least one analysis option (Frequency Tables or Statistics).");
+            return;
         }
 
-        // Format and add Frequency Tables
-        if (result.frequencies && Array.isArray(result.frequencies)) {
-          for (const rawFrequencyData of result.frequencies) {
-            // Use the formatter utility to convert raw data to table format
-            const formattedTable = formatFrequencyTable(rawFrequencyData as RawFrequencyData);
-            
-                            statisticsToAdd.push({
-              title: formattedTable.title,
-              output_data: JSON.stringify({ tables: [formattedTable] }),
-              components: formattedTable.components,
-              description: formattedTable.description
+        setIsLoading(true);
+        setErrorMsg(null);
+
+        resultsRef.current = [];
+        processedCountRef.current = 0;
+        workerRef.current = new Worker('/workers/DescriptiveStatistics/manager.js');
+
+        selectedVariables.forEach(variable => {
+            workerRef.current?.postMessage({
+                analysisType: 'frequencies',
+                variable,
+                data: analysisData.data.map(row => row[variable.columnIndex]),
+                weights: analysisData.weights,
+                options: {
+                    displayFrequency: displayOptions.showFrequencyTables,
+                    displayDescriptive: displayOptions.showStatistics,
+                    statisticsOptions,
+                    chartOptions
+                }
             });
-          }
-        }
+        });
 
-        // Add all statistics to the result store
-                    for (const stat of statisticsToAdd) {
-                        await addStatistic(analyticId, stat);
+        workerRef.current.onmessage = async (e: MessageEvent<any>) => {
+            const { status, results, error } = e.data;
+
+            if (status === 'success' && results) {
+                resultsRef.current.push(results);
+            } else {
+                setErrorMsg(prev => prev ? `${prev}\n${error}` : error);
+            }
+
+            processedCountRef.current++;
+            if (processedCountRef.current === selectedVariables.length) {
+                if (workerRef.current) {
+                    workerRef.current.terminate();
+                    workerRef.current = null;
+                }
+
+                if (resultsRef.current.length > 0) {
+                    const variableNameList = selectedVariables.map(v => v.name).join(", ");
+                    const logId = await addLog({ log: `FREQUENCIES VARIABLES=${variableNameList}` });
+                    const analyticId = await addAnalytic(logId, { title: "Frequencies" });
+
+                    if (displayOptions.showStatistics) {
+                        const statsTable = formatStatisticsTable(resultsRef.current);
+                        await addStatistic(analyticId, {
+                            title: "Statistics",
+                            output_data: JSON.stringify(statsTable),
+                            components: "Descriptive Statistics",
+                            description: "Descriptive statistics summary for the selected variables."
+                        });
                     }
 
-                    onClose(); // Close modal on success
-                } catch (err) {
-        console.error("Error saving frequencies results:", err);
-        setErrorMsg("An error occurred while saving the analysis results.");
-      }
-    } catch (error) {
-      console.error("Error in frequencies analysis:", error);
-      setErrorMsg(`An error occurred during analysis: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }, [
-    selectedVariables, 
-    showFrequencyTables, 
-    showStatistics, 
-    statisticsOptions, 
-    chartOptions, 
-    onClose, 
-    addLog, 
-    addAnalytic, 
-    addStatistic, 
-    fetchData, 
-    calculate
-  ]);
+                    if (displayOptions.showFrequencyTables) {
+                        for (const result of resultsRef.current) {
+                            if (result.frequencyTable) {
+                                const freqTable = formatFrequencyTable(result.frequencyTable);
+                                await addStatistic(analyticId, {
+                                    title: `Frequency Table: ${result.variable.label || result.variable.name}`,
+                                    output_data: JSON.stringify(freqTable),
+                                    components: "Frequency Table",
+                                    description: `Frequency distribution for ${result.variable.label || result.variable.name}.`
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                setIsLoading(false);
+                onClose();
+            }
+        };
 
-  // Calculate combined loading state
-  const isLoading = isFetching || isCalculating;
+        workerRef.current.onerror = (e) => {
+            setErrorMsg(e.message);
+            setIsLoading(false);
+            if (workerRef.current) {
+                workerRef.current.terminate();
+                workerRef.current = null;
+            }
+        };
 
-  return { 
-    isLoading, 
-    errorMsg, 
-    runAnalysis,
-    cancelAnalysis: cancelCalculation
-  };
+    }, [
+        selectedVariables,
+        displayOptions,
+        statisticsOptions,
+        chartOptions,
+        analysisData,
+        addLog,
+        addAnalytic,
+        addStatistic,
+        onClose
+    ]);
+
+    return { 
+        isLoading, 
+        errorMsg, 
+        runAnalysis,
+        cancelAnalysis
+    };
 }; 

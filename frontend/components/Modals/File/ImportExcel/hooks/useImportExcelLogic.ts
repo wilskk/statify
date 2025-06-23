@@ -47,7 +47,7 @@ export const useImportExcelLogic = ({
         } finally {
             setIsLoading(false);
         }
-    }, [file]);
+    }, [file, parse]);
 
     const handleBackToSelect = useCallback(() => {
         setStage("select");

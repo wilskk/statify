@@ -177,11 +177,51 @@ class ExamineCalculator {
                 tukey: this.getMEstimator('tukey'),
             },
             percentiles: {
-                waverage: { '25': this.freqCalc.getPercentile(25, 'waverage'), '50': this.freqCalc.getPercentile(50, 'waverage'), '75': this.freqCalc.getPercentile(75, 'waverage')},
-                round: { '25': this.freqCalc.getPercentile(25, 'round'), '50': this.freqCalc.getPercentile(50, 'round'), '75': this.freqCalc.getPercentile(75, 'round')},
-                empirical: { '25': this.freqCalc.getPercentile(25, 'empirical'), '50': this.freqCalc.getPercentile(50, 'empirical'), '75': this.freqCalc.getPercentile(75, 'empirical')},
-                aempirical: { '25': this.freqCalc.getPercentile(25, 'aempirical'), '50': this.freqCalc.getPercentile(50, 'aempirical'), '75': this.freqCalc.getPercentile(75, 'aempirical')},
-                haverage: { '25': this.freqCalc.getPercentile(25, 'haverage'), '50': this.freqCalc.getPercentile(50, 'haverage'), '75': this.freqCalc.getPercentile(75, 'haverage')},
+                waverage: { 
+                    '5': this.freqCalc.getPercentile(5, 'waverage'),
+                    '10': this.freqCalc.getPercentile(10, 'waverage'),
+                    '25': this.freqCalc.getPercentile(25, 'waverage'), 
+                    '50': this.freqCalc.getPercentile(50, 'waverage'), 
+                    '75': this.freqCalc.getPercentile(75, 'waverage'),
+                    '90': this.freqCalc.getPercentile(90, 'waverage'),
+                    '95': this.freqCalc.getPercentile(95, 'waverage')
+                },
+                round: { 
+                    '5': this.freqCalc.getPercentile(5, 'round'),
+                    '10': this.freqCalc.getPercentile(10, 'round'),
+                    '25': this.freqCalc.getPercentile(25, 'round'), 
+                    '50': this.freqCalc.getPercentile(50, 'round'), 
+                    '75': this.freqCalc.getPercentile(75, 'round'),
+                    '90': this.freqCalc.getPercentile(90, 'round'),
+                    '95': this.freqCalc.getPercentile(95, 'round')
+                },
+                empirical: { 
+                    '5': this.freqCalc.getPercentile(5, 'empirical'),
+                    '10': this.freqCalc.getPercentile(10, 'empirical'),
+                    '25': this.freqCalc.getPercentile(25, 'empirical'), 
+                    '50': this.freqCalc.getPercentile(50, 'empirical'), 
+                    '75': this.freqCalc.getPercentile(75, 'empirical'),
+                    '90': this.freqCalc.getPercentile(90, 'empirical'),
+                    '95': this.freqCalc.getPercentile(95, 'empirical')
+                },
+                aempirical: {
+                    '5': this.freqCalc.getPercentile(5, 'aempirical'),
+                    '10': this.freqCalc.getPercentile(10, 'aempirical'),
+                    '25': this.freqCalc.getPercentile(25, 'aempirical'), 
+                    '50': this.freqCalc.getPercentile(50, 'aempirical'), 
+                    '75': this.freqCalc.getPercentile(75, 'aempirical'),
+                    '90': this.freqCalc.getPercentile(90, 'aempirical'),
+                    '95': this.freqCalc.getPercentile(95, 'aempirical')
+                },
+                haverage: {
+                    '5': this.freqCalc.getPercentile(5, 'haverage'),
+                    '10': this.freqCalc.getPercentile(10, 'haverage'),
+                    '25': this.freqCalc.getPercentile(25, 'haverage'), 
+                    '50': this.freqCalc.getPercentile(50, 'haverage'), 
+                    '75': this.freqCalc.getPercentile(75, 'haverage'),
+                    '90': this.freqCalc.getPercentile(90, 'haverage'),
+                    '95': this.freqCalc.getPercentile(95, 'haverage')
+                },
             }
         };
 

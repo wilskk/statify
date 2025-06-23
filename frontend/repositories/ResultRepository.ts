@@ -139,6 +139,15 @@ export class ResultRepository {
       throw error;
     }
   }
+
+  async getStatistic(id: number): Promise<Statistic | undefined> {
+    try {
+      return await db.statistics.get(id);
+    } catch (error) {
+      console.error(`Failed to get statistic with ID ${id}:`, error);
+      throw error;
+    }
+  }
 }
 
 const resultRepository = new ResultRepository();
