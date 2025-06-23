@@ -1,61 +1,47 @@
 use nalgebra::{ DMatrix, DVector };
-use web_sys::console;
 
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::{ ConfidenceInterval, RobustParameterEstimateEntry, RobustParameterEstimates },
 };
-use crate::univariate::stats::factor_utils::generate_all_row_parameter_names_sorted;
-use crate::univariate::stats::design_matrix::{
-    create_design_response_weights,
-    create_cross_product_matrix,
-    perform_sweep_and_extract_results,
-};
 
 use super::core::*;
 
-/// Calculate parameter estimates with robust standard errors
+/// Menghitung estimasi parameter dengan robust standard errors.
+/// Fungsi ini mengimplementasikan metode "sandwich estimator" untuk menyesuaikan
+/// standard error dari koefisien regresi terhadap heteroskedastisitas.
 pub fn calculate_robust_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<RobustParameterEstimates, String> {
-    console::log_1(&"Calculating robust parameter estimates...".into());
     if !config.options.param_est_rob_std_err {
         return Err("Robust parameter estimates not requested in configuration".to_string());
     }
 
+    // Langkah 1: Membuat matriks desain (X), vektor respons (y), dan bobot (W)
     let design_info = match create_design_response_weights(data, config) {
-        Ok(info) => {
-            console::log_1(&"Design matrix created successfully.".into());
-            info
-        }
+        Ok(info) => info,
         Err(e) => {
-            console::log_1(&format!("Error creating design matrix: {}", e).into());
             return Err(format!("Failed to create design matrix for robust SE: {}", e));
         }
     };
 
+    // Langkah 2: Membuat cross-product matrix (Z'WZ) di mana Z = [X y]
     let ztwz_matrix = match create_cross_product_matrix(&design_info) {
-        Ok(matrix) => {
-            console::log_1(&"Cross-product matrix created successfully.".into());
-            matrix
-        }
+        Ok(matrix) => matrix,
         Err(e) => {
-            console::log_1(&format!("Error creating cross-product matrix: {}", e).into());
             return Err(format!("Failed to create cross-product matrix for robust SE: {}", e));
         }
     };
 
+    // Langkah 3: Melakukan operasi SWEEP pada cross-product matrix untuk mendapatkan
+    // estimasi beta (koefisien regresi) dan invers dari (X'WX).
     let swept_info = match
         perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)
     {
-        Ok(info) => {
-            console::log_1(&"Sweep operation performed successfully.".into());
-            info
-        }
+        Ok(info) => info,
         Err(e) => {
-            console::log_1(&format!("Error performing sweep operation: {}", e).into());
             return Err(format!("Failed to perform sweep operation for robust SE: {}", e));
         }
     };
@@ -66,6 +52,7 @@ pub fn calculate_robust_parameter_estimates(
     let p_cols_x = design_info.p_parameters;
     let r_x_rank = design_info.r_x_rank;
 
+    // Penanganan kasus jika tidak ada data atau parameter
     if n_samples == 0 || p_cols_x == 0 {
         return Ok(RobustParameterEstimates {
             estimates: Vec::new(),
@@ -75,6 +62,7 @@ pub fn calculate_robust_parameter_estimates(
         });
     }
 
+    // Penanganan kasus jika model kosong atau semua parameter redundan
     if r_x_rank == 0 && n_samples > 0 {
         let param_names_result = generate_all_row_parameter_names_sorted(&design_info, data);
         let param_names = param_names_result.unwrap_or_else(|_|
@@ -108,9 +96,15 @@ pub fn calculate_robust_parameter_estimates(
     let beta_hat = &swept_info.beta_hat;
     let g_inv = &swept_info.g_inv;
 
+    // Langkah 4: Menghitung nilai prediksi (y_hat) dan residual (e)
+    // Rumus: y_hat = X * beta_hat
+    //        e = y - y_hat
     let y_hat = x * beta_hat;
     let residuals = y - y_hat;
 
+    // Langkah 5: Menghitung leverage (h_ii) untuk setiap observasi.
+    // Leverage adalah diagonal dari Hat Matrix (H = X * (X'X)^-1 * X').
+    // h_ii mengukur seberapa besar pengaruh observasi i terhadap nilai prediksinya sendiri.
     let h_diag: Vec<f64> = (0..n_samples)
         .map(|i| {
             if g_inv.ncols() > 0 && g_inv.nrows() > 0 {
@@ -131,27 +125,27 @@ pub fn calculate_robust_parameter_estimates(
         })
         .collect();
 
-    // log h_diag
-    console::log_1(&format!("h_diag: {:?}", h_diag).into());
-
+    // Langkah 6: Menghitung elemen diagonal dari matriks Omega (Ω).
+    // Omega digunakan untuk menyesuaikan varians residual. Perhitungannya bervariasi
+    // tergantung pada metode koreksi heteroskedastisitas (HC) yang dipilih.
     let mut omega_diag_elements_vec = Vec::with_capacity(n_samples);
-    let epsilon = 1e-12;
+    let epsilon = 1e-12; // Toleransi untuk perbandingan floating-point
 
-    console::log_1(&"Calculating omega diagonal elements...".into());
     for i in 0..n_samples {
         let residual_sq = residuals[i].powi(2);
         let g_i = design_info.w.as_ref().map_or(1.0, |w_vec| w_vec[i]);
         let u_i = g_i * residual_sq;
         let current_h_i = h_diag.get(i).cloned().unwrap_or(0.0);
 
-        // log current_h_i
-        console::log_1(&format!("current_h_i: {}", current_h_i).into());
-
         let omega_val: f64;
 
         if config.options.hc0 {
+            // HC0: Estimator asli dari White. Tidak ada koreksi untuk leverage.
+            // Rumus: Ω_i = u_i
             omega_val = u_i;
         } else if config.options.hc1 {
+            // HC1: Koreksi untuk sampel terbatas (finite sample).
+            // Rumus: Ω_i = u_i * (N / (N - k))
             if (n_samples as f64) > (r_x_rank as f64) + epsilon {
                 let denominator_hc1 = (n_samples as f64) - (r_x_rank as f64);
                 let factor = (n_samples as f64) / denominator_hc1;
@@ -160,26 +154,26 @@ pub fn calculate_robust_parameter_estimates(
                 omega_val = u_i;
             }
         } else if config.options.hc2 {
+            // HC2: Koreksi berbasis leverage.
+            // Rumus: Ω_i = u_i / (1 - h_ii)
             let one_minus_h = 1.0 - current_h_i;
             if one_minus_h > epsilon {
-                // Check against a small positive threshold (original epsilon)
                 if u_i == 0.0 {
                     omega_val = 0.0;
                 } else {
                     omega_val = u_i / one_minus_h;
                 }
             } else {
-                // Fallback if 1-h_i is too small or zero/negative
-                omega_val = u_i; // Original fallback for HC2
+                omega_val = u_i;
             }
         } else if config.options.hc3 {
-            // HC3 block
+            // HC3: Estimator jackknife aproksimatif. Memberikan perlindungan lebih
+            // terhadap titik-titik dengan leverage tinggi.
+            // Rumus: Ω_i = u_i / (1 - h_ii)^2
             let one_minus_h = 1.0 - current_h_i;
-            // If h_i is numerically 1.0 or greater, or 1-h_i is extremely small
             if one_minus_h.abs() < f64::EPSILON || one_minus_h <= f64::EPSILON {
                 omega_val = 0.0;
             } else {
-                // h_i is < 1.0 and (1-h_i) is safely positive and not extremely small
                 if u_i == 0.0 {
                     omega_val = 0.0;
                 } else {
@@ -187,9 +181,10 @@ pub fn calculate_robust_parameter_estimates(
                 }
             }
         } else if config.options.hc4 {
+            // HC4: Modifikasi HC untuk mengatasi leverage tinggi, terutama dalam sampel kecil.
+            // Rumus: Ω_i = u_i / (1 - h_ii)^δ_i, di mana δ_i adalah fungsi dari h_ii.
             let one_minus_h = 1.0 - current_h_i;
             if one_minus_h > epsilon {
-                // Check against original epsilon
                 let delta_i_p_param = r_x_rank as f64;
                 let delta_i = if delta_i_p_param < epsilon {
                     4.0f64
@@ -202,16 +197,14 @@ pub fn calculate_robust_parameter_estimates(
                     omega_val = u_i / one_minus_h.powf(delta_i);
                 }
             } else {
-                // Fallback if 1-h_i is too small or zero/negative
-                omega_val = u_i; // Original fallback for HC4
+                omega_val = u_i;
             }
         } else {
-            // Default to HC3 logic
+            // Default ke logika HC3 jika tidak ada yang ditentukan secara eksplisit.
             let one_minus_h = 1.0 - current_h_i;
             if one_minus_h.abs() < f64::EPSILON || one_minus_h <= f64::EPSILON {
                 omega_val = 0.0;
             } else {
-                // h_i is < 1.0 and (1-h_i) is safely positive and not extremely small
                 if u_i == 0.0 {
                     omega_val = 0.0;
                 } else {
@@ -219,14 +212,14 @@ pub fn calculate_robust_parameter_estimates(
                 }
             }
         }
-        // log omega_val
-        console::log_1(&format!("omega_val: {}", omega_val).into());
         omega_diag_elements_vec.push(omega_val);
     }
     let omega_hat_matrix = DMatrix::from_diagonal(&DVector::from_vec(omega_diag_elements_vec));
-    // log omega_hat_matrix
-    console::log_1(&format!("omega_hat_matrix: {:?}", omega_hat_matrix).into());
 
+    // Langkah 7: Membangun "sandwich estimator" untuk matriks kovariansi yang robust.
+    // Rumus: Cov(β) = (X'WX)^-1 * (X'W * Ω * WX) * (X'WX)^-1
+    //         Bread = (X'WX)^-1 = g_inv
+    //         Meat  = X'W * Ω * WX
     let bread = g_inv;
     let meat = {
         let xt = x.transpose();
@@ -255,10 +248,6 @@ pub fn calculate_robust_parameter_estimates(
             DMatrix::zeros(bread.nrows(), bread.ncols())
         }
     };
-    // log bread
-    console::log_1(&format!("bread: {:?}", bread).into());
-    // log meat
-    console::log_1(&format!("meat: {:?}", meat).into());
 
     let robust_cov = if
         bread.ncols() == meat.nrows() &&
@@ -270,9 +259,9 @@ pub fn calculate_robust_parameter_estimates(
     } else {
         DMatrix::zeros(p_cols_x, p_cols_x)
     };
-    // log robust_cov
-    console::log_1(&format!("robust_cov: {:?}", robust_cov).into());
 
+    // Langkah 8: Menghitung robust standard errors.
+    // Ini adalah akar kuadrat dari diagonal matriks kovariansi robust.
     let robust_se_vec: Vec<f64> = (0..p_cols_x)
         .map(|i| {
             if i < robust_cov.nrows() && i < robust_cov.ncols() {
@@ -280,7 +269,7 @@ pub fn calculate_robust_parameter_estimates(
                 if cov_val.is_nan() {
                     f64::NAN
                 } else if cov_val < -epsilon {
-                    f64::NAN
+                    f64::NAN // Varians negatif tidak valid
                 } else {
                     cov_val.max(0.0).sqrt()
                 }
@@ -290,24 +279,22 @@ pub fn calculate_robust_parameter_estimates(
         })
         .collect();
 
-    // log robust_se_vec
-    console::log_1(&format!("robust_se_vec: {:?}", robust_se_vec).into());
-
     let parameter_names_result = generate_all_row_parameter_names_sorted(&design_info, data);
     let parameter_names = parameter_names_result.unwrap_or_else(|_err|
         (0..p_cols_x).map(|idx| format!("Parameter {}", idx + 1)).collect()
     );
 
+    // Langkah 9: Memformat hasil akhir, termasuk t-value, signifikansi, dan interval kepercayaan.
     let mut estimates = Vec::new();
     let df_residuals = if n_samples > r_x_rank { (n_samples - r_x_rank) as usize } else { 0 };
-
     let aliasing_threshold = 1e-9;
-    console::log_1(&"Populating final estimates...".into());
 
     for i in 0..p_cols_x {
         let param_b = if i < beta_hat.len() { beta_hat[i] } else { 0.0 };
         let mut param_robust_se = robust_se_vec.get(i).cloned().unwrap_or(f64::NAN);
 
+        // Menentukan apakah parameter redundan (teraliasi) berdasarkan diagonal matriks G-inverse.
+        // Jika nilai diagonal mendekati nol, parameter tersebut dianggap redundan.
         let g_inv_diag_is_small = if i < g_inv.nrows() && i < g_inv.ncols() {
             g_inv[(i, i)].abs() < aliasing_threshold
         } else {
@@ -315,11 +302,16 @@ pub fn calculate_robust_parameter_estimates(
         };
         let is_redundant = g_inv_diag_is_small;
 
+        // Untuk parameter redundan, setel koefisien dan standard error ke nol.
         let final_b = if is_redundant { 0.0 } else { param_b };
         if is_redundant {
             param_robust_se = 0.0;
         }
 
+        // Hitung t-value, signifikansi (p-value), dan interval kepercayaan (CI).
+        // T-value: mengukur seberapa banyak standard error koefisien dari nol. Rumus: b / SE
+        // Signifikansi: probabilitas mengamati t-value yang lebih ekstrem.
+        // CI: rentang di mana nilai parameter populasi sebenarnya kemungkinan besar berada.
         let (t_value, significance, ci_lower, ci_upper) = if
             is_redundant ||
             param_robust_se.is_nan() ||
@@ -373,6 +365,5 @@ pub fn calculate_robust_parameter_estimates(
         )
     );
 
-    console::log_1(&"Robust parameter estimation complete.".into());
     Ok(RobustParameterEstimates { estimates, notes })
 }

@@ -1,35 +1,36 @@
 use std::collections::{ HashMap, HashSet };
 use itertools::Itertools;
 use nalgebra::{ DMatrix, DVector };
-
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::DesignMatrixInfo,
 };
-use crate::univariate::stats::factor_utils::{
-    get_factor_levels,
-    parse_interaction_term,
-    parse_parameter_name,
-    generate_all_row_parameter_names_sorted,
-};
+
 use super::core::*;
 
-/// Constructs the L-matrix for Type I Sum of Squares for a given term F_j.
-/// Steps:
-/// 1. L0 = upper p x p submatrix of Z'WZ.
-/// 2. SWEEP L0 on columns for effects before F_j.
-/// 3. Set columns and rows of L0 for effects before F_j to 0.
-/// 4. For rows of L0 for effects after F_j, set these rows to 0.
-/// 5. Remove all 0 rows.
-/// 6. Use row operations to remove linearly dependent rows. Result is L_I.
+/**
+ * Membangun matriks L untuk Jumlah Kuadrat (Sum of Squares) Tipe I untuk suatu term F_j.
+ * Jumlah Kuadrat Tipe I bersifat sekuensial; hipotesis untuk suatu efek disesuaikan
+ * hanya untuk efek-efek yang mendahuluinya dalam model.
+ *
+ * Proses konstruksi L_I:
+ * 1. Ambil L0, yaitu submatriks p x p bagian atas dari Z'WZ (matriks informasi).
+ * 2. Lakukan operasi SWEEP pada L0 untuk kolom-kolom yang merepresentasikan efek sebelum F_j.
+ *    Ini secara efektif "menghilangkan" pengaruh efek-efek sebelumnya.
+ * 3. Nol-kan baris dan kolom pada L0 yang telah di-SWEEP untuk efek-efek sebelum F_j.
+ * 4. Nol-kan baris pada L0 yang sesuai dengan efek-efek setelah F_j.
+ * 5. Hapus semua baris yang bernilai nol.
+ * 6. Ekstrak basis baris (menghilangkan baris yang dependen secara linear) untuk mendapatkan matriks L_I final.
+ */
 pub fn construct_type_i_l_matrix(
     design_info: &DesignMatrixInfo,
-    term_of_interest: &str, // F_j
-    all_model_terms_in_order: &[String], // F0, F1, ..., Fm
-    original_ztwz: &DMatrix<f64> // The full (p+r) x (p+r) Z'WZ matrix
+    term_of_interest: &str, // F_j, term yang sedang diuji
+    all_model_terms_in_order: &[String], // Semua term model secara berurutan F0, F1, ..., Fm
+    original_ztwz: &DMatrix<f64> // Matriks Z'WZ lengkap (p+r) x (p+r)
 ) -> Result<DMatrix<f64>, String> {
-    // Step 1: L0 = upper p x p submatrix of Z'WZ.
+    // Langkah 1: Ambil L0, submatriks p x p dari Z'WZ.
+    // p adalah jumlah parameter efek tetap (fixed effects).
     if design_info.p_parameters == 0 {
         return Ok(DMatrix::zeros(0, 0));
     }
@@ -43,7 +44,7 @@ pub fn construct_type_i_l_matrix(
         .view((0, 0), (design_info.p_parameters, design_info.p_parameters))
         .clone_owned();
 
-    // Identify columns for effects before F_j
+    // Identifikasi kolom-kolom untuk efek yang muncul SEBELUM term_of_interest (F_j).
     let mut cols_before_fj: Vec<usize> = Vec::new();
     let mut fj_found = false;
     for term_name in all_model_terms_in_order {
@@ -54,7 +55,6 @@ pub fn construct_type_i_l_matrix(
         if let Some((start, end)) = design_info.term_column_indices.get(term_name) {
             for col_idx in *start..=*end {
                 if col_idx < design_info.p_parameters {
-                    // Ensure within p_parameters bounds
                     cols_before_fj.push(col_idx);
                 }
             }
@@ -66,24 +66,20 @@ pub fn construct_type_i_l_matrix(
         );
     }
 
-    // Step 2: SWEEP L0 on columns for effects before F_j.
+    // Langkah 2: Lakukan operasi SWEEP pada L0 untuk kolom-kolom sebelum F_j.
     let mut l0_swept = sweep_matrix_on_columns(l0, &cols_before_fj);
 
-    // Step 3: Set columns and rows of (swept) L0 for effects before F_j to 0.
+    // Langkah 3: Nol-kan kolom dan baris dari L0 (yang sudah di-sweep) untuk efek-efek sebelum F_j.
     for &col_idx in &cols_before_fj {
         if col_idx < l0_swept.ncols() {
-            for r in 0..l0_swept.nrows() {
-                l0_swept[(r, col_idx)] = 0.0;
-            }
+            l0_swept.column_mut(col_idx).fill(0.0);
         }
         if col_idx < l0_swept.nrows() {
-            for c in 0..l0_swept.ncols() {
-                l0_swept[(col_idx, c)] = 0.0;
-            }
+            l0_swept.row_mut(col_idx).fill(0.0);
         }
     }
 
-    // Step 4: For rows of L0 for effects after F_j, set these rows to 0 (sesuai dokumentasi Type I SS)
+    // Langkah 4: Nol-kan baris-baris dari L0 untuk efek-efek SETELAH F_j.
     let mut fj_passed = false;
     for term_name in all_model_terms_in_order {
         if term_name == term_of_interest {
@@ -91,22 +87,22 @@ pub fn construct_type_i_l_matrix(
             continue;
         }
         if fj_passed {
-            // Effect is after F_j
+            // Ini adalah efek setelah F_j
             if let Some((start, end)) = design_info.term_column_indices.get(term_name) {
                 for row_idx in *start..=*end {
-                    // These are parameter indices, map to rows of L0
                     if row_idx < l0_swept.nrows() {
-                        for c in 0..l0_swept.ncols() {
-                            l0_swept[(row_idx, c)] = 0.0;
-                        }
+                        l0_swept.row_mut(row_idx).fill(0.0);
                     }
                 }
             }
         }
     }
 
-    // Step 5 & 6: Remove 0 rows and linearly dependent rows (RRE/basis extraction)
-    // Collect nonzero rows
+    // Langkah 5 & 6: Hapus baris nol dan baris yang dependen secara linear.
+    // Ini dilakukan dengan mengekstrak basis dari baris-baris yang tidak nol,
+    // yang setara dengan reduksi baris eselon (row-echelon reduction).
+
+    // Kumpulkan baris-baris yang tidak nol.
     let mut nonzero_rows = Vec::new();
     for i in 0..l0_swept.nrows() {
         if
@@ -118,35 +114,58 @@ pub fn construct_type_i_l_matrix(
             nonzero_rows.push(l0_swept.row(i).clone_owned());
         }
     }
-    // Extract a basis (linearly independent rows)
+
+    if nonzero_rows.is_empty() {
+        return Ok(DMatrix::zeros(0, l0_swept.ncols()));
+    }
+
+    // Ekstrak basis (kumpulan baris yang independen secara linear).
     let mut basis_rows = Vec::new();
     for row in nonzero_rows {
-        let mut temp = basis_rows.clone();
-        temp.push(row.clone());
-        if DMatrix::from_rows(&temp).rank(1e-8) > basis_rows.len() {
+        let mut temp_matrix_rows = basis_rows.clone();
+        temp_matrix_rows.push(row.clone());
+        // Cek rank untuk menentukan apakah baris baru ini independen dari basis yang sudah ada.
+        if DMatrix::from_rows(&temp_matrix_rows).rank(1e-8) > basis_rows.len() {
             basis_rows.push(row);
         }
     }
+
     if basis_rows.is_empty() {
         return Ok(DMatrix::zeros(0, l0_swept.ncols()));
     }
+
     Ok(DMatrix::from_rows(&basis_rows))
 }
 
-/// Constructs the L-matrix for Type II Sum of Squares for a given term.
-/// L = (0 CX_2' W_sqrt M_1 W_sqrt X_2  CX_2' W_sqrt M_1 W_sqrt X_3)
-/// where M_1 = I - W_sqrt X_1 (X_1' W X_1)^-1 X_1' W_sqrt and C = (X_2' W_sqrt M_1 W_sqrt X_2)^-
+/**
+ * Membangun matriks L untuk Jumlah Kuadrat (Sum of Squares) Tipe II.
+ * SS Tipe II menguji hipotesis untuk suatu efek (F) setelah disesuaikan untuk semua efek lain
+ * yang TIDAK mengandung F (prinsip marginalitas).
+ *
+ * Formula umum: L = [0 | C * (X2' * W_sqrt * M1 * W_sqrt * X2) | C * (X2' * W_sqrt * M1 * W_sqrt * X3)]
+ * di mana:
+ * - X1: Kolom matriks desain untuk efek yang tidak mengandung F.
+ * - X2: Kolom matriks desain untuk efek F itu sendiri (term of interest).
+ * - X3: Kolom matriks desain untuk efek yang mengandung F (interaksi tingkat lebih tinggi).
+ * - M1: Matriks proyeksi ortogonal ke ruang kolom X1. M1 = I - P1, di mana P1 adalah matriks proyeksi ke X1.
+ * - C: Invers tergeneralisasi dari (X2' * W_sqrt * M1 * W_sqrt * X2).
+ *
+ * Matriks L ini digunakan untuk mengestimasi fungsi yang dapat diestimasi (estimable functions)
+ * yang terkait dengan term of interest.
+ */
 pub fn construct_type_ii_l_matrix(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
     all_model_terms: &[String]
 ) -> Result<DMatrix<f64>, String> {
+    // Partisi kolom-kolom matriks desain menjadi X1, X2, dan X3 berdasarkan `term_of_interest`.
     let (x1_indices, x2_indices, x3_indices) = partition_column_indices_for_type_ii(
         design_info,
         term_of_interest,
         all_model_terms
     )?;
 
+    // Jika tidak ada kolom untuk term of interest (X2), hasilnya adalah matriks nol.
     if x2_indices.is_empty() {
         return Ok(DMatrix::zeros(0, design_info.p_parameters));
     }
@@ -155,6 +174,7 @@ pub fn construct_type_ii_l_matrix(
     let n_samples = design_info.n_samples;
     let p_total = design_info.p_parameters;
 
+    // Matriks W_sqrt, akar dari matriks bobot W (jika ada).
     let w_sqrt_matrix: DMatrix<f64> = if let Some(w_diag_vector) = &design_info.w {
         if w_diag_vector.len() != n_samples {
             return Err("Weight vector length mismatch for W_sqrt_matrix.".to_string());
@@ -164,13 +184,14 @@ pub fn construct_type_ii_l_matrix(
         DMatrix::identity(n_samples, n_samples)
     };
 
-    // W matrix (not W_sqrt) for X1'WX1 term as per doc for M1
+    // Matriks W (bukan W_sqrt) untuk perhitungan X1'*W*X1.
     let w_matrix: DMatrix<f64> = if let Some(w_diag_vector) = &design_info.w {
         DMatrix::from_diagonal(w_diag_vector)
     } else {
         DMatrix::identity(n_samples, n_samples)
     };
 
+    // Bentuk matriks X1, X2, dan X3 dari matriks desain penuh.
     let x1 = if !x1_indices.is_empty() {
         x_full.select_columns(&x1_indices)
     } else {
@@ -183,10 +204,11 @@ pub fn construct_type_ii_l_matrix(
         DMatrix::zeros(n_samples, 0)
     };
 
-    // M_1 = I - W_sqrt*X1*(X1'*W*X1)^- * X1'*W_sqrt
+    // Hitung M1 = I - W_sqrt*X1*(X1'*W*X1)^- * X1'*W_sqrt
+    // M1 adalah matriks yang memproyeksikan data ke ruang yang ortogonal terhadap X1.
     let m1_matrix: DMatrix<f64>;
     if x1.ncols() > 0 {
-        let x1_t_w_x1 = x1.transpose() * &w_matrix * &x1; // X1'WX1
+        let x1_t_w_x1 = x1.transpose() * &w_matrix * &x1;
         let x1_t_w_x1_pinv = x1_t_w_x1
             .clone()
             .pseudo_inverse(1e-10)
@@ -198,26 +220,30 @@ pub fn construct_type_ii_l_matrix(
                 )
             })?;
 
-        let w_sqrt_x1 = &w_sqrt_matrix * &x1; // W_sqrt * X1
-        let x1_t_w_sqrt = x1.transpose() * &w_sqrt_matrix; // X1' * W_sqrt
+        let w_sqrt_x1 = &w_sqrt_matrix * &x1;
+        let x1_t_w_sqrt = x1.transpose() * &w_sqrt_matrix;
 
-        let p_m1 = &w_sqrt_x1 * x1_t_w_x1_pinv * x1_t_w_sqrt; // W_sqrt*X1*(X1'WX1)^-1*X1'*W_sqrt
+        // Ini adalah matriks proyeksi ke ruang kolom X1 dengan bobot W.
+        let p_m1 = &w_sqrt_x1 * x1_t_w_x1_pinv * x1_t_w_sqrt;
         m1_matrix = DMatrix::identity(n_samples, n_samples) - p_m1;
     } else {
+        // Jika X1 kosong, M1 adalah matriks identitas.
         m1_matrix = DMatrix::identity(n_samples, n_samples);
     }
 
-    // C_inv_term = X2'*W_sqrt*M1*W_sqrt*X2
-    let x2_t_w_sqrt = x2.transpose() * &w_sqrt_matrix; // X2'*W_sqrt
-    let m1_w_sqrt_x2 = &m1_matrix * &w_sqrt_matrix * &x2; // M1*W_sqrt*X2
+    // Hitung C_inv_term = X2'*W_sqrt*M1*W_sqrt*X2
+    // Ini adalah proyeksi X2 ke ruang yang ortogonal terhadap X1.
+    let x2_t_w_sqrt = x2.transpose() * &w_sqrt_matrix;
+    let m1_w_sqrt_x2 = &m1_matrix * &w_sqrt_matrix * &x2;
     let c_inv_term = &x2_t_w_sqrt * m1_w_sqrt_x2;
 
+    // Derajat kebebasan (degrees of freedom) untuk hipotesis adalah rank dari matriks ini.
     let df_f = c_inv_term.rank(1e-8);
     if df_f == 0 {
         return Ok(DMatrix::zeros(0, p_total));
     }
 
-    // C = (X2'*W_sqrt*M1*W_sqrt*X2)^-
+    // Hitung C = (X2'*W_sqrt*M1*W_sqrt*X2)^- (invers tergeneralisasi).
     let c_matrix = c_inv_term
         .clone()
         .pseudo_inverse(1e-10)
@@ -229,24 +255,27 @@ pub fn construct_type_ii_l_matrix(
             )
         })?;
 
-    // L_X2_block = C * X2'*W_sqrt*M1*W_sqrt*X2 = C * C_inv_term
-    // L_X3_block = C * X2'*W_sqrt*M1*W_sqrt*X3
-    // These blocks are filled as per the Type II SS documentation (see appendix)
+    // Hitung blok-blok untuk matriks L final.
+    // L_coeffs_for_x2_params = C * C_inv_term, yang seharusnya mendekati matriks identitas
+    // dengan rank yang sama dengan df_f.
     let l_coeffs_for_x2_params = &c_matrix * &c_inv_term;
     let l_coeffs_for_x3_params = if x3.ncols() > 0 {
-        let m1_w_sqrt_x3 = &m1_matrix * &w_sqrt_matrix * &x3; // M1*W_sqrt*X3
+        let m1_w_sqrt_x3 = &m1_matrix * &w_sqrt_matrix * &x3;
         &c_matrix * &x2_t_w_sqrt * m1_w_sqrt_x3
     } else {
         DMatrix::zeros(df_f, 0)
     };
 
+    // Susun matriks L final dengan menempatkan koefisien ke kolom yang benar.
     let mut l_final = DMatrix::zeros(df_f, p_total);
     for r in 0..df_f {
+        // Isi bagian untuk parameter X2.
         for (block_col_idx, original_col_idx) in x2_indices.iter().enumerate() {
             if block_col_idx < l_coeffs_for_x2_params.ncols() {
                 l_final[(r, *original_col_idx)] = l_coeffs_for_x2_params[(r, block_col_idx)];
             }
         }
+        // Isi bagian untuk parameter X3.
         if x3.ncols() > 0 {
             for (block_col_idx, original_col_idx) in x3_indices.iter().enumerate() {
                 if block_col_idx < l_coeffs_for_x3_params.ncols() {
@@ -258,17 +287,28 @@ pub fn construct_type_ii_l_matrix(
     Ok(l_final)
 }
 
-/// Constructs the L-matrix for Type III Sum of Squares for a given term.
-/// This involves H = (X'WX)^- X'WX and detailed row operations.
+/**
+ * Membangun matriks L untuk Jumlah Kuadrat (Sum of Squares) Tipe III.
+ * SS Tipe III menguji hipotesis untuk suatu efek (F) setelah disesuaikan untuk SEMUA efek lain dalam model.
+ * Ini dilakukan dengan membangun kontras spesifik yang ortogonal terhadap efek lain.
+ * Logika ini sering disebut sebagai metode "rata-rata sel berbobot sama" (equal-weighted cell means).
+ *
+ * Prosesnya bergantung pada jenis term of interest:
+ * 1. Intercept: L-vektor adalah rata-rata dari semua parameter berbasis faktor.
+ * 2. Kovariat: L-vektor menguji apakah koefisien kovariat tersebut nol (1 pada posisinya, 0 di tempat lain).
+ * 3. Efek Utama Faktor: Kontras dibuat antara level-level faktor tersebut, dirata-ratakan terhadap level faktor lain.
+ * 4. Interaksi: Kontras interaksi dibuat sebagai produk dari kontras efek utama yang terlibat.
+ *
+ * Fungsi ini secara konstruktif membangun baris-baris matriks L tanpa memerlukan inversi matriks besar secara langsung.
+ */
 pub fn construct_type_iii_l_matrix(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
-    _all_model_terms: &[String], // May not be strictly needed if all info derived from design_info + data
+    _all_model_terms: &[String],
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<DMatrix<f64>, String> {
-    // 1. Get all_model_param_names (full list of parameter names for X columns)
-    // These names must correspond 1-to-1 with the columns of design_info.x
+    // 1. Dapatkan semua nama parameter model, yang harus sesuai 1-ke-1 dengan kolom matriks desain X.
     let all_model_param_names = generate_all_row_parameter_names_sorted(design_info, data)?;
     if all_model_param_names.len() != design_info.p_parameters {
         return Err(
@@ -281,33 +321,35 @@ pub fn construct_type_iii_l_matrix(
         );
     }
 
-    // 2. Get all unique factor names from design_info.term_names and their levels/counts
+    // 2. Kumpulkan semua nama faktor unik dari model dan levelnya masing-masing.
     let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
-    let mut unique_true_factor_names_in_model = HashSet::new(); // Only names of actual factors, not covariates
+    let mut unique_true_factor_names_in_model = HashSet::new(); // Hanya nama faktor, bukan kovariat.
 
-    // Populate unique_true_factor_names_in_model by checking against config's factor/covariate lists
+    // Isi `unique_true_factor_names_in_model` dengan memeriksa konfigurasi model.
     for term_in_design in &design_info.term_names {
         if term_in_design == "Intercept" {
             continue;
         }
-        let components = parse_interaction_term(term_in_design); // Splits "A*B" into ["A", "B"]
+        let components = parse_interaction_term(term_in_design); // Memecah "A*B" menjadi ["A", "B"]
         for potential_factor_name in components {
             let is_covariate = config.main.covar
                 .as_ref()
-                .map_or(false, |c_list| { c_list.contains(&potential_factor_name) });
+                .map_or(false, |c_list| c_list.contains(&potential_factor_name));
             let is_fix_factor = config.main.fix_factor
                 .as_ref()
-                .map_or(false, |f_list| { f_list.contains(&potential_factor_name) });
+                .map_or(false, |f_list| f_list.contains(&potential_factor_name));
             let is_rand_factor = config.main.rand_factor
                 .as_ref()
-                .map_or(false, |r_list| { r_list.contains(&potential_factor_name) });
+                .map_or(false, |r_list| r_list.contains(&potential_factor_name));
 
+            // Jika bukan kovariat, maka dianggap sebagai "faktor sejati".
             if !is_covariate && (is_fix_factor || is_rand_factor) {
                 unique_true_factor_names_in_model.insert(potential_factor_name.clone());
             }
         }
     }
 
+    // Ambil level untuk setiap faktor sejati dari data.
     for factor_name_str in &unique_true_factor_names_in_model {
         match get_factor_levels(data, factor_name_str) {
             Ok(levels) => {
@@ -319,7 +361,6 @@ pub fn construct_type_iii_l_matrix(
                 factor_levels_map.insert(factor_name_str.clone(), levels);
             }
             Err(e) => {
-                // This should ideally not happen if unique_true_factor_names_in_model was populated correctly
                 return Err(
                     format!(
                         "Error getting levels for presumed factor '{}': {}. This might indicate an inconsistency.",
@@ -334,33 +375,34 @@ pub fn construct_type_iii_l_matrix(
     let mut l_rows: Vec<DVector<f64>> = Vec::new();
     let p = design_info.p_parameters;
 
-    // Determine if the term_of_interest is a covariate
+    // Tentukan apakah term_of_interest adalah kovariat.
     let is_covariate_term =
         config.main.covar
             .as_ref()
             .map_or(false, |covars| covars.iter().any(|c| c == term_of_interest)) &&
-        !term_of_interest.contains('*') && // Ensure it's not an interaction term like "Cov*Factor"
+        !term_of_interest.contains('*') && // Pastikan bukan term interaksi
         term_of_interest != "Intercept";
 
-    // Case 1: term_of_interest is "Intercept"
+    // Kasus 1: term_of_interest adalah "Intercept"
+    // Hipotesis untuk intercept menguji rata-rata dari semua prediksi sel (cell means).
     if term_of_interest == "Intercept" {
         let mut l_vec = DVector::from_element(p, 0.0);
         for (j, param_name) in all_model_param_names.iter().enumerate() {
             if param_name == "Intercept" {
                 l_vec[j] = 1.0;
             } else {
-                let param_components = parse_parameter_name(param_name); // E.g. {"F1":"L1", "F2":"L2"}
+                let param_components = parse_parameter_name(param_name);
                 let mut coeff_prod = 1.0;
                 let mut is_pure_factor_based_param = !param_components.is_empty();
 
+                // Koefisien untuk parameter lain adalah produk dari 1/jumlah_level untuk setiap faktor
+                // yang terlibat dalam parameter tersebut.
                 for (factor_in_param, _level_in_param) in &param_components {
                     if let Some(levels) = factor_levels_map.get(factor_in_param) {
                         coeff_prod *= 1.0 / (levels.len() as f64);
                     } else {
-                        // This component of the parameter is not in factor_levels_map.
-                        // It means it's not a "true factor" identified earlier (e.g., it's a covariate).
-                        // The intercept L-vector definition averages over factor levels.
-                        // If a parameter involves a non-factor, its coefficient for the Intercept L is 0.
+                        // Jika komponen parameter bukan faktor (misalnya, kovariat),
+                        // maka koefisien untuk hipotesis Intercept adalah 0.
                         is_pure_factor_based_param = false;
                         break;
                     }
@@ -369,22 +411,20 @@ pub fn construct_type_iii_l_matrix(
                 if is_pure_factor_based_param {
                     l_vec[j] = coeff_prod;
                 } else {
-                    // If param_name is not "Intercept" and not purely factor-based, its coeff is 0 for Intercept L.
                     l_vec[j] = 0.0;
                 }
             }
         }
         l_rows.push(l_vec);
     } else if is_covariate_term {
-        // Case: term_of_interest is a Covariate
-        // The L-matrix for a covariate is a row vector with 1 at the covariate's parameter index and 0 otherwise.
+        // Kasus: term_of_interest adalah Kovariat
+        // Matriks L menguji H0: beta_kovariat = 0.
+        // Ini adalah vektor baris dengan 1 pada indeks parameter kovariat dan 0 di tempat lain.
         if let Some(param_idx) = all_model_param_names.iter().position(|pn| pn == term_of_interest) {
             let mut l_vec = DVector::from_element(p, 0.0);
             l_vec[param_idx] = 1.0;
             l_rows.push(l_vec);
         } else {
-            // This warning indicates that the covariate defined in the model config
-            // was not found among the generated parameter names. This will result in an empty L-matrix for this term.
             web_sys::console::warn_1(
                 &format!(
                     "Hypothesis matrix (Type III): Covariate term '{}' from config was not found in the generated parameter names ({:?}). L-matrix for this term will be empty.",
@@ -394,37 +434,42 @@ pub fn construct_type_iii_l_matrix(
             );
         }
     } else if
-        // Case 2: term_of_interest is a Main Effect (and is a known factor)
+        // Kasus 2: term_of_interest adalah Efek Utama (dan merupakan faktor yang diketahui)
         !term_of_interest.contains('*') &&
         factor_levels_map.contains_key(term_of_interest)
     {
         let f_levels = factor_levels_map.get(term_of_interest).unwrap();
         let num_f_levels = f_levels.len();
         if num_f_levels >= 2 {
-            let ref_level_f = f_levels.last().unwrap().clone(); // Using last level as reference
+            // Gunakan level terakhir sebagai level referensi untuk kontras.
+            let ref_level_f = f_levels.last().unwrap().clone();
+            // Buat n-1 kontras (level_i vs level_ref).
             for i in 0..num_f_levels - 1 {
                 let current_level_f = f_levels[i].clone();
                 let mut l_vec = DVector::from_element(p, 0.0);
 
                 for (j, param_name) in all_model_param_names.iter().enumerate() {
                     let param_components = parse_parameter_name(param_name);
-                    // Check if the parameter involves the term_of_interest (F)
+                    // Cek apakah parameter ini melibatkan term_of_interest (F).
                     if let Some(level_in_param_for_f) = param_components.get(term_of_interest) {
-                        let mut f_contrast_coeff: f64 = 0.0;
-                        if level_in_param_for_f == &current_level_f {
-                            f_contrast_coeff = 1.0;
+                        // Tentukan koefisien kontras untuk faktor F: +1 untuk level saat ini, -1 untuk level referensi.
+                        let f_contrast_coeff: f64 = if level_in_param_for_f == &current_level_f {
+                            1.0
                         } else if level_in_param_for_f == &ref_level_f {
-                            f_contrast_coeff = -1.0;
-                        }
+                            -1.0
+                        } else {
+                            0.0
+                        };
 
                         if f_contrast_coeff.abs() > 1e-9 {
-                            // This parameter is part of the contrast for F
+                            // Untuk parameter yang merupakan bagian dari kontras, kita perlu merata-ratakan
+                            // pengaruh dari faktor-faktor lain yang berinteraksi dengannya.
                             let mut avg_coeff_for_other_factors = 1.0;
                             let mut is_param_structure_valid_for_avg = true;
 
                             for (factor_in_param, _level_in_param) in &param_components {
                                 if factor_in_param != term_of_interest {
-                                    // This is an "other factor" within the parameter
+                                    // Ini adalah "faktor lain" dalam parameter.
                                     if
                                         let Some(other_factor_levels) =
                                             factor_levels_map.get(factor_in_param)
@@ -432,10 +477,8 @@ pub fn construct_type_iii_l_matrix(
                                         avg_coeff_for_other_factors *=
                                             1.0 / (other_factor_levels.len() as f64);
                                     } else {
-                                        // This "other component" in the param is not a known factor (e.g., a covariate).
-                                        // The averaging rule applies to *other factors*.
-                                        // If it's an interaction with a covariate (e.g. F*Cov), this logic may need adjustment
-                                        // or such parameters should get coefficient 0 for this main effect L.
+                                        // Jika "komponen lain" ini bukan faktor (misalnya, kovariat),
+                                        // maka parameter ini tidak termasuk dalam kontras efek utama murni.
                                         is_param_structure_valid_for_avg = false;
                                         break;
                                     }
@@ -445,25 +488,22 @@ pub fn construct_type_iii_l_matrix(
                             if is_param_structure_valid_for_avg {
                                 l_vec[j] = f_contrast_coeff * avg_coeff_for_other_factors;
                             }
-                            // else l_vec[j] remains 0.0
                         }
                     }
-                    // else: param does not contain term_of_interest, so l_vec[j] remains 0.0
                 }
                 l_rows.push(l_vec);
             }
         }
-        // If num_f_levels < 2, no contrasts, l_rows remains empty for this term_of_interest.
     } else if
-        // Case 3: term_of_interest is an Interaction
+        // Kasus 3: term_of_interest adalah Interaksi
         term_of_interest.contains('*')
     {
-        let interaction_factors_names_in_term_of_interest =
-            parse_interaction_term(term_of_interest);
-        let mut factor_contrast_plans = Vec::new(); // Stores Vec<(non_ref_level, ref_level)> for each factor in interaction
+        let interaction_factors_names = parse_interaction_term(term_of_interest);
+        let mut factor_contrast_plans = Vec::new(); // Menyimpan Vec<(level_non_ref, level_ref)>
         let mut interaction_possible_and_valid = true;
 
-        for f_name in &interaction_factors_names_in_term_of_interest {
+        // Siapkan rencana kontras untuk setiap faktor dalam interaksi.
+        for f_name in &interaction_factors_names {
             if let Some(levels) = factor_levels_map.get(f_name) {
                 if levels.len() < 2 {
                     interaction_possible_and_valid = false;
@@ -476,53 +516,47 @@ pub fn construct_type_iii_l_matrix(
                 }
                 factor_contrast_plans.push(contrasts_for_this_factor);
             } else {
-                // One of the factors in term_of_interest is not a known factor (e.g. a covariate named like F*Cov)
+                // Salah satu "faktor" dalam term interaksi tidak terdaftar (misalnya, interaksi dengan kovariat).
                 interaction_possible_and_valid = false;
                 break;
             }
         }
 
         if interaction_possible_and_valid && !factor_contrast_plans.is_empty() {
-            // Generate all combinations of chosen contrasts, one from each factor's plan
-            // e.g., factor_contrast_plans = [ [(A1,A_ref)], [(B1,B_ref),(B2,B_ref)] ]
-            // Itertools::multi_cartesian_product will give:
-            // 1. ( (A1,A_ref), (B1,B_ref) )
-            // 2. ( (A1,A_ref), (B2,B_ref) )
+            // Hasilkan semua kombinasi kontras (satu dari setiap rencana kontras faktor).
+            // Contoh: untuk A*B, ini akan menghasilkan kontras (A1 vs A_ref) x (B1 vs B_ref), dst.
             for specific_contrast_combination in factor_contrast_plans
                 .iter()
-                .map(|plan| plan.iter()) // Need iterators for multi_cartesian_product
+                .map(|plan| plan.iter())
                 .multi_cartesian_product() {
-                // specific_contrast_combination is Vec<&(non_ref_level, ref_level)>
                 let mut l_vec = DVector::from_element(p, 0.0);
                 for (j_param_idx, param_name) in all_model_param_names.iter().enumerate() {
-                    let param_components = parse_parameter_name(param_name); // e.g. {"A":"A1", "B":"B1", "C":"C2"}
+                    let param_components = parse_parameter_name(param_name);
                     let mut final_param_coeff_for_this_l: f64 = 1.0;
                     let mut param_relevant_to_this_l = true;
 
-                    // Part 1: Calculate product of contrast coefficients for factors IN the term_of_interest
-                    for (
-                        k_int_factor,
-                        int_factor_name,
-                    ) in interaction_factors_names_in_term_of_interest.iter().enumerate() {
+                    // Bagian 1: Hitung produk dari koefisien kontras untuk faktor-faktor DALAM term interaksi.
+                    for (k_int_factor, int_factor_name) in interaction_factors_names
+                        .iter()
+                        .enumerate() {
                         if
                             let Some(level_of_int_factor_in_param) =
                                 param_components.get(int_factor_name)
                         {
                             let (non_ref_level_for_contrast, ref_level_for_contrast) =
-                                specific_contrast_combination[k_int_factor]; // This is & (String, String)
+                                specific_contrast_combination[k_int_factor];
 
                             if level_of_int_factor_in_param == non_ref_level_for_contrast {
                                 final_param_coeff_for_this_l *= 1.0;
                             } else if level_of_int_factor_in_param == ref_level_for_contrast {
                                 final_param_coeff_for_this_l *= -1.0;
                             } else {
-                                // This param's level for this int_factor_name is not part of the current contrast definition
+                                // Level parameter ini tidak termasuk dalam definisi kontras saat ini.
                                 final_param_coeff_for_this_l = 0.0;
-                                break; // No need to check other factors for this L
+                                break;
                             }
                         } else {
-                            // The parameter does not contain this specific interaction factor from term_of_interest.
-                            // So, this parameter is not relevant for this specific L-vector.
+                            // Parameter ini tidak mengandung faktor interaksi yang diperlukan.
                             param_relevant_to_this_l = false;
                             break;
                         }
@@ -533,14 +567,10 @@ pub fn construct_type_iii_l_matrix(
                         continue;
                     }
 
-                    // Part 2: Average over levels of factors NOT IN the term_of_interest but present in the parameter
+                    // Bagian 2: Rata-ratakan terhadap level faktor-faktor yang TIDAK ADA dalam term interaksi.
                     for (factor_in_param_name, _level_in_param) in param_components.iter() {
-                        if
-                            !interaction_factors_names_in_term_of_interest.contains(
-                                factor_in_param_name
-                            )
-                        {
-                            // This factor_in_param_name is an "other" factor
+                        if !interaction_factors_names.contains(factor_in_param_name) {
+                            // Ini adalah "faktor lain".
                             if
                                 let Some(other_factor_levels) =
                                     factor_levels_map.get(factor_in_param_name)
@@ -548,11 +578,9 @@ pub fn construct_type_iii_l_matrix(
                                 final_param_coeff_for_this_l *=
                                     1.0 / (other_factor_levels.len() as f64);
                             } else {
-                                // This "other" component in param is not a known factor (e.g., a covariate)
-                                // Per user: "If there is an interaction with a third factor, the coefficient for the
-                                // three-way interaction will be the product of the two-way coefficient and the weight of the third factor."
-                                // This implies averaging only over "other factors". If it's a covariate, no averaging.
-                                // So, the term becomes irrelevant for this specific L construction (based on averaging factors)
+                                // "Faktor lain" ini bukan faktor (misalnya, kovariat).
+                                // Aturan perataan hanya berlaku untuk faktor.
+                                // Maka, parameter ini tidak relevan untuk konstruksi L ini.
                                 final_param_coeff_for_this_l = 0.0;
                                 break;
                             }
@@ -564,16 +592,14 @@ pub fn construct_type_iii_l_matrix(
             }
         }
     }
-    // Note: The constructive method for Type III SS now handles Intercept, main effects of factors,
-    // interactions between factors, and main effects of covariates (as a single parameter hypothesis).
-    // The L-matrix for a covariate 'C' will test H0: beta_C = 0.
-    // Interactions involving covariates (e.g., Cov*Factor) are typically handled as part of the
-    // 'Interaction' case if their structure fits the factor-interaction pattern, or might
-    // require specific L-matrix construction if they have unique parameterization.
+    // Catatan: Metode konstruktif ini menangani Intercept, efek utama faktor, interaksi antar faktor,
+    // dan efek utama kovariat. Interaksi yang melibatkan kovariat (misalnya, Cov*Factor)
+    // mungkin memerlukan penanganan khusus jika tidak sesuai dengan pola interaksi antar faktor.
 
     if l_rows.is_empty() {
         Ok(DMatrix::zeros(0, p))
     } else {
+        // Ubah dari vektor kolom ke matriks baris.
         let row_d_vectors: Vec<nalgebra::RowDVector<f64>> = l_rows
             .into_iter()
             .map(|dv_col| dv_col.transpose())
@@ -582,8 +608,23 @@ pub fn construct_type_iii_l_matrix(
     }
 }
 
-/// Constructs the L-matrix for Type IV Sum of Squares for a given term.
-/// Builds upon Type III logic and adjusts for empty cells in the design.
+/**
+ * Membangun matriks L untuk Jumlah Kuadrat (Sum of Squares) Tipe IV.
+ * SS Tipe IV adalah modifikasi dari Tipe III yang dirancang khusus untuk menangani desain
+ * dengan sel-sel kosong (kombinasi level faktor yang tidak memiliki data).
+ *
+ * Aturan dasarnya adalah kontras didistribusikan secara seimbang di antara sel-sel yang ada (observed).
+ *
+ * Prosesnya adalah sebagai berikut:
+ * 1. Hitung matriks L Tipe III sebagai basis awal.
+ * 2. Identifikasi semua efek dalam model yang "mengandung" term of interest (F).
+ *    Misalnya, jika F adalah "A", maka efek seperti "A*B" mengandung F.
+ * 3. Jika tidak ada efek yang mengandung F, L Tipe III sudah merupakan L Tipe IV.
+ * 4. Jika ada, sesuaikan koefisien pada matriks L Tipe III. Koefisien untuk parameter
+ *    yang terkait dengan efek yang mengandung F akan disesuaikan (dibagi) dengan jumlah
+ *    sel yang tidak kosong yang relevan. Ini memastikan bahwa hipotesis diuji
+ *    dengan cara yang masuk akal mengingat data yang hilang.
+ */
 pub fn construct_type_iv_l_matrix(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -591,7 +632,7 @@ pub fn construct_type_iv_l_matrix(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<DMatrix<f64>, String> {
-    // 1. Perform Type III calculation.
+    // 1. Mulai dengan matriks L Tipe III.
     let l_matrix_base_type_iv = construct_type_iii_l_matrix(
         design_info,
         term_of_interest,
@@ -604,6 +645,7 @@ pub fn construct_type_iv_l_matrix(
         return Ok(l_matrix_base_type_iv);
     }
 
+    // 2. Temukan semua efek yang mengandung term_of_interest (F).
     let factors_in_f_set: HashSet<_> = parse_interaction_term(term_of_interest)
         .into_iter()
         .collect();
@@ -616,18 +658,18 @@ pub fn construct_type_iv_l_matrix(
         let factors_in_model_term_set: HashSet<_> = parse_interaction_term(model_term_name)
             .into_iter()
             .collect();
+        // Cek jika himpunan faktor F adalah subset dari himpunan faktor term model saat ini.
         if factors_in_f_set.is_subset(&factors_in_model_term_set) {
             effects_containing_f.push(model_term_name);
         }
     }
 
-    // 2. If no effects containing F, matrix from Type III (step 3) is Type IV L.
+    // 3. Jika tidak ada efek yang mengandung F, L Tipe III adalah jawabannya.
     if effects_containing_f.is_empty() {
         return Ok(l_matrix_base_type_iv);
     }
 
-    // 3. Adjust coefficients based on cell occupancy (Type IV specific rules per documentation).
-    // For each row of L, for each effect containing F, for each parameter column, adjust coefficients.
+    // 4. Sesuaikan koefisien berdasarkan keberadaan sel data (logika Tipe IV).
     let mut l_matrix_type_iv = l_matrix_base_type_iv.clone();
 
     for row_idx in 0..l_matrix_type_iv.nrows() {
@@ -638,42 +680,34 @@ pub fn construct_type_iv_l_matrix(
                 for col_idx in *start..=*end {
                     let coeff = l_matrix_type_iv[(row_idx, col_idx)];
 
-                    // If the coefficient is zero, the adjusted coefficient is also zero.
                     if coeff.abs() < 1e-10 {
-                        l_matrix_type_iv[(row_idx, col_idx)] = 0.0;
                         continue;
                     }
 
-                    // Determine the specific combination of factor levels represented by this design matrix column (col_idx).
-                    // This requires inspecting the column vector design_info.x.column(col_idx).
-                    // For simple main effects or standard contrast codings, a non-zero entry at a specific row
-                    // indicates the level combination of that row corresponds to this column.
+                    // Tentukan kombinasi level faktor spesifik yang diwakili oleh kolom matriks desain ini (col_idx).
+                    // Ini dilakukan dengan mencari baris data mana yang memiliki nilai non-nol di kolom ini.
                     let mut represented_combo: Option<HashMap<String, String>> = None;
                     let design_col = design_info.x.column(col_idx);
 
-                    // Find a data record index that corresponds to a non-zero entry in this design column.
-                    // This assumes the order of rows in design_info.x corresponds to the order of records in data.dependent_data,
-                    // and that design_info.case_indices_to_keep maps swept row index to original data index.
+                    // Cari indeks data sampel (dalam data yang disimpan/tidak disapu) yang sesuai dengan entri non-nol di kolom desain ini.
                     let mut sample_record_idx_in_kept_data: Option<usize> = None;
                     for i in 0..design_col.nrows() {
                         if design_col[i].abs() > 1e-10 {
-                            sample_record_idx_in_kept_data = Some(i); // This is the index within the *kept* cases
+                            sample_record_idx_in_kept_data = Some(i);
                             break;
                         }
                     }
 
                     if let Some(kept_idx) = sample_record_idx_in_kept_data {
-                        // Map back to original data index
+                        // Petakan kembali ke indeks data asli.
                         let original_rec_idx = design_info.case_indices_to_keep[kept_idx];
-                        // Get the factor levels for this record from the original data
+                        // Ambil level faktor untuk record ini dari data asli.
                         if let Some(record) = data.dependent_data[0].get(original_rec_idx) {
-                            // Assumes data.dependent_data[0] is the main data group
                             let mut combo = HashMap::new();
                             for factor_name in &effect_factors {
                                 if let Some(val) = record.values.get(factor_name) {
                                     combo.insert(factor_name.clone(), data_value_to_string(val));
                                 } else {
-                                    // This factor should be present if effect_name was parsed correctly.
                                     return Err(
                                         format!("Factor '{}' not found in data record for cell counting.", factor_name)
                                     );
@@ -684,20 +718,18 @@ pub fn construct_type_iv_l_matrix(
                     }
 
                     if let Some(combo) = represented_combo {
-                        // Extract the level of the term_of_interest (F) from this combination
                         let f_level_in_combo = combo.get(term_of_interest);
 
                         if let Some(f_level_str) = f_level_in_combo {
-                            // Count N(level F): number of non-missing cells for this level of F in the context of the containing effect combination represented by this column.
+                            // Hitung N(level F): jumlah sel yang tidak kosong untuk level F ini
+                            // dalam konteks kombinasi efek yang diwakili oleh kolom ini.
                             let mut n_level_f_in_effect_context = 0;
 
-                            // Create a record for matching
-                            let mut record = HashMap::new();
+                            let mut record_to_match = HashMap::new();
                             for (factor_name, level) in &combo {
-                                record.insert(factor_name.clone(), level.clone());
+                                record_to_match.insert(factor_name.clone(), level.clone());
                             }
 
-                            // Get the factor values for the term of interest
                             if
                                 let Some(factor_values) = get_numeric_values_from_source(
                                     Some(&data.fix_factor_data_defs),
@@ -706,10 +738,8 @@ pub fn construct_type_iv_l_matrix(
                                     "Fixed factor"
                                 ).ok()
                             {
-                                // Get matching rows
-                                let matching_rows = matches_combination(&record, data);
+                                let matching_rows = matches_combination(&record_to_match, data);
 
-                                // Count matches where factor level matches
                                 for factor_val in factor_values {
                                     if
                                         matching_rows.contains(&factor_val) &&
@@ -720,7 +750,7 @@ pub fn construct_type_iv_l_matrix(
                                 }
                             }
 
-                            // Apply adjustment: divide by N(level F) if > 0, else set to 0.
+                            // Terapkan penyesuaian: bagi dengan N(level F) jika > 0, jika tidak, nolkan.
                             if n_level_f_in_effect_context > 0 {
                                 l_matrix_type_iv[(row_idx, col_idx)] =
                                     coeff / (n_level_f_in_effect_context as f64);
@@ -728,14 +758,11 @@ pub fn construct_type_iv_l_matrix(
                                 l_matrix_type_iv[(row_idx, col_idx)] = 0.0;
                             }
                         } else {
-                            // If term_of_interest (F) is not a simple factor directly in the combination
-                            // or extraction failed, we cannot determine the specific F level for adjustment based on this combo.
-                            // Set to 0 as a conservative approach.
+                            // Jika level F tidak dapat diekstrak, nolkan sebagai pendekatan konservatif.
                             l_matrix_type_iv[(row_idx, col_idx)] = 0.0;
                         }
                     } else {
-                        // If the level combination represented by the design matrix column cannot be determined,
-                        // the adjustment rule based on cell occupancy cannot be applied. Set to 0.
+                        // Jika kombinasi level tidak dapat ditentukan, penyesuaian tidak dapat diterapkan. Nolkan.
                         l_matrix_type_iv[(row_idx, col_idx)] = 0.0;
                     }
                 }
@@ -746,6 +773,15 @@ pub fn construct_type_iv_l_matrix(
     Ok(l_matrix_type_iv)
 }
 
+/**
+ * Mempartisi indeks kolom matriks desain untuk perhitungan SS Tipe II.
+ *
+ * - `x1_indices`: Indeks kolom untuk semua efek yang TIDAK mengandung term of interest (F).
+ *                 Ini termasuk intercept dan efek utama/interaksi lain.
+ * - `x2_indices`: Indeks kolom untuk term of interest (F) itu sendiri.
+ * - `x3_indices`: Indeks kolom untuk semua efek yang merupakan interaksi tingkat lebih tinggi
+ *                 yang MENGANDUNG F (misalnya, jika F="A", maka "A*B" termasuk di sini).
+ */
 fn partition_column_indices_for_type_ii(
     design_info: &DesignMatrixInfo,
     term_of_interest: &str,
@@ -759,10 +795,9 @@ fn partition_column_indices_for_type_ii(
         .into_iter()
         .collect();
 
+    // Dapatkan indeks untuk X2 (term of interest).
     if let Some((start, end)) = design_info.term_column_indices.get(term_of_interest) {
-        for i in *start..=*end {
-            x2_indices.push(i);
-        }
+        x2_indices.extend(*start..=*end);
     } else {
         return Err(
             format!("Term '{}' not found in design_info for Type II partitioning.", term_of_interest)
@@ -774,7 +809,7 @@ fn partition_column_indices_for_type_ii(
             continue;
         }
 
-        // Handle intercept separately for X1 if not F
+        // Tangani intercept secara terpisah (selalu masuk X1, kecuali jika F adalah intercept).
         if other_term_name == "Intercept" {
             if term_of_interest != "Intercept" {
                 if let Some(idx) = design_info.intercept_column {
@@ -792,20 +827,18 @@ fn partition_column_indices_for_type_ii(
                 .collect();
 
             let j_contains_f = factors_in_f_set.is_subset(&factors_in_j_set);
-            // let f_contains_j = factors_in_j_set.is_subset(&factors_in_f_set); // Not used in Type II partitioning logic directly this way
 
             for i_col in *start_j..=*end_j {
                 if j_contains_f {
-                    // Effect J contains F (term_of_interest)
-                    // If J is higher order than F (more factors), it's X3.
-                    // If J is F itself, it's X2 (already handled).
+                    // Efek J mengandung F. Jika J memiliki lebih banyak faktor daripada F, maka J adalah interaksi
+                    // tingkat lebih tinggi dan masuk ke X3.
                     if factors_in_j_set.len() > factors_in_f_set.len() {
                         if !x3_indices.contains(&i_col) {
                             x3_indices.push(i_col);
                         }
                     }
                 } else {
-                    // Effect J does not contain F - so it belongs to X1
+                    // Efek J tidak mengandung F, jadi masuk ke X1.
                     if !x1_indices.contains(&i_col) {
                         x1_indices.push(i_col);
                     }
@@ -814,9 +847,10 @@ fn partition_column_indices_for_type_ii(
         }
     }
 
+    // Pastikan indeks unik dan terurut.
     x1_indices.sort_unstable();
     x1_indices.dedup();
-    x2_indices.sort_unstable(); // Should be sorted from range
+    x2_indices.sort_unstable();
     x2_indices.dedup();
     x3_indices.sort_unstable();
     x3_indices.dedup();
@@ -824,7 +858,14 @@ fn partition_column_indices_for_type_ii(
     Ok((x1_indices, x2_indices, x3_indices))
 }
 
-/// SWEEP operator for a matrix on a list of columns (in order)
+/**
+ * Operator SWEEP untuk matriks pada daftar kolom yang ditentukan (secara berurutan).
+ *
+ * Operasi SWEEP adalah alat fundamental dalam komputasi model linear.
+ * Melakukan SWEEP pada kolom `k` dari matriks cross-product (seperti X'X) setara dengan
+ * meregresikan variabel dependen pada variabel prediktor ke-`k`.
+ * Secara efektif, ini adalah cara untuk melakukan inversi matriks secara parsial.
+ */
 pub fn sweep_matrix_on_columns(mut matrix: DMatrix<f64>, cols_to_sweep: &[usize]) -> DMatrix<f64> {
     let n = matrix.nrows();
     for &k in cols_to_sweep {
@@ -833,8 +874,10 @@ pub fn sweep_matrix_on_columns(mut matrix: DMatrix<f64>, cols_to_sweep: &[usize]
         }
         let pivot = matrix[(k, k)];
         if pivot.abs() < 1e-12 {
-            continue;
+            continue; // Pivot terlalu kecil, lewati untuk menghindari instabilitas numerik.
         }
+
+        // Update elemen non-pivot
         for i in 0..n {
             for j in 0..n {
                 if i != k && j != k {
@@ -842,16 +885,22 @@ pub fn sweep_matrix_on_columns(mut matrix: DMatrix<f64>, cols_to_sweep: &[usize]
                 }
             }
         }
+
+        // Update baris pivot (kecuali elemen pivot itu sendiri)
         for j in 0..n {
             if j != k {
                 matrix[(k, j)] /= pivot;
             }
         }
+
+        // Update kolom pivot (kecuali elemen pivot itu sendiri)
         for i in 0..n {
             if i != k {
                 matrix[(i, k)] /= pivot;
             }
         }
+
+        // Update elemen pivot
         matrix[(k, k)] = -1.0 / pivot;
     }
     matrix

@@ -9,10 +9,20 @@ use std::f64;
 
 use super::core::*;
 
+/**
+ * Menghitung berbagai uji heteroskedastisitas berdasarkan data dan konfigurasi yang diberikan.
+ * Fungsi ini mengorkestrasi seluruh proses, mulai dari persiapan data hingga eksekusi setiap
+ * jenis uji yang diminta (White, Breusch-Pagan, dll.).
+ *
+ * @param data - Referensi ke `AnalysisData` yang berisi data mentah.
+ * @param config - Konfigurasi model univariat yang menentukan variabel dan opsi uji.
+ * @returns `Result<HeteroscedasticityTests, String>` yang berisi hasil uji atau pesan error.
+ */
 pub fn calculate_heteroscedasticity_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<HeteroscedasticityTests, String> {
+    // Langkah 1: Buat matriks desain, vektor respons (y), dan bobot dari data mentah.
     let design_info = create_design_response_weights(data, config).map_err(|e|
         format!("Failed to create design matrix for main model: {}", e)
     )?;
@@ -24,33 +34,41 @@ pub fn calculate_heteroscedasticity_tests(
         return Err("No data for main model fitting in heteroscedasticity tests.".to_string());
     }
 
+    // Langkah 2: Buat matriks cross-product (Z'WZ) untuk model utama.
     let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e|
         format!("Failed to create Z'WZ matrix for main model: {}", e)
     )?;
 
+    // Langkah 3: Lakukan operasi SWEEP untuk mendapatkan estimasi parameter (beta) dan RSS dari model utama.
     let swept_info = perform_sweep_and_extract_results(
         &ztwz_matrix,
         design_info.p_parameters
     ).map_err(|e| format!("SWEEP failed for main model: {}", e))?;
 
-    // Calculate residuals directly
+    // Langkah 4: Hitung nilai prediksi (y_hat) dan sisaan (residuals) dari model utama.
+    // Sisaan = y - y_hat
     let y_hat = &design_info.x * &swept_info.beta_hat;
     let residuals_vec = &design_info.y - &y_hat;
     let n_obs = design_info.n_samples;
 
+    // Langkah 5: Kuadratkan sisaan. Vektor ini akan menjadi variabel dependen (y_aux) untuk regresi pembantu.
     let squared_residuals_data: Vec<f64> = residuals_vec
         .iter()
         .map(|e| e.powi(2))
         .collect();
     let y_aux_for_tests = DVector::from_vec(squared_residuals_data);
 
+    // Langkah 6: Buat matriks desain pembantu (Z_p) dari nilai prediksi (y_hat).
+    // Matriks ini digunakan untuk uji Breusch-Pagan dan F-test.
     let z_pred_matrix_option = create_predicted_aux_matrix(&y_hat, n_obs);
 
+    // Inisialisasi hasil uji.
     let mut white_test_result = None;
     let mut bp_test_result = None;
     let mut modified_bp_test_result = None;
     let mut f_test_kb_result = None;
 
+    // Langkah 7: Jalankan uji yang diminta dalam konfigurasi.
     if config.options.white_test {
         white_test_result = calculate_white_test(&y_aux_for_tests, &design_info, config, n_obs);
     }
@@ -101,7 +119,7 @@ pub fn calculate_heteroscedasticity_tests(
         }
     }
 
-    // Add metadata to notes for frontend consumption
+    // Langkah 8: Tambahkan metadata ke catatan hasil untuk konsumsi di frontend.
     if let Some(ref mut test) = white_test_result {
         test.note.push(format!("__DEP_VAR:{}", dep_var_name));
         test.note.push(format!("__DESIGN:{}", design_string));
@@ -127,12 +145,24 @@ pub fn calculate_heteroscedasticity_tests(
     })
 }
 
-// Helper to run simple OLS regression and return key statistics
+/**
+ * Menjalankan regresi OLS (Ordinary Least Squares) sederhana untuk regresi pembantu.
+ * Regresi pembantu digunakan dalam uji heteroskedastisitas, di mana kuadrat sisaan
+ * diregresikan pada variabel-variabel tertentu.
+ *
+ * @param y_aux_vec - Vektor variabel dependen untuk regresi pembantu (biasanya kuadrat sisaan).
+ * @param x_aux_matrix - Matriks desain (prediktor) untuk regresi pembantu.
+ * @returns Tuple berisi: (R-kuadrat, ESS, RSS, df prediktor, df sisaan).
+ *          - R-kuadrat: Koefisien determinasi.
+ *          - ESS (Explained Sum of Squares): Jumlah kuadrat penjelas.
+ *          - RSS (Residual Sum of Squares): Jumlah kuadrat sisaan.
+ *          - df_regressors_in_aux_Z: Jumlah prediktor dalam model pembantu.
+ *          - df_residuals_aux: Derajat kebebasan sisaan.
+ */
 fn run_simple_ols(
     y_aux_vec: &DVector<f64>,
     x_aux_matrix: &DMatrix<f64>
 ) -> Result<(f64, f64, f64, usize, usize), String> {
-    // Returns: (R_sq, ESS, RSS, df_regressors_in_aux_Z, df_residuals_aux)
     let n_obs = y_aux_vec.len();
     if n_obs == 0 {
         return Ok((0.0, 0.0, 0.0, 0, 0));
@@ -141,17 +171,17 @@ fn run_simple_ols(
         return Err(format!("Aux OLS: X nrows ({}) != Y len ({}).", x_aux_matrix.nrows(), n_obs));
     }
 
+    // Jika tidak ada prediktor, R-kuadrat adalah 0.
     if x_aux_matrix.ncols() == 0 {
-        // No regressors in auxiliary model. R^2 = 0.
-        // RSS becomes TSS of y_aux_vec if we consider a model with no predictors.
         let y_mean_aux = y_aux_vec.mean();
         let rss = y_aux_vec
             .iter()
             .map(|&yi| (yi - y_mean_aux).powi(2))
             .sum::<f64>();
-        return Ok((0.0, 0.0, rss, 0, n_obs)); // df_regressors = 0, df_residuals = N
+        return Ok((0.0, 0.0, rss, 0, n_obs));
     }
 
+    // Perhitungan standar OLS: beta = (X'X)^-1 * X'Y
     let xtx = x_aux_matrix.transpose() * x_aux_matrix;
     let xtx_inv = xtx
         .svd(true, true)
@@ -161,28 +191,42 @@ fn run_simple_ols(
     let y_hat_aux = x_aux_matrix * beta_aux;
     let residuals_aux_vec = y_aux_vec - &y_hat_aux;
 
+    // Hitung jumlah kuadrat (Sum of Squares)
     let y_mean_aux = y_aux_vec.mean();
     let ess = y_hat_aux
         .iter()
         .map(|&yh| (yh - y_mean_aux).powi(2))
-        .sum::<f64>();
+        .sum::<f64>(); // Explained
     let rss = residuals_aux_vec
         .iter()
         .map(|&e| e.powi(2))
-        .sum::<f64>();
+        .sum::<f64>(); // Residual
     let tss = y_aux_vec
         .iter()
         .map(|&yi| (yi - y_mean_aux).powi(2))
-        .sum::<f64>();
+        .sum::<f64>(); // Total
+
+    // Hitung R-kuadrat: R^2 = ESS / TSS
     let r_squared = if tss.abs() < 1e-9 { 0.0 } else { ess / tss };
 
-    let df_regressors_in_z = x_aux_matrix.ncols(); // Total number of columns in the auxiliary design matrix Z
+    // Tentukan derajat kebebasan
+    let df_regressors_in_z = x_aux_matrix.ncols();
     let df_residuals = n_obs.saturating_sub(df_regressors_in_z);
 
     Ok((r_squared.max(0.0).min(1.0), ess, rss, df_regressors_in_z, df_residuals))
 }
 
-// Create auxiliary matrix for White test
+/**
+ * Membuat matriks desain pembantu untuk Uji White.
+ * Matriks ini terdiri dari:
+ * 1. Intersep.
+ * 2. Prediktor-prediktor asli dari model utama (tanpa intersep).
+ * 3. Kuadrat dari prediktor-prediktor kontinu.
+ * 4. Hasil kali silang (cross-product) dari semua pasangan prediktor.
+ *
+ * Tujuannya adalah untuk memeriksa apakah varians sisaan berhubungan secara sistematis
+ * dengan prediktor, kuadratnya, atau interaksinya.
+ */
 fn create_white_aux_matrix(
     design_info: &DesignMatrixInfo,
     config: &UnivariateConfig,
@@ -195,32 +239,29 @@ fn create_white_aux_matrix(
     let mut aux_cols: Vec<DVector<f64>> = Vec::new();
     let mut existing_col_hashes: HashSet<Vec<u64>> = HashSet::new();
 
-    // The auxiliary regression for the White test must include an intercept for the N*R^2
-    // statistic to be valid. We add one here; hashing prevents duplication.
+    // Uji White memerlukan intersep dalam regresi pembantunya agar statistik N*R^2 valid.
     let intercept_col = DVector::from_element(n_obs, 1.0f64);
     let hash_repr: Vec<u64> = intercept_col
         .iter()
         .map(|&val| val.to_bits())
         .collect();
-    if !existing_col_hashes.contains(&hash_repr) {
-        existing_col_hashes.insert(hash_repr);
+    if existing_col_hashes.insert(hash_repr) {
         aux_cols.push(intercept_col);
     }
 
-    // Collect original non-intercept predictor columns
+    // Kumpulkan kolom prediktor asli (non-intersep) dari model utama.
     let mut original_non_intercept_predictors: Vec<(usize, DVector<f64>)> = Vec::new();
     for j in 0..design_info.x.ncols() {
         if design_info.intercept_column != Some(j) {
             let col = design_info.x.column(j).into_owned();
             original_non_intercept_predictors.push((j, col.clone()));
 
-            // Add original column
+            // Tambahkan kolom asli ke matriks pembantu jika belum ada.
             let hash_repr: Vec<u64> = col
                 .iter()
                 .map(|&val| val.to_bits())
                 .collect();
-            if !existing_col_hashes.contains(&hash_repr) {
-                existing_col_hashes.insert(hash_repr);
+            if existing_col_hashes.insert(hash_repr) {
                 aux_cols.push(col);
             }
         }
@@ -234,15 +275,15 @@ fn create_white_aux_matrix(
         };
     }
 
-    // Add squared terms of continuous predictors
+    // Tambahkan kuadrat dari prediktor-prediktor kontinu.
     for (original_idx, predictor_col) in &original_non_intercept_predictors {
-        // Check if column is continuous
+        // Cek apakah kolom adalah variabel kontinu.
         let is_continuous = if design_info.intercept_column == Some(*original_idx) {
             false
         } else {
             let mut is_cont = false;
             for (term_name, (start_idx, end_idx)) in &design_info.term_column_indices {
-                if original_idx >= start_idx && original_idx <= end_idx {
+                if *original_idx >= *start_idx && *original_idx <= *end_idx {
                     if
                         config.main.covar
                             .as_ref()
@@ -262,14 +303,13 @@ fn create_white_aux_matrix(
                 .iter()
                 .map(|&val| val.to_bits())
                 .collect();
-            if !existing_col_hashes.contains(&hash_repr) {
-                existing_col_hashes.insert(hash_repr);
+            if existing_col_hashes.insert(hash_repr) {
                 aux_cols.push(squared_col);
             }
         }
     }
 
-    // Add cross-product terms for continuous variables
+    // Tambahkan hasil kali silang (cross-products) antar prediktor.
     for i in 0..original_non_intercept_predictors.len() {
         for k in i + 1..original_non_intercept_predictors.len() {
             let (_, predictor1) = &original_non_intercept_predictors[i];
@@ -280,8 +320,7 @@ fn create_white_aux_matrix(
                 .iter()
                 .map(|&val| val.to_bits())
                 .collect();
-            if !existing_col_hashes.contains(&hash_repr) {
-                existing_col_hashes.insert(hash_repr);
+            if existing_col_hashes.insert(hash_repr) {
                 aux_cols.push(cross_product_col);
             }
         }
@@ -294,30 +333,33 @@ fn create_white_aux_matrix(
     }
 }
 
-// Create auxiliary matrix for predicted value tests (BP, Modified BP, F-test)
+/**
+ * Membuat matriks desain pembantu untuk uji yang berbasis nilai prediksi (y_hat).
+ * Ini digunakan untuk Uji Breusch-Pagan dan Uji-F.
+ * Matriks ini sangat sederhana, hanya terdiri dari:
+ * 1. Intersep.
+ * 2. Vektor nilai prediksi (y_hat) dari model utama.
+ */
 fn create_predicted_aux_matrix(y_hat: &DVector<f64>, n_obs: usize) -> Option<DMatrix<f64>> {
     let mut aux_cols: Vec<DVector<f64>> = Vec::new();
     let mut existing_col_hashes: HashSet<Vec<u64>> = HashSet::new();
 
-    // The auxiliary regression for these tests should have its own intercept,
-    // regardless of whether the main model had one.
+    // Regresi pembantu untuk uji ini harus memiliki intersepnya sendiri.
     let intercept_col = DVector::from_element(n_obs, 1.0f64);
     let hash_repr: Vec<u64> = intercept_col
         .iter()
         .map(|&val| val.to_bits())
         .collect();
-    if !existing_col_hashes.contains(&hash_repr) {
-        existing_col_hashes.insert(hash_repr);
+    if existing_col_hashes.insert(hash_repr) {
         aux_cols.push(intercept_col);
     }
 
-    // Add predicted values
+    // Tambahkan nilai prediksi (y_hat) sebagai prediktor.
     let y_hat_hash_repr: Vec<u64> = y_hat
         .iter()
         .map(|&val| val.to_bits())
         .collect();
-    if !existing_col_hashes.contains(&y_hat_hash_repr) {
-        existing_col_hashes.insert(y_hat_hash_repr);
+    if existing_col_hashes.insert(y_hat_hash_repr) {
         aux_cols.push(y_hat.clone_owned());
     }
 
@@ -328,13 +370,23 @@ fn create_predicted_aux_matrix(y_hat: &DVector<f64>, n_obs: usize) -> Option<DMa
     }
 }
 
-// Calculate White test
+/**
+ * Menghitung Uji White untuk heteroskedastisitas.
+ *
+ * - **Tujuan**: Mendeteksi heteroskedastisitas tanpa membuat asumsi spesifik tentang bentuknya.
+ * - **Rumus**: Statistik Lagrange Multiplier (LM) dihitung sebagai `LM = n * R^2`, di mana `n`
+ *   adalah jumlah observasi dan `R^2` adalah koefisien determinasi dari regresi pembantu.
+ * - **Distribusi**: Statistik LM mengikuti distribusi Chi-kuadrat dengan derajat kebebasan (df)
+ *   sama dengan jumlah prediktor dalam regresi pembantu (tidak termasuk intersep).
+ * - **Interpretasi**: Nilai-p yang signifikan (misal, < 0.05) menunjukkan adanya heteroskedastisitas.
+ */
 fn calculate_white_test(
     y_aux: &DVector<f64>,
     design_info: &DesignMatrixInfo,
     config: &UnivariateConfig,
     n_obs: usize
 ) -> Option<WhiteTest> {
+    // Uji White tidak dapat diterapkan jika tidak ada prediktor (selain intersep) di model utama.
     if design_info.p_parameters - (if design_info.intercept_column.is_some() { 1 } else { 0 }) == 0 {
         return Some(WhiteTest {
             statistic: 0.0,
@@ -348,6 +400,7 @@ fn calculate_white_test(
 
     match create_white_aux_matrix(design_info, config, n_obs) {
         Ok(z_white) => {
+            // Jika model pembantu hanya berisi intersep, tidak ada yang bisa diuji.
             if z_white.ncols() <= 1 {
                 return Some(WhiteTest {
                     statistic: 0.0,
@@ -362,7 +415,7 @@ fn calculate_white_test(
             match run_simple_ols(y_aux, &z_white) {
                 Ok((r_sq_aux, _, _, k_total_aux_white, _)) => {
                     let lm_statistic_white = (n_obs as f64) * r_sq_aux;
-                    let df_chi_sq_white = k_total_aux_white.saturating_sub(1);
+                    let df_chi_sq_white = k_total_aux_white.saturating_sub(1); // df = p - 1
 
                     if df_chi_sq_white > 0 {
                         let p_value_white = calculate_chi_sq_significance(
@@ -407,13 +460,25 @@ fn calculate_white_test(
     }
 }
 
-// Calculate Breusch-Pagan test
+/**
+ * Menghitung Uji Breusch-Pagan (BP) untuk heteroskedastisitas.
+ *
+ * - **Tujuan**: Mendeteksi heteroskedastisitas linear, di mana varians sisaan adalah fungsi
+ *   linear dari variabel-variabel penjelas. Versi ini menggunakan nilai prediksi (y_hat).
+ * - **Rumus**: Statistik BP dihitung sebagai `BP = ESS / (2 * (RSS/n)^2)`, di mana `ESS` adalah
+ *   Explained Sum of Squares dari regresi pembantu, `RSS` adalah Residual Sum of Squares dari
+ *   *model utama*, dan `n` adalah jumlah observasi.
+ * - **Distribusi**: Statistik BP mengikuti distribusi Chi-kuadrat dengan df = 1 (karena hanya
+ *   y_hat sebagai prediktor).
+ * - **Interpretasi**: Nilai-p yang signifikan menunjukkan adanya heteroskedastisitas.
+ */
 fn calculate_bp_test(
     y_aux: &DVector<f64>,
     z_pred: &DMatrix<f64>,
     n_obs: usize,
     rss_main_model: f64
 ) -> Option<BPTest> {
+    // Model pembantu harus punya intersep dan y_hat (minimal 2 kolom).
     if z_pred.ncols() < 2 {
         return Some(BPTest {
             statistic: 0.0,
@@ -427,12 +492,14 @@ fn calculate_bp_test(
 
     match run_simple_ols(y_aux, z_pred) {
         Ok((_, ess_aux, _, k_total_aux, _)) => {
+            // sigma^2_mle = RSS / n (Maximum Likelihood Estimate dari varians error model utama)
             let sigma_sq_mle_main = if n_obs > 0 {
                 rss_main_model / (n_obs as f64)
             } else {
                 f64::NAN
             };
 
+            // Jika varians error adalah nol atau NaN, uji tidak bisa dihitung.
             if sigma_sq_mle_main.is_nan() || sigma_sq_mle_main.abs() < 1e-12 {
                 return Some(BPTest {
                     statistic: f64::NAN,
@@ -481,7 +548,17 @@ fn calculate_bp_test(
     }
 }
 
-// Calculate Modified Breusch-Pagan test
+/**
+ * Menghitung Uji Breusch-Pagan yang Dimodifikasi (versi Koenker-Bassett).
+ * Juga dikenal sebagai uji N*R-squared.
+ *
+ * - **Tujuan**: Sama seperti BP, tetapi lebih robust (tahan) terhadap pelanggaran asumsi
+ *   normalitas pada sisaan.
+ * - **Rumus**: `LM = n * R^2`, di mana `R^2` berasal dari regresi pembantu (kuadrat sisaan
+ *   pada y_hat).
+ * - **Distribusi**: Statistik LM mengikuti distribusi Chi-kuadrat dengan df = 1.
+ * - **Interpretasi**: Nilai-p yang signifikan menunjukkan adanya heteroskedastisitas.
+ */
 fn calculate_modified_bp_test(
     y_aux: &DVector<f64>,
     z_pred: &DMatrix<f64>,
@@ -537,7 +614,17 @@ fn calculate_modified_bp_test(
     }
 }
 
-// Calculate F-test
+/**
+ * Menghitung Uji-F untuk heteroskedastisitas.
+ *
+ * - **Tujuan**: Alternatif dari uji Chi-kuadrat (seperti BP), sering dianggap memiliki
+ *   performa yang lebih baik pada sampel kecil.
+ * - **Rumus**: `F = (R^2 / df1) / ((1 - R^2) / df2)`, di mana `R^2` dari regresi pembantu,
+ *   `df1` adalah jumlah prediktor di model pembantu (tanpa intersep), dan `df2` adalah
+ *   derajat kebebasan sisaan dari model pembantu.
+ * - **Distribusi**: Statistik F mengikuti distribusi F dengan derajat kebebasan (df1, df2).
+ * - **Interpretasi**: Nilai-p yang signifikan menunjukkan adanya heteroskedastisitas.
+ */
 fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -> Option<FTest> {
     if z_pred.ncols() < 2 {
         return Some(FTest {
@@ -553,13 +640,14 @@ fn calculate_f_test(y_aux: &DVector<f64>, z_pred: &DMatrix<f64>, n_obs: usize) -
 
     match run_simple_ols(y_aux, z_pred) {
         Ok((r_sq_aux, _, _, k_total_aux, df_res_aux)) => {
-            let df1_f = k_total_aux.saturating_sub(1);
-            let df2_f = df_res_aux;
+            let df1_f = k_total_aux.saturating_sub(1); // df1 = p_aux - 1
+            let df2_f = df_res_aux; // df2 = n - p_aux
 
             if df1_f > 0 && df2_f > 0 {
                 let f_statistic_val =
                     r_sq_aux / (df1_f as f64) / ((1.0 - r_sq_aux) / (df2_f as f64));
                 let p_value_f_val = calculate_f_significance(df1_f, df2_f, f_statistic_val);
+
                 Some(FTest {
                     statistic: f_statistic_val,
                     df1: df1_f,

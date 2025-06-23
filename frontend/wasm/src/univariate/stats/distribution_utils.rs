@@ -1,64 +1,116 @@
 use statrs::distribution::{ ChiSquared, FisherSnedecor, Normal, StudentsT, ContinuousCDF };
 
-/// Calculate F significance (p-value) for F statistic
+/// Menghitung signifikansi F (p-value) untuk statistik F.
+///
+/// # Arguments
+/// * `df1` - Derajat kebebasan (degrees of freedom) untuk numerator.
+/// * `df2` - Derajat kebebasan untuk denominator.
+/// * `f_value` - Nilai statistik F yang dihitung.
+///
+/// # Returns
+/// Nilai p-value, yang merepresentasikan probabilitas mengamati nilai F yang sama atau lebih ekstrim
+/// jika hipotesis nol benar. Mengembalikan `f64::NAN` jika input tidak valid.
 pub fn calculate_f_significance(df1: usize, df2: usize, f_value: f64) -> f64 {
     if df1 == 0 || df2 == 0 || f_value.is_nan() || f_value < 0.0 {
         return f64::NAN;
     }
+    // Menggunakan distribusi Fisher-Snedecor untuk menghitung p-value.
+    // p-value = 1 - CDF(f_value), di mana CDF adalah Cumulative Distribution Function.
     FisherSnedecor::new(df1 as f64, df2 as f64).map_or(f64::NAN, |dist| {
         let cdf_val = dist.cdf(f_value);
-        (1.0 - cdf_val).max(0.0) // Clamp p-value to be >= 0
+        (1.0 - cdf_val).max(0.0) // Menjamin p-value tidak negatif.
     })
 }
 
-/// Calculate Chi-squared significance (p-value) for Chi-squared statistic
+/// Menghitung signifikansi Chi-kuadrat (p-value) untuk statistik Chi-kuadrat.
+///
+/// # Arguments
+/// * `chi_sq_value` - Nilai statistik Chi-kuadrat.
+/// * `df` - Derajat kebebasan (degrees of freedom).
+///
+/// # Returns
+/// Nilai p-value yang sesuai. Mengembalikan `f64::NAN` jika input tidak valid.
 pub fn calculate_chi_sq_significance(chi_sq_value: f64, df: u64) -> f64 {
     if df == 0 || chi_sq_value.is_nan() || chi_sq_value < 0.0 {
         return f64::NAN;
     }
+    // p-value dihitung sebagai 1 - CDF dari nilai chi-kuadrat.
     ChiSquared::new(df as f64).map_or(f64::NAN, |dist| {
         let cdf_val = dist.cdf(chi_sq_value);
         (1.0 - cdf_val).max(0.0)
     })
 }
 
-/// Calculate t significance (p-value) for t statistic
+/// Menghitung signifikansi t (p-value) untuk statistik t (uji dua sisi).
+///
+/// # Arguments
+/// * `t_value` - Nilai statistik t.
+/// * `df` - Derajat kebebasan (degrees of freedom).
+///
+/// # Returns
+/// Nilai p-value untuk uji dua sisi. Mengembalikan `f64::NAN` jika input tidak valid.
 pub fn calculate_t_significance(t_value: f64, df: usize) -> f64 {
-    // Swapped order to t_value, df
     if df == 0 || t_value.is_nan() {
-        return f64::NAN; // Return NaN for invalid input
+        return f64::NAN;
     }
-    StudentsT::new(0.0, 1.0, df as f64) // Location 0, Scale 1 for standard t-distribution
-        .map_or(f64::NAN, |dist| 2.0 * dist.cdf(-t_value.abs())) // P(T <= -|t|) or P(T >= |t|)
+    // Menggunakan distribusi t-Student standar (lokasi 0, skala 1).
+    // Untuk uji dua sisi, p-value = 2 * P(T >= |t_value|), yang sama dengan 2 * P(T <= -|t_value|).
+    StudentsT::new(0.0, 1.0, df as f64).map_or(f64::NAN, |dist| 2.0 * dist.cdf(-t_value.abs()))
 }
 
-/// Calculate critical t value for confidence intervals
+/// Menghitung nilai t kritis untuk interval kepercayaan (uji dua sisi).
+///
+/// # Arguments
+/// * `alpha` - Tingkat signifikansi (misalnya, 0.05 untuk kepercayaan 95%). Jika `None` atau tidak valid, default ke 0.05.
+/// * `df` - Derajat kebebasan.
+///
+/// # Returns
+/// Nilai t kritis. Jika df = 0, digunakan pendekatan distribusi Normal.
 pub fn calculate_t_critical(alpha: Option<f64>, df: usize) -> f64 {
-    // alpha is Option<f64>
     let current_alpha = match alpha {
         Some(a) if a > 0.0 && a < 1.0 => a,
-        _ => 0.05, // Default alpha if None or invalid
+        _ => 0.05, // Nilai alpha default jika tidak ada atau tidak valid.
     };
     if df == 0 {
+        // Jika df tidak tersedia (0), aproksimasi dengan distribusi Normal (z-score).
         Normal::new(0.0, 1.0).map_or(1.96, |dist| dist.inverse_cdf(1.0 - current_alpha / 2.0))
     } else {
+        // Menggunakan Inverse CDF (quantile function) dari distribusi t-Student untuk menemukan nilai kritis.
         StudentsT::new(0.0, 1.0, df as f64).map_or(f64::NAN, |dist|
             dist.inverse_cdf(1.0 - current_alpha / 2.0)
         )
     }
 }
 
-/// Calculate critical F value for a given alpha, df1, and df2
+/// Menghitung nilai F kritis untuk tingkat signifikansi (alpha), df1, dan df2 tertentu.
+///
+/// # Arguments
+/// * `alpha` - Tingkat signifikansi.
+/// * `df1` - Derajat kebebasan numerator.
+/// * `df2` - Derajat kebebasan denominator.
+///
+/// # Returns
+/// Nilai F kritis. Mengembalikan `f64::NAN` jika input tidak valid.
 pub fn calculate_f_critical(alpha: f64, df1: usize, df2: usize) -> f64 {
     if df1 == 0 || df2 == 0 || alpha <= 0.0 || alpha >= 1.0 {
         return f64::NAN;
     }
+    // Menggunakan Inverse CDF dari distribusi Fisher-Snedecor.
     FisherSnedecor::new(df1 as f64, df2 as f64).map_or(f64::NAN, |dist|
         dist.inverse_cdf(1.0 - alpha)
     )
 }
 
-/// Calculate non-centrality parameter for F-test (lambda = F * df1)
+/// Menghitung parameter non-sentralitas (lambda) untuk uji F.
+/// Rumus: lambda = F * df1.
+///
+/// # Arguments
+/// * `f_value` - Nilai statistik F.
+/// * `df1` - Derajat kebebasan numerator.
+/// * `_df2` - Derajat kebebasan denominator (tidak digunakan dalam rumus ini).
+///
+/// # Returns
+/// Parameter non-sentralitas (lambda).
 pub fn calculate_f_non_centrality(f_value: f64, df1: f64, _df2: f64) -> f64 {
     if f_value.is_nan() || f_value < 0.0 || df1 < 0.0 {
         return f64::NAN;
@@ -66,7 +118,17 @@ pub fn calculate_f_non_centrality(f_value: f64, df1: f64, _df2: f64) -> f64 {
     f_value * df1
 }
 
-/// Formula 26.6.26 (Patnaik's Approximation) - DEFAULT noncentral_f_cdf
+/// Menghitung Cumulative Distribution Function (CDF) untuk distribusi F non-sentral
+/// menggunakan Aproksimasi Patnaik (diadaptasi dari Abramowitz & Stegun, formula 26.6.26).
+///
+/// # Arguments
+/// * `f_prime` - Nilai F (quantile) yang diamati.
+/// * `df1` - Derajat kebebasan numerator.
+/// * `df2` - Derajat kebebasan denominator.
+/// * `lambda` - Parameter non-sentralitas.
+///
+/// # Returns
+/// Nilai CDF (probabilitas) atau `f64::NAN` jika input tidak valid.
 pub fn noncentral_f_cdf(f_prime: f64, df1: f64, df2: f64, lambda: f64) -> f64 {
     if f_prime < 0.0 || df1 <= 0.0 || df2 <= 0.0 || lambda < 0.0 {
         return f64::NAN;
@@ -81,6 +143,8 @@ pub fn noncentral_f_cdf(f_prime: f64, df1: f64, df2: f64, lambda: f64) -> f64 {
         return f64::NAN;
     }
 
+    // Aproksimasi Patnaik mengubah distribusi F non-sentral menjadi distribusi F sentral
+    // dengan menyesuaikan nilai F dan derajat kebebasan numerator.
     let f_adjusted = (df1 / term_v1_plus_lambda) * f_prime;
     let df1_adjusted = term_v1_plus_lambda.powi(2) / term_v1_plus_2lambda;
 
@@ -94,59 +158,60 @@ pub fn noncentral_f_cdf(f_prime: f64, df1: f64, df2: f64, lambda: f64) -> f64 {
     }
 }
 
-/// Noncentral t CDF (series expansion) based on provided formula image
+/// Menghitung CDF untuk distribusi t non-sentral menggunakan aproksimasi
+/// dari Abramowitz & Stegun, formula 26.7.10.
+/// Rumus: P(t'|ν, δ) ≈ P_norm((t' - δ) / sqrt(1 + (t'^2)/(2ν)))
+///
+/// # Arguments
+/// * `t_prime` - Nilai t (quantile) yang diamati.
+/// * `nu` - Derajat kebebasan (ν).
+/// * `delta` - Parameter non-sentralitas (δ).
+///
+/// # Returns
+/// Nilai CDF aproksimasi.
 pub fn noncentral_t_cdf(t_prime: f64, nu: f64, delta: f64) -> f64 {
-    // Implementation of Abramowitz & Stegun formula 26.7.10 (Approximation)
-    // P(t'|ν, δ) ≈ P_norm(x_approx)
-    // x_approx = (t' - δ) / sqrt(1 + (t'^2)/(2ν))
-
-    // Input validation
+    // Validasi input: Derajat kebebasan ν harus positif.
     if nu <= 0.0 {
-        // Degrees of freedom ν must be positive
         return f64::NAN;
     }
 
     let numerator = t_prime - delta;
-
-    let den_sqrt_term2_num = t_prime.powi(2);
     let den_sqrt_term2_den = 2.0 * nu;
-
-    // Denominator for t'^2 / (2ν) must not be zero.
-    // Since nu > 0, den_sqrt_term2_den will be > 0.
-
-    let den_under_sqrt = 1.0 + den_sqrt_term2_num / den_sqrt_term2_den;
+    let den_under_sqrt = 1.0 + t_prime.powi(2) / den_sqrt_term2_den;
 
     if den_under_sqrt <= 0.0 {
-        // Argument to sqrt must be positive.
-        // Given 1.0 + ..., this implies t_prime^2/(2*nu) is very negative, which shouldn't happen if nu > 0.
-        // However, as a safeguard.
-        return f64::NAN;
+        return f64::NAN; // Argumen untuk akar kuadrat harus positif.
     }
 
     let denominator = den_under_sqrt.sqrt();
 
     if denominator == 0.0 {
-        // This case implies 1 + t_prime^2/(2*nu) = 0, which is unlikely for nu > 0.
-        // Avoid division by zero. Resulting x_approx would be Inf/-Inf.
-        return f64::NAN;
+        return f64::NAN; // Menghindari pembagian dengan nol.
     }
 
     let x_approx = numerator / denominator;
 
-    // Calculate Normal CDF N(0,1) at x_approx
+    // Menghitung CDF Normal standar N(0,1) pada x_approx.
     match Normal::new(0.0, 1.0) {
         Ok(norm_dist) => {
             let cdf_val = norm_dist.cdf(x_approx);
-            cdf_val.max(0.0).min(1.0) // Clamp result to [0,1]
+            cdf_val.max(0.0).min(1.0) // Memastikan hasil dalam rentang [0,1].
         }
-        Err(_) => {
-            // This should not happen for N(0,1)
-            f64::NAN
-        }
+        Err(_) => f64::NAN, // Seharusnya tidak terjadi untuk N(0,1).
     }
 }
 
-/// Calculate observed power for F-test (uses local noncentral_f_cdf)
+/// Menghitung power statistik yang diamati untuk uji F.
+/// Power adalah probabilitas menolak hipotesis nol padahal hipotesis alternatif benar.
+///
+/// # Arguments
+/// * `f_value` - Nilai statistik F yang diamati.
+/// * `df1` - Derajat kebebasan numerator.
+/// * `df2` - Derajat kebebasan denominator.
+/// * `alpha_for_test` - Tingkat signifikansi (alpha) yang digunakan untuk uji hipotesis.
+///
+/// # Returns
+/// Nilai power (antara 0 dan 1).
 pub fn calculate_observed_power_f(f_value: f64, df1: f64, df2: f64, alpha_for_test: f64) -> f64 {
     if
         df1 <= 0.0 ||
@@ -159,11 +224,12 @@ pub fn calculate_observed_power_f(f_value: f64, df1: f64, df2: f64, alpha_for_te
         return f64::NAN;
     }
 
-    let ncp = f_value * df1; // This is lambda for the CDF functions
+    // Menghitung parameter non-sentralitas (lambda).
+    let ncp = f_value * df1;
 
+    // Mencari nilai F kritis dari distribusi F sentral.
     let central_dist_res = FisherSnedecor::new(df1, df2);
     let crit_f = match central_dist_res {
-        // This is f_prime for the CDF functions
         Ok(dist) => dist.inverse_cdf(1.0 - alpha_for_test),
         Err(_) => {
             return f64::NAN;
@@ -174,40 +240,38 @@ pub fn calculate_observed_power_f(f_value: f64, df1: f64, df2: f64, alpha_for_te
         return f64::NAN;
     }
 
-    // Calculate CDF using only the default method (Patnaik 26.6.26)
+    // Menghitung CDF dari distribusi F non-sentral pada nilai F kritis.
     let cdf_patnaik = noncentral_f_cdf(crit_f, df1, df2, ncp);
 
-    // Calculate Power
-    let power_patnaik = if cdf_patnaik.is_nan() {
-        f64::NAN
-    } else {
-        (1.0 - cdf_patnaik).max(0.0).min(1.0)
-    };
+    // Power = 1 - CDF_noncentral(F_critical).
+    let power = if cdf_patnaik.is_nan() { f64::NAN } else { (1.0 - cdf_patnaik).max(0.0).min(1.0) };
 
-    // Return power from default method (Patnaik)
-    power_patnaik
+    power
 }
 
-/// Calculate observed power for t-test (uses NonCentralStudentsT from statrs)
+/// Menghitung power statistik yang diamati untuk uji t.
+///
+/// # Arguments
+/// * `t_value` - Nilai statistik t yang diamati.
+/// * `df` - Derajat kebebasan.
+/// * `alpha` - Tingkat signifikansi (alpha). Default ke 0.05 jika `None` atau tidak valid.
+///
+/// # Returns
+/// Nilai power (antara 0 dan 1).
 pub fn calculate_observed_power_t(t_value: f64, df: usize, alpha: Option<f64>) -> f64 {
-    // df: df_residual (N - r_X)
     let current_alpha = match alpha {
         Some(a) if a > 0.0 && a < 1.0 => a,
-        _ => 0.05, // Default alpha
+        _ => 0.05, // Nilai alpha default.
     };
 
-    // Validasi input dasar
-    // Sesuai pseudocode: IF df_residual <= 0 THEN RETURN SYSMIS
-    if df == 0 {
-        // df adalah usize, jadi df <= 0 berarti df == 0
-        return f64::NAN;
-    }
-    if t_value.is_nan() {
+    if df == 0 || t_value.is_nan() {
         return f64::NAN;
     }
 
-    let ncp = t_value.abs(); // noncentrality_c = AbsoluteValue(t_statistic)
+    // Parameter non-sentralitas adalah nilai absolut dari statistik t.
+    let ncp = t_value.abs();
 
+    // Mencari nilai t kritis absolut dari distribusi t sentral untuk uji dua sisi.
     let central_t_dist_res = StudentsT::new(0.0, 1.0, df as f64);
     let crit_t_abs = match central_t_dist_res {
         Ok(dist) => dist.inverse_cdf(1.0 - current_alpha / 2.0).abs(),
@@ -222,8 +286,8 @@ pub fn calculate_observed_power_t(t_value: f64, df: usize, alpha: Option<f64>) -
 
     let df_f64 = df as f64;
 
-    // Updated calls to noncentral_t_cdf (no max_iter)
-    // Parameters: t_prime, nu, delta
+    // Power = P(t' > t_crit | H_a) + P(t' < -t_crit | H_a)
+    //       = (1 - CDF(t_crit)) + CDF(-t_crit)
     let cdf_pos_crit = noncentral_t_cdf(crit_t_abs, df_f64, ncp);
     let cdf_neg_crit = noncentral_t_cdf(-crit_t_abs, df_f64, ncp);
 
@@ -236,31 +300,29 @@ pub fn calculate_observed_power_t(t_value: f64, df: usize, alpha: Option<f64>) -
     if power.is_nan() {
         return f64::NAN;
     }
-    return power.max(0.0).min(1.0);
+    power.max(0.0).min(1.0)
 }
 
-/// Chi-square CDF using statrs
+/// Menghitung CDF untuk distribusi Chi-kuadrat menggunakan pustaka `statrs`.
 pub fn chi_square_cdf(x: f64, df: f64) -> f64 {
     if x < 0.0 || df <= 0.0 {
-        // x can be 0 for CDF, df must be positive
         return 0.0;
     }
     ChiSquared::new(df).map_or(0.0, |dist| dist.cdf(x).max(0.0).min(1.0))
 }
 
-/// F distribution CDF using statrs
+/// Menghitung CDF untuk distribusi F menggunakan pustaka `statrs`.
 pub fn f_distribution_cdf(x: f64, df1: f64, df2: f64) -> f64 {
     if x < 0.0 || df1 <= 0.0 || df2 <= 0.0 {
-        // x can be 0 for CDF, df1, df2 must be positive
         return 0.0;
     }
     FisherSnedecor::new(df1, df2).map_or(0.0, |dist| dist.cdf(x).max(0.0).min(1.0))
 }
 
-// --- BEGIN SMM Table Data and Helpers ---
+// --- MULAI Data Tabel SMM dan Fungsi Bantu ---
 
-// Shared axis for k (number of groups)
-// Values from Stoline and Ury (1979), Tables for m_{alpha,k*,v}
+// Sumbu bersama untuk k (jumlah grup).
+// Nilai dari Stoline dan Ury (1979), Tabel untuk m_{alpha,k*,v}.
 static SMM_K_STAR_VALS: [f64; 13] = [
     3.0,
     5.0,
@@ -277,8 +339,8 @@ static SMM_K_STAR_VALS: [f64; 13] = [
     f64::INFINITY,
 ];
 
-// Shared axis for v (degrees of freedom, df in our functions)
-// Values from Stoline and Ury (1979), Tables for m_{alpha,k*,v}
+// Sumbu bersama untuk v (derajat kebebasan).
+// Nilai dari Stoline dan Ury (1979), Tabel untuk m_{alpha,k*,v}.
 static SMM_V_VALS_ACTUAL: [f64; 22] = [
     5.0,
     6.0,
@@ -304,8 +366,8 @@ static SMM_V_VALS_ACTUAL: [f64; 22] = [
     f64::INFINITY,
 ];
 
-// SMM Table for alpha = 0.01 (Stoline and Ury, 1979, Table 1)
-// Dimensions: V_VALS.len() rows, K_STAR_VALS.len() columns
+// Tabel SMM untuk alpha = 0.01 (Stoline dan Ury, 1979, Tabel 1).
+// Dimensi: V_VALS.len() baris, K_STAR_VALS.len() kolom.
 static SMM_TABLE_ALPHA_01: [[f64; 13]; 22] = [
     // k=       3       5       7       10      12      16      20      24      30      40      60     120     inf
     /*v=5*/ [
@@ -376,7 +438,7 @@ static SMM_TABLE_ALPHA_01: [[f64; 13]; 22] = [
     ],
 ];
 
-// SMM Table for alpha = 0.05 (Stoline and Ury, 1979, Table 3, p.89)
+// Tabel SMM untuk alpha = 0.05 (Stoline dan Ury, 1979, Tabel 3, hlm.89).
 static SMM_TABLE_ALPHA_05: [[f64; 13]; 22] = [
     // k=       3       5       7       10      12      16      20      24      30      40      60     120     inf
     /*v=5*/ [
@@ -447,7 +509,7 @@ static SMM_TABLE_ALPHA_05: [[f64; 13]; 22] = [
     ],
 ];
 
-// SMM Table for alpha = 0.10 (Stoline and Ury, 1979, Table 3, p.90)
+// Tabel SMM untuk alpha = 0.10 (Stoline dan Ury, 1979, Tabel 3, hlm.90).
 static SMM_TABLE_ALPHA_10: [[f64; 13]; 22] = [
     // k=       3       5       7       10      12      16      20      24      30      40      60     120     inf
     /*v=5*/ [
@@ -518,70 +580,101 @@ static SMM_TABLE_ALPHA_10: [[f64; 13]; 22] = [
     ],
 ];
 
+/// Mencari batas indeks dan fraksi interpolasi untuk sebuah nilai pada sumbu data.
+///
+/// Fungsi ini menentukan posisi sebuah `value` relatif terhadap `axis`.
+///
+/// # Returns
+/// `Some((idx_low, idx_high, fraction))` di mana:
+/// * `idx_low`, `idx_high` adalah indeks batas bawah dan atas pada `axis`.
+/// * `fraction` adalah faktor interpolasi (t) antara 0 dan 1.
+/// Jika `value` cocok persis dengan sebuah titik pada sumbu, `idx_low` == `idx_high` dan `fraction` == 0.0.
+/// Mengembalikan `None` jika `value` berada di luar rentang sumbu.
 fn find_axis_bounds(value: f64, axis: &[f64]) -> Option<(usize, usize, f64)> {
+    // Pengecekan awal apakah nilai berada di luar rentang sumbu.
     if
         axis.is_empty() ||
-        value < axis[0] ||
-        (value > axis[axis.len() - 1] &&
-            value != f64::INFINITY &&
-            axis[axis.len() - 1] != f64::INFINITY)
+        (value < axis[0] && value != f64::INFINITY) || // Perbaikan: Tak hingga tidak boleh kurang dari elemen pertama
+        (value > axis[axis.len() - 1] && value != f64::INFINITY)
     {
-        if value == f64::INFINITY && axis[axis.len() - 1] == f64::INFINITY {
-            // Exact match for infinity
-        } else if value < axis[0] || value > axis[axis.len() - 1] {
-            return None; // Value is out of axis bounds
+        // Kasus khusus untuk infinity, jika ada di akhir sumbu
+        if value == f64::INFINITY && axis.last() == Some(&f64::INFINITY) {
+            let last_idx = axis.len() - 1;
+            return Some((last_idx, last_idx, 0.0));
         }
+        return None;
     }
 
+    // Menggunakan binary search untuk menemukan posisi nilai dengan efisien.
     match
         axis.binary_search_by(|probe| probe.partial_cmp(&value).unwrap_or(std::cmp::Ordering::Less))
     {
-        Ok(idx) => Some((idx, idx, 0.0)), // Exact match, t=0 (points to axis[idx])
+        Ok(idx) => Some((idx, idx, 0.0)), // Nilai ditemukan persis, tidak perlu interpolasi.
         Err(insertion_idx) => {
             if insertion_idx == 0 {
-                // Value is less than the first element, or axis is empty.
-                // If value == axis[0], Ok(0) would be caught.
-                // This case implies value < axis[0] if axis not empty.
-                if !axis.is_empty() && value == axis[0] {
-                    Some((0, 0, 0.0))
-                } else {
-                    None
-                }
+                // Seharusnya ditangani oleh pengecekan batas di awal.
+                None
             } else if insertion_idx == axis.len() {
-                // Value is greater than all elements
-                // Check if the last element is infinity and value is infinity
-                if axis[axis.len() - 1] == f64::INFINITY && value == f64::INFINITY {
-                    Some((axis.len() - 1, axis.len() - 1, 0.0))
+                // Jika nilai lebih besar dari semua elemen, tetapi bukan tak hingga (sudah dicek).
+                // Atau jika nilai dan elemen terakhir adalah tak hingga.
+                if axis.last() == Some(&f64::INFINITY) && value == f64::INFINITY {
+                    let last_idx = axis.len() - 1;
+                    Some((last_idx, last_idx, 0.0))
                 } else {
                     None
                 }
             } else {
-                // Standard case: value is between axis[insertion_idx-1] and axis[insertion_idx]
-                Some((
-                    insertion_idx - 1,
-                    insertion_idx,
-                    (value - axis[insertion_idx - 1]) /
-                        (axis[insertion_idx] - axis[insertion_idx - 1]),
-                ))
+                // Kasus standar: nilai berada di antara dua titik pada sumbu.
+                let idx_low = insertion_idx - 1;
+                let idx_high = insertion_idx;
+                let val_low = axis[idx_low];
+                let val_high = axis[idx_high];
+
+                // Menghitung fraksi interpolasi.
+                let fraction = if (val_high - val_low).abs() < f64::EPSILON {
+                    0.0
+                } else {
+                    (value - val_low) / (val_high - val_low)
+                };
+                Some((idx_low, idx_high, fraction))
             }
         }
     }
 }
 
+/// Melakukan interpolasi bilinear pada tabel SMM untuk mendapatkan nilai kritis.
+///
+/// Fungsi ini menangani interpolasi untuk `target_k_star` (jumlah perlakuan) dan `target_df` (derajat kebebasan).
+/// Interpolasi untuk `df` (v) menggunakan skala invers (1/v), yang lebih akurat untuk derajat kebebasan,
+/// terutama saat mendekati tak hingga. Interpolasi untuk `k*` adalah linear.
+///
+/// # Arguments
+/// * `target_k_star` - Nilai k* (jumlah grup) target.
+/// * `target_df` - Nilai df (derajat kebebasan) target.
+/// * `k_star_axis` - Irisan (slice) yang berisi nilai-nilai pada sumbu k*.
+/// * `v_axis` - Irisan yang berisi nilai-nilai pada sumbu v (df).
+/// * `table_data` - Referensi ke data tabel SMM untuk tingkat alpha tertentu.
+///
+/// # Returns
+/// `Some(f64)` berisi nilai hasil interpolasi, atau `None` jika nilai target berada di luar rentang tabel.
 fn interpolate_smm_table_value(
     target_k_star: f64,
     target_df: f64,
     k_star_axis: &[f64],
     v_axis: &[f64],
-    table_data: &[[f64; SMM_K_STAR_VALS.len()]; SMM_V_VALS_ACTUAL.len()] // Adjusted to use fixed lengths
+    table_data: &[[f64; SMM_K_STAR_VALS.len()]; SMM_V_VALS_ACTUAL.len()]
 ) -> Option<f64> {
-    let (v_idx_low, v_idx_high, v_t_linear) = find_axis_bounds(target_df, v_axis)?;
+    // Menentukan batas bawah, batas atas, dan fraksi interpolasi untuk df (v) dan k*.
+    let (v_idx_low, v_idx_high, _v_t_linear) = find_axis_bounds(target_df, v_axis)?;
     let (k_idx_low, k_idx_high, k_t) = find_axis_bounds(target_k_star, k_star_axis)?;
 
+    // Bobot untuk interpolasi df (v) dihitung menggunakan skala invers (1/v).
+    // Ini memberikan hasil yang lebih baik ketika df mendekati tak hingga.
     let v_weight = (
         if v_idx_low == v_idx_high {
             0.0
         } else {
+            // Mengkonversi ke skala invers (1/v), dengan tak hingga menjadi 0.
             let inv_target_df = if target_df == f64::INFINITY { 0.0 } else { 1.0 / target_df };
             let inv_v_low = if v_axis[v_idx_low] == f64::INFINITY {
                 0.0
@@ -593,6 +686,8 @@ fn interpolate_smm_table_value(
             } else {
                 1.0 / v_axis[v_idx_high]
             };
+
+            // Menghitung bobot interpolasi pada skala invers.
             if (inv_v_high - inv_v_low).abs() < f64::EPSILON {
                 0.0
             } else {
@@ -601,50 +696,56 @@ fn interpolate_smm_table_value(
         }
     )
         .max(0.0)
-        .min(1.0); // Clamp weight
+        .min(1.0); // Memastikan bobot berada dalam rentang [0,1].
 
+    // Bobot untuk interpolasi k* dihitung secara linear.
     let k_weight = (if k_idx_low == k_idx_high { 0.0 } else { k_t }).max(0.0).min(1.0);
 
-    let q11 = table_data[v_idx_low][k_idx_low];
-    let q21 = table_data[v_idx_high][k_idx_low]; // Val at v_high, k_low
+    // Mengambil empat titik terdekat dari tabel untuk interpolasi bilinear.
+    let q11 = table_data[v_idx_low][k_idx_low]; // v_low, k_low
+    let q21 = table_data[v_idx_high][k_idx_low]; // v_high, k_low
     let q12 = table_data[v_idx_low][k_idx_high];
     let q22 = table_data[v_idx_high][k_idx_high];
 
-    let r1 = q11 * (1.0 - v_weight) + q21 * v_weight; // Interpolated for df at k_low
-    let r2 = q12 * (1.0 - v_weight) + q22 * v_weight; // Interpolated for df at k_high
+    // Langkah 1: Interpolasi sepanjang sumbu v (df) pada k_low dan k_high.
+    let r1 = q11 * (1.0 - v_weight) + q21 * v_weight;
+    let r2 = q12 * (1.0 - v_weight) + q22 * v_weight;
 
-    let result = r1 * (1.0 - k_weight) + r2 * k_weight; // Interpolated for k_star
+    // Langkah 2: Interpolasi sepanjang sumbu k* dari hasil r1 dan r2.
+    let result = r1 * (1.0 - k_weight) + r2 * k_weight;
     Some(result)
 }
 
-// --- END SMM Table Data and Helpers ---
+// --- AKHIR Data Tabel SMM dan Fungsi Bantu ---
 
-/// Calculate CDF for Studentized Maximum Modulus (SMM) distribution
+/// Menghitung CDF untuk distribusi Studentized Maximum Modulus (SMM).
 ///
-/// Uses table lookups for critical values at alpha = 0.01, 0.05, 0.10 and interpolates
-/// the CDF value (1 - alpha_effective).
-/// `k_param` is 'k' (number of groups) from Stoline & Ury tables.
-/// `df` is degrees of freedom (v).
+/// Menggunakan lookup tabel untuk nilai kritis pada alpha = 0.01, 0.05, 0.10 dan
+/// menginterpolasi nilai CDF (yaitu, 1 - alpha_efektif).
+///
+/// # Arguments
+/// * `x` - Nilai statistik (quantile) yang diamati.
+/// * `k_param` - 'k' (jumlah grup) dari tabel Stoline & Ury.
+/// * `df` - Derajat kebebasan (v).
+///
+/// # Returns
+/// Nilai CDF (probabilitas).
 pub fn studentized_maximum_modulus_cdf(x: f64, k_param: usize, df: usize) -> f64 {
     if x < 0.0 {
         return 0.0;
     }
     if k_param == 0 || df == 0 {
         return f64::NAN;
-    } // k* and v must be positive (table ranges start > 0)
+    }
 
     let k_f64 = k_param as f64;
-    // Get critical values from table interpolation
+    // Mendapatkan nilai kritis dari interpolasi tabel untuk tiga tingkat alpha.
     let crit_01_opt = studentized_maximum_modulus_critical_value(0.01, k_f64, df);
     let crit_05_opt = studentized_maximum_modulus_critical_value(0.05, k_f64, df);
     let crit_10_opt = studentized_maximum_modulus_critical_value(0.1, k_f64, df);
 
     if crit_01_opt.is_none() || crit_05_opt.is_none() || crit_10_opt.is_none() {
-        // This implies k_param or df were out of table interpolation range.
-        // Try to use the original integrand definition if tables fail?
-        // For now, per request to use tables, if tables fail, CDF fails.
-        // The original code with placeholder numerical integration would go here as a fallback if desired.
-        // web_sys::console::warn_1(&"SMM CDF: k_param or df out of table range, returning NaN.".into());
+        // Jika k_param atau df di luar rentang tabel, tidak dapat melanjutkan.
         return f64::NAN;
     }
 
@@ -652,38 +753,40 @@ pub fn studentized_maximum_modulus_cdf(x: f64, k_param: usize, df: usize) -> f64
     let crit_05 = crit_05_opt.unwrap();
     let crit_10 = crit_10_opt.unwrap();
 
-    // Values are m_{alpha, k*, v} so crit_10 < crit_05 < crit_01
+    // Menginterpolasi alpha efektif berdasarkan posisi x relatif terhadap nilai-nilai kritis.
+    // Nilai kritis berbanding terbalik dengan alpha: crit_10 < crit_05 < crit_01.
     let alpha_eff = if x <= crit_10 {
-        // x is "small", alpha is "large" (>= 0.10)
-        // Linear extrapolation for alpha beyond 0.10 if x is even smaller than crit_10?
-        // Or simply clamp:
-        0.1 // CDF will be 0.90
+        // Jika x sangat kecil, alpha dianggap besar (mendekati 0.10).
+        0.1
     } else if x < crit_05 {
-        // crit_10 < x < crit_05
-        // Interpolate alpha between 0.10 and 0.05
-        let t = (x - crit_10) / (crit_05 - crit_10); // Should be in [0,1]
+        // Interpolasi linear alpha antara 0.10 dan 0.05.
+        let t = (x - crit_10) / (crit_05 - crit_10);
         0.1 * (1.0 - t) + 0.05 * t
-    } else if x == crit_05 {
-        0.05
     } else if x < crit_01 {
-        // crit_05 < x < crit_01
-        // Interpolate alpha between 0.05 and 0.01
-        let t = (x - crit_05) / (crit_01 - crit_05); // Should be in [0,1]
+        // Interpolasi linear alpha antara 0.05 dan 0.01.
+        let t = (x - crit_05) / (crit_01 - crit_05);
         0.05 * (1.0 - t) + 0.01 * t
     } else {
-        // x >= crit_01. x is "large", alpha is "small" (<= 0.01)
-        0.01 // CDF will be 0.99
+        // Jika x sangat besar, alpha dianggap kecil (mendekati 0.01).
+        0.01
     };
 
+    // CDF adalah 1 - alpha.
     (1.0 - alpha_eff).max(0.0).min(1.0)
 }
 
-/// Calculate critical value for Studentized Maximum Modulus (SMM) distribution
+/// Menghitung nilai kritis untuk distribusi Studentized Maximum Modulus (SMM).
 ///
-/// Uses lookup and bilinear interpolation from tables by Stoline and Ury (1979).
-/// Supports alpha = 0.01, 0.05, 0.10.
-/// `k_param` is 'k' (number of groups) from tables.
-/// `df` is degrees of freedom (v).
+/// Menggunakan pencarian dan interpolasi bilinear dari tabel Stoline dan Ury (1979).
+/// Hanya mendukung alpha = 0.01, 0.05, 0.10.
+///
+/// # Arguments
+/// * `alpha` - Tingkat signifikansi (0.01, 0.05, atau 0.10).
+/// * `k_param` - 'k' (jumlah grup) dari tabel.
+/// * `df` - Derajat kebebasan (v).
+///
+/// # Returns
+/// `Some(f64)` berisi nilai kritis, atau `None` jika alpha tidak didukung atau parameter di luar rentang.
 pub fn studentized_maximum_modulus_critical_value(
     alpha: f64,
     k_param: f64,
@@ -695,37 +798,35 @@ pub fn studentized_maximum_modulus_critical_value(
 
     let df_f64 = df as f64;
 
-    let table_to_use: &[[f64; SMM_K_STAR_VALS.len()]; SMM_V_VALS_ACTUAL.len()] = if
-        (alpha - 0.01).abs() < 1e-9
-    {
+    // Memilih tabel yang sesuai berdasarkan nilai alpha.
+    let table_to_use = if (alpha - 0.01).abs() < 1e-9 {
         &SMM_TABLE_ALPHA_01
     } else if (alpha - 0.05).abs() < 1e-9 {
         &SMM_TABLE_ALPHA_05
     } else if (alpha - 0.1).abs() < 1e-9 {
         &SMM_TABLE_ALPHA_10
     } else {
-        // Alpha not supported by tables, caller must handle fallback.
-        return None;
+        return None; // Alpha tidak didukung oleh tabel yang tersedia.
     };
 
     interpolate_smm_table_value(k_param, df_f64, &SMM_K_STAR_VALS, &SMM_V_VALS_ACTUAL, table_to_use)
 }
 
-// --- BEGIN q-table (Studentized Range) Data and Helpers ---
+// --- MULAI Data Tabel q (Studentized Range) dan Fungsi Bantu ---
 
-// Shared axis for k (number of groups) for q-table
+// Sumbu bersama untuk k (jumlah grup) untuk tabel q.
 static Q_TABLE_K_VALS: [f64; 19] = [
     2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
     20.0,
 ];
 
-// Shared axis for v (degrees of freedom, df) for q-table
+// Sumbu bersama untuk v (derajat kebebasan) untuk tabel q.
 static Q_TABLE_V_VALS: [f64; 22] = [
     1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0,
     19.0, 20.0, 24.0, 30.0,
 ];
 
-// q-table for alpha = 0.05
+// Tabel q untuk alpha = 0.05. Digunakan untuk uji seperti Tukey's HSD.
 static Q_TABLE_ALPHA_05: [[f64; 19]; 22] = [
     // k=      2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20
     /*v=1*/ [
@@ -818,6 +919,8 @@ static Q_TABLE_ALPHA_05: [[f64; 19]; 22] = [
     ],
 ];
 
+/// Melakukan interpolasi bilinear pada tabel q.
+/// Berbeda dengan tabel SMM, fungsi ini menggunakan interpolasi linear untuk kedua sumbu (k dan df).
 fn interpolate_q_table_value(
     target_k: f64,
     target_df: f64,
@@ -833,27 +936,36 @@ fn interpolate_q_table_value(
     let q12 = table_data[v_idx_low][k_idx_high];
     let q22 = table_data[v_idx_high][k_idx_high];
 
+    // Interpolasi linear sepanjang sumbu v (df).
     let r1 = q11 * (1.0 - v_t) + q21 * v_t;
     let r2 = q12 * (1.0 - v_t) + q22 * v_t;
 
+    // Interpolasi linear sepanjang sumbu k dari hasil sebelumnya.
     Some(r1 * (1.0 - k_t) + r2 * k_t)
 }
 
-/// Calculate critical value for Studentized Range (q) distribution
+/// Menghitung nilai kritis untuk distribusi Studentized Range (q).
 ///
-/// Uses lookup and bilinear interpolation from tables.
-/// Currently only supports alpha = 0.05.
-/// `k_param` is number of groups.
-/// `df` is degrees of freedom.
+/// Menggunakan pencarian dan interpolasi bilinear dari tabel.
+/// Saat ini hanya mendukung alpha = 0.05.
+///
+/// # Arguments
+/// * `alpha` - Tingkat signifikansi (hanya 0.05 yang didukung).
+/// * `k_param` - Jumlah grup.
+/// * `df` - Derajat kebebasan.
+///
+/// # Returns
+/// `Some(f64)` berisi nilai q kritis, atau `None` jika tidak didukung.
 pub fn studentized_range_critical_value(alpha: f64, k_param: usize, df: usize) -> Option<f64> {
     if k_param < 2 || df == 0 {
         return None;
     }
 
+    // Memilih tabel q berdasarkan alpha.
     let table_to_use = if (alpha - 0.05).abs() < 1e-9 {
         &Q_TABLE_ALPHA_05
     } else {
-        return None; // Alpha not supported
+        return None; // Alpha selain 0.05 belum didukung.
     };
 
     interpolate_q_table_value(
@@ -864,10 +976,15 @@ pub fn studentized_range_critical_value(alpha: f64, k_param: usize, df: usize) -
         table_to_use
     )
 }
-// --- END q-table ---
 
-// Dunnett's Test Critical Values
+// --- AKHIR Data Tabel q ---
+
+// --- MULAI Data Tabel Uji Dunnett dan Fungsi Bantu ---
+
+// Sumbu k (jumlah grup perlakuan, tidak termasuk kontrol) untuk Uji Dunnett.
 const DUNNETT_K_VALS: [f64; 9] = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+
+// Sumbu v (derajat kebebasan) untuk Uji Dunnett.
 const DUNNETT_V_VALS: [f64; 18] = [
     1.0,
     2.0,
@@ -886,52 +1003,57 @@ const DUNNETT_V_VALS: [f64; 18] = [
     60.0,
     120.0,
     f64::INFINITY,
-    f64::INFINITY,
+    f64::INFINITY, // Baris duplikat untuk menangani interpolasi di dekat tak hingga
 ];
 
-// Alpha = 0.05, Two-sided
+// Tabel Uji Dunnett untuk alpha = 0.05, uji dua sisi.
 const DUNNETT_TABLE_0_05_TWO_SIDED: [[f64; 9]; 18] = [
-    [12.71, 15.91, 17.98, 19.43, 20.56, 21.49, 22.28, 22.98, 23.59],
-    [4.3, 4.94, 5.36, 5.66, 5.89, 6.08, 6.24, 6.37, 6.49],
-    [3.18, 3.53, 3.78, 3.96, 4.1, 4.21, 4.31, 4.39, 4.47],
-    [2.78, 3.03, 3.22, 3.36, 3.46, 3.55, 3.63, 3.69, 3.75],
-    [2.57, 2.78, 2.92, 3.03, 3.12, 3.19, 3.26, 3.31, 3.36],
-    [2.45, 2.63, 2.76, 2.85, 2.93, 3.0, 3.05, 3.1, 3.14],
-    [2.36, 2.54, 2.65, 2.74, 2.81, 2.87, 2.92, 2.96, 3.0],
-    [2.31, 2.47, 2.58, 2.66, 2.73, 2.78, 2.83, 2.87, 2.9],
-    [2.26, 2.42, 2.52, 2.6, 2.66, 2.71, 2.75, 2.79, 2.82],
-    [2.23, 2.38, 2.47, 2.55, 2.61, 2.66, 2.7, 2.73, 2.76],
-    [2.18, 2.32, 2.41, 2.48, 2.54, 2.58, 2.62, 2.65, 2.68],
-    [2.13, 2.27, 2.35, 2.41, 2.46, 2.51, 2.54, 2.57, 2.6],
-    [2.09, 2.21, 2.29, 2.35, 2.4, 2.44, 2.47, 2.5, 2.52],
-    [2.04, 2.16, 2.23, 2.29, 2.33, 2.37, 2.4, 2.42, 2.45],
-    [2.0, 2.11, 2.18, 2.23, 2.27, 2.31, 2.33, 2.36, 2.38],
-    [1.98, 2.08, 2.15, 2.2, 2.24, 2.27, 2.3, 2.32, 2.34],
-    [1.96, 2.06, 2.13, 2.17, 2.21, 2.24, 2.27, 2.29, 2.31],
-    [1.96, 2.06, 2.13, 2.17, 2.21, 2.24, 2.27, 2.29, 2.31],
-];
-// Alpha = 0.05, One-sided
-const DUNNETT_TABLE_0_05_ONE_SIDED: [[f64; 9]; 18] = [
-    [6.31, 7.65, 8.55, 9.19, 9.68, 10.08, 10.41, 10.7, 10.95],
-    [2.92, 3.33, 3.61, 3.82, 3.98, 4.12, 4.23, 4.33, 4.41],
-    [2.35, 2.61, 2.78, 2.91, 3.01, 3.09, 3.16, 3.22, 3.27],
-    [2.13, 2.34, 2.47, 2.57, 2.64, 2.71, 2.76, 2.81, 2.85],
-    [2.02, 2.2, 2.31, 2.39, 2.46, 2.51, 2.56, 2.6, 2.63],
-    [1.94, 2.1, 2.21, 2.28, 2.34, 2.39, 2.43, 2.46, 2.49],
-    [1.89, 2.04, 2.14, 2.21, 2.26, 2.31, 2.34, 2.38, 2.4],
-    [1.86, 2.0, 2.09, 2.15, 2.2, 2.24, 2.28, 2.31, 2.34],
-    [1.83, 1.97, 2.05, 2.11, 2.16, 2.2, 2.23, 2.26, 2.29],
-    [1.81, 1.94, 2.02, 2.08, 2.13, 2.17, 2.2, 2.23, 2.25],
-    [1.78, 1.91, 1.99, 2.04, 2.09, 2.12, 2.15, 2.18, 2.2],
-    [1.75, 1.87, 1.94, 2.0, 2.04, 2.07, 2.1, 2.13, 2.15],
-    [1.72, 1.83, 1.9, 1.95, 1.99, 2.02, 2.05, 2.07, 2.09],
-    [1.69, 1.8, 1.86, 1.91, 1.94, 1.97, 2.0, 2.02, 2.04],
-    [1.67, 1.77, 1.82, 1.86, 1.9, 1.92, 1.94, 1.96, 1.98],
-    [1.66, 1.75, 1.8, 1.84, 1.87, 1.9, 1.92, 1.94, 1.95],
-    [1.64, 1.73, 1.78, 1.82, 1.85, 1.87, 1.89, 1.91, 1.92],
-    [1.64, 1.73, 1.78, 1.82, 1.85, 1.87, 1.89, 1.91, 1.92],
+    // k=      2      3      4      5      6      7      8      9     10
+    /*v=1*/ [12.71, 15.91, 17.98, 19.43, 20.56, 21.49, 22.28, 22.98, 23.59],
+    /*v=2*/ [4.3, 4.94, 5.36, 5.66, 5.89, 6.08, 6.24, 6.37, 6.49],
+    /*v=3*/ [3.18, 3.53, 3.78, 3.96, 4.1, 4.21, 4.31, 4.39, 4.47],
+    /*v=4*/ [2.78, 3.03, 3.22, 3.36, 3.46, 3.55, 3.63, 3.69, 3.75],
+    /*v=5*/ [2.57, 2.78, 2.92, 3.03, 3.12, 3.19, 3.26, 3.31, 3.36],
+    /*v=6*/ [2.45, 2.63, 2.76, 2.85, 2.93, 3.0, 3.05, 3.1, 3.14],
+    /*v=7*/ [2.36, 2.54, 2.65, 2.74, 2.81, 2.87, 2.92, 2.96, 3.0],
+    /*v=8*/ [2.31, 2.47, 2.58, 2.66, 2.73, 2.78, 2.83, 2.87, 2.9],
+    /*v=9*/ [2.26, 2.42, 2.52, 2.6, 2.66, 2.71, 2.75, 2.79, 2.82],
+    /*v=10*/ [2.23, 2.38, 2.47, 2.55, 2.61, 2.66, 2.7, 2.73, 2.76],
+    /*v=12*/ [2.18, 2.32, 2.41, 2.48, 2.54, 2.58, 2.62, 2.65, 2.68],
+    /*v=15*/ [2.13, 2.27, 2.35, 2.41, 2.46, 2.51, 2.54, 2.57, 2.6],
+    /*v=20*/ [2.09, 2.21, 2.29, 2.35, 2.4, 2.44, 2.47, 2.5, 2.52],
+    /*v=30*/ [2.04, 2.16, 2.23, 2.29, 2.33, 2.37, 2.4, 2.42, 2.45],
+    /*v=60*/ [2.0, 2.11, 2.18, 2.23, 2.27, 2.31, 2.33, 2.36, 2.38],
+    /*v=120*/ [1.98, 2.08, 2.15, 2.2, 2.24, 2.27, 2.3, 2.32, 2.34],
+    /*v=inf*/ [1.96, 2.06, 2.13, 2.17, 2.21, 2.24, 2.27, 2.29, 2.31],
+    /*v=inf*/ [1.96, 2.06, 2.13, 2.17, 2.21, 2.24, 2.27, 2.29, 2.31],
 ];
 
+// Tabel Uji Dunnett untuk alpha = 0.05, uji satu sisi.
+const DUNNETT_TABLE_0_05_ONE_SIDED: [[f64; 9]; 18] = [
+    // k=      2      3      4      5      6      7      8      9     10
+    /*v=1*/ [6.31, 7.65, 8.55, 9.19, 9.68, 10.08, 10.41, 10.7, 10.95],
+    /*v=2*/ [2.92, 3.33, 3.61, 3.82, 3.98, 4.12, 4.23, 4.33, 4.41],
+    /*v=3*/ [2.35, 2.61, 2.78, 2.91, 3.01, 3.09, 3.16, 3.22, 3.27],
+    /*v=4*/ [2.13, 2.34, 2.47, 2.57, 2.64, 2.71, 2.76, 2.81, 2.85],
+    /*v=5*/ [2.02, 2.2, 2.31, 2.39, 2.46, 2.51, 2.56, 2.6, 2.63],
+    /*v=6*/ [1.94, 2.1, 2.21, 2.28, 2.34, 2.39, 2.43, 2.46, 2.49],
+    /*v=7*/ [1.89, 2.04, 2.14, 2.21, 2.26, 2.31, 2.34, 2.38, 2.4],
+    /*v=8*/ [1.86, 2.0, 2.09, 2.15, 2.2, 2.24, 2.28, 2.31, 2.34],
+    /*v=9*/ [1.83, 1.97, 2.05, 2.11, 2.16, 2.2, 2.23, 2.26, 2.29],
+    /*v=10*/ [1.81, 1.94, 2.02, 2.08, 2.13, 2.17, 2.2, 2.23, 2.25],
+    /*v=12*/ [1.78, 1.91, 1.99, 2.04, 2.09, 2.12, 2.15, 2.18, 2.2],
+    /*v=15*/ [1.75, 1.87, 1.94, 2.0, 2.04, 2.07, 2.1, 2.13, 2.15],
+    /*v=20*/ [1.72, 1.83, 1.9, 1.95, 1.99, 2.02, 2.05, 2.07, 2.09],
+    /*v=30*/ [1.69, 1.8, 1.86, 1.91, 1.94, 1.97, 2.0, 2.02, 2.04],
+    /*v=60*/ [1.67, 1.77, 1.82, 1.86, 1.9, 1.92, 1.94, 1.96, 1.98],
+    /*v=120*/ [1.66, 1.75, 1.8, 1.84, 1.87, 1.9, 1.92, 1.94, 1.95],
+    /*v=inf*/ [1.64, 1.73, 1.78, 1.82, 1.85, 1.87, 1.89, 1.91, 1.92],
+    /*v=inf*/ [1.64, 1.73, 1.78, 1.82, 1.85, 1.87, 1.89, 1.91, 1.92],
+];
+
+/// Melakukan interpolasi bilinear pada tabel Uji Dunnett.
+/// Menggunakan interpolasi linear untuk kedua sumbu.
 fn interpolate_dunnett_table_value(
     target_k: f64,
     target_df: f64,
@@ -953,6 +1075,19 @@ fn interpolate_dunnett_table_value(
     Some(r1 * (1.0 - k_t) + r2 * k_t)
 }
 
+/// Menghitung nilai kritis untuk Uji Dunnett.
+///
+/// Uji ini membandingkan beberapa perlakuan dengan satu kontrol.
+/// Saat ini mendukung alpha = 0.05 untuk uji satu sisi dan dua sisi.
+///
+/// # Arguments
+/// * `alpha` - Tingkat signifikansi.
+/// * `k_param` - Jumlah grup perlakuan (tidak termasuk kontrol).
+/// * `df` - Derajat kebebasan.
+/// * `one_sided` - `true` untuk uji satu sisi, `false` untuk dua sisi.
+///
+/// # Returns
+/// `Some(f64)` berisi nilai kritis, atau `None` jika tidak didukung.
 pub fn dunnett_critical_value(
     alpha: f64,
     k_param: usize,
@@ -963,10 +1098,11 @@ pub fn dunnett_critical_value(
         return None;
     }
 
+    // Memilih tabel yang benar berdasarkan alpha dan jenis uji.
     let table = if (alpha - 0.05).abs() < 1e-9 {
         if one_sided { &DUNNETT_TABLE_0_05_ONE_SIDED } else { &DUNNETT_TABLE_0_05_TWO_SIDED }
     } else {
-        return None; // Other alpha values not supported yet
+        return None; // Nilai alpha lain belum didukung.
     };
 
     interpolate_dunnett_table_value(
@@ -978,15 +1114,30 @@ pub fn dunnett_critical_value(
     )
 }
 
+// --- AKHIR Data Tabel Uji Dunnett ---
+
+/// Placeholder untuk menghitung nilai kritis Uji Waller-Duncan.
+///
+/// Uji Waller-Duncan adalah uji post-hoc yang menggunakan pendekatan Bayesian
+/// untuk menentukan apakah perbedaan rata-rata signifikan secara statistik,
+/// dengan mempertimbangkan rasio F dari ANOVA.
+///
+/// # Arguments
+/// * `k_ratio` - Rasio k (rasio biaya kesalahan Tipe I dan Tipe II).
+/// * `f_value` - Nilai F dari ANOVA.
+/// * `df_error` - Derajat kebebasan galat (error).
+/// * `k_groups` - Jumlah total grup.
+///
+/// # Returns
+/// `None` karena implementasi lengkap memerlukan fungsi atau tabel khusus yang kompleks.
 pub fn waller_duncan_critical_value(
-    k_ratio: f64,
-    f_value: f64,
-    df_error: usize,
-    k_groups: usize
+    _k_ratio: f64,
+    _f_value: f64,
+    _df_error: usize,
+    _k_groups: usize
 ) -> Option<f64> {
-    // This is a placeholder for the actual Waller-Duncan k-ratio t-test critical value.
-    // The calculation is complex and requires special functions (e.g., from R's agricolae package)
-    // or extensive tables not implemented here.
-    // For now, returning None to indicate it's not implemented.
+    // Implementasi ini sangat kompleks dan memerlukan fungsi khusus (misalnya, dari pustaka R `agricolae`)
+    // atau tabel yang sangat luas yang tidak diimplementasikan di sini.
+    // Mengembalikan None untuk menandakan bahwa fungsi ini belum diimplementasikan sepenuhnya.
     None
 }

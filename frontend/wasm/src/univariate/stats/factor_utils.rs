@@ -7,15 +7,18 @@ use crate::univariate::models::{
 };
 use super::core::*;
 
-/// Parsing istilah interaksi (misalnya, "A*B") menjadi vektor nama faktor
-/// Menangani istilah interaksi (A*B) dan istilah nesting (A(B) atau A WITHIN B)
+/// Mem-parsing sebuah string istilah interaksi (misalnya, "A*B") menjadi komponen faktor individual.
+/// Fungsi ini memecah string berdasarkan karakter '*' untuk mengidentifikasi faktor-faktor
+/// yang terlibat dalam interaksi.
 pub fn parse_interaction_term(term: &str) -> Vec<String> {
     term.split('*')
         .map(|s| s.trim().to_string())
         .collect()
 }
 
-/// Parse parameter names dynamically using design matrix info
+/// Mem-parsing nama parameter yang terstruktur (misalnya, "[FaktorA=Level1]*[FaktorB=Level2]")
+/// menjadi sebuah `HashMap` di mana kunci adalah nama faktor dan nilai adalah levelnya.
+/// Fungsi ini juga menangani kasus khusus untuk "Intercept".
 pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
     let mut factors = HashMap::new();
     if param_str == "Intercept" {
@@ -28,11 +31,11 @@ pub fn parse_parameter_name(param_str: &str) -> HashMap<String, String> {
             factors.insert(factor.to_string(), level.to_string());
         }
     });
-
     factors
 }
 
-/// Fungsi pembantu untuk menemukan tanda kurung tutup yang sesuai
+/// Fungsi pembantu untuk menemukan posisi kurung tutup ')' yang sesuai dengan
+/// kurung buka '(' pada posisi yang diberikan dalam sebuah string.
 pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
     let chars: Vec<char> = text.chars().collect();
     let mut depth = 0;
@@ -51,16 +54,27 @@ pub fn find_matching_parenthesis(text: &str, open_pos: usize) -> Option<usize> {
             _ => {}
         }
     }
-
     None
 }
 
+/// Mengambil semua level unik untuk sebuah faktor dari data analisis.
+///
+/// # Arguments
+/// * `data` - Referensi ke `AnalysisData` yang berisi semua data yang dibutuhkan.
+/// * `factor_name` - Nama faktor yang levelnya ingin dicari.
+///
+/// # Returns
+/// * `Ok(Vec<String>)` - Vektor berisi level-level unik dari faktor jika ditemukan.
+///   Jika `factor_name` adalah kovariat, akan mengembalikan vektor kosong.
+/// * `Err(String)` - Pesan error jika `factor_name` tidak ditemukan dalam definisi
+///   faktor maupun kovariat.
 pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<String>, String> {
     let mut level_set = HashSet::new();
     let mut factor_definition_found_in_factors = false;
     let mut factor_definition_found_in_covariates = false;
 
-    // Check fixed factors
+    // Periksa apakah `factor_name` ada di dalam definisi faktor tetap (fixed factors).
+    // Jika ditemukan, kumpulkan semua level uniknya.
     for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
         if def_group.iter().any(|def| def.name == factor_name) {
             factor_definition_found_in_factors = true;
@@ -71,11 +85,11 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
                     }
                 }
             }
-            break; // Found as a fixed factor, no need to check random or covariates for level collection
+            break; // Ditemukan, tidak perlu lanjut mencari di definisi lain.
         }
     }
 
-    // Check random factors if not found in fixed
+    // Jika tidak ditemukan di faktor tetap, periksa di faktor acak (random factors).
     if !factor_definition_found_in_factors {
         if let Some(random_defs_groups) = &data.random_factor_data_defs {
             for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
@@ -90,13 +104,13 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
                             }
                         }
                     }
-                    break; // Found as a random factor
+                    break; // Ditemukan, tidak perlu lanjut.
                 }
             }
         }
     }
 
-    // Separately, check if it's defined as a covariate
+    // Secara terpisah, periksa apakah `factor_name` didefinisikan sebagai kovariat.
     if let Some(covar_defs_groups) = &data.covariate_data_defs {
         for def_group in covar_defs_groups {
             if def_group.iter().any(|def| def.name == factor_name) {
@@ -106,34 +120,39 @@ pub fn get_factor_levels(data: &AnalysisData, factor_name: &str) -> Result<Vec<S
         }
     }
 
+    // Berdasarkan hasil pencarian, kembalikan nilai yang sesuai.
     if factor_definition_found_in_factors {
-        // It's a true factor, collect and sort levels
+        // Ini adalah faktor kategorikal, kembalikan level-levelnya yang sudah diurutkan.
         let mut levels: Vec<String> = level_set.into_iter().collect();
         levels.sort();
         Ok(levels)
     } else if factor_definition_found_in_covariates {
-        // It's a covariate (and not a factor), return empty levels
+        // Ini adalah kovariat (kontinu), kembalikan list kosong.
         Ok(Vec::new())
     } else {
+        // Istilah tidak ditemukan di mana pun.
         Err(
             format!("Term \'{}\' not found as a factor or covariate in the data definitions", factor_name)
         )
     }
 }
 
-/// Memeriksa apakah record cocok dengan kombinasi faktor tertentu dan mengembalikan baris yang cocok
+/// Mencari data yang cocok dengan kombinasi level faktor tertentu dan menghasilkan
+/// vektor (kolom matriks desain) yang merepresentasikan kecocokan tersebut.
+/// Vektor ini berisi `1.0` untuk baris data yang cocok dan `0.0` untuk yang tidak.
+/// Ini adalah proses pembuatan variabel dummy untuk kombinasi level tertentu.
 pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData) -> Vec<f64> {
     let n_samples = data.dependent_data[0].len();
     let mut row = vec![0.0; n_samples];
 
-    // For each record, check if it matches all factor combinations
+    // Untuk setiap record/baris data, periksa apakah cocok dengan semua kombinasi faktor.
     for (i, _) in data.dependent_data[0].iter().enumerate() {
         let mut matches = true;
 
         for (factor, level) in combo {
             let mut factor_matches = false;
 
-            // Check fixed factors
+            // Periksa di faktor tetap (fixed factors)
             for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
                 if def_group.iter().any(|def| &def.name == factor) {
                     if let Some(data_records) = data.fix_factor_data.get(group_idx) {
@@ -149,7 +168,7 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
                 }
             }
 
-            // Check random factors
+            // Periksa di faktor acak (random factors)
             if let Some(random_defs_groups) = &data.random_factor_data_defs {
                 for (group_idx, def_group) in random_defs_groups.iter().enumerate() {
                     if def_group.iter().any(|def| &def.name == factor) {
@@ -169,7 +188,7 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
                 }
             }
 
-            // Check covariate
+            // Periksa di kovariat
             if let Some(covar_defs_groups) = &data.covariate_data_defs {
                 for (group_idx, def_group) in covar_defs_groups.iter().enumerate() {
                     if def_group.iter().any(|def| &def.name == factor) {
@@ -199,11 +218,11 @@ pub fn matches_combination(combo: &HashMap<String, String>, data: &AnalysisData)
             row[i] = 1.0;
         }
     }
-
     row
 }
 
-/// Helper function to generate lower order terms recursively
+/// Fungsi pembantu rekursif untuk menghasilkan semua kombinasi istilah dari `factors`
+/// dengan ukuran `size` tertentu. Digunakan untuk membuat istilah interaksi.
 pub fn generate_lower_order_terms(
     factors: &[String],
     size: usize,
@@ -212,7 +231,7 @@ pub fn generate_lower_order_terms(
     result: &mut Vec<String>
 ) {
     if current.len() == size {
-        // Join the factors with "*" to create the interaction term
+        // Gabungkan faktor-faktor dengan "*" untuk membuat istilah interaksi.
         result.push(current.join("*"));
         return;
     }
@@ -224,24 +243,23 @@ pub fn generate_lower_order_terms(
     }
 }
 
-/// Menghasilkan semua kemungkinan istilah interaksi dari daftar faktor
+/// Menghasilkan semua kemungkinan istilah interaksi (orde 2 hingga N) dari daftar faktor yang diberikan.
+/// Misalnya, untuk faktor [A, B, C], akan menghasilkan ["A*B", "A*C", "B*C", "A*B*C"].
 pub fn generate_interaction_terms(factors: &[String]) -> Vec<String> {
     if factors.is_empty() {
         return Vec::new();
     }
-
     let mut interactions = Vec::new();
 
-    // Generate all possible combinations of factors from size 2 to size N
+    // Hasilkan semua kombinasi dari ukuran 2 hingga N (jumlah total faktor)
     for size in 2..=factors.len() {
-        // Assuming generate_lower_order_terms is in the same module (factor_utils)
         generate_lower_order_terms(factors, size, &mut Vec::new(), 0, &mut interactions);
     }
-
     interactions
 }
 
-/// Generate all possible combinations of factor levels
+/// Fungsi rekursif untuk menghasilkan semua kemungkinan kombinasi dari level-level faktor.
+/// Hasilnya adalah daftar `HashMap`, di mana setiap `HashMap` merepresentasikan satu kombinasi unik.
 pub fn generate_level_combinations(
     factor_levels: &[(String, Vec<String>)],
     current_combo: &mut HashMap<String, String>,
@@ -260,12 +278,14 @@ pub fn generate_level_combinations(
     }
 }
 
-/// Generate model terms for non-custom model
+/// Menghasilkan daftar istilah model untuk model non-kustom (misalnya, full factorial).
+/// Termasuk semua efek utama (main effects) dari faktor dan kovariat, serta semua
+/// interaksi yang mungkin antara faktor-faktor (tetap dan acak).
 pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
     let mut factors_for_interaction = Vec::new();
 
-    // Add Covariates as main effects ONLY (not added to factors_for_interaction)
+    // Tambahkan Kovariat sebagai efek utama. Kovariat tidak diikutkan dalam interaksi.
     if let Some(covariates) = &config.main.covar {
         for covar_name in covariates {
             if !terms.contains(covar_name) {
@@ -274,7 +294,7 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add main effects for Fixed Factors and collect them for interaction generation
+    // Tambahkan efek utama untuk Faktor Tetap dan kumpulkan untuk generasi interaksi.
     if let Some(fix_factors) = &config.main.fix_factor {
         for factor_name in fix_factors {
             if !terms.contains(factor_name) {
@@ -284,30 +304,30 @@ pub fn generate_non_cust_terms(config: &UnivariateConfig) -> Result<Vec<String>,
         }
     }
 
-    // Add main effects for Random Factors and collect them for interaction generation
+    // Tambahkan efek utama untuk Faktor Acak dan kumpulkan untuk generasi interaksi.
     if let Some(random_factors) = &config.main.rand_factor {
         for factor_name in random_factors {
             if !terms.contains(factor_name) {
                 terms.push(factor_name.clone());
             }
-            factors_for_interaction.push(factor_name.clone()); // Add to interaction list
+            factors_for_interaction.push(factor_name.clone());
         }
     }
 
-    // Add all possible interaction terms among Fixed and Random factors
+    // Tambahkan semua interaksi yang mungkin antara Faktor Tetap dan Acak.
     if factors_for_interaction.len() > 1 {
-        // generate_interaction_terms produces 2-way, 3-way, ..., up to N-way interactions.
         terms.extend(generate_interaction_terms(&factors_for_interaction));
     }
-
     Ok(terms)
 }
 
-/// Generate model terms for custom model
+/// Menghasilkan daftar istilah model berdasarkan konfigurasi model kustom yang ditentukan pengguna.
+/// Hanya istilah yang secara eksplisit disebutkan dalam `cov_model` dan `factors_model`
+/// yang akan disertakan dalam model.
 pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, String> {
     let mut terms = Vec::new();
 
-    // Add covariates from cov_model as main effects only
+    // Tambahkan kovariat dari model kustom sebagai efek utama.
     if let Some(cov_model_str) = &config.model.cov_model {
         for term_name in cov_model_str.split_whitespace() {
             if !terms.contains(&term_name.to_string()) {
@@ -316,7 +336,8 @@ pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, S
         }
     }
 
-    // Add main effects from factors_model. These are candidates for interactions.
+    // Tambahkan efek utama dari model faktor kustom.
+    // Interaksi harus didefinisikan secara eksplisit oleh pengguna dalam file konfigurasi.
     if let Some(factors_model) = &config.model.factors_model {
         for factor_name in factors_model {
             if !terms.contains(factor_name) {
@@ -327,7 +348,8 @@ pub fn generate_custom_terms(config: &UnivariateConfig) -> Result<Vec<String>, S
     Ok(terms)
 }
 
-/// Generate a design string for reporting purposes
+/// Membuat representasi string yang mudah dibaca dari desain model statistik,
+/// misalnya, "Design: Intercept + FaktorA + FaktorB". Berguna untuk pelaporan hasil.
 pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
     let mut design_string = if design_info.term_names.contains(&"Intercept".to_string()) {
         "Design: Intercept".to_string()
@@ -335,7 +357,7 @@ pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
         "Design: ".to_string()
     };
 
-    // Add all terms except Intercept
+    // Tambahkan semua istilah selain Intercept ke dalam string.
     let terms: Vec<_> = design_info.term_names
         .iter()
         .filter(|&term| term != "Intercept")
@@ -345,16 +367,17 @@ pub fn generate_design_string(design_info: &DesignMatrixInfo) -> String {
         design_string.push_str(" + ");
         design_string.push_str(term);
     }
-
     design_string
 }
 
-/// Generate L labels dynamically based on design matrix structure
+/// Menghasilkan label-label (misalnya, "L1", "L2", "L3", ...) secara dinamis untuk setiap
+/// kolom dalam matriks desain. Label ini dapat digunakan dalam pengujian kontras atau
+/// analisis post-hoc untuk merujuk pada parameter model tertentu.
 pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
     let mut l_labels = Vec::new();
     let mut l_counter = 1;
 
-    // Generate L labels for each term based on its column indices
+    // Hasilkan label untuk setiap kolom berdasarkan istilah modelnya.
     for term_name in &design_info.term_names {
         if let Some((start_idx, end_idx)) = design_info.term_column_indices.get(term_name) {
             let num_cols = end_idx - start_idx + 1;
@@ -364,11 +387,13 @@ pub fn generate_l_labels(design_info: &DesignMatrixInfo) -> Vec<String> {
             }
         }
     }
-
     l_labels
 }
 
-/// Generate all parameter names including reference levels, sorted.
+/// Menghasilkan nama parameter lengkap untuk setiap baris/estimasi dalam output statistik.
+/// Nama ini mencakup level referensi untuk faktor dan interaksi, dan diurutkan sesuai
+/// dengan urutan dalam matriks desain.
+/// Contoh: "[FaktorA=Level1]", "[FaktorA=Level2]*[FaktorB=LevelX]", "KovariatC".
 pub fn generate_all_row_parameter_names_sorted(
     design_info: &DesignMatrixInfo,
     data: &AnalysisData
@@ -376,22 +401,23 @@ pub fn generate_all_row_parameter_names_sorted(
     let mut all_params = Vec::new();
     let mut factor_levels_map: HashMap<String, Vec<String>> = HashMap::new();
 
-    // Extract unique factor names from design_info.term_names
+    // 1. Kumpulkan semua nama faktor unik dari semua istilah model.
     let mut unique_factors = HashSet::new();
     for term in &design_info.term_names {
         if term == "Intercept" {
             continue;
         }
-        // Split interaction terms and add individual factors
+        // Pecah istilah interaksi (misal: "A*B") menjadi faktor individual ("A", "B").
         for factor in term.split('*') {
             unique_factors.insert(factor.trim().to_string());
         }
     }
 
-    // Get levels for each unique factor
+    // 2. Ambil level untuk setiap faktor unik yang telah diidentifikasi.
     for factor_name in unique_factors {
         match get_factor_levels(data, &factor_name) {
             Ok(levels) => {
+                // `levels` akan kosong jika `factor_name` adalah kovariat.
                 factor_levels_map.insert(factor_name, levels);
             }
             Err(e) => {
@@ -400,7 +426,7 @@ pub fn generate_all_row_parameter_names_sorted(
         }
     }
 
-    // Process each term in the design matrix
+    // 3. Proses setiap istilah dalam matriks desain untuk membuat nama parameter.
     for term_name in &design_info.term_names {
         if term_name == "Intercept" {
             all_params.push("Intercept".to_string());
@@ -411,10 +437,10 @@ pub fn generate_all_row_parameter_names_sorted(
             let num_cols = end_idx - start_idx + 1;
 
             if term_name.contains('*') {
-                // Handle interaction terms
+                // Kasus untuk Istilah Interaksi
                 let factors_in_term = parse_interaction_term(term_name);
 
-                // Verify all factors have levels defined
+                // Verifikasi bahwa semua faktor dalam interaksi memiliki data level.
                 for factor_name in &factors_in_term {
                     if !factor_levels_map.contains_key(factor_name) {
                         return Err(
@@ -427,14 +453,14 @@ pub fn generate_all_row_parameter_names_sorted(
                     }
                 }
 
-                // Get level sets for each factor
+                // Siapkan set level untuk setiap faktor dalam interaksi.
                 let mut level_sets: Vec<(&String, &Vec<String>)> = Vec::new();
                 for factor_name in &factors_in_term {
                     if let Some(levels) = factor_levels_map.get(factor_name) {
                         if levels.is_empty() {
                             return Err(
                                 format!(
-                                    "Factor '{}' in interaction '{}' has no defined levels.",
+                                    "Factor '{}' in interaction '{}' has no defined levels (might be a covariate).",
                                     factor_name,
                                     term_name
                                 )
@@ -444,7 +470,7 @@ pub fn generate_all_row_parameter_names_sorted(
                     }
                 }
 
-                // Generate all possible combinations of levels
+                // Hasilkan semua kombinasi level untuk istilah interaksi.
                 let mut current_combination_indices = vec![0; level_sets.len()];
                 let mut generated = 0;
 
@@ -461,7 +487,7 @@ pub fn generate_all_row_parameter_names_sorted(
                     all_params.push(param_parts.join("*"));
                     generated += 1;
 
-                    // Increment combination indices
+                    // Logika untuk mendapatkan kombinasi berikutnya (seperti odometer).
                     let mut carry = level_sets.len() - 1;
                     loop {
                         current_combination_indices[carry] += 1;
@@ -476,26 +502,23 @@ pub fn generate_all_row_parameter_names_sorted(
                     }
                 }
             } else {
-                // Handle main effects
+                // Kasus untuk Efek Utama (Main Effects)
                 if let Some(levels) = factor_levels_map.get(term_name) {
                     if levels.is_empty() {
-                        // This is a covariate, as get_factor_levels now returns empty vec for them
+                        // Ini adalah kovariat, karena `get_factor_levels` mengembalikan vec kosong.
                         all_params.push(term_name.clone());
                     } else {
-                        // This is a categorical factor with levels
+                        // Ini adalah faktor kategorikal, buat nama untuk setiap level.
                         for level in levels {
                             all_params.push(format!("[{}={}]", term_name, level));
                         }
                     }
                 } else {
-                    // This case should ideally not be hit if all terms (factors/covariates)
-                    // are processed correctly by get_factor_levels and added to factor_levels_map.
-                    // However, as a fallback, treat it as a term without specific levels (e.g., covariate if logic missed).
+                    // Fallback, seharusnya tidak terjadi jika semua istilah diproses dengan benar.
                     all_params.push(term_name.clone());
                 }
             }
         }
     }
-
     Ok(all_params)
 }

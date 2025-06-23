@@ -13,30 +13,24 @@ use crate::univariate::models::{
         Subset,
     },
 };
-use super::core::*;
-use crate::univariate::stats::common::{ extract_numeric_from_record, data_value_to_string };
-use crate::univariate::stats::distribution_utils::{
-    calculate_f_critical,
-    calculate_f_significance,
-    calculate_t_critical,
-    calculate_t_significance,
-    studentized_maximum_modulus_critical_value,
-    studentized_range_critical_value,
-    dunnett_critical_value,
-    waller_duncan_critical_value,
-};
 
-// Helper struct to hold statistics for each level of a factor
+use super::core::*;
+
+/// Menyimpan statistik untuk setiap level dari sebuah faktor.
 #[derive(Debug, Clone)]
 struct LevelStats {
     name: String,
     mean: f64,
     n: usize,
     variance: f64,
-    original_index: usize, // To maintain original order for comparisons if needed
+    original_index: usize, // Untuk mempertahankan urutan asli jika diperlukan
 }
 
-// Function to get dependent variable values for a specific factor level
+// =================================================================================================
+// Fungsi-Fungsi Pembantu untuk Pengambilan dan Perhitungan Statistik Dasar
+// =================================================================================================
+
+/// Mengambil nilai variabel dependen untuk level faktor tertentu.
 fn get_level_values(
     data: &AnalysisData,
     factor_name: &str,
@@ -49,7 +43,7 @@ fn get_level_values(
     let mut factor_data_source: Option<&Vec<Vec<crate::univariate::models::data::DataRecord>>> =
         None;
 
-    // Find group index for the factor in fixed factors
+    // Cari indeks grup untuk faktor di fixed factors
     for (i, def_group) in data.fix_factor_data_defs.iter().enumerate() {
         if def_group.iter().any(|def| def.name == factor_name) {
             factor_group_idx = Some(i);
@@ -58,7 +52,7 @@ fn get_level_values(
         }
     }
 
-    // If not in fixed, check random factors (if applicable for posthoc context)
+    // Jika tidak ditemukan di fixed factors, cari di random factors
     if factor_group_idx.is_none() {
         if let Some(random_defs) = &data.random_factor_data_defs {
             for (i, def_group) in random_defs.iter().enumerate() {
@@ -71,7 +65,7 @@ fn get_level_values(
         }
     }
 
-    // Find group index for the dependent variable
+    // Cari indeks grup untuk variabel dependen
     for (i, def_group) in data.dependent_data_defs.iter().enumerate() {
         if def_group.iter().any(|def| def.name == dep_var_name) {
             dep_var_group_idx = Some(i);
@@ -127,7 +121,7 @@ fn get_level_values(
     Ok(values)
 }
 
-/// Calculate level statistics (mean, variance, N)
+/// Menghitung statistik (rata-rata, varians, N) untuk satu level.
 fn calculate_single_level_stats(
     data: &AnalysisData,
     factor_name: &str,
@@ -145,6 +139,7 @@ fn calculate_single_level_stats(
             original_index,
         });
     }
+
     let mean = calculate_mean(&values);
     let variance = if values.len() > 1 {
         values
@@ -152,8 +147,9 @@ fn calculate_single_level_stats(
             .map(|x| (x - mean).powi(2))
             .sum::<f64>() / ((values.len() - 1) as f64)
     } else {
-        0.0 // Variance is 0 for a single point.
+        0.0 // Varians adalah 0 untuk satu titik data.
     };
+
     Ok(LevelStats {
         name: level_name.to_string(),
         mean,
@@ -163,7 +159,12 @@ fn calculate_single_level_stats(
     })
 }
 
-/// Calculate pooled variance (MSE) and total N
+/// Menghitung statistik gabungan untuk uji post-hoc.
+///
+/// Menghitung varians gabungan (Mean Squared Error/MSE), derajat kebebasan (df), dan statistik terkait lainnya.
+/// - **Tujuan**: MSE digunakan sebagai estimasi varians populasi yang sama (asumsi homoskedastisitas) dalam ANOVA dan uji-t.
+/// - **Rumus MSE**: Jumlah kuadrat error (SSE) dibagi dengan derajat kebebasan error (dfe). SSE = Σ((n_i - 1) * s_i^2), dfe = N_total - k.
+/// - **Interpretasi**: Nilai MSE yang lebih kecil menunjukkan variasi yang lebih kecil di dalam setiap grup.
 fn calculate_pooled_stats_for_posthoc(
     level_stats_list: &[LevelStats]
 ) -> (f64, usize, f64, f64, usize) {
@@ -208,7 +209,10 @@ fn calculate_pooled_stats_for_posthoc(
     (mse, df_error, s_pp, n_h, total_n)
 }
 
-/// Calculate Welch-Satterthwaite degrees of freedom for unequal variances t-test
+/// Menghitung derajat kebebasan (degrees of freedom) Welch-Satterthwaite.
+///
+/// - **Tujuan**: Digunakan dalam uji-t untuk varians yang tidak sama (heteroskedastisitas), memberikan penyesuaian pada derajat kebebasan.
+/// - **Konteks**: Uji seperti Games-Howell menggunakan ini karena tidak mengasumsikan varians yang sama antar kelompok.
 fn welch_satterthwaite_df(var_i: f64, n_i: f64, var_j: f64, n_j: f64) -> f64 {
     if n_i <= 1.0 || n_j <= 1.0 || var_i.is_nan() || var_j.is_nan() || var_i < 0.0 || var_j < 0.0 {
         return f64::NAN;
@@ -231,7 +235,11 @@ fn welch_satterthwaite_df(var_i: f64, n_i: f64, var_j: f64, n_j: f64) -> f64 {
     df.max(1.0)
 }
 
-/// Calculate significance for a homogeneous subset using an F-test (ANOVA).
+/// Menghitung signifikansi untuk subset homogen menggunakan uji-F (ANOVA).
+///
+/// - **Tujuan**: Untuk memverifikasi apakah sekelompok rata-rata (subset) secara statistik tidak berbeda satu sama lain.
+/// - **Proses**: Melakukan ANOVA mini pada subset data untuk melihat apakah ada perbedaan signifikan di antara anggota subset.
+/// - **Interpretasi**: Nilai p (signifikansi) yang tinggi (misalnya > 0.05) mendukung kesimpulan bahwa subset tersebut homogen.
 fn calculate_subset_significance(
     subset_indices: &[usize],
     level_stats_list: &[LevelStats],
@@ -281,7 +289,11 @@ fn calculate_subset_significance(
     Some(calculate_f_significance(df_between, df_error, f_value))
 }
 
-/// Calculate multiple comparisons for post-hoc tests
+// =================================================================================================
+// Fungsi Inti untuk Perbandingan Berganda
+// =================================================================================================
+
+/// Melakukan perhitungan perbandingan berganda untuk berbagai uji post-hoc.
 fn calculate_multiple_comparisons(
     factor_name: &str,
     current_level_stats: &[LevelStats],
@@ -302,6 +314,7 @@ fn calculate_multiple_comparisons(
         0
     };
 
+    // Fungsi pembantu untuk mengubah hasil perbandingan menjadi format entri yang simetris (i vs j dan j vs i).
     let expand_pairwise = |
         method: String,
         temp_results: Vec<(usize, usize, f64, f64, f64, ConfidenceInterval)>
@@ -343,6 +356,7 @@ fn calculate_multiple_comparisons(
         }
     };
 
+    // Hitung semua perbandingan berpasangan dasar (tidak disesuaikan) sebagai basis untuk uji lainnya.
     let mut all_pairwise_results: Vec<
         (usize, usize, f64, f64, f64, ConfidenceInterval)
     > = Vec::new();
@@ -380,6 +394,9 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.lsd {
+        // Uji LSD (Least Significant Difference)
+        // Tujuan: Mirip dengan melakukan beberapa uji-t antar pasangan kelompok.
+        // Catatan: Tidak melakukan koreksi untuk perbandingan berganda, sehingga meningkatkan risiko galat Tipe I.
         let lsd_results = all_pairwise_results
             .iter()
             .map(|(i, j, mean_diff, se, sig, ci)| (*i, *j, *mean_diff, *se, *sig, ci.clone()))
@@ -390,6 +407,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.bonfe {
+        // Koreksi Bonferroni: Mengontrol family-wise error rate (FWER) dengan membagi alpha dengan jumlah perbandingan.
+        // Sangat konservatif.
         let bonf_results = all_pairwise_results
             .iter()
             .map(|(i, j, mean_diff, se, sig, _ci)| {
@@ -412,6 +431,7 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.sidak {
+        // Koreksi Sidak: Alternatif untuk Bonferroni, sedikit lebih kuat (kurang konservatif).
         let sidak_results = all_pairwise_results
             .iter()
             .map(|(i, j, mean_diff, se, sig, _ci)| {
@@ -432,6 +452,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.scheffe {
+        // Uji Scheffe: Sangat konservatif, melindungi dari galat Tipe I untuk semua kemungkinan kontras,
+        // bukan hanya perbandingan berpasangan. Berguna jika ada perbandingan kompleks yang direncanakan.
         let scheffe_results = all_pairwise_results
             .iter()
             .map(|(i, j, mean_diff, se, _sig, _ci)| {
@@ -456,6 +478,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.tu {
+        // Uji Tukey HSD (Honestly Significant Difference): Populer untuk perbandingan berpasangan
+        // saat varians sama dan ukuran sampel seimbang. Menggunakan distribusi studentized range.
         if
             let Some(q_crit) = studentized_range_critical_value(
                 alpha,
@@ -485,7 +509,7 @@ fn calculate_multiple_comparisons(
         } else {
             overall_notes.push(
                 format!(
-                    "Tukey HSD not calculated for factor '{}' due to missing critical value for alpha={}.",
+                    "Tukey HSD tidak dihitung untuk faktor '{}' karena nilai kritis untuk alpha={} tidak ditemukan.",
                     factor_name,
                     alpha
                 )
@@ -494,6 +518,7 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.dunnett {
+        // Uji Dunnett: Membandingkan beberapa kelompok perlakuan dengan satu kelompok kontrol.
         let control_level_index = match config.posthoc.category_method {
             CategoryMethod::First => 0,
             CategoryMethod::Last => num_levels_with_data - 1,
@@ -586,6 +611,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.games {
+        // Uji Games-Howell: Pilihan yang baik ketika asumsi kesamaan varians tidak terpenuhi.
+        // Menggunakan derajat kebebasan Welch-Satterthwaite.
         let games_howell_results = all_pairwise_results
             .iter()
             .map(|(i, j, mean_diff, _se, _sig, _ci)| {
@@ -619,6 +646,7 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.gabriel {
+        // Uji Gabriel: Direkomendasikan ketika ukuran sampel sedikit tidak seimbang. Kurang konservatif dari Hochberg GT2.
         let mut gabriel_results = Vec::new();
         if
             let Some(m_crit) = studentized_maximum_modulus_critical_value(
@@ -658,6 +686,7 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.hoc {
+        // Uji Hochberg GT2: Mirip dengan Tukey HSD tetapi lebih toleran terhadap ketidakseimbangan ukuran sampel yang besar.
         let mut gt2_results = Vec::new();
         if
             let Some(m_crit) = studentized_maximum_modulus_critical_value(
@@ -697,6 +726,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.tam {
+        // Uji Tamhane T2: Uji konservatif untuk varians yang tidak sama, tidak memerlukan ukuran sampel yang sama.
+        // Berdasarkan uji-t dengan koreksi Bonferroni.
         let mut t2_results = Vec::new();
         for i in 0..num_levels_with_data {
             for j in i + 1..num_levels_with_data {
@@ -727,6 +758,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.dunt {
+        // Uji Dunnett T3: Pilihan lain untuk varians yang tidak sama, dianggap andal bahkan dengan ukuran sampel kecil.
+        // Berdasarkan modulus maksimum terstudentisasi.
         let mut t3_results = Vec::new();
         if
             let Some(m_crit) = studentized_maximum_modulus_critical_value(
@@ -756,6 +789,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.dunc {
+        // Uji Dunnett C: Uji non-parametrik yang tidak mengasumsikan kesamaan varians.
+        // Berdasarkan rentang terstudentisasi.
         let mut c_results = Vec::new();
         if
             let Some(q_crit) = studentized_range_critical_value(
@@ -786,6 +821,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.waller {
+        // Uji Waller-Duncan: Pendekatan Bayesian yang mempertimbangkan nilai F dari ANOVA.
+        // Kurang konservatif jika F signifikan.
         let k_ratio = config.posthoc.error_ratio as f64;
         if
             let Some(t_crit) = waller_duncan_critical_value(
@@ -828,7 +865,7 @@ fn calculate_multiple_comparisons(
         } else {
             overall_notes.push(
                 format!(
-                    "Waller-Duncan test for factor '{}' with K-ratio={} could not be calculated because the critical value function is not yet implemented.",
+                    "Uji Waller-Duncan untuk faktor '{}' dengan K-ratio={} tidak dapat dihitung karena fungsi nilai kritis belum diimplementasikan.",
                     factor_name,
                     k_ratio
                 )
@@ -852,6 +889,8 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.snk {
+        // Uji SNK (Student-Newman-Keuls): Uji step-down yang lebih kuat dari Tukey HSD tetapi kurang mengontrol FWER.
+        // Cenderung memiliki tingkat galat Tipe I yang lebih tinggi.
         let mut snk_results = Vec::new();
         let mut sorted_stats_with_indices: Vec<(usize, &LevelStats)> = current_level_stats
             .iter()
@@ -882,6 +921,7 @@ fn calculate_multiple_comparisons(
     }
 
     if config.posthoc.tub {
+        // Uji Tukey-b: Kompromi antara SNK dan Tukey HSD dalam hal kekuatan dan kontrol galat Tipe I.
         let mut tub_results = Vec::new();
         let mut sorted_stats_with_indices: Vec<(usize, &LevelStats)> = current_level_stats
             .iter()
@@ -939,6 +979,18 @@ fn calculate_multiple_comparisons(
     factor_comparison_entries
 }
 
+// =================================================================================================
+// Fungsi untuk Membuat Subset Homogen
+// =================================================================================================
+
+/// Membuat subset homogen berdasarkan hasil perbandingan berganda.
+///
+/// - **Tujuan**: Mengelompokkan rata-rata level faktor yang tidak berbeda secara signifikan satu sama lain.
+/// - **Proses**:
+///   1. Urutkan rata-rata dari yang terkecil hingga terbesar.
+///   2. Iterasi melalui rata-rata yang diurutkan, buat subset baru jika perbedaan antara dua rata-rata signifikan secara statistik.
+///   3. Gabungkan subset yang tumpang tindih untuk menyederhanakan penyajian.
+/// - **Interpretasi**: Level dalam subset yang sama dianggap memiliki rata-rata populasi yang sama.
 fn create_homogeneous_subsets(
     display_name: &str,
     factor_name: &str,
@@ -960,7 +1012,7 @@ fn create_homogeneous_subsets(
 
     if comparison.is_none() {
         overall_notes.push(
-            format!("Note: Could not find multiple comparison results for '{}' to create homogeneous subsets.", search_method_name)
+            format!("Catatan: Tidak dapat menemukan hasil perbandingan berganda untuk '{}' untuk membuat subset homogen.", search_method_name)
         );
         return None;
     }
@@ -1094,7 +1146,7 @@ fn create_homogeneous_subsets(
     })
 }
 
-/// Calculate homogeneous subsets for post-hoc tests
+/// Menghitung subset homogen untuk berbagai metode uji post-hoc.
 fn calculate_homogeneous_subsets(
     factor_name: &str,
     current_level_stats: &[LevelStats],
@@ -1173,7 +1225,11 @@ fn calculate_homogeneous_subsets(
     homog_entries
 }
 
-/// Calculate post-hoc tests based on the configuration
+// =================================================================================================
+// Fungsi Utama Eksekusi Uji Post-Hoc
+// =================================================================================================
+
+/// Fungsi utama untuk menghitung semua uji post-hoc yang diminta dalam konfigurasi.
 pub fn calculate_posthoc_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
@@ -1244,6 +1300,7 @@ pub fn calculate_posthoc_tests(
         let mut f_factor_value = f64::NAN;
         let mut df_factor = 0;
 
+        // Hitung nilai F untuk faktor, diperlukan untuk beberapa uji seperti Waller-Duncan
         if !mse.is_nan() && mse >= 0.0 && total_n_for_factor > 0 && current_level_stats.len() > 1 {
             let grand_sum: f64 = current_level_stats
                 .iter()

@@ -13,25 +13,13 @@ use crate::univariate::models::{
     },
 };
 use std::collections::{ HashMap, HashSet };
-use nalgebra::{ DMatrix, DVector }; // Added for matrix operations
+use nalgebra::{ DMatrix, DVector };
 
-use super::core::{
-    create_design_response_weights,
-    generate_all_row_parameter_names_sorted,
-    get_factor_levels,
-};
-use crate::univariate::stats::factor_utils; // For parse_parameter_name
-use crate::univariate::stats::design_matrix::{
-    create_cross_product_matrix,
-    perform_sweep_and_extract_results,
-};
-use crate::univariate::stats::distribution_utils::{
-    calculate_t_significance,
-    calculate_f_significance,
-    calculate_t_critical,
-};
+use super::core::*;
 
-// Helper struct to hold parsed factor specification
+/// Struct pembantu untuk menyimpan spesifikasi faktor yang sudah di-parse
+///
+/// Berisi informasi tentang nama faktor, metode kontras, dan pengaturan referensi
 #[derive(Debug)]
 struct ParsedFactorSpec {
     factor_name: String,
@@ -40,7 +28,12 @@ struct ParsedFactorSpec {
     use_first_as_ref: bool,
 }
 
-// 1. Parse contrast factor string
+/// 1. Parse string spesifikasi kontras faktor
+///
+/// Fungsi ini mengurai string spesifikasi kontras menjadi komponen-komponennya
+/// Format: "FactorName (Method, Ref: First/Last)"
+///
+/// Contoh: "Treatment (Deviation, Ref: Last)" atau "Group (Simple, Ref: First)"
 fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec, String> {
     let parts: Vec<&str> = factor_spec_str.splitn(2, " (").collect();
     let factor_name = parts[0].trim().to_string();
@@ -54,8 +47,8 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
         let method_str = settings_details[0].trim();
         let method_str_lower = method_str.to_lowercase(); // Convert to lowercase for matching
 
+        // Menentukan metode kontras berdasarkan string input
         method = match method_str_lower.as_str() {
-            // Match on the lowercase string
             "deviation" => ContrastMethod::Deviation,
             "simple" => ContrastMethod::Simple,
             "difference" => ContrastMethod::Difference,
@@ -74,8 +67,9 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
             }
         };
 
+        // Pengaturan referensi hanya berlaku untuk Deviation dan Simple
         if method == ContrastMethod::Deviation || method == ContrastMethod::Simple {
-            // Default to "Last" for these methods
+            // Default ke "Last" untuk metode ini
             actual_ref_setting = "Last".to_string();
             use_first_as_ref = false; // Corresponds to "Last"
 
@@ -96,7 +90,7 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
                 }
             }
         } else {
-            // Method is not Deviation or Simple
+            // Metode bukan Deviation atau Simple - abaikan pengaturan Ref
             if settings_details.len() > 1 {
                 let ref_from_spec_ignored = settings_details[1].trim();
                 web_sys::console::warn_1(
@@ -112,8 +106,8 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
             // use_first_as_ref remains false (not applicable)
         }
     }
-    // If parts.len() <= 1 (no parentheses), method remains None,
-    // actual_ref_setting remains "N/A", use_first_as_ref remains false.
+    // Jika parts.len() <= 1 (tidak ada kurung), method tetap None,
+    // actual_ref_setting tetap "N/A", use_first_as_ref tetap false.
 
     Ok(ParsedFactorSpec {
         factor_name,
@@ -123,7 +117,18 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
     })
 }
 
-// 2. Generate L-Matrix and its descriptions
+/// 2. Generate L-Matrix dan deskripsinya
+///
+/// Fungsi ini menghasilkan matriks L untuk kontras dan deskripsi terkait
+///
+/// Parameters:
+/// - parsed_spec: Spesifikasi faktor yang sudah di-parse
+/// - levels_of_contrasted_factor: Level-level faktor yang akan dikontras
+/// - all_model_parameters_names: Nama semua parameter model
+/// - p_total_model_params: Jumlah total parameter model
+/// - all_factors_in_model_with_their_levels: Semua faktor dalam model beserta levelnya
+///
+/// Returns: (l_matrix, cce_row_descriptions, l_labels)
 fn generate_l_matrix_and_descriptions(
     parsed_spec: &ParsedFactorSpec,
     levels_of_contrasted_factor: &Vec<String>,
@@ -138,36 +143,41 @@ fn generate_l_matrix_and_descriptions(
     let use_first_as_ref = parsed_spec.use_first_as_ref;
     let factor_to_contrast_name = &parsed_spec.factor_name;
 
-    // Determine num_contrasts: Polynomial is now ONLY Linear (1 contrast if possible)
+    // Menentukan jumlah kontras berdasarkan metode
+    // Polynomial sekarang HANYA Linear (1 kontras jika memungkinkan)
     let num_contrasts = match parsed_spec.method {
         ContrastMethod::Polynomial => {
             if level_count_of_contrasted_factor >= 2 {
                 1
             } else {
                 0
-            } // Only 1 contrast (Linear) for Polynomial
+            } // Hanya 1 kontras (Linear) untuk Polynomial
         }
         ContrastMethod::None => 0,
         _ => level_count_of_contrasted_factor.saturating_sub(1),
     };
 
     if num_contrasts == 0 {
-        // This also handles cases where level_count < 2 for methods needing it (except None/Poly handled above)
+        // Ini juga menangani kasus dimana level_count < 2 untuk metode yang membutuhkannya (kecuali None/Poly ditangani di atas)
         // web_sys::console::warn_1(&format!("Factor '{}' with {} levels results in 0 contrasts for method {:?}. Skipping.", factor_to_contrast_name, level_count_of_contrasted_factor, parsed_spec.method).into());
         return Ok((Vec::new(), Vec::new(), Vec::new()));
     }
 
+    // Inisialisasi matriks L dan array deskripsi
     let mut l_matrix = vec![vec![0.0; p_total_model_params]; num_contrasts];
     let mut cce_row_descriptions: Vec<String> = Vec::with_capacity(num_contrasts);
     let mut l_labels: Vec<String> = Vec::with_capacity(num_contrasts);
 
-    // Loop for each contrast defined by the method (e.g., Helmert has k-1 contrasts/rows)
+    // ===== LOOP UNTUK SETIAP KONTRAS =====
+
+    // Loop untuk setiap kontras yang didefinisikan oleh metode (e.g., Helmert memiliki k-1 kontras/baris)
     for i_contrast_idx in 0..num_contrasts {
-        // For each model parameter (column in L-matrix)
+        // Untuk setiap parameter model (kolom dalam matriks L)
         for j_param_col_idx in 0..p_total_model_params {
             let model_param_str = &all_model_parameters_names[j_param_col_idx];
-            let parsed_model_param_map = factor_utils::parse_parameter_name(model_param_str);
+            let parsed_model_param_map = parse_parameter_name(model_param_str);
 
+            // Jika parameter tidak melibatkan faktor yang dikontras, set ke 0
             if !parsed_model_param_map.contains_key(factor_to_contrast_name) {
                 l_matrix[i_contrast_idx][j_param_col_idx] = 0.0; // This param doesn't involve the factor being contrasted
                 continue;
@@ -181,7 +191,7 @@ fn generate_l_matrix_and_descriptions(
                 .position(|r| r == level_of_contrasted_factor_in_this_param);
 
             if level_idx_in_factor_levels.is_none() {
-                // Should not happen if data is consistent
+                // Seharusnya tidak terjadi jika data konsisten
                 l_matrix[i_contrast_idx][j_param_col_idx] = 0.0;
                 continue;
             }
@@ -189,8 +199,11 @@ fn generate_l_matrix_and_descriptions(
 
             let mut base_coeff = 0.0;
 
+            // ===== MENENTUKAN KOEFISIEN KONTRAS BERDASARKAN METODE =====
+
             match parsed_spec.method {
                 ContrastMethod::Deviation => {
+                    // Deviation: membandingkan level tertentu dengan grand mean
                     if level_count_of_contrasted_factor == 2 {
                         let target_level_for_positive_coeff = if use_first_as_ref { 0 } else { 1 }; // e.g. level "2" if ref is "1" (last)
                         if current_level_data_idx == target_level_for_positive_coeff {
@@ -216,6 +229,7 @@ fn generate_l_matrix_and_descriptions(
                     }
                 }
                 ContrastMethod::Simple => {
+                    // Simple: membandingkan level tertentu dengan level referensi
                     let ref_level_data_idx = if use_first_as_ref {
                         0
                     } else {
@@ -237,7 +251,8 @@ fn generate_l_matrix_and_descriptions(
                     }
                 }
                 ContrastMethod::Difference => {
-                    // level_i vs mean of previous levels. i_contrast_idx maps to contrast for level_{i_contrast_idx+1}
+                    // Difference: level_i vs mean dari level sebelumnya
+                    // i_contrast_idx maps ke kontras untuk level_{i_contrast_idx+1}
                     let level_being_compared_idx = i_contrast_idx + 1; // This contrast is for level_{i_contrast_idx+1}
                     if current_level_data_idx == level_being_compared_idx {
                         base_coeff = 1.0;
@@ -246,7 +261,8 @@ fn generate_l_matrix_and_descriptions(
                     }
                 }
                 ContrastMethod::Helmert => {
-                    // level_i vs mean of subsequent. i_contrast_idx maps to contrast for level_{i_contrast_idx}
+                    // Helmert: level_i vs mean dari level berikutnya
+                    // i_contrast_idx maps ke kontras untuk level_{i_contrast_idx}
                     let level_being_compared_idx = i_contrast_idx;
                     if current_level_data_idx == level_being_compared_idx {
                         base_coeff = 1.0;
@@ -259,7 +275,8 @@ fn generate_l_matrix_and_descriptions(
                     }
                 }
                 ContrastMethod::Repeated => {
-                    // level_i vs level_{i+1}. i_contrast_idx maps to contrast for level_{i_contrast_idx}
+                    // Repeated: level_i vs level_{i+1}
+                    // i_contrast_idx maps ke kontras untuk level_{i_contrast_idx}
                     let level_being_compared_idx = i_contrast_idx;
                     let next_level_idx = i_contrast_idx + 1;
                     if current_level_data_idx == level_being_compared_idx {
@@ -269,7 +286,7 @@ fn generate_l_matrix_and_descriptions(
                     }
                 }
                 ContrastMethod::Polynomial => {
-                    // Only Linear (degree 1), i_contrast_idx will be 0
+                    // Hanya Linear (degree 1), i_contrast_idx akan 0
                     let poly_coeffs = generate_polynomial_contrast(
                         level_count_of_contrasted_factor,
                         1
@@ -283,7 +300,9 @@ fn generate_l_matrix_and_descriptions(
                 }
             }
 
-            // Averaging logic for other factors in the parameter
+            // ===== LOGIKA AVERAGING UNTUK FAKTOR LAIN =====
+
+            // Averaging logic untuk faktor lain dalam parameter
             let mut final_coeff = base_coeff;
             for (other_factor_in_param_name, _level) in parsed_model_param_map.iter() {
                 if
@@ -296,19 +315,21 @@ fn generate_l_matrix_and_descriptions(
                         )
                     {
                         if !other_factor_levels.is_empty() {
-                            // It is a factor with levels
+                            // Ini adalah faktor dengan level
                             final_coeff /= other_factor_levels.len() as f64;
                         }
-                        // If other_factor_levels is empty, it might be a covariate; no averaging for covariates.
+                        // Jika other_factor_levels kosong, mungkin kovariat; tidak ada averaging untuk kovariat.
                     }
-                    // If not in all_factors_in_model_with_their_levels, it's not a known factor (could be covariate not explicitly listed or error)
+                    // Jika tidak ada di all_factors_in_model_with_their_levels, bukan faktor yang dikenal (bisa jadi kovariat tidak secara eksplisit terdaftar atau error)
                 }
             }
             l_matrix[i_contrast_idx][j_param_col_idx] = final_coeff;
         }
 
-        // Generate description for this contrast row (after all params processed for this row)
-        // This description is for the K-matrix rows in ContrastResult.parameter
+        // ===== GENERASI DESKRIPSI UNTUK BARIS KONTRAS INI =====
+
+        // Generate description untuk baris kontras ini (setelah semua parameter diproses untuk baris ini)
+        // Deskripsi ini untuk baris K-matrix dalam ContrastResult.parameter
         let row_desc = match parsed_spec.method {
             ContrastMethod::Deviation => {
                 if level_count_of_contrasted_factor == 2 {
@@ -387,7 +408,7 @@ fn generate_l_matrix_and_descriptions(
                     levels_of_contrasted_factor[next_idx]
                 )
             }
-            ContrastMethod::Polynomial => "Linear Trend".to_string(), // Only linear
+            ContrastMethod::Polynomial => "Linear Trend".to_string(), // Hanya linear
             ContrastMethod::None => "No Contrast".to_string(),
         };
         cce_row_descriptions.push(format!("{}: {}", factor_to_contrast_name, row_desc));

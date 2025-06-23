@@ -1,7 +1,9 @@
 use statrs::statistics::Statistics;
 use crate::univariate::models::{ data::AnalysisData, result::StatsEntry };
 
-/// Menghitung rata-rata nilai menggunakan statrs
+/// Menghitung nilai rata-rata (mean) dari sekumpulan data.
+///
+/// Mengembalikan 0.0 jika tidak ada data untuk mencegah kesalahan pembagian dengan nol.
 pub fn calculate_mean(values: &[f64]) -> f64 {
     if values.is_empty() {
         return 0.0;
@@ -9,17 +11,20 @@ pub fn calculate_mean(values: &[f64]) -> f64 {
     values.mean()
 }
 
-/// Menghitung varians populasi dari nilai-nilai.
-/// Jika mean disediakan, itu digunakan. Jika tidak, mean dihitung secara internal.
+/// Menghitung varians populasi dari suatu set data.
+///
+/// Varians mengukur seberapa tersebar data dari nilai rata-ratanya. Fungsi ini
+/// memungkinkan penggunaan mean yang sudah dihitung sebelumnya (`known_mean`) untuk
+/// optimisasi, sehingga kalkulasi ulang yang tidak perlu dapat dihindari.
+///
+/// # Catatan
+/// - Mengembalikan 0.0 jika data kosong.
+/// - Varians untuk satu titik data adalah 0 karena tidak ada penyebaran nilai.
 pub fn calculate_variance(values: &[f64], known_mean: Option<f64>) -> f64 {
     let n = values.len();
-    if n == 0 {
-        return 0.0; // Or f64::NAN
-    }
-    if n == 1 && known_mean.is_none() {
-        // Variance of a single point is 0 if we don't have a known mean to compare against.
-        // If a known_mean is provided, we can calculate (value - known_mean)^2.
-        // statrs .variance() returns NaN for n=1, .population_variance() would be more explicit.
+    if n < 2 {
+        // Varians untuk 0 atau 1 data adalah 0.
+        // `statrs.variance()` akan menghasilkan NaN untuk n=1, jadi ditangani secara manual.
         return 0.0;
     }
 
@@ -30,13 +35,19 @@ pub fn calculate_variance(values: &[f64], known_mean: Option<f64>) -> f64 {
         .sum::<f64>() / (n as f64)
 }
 
-/// Menghitung standar deviasi populasi dari nilai-nilai.
-/// Jika mean disediakan, itu digunakan. Jika tidak, mean dihitung secara internal.
+/// Menghitung standar deviasi populasi, yang merupakan akar kuadrat dari varians.
+///
+/// Standar deviasi memberikan gambaran sebaran data dalam unit yang sama dengan data itu sendiri,
+/// sehingga lebih mudah diinterpretasikan. Menerima `known_mean` opsional untuk
+/// diteruskan ke `calculate_variance` demi efisiensi.
 pub fn calculate_std_deviation(values: &[f64], known_mean: Option<f64>) -> f64 {
     calculate_variance(values, known_mean).sqrt()
 }
 
-/// Menghitung total kasus dalam data
+/// Menghitung jumlah total observasi (kasus) dari seluruh grup dalam data analisis.
+///
+/// Data analisis dapat terdiri dari beberapa grup; fungsi ini menjumlahkan
+/// ukuran dari setiap grup untuk mendapatkan total keseluruhan.
 pub fn count_total_cases(data: &AnalysisData) -> usize {
     data.dependent_data
         .iter()
@@ -44,7 +55,20 @@ pub fn count_total_cases(data: &AnalysisData) -> usize {
         .sum()
 }
 
-/// Menghitung rata-rata tertimbang, standar deviasi, dan N untuk sekumpulan tuple (nilai, bobot).
+/// Menghitung statistik deskriptif (rata-rata, standar deviasi, dan jumlah sampel)
+/// untuk data yang memiliki bobot (weighted data).
+///
+/// Fungsi ini penting ketika setiap titik data memiliki tingkat kepentingan yang berbeda,
+/// yang direpresentasikan oleh bobotnya.
+///
+/// # Proses
+/// 1. Membersihkan data: Hanya data dengan bobot signifikan (> 1e-9) yang diproses.
+/// 2. Menghitung rata-rata tertimbang: `sum(nilai * bobot) / sum(bobot)`.
+/// 3. Menghitung standar deviasi tertimbang: Menggunakan formula yang disesuaikan untuk
+///    sampel berbobot guna menghasilkan estimasi yang akurat.
+///
+/// # Mengembalikan
+/// `StatsEntry` yang berisi `mean`, `std_deviation`, dan `n` (jumlah sampel efektif).
 pub fn calculate_stats_for_values(values_with_weights: &[(f64, f64)]) -> StatsEntry {
     let valid_data: Vec<(f64, f64)> = values_with_weights
         .iter()
