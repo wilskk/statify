@@ -1,10 +1,12 @@
 use nalgebra::{ DMatrix, DVector };
 use std::collections::HashMap;
+
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
     result::{ DesignMatrixInfo, SweptMatrixInfo },
 };
+
 use super::core::*;
 
 /// Membuat matriks desain, vektor respons, dan bobot dari data analisis.

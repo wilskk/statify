@@ -2,6 +2,8 @@ use serde::{ Deserialize, Serialize };
 use std::collections::{ HashMap, BTreeMap };
 use nalgebra::{ DMatrix, DVector };
 
+use crate::univariate::models::config::ContrastMethod;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateResult {
     pub between_subjects_factors: Option<HashMap<String, BetweenSubjectFactors>>,
@@ -72,6 +74,13 @@ pub struct StatsEntry {
     pub mean: f64,
     pub std_deviation: f64,
     pub n: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LeveneCenter {
+    Mean,
+    Median,
+    TrimmedMean(f64),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -269,6 +278,14 @@ pub struct ConfidenceInterval {
     pub upper_bound: f64,
 }
 
+#[derive(Debug, Clone)]
+pub struct FactorDetail {
+    pub name: String,
+    pub levels: Vec<String>,
+    pub reference_level: String,
+    pub pivot_level: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralEstimableFunction {
     pub estimable_function: GeneralEstimableFunctionEntry,
@@ -295,6 +312,14 @@ pub struct GeneralEstimableFunctionEntry {
     pub l_label: Vec<String>,
     pub l_matrix: Vec<Vec<i32>>,
     pub contrast_information: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct ParsedFactorSpec {
+    pub factor_name: String,
+    pub method: ContrastMethod,
+    pub ref_setting: String,
+    pub use_first_as_ref: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

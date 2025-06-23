@@ -47,8 +47,6 @@ pub fn calculate_hypothesis_l_matrices(
     // HashMap untuk menyimpan matriks L untuk setiap term
     let mut l_matrices_map: HashMap<String, DMatrix<f64>> = HashMap::new();
 
-    // ===== GENERASI MATRIKS L UNTUK SETIAP TERM =====
-
     for term_name in all_model_terms_in_design {
         // Membuat matriks L berdasarkan metode sum of squares yang dipilih
         let l_matrix_result = match config.model.sum_of_square_method {
@@ -93,8 +91,6 @@ pub fn calculate_hypothesis_l_matrices(
             );
         }
     }
-
-    // ===== FORMATTING MATRIKS L UNTUK OUTPUT =====
 
     let mut matrices = Vec::new();
 

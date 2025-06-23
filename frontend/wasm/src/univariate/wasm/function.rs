@@ -20,18 +20,16 @@ pub fn run_analysis(
 ) -> Result<Option<UnivariateResult>, JsValue> {
     web_sys::console::log_1(&"Starting univariate analysis".into());
 
-    // Log configuration to track which methods will be executed
+    // Mencatat konfigurasi dan data untuk melacak metode yang akan dieksekusi dan data yang diproses.
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
-
-    // Log data to track the data being processed
     web_sys::console::log_1(&format!("Data: {:?}", data).into());
 
-    // Step 1: Basic processing summary (always executed)
+    // Langkah 1: Ringkasan pemrosesan dasar (selalu dieksekusi).
+    // Fungsi ini memberikan informasi awal tentang data, seperti jumlah kasus yang valid dan hilang.
     logger.add_log("basic_processing_summary");
     let mut processing_summary = None;
     match core::basic_processing_summary(&data, config) {
         Ok(summary) => {
-            // Store the summary in the result
             processing_summary = Some(summary);
         }
         Err(e) => {
@@ -39,7 +37,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 2: Descriptive statistics if requested
+    // Langkah 2: Statistik deskriptif jika diminta.
+    // Menghitung statistik dasar seperti rata-rata, standar deviasi, dll.
+    // Ini membantu memberikan gambaran umum tentang distribusi data.
     let mut descriptive_statistics = None;
     if config.options.desc_stats {
         logger.add_log("calculate_descriptive_statistics");
@@ -49,12 +49,14 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_descriptive_statistics", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 3: Levene's Test for Homogeneity of Variances if requested
+    // Langkah 3: Uji Levene untuk Homogenitas Varians jika diminta.
+    // Uji Levene digunakan untuk memeriksa apakah varians dari variabel dependen
+    // sama di semua kelompok. Asumsi homogenitas varians penting untuk ANOVA.
+    // Hasil yang signifikan (p < 0.05) menunjukkan varians tidak homogen.
     let mut levene_test = None;
     if config.options.homogen_test {
         logger.add_log("calculate_levene_test");
@@ -64,12 +66,14 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_levene_test", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 4: Heteroscedasticity Tests if requested
+    // Langkah 4: Uji Heteroskedastisitas jika diminta.
+    // Uji ini (Breusch-Pagan, White, F-test) mendeteksi apakah varians dari error
+    // dalam model regresi tidak konstan (heteroskedastisitas).
+    // Ini adalah asumsi penting dalam analisis regresi.
     let mut heteroscedasticity_tests = None;
     if
         config.options.mod_brusch_pagan ||
@@ -84,12 +88,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_heteroscedasticity_tests", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 4: Tests of Between-Subjects Effects (ANOVA)
+    // Langkah 5: Uji Efek Antar-Subjek (ANOVA).
+    // ANOVA digunakan untuk menguji perbedaan rata-rata antara dua atau lebih kelompok.
+    // Ini adalah analisis inti untuk model univariat.
     let mut tests_of_between_subjects_effects = None;
     logger.add_log("calculate_tests_between_subjects_effects");
     match core::calculate_tests_between_subjects_effects(&data, config) {
@@ -101,7 +106,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 5: Parameter Estimates if requested
+    // Langkah 6: Estimasi Parameter jika diminta.
+    // Menghitung koefisien untuk setiap prediktor dalam model,
+    // yang menunjukkan hubungan antara prediktor dan variabel dependen.
     let mut parameter_estimates = None;
     if config.options.param_est {
         logger.add_log("calculate_parameter_estimates");
@@ -111,12 +118,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_parameter_estimates", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 6: Contrast Coefficients if requested
+    // Langkah 7: Koefisien Kontras jika diminta.
+    // Kontras digunakan untuk menguji hipotesis spesifik tentang perbedaan
+    // antara rata-rata kelompok tertentu.
     let mut contrast_coefficients = None;
     if let Some(factor_list) = &config.contrast.factor_list {
         if !factor_list.is_empty() {
@@ -132,7 +140,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 6: Hypothesis L Matrices if requested
+    // Langkah 8: Matriks L Hipotesis jika diminta.
+    // Menampilkan matriks yang digunakan untuk menguji hipotesis dalam model linier umum,
+    // memberikan transparansi pada perhitungan.
     let mut hypothesis_l_matrices = None;
     if config.options.coefficient_matrix {
         logger.add_log("calculate_hypothesis_l_matrices");
@@ -146,7 +156,9 @@ pub fn run_analysis(
         }
     }
 
-    // Step 6: Lack of Fit Tests if requested
+    // Langkah 9: Uji Lack of Fit jika diminta.
+    // Menguji apakah model yang dipilih sudah cukup baik dalam menjelaskan data,
+    // atau apakah model yang lebih kompleks diperlukan.
     let mut lack_of_fit_tests = None;
     if config.options.lack_of_fit {
         logger.add_log("calculate_lack_of_fit_tests");
@@ -156,12 +168,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_lack_of_fit_tests", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 7: Spread-vs-Level Plots if requested
+    // Langkah 10: Plot Sebaran vs Tingkat (Spread-vs-Level) jika diminta.
+    // Plot ini digunakan untuk memeriksa asumsi homogenitas varians secara visual
+    // dengan memplot log dari standar deviasi terhadap log dari rata-rata.
     let mut spread_vs_level_plots = None;
     if config.options.spr_vs_level {
         logger.add_log("calculate_spread_vs_level_plots");
@@ -171,24 +184,26 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_spread_vs_level_plots", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Step 8: Bootstrap analysis if requested
+    // Langkah 11: Analisis Bootstrap jika diminta.
+    // Bootstrap adalah metode resampling untuk mengestimasi distribusi statistik sampel
+    // dan menghasilkan interval kepercayaan yang lebih robust.
     if config.bootstrap.perform_boot_strapping {
         logger.add_log("perform_bootstrap_analysis");
         match core::perform_bootstrap_analysis(&data, config) {
             Ok(_) => {}
             Err(e) => {
                 error_collector.add_error("perform_bootstrap_analysis", &e);
-                // Continue execution despite errors for non-critical functions
             }
         }
     }
 
-    // Calcular los posthoc tests si se solicitan
+    // Langkah 12: Uji Post-Hoc jika diminta.
+    // Dilakukan setelah ANOVA menunjukkan hasil signifikan, untuk mengetahui
+    // kelompok mana yang secara spesifik berbeda satu sama lain.
     let mut posthoc_tests = None;
     if
         config.posthoc.fix_factor_vars.is_some() &&
@@ -201,12 +216,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_posthoc_tests", &e);
-                // Continue execution despite errors
             }
         }
     }
 
-    // Calcular emmeans si se solicitan
+    // Langkah 13: Rata-rata Marginal Estimasi (EMMeans) jika diminta.
+    // Menghitung rata-rata kelompok yang disesuaikan dengan efek kovariat lain,
+    // memberikan perbandingan yang lebih adil antar kelompok.
     let mut emmeans = None;
     if config.emmeans.target_list.as_ref().map_or(false, |v| !v.is_empty()) {
         logger.add_log("calculate_emmeans");
@@ -220,7 +236,8 @@ pub fn run_analysis(
         }
     }
 
-    // Calcular robust standard errors si se solicitan
+    // Langkah 14: Estimasi Parameter dengan Standard Error Robust jika diminta.
+    // Memberikan estimasi parameter yang lebih andal ketika asumsi homoskedastisitas dilanggar.
     let mut robust_parameter_estimates = None;
     if config.options.param_est_rob_std_err {
         logger.add_log("calculate_robust_parameter_estimates");
@@ -230,12 +247,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_robust_parameter_estimates", &e);
-                // Continue execution despite errors
             }
         }
     }
 
-    // Generate plots if requested
+    // Langkah 15: Membuat plot jika diminta.
+    // Memvisualisasikan hasil analisis, seperti plot interaksi atau plot profil,
+    // untuk mempermudah interpretasi.
     let mut plots = None;
     if config.plots.fix_factor_vars.as_ref().map_or(false, |v| !v.is_empty()) {
         logger.add_log("generate_plots");
@@ -245,12 +263,13 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("generate_plots", &e);
-                // Continue execution despite errors
             }
         }
     }
 
-    // Save variables if requested
+    // Langkah 16: Menyimpan variabel baru jika diminta.
+    // Menyimpan hasil perhitungan seperti residual, nilai prediksi, atau leverage
+    // sebagai variabel baru untuk analisis lebih lanjut.
     let mut saved_variables = None;
     if
         config.save.unstandardized_res ||
@@ -270,12 +289,12 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("save_variables", &e);
-                // Continue execution despite errors
             }
         }
     }
 
-    // Calculate general estimable function
+    // Langkah 17: Menghitung fungsi estimable umum.
+    // Memungkinkan pengujian hipotesis linier kustom yang tidak tersedia secara default.
     let mut general_estimable_function = None;
     if config.options.general_fun {
         logger.add_log("calculate_general_estimable_function");
@@ -285,12 +304,11 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("calculate_general_estimable_function", &e);
-                // Continue execution despite errors
             }
         }
     }
 
-    // Create the final result
+    // Mengumpulkan semua hasil dari langkah-langkah di atas ke dalam satu struktur `UnivariateResult`.
     let result = UnivariateResult {
         between_subjects_factors: processing_summary,
         descriptive_statistics,
@@ -313,6 +331,7 @@ pub fn run_analysis(
     Ok(Some(result))
 }
 
+/// Mengambil hasil analisis mentah dalam format `JsValue`.
 pub fn get_results(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue> {
     match result {
         Some(result) => Ok(serde_wasm_bindgen::to_value(result).unwrap()),
@@ -320,18 +339,22 @@ pub fn get_results(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue
     }
 }
 
+/// Mengambil hasil analisis yang sudah diformat untuk ditampilkan.
 pub fn get_formatted_results(result: &Option<UnivariateResult>) -> Result<JsValue, JsValue> {
     format_result(result)
 }
 
+/// Mengambil ringkasan semua kesalahan yang terjadi selama analisis.
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {
     JsValue::from_str(&error_collector.get_error_summary())
 }
 
+/// Mengambil daftar semua fungsi yang telah dieksekusi selama analisis.
 pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
     Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }
 
+/// Membersihkan kolektor kesalahan untuk analisis berikutnya.
 pub fn clear_errors(error_collector: &mut ErrorCollector) -> JsValue {
     error_collector.clear();
     JsValue::from_str("Error collector cleared")

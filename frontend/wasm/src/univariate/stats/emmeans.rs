@@ -1,37 +1,23 @@
 use std::collections::{ BTreeMap, HashMap, HashSet };
 use nalgebra::{ DMatrix, DVector };
 
-use crate::univariate::{
-    models::{
-        config::{ CIMethod, UnivariateConfig },
-        data::{ AnalysisData, DataValue },
-        result::{
-            EMMeansResult,
-            EMMeansEstimates,
-            EMMeansEstimatesEntry,
-            PairwiseComparisons,
-            PairwiseComparisonsEntry,
-            UnivariateTests,
-            UnivariateTestsEntry,
-            ContrastCoefficientsEntry,
-            ConfidenceInterval,
-        },
-    },
-    stats::{
-        core::*, // For data_value_to_string, calculate_t_significance, calculate_t_critical, calculate_f_significance
-        design_matrix::{
-            create_cross_product_matrix,
-            create_design_response_weights,
-            perform_sweep_and_extract_results,
-        },
-        factor_utils::{
-            generate_all_row_parameter_names_sorted,
-            get_factor_levels,
-            parse_interaction_term,
-            parse_parameter_name,
-        },
+use crate::univariate::models::{
+    config::{ CIMethod, UnivariateConfig },
+    data::{ AnalysisData, DataValue },
+    result::{
+        EMMeansResult,
+        EMMeansEstimates,
+        EMMeansEstimatesEntry,
+        PairwiseComparisons,
+        PairwiseComparisonsEntry,
+        UnivariateTests,
+        UnivariateTestsEntry,
+        ContrastCoefficientsEntry,
+        ConfidenceInterval,
     },
 };
+
+use super::core::*;
 
 /*
  * Fungsi ini mengorkestrasi seluruh proses perhitungan EMMeans.

@@ -3,7 +3,12 @@ use itertools::Itertools;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{ DesignMatrixInfo, GeneralEstimableFunction, GeneralEstimableFunctionEntry },
+    result::{
+        DesignMatrixInfo,
+        FactorDetail,
+        GeneralEstimableFunction,
+        GeneralEstimableFunctionEntry,
+    },
 };
 
 use super::core::*;
@@ -49,19 +54,6 @@ fn get_coeffs_for_cell_mean(
         }
     }
     coeffs
-}
-
-/// Struktur untuk menyimpan detail dari sebuah faktor.
-#[derive(Debug, Clone)]
-struct FactorDetail {
-    /// Nama faktor.
-    name: String,
-    /// Daftar level yang unik dari faktor ini, diurutkan secara alfabetis/numerik.
-    levels: Vec<String>,
-    /// Level referensi, yaitu level pertama setelah diurutkan.
-    reference_level: String,
-    /// Level pivot, yaitu level terakhir setelah diurutkan. Digunakan sebagai dasar perbandingan untuk kontras.
-    pivot_level: String,
 }
 
 /*

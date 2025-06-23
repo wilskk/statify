@@ -2,6 +2,7 @@ use crate::univariate::models::{
     config::{ ContrastMethod, UnivariateConfig },
     data::AnalysisData,
     result::{
+        ConfidenceInterval,
         ContrastCoefficients,
         ContrastCoefficientsEntry,
         ContrastInformation,
@@ -9,24 +10,13 @@ use crate::univariate::models::{
         ContrastResultEntry,
         ContrastTestResult,
         ContrastTestResultEntry,
-        ConfidenceInterval,
+        ParsedFactorSpec,
     },
 };
 use std::collections::{ HashMap, HashSet };
 use nalgebra::{ DMatrix, DVector };
 
 use super::core::*;
-
-/// Struct pembantu untuk menyimpan spesifikasi faktor yang sudah di-parse
-///
-/// Berisi informasi tentang nama faktor, metode kontras, dan pengaturan referensi
-#[derive(Debug)]
-struct ParsedFactorSpec {
-    factor_name: String,
-    method: ContrastMethod,
-    ref_setting: String, // e.g., "First", "Last"
-    use_first_as_ref: bool,
-}
 
 /// 1. Parse string spesifikasi kontras faktor
 ///

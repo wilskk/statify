@@ -26,10 +26,6 @@ struct LevelStats {
     original_index: usize, // Untuk mempertahankan urutan asli jika diperlukan
 }
 
-// =================================================================================================
-// Fungsi-Fungsi Pembantu untuk Pengambilan dan Perhitungan Statistik Dasar
-// =================================================================================================
-
 /// Mengambil nilai variabel dependen untuk level faktor tertentu.
 fn get_level_values(
     data: &AnalysisData,
@@ -288,10 +284,6 @@ fn calculate_subset_significance(
 
     Some(calculate_f_significance(df_between, df_error, f_value))
 }
-
-// =================================================================================================
-// Fungsi Inti untuk Perbandingan Berganda
-// =================================================================================================
 
 /// Melakukan perhitungan perbandingan berganda untuk berbagai uji post-hoc.
 fn calculate_multiple_comparisons(
@@ -979,10 +971,6 @@ fn calculate_multiple_comparisons(
     factor_comparison_entries
 }
 
-// =================================================================================================
-// Fungsi untuk Membuat Subset Homogen
-// =================================================================================================
-
 /// Membuat subset homogen berdasarkan hasil perbandingan berganda.
 ///
 /// - **Tujuan**: Mengelompokkan rata-rata level faktor yang tidak berbeda secara signifikan satu sama lain.
@@ -1224,10 +1212,6 @@ fn calculate_homogeneous_subsets(
 
     homog_entries
 }
-
-// =================================================================================================
-// Fungsi Utama Eksekusi Uji Post-Hoc
-// =================================================================================================
 
 /// Fungsi utama untuk menghitung semua uji post-hoc yang diminta dalam konfigurasi.
 pub fn calculate_posthoc_tests(

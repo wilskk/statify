@@ -3,22 +3,10 @@ use rayon::prelude::*;
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{ LeveneTest, LeveneTestEntry },
+    result::{ LeveneCenter, LeveneTest, LeveneTestEntry },
 };
 
 use super::core::*;
-
-/// Enum untuk menentukan metode pemusatan data yang digunakan dalam Uji Levene.
-/// Metode pemusatan ini penting karena Uji Levene pada dasarnya adalah ANOVA
-/// yang dilakukan pada deviasi absolut dari pusat setiap grup.
-#[derive(Clone, Copy, Debug)]
-enum LeveneCenter {
-    Mean,
-    Median,
-    /// Menggunakan rata-rata terpangkas (trimmed mean).
-    /// Argumen (f64) adalah proporsi data yang akan dipangkas dari setiap ujung.
-    TrimmedMean(f64),
-}
 
 /// Menghitung Uji Levene untuk homogenitas varians jika diminta dalam konfigurasi.
 ///
