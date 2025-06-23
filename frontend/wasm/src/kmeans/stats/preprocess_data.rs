@@ -6,19 +6,26 @@ use crate::kmeans::models::{
     result::ProcessedData,
 };
 
+/// Fungsi `preprocess_data` bertanggung jawab untuk mempersiapkan data mentah sebelum proses klastering K-Means.
+/// Proses ini mencakup pemilihan variabel, penanganan data yang hilang (missing values), dan transformasi data ke format matriks.
 pub fn preprocess_data(
     data: &AnalysisData,
     config: &ClusterConfig
 ) -> Result<ProcessedData, String> {
+    // Memastikan ada data target yang disediakan untuk diproses.
     if data.target_data.is_empty() {
         return Err("No target data provided".to_string());
     }
 
-    // Determine variables to use
+    // --- Penentuan Variabel ---
+    // Menentukan variabel yang akan digunakan untuk klastering.
+    // Jika `target_var` ditentukan dalam konfigurasi, maka variabel tersebut yang akan digunakan.
+    // Jika tidak, fungsi akan secara otomatis mengumpulkan semua variabel numerik dari dataset.
     let variables = if let Some(target_var) = &config.main.target_var {
         target_var.clone()
     } else {
-        // Collect all numeric variables from all datasets
+        // Mengumpulkan semua variabel unik yang bertipe numerik dari seluruh dataset.
+        // `HashSet` digunakan untuk memastikan tidak ada duplikasi nama variabel.
         data.target_data
             .iter()
             .flat_map(|dataset| {
@@ -34,30 +41,39 @@ pub fn preprocess_data(
             .collect()
     };
 
+    // Memastikan ada variabel yang valid untuk klastering setelah proses seleksi.
     if variables.is_empty() {
         return Err("No valid clustering variables found".to_string());
     }
 
-    // Get the number of cases
+    // --- Inisialisasi Proses ---
+    // Mendapatkan jumlah total kasus (baris data) dari dataset pertama.
     let num_cases = data.target_data.first().map_or(0, |ds| ds.len());
     if num_cases == 0 {
         return Err("No cases found in data".to_string());
     }
 
+    // Inisialisasi `data_matrix` untuk menyimpan data numerik yang akan dianalisis
+    // dan `case_numbers` untuk melacak nomor baris asli dari data yang valid.
     let mut data_matrix = Vec::new();
     let mut case_numbers = Vec::new();
 
-    // Determine which exclusion method to use (list-wise takes precedence)
+    // --- Penanganan Data Hilang (Missing Values) ---
+    // Menentukan metode eksklusi data yang hilang berdasarkan konfigurasi.
+    // `exclude_list_wise`: Jika satu nilai saja hilang, seluruh kasus (baris) akan dihapus.
+    // `exclude_pair_wise`: Kasus tetap disertakan, perhitungan hanya dilakukan pada variabel yang lengkap.
+    // Metode list-wise menjadi prioritas jika kedua opsi diaktifkan.
     let use_list_wise = config.options.exclude_list_wise;
     let use_pair_wise = config.options.exclude_pair_wise && !use_list_wise;
 
-    // Process each case
+    // --- Iterasi dan Pengolahan Data ---
+    // Memproses setiap kasus (baris) dalam data.
     for case_idx in 0..num_cases {
         let mut row = Vec::with_capacity(variables.len());
         let mut has_missing = false;
         let mut complete_variables = Vec::new();
 
-        // For each variable, find its value across all datasets
+        // Untuk setiap variabel yang telah ditentukan, cari nilainya di semua dataset.
         for var in &variables {
             let mut var_found = false;
 
@@ -67,39 +83,41 @@ pub fn preprocess_data(
                         row.push(*val);
                         complete_variables.push(var.clone());
                         var_found = true;
-                        break;
+                        break; // Lanjut ke variabel berikutnya setelah nilai ditemukan.
                     }
                 }
             }
 
+            // Jika variabel tidak ditemukan atau bukan numerik, tandai sebagai data hilang.
             if !var_found {
-                // Variable not found or not numeric
                 has_missing = true;
-
                 if use_list_wise {
-                    break; // Skip this case if excluding list-wise
+                    // Jika menggunakan list-wise, hentikan pemrosesan baris ini dan lanjut ke kasus berikutnya.
+                    break;
                 } else if !use_pair_wise {
-                    row.push(0.0); // Default value if not using any exclusion method
+                    // Jika tidak ada metode eksklusi, isi nilai yang hilang dengan 0.0.
+                    row.push(0.0);
                 }
-                // For pair-wise, we simply skip this variable
+                // Untuk pair-wise, variabel yang hilang akan diabaikan dan tidak ditambahkan ke `row`.
             }
         }
 
+        // --- Memasukkan Data ke Matriks Berdasarkan Metode Eksklusi ---
         if use_list_wise {
-            // For list-wise exclusion: only include complete cases
+            // List-wise: Hanya kasus yang lengkap (tanpa data hilang) yang dimasukkan.
             if !has_missing && row.len() == variables.len() {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
         } else if use_pair_wise {
-            // For pair-wise exclusion: include the case but only with non-missing variables
+            // Pair-wise: Kasus dimasukkan jika memiliki setidaknya satu variabel yang valid.
+            // `row` hanya akan berisi nilai dari variabel yang tidak hilang.
             if !complete_variables.is_empty() {
-                // If using pair-wise, we need to track which variables were used for this case
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
             }
         } else {
-            // No exclusion: include all cases with default values for missing variables
+            // Tanpa eksklusi: Semua kasus dimasukkan, nilai yang hilang diisi dengan default (0.0).
             if row.len() == variables.len() {
                 data_matrix.push(row);
                 case_numbers.push((case_idx + 1) as i32);
@@ -107,51 +125,47 @@ pub fn preprocess_data(
         }
     }
 
+    // Memastikan matriks data tidak kosong setelah pemrosesan.
     if data_matrix.is_empty() {
         return Err("No valid data records after preprocessing".to_string());
     }
 
-    // Extract case names if case_data and case_target are available
+    // --- Ekstraksi Nama Kasus ---
+    // Jika `case_target` (kolom untuk nama kasus) ditentukan, ekstrak nama untuk setiap kasus yang valid.
     let case_names = if let Some(case_target) = &config.main.case_target {
         let mut names = Vec::with_capacity(case_numbers.len());
 
         for &case_idx in &case_numbers {
-            let idx = (case_idx - 1) as usize; // Convert back to 0-based index
+            // Konversi kembali ke indeks berbasis 0.
+            let idx = (case_idx - 1) as usize;
             let mut name = None;
 
-            // Search for case name in case_data
+            // Cari nama kasus di dalam `case_data`.
             for dataset in &data.case_data {
                 if idx < dataset.len() {
                     if let Some(value) = dataset[idx].values.get(case_target) {
-                        match value {
-                            DataValue::Text(text) => {
-                                name = Some(text.clone());
-                            }
-                            DataValue::Number(num) => {
-                                name = Some(num.to_string());
-                            }
-                            DataValue::Boolean(b) => {
-                                name = Some(b.to_string());
-                            }
-                            _ => {}
+                        // Konversi nilai (teks, angka, boolean) menjadi string.
+                        name = match value {
+                            DataValue::Text(text) => Some(text.clone()),
+                            DataValue::Number(num) => Some(num.to_string()),
+                            DataValue::Boolean(b) => Some(b.to_string()),
+                            _ => None,
+                        };
+                        if name.is_some() {
+                            break;
                         }
-                        break;
                     }
                 }
             }
-
-            if let Some(name_value) = name {
-                names.push(name_value);
-            } else {
-                names.push(String::new()); // Use empty string instead of "Case X"
-            }
+            // Tambahkan nama yang ditemukan, atau string kosong jika tidak ditemukan.
+            names.push(name.unwrap_or_default());
         }
-
         Some(names)
     } else {
         None
     };
 
+    // Mengembalikan data yang sudah diproses dan siap untuk analisis klaster.
     Ok(ProcessedData {
         variables,
         data_matrix,

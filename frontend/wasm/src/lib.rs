@@ -3,7 +3,7 @@
 // pub mod discriminant;
 // pub mod factor;
 // pub mod hierarchical;
-// pub mod kmeans;
+pub mod kmeans;
 // pub mod knn;
 // pub mod mca;
 // pub mod multivariate;
