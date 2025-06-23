@@ -197,7 +197,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
                             value="option"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'option' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
-                            Unit Root Test Setting
+                            Unit Root Test Option
                         </TabsTrigger>
                     </TabsList>
                 </div>

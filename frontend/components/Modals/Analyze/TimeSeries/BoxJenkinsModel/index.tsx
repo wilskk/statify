@@ -203,7 +203,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                             value="option"
                             className={`px-4 h-8 rounded-none text-sm ${activeTab === 'option' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
                         >
-                            Box-Jenkins Model Setting
+                            Box-Jenkins Model Option
                         </TabsTrigger>
                         <TabsTrigger
                             value="time"
