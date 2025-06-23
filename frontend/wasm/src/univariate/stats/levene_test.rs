@@ -12,14 +12,6 @@ use super::core::*;
 ///
 /// Uji Levene digunakan untuk menguji asumsi penting dalam statistik parametrik
 /// bahwa varians dari beberapa grup adalah sama (homoskedastisitas).
-///
-/// # Arguments
-/// * `data` - Data analisis yang berisi variabel dependen dan independen.
-/// * `config` - Konfigurasi untuk analisis univariat.
-///
-/// # Returns
-/// `Result<Vec<LeveneTest>, String>` - Hasil Uji Levene untuk setiap variabel dependen,
-/// atau pesan error jika terjadi kegagalan.
 pub fn calculate_levene_test(
     data: &AnalysisData,
     config: &UnivariateConfig
@@ -226,13 +218,6 @@ pub fn calculate_levene_entries(
 ///   yang mengarah pada penolakan hipotesis nol (varians homogen).
 /// - **Signifikansi (p-value)**: Probabilitas mendapatkan hasil seekstrem yang diamati jika hipotesis nol benar.
 ///   Nilai p < 0.05 (standar umum) menunjukkan bukti signifikan untuk menolak hipotesis nol.
-///
-/// # Arguments
-/// * `groups` - Slice dari vektor yang berisi data untuk setiap grup.
-/// * `center_method` - Metode pemusatan yang akan digunakan (Mean, Median, atau TrimmedMean).
-///
-/// # Returns
-/// `Result<(f64, usize, usize, f64), String>` - Tuple berisi (F-statistic, df1, df2, significance).
 fn calculate_levene_anova(
     groups: &[Vec<f64>],
     center_method: LeveneCenter
@@ -358,9 +343,6 @@ fn calculate_levene_anova(
 /// terhadap pelanggaran asumsi normalitas. Penyesuaian df2 (disebut juga `v`)
 /// menggunakan formula yang mirip dengan koreksi Welch-Satterthwaite,
 /// menghasilkan p-value yang lebih andal ketika varians grup tidak sama.
-///
-/// # Returns
-/// `Result<(f64, usize, f64, f64), String>` - Tuple berisi (F-statistic, df1, df2_adjusted, significance_adjusted).
 pub fn calculate_levene_anova_adjusted_df(
     groups: &[Vec<f64>],
     _original_data: &AnalysisData,
