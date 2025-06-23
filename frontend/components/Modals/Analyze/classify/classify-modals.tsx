@@ -2,14 +2,14 @@
 
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
-import { TwoStepClusterContainer } from "@/components/Modals/Analyze/classify/two-step-cluster/two-step-cluster-main";
-import { KMeansClusterContainer } from "@/components/Modals/Analyze/classify/k-means-cluster/k-means-cluster-main";
-import { HierClusContainer } from "@/components/Modals/Analyze/classify/hierarchical-cluster/hierarchical-cluster-main";
-import { TreeContainer } from "@/components/Modals/Analyze/classify/tree/tree-main";
-import { DiscriminantContainer } from "@/components/Modals/Analyze/classify/discriminant/discriminant-main";
-import { KNNContainer } from "@/components/Modals/Analyze/classify/nearest-neighbor/nearest-neighbor-main";
-import { RocCurveContainer } from "@/components/Modals/Analyze/classify/roc-curve/roc-curve-main";
-import { RocAnalysisContainer } from "@/components/Modals/Analyze/classify/roc-analysis/roc-analysis-main";
+import { TwoStepClusterContainer } from "@/components/Modals/Analyze/classify/two-step-cluster/dialogs/two-step-cluster-main";
+import { KMeansClusterContainer } from "@/components/Modals/Analyze/classify/k-means-cluster/dialogs/k-means-cluster-main";
+import { HierClusContainer } from "@/components/Modals/Analyze/classify/hierarchical-cluster/dialogs/hierarchical-cluster-main";
+import { TreeContainer } from "@/components/Modals/Analyze/classify/tree/dialogs/tree-main";
+import { DiscriminantContainer } from "@/components/Modals/Analyze/classify/discriminant/dialogs/discriminant-main";
+import { KNNContainer } from "@/components/Modals/Analyze/classify/nearest-neighbor/dialogs/nearest-neighbor-main";
+import { RocCurveContainer } from "@/components/Modals/Analyze/classify/roc-curve/dialogs/roc-curve-main";
+import { RocAnalysisContainer } from "@/components/Modals/Analyze/classify/roc-analysis/dialogs/roc-analysis-main";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",

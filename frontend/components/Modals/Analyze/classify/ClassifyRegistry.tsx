@@ -35,19 +35,19 @@ function withSuspense(
 const TwoStepClusterModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/two-step-cluster/two-step-cluster-main"
+            "@/components/Modals/Analyze/classify/two-step-cluster/dialogs/two-step-cluster-main"
         )
 );
 const KMeansClusterModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/k-means-cluster/k-means-cluster-main"
+            "@/components/Modals/Analyze/classify/k-means-cluster/dialogs/k-means-cluster-main"
         )
 );
 const HierarchicalClusterModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/hierarchical-cluster/hierarchical-cluster-main"
+            "@/components/Modals/Analyze/classify/hierarchical-cluster/dialogs/hierarchical-cluster-main"
         )
 );
 const ClusterSilhouettesModal = lazy(
@@ -57,28 +57,28 @@ const ClusterSilhouettesModal = lazy(
         )
 );
 const TreeModal = lazy(
-    () => import("@/components/Modals/Analyze/classify/tree/tree-main")
+    () => import("@/components/Modals/Analyze/classify/tree/dialogs/tree-main")
 );
 const DiscriminantModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/discriminant/discriminant-main"
+            "@/components/Modals/Analyze/classify/discriminant/dialogs/discriminant-main"
         )
 );
 const NearestNeighborModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/nearest-neighbor/nearest-neighbor-main"
+            "@/components/Modals/Analyze/classify/nearest-neighbor/dialogs/nearest-neighbor-main"
         )
 );
 const ROCCurveModal = lazy(
     () =>
-        import("@/components/Modals/Analyze/classify/roc-curve/roc-curve-main")
+        import("@/components/Modals/Analyze/classify/roc-curve/dialogs/roc-curve-main")
 );
 const ROCAnalysisModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/classify/roc-analysis/roc-analysis-main"
+            "@/components/Modals/Analyze/classify/roc-analysis/dialogs/roc-analysis-main"
         )
 );
 

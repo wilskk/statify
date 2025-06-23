@@ -2,12 +2,12 @@
 
 import React from "react";
 import { ModalType } from "@/hooks/useModal";
-import { FactorContainer } from "@/components/Modals/Analyze/dimension-reduction/factor/factor-main";
-import { CorrespondenceContainer } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-main";
+import { FactorContainer } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/factor-main";
+import { CorrespondenceContainer } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/correspondence-analysis-main";
 import { OptScaContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-main";
-import { OptScaCatpcaContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/optimal-scaling-catpca-main";
-import { OptScaMCAContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-main";
-import { OptScaOveralsContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-main";
+import { OptScaCatpcaContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/optimal-scaling-catpca-main";
+import { OptScaMCAContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/optimal-scaling-mca-main";
+import { OptScaOveralsContainer } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/optimal-scaling-overals-main";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",

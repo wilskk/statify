@@ -19,7 +19,7 @@ import { useModal, ModalType } from "@/hooks/useModal";
 import {
     OptScaDefineMainType,
     OptScaDefineProps,
-} from "@/models/dimension-reduction/optimal-scaling-define";
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/types/optimal-scaling-define";
 import { useEffect, useState } from "react";
 
 export const OptScaInitial = ({

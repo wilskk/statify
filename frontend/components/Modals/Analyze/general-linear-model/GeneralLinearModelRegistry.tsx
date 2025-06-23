@@ -34,22 +34,22 @@ function withSuspense(
 // Lazy load General Linear Model modals
 const UnivariateModal = lazy(() =>
     import(
-        "@/components/Modals/Analyze/general-linear-model/univariate/univariate-main"
+        "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/univariate-main"
     ).then((module) => ({ default: module.UnivariateContainer }))
 );
 const MultivariateModal = lazy(() =>
     import(
-        "@/components/Modals/Analyze/general-linear-model/multivariate/multivariate-main"
+        "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/multivariate-main"
     ).then((module) => ({ default: module.MultivariateContainer }))
 );
 const RepeatedMeasuresModal = lazy(() =>
     import(
-        "@/components/Modals/Analyze/general-linear-model/repeated-measures/repeated-measures-main"
+        "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/repeated-measures-main"
     ).then((module) => ({ default: module.RepeatedMeasuresContainer }))
 );
 const VarianceComponentsModal = lazy(() =>
     import(
-        "@/components/Modals/Analyze/general-linear-model/variance-components/variance-components-main"
+        "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/variance-components-main"
     ).then((module) => ({ default: module.VarianceCompsContainer }))
 );
 

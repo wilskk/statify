@@ -35,13 +35,13 @@ function withSuspense(
 const FactorModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/dimension-reduction/factor/factor-main"
+            "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/factor-main"
         )
 );
 const CorrespondenceAnalysisModal = lazy(
     () =>
         import(
-            "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-main"
+            "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/correspondence-analysis-main"
         )
 );
 const OptimalScalingModal = lazy(
