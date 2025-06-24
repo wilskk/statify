@@ -28,7 +28,6 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
     // 2. Generate Table Structure (Headers, Data Matrix, Column Configs)
     const {
         colHeaders,
-        displayMatrix,
         columns,
     } = useTableStructure(
         viewMode,
@@ -68,7 +67,6 @@ export const useDataTableLogic = (hotTableRef: React.RefObject<any>) => {
     // 5. Return all necessary values and handlers for the DataTable component
     return {
         // Structure & Data
-        displayMatrix,
         colHeaders,
         columns,
 

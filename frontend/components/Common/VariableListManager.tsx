@@ -1,7 +1,7 @@
 import React, { FC, useState, useCallback, useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getVariableIcon as defaultGetVariableIcon } from './iconHelper';
-import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft } from 'lucide-react';
+import { InfoIcon, GripVertical, MoveHorizontal, ArrowBigDown, ArrowBigLeft, ArrowBigRight } from 'lucide-react';
 import type { Variable } from "@/types/Variable";
 import { useMobile } from "@/hooks/useMobile";
 
@@ -302,7 +302,7 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             // Perform overwrite if needed
             if (isReplacingSingleItem && targetListConfig) {
                 const existingVariable = targetListConfig.variables[0];
-                onMoveVariable(existingVariable, targetListId, 'available');
+                onMoveVariable(existingVariable, sourceListId, targetListId);
             }
 
             // Move the double-clicked variable
@@ -444,37 +444,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         // Adjust overflow for single-item lists
         const overflowStyle = isSingleItemList ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden";
 
-        // Render arrow button if showArrowButtons is true
-        const renderArrowButton = () => {
-            if (!showArrowButtons || id === 'available') return null;
-
-            const isTargetHighlighted = highlightedVariable?.source === id;
-            const isAvailableHighlighted = highlightedVariable?.source === 'available';
-            const isDisabled = !highlightedVariable ||
-                (highlightedVariable.source !== 'available' && highlightedVariable.source !== id);
-
-            // Direction: if target is highlighted, show left arrow (to available)
-            // otherwise show right arrow (from available to target)
-            const direction = isTargetHighlighted ? 'left' : 'right';
-
-            return (
-                <button
-                    className={`
-                        flex-shrink-0 flex items-center justify-center p-1 w-6 h-6 rounded border mr-2
-                        ${isDisabled
-                        ? 'border-border text-muted-foreground cursor-not-allowed'
-                        : 'border-border text-foreground hover:bg-accent hover:border-primary'}
-                    `}
-                    onClick={() => !isDisabled && handleArrowButtonClick(id)}
-                    disabled={isDisabled}
-                >
-                    {direction === 'left'
-                        ? <ArrowBigLeft size={14} />
-                        : <ArrowBigDown size={14} />}
-                </button>
-            );
-        };
-
         return (
             <div 
                 key={id} 
@@ -483,7 +452,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
             >
                 {title && (
                     <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6">
-                        {id !== 'available' && renderArrowButton()}
                         <span className="flex-1">{title}</span>
                     </div>
                 )}
@@ -525,33 +493,116 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     };
 
+    // --- Arrow Button Rendering (centralized) ---
+    const renderCentralArrowButton = () => {
+        if (!showArrowButtons || !highlightedVariable) return null;
+
+        const sourceListId = highlightedVariable.source;
+        const isAvailable = sourceListId === 'available';
+
+        // Determine the target list and the direction of the arrow
+        let targetList: TargetListConfig | undefined;
+        let isMovingRight = false;
+
+        if (isAvailable) {
+            // Find the first target list that's not full
+            targetList = targetLists.find(t => t.droppable !== false && (!t.maxItems || t.variables.length < t.maxItems));
+            isMovingRight = true;
+        } else {
+            // Find the source list config to check if it's draggable
+            const sourceListConfig = targetLists.find(l => l.id === sourceListId);
+            if (sourceListConfig?.draggableItems === false) return null; // Can't move from a non-draggable list
+
+            targetList = allLists.find(l => l.id === 'available') as TargetListConfig;
+            isMovingRight = false;
+        }
+        
+        if (!targetList) return null; // No valid target
+
+        const handleArrowClick = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            const sourceList = allLists.find(l => l.id === sourceListId);
+            const variableToMove = sourceList?.variables.find(v => String(v[variableIdKey]) === highlightedVariable.id);
+            
+            if (variableToMove) {
+                onMoveVariable(variableToMove, sourceListId, targetList!.id);
+            }
+        };
+
+        const ArrowIcon = isMovingRight ? ArrowBigRight : ArrowBigLeft;
+        const buttonLabel = isMovingRight 
+            ? `Move variable to ${targetList.title}` 
+            : `Move variable back to Available`;
+
+        return (
+            <button
+                data-testid="central-move-button"
+                aria-label={buttonLabel}
+                onClick={handleArrowClick}
+                className="flex-shrink-0 flex items-center justify-center p-1 w-8 h-8 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
+            >
+                <ArrowIcon size={20} className="text-foreground" />
+            </button>
+        );
+    };
+
     // --- Main Return with Responsive Layout ---
     // Only use flex column layout if mobile AND portrait orientation
     const useVerticalLayout = isMobile && isPortrait;
 
+    if (useVerticalLayout) {
+        return (
+            <div className="flex flex-col gap-4">
+                {/* Available Variables */}
+                <div className="w-full flex flex-col">
+                    {renderList(allLists.find(l => l.id === 'available')!)}
+                </div>
+                
+                {/* Central Arrow Button for Mobile */}
+                <div className="flex justify-center items-center my-1 h-8">
+                    {renderCentralArrowButton()}
+                </div>
+                
+                {/* Target Lists */}
+                <div className="w-full flex flex-col space-y-2">
+                    {targetLists.map(listConfig => renderList(listConfig))}
+                    {renderRightColumnFooter && renderRightColumnFooter()}
+                </div>
+
+                {/* Helper Text */}
+                <div className="flex flex-col mt-2 space-y-2">
+                    <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
+                        <span>Drag or double-click to move. Tap to select, then use arrow.</span>
+                    </div>
+                    {renderExtraInfoContent && renderExtraInfoContent()}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className={`${useVerticalLayout ? 'flex flex-col gap-4' : 'grid grid-cols-2 gap-4'}`}>
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
             {/* Available Variables Column (Left) */}
-            <div className={`${useVerticalLayout ? 'w-full' : 'col-span-1'} flex flex-col`}>
+            <div className="col-span-1 flex flex-col">
                 {renderList(allLists.find(l => l.id === 'available')!)}
                 
-                {/* Helper Text and Extra Content */}
-                {(!isMobile || !isPortrait) && (
-                    <div className="flex flex-col mt-2 space-y-2">
-                        <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
-                            <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
-                            <span>Drag or double-click variables to move them. Drag within a list to reorder.</span>
-                        </div>
-                        {renderExtraInfoContent && renderExtraInfoContent()}
+                <div className="flex flex-col mt-2 space-y-2">
+                    <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border">
+                        <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
+                        <span>Drag or double-click to move.</span>
                     </div>
-                )}
+                    {renderExtraInfoContent && renderExtraInfoContent()}
+                </div>
+            </div>
+
+            {/* Central Arrow Button Column */}
+            <div className="col-span-1 flex flex-col justify-center items-center pt-8">
+                {renderCentralArrowButton()}
             </div>
 
             {/* Target Lists Column (Right) */}
-            <div 
-                className={`${useVerticalLayout ? 'w-full mt-4' : 'col-span-1'} flex flex-col space-y-2`}
-                id="selected-variables-wrapper"
-            >
+            <div className="col-span-1 flex flex-col space-y-2" id="selected-variables-wrapper">
                 {targetLists.map(listConfig => renderList(listConfig))}
                 {renderRightColumnFooter && renderRightColumnFooter()}
             </div>

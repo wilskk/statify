@@ -1,6 +1,11 @@
+import 'fake-indexeddb/auto';
 // Optional: learn more about extending Jest matchers at
 // https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import { TextEncoder, TextDecoder } from 'util';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
 
 // Polyfill for PointerEvent which is not implemented in JSDOM
 if (!global.PointerEvent) {

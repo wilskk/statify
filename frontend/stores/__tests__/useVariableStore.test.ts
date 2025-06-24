@@ -1,16 +1,22 @@
 import { renderHook, act } from '@testing-library/react';
 import { useVariableStore } from '../useVariableStore';
-import { variableService } from '@/services/data';
 import { Variable } from '@/types/Variable';
 
-// Mock the variableService
-jest.mock('@/services/data/variableService', () => ({
-    getAllVariables: jest.fn(),
-    resetAllVariables: jest.fn(),
-    saveAllVariables: jest.fn(),
-    updateVariable: jest.fn(),
-    addVariable: jest.fn(),
-    deleteVariable: jest.fn(),
+// Mock the entire module from where variableService is imported
+jest.mock('@/services/data', () => ({
+    variableService: {
+        getAllVariables: jest.fn(),
+        clearAllVariables: jest.fn(),
+        saveAllVariables: jest.fn(),
+        updateVariable: jest.fn(),
+        addVariable: jest.fn(),
+        deleteVariable: jest.fn(),
+        importVariables: jest.fn(),
+        saveVariable: jest.fn(),
+    },
+    dataService: jest.fn(),
+    resultService: jest.fn(),
+    metaService: jest.fn(),
 }));
 
 // Helper to create a mock variable

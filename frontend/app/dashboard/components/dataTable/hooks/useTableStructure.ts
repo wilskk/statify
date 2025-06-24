@@ -46,26 +46,6 @@ export const useTableStructure = (
         return headers;
     }, [variableMap, targetVisualDataCols]);
 
-    const displayMatrix = useMemo(() => {
-        const matrix: (string | number | null)[][] = [];
-        const displayRows = targetVisualDataRows + 1; // +1 for visual spare row
-        // displayNumCols already includes the +1 for spare col
-
-        for (let r = 0; r < displayRows; r++) {
-            matrix[r] = [];
-            for (let c = 0; c < displayNumCols; c++) {
-                // Fill with actual data if within true bounds
-                if (r < actualNumRows && c < actualNumCols) {
-                    matrix[r][c] = data[r]?.[c] ?? '';
-                } else {
-                    // Fill with empty string for visual padding
-                    matrix[r][c] = '';
-                }
-            }
-        }
-        return matrix;
-    }, [data, actualNumRows, actualNumCols, targetVisualDataRows, displayNumCols]);
-
     /**
      * Returns dropdown column config for label mode if applicable
      */
@@ -73,16 +53,13 @@ export const useTableStructure = (
         viewMode: 'numeric' | 'label',
         variable: Variable | undefined,
         colIndex: number,
-        data: (string | number)[][],
         alignClass: string,
         truncateClass: string
     ): any {
         if (viewMode !== 'label' || !variable?.values?.length) return;
         // preserve original column width
         const baseConfig = getColumnConfig(variable);
-        const mappingLabels = variable.values.map(v => v.label);
-        const rawLabels = Array.from(new Set(data.map(row => String(row[colIndex]))));
-        const source = mappingLabels.length ? mappingLabels : rawLabels;
+        const source = variable.values.map(v => v.label);
         return {
             data: colIndex,
             readOnly: false,
@@ -145,7 +122,7 @@ export const useTableStructure = (
                 const baseConfig = getColumnConfig(variable);
                 const alignClass = getAlignmentClass(variable?.align);
                 const truncateClass = variable?.type === 'STRING' ? 'truncate-cell' : '';
-                const dropdown = getDropdownColumnConfig(viewMode, variable, colIndex, data, alignClass, truncateClass);
+                const dropdown = getDropdownColumnConfig(viewMode, variable, colIndex, alignClass, truncateClass);
                 if (dropdown) return dropdown;
                 return { data: colIndex, readOnly: false, className: `${alignClass} ${truncateClass}`.trim(), ...baseConfig };
             } else if (colIndex < targetVisualDataCols) {
@@ -157,11 +134,10 @@ export const useTableStructure = (
             }
         });
         return generatedColumns;
-    }, [data, variables, actualNumCols, targetVisualDataCols, displayNumCols, viewMode]);
+    }, [variables, actualNumCols, targetVisualDataCols, displayNumCols, viewMode]);
 
     return {
         colHeaders,
-        displayMatrix,
         columns,
     };
 }; 

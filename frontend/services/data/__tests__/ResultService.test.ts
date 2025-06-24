@@ -3,11 +3,7 @@ import resultRepository from '@/repositories/ResultRepository';
 import { Statistic } from '@/types/Result';
 
 // Mock the repository
-jest.mock('@/repositories/ResultRepository', () => ({
-    getAllLogs: jest.fn(),
-    getStatistic: jest.fn(),
-    saveStatistic: jest.fn(),
-}));
+jest.mock('@/repositories/ResultRepository');
 
 const mockedResultRepository = resultRepository as jest.Mocked<typeof resultRepository>;
 const resultService = new ResultService();

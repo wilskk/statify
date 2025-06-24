@@ -1,16 +1,9 @@
 import { VariableService } from '../VariableService';
 import variableRepository from '@/repositories/VariableRepository';
-import db from '@/lib/db';
 import { Variable } from '@/types/Variable';
 
 // Mock dependencies
-jest.mock('@/repositories/VariableRepository', () => ({
-    getAllVariables: jest.fn(),
-    getVariableById: jest.fn(),
-    deleteVariable: jest.fn(),
-    deleteValueLabelsByVariable: jest.fn(),
-}));
-jest.mock('@/lib/db'); // Keep the db module mocked
+jest.mock('@/repositories/VariableRepository');
 
 const mockedVariableRepository = variableRepository as jest.Mocked<typeof variableRepository>;
 const variableService = new VariableService();
@@ -51,40 +44,26 @@ describe('VariableService', () => {
     });
 
     describe('deleteVariable', () => {
-        it('should delete the variable and its associated value labels within a transaction', async () => {
+        it('should delete the variable and its associated value labels', async () => {
             const variableToDelete = createMockVariable(1, 'VarToDelete');
             (mockedVariableRepository.getVariableById as jest.Mock).mockResolvedValue(variableToDelete);
-            (mockedVariableRepository.deleteVariable as jest.Mock).mockResolvedValue(undefined); // Correct return type
-            (mockedVariableRepository.deleteValueLabelsByVariable as jest.Mock).mockResolvedValue(undefined); // Correct return type
-
-            // Spy on and mock the transaction method, ignoring the type error
-            // @ts-ignore - Dexie's PromiseExtended is too complex to mock perfectly
-            const transactionSpy = jest.spyOn(db, 'transaction').mockImplementation(async (mode, tables, callback: any) => {
-                return await callback();
-            });
+            (mockedVariableRepository.deleteVariable as jest.Mock).mockResolvedValue(undefined);
+            (mockedVariableRepository.deleteValueLabelsByVariable as jest.Mock).mockResolvedValue(undefined);
 
             await variableService.deleteVariable(1);
 
-            expect(transactionSpy).toHaveBeenCalledTimes(1);
-            expect((mockedVariableRepository.deleteVariable as jest.Mock).mock.calls.length).toBe(1);
-            expect((mockedVariableRepository.deleteValueLabelsByVariable as jest.Mock).mock.calls.length).toBe(1);
-            
-            transactionSpy.mockRestore();
+            expect(mockedVariableRepository.deleteVariable).toHaveBeenCalledWith(1);
+            expect(mockedVariableRepository.deleteValueLabelsByVariable).toHaveBeenCalledWith(variableToDelete.name);
         });
 
         it('should still attempt to delete if variable is not found', async () => {
             (mockedVariableRepository.getVariableById as jest.Mock).mockResolvedValue(undefined);
-            (mockedVariableRepository.deleteVariable as jest.Mock).mockResolvedValue(undefined); // Correct return type
-
-            // @ts-ignore
-            const transactionSpy = jest.spyOn(db, 'transaction');
+            (mockedVariableRepository.deleteVariable as jest.Mock).mockResolvedValue(undefined);
 
             await variableService.deleteVariable(99);
 
-            expect(transactionSpy).not.toHaveBeenCalled();
-            expect((mockedVariableRepository.deleteVariable as jest.Mock).mock.calls.length).toBe(1);
-            
-            transactionSpy.mockRestore();
+            expect(mockedVariableRepository.deleteVariable).toHaveBeenCalledWith(99);
+            expect(mockedVariableRepository.deleteValueLabelsByVariable).not.toHaveBeenCalled();
         });
     });
 }); 

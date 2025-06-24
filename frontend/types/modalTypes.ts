@@ -87,9 +87,6 @@ export enum ModalType {
   Explore = "Explore",
   Frequencies = "Frequencies",
   Crosstabs = "Crosstabs",
-  Ratio = "Ratio",
-  PPPlots = "PPPlots",
-  QQPlots = "QQPlots",
 }
 
 /**
@@ -230,9 +227,6 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.Explore]: ModalCategory.Analyze,
   [ModalType.Frequencies]: ModalCategory.Analyze,
   [ModalType.Crosstabs]: ModalCategory.Analyze,
-  [ModalType.Ratio]: ModalCategory.Analyze,
-  [ModalType.PPPlots]: ModalCategory.Analyze,
-  [ModalType.QQPlots]: ModalCategory.Analyze,
 };
 
 /**

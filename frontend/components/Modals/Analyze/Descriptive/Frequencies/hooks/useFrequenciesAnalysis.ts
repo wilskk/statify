@@ -9,10 +9,11 @@ import {
     StatisticsOptions,
     ChartOptions,
     FrequencyTable,
-    DescriptiveStatistics
+    DescriptiveStatistics,
+    FrequenciesResult
 } from '../types';
-import { processAndAddCharts } from '../utils/chartProcessor';
-import { formatResultsToTables } from '../utils/tableFormatter';
+// import { processAndAddCharts } from '../utils/chartProcessor';
+import { formatStatisticsTable, formatFrequencyTable } from '../utils/formatters';
 import { Variable } from '@/types/Variable';
 
 /**
@@ -23,12 +24,6 @@ interface FrequenciesAnalysisResult {
     errorMsg: string | null;
     runAnalysis: () => Promise<void>;
     cancelAnalysis: () => void;
-}
-
-interface FrequenciesResult {
-  variable: Variable;
-  stats?: DescriptiveStatistics;
-  frequencyTable?: FrequencyTable;
 }
 
 /**
@@ -42,7 +37,7 @@ interface FrequenciesResult {
 export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): FrequenciesAnalysisResult => {
     const { selectedVariables, showFrequencyTables, showStatistics, statisticsOptions, showCharts, chartOptions, onClose } = params;
 
-    const { addLog, addAnalytic, addStatistic, addChart } = useResultStore();
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { data: allData, weights } = useAnalysisData();
 
     const [isCalculating, setIsCalculating] = useState(false);
@@ -51,7 +46,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
     const resultsRef = useRef<FrequenciesResult[]>([]);
     const processedCountRef = useRef(0);
     
-    const handleWorkerMessage = useCallback(async (event: MessageEvent<WorkerResult>, analyticId: string) => {
+    const handleWorkerMessage = useCallback(async (event: MessageEvent<WorkerResult>, analyticId: number) => {
         workerRef.current?.terminate();
         workerRef.current = null;
         setIsCalculating(false);
@@ -60,36 +55,52 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
 
         if (success && results) {
             if (showStatistics && results.statistics) {
-                const statsTables = formatResultsToTables(results.statistics, 'statistics');
-                for (const table of statsTables) {
-                    await addStatistic(analyticId, {
-                        title: 'Descriptive Statistics',
-                        output_type: 'table',
-                        output_data: JSON.stringify(table),
-                    });
+                const statsResults: FrequenciesResult[] = Object.entries(results.statistics).map(([varName, stats]) => ({
+                    variable: selectedVariables.find(v => v.name === varName)!,
+                    stats: stats
+                }));
+
+                if (statsResults.length > 0) {
+                    const statsTableObject = formatStatisticsTable(statsResults);
+                    if (statsTableObject && statsTableObject.tables) {
+                        for (const table of statsTableObject.tables) {
+                            await addStatistic(analyticId, {
+                                title: table.title || 'Descriptive Statistics',
+                                output_data: JSON.stringify(table),
+                                components: 'table',
+                                description: ''
+                            });
+                        }
+                    }
                 }
             }
             if (showFrequencyTables && results.frequencyTables) {
-                const freqTables = formatResultsToTables(results.frequencyTables, 'frequencies');
-                 for (const table of freqTables) {
-                    await addStatistic(analyticId, {
-                        title: 'Frequency Table',
-                        output_type: 'table',
-                        output_data: JSON.stringify(table),
-                    });
+                for (const varName in results.frequencyTables) {
+                    const freqTableData = results.frequencyTables[varName];
+                    const freqTableObject = formatFrequencyTable(freqTableData);
+                    if (freqTableObject && freqTableObject.tables) {
+                        for (const table of freqTableObject.tables) {
+                            await addStatistic(analyticId, {
+                                title: table.title || 'Frequency Table',
+                                output_data: JSON.stringify(table),
+                                components: 'table',
+                                description: ''
+                            });
+                        }
+                    }
                 }
             }
-            if(showCharts && chartOptions && results.frequencyTables) {
+            /* if(showCharts && chartOptions && results.frequencyTables) {
                 // The useResultStore does not have an `addChart` method.
                 // This logic should be adapted if chart storage is implemented.
                 // For now, we are just processing and logging.
                 console.log("Chart processing would happen here.");
-            }
+            } */
             onClose();
         } else {
             setErrorMsg(error || 'An unknown error occurred in the worker.');
         }
-    }, [addStatistic, chartOptions, showCharts, showFrequencyTables, showStatistics, onClose]);
+    }, [addStatistic, chartOptions, showCharts, showFrequencyTables, showStatistics, onClose, selectedVariables]);
 
     const runAnalysis = useCallback(async () => {
         if (selectedVariables.length === 0) {
@@ -103,10 +114,10 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         const logId = await addLog({ log: 'Frequencies' });
         const analyticId = await addAnalytic(logId, {
             title: 'Frequencies Analysis',
-            variables_involved: selectedVariables.map(v => v.name).join(', '),
+            note: selectedVariables.map(v => v.name).join(', '),
         });
 
-        workerRef.current = new Worker(new URL('@/public/workers/Frequencies/frequencies.worker.js', import.meta.url));
+        workerRef.current = new Worker(new URL('@/public/workers/DescriptiveStatistics/manager.js', import.meta.url));
         workerRef.current.onmessage = (event: MessageEvent<WorkerResult>) => handleWorkerMessage(event, analyticId);
         workerRef.current.onerror = (e: ErrorEvent) => {
             console.error("Frequencies worker error:", e);

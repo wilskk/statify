@@ -5,6 +5,10 @@ describe('useTimeSeriesStore', () => {
     let initialState: any;
     beforeEach(() => {
         initialState = useTimeSeriesStore.getState();
+        jest.clearAllMocks();
+    });
+
+    afterEach(() => {
         act(() => {
             useTimeSeriesStore.setState(initialState);
         });

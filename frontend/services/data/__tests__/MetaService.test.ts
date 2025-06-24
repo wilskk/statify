@@ -3,13 +3,7 @@ import { metaRepository } from '@/repositories/MetaRepository';
 import { Meta } from '@/types/Meta';
 
 // Mock the repository
-jest.mock('@/repositories/MetaRepository', () => ({
-  metaRepository: {
-    getMeta: jest.fn(),
-    saveMeta: jest.fn(),
-    clearMeta: jest.fn(),
-  },
-}));
+jest.mock('@/repositories/MetaRepository');
 
 const mockedMetaRepository = metaRepository as jest.Mocked<typeof metaRepository>;
 
@@ -24,10 +18,7 @@ describe('MetaService', () => {
   };
 
   beforeEach(() => {
-    // Clear mocks
-    mockedMetaRepository.getMeta.mockClear();
-    mockedMetaRepository.saveMeta.mockClear();
-    mockedMetaRepository.clearMeta.mockClear();
+    jest.clearAllMocks();
   });
 
   describe('loadMeta', () => {

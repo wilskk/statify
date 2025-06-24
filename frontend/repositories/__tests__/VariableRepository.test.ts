@@ -91,6 +91,7 @@ describe('VariableRepository', () => {
         const mockError = new Error('DB Error');
         (mockChainedMethods.first as jest.Mock).mockRejectedValue(mockError);
         await expect(repository.getVariableByColumnIndex(1)).rejects.toThrow(mockError);
+        expect(console.error).toHaveBeenCalledWith('Failed to get variable for column 1:', mockError);
     });
   });
 
@@ -107,6 +108,7 @@ describe('VariableRepository', () => {
         const mockError = new Error('DB Error');
         (mockChainedMethods.first as jest.Mock).mockRejectedValue(mockError);
         await expect(repository.getVariableByName('ErrorVar')).rejects.toThrow(mockError);
+        expect(console.error).toHaveBeenCalledWith("Failed to get variable by name ErrorVar:", mockError);
     });
   });
 
@@ -148,6 +150,7 @@ describe('VariableRepository', () => {
         const mockError = new Error('DB Error');
         (mockChainedMethods.toArray as jest.Mock).mockRejectedValue(mockError);
         await expect(repository.getValueLabels('ErrorVar')).rejects.toThrow(mockError);
+        expect(console.error).toHaveBeenCalledWith("Failed to get value labels for ErrorVar:", mockError);
       });
     });
 
@@ -158,6 +161,14 @@ describe('VariableRepository', () => {
           const id = await repository.saveValueLabel(newLabel);
           expect(id).toBe(456);
           expect(mockedDb.valueLabels.put).toHaveBeenCalledWith(newLabel);
+        });
+
+        it('should throw an error on failure', async () => {
+            const mockError = new Error('DB Error');
+            (mockedDb.valueLabels.put as jest.Mock).mockRejectedValue(mockError);
+            const newLabel = { variableName: 'VAR1', value: 1, label: 'One' };
+            await expect(repository.saveValueLabel(newLabel)).rejects.toThrow(mockError);
+            expect(console.error).toHaveBeenCalledWith("Failed to save value label:", mockError);
         });
     });
 
@@ -179,6 +190,7 @@ describe('VariableRepository', () => {
         const mockError = new Error('DB Error');
         (mockChainedMethods.delete as jest.Mock).mockRejectedValue(mockError);
         await expect(repository.deleteValueLabelsByVariable('ErrorVar')).rejects.toThrow(mockError);
+        expect(console.error).toHaveBeenCalledWith("Failed to delete value labels for variable ErrorVar:", mockError);
       });
     });
 
@@ -193,6 +205,7 @@ describe('VariableRepository', () => {
         const mockError = new Error('DB Error');
         (mockChainedMethods.modify as jest.Mock).mockRejectedValue(mockError);
         await expect(repository.updateValueLabelsVariableName('OLD_FAIL', 'NEW_FAIL')).rejects.toThrow(mockError);
+        expect(console.error).toHaveBeenCalledWith("Failed to update value labels from OLD_FAIL to NEW_FAIL:", mockError);
       });
     });
   });

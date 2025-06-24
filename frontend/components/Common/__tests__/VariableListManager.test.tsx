@@ -92,7 +92,7 @@ describe('VariableListManager', () => {
 
         expect(mockProps.setHighlightedVariable).toHaveBeenCalledTimes(1);
         expect(mockProps.setHighlightedVariable).toHaveBeenCalledWith({
-            id: mockAvailableVariables[0].columnIndex,
+            id: String(mockAvailableVariables[0].columnIndex),
             source: 'available',
         });
     });
@@ -122,23 +122,19 @@ describe('VariableListManager', () => {
         
         render(<VariableListManager {...propsWithHighlight} />);
 
-        // Find the button to move the variable to the "Factors" list
-        // The button is inside the list item, so we find it relative to the variable text
-        const variableItem = screen.getByText('Age [VAR001]').closest('div');
-        const moveButton = variableItem?.querySelector('button'); // A simple way to find the button
+        // Find the centrally located button
+        const moveButton = await screen.findByTestId('central-move-button');
 
         expect(moveButton).toBeInTheDocument();
+        expect(moveButton).toHaveAttribute('aria-label', 'Move variable to Factors');
 
-        if (moveButton) {
-            await user.click(moveButton);
-        }
+        await user.click(moveButton);
 
         expect(mockProps.onMoveVariable).toHaveBeenCalledTimes(1);
         expect(mockProps.onMoveVariable).toHaveBeenCalledWith(
             mockAvailableVariables[0], // The variable being moved
             'available',              // The source list ID
-            'factors',                // The first target list ID
-            undefined                 // The target index (optional)
+            'factors'                // The first target list ID
         );
     });
 
