@@ -124,6 +124,7 @@ export function useAnalyzeHook(
         smoothingEvaluation: any,
         dataVarDef: Variable
     ) => {
+        console.log(smoothingGraphic);
         // Buat log
         const logMsg = `SMOOTHING: ${dataVarDef.label || dataVarDef.name} Using ${
             selectedMethod[1]

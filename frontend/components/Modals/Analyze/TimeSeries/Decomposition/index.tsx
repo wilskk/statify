@@ -22,6 +22,7 @@ interface DecompositionProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
+    saveAsVariable: boolean;
 }
 
 const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
@@ -73,6 +74,10 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
             try {
                 const savedData = await getFormData("Decomposition", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
+
+                if (savedData.saveAsVariable) {
+                    setSaveAsVariable(savedData.saveAsVariable);
+                }
                 
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
@@ -117,7 +122,8 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
             try {
                 const stateToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                    saveAsVariable,
                 };
                 await saveFormData("Decomposition", stateToSave, "variables");
             } catch (error) {
@@ -126,7 +132,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {

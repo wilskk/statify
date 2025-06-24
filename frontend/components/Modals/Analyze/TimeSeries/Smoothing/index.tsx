@@ -22,6 +22,7 @@ interface SmoothingProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
+    saveAsVariable: boolean;
 }
 
 const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
@@ -72,6 +73,10 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
             try {
                 const savedData = await getFormData("Smoothing", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
+
+                if (savedData.saveAsVariable) {
+                    setSaveAsVariable(savedData.saveAsVariable);
+                }
                 
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
@@ -106,7 +111,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [setSaveAsVariable, variables]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {
@@ -116,7 +121,8 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
             try {
                 const stateToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                    saveAsVariable,
                 };
                 await saveFormData("Smoothing", stateToSave, "variables");
             } catch (error) {
@@ -125,7 +131,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {

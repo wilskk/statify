@@ -22,6 +22,7 @@ interface BoxJenkinsModelProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
+    saveAsVariable: boolean;
 }
 
 const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) => {
@@ -75,6 +76,10 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 const savedData = await getFormData("BoxJenkinsModel", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
+                if (savedData.saveAsVariable) {
+                    setSaveAsVariable(savedData.saveAsVariable);
+                }
+                
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
                     const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
@@ -118,7 +123,8 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
             try {
                 const stateToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                    saveAsVariable
                 };
                 await saveFormData("BoxJenkinsModel", stateToSave, "variables");
             } catch (error) {
@@ -127,7 +133,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
