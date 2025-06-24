@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
-import db from '@/lib/db';
 import { Meta, MetaStoreError } from '@/types/Meta';
-
-const META_DB_ID = 'appMeta';
+import metaService from '@/services/data/MetaService';
 
 interface MetaStoreState {
     meta: Meta;
@@ -16,7 +14,6 @@ interface MetaStoreState {
     setMeta: (newMeta: Partial<Meta>) => Promise<void>;
     clearDates: () => Promise<void>;
     setFilter: (filter: Meta['filter']) => Promise<void>;
-    _saveMetaToDb: (metaToSave: Meta) => Promise<void>;
     resetMeta: () => Promise<void>;
     saveMeta: () => Promise<void>;
 }
@@ -45,23 +42,6 @@ export const useMetaStore = create<MetaStoreState>()(
             error: null,
             isLoaded: false,
 
-            _saveMetaToDb: async (metaToSave: Meta) => {
-                try {
-                    await db.metadata.put({ ...metaToSave, id: META_DB_ID });
-                    set(state => { state.error = null; });
-                } catch (error: any) {
-                    console.error("Failed to save metadata:", error);
-                    set(state => {
-                        state.error = {
-                            message: error.message || "Failed to save metadata",
-                            source: "_saveMetaToDb",
-                            originalError: error
-                        };
-                    });
-                    throw error;
-                }
-            },
-
             loadMeta: async () => {
                 if (get().isLoading || get().isLoaded) return;
 
@@ -71,7 +51,7 @@ export const useMetaStore = create<MetaStoreState>()(
                 });
 
                 try {
-                    const storedMeta = await db.metadata.get(META_DB_ID);
+                    const storedMeta = await metaService.loadMeta();
                     if (storedMeta) {
                         set(state => {
                             state.meta = storedMeta;
@@ -81,7 +61,7 @@ export const useMetaStore = create<MetaStoreState>()(
                         });
                     } else {
                         console.log("No metadata found in DB, initializing with defaults.");
-                        await get()._saveMetaToDb(get().meta);
+                        await metaService.saveMeta(get().meta);
                     }
                     set(state => { state.isLoaded = true; });
                 } catch (error: any) {
@@ -99,35 +79,33 @@ export const useMetaStore = create<MetaStoreState>()(
             },
 
             setMeta: async (newMeta) => {
-                set((state) => {
-                    state.meta = { ...state.meta, ...newMeta };
-                });
-                await get()._saveMetaToDb(get().meta);
+                const updatedMeta = { ...get().meta, ...newMeta };
+                set({ meta: updatedMeta });
+                await metaService.saveMeta(updatedMeta);
             },
 
             clearDates: async () => {
-                set((state) => {
-                    state.meta.dates = '';
-                });
-                await get()._saveMetaToDb(get().meta);
+                const updatedMeta = { ...get().meta, dates: '' };
+                set({ meta: updatedMeta });
+                await metaService.saveMeta(updatedMeta);
             },
 
             setFilter: async (filter) => {
-                set((state) => {
-                    state.meta.filter = filter;
-                });
-                await get()._saveMetaToDb(get().meta);
+                const updatedMeta = { ...get().meta, filter };
+                set({ meta: updatedMeta });
+                await metaService.saveMeta(updatedMeta);
             },
 
             resetMeta: async () => {
                 try {
-                    await db.metadata.delete(META_DB_ID);
+                    await metaService.resetMeta();
+                    const newMeta = { ...initialMetaState, created: new Date() };
                     set(state => {
-                        state.meta = { ...initialMetaState, created: new Date() };
+                        state.meta = newMeta;
                         state.error = null;
                         state.isLoaded = false;
                     });
-                    await get()._saveMetaToDb({ ...initialMetaState, created: new Date() });
+                    await metaService.saveMeta(newMeta);
                 } catch (error: any) {
                     console.error("Failed to reset metadata:", error);
                     set(state => {
@@ -143,7 +121,7 @@ export const useMetaStore = create<MetaStoreState>()(
             saveMeta: async () => {
                 const currentMeta = get().meta;
                 try {
-                    await get()._saveMetaToDb(currentMeta);
+                    await metaService.saveMeta(currentMeta);
                     set(state => { state.error = null; });
                 } catch (error: any) {
                     console.error("Failed to explicitly save metadata:", error);

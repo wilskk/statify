@@ -15,6 +15,7 @@ describe('useDataStore', () => {
     let initialState: any;
     beforeEach(() => {
         initialState = useDataStore.getState();
+        jest.clearAllMocks();
     });
 
     afterEach(() => {
@@ -22,7 +23,6 @@ describe('useDataStore', () => {
         act(() => {
             useDataStore.setState(initialState);
         });
-        jest.clearAllMocks();
     });
 
     it('should have a correct initial state', () => {

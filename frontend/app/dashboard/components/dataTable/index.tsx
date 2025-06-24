@@ -38,10 +38,45 @@ function applyTruncation(
   });
 }
 
+async function handleNewColumns(
+  updates: Array<{ row: number; col: number; value: string | number }>,
+  actualNumCols: number,
+  widthMap: Record<number, number>
+) {
+  const maxCol = updates.reduce((max, u) => Math.max(max, u.col), -1);
+  if (maxCol < actualNumCols) return;
+
+  const initialCols = actualNumCols;
+  const newCols = Array.from({ length: maxCol - initialCols + 1 }, (_, idx) => initialCols + idx);
+  const updatesByCol: Record<number, any[]> = {};
+  updates.forEach(({ col, value }) => {
+      if (col >= initialCols) (updatesByCol[col] ||= []).push(value);
+  });
+
+  const varsToAdd = newCols.map(colIndex => {
+      const vals = updatesByCol[colIndex] || [];
+      const isNumericOnly = vals.every(v => {
+          const num = typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''));
+          return !isNaN(num) && String(v).trim() !== '';
+      });
+      const width = isNumericOnly ? 8 : Math.max(...vals.map(v => String(v).length), 8);
+      widthMap[colIndex] = width;
+      return { columnIndex: colIndex, type: isNumericOnly ? 'NUMERIC' : 'STRING', width } as Partial<import('@/types/Variable').Variable>;
+  });
+
+  try {
+      await addMultipleVariables(varsToAdd);
+      addColumns(newCols);
+  } catch (error) {
+      console.error('Failed to add new variables/columns:', error);
+  }
+}
+
 export default function Index() {
     const hotTableRef = useRef<any>(null);
     const updateCells = useDataStore(state => state.updateCells);
     const data = useDataStore(state => state.data);
+    const mutableData = useMemo(() => data.map(row => [...row]), [data]);
     const variables = useVariableStore(state => state.variables);
     const variableMap = useMemo(() => new Map(variables.map(v => [v.columnIndex, v])), [variables]);
     const { viewMode } = useTableRefStore();
@@ -52,7 +87,6 @@ export default function Index() {
     const debouncedUpdateCells = useMemo(() => debounce(updateCells, 100), [updateCells]);
 
     const {
-        displayMatrix,
         colHeaders,
         columns,
         contextMenuConfig,
@@ -66,6 +100,8 @@ export default function Index() {
         isRangeSelected,
         actualNumRows,
         actualNumCols,
+        displayNumRows,
+        displayNumCols,
     } = useDataTableLogic(hotTableRef);
 
     const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
@@ -101,39 +137,16 @@ export default function Index() {
         if (src === 'loaddata' || src.includes('contextmenu')) return;
         try {
             const updates = mapChangesToUpdates(changes);
-            // Normalize date input: replace slashes with dashes for SPSS date variables
             updates.forEach(u => {
                 const variable = variableMap.get(u.col);
                 if (variable && spssDateTypes.has(variable.type) && variable.width === 11 && typeof u.value === 'string') {
                     u.value = u.value.replace(/\//g, '-');
                 }
             });
-            const maxCol = updates.reduce((max, u) => Math.max(max, u.col), -1);
+
             const widthMap: Record<number, number> = {};
-            if (maxCol >= actualNumCols) {
-                const initialCols = actualNumCols;
-                const newCols = Array.from({ length: maxCol - initialCols + 1 }, (_, idx) => initialCols + idx);
-                const updatesByCol: Record<number, any[]> = {};
-                updates.forEach(({ col, value }) => {
-                    if (col >= initialCols) (updatesByCol[col] ||= []).push(value);
-                });
-                const varsToAdd = newCols.map(colIndex => {
-                    const vals = updatesByCol[colIndex] || [];
-                    const isNumericOnly = vals.every(v => {
-                        const num = typeof v === 'number' ? v : Number(String(v).replace(/,/g, ''));
-                        return !isNaN(num) && String(v).trim() !== '';
-                    });
-                    const width = isNumericOnly ? 8 : Math.max(...vals.map(v => String(v).length));
-                    widthMap[colIndex] = width;
-                    return { columnIndex: colIndex, type: isNumericOnly ? 'NUMERIC' : 'STRING', width } as Partial<import('@/types/Variable').Variable>;
-                });
-                try {
-                    await addMultipleVariables(varsToAdd);
-                    addColumns(newCols);
-                } catch (error) {
-                    console.error('Failed to add new variables/columns:', error);
-                }
-            }
+            await handleNewColumns(updates, actualNumCols, widthMap);
+            
             let vars: Array<{ columnIndex: number; width?: number }> = [];
             try {
                 vars = getVariables();
@@ -143,30 +156,13 @@ export default function Index() {
             vars.forEach(v => {
                 if (widthMap[v.columnIndex] === undefined) widthMap[v.columnIndex] = v.width ?? 8;
             });
+
             applyTruncation(updates, widthMap);
             debouncedUpdateCells(updates);
         } catch (error) {
             console.error('Error in handleAfterChange:', error);
         }
     }, [debouncedUpdateCells, actualNumCols, variableMap]);
-
-    // When switching back to numeric mode, convert any remaining labels to codes
-    useEffect(() => {
-        if (viewMode === 'numeric') {
-            const updates: {row: number; col: number; value: any}[] = [];
-            data.forEach((row, r) => {
-                variables.forEach(variable => {
-                    const c = variable.columnIndex;
-                    const cell = row[c];
-                    if (typeof cell === 'string') {
-                        const mapping = variable.values?.find(v => v.label === cell);
-                        if (mapping) updates.push({ row: r, col: c, value: mapping.value });
-                    }
-                });
-            });
-            if (updates.length) updateCells(updates);
-        }
-    }, [viewMode, data, variables, updateCells]);
 
     // Cancel pending debounced calls on unmount
     useEffect(() => {
@@ -186,7 +182,9 @@ export default function Index() {
         <div className="h-full w-full z-0 relative hot-container overflow-hidden">
             <HandsontableWrapper
                 ref={hotTableRef}
-                data={displayMatrix}
+                data={mutableData}
+                minRows={displayNumRows}
+                minCols={displayNumCols}
                 colHeaders={colHeaders}
                 columns={columns as any}
                 contextMenu={contextMenuConfig}

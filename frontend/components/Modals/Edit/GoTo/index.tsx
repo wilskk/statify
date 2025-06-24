@@ -6,6 +6,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -41,6 +42,9 @@ const GoToModal: React.FC<GoToModalProps> = ({
                             <span className="sr-only">Close</span>
                         </Button>
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Navigate to a specific case number or variable in the dataset.
+                    </DialogDescription>
                 </DialogHeader>
                 <GoToContent
                     onClose={onClose}

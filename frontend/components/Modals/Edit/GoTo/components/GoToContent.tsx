@@ -154,7 +154,10 @@ export const GoToContent: React.FC<GoToModalProps & { onClose: () => void }> = (
                 <div className="flex justify-end space-x-2">
                     <Button variant="outline" onClick={handleClose}>Close</Button>
                     <div id="goto-go-button-wrapper" className="relative inline-block">
-                        <Button onClick={handleGo} disabled={(activeTab === GoToMode.CASE && !!caseError) || (activeTab === GoToMode.VARIABLE && !!variableError && !selectedVariableName) || (activeTab === GoToMode.CASE && !caseNumberInput)}>Go</Button>
+                        <Button onClick={handleGo} disabled={
+                            (activeTab === GoToMode.CASE && (!!caseError || !caseNumberInput)) ||
+                            (activeTab === GoToMode.VARIABLE && (!!variableError || !selectedVariableName))
+                        }>Go</Button>
                         <ActiveElementHighlight active={tourActive && tourSteps[currentStep]?.targetId === 'goto-go-button-wrapper'} />
                     </div>
                 </div>

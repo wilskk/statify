@@ -15,10 +15,11 @@ export type VariableStoreError = {
 
 const inferDefaultValues = (type: Variable['type']): Partial<Variable> => {
     const numericTypes: Variable['type'][] = ["NUMERIC", "DOT", "COMMA", "SCIENTIFIC"];
+    const isNumeric = numericTypes.includes(type);
     return {
-        decimals: numericTypes.includes(type) ? 2 : 0,
+        decimals: isNumeric ? 2 : 0,
         align: type === "STRING" ? "left" : "right",
-        measure: "unknown",
+        measure: type === "STRING" ? "nominal" : "unknown",
         role: "input"
     };
 };
@@ -177,22 +178,13 @@ interface VariableStoreState {
 const enforceMeasureConstraint = (changes: Partial<Variable>, existingVariable?: Variable | null): Partial<Variable> => {
     const finalChanges = { ...changes };
     const currentType = existingVariable?.type;
-    const currentMeasure = existingVariable?.measure;
-
     const finalType = finalChanges.type ?? currentType;
-    let finalMeasure = finalChanges.measure ?? currentMeasure;
+    const finalMeasure = finalChanges.measure ?? existingVariable?.measure;
 
     if (finalType === 'STRING' && finalMeasure === 'scale') {
         // If type is or becomes STRING, measure cannot be scale. Force to nominal.
-        finalMeasure = 'nominal';
-        finalChanges.measure = 'nominal'; // Ensure the change is reflected in the output object
+        finalChanges.measure = 'nominal';
         console.warn(`Constraint Applied: Variable type is STRING, measure cannot be 'scale'. Setting measure to 'nominal'.`);
-    } else if (finalMeasure === 'scale' && finalType === 'STRING'){
-         // This case is covered by the above, but added for clarity
-         // If measure tries to become 'scale' while type is already STRING
-         finalMeasure = 'nominal';
-         finalChanges.measure = 'nominal';
-         console.warn(`Constraint Applied: Variable type is STRING, measure cannot be set to 'scale'. Setting measure to 'nominal'.`);
     }
 
     // Return the potentially modified changes object
@@ -208,28 +200,23 @@ const FIELD_NAME_MAPPING = [
 export const useVariableStore = create<VariableStoreState>()(
     devtools(
         immer((set, get) => ({
-            variables: [] as Variable[],
+            variables: [],
             isLoading: false,
             error: null,
             lastUpdated: null,
 
             setVariables: (variables) => {
-                set((draft) => {
-                    draft.variables = variables
-                        .filter(isValidVariable)
-                        .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
-                        .sort((a, b) => a.columnIndex - b.columnIndex);
-                    draft.lastUpdated = new Date();
-                });
+                updateStateAfterSuccess(set, variables);
             },
 
             // helper: import & sync variables in batch (refresh IDs from DB)
             syncFull: async (full: Variable[]) => {
-                set(draft => { draft.isLoading = true; draft.error = null; });
-                await variableService.importVariables(full);
-                // Reload with IDs and unique indexes
-                const refreshed = await variableService.getAllVariables();
-                updateStateAfterSuccess(set, refreshed);
+                try {
+                    await variableService.importVariables(full.filter(v => v));
+                    updateStateAfterSuccess(set, full);
+                } catch (error: any) {
+                    handleError(set, 'syncFull')(error);
+                }
             },
 
             ensureCompleteVariables: async (targetMaxColumnIndex?) => {
@@ -372,18 +359,23 @@ export const useVariableStore = create<VariableStoreState>()(
             },
 
             loadVariables: async () => {
-                set((draft) => { draft.isLoading = true; draft.error = null; });
+                set({ isLoading: true, error: null });
                 try {
-                    const variablesFromService = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, variablesFromService);
-                } catch (error: any) { handleError(set, 'loadVariables')(error); }
+                    const variables = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, variables);
+                } catch (error: any) {
+                    handleError(set, 'loadVariables')(error);
+                }
             },
 
             resetVariables: async () => {
+                set({ isLoading: true, error: null });
                 try {
                     await variableService.clearAllVariables();
                     updateStateAfterSuccess(set, []);
-                } catch (error: any) { handleError(set, 'resetVariables')(error); }
+                } catch (error: any) {
+                    handleError(set, 'resetVariables')(error);
+                }
             },
 
             deleteVariable: async (columnIndex: number) => {

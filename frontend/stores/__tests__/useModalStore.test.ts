@@ -6,8 +6,13 @@ import { FindReplaceMode } from '@/components/Modals/Edit/FindReplace/types';
 describe('useModalStore', () => {
     let initialState: any;
     beforeEach(() => {
-        // Reset the store before each test
+        // Reset the store's state before each test
         initialState = useModalStore.getState();
+        jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+        // Clear all mocks after each test
         act(() => {
             useModalStore.setState(initialState);
         });

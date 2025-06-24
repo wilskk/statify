@@ -1,9 +1,9 @@
 import { ResultService } from '../ResultService';
-import { resultRepository } from '@/repositories';
+import resultRepository from '@/repositories/ResultRepository';
 import { Statistic } from '@/types/Result';
 
 // Mock the repository
-jest.mock('@/repositories/resultRepository');
+jest.mock('@/repositories/ResultRepository');
 
 const mockedResultRepository = resultRepository as jest.Mocked<typeof resultRepository>;
 const resultService = new ResultService();
@@ -24,7 +24,7 @@ describe('ResultService', () => {
 
     describe('getAllResults', () => {
         it('should call repository.getAllLogs', async () => {
-            mockedResultRepository.getAllLogs.mockResolvedValue([]);
+            (mockedResultRepository.getAllLogs as jest.Mock).mockResolvedValue([]);
             await resultService.getAllResults();
             expect(mockedResultRepository.getAllLogs).toHaveBeenCalledTimes(1);
         });
@@ -35,9 +35,9 @@ describe('ResultService', () => {
             const updates: Partial<Statistic> = { title: 'Updated Title' };
             
             // Mock the repository methods
-            mockedResultRepository.getStatistic.mockResolvedValue(mockStatistic);
+            (mockedResultRepository.getStatistic as jest.Mock).mockResolvedValue(mockStatistic);
             // Ensure the mock returns a number, as expected
-            mockedResultRepository.saveStatistic.mockResolvedValue(mockStatistic.id as number);
+            (mockedResultRepository.saveStatistic as jest.Mock).mockResolvedValue(mockStatistic.id as number);
 
             await resultService.updateStatistic(1, updates);
 
@@ -57,7 +57,7 @@ describe('ResultService', () => {
         });
 
         it('should throw an error if the statistic to update is not found', async () => {
-            mockedResultRepository.getStatistic.mockResolvedValue(undefined);
+            (mockedResultRepository.getStatistic as jest.Mock).mockResolvedValue(undefined);
 
             await expect(resultService.updateStatistic(99, { title: 'No-op' })).rejects.toThrow(
                 'Statistic with ID 99 not found'

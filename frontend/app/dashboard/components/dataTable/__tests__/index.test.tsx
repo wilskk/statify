@@ -1,56 +1,87 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import Index from '../index';
-import { useDataStore } from '@/stores/useDataStore';
-import { useVariableStore } from '@/stores/useVariableStore';
-import { useTableRefStore } from '@/stores/useTableRefStore';
-import { useMetaStore } from '@/stores/useMetaStore';
-import { useDataTableLogic } from '../hooks/useDataTableLogic';
-import * as storeOperations from '../services/storeOperations';
+import { render } from '@testing-library/react';
+import DataTable from '../index';
 
-// Mock all external hooks and services
+// Mock dependencies
 jest.mock('@/stores/useDataStore');
 jest.mock('@/stores/useVariableStore');
-jest.mock('@/stores/useTableRefStore');
 jest.mock('@/stores/useMetaStore');
+jest.mock('@/stores/useTableRefStore');
 jest.mock('../hooks/useDataTableLogic');
-jest.mock('../services/storeOperations');
+jest.mock('../services/storeOperations', () => ({
+    __esModule: true, // this property makes it work with ESM
+    addRow: jest.fn(),
+    deleteRows: jest.fn(),
+    addColumns: jest.fn(),
+    deleteColumns: jest.fn(),
+    updateCells: jest.fn(),
+    addVariable: jest.fn(),
+    addMultipleVariables: jest.fn(),
+    deleteVariable: jest.fn(),
+    updateVariable: jest.fn(),
+    ensureCompleteVariables: jest.fn(),
+    getVariables: jest.fn(() => []),
+    overwriteVariables: jest.fn(),
+}));
+jest.mock('../HandsontableWrapper', () => {
+    const HandsontableWrapperMock = (props: any, ref: any) => (
+      <div data-testid="handsontable-wrapper-mock" ref={ref}></div>
+    );
+    const forwardRef = require('react').forwardRef;
+    return forwardRef(HandsontableWrapperMock);
+});
 
-// Define mock return values
-const mockUseDataStore = useDataStore as unknown as jest.Mock;
-const mockUseVariableStore = useVariableStore as unknown as jest.Mock;
-const mockUseTableRefStore = useTableRefStore as unknown as jest.Mock;
-const mockUseMetaStore = useMetaStore as unknown as jest.Mock;
-const mockUseDataTableLogic = useDataTableLogic as jest.Mock;
-const mockStoreOperations = storeOperations as jest.Mocked<typeof storeOperations>;
+describe('DataTable Component', () => {
+  const useDataStore = require('@/stores/useDataStore').useDataStore;
+  const useVariableStore = require('@/stores/useVariableStore').useVariableStore;
+  const useMetaStore = require('@/stores/useMetaStore').useMetaStore;
+  const useTableRefStore = require('@/stores/useTableRefStore').useTableRefStore;
+  const useDataTableLogic = require('../hooks/useDataTableLogic').useDataTableLogic;
 
-// Default mock implementations
-const mockUpdateCells = jest.fn();
-// Manually add the 'cancel' property to our mock function
-(mockUpdateCells as any).cancel = jest.fn();
+  beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
 
-const setupMocks = () => {
-    mockUseDataStore.mockReturnValue({
-        data: [],
-        updateCells: mockUpdateCells,
+    // Setup default mock implementations
+    useDataStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            data: [],
+            updateCells: jest.fn(),
+        };
+        if (selector) return selector(state);
+        return state;
     });
-    mockUseVariableStore.mockReturnValue({
-        variables: [],
+
+    useVariableStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            variables: [],
+        };
+        if (selector) return selector(state);
+        return state;
     });
-    mockUseTableRefStore.mockReturnValue({
-        viewMode: 'numeric',
+
+    useMetaStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            meta: { filter: '' },
+        };
+        if (selector) return selector(state);
+        return state;
     });
-    mockUseMetaStore.mockReturnValue({
-        meta: { filter: '' },
+
+    useTableRefStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            viewMode: 'numeric',
+        };
+        if (selector) return selector(state);
+        return state;
     });
-    mockUseDataTableLogic.mockReturnValue({
-        displayMatrix: [[]],
-        colHeaders: ['A'],
-        columns: [{}],
+
+    useDataTableLogic.mockReturnValue({
+        displayMatrix: [],
+        colHeaders: [],
+        columns: [],
         contextMenuConfig: {},
         handleBeforeChange: jest.fn(),
-        // Mock all other handlers from the hook
         handleAfterCreateRow: jest.fn(),
         handleAfterCreateCol: jest.fn(),
         handleAfterRemoveRow: jest.fn(),
@@ -61,55 +92,65 @@ const setupMocks = () => {
         actualNumRows: 0,
         actualNumCols: 0,
     });
-    mockStoreOperations.getVariables.mockReturnValue([]);
-};
+  });
 
-describe('DataTable Component (index.tsx)', () => {
-    beforeEach(() => {
-        // Reset mocks before each test
-        jest.clearAllMocks();
-        setupMocks();
+  it('should render without crashing', () => {
+    const { getByTestId } = render(<DataTable />);
+    expect(getByTestId('handsontable-wrapper-mock')).toBeInTheDocument();
+  });
+
+  it('should convert labels to numeric values when viewMode changes to numeric', () => {
+    const mockUpdateCells = jest.fn();
+    const mockData = [['One']];
+    const mockVariables = [
+      {
+        columnIndex: 0,
+        type: 'NUMERIC',
+        values: [{ value: 1, label: 'One' }],
+      },
+    ];
+
+    // Initial setup with label view
+    useDataStore.mockImplementation((selector?: (state: any) => any) => {
+      const state = {
+        data: mockData,
+        updateCells: mockUpdateCells,
+      };
+      if (selector) return selector(state);
+      return state;
     });
 
-    it('should render the HandsontableWrapper', () => {
-        render(<Index />);
-        // A simple test to ensure the wrapper component is rendered.
-        // We can assume HandsontableWrapper is tested elsewhere or is a simple wrapper.
-        // Here we just check if the container div exists.
-        expect(screen.getByTestId('hot-container')).toBeInTheDocument();
-    });
-
-    it('should call updateCells with converted values when viewMode changes to numeric', () => {
-        // Setup initial state for this specific test
-        const mockLabelVariable = {
-            columnIndex: 0,
-            values: [{ value: 1, label: 'One' }],
+    useVariableStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            variables: mockVariables,
         };
-        mockUseDataStore.mockReturnValue({
-            data: [['One']], // Data contains a label
-            updateCells: mockUpdateCells,
-        });
-        mockUseVariableStore.mockReturnValue({
-            variables: [mockLabelVariable],
-        });
-        
-        // Initial render in 'label' mode
-        mockUseTableRefStore.mockReturnValue({ viewMode: 'label' });
-        const { rerender } = render(<Index />);
-
-        // Simulate changing the viewMode to 'numeric'
-        mockUseTableRefStore.mockReturnValue({ viewMode: 'numeric' });
-        rerender(<Index />);
-
-        // Verify that updateCells was called to convert the label back to a numeric value
-        expect(mockUpdateCells).toHaveBeenCalledTimes(1);
-        expect(mockUpdateCells).toHaveBeenCalledWith([
-            { row: 0, col: 0, value: 1 }
-        ]);
+        if (selector) return selector(state);
+        return state;
     });
-    
-    // We would need a way to get the handleAfterChange function to test it directly.
-    // Since it's defined inside the component, we'd need to expose it or
-    // trigger it via the HandsontableWrapper props, which is complex.
-    // For now, testing the useEffect logic is a good start.
+
+    useTableRefStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            viewMode: 'label',
+        };
+        if (selector) return selector(state);
+        return state;
+    });
+
+    const { rerender } = render(<DataTable />);
+
+    // Change to numeric view
+    useTableRefStore.mockImplementation((selector?: (state: any) => any) => {
+        const state = {
+            viewMode: 'numeric',
+        };
+        if (selector) return selector(state);
+        return state;
+    });
+
+    rerender(<DataTable />);
+
+    // Assert that updateCells was called with the correct payload
+    expect(mockUpdateCells).toHaveBeenCalledTimes(1);
+    expect(mockUpdateCells).toHaveBeenCalledWith([{ row: 0, col: 0, value: 1 }]);
+  });
 }); 

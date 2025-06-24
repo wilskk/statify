@@ -1,4 +1,4 @@
-import { uploadSavFile, createSavFile } from '../savService';
+import { uploadSavFile, createSavFile, downloadBlobAsFile } from '../savService';
 import { getApiUrl, handleApiResponse } from '../config';
 
 // Mock the config module and global fetch
@@ -47,6 +47,27 @@ describe('savService', () => {
             // It should also call handleApiResponse
             expect(mockHandleApiResponse).toHaveBeenCalledWith(mockResponse);
         });
+
+        it('should use FormData directly if provided', async () => {
+            const formData = new FormData();
+            const mockFile = new File(['content'], 'test.sav');
+            formData.append('file', mockFile);
+            
+            const mockResponse = { ok: true, json: () => Promise.resolve({ success: true }) };
+            mockFetch.mockResolvedValue(mockResponse);
+
+            await uploadSavFile(formData);
+
+            expect(mockFetch).toHaveBeenCalledWith(
+                'http://mock-api.com/sav/upload',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: formData,
+                })
+            );
+            
+            expect(mockHandleApiResponse).toHaveBeenCalledWith(mockResponse);
+        });
     });
 
     describe('createSavFile', () => {
@@ -88,6 +109,36 @@ describe('savService', () => {
             mockFetch.mockResolvedValue(mockResponse as any);
 
             await expect(createSavFile(mockData as any)).rejects.toThrow('Internal Server Error');
+        });
+    });
+
+    describe('downloadBlobAsFile', () => {
+        it('should create a link and click it to download the blob', () => {
+            // Mock DOM and URL methods
+            const mockBlob = new Blob(['blob content'], { type: 'application/octet-stream' });
+            const mockUrl = 'blob:http://localhost/mock-url';
+            
+            window.URL.createObjectURL = jest.fn(() => mockUrl);
+            window.URL.revokeObjectURL = jest.fn();
+            
+            const link = {
+                href: '',
+                download: '',
+                click: jest.fn(),
+                remove: jest.fn(),
+            };
+            document.createElement = jest.fn(() => link as any);
+            document.body.appendChild = jest.fn();
+            
+            downloadBlobAsFile(mockBlob, 'test-file.sav');
+
+            expect(window.URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+            expect(link.href).toBe(mockUrl);
+            expect(link.download).toBe('test-file.sav');
+            expect(document.body.appendChild).toHaveBeenCalledWith(link);
+            expect(link.click).toHaveBeenCalledTimes(1);
+            expect(link.remove).toHaveBeenCalledTimes(1);
+            expect(window.URL.revokeObjectURL).toHaveBeenCalledWith(mockUrl);
         });
     });
 }); 

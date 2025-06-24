@@ -10,6 +10,7 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   // if using TypeScript with a baseUrl set to the root directory then you need the below for alias' to work
   moduleDirectories: ['node_modules', '<rootDir>/'],
+  roots: ['<rootDir>'],
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/components/(.*)$': '<rootDir>/components/$1',
@@ -21,6 +22,7 @@ const customJestConfig = {
     '^@/types/(.*)$': '<rootDir>/types/$1',
     '^@/models/(.*)$': '<rootDir>/models/$1',
     '^@/constants/(.*)$': '<rootDir>/constants/$1',
+    '^@/repositories/(.*)$': '<rootDir>/repositories/$1',
     // Mock CSS modules
     '\\.css$': 'identity-obj-proxy',
   },

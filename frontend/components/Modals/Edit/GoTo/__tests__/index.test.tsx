@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import GoToModal, { GoToMode } from '..';
@@ -7,10 +7,9 @@ import { GoToContent } from '../components/GoToContent';
 
 // Mock the content component
 jest.mock('../components/GoToContent', () => ({
-    GoToContent: jest.fn(({ onClose }) => (
+    GoToContent: jest.fn(() => (
         <div>
             <span>Mocked GoToContent</span>
-            <button onClick={onClose}>Close</button>
         </div>
     )),
 }));
@@ -43,7 +42,10 @@ describe('GoToModal', () => {
         const user = userEvent.setup();
         render(<GoToModal onClose={mockOnClose} />);
 
-        const closeButton = screen.getByRole('button', { name: /close/i });
+        // Find the DialogHeader first, then query for the button inside it.
+        const dialogHeader = screen.getByRole('dialog').querySelector('.p-6.pb-0');
+        const closeButton = within(dialogHeader as HTMLElement).getByRole('button', { name: /close/i });
+        
         await user.click(closeButton);
 
         expect(mockOnClose).toHaveBeenCalledTimes(1);

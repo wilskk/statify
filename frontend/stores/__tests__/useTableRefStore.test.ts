@@ -5,6 +5,10 @@ describe('useTableRefStore', () => {
     let initialState: any;
     beforeEach(() => {
         initialState = useTableRefStore.getState();
+        jest.clearAllMocks();
+    });
+
+    afterEach(() => {
         act(() => {
             useTableRefStore.setState(initialState);
         });

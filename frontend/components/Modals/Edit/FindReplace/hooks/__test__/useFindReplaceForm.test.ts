@@ -52,13 +52,10 @@ describe('useFindReplaceForm', () => {
         },
       },
     }));
-
-    // Use fake timers for debounce testing
-    jest.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    // No longer using fake timers
   });
 
   it('should initialize with default values', () => {
@@ -73,31 +70,30 @@ describe('useFindReplaceForm', () => {
     expect(result.current.selectedColumnName).toBe('Var1');
   });
 
-  it('should set an error if find text is empty on search', async () => {
+  it('should clear results if find text is empty', async () => {
     const { result } = renderHook(() => useFindReplaceForm({}));
 
-    act(() => {
+    // First find something
+    await act(async () => {
+      result.current.handleFindChange('a');
+    });
+    expect(result.current.searchResultsCount).toBe(2);
+
+    // Then clear it
+    await act(async () => {
       result.current.handleFindChange('');
     });
 
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    expect(result.current.findError).toBe(''); // Error is not set on empty, just cleared
+    expect(result.current.findError).toBe('');
     expect(result.current.searchResultsCount).toBe(0);
   });
 
   it('should perform a case-insensitive search correctly', async () => {
     const { result } = renderHook(() => useFindReplaceForm({}));
 
-    act(() => {
+    await act(async () => {
       result.current.setSelectedColumnName('Var1');
       result.current.handleFindChange('a');
-    });
-
-    act(() => {
-      jest.runAllTimers();
     });
 
     expect(result.current.findError).toBe('');
@@ -107,14 +103,10 @@ describe('useFindReplaceForm', () => {
   it('should perform a case-sensitive search correctly', async () => {
     const { result } = renderHook(() => useFindReplaceForm({}));
 
-    act(() => {
+    await act(async () => {
       result.current.setSelectedColumnName('Var1');
       result.current.setMatchCase(true);
       result.current.handleFindChange('a');
-    });
-
-    act(() => {
-      jest.runAllTimers();
     });
 
     expect(result.current.findError).toBe('');
@@ -124,12 +116,8 @@ describe('useFindReplaceForm', () => {
   it('should show no results found message', async () => {
     const { result } = renderHook(() => useFindReplaceForm({}));
 
-    act(() => {
+    await act(async () => {
       result.current.handleFindChange('nonexistent');
-    });
-
-    act(() => {
-      jest.runAllTimers();
     });
 
     expect(result.current.findError).toBe('No results found.');

@@ -61,7 +61,6 @@ describe('useResultStore', () => {
 
         // Setup initial state with two logs
         act(() => {
-            result.current.loadResults(); // This is a placeholder; let's set state directly
             useResultStore.setState({ logs: [mockLog1, mockLog2] });
         });
 

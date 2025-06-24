@@ -111,13 +111,12 @@ export const useResultStore = create<ResultState>()(
                 }
             },
 
-            deleteLog: async (logId) => {
+            deleteLog: async (logId: number) => {
                 try {
                     await resultService.deleteLog(logId);
-                    
                     // Update state after successful API call
                     set((state) => {
-                        state.logs = state.logs.filter(log => log.id !== logId);
+                        state.logs = state.logs.filter(log => log && log.id !== logId);
                     });
                 } catch (error) {
                     console.error("Failed to delete log:", error);

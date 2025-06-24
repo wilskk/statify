@@ -1,36 +1,25 @@
 import { renderHook, act } from '@testing-library/react';
 import { useMetaStore } from '../useMetaStore';
-import db from '@/lib/db';
+import metaService from '@/services/data/MetaService';
+import { Meta } from '@/types/Meta';
 
-// Explicitly mock the implementation of the db module
-jest.mock('@/lib/db', () => {
-    // These are now actual Jest mock functions
-    const mockPut = jest.fn();
-    const mockGet = jest.fn();
-    const mockDelete = jest.fn();
+// Mock the metaService
+jest.mock('@/services/data/MetaService');
 
-    return {
-        metadata: {
-            put: mockPut,
-            get: mockGet,
-            delete: mockDelete,
-        },
-    };
-});
-
-// Cast the mock to the correct type to allow mocking its methods
-const mockedDb = db as jest.Mocked<typeof db>;
+const mockedMetaService = metaService as jest.Mocked<typeof metaService>;
 
 describe('useMetaStore', () => {
     let initialState: any;
+
     beforeEach(() => {
-        initialState = useMetaStore.getState();
+        // Reset mocks and state before each test
         jest.clearAllMocks();
+        initialState = useMetaStore.getState();
     });
 
     afterEach(() => {
         act(() => {
-            useMetaStore.setState(initialState);
+            useMetaStore.setState(initialState, true);
         });
     });
 
@@ -42,12 +31,26 @@ describe('useMetaStore', () => {
         expect(result.current.isLoaded).toBe(false);
     });
 
-    it('should set meta data and save to db', async () => {
+    it('should load meta data correctly', async () => {
+        const { result } = renderHook(() => useMetaStore());
+        const mockMeta: Meta = { name: 'Test Project', location: '', created: new Date(), weight: 'W1', dates: '', filter: '' };
+        
+        mockedMetaService.loadMeta.mockResolvedValue(mockMeta);
+
+        await act(async () => {
+            await result.current.loadMeta();
+        });
+
+        expect(result.current.meta.name).toBe('Test Project');
+        expect(result.current.isLoaded).toBe(true);
+        expect(mockedMetaService.loadMeta).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set meta data and call saveMeta', async () => {
         const { result } = renderHook(() => useMetaStore());
         const newMetaData = { name: 'My Project', weight: 'WGT' };
-        
-        // Force cast to a Jest mock function
-        (mockedDb.metadata.put as jest.Mock).mockResolvedValue('appMeta');
+
+        mockedMetaService.saveMeta.mockResolvedValue(undefined);
 
         await act(async () => {
             await result.current.setMeta(newMetaData);
@@ -55,23 +58,22 @@ describe('useMetaStore', () => {
 
         expect(result.current.meta.name).toBe('My Project');
         expect(result.current.meta.weight).toBe('WGT');
-        expect(mockedDb.metadata.put).toHaveBeenCalledTimes(1);
-        // Check that the created date is still there
-        expect(mockedDb.metadata.put).toHaveBeenCalledWith(
+        expect(mockedMetaService.saveMeta).toHaveBeenCalledTimes(1);
+        expect(mockedMetaService.saveMeta).toHaveBeenCalledWith(
             expect.objectContaining(newMetaData)
         );
     });
 
-    it('should reset meta data and clear from db', async () => {
+    it('should reset meta data and call resetMeta', async () => {
         const { result } = renderHook(() => useMetaStore());
 
-        // Set some initial data to be cleared
+        // Set some initial data
         act(() => {
             result.current.setMeta({ name: 'Old Project' });
         });
-
-        (mockedDb.metadata.delete as jest.Mock).mockResolvedValue(undefined);
-        (mockedDb.metadata.put as jest.Mock).mockResolvedValue('appMeta'); // For the save after reset
+        
+        mockedMetaService.resetMeta.mockResolvedValue(undefined);
+        mockedMetaService.saveMeta.mockResolvedValue(undefined); // for the save after reset
 
         await act(async () => {
             await result.current.resetMeta();
@@ -79,25 +81,22 @@ describe('useMetaStore', () => {
 
         expect(result.current.meta.name).toBe('');
         expect(result.current.isLoaded).toBe(false);
-        expect(mockedDb.metadata.delete).toHaveBeenCalledWith('appMeta');
-        expect(mockedDb.metadata.put).toHaveBeenCalledTimes(2); // One from setMeta, one from resetMeta
+        expect(mockedMetaService.resetMeta).toHaveBeenCalledTimes(1);
+        // It's called once in the setMeta, then once in the reset logic
+        expect(mockedMetaService.saveMeta).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle errors when saving to db', async () => {
+    it('should handle errors during loadMeta', async () => {
         const { result } = renderHook(() => useMetaStore());
-        const error = new Error('DB Write Failed');
-        (mockedDb.metadata.put as jest.Mock).mockRejectedValue(error);
+        const error = new Error('Failed to load');
+        mockedMetaService.loadMeta.mockRejectedValue(error);
 
-        // We expect the store to throw the error so components can react
-        await expect(
-            act(async () => {
-                await result.current.setMeta({ name: 'This will fail' });
-            })
-        ).rejects.toThrow('DB Write Failed');
+        await act(async () => {
+            await result.current.loadMeta();
+        });
 
-        // Check if the error state is set in the store
         expect(result.current.error).not.toBe(null);
-        expect(result.current.error?.message).toBe('DB Write Failed');
-        expect(result.current.error?.source).toBe('_saveMetaToDb');
+        expect(result.current.error?.message).toBe('Failed to load');
+        expect(result.current.error?.source).toBe('loadMeta');
     });
 }); 

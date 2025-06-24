@@ -1,9 +1,9 @@
 import { DataService } from '../DataService';
-import { dataRepository } from '@/repositories';
+import dataRepository from '@/repositories/DataRepository';
 import { DataRow } from '@/types/Data';
 
 // Mock the entire dataRepository module
-jest.mock('@/repositories/dataRepository', () => ({
+jest.mock('@/repositories/DataRepository', () => ({
     getAllRows: jest.fn(),
     updateBulkCells: jest.fn(),
     clearAllData: jest.fn(),
@@ -25,12 +25,12 @@ describe('DataService', () => {
                 { row: 1, col: 1, value: 2 },
                 { row: 0, col: 1, value: 3 }, // Duplicate row index
             ];
-            mockedDataRepository.updateBulkCells.mockResolvedValue(undefined);
+            (mockedDataRepository.updateBulkCells as jest.Mock).mockResolvedValue(undefined);
 
             const result = await dataService.applyBulkUpdates(updates);
 
-            expect(mockedDataRepository.updateBulkCells).toHaveBeenCalledTimes(1);
-            expect(mockedDataRepository.updateBulkCells).toHaveBeenCalledWith(updates);
+            expect((mockedDataRepository.updateBulkCells as jest.Mock).mock.calls.length).toBe(1);
+            expect((mockedDataRepository.updateBulkCells as jest.Mock).mock.calls[0][0]).toEqual(updates);
             expect(result).toEqual([0, 1]); // Should contain unique row indices
         });
     });
@@ -38,20 +38,20 @@ describe('DataService', () => {
     describe('importData', () => {
         it('should clear existing data and then replace it', async () => {
             const newData: DataRow[] = [[1, 2, 3]];
-            mockedDataRepository.clearAllData.mockResolvedValue(undefined);
-            mockedDataRepository.replaceAllData.mockResolvedValue(newData.length);
+            (mockedDataRepository.clearAllData as jest.Mock).mockResolvedValue(undefined);
+            (mockedDataRepository.replaceAllData as jest.Mock).mockResolvedValue(newData.length);
 
             await dataService.importData(newData);
 
             // Verify that clear was called before replace
-            const clearOrder = mockedDataRepository.clearAllData.mock.invocationCallOrder[0];
-            const replaceOrder = mockedDataRepository.replaceAllData.mock.invocationCallOrder[0];
+            const clearOrder = (mockedDataRepository.clearAllData as jest.Mock).mock.invocationCallOrder[0];
+            const replaceOrder = (mockedDataRepository.replaceAllData as jest.Mock).mock.invocationCallOrder[0];
             
             expect(clearOrder).toBeLessThan(replaceOrder);
 
-            expect(mockedDataRepository.clearAllData).toHaveBeenCalledTimes(1);
-            expect(mockedDataRepository.replaceAllData).toHaveBeenCalledTimes(1);
-            expect(mockedDataRepository.replaceAllData).toHaveBeenCalledWith(newData);
+            expect((mockedDataRepository.clearAllData as jest.Mock).mock.calls.length).toBe(1);
+            expect((mockedDataRepository.replaceAllData as jest.Mock).mock.calls.length).toBe(1);
+            expect((mockedDataRepository.replaceAllData as jest.Mock).mock.calls[0][0]).toEqual(newData);
         });
     });
 
@@ -62,11 +62,11 @@ describe('DataService', () => {
                 ['d', 'e', 'f'],
                 ['g', 'h', 'i'],
             ];
-            mockedDataRepository.getAllRows.mockResolvedValue(mockData);
+            (mockedDataRepository.getAllRows as jest.Mock).mockResolvedValue(mockData);
 
             const { columnData } = await dataService.getColumnData(1); // Get second column
 
-            expect(mockedDataRepository.getAllRows).toHaveBeenCalledTimes(1);
+            expect((mockedDataRepository.getAllRows as jest.Mock).mock.calls.length).toBe(1);
             expect(columnData).toEqual(['b', 'e', 'h']);
         });
 
@@ -76,7 +76,7 @@ describe('DataService', () => {
                 ['d'], // This row is shorter
                 ['g', 'h', 'i'],
             ];
-            mockedDataRepository.getAllRows.mockResolvedValue(mockData);
+            (mockedDataRepository.getAllRows as jest.Mock).mockResolvedValue(mockData);
             
             const { columnData } = await dataService.getColumnData(2); // Get third column
 
