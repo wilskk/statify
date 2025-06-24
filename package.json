@@ -21,5 +21,9 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "eslint-plugin-testing-library": "^7.5.3",
+    "testing-library": "^0.0.2"
+  }
 }

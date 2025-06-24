@@ -510,7 +510,7 @@ async function saveUnivariateResults(
     variables: Variable[]
 ) {
     const { addVariable } = useVariableStore.getState();
-    const { updateBulkCells } = useDataStore.getState();
+    const { updateCells } = useDataStore.getState();
 
     const savedData: { [key: string]: (string | null)[] } = {};
     const columnKeys = savedVariablesTable.columnHeaders
@@ -637,7 +637,7 @@ async function saveUnivariateResults(
                 }));
 
                 if (updates.length > 0) {
-                    await updateBulkCells(updates);
+                    await updateCells(updates);
                 }
                 nextColumnIndex++;
             }

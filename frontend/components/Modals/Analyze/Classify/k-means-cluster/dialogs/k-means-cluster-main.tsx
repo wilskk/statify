@@ -16,7 +16,9 @@ import { analyzeKMeansCluster } from "@/components/Modals/Analyze/Classify/k-mea
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { toast } from "sonner";
 
-const KMeansClusterContainer = ({ onClose }: KMeansClusterContainerProps) => {
+export const KMeansClusterContainer = ({
+    onClose,
+}: KMeansClusterContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
     const tempVariables = useMemo(
