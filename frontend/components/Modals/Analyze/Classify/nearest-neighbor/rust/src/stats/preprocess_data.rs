@@ -1,6 +1,6 @@
 use std::collections::{ HashSet, HashMap };
 
-use crate::knn::models::{ config::KnnConfig, data::{ AnalysisData, DataValue, KnnData } };
+use crate::models::{ config::KnnConfig, data::{ AnalysisData, DataValue, KnnData } };
 
 use super::common::{ normalize_features, split_training_holdout };
 

@@ -1,13 +1,13 @@
 use wasm_bindgen::prelude::*;
 
-use crate::knn::models::data::{ DataRecord, VariableDefinition };
-use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
-use crate::knn::utils::{
+use crate::models::data::{ DataRecord, VariableDefinition };
+use crate::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
+use crate::utils::{
     converter::string_to_js_error,
     error::ErrorCollector,
     log::FunctionLogger,
 };
-use crate::knn::wasm::function;
+use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct KNNAnalysis {

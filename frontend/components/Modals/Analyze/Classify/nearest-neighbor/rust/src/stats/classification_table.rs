@@ -1,7 +1,7 @@
 // classification_table.rs
 use std::collections::HashMap;
 
-use crate::knn::models::{
+use crate::models::{
     config::KnnConfig,
     data::{ AnalysisData, DataValue },
     result::{ ClassificationPartition, ClassificationTable },
@@ -112,7 +112,7 @@ fn create_category_mapping(target_values: &[DataValue]) -> (HashMap<String, usiz
 
 /// Calculate confusion matrix for either training or holdout set
 fn calculate_confusion_matrix(
-    knn_data: &crate::knn::models::data::KnnData,
+    knn_data: &crate::models::data::KnnData,
     category_map: &HashMap<String, usize>,
     n_categories: usize,
     k: usize,

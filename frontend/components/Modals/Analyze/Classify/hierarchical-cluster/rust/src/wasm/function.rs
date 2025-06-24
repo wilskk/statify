@@ -1,14 +1,14 @@
 // function.rs
 use wasm_bindgen::prelude::*;
 
-use crate::hierarchical::models::{
+use crate::models::{
     config::ClusterConfig,
     data::AnalysisData,
     result::ClusteringResult,
 };
-use crate::hierarchical::stats::core;
-use crate::hierarchical::utils::converter::format_result;
-use crate::hierarchical::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::stats::core;
+use crate::utils::converter::format_result;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,

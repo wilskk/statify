@@ -1,16 +1,16 @@
 use wasm_bindgen::prelude::*;
 
-use crate::discriminant::models::{
+use crate::models::{
     config::DiscriminantConfig,
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::DiscriminantResult,
 };
-use crate::discriminant::utils::{
+use crate::utils::{
     converter::string_to_js_error,
     error::ErrorCollector,
     log::FunctionLogger,
 };
-use crate::discriminant::wasm::function;
+use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct DiscriminantAnalysis {

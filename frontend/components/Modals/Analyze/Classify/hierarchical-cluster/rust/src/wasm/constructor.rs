@@ -1,12 +1,12 @@
 use wasm_bindgen::prelude::*;
 
-use crate::hierarchical::models::{
+use crate::models::{
     config::ClusterConfig,
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::ClusteringResult,
 };
-use crate::hierarchical::utils::{ converter::string_to_js_error, error::ErrorCollector };
-use crate::hierarchical::wasm::function;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct HierarchicalCluster {

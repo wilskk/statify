@@ -3,7 +3,7 @@ use rand_mt::Mt64;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use crate::knn::models::{ config::KnnConfig, data::{ DataValue, KnnData } };
+use crate::models::{ config::KnnConfig, data::{ DataValue, KnnData } };
 
 /// Normalizes features using adjusted normalization to range [-1, 1]
 /// Uses nalgebra for more efficient matrix operations

@@ -1,7 +1,7 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 
-use crate::discriminant::models::result::{
+use crate::models::result::{
     DiscriminantResult,
     ProcessingSummary,
     EqualityTests,

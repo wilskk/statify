@@ -1,4 +1,4 @@
-use crate::knn::models::{
+use crate::models::{
     config::KnnConfig,
     data::{ AnalysisData, DataValue },
     result::{ DataPoint, PredictorDimension, PredictorSpace },

@@ -1,6 +1,6 @@
 use std::collections::{ HashMap, HashSet };
 
-use crate::knn::models::{
+use crate::models::{
     config::KnnConfig,
     data::AnalysisData,
     result::{ NeighborDetail, PeersChart, FocalNeighborSet },

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::PredictorImportance };
+use crate::models::{ config::KnnConfig, data::AnalysisData, result::PredictorImportance };
 
 use super::core::{ calculate_knn_error, determine_k_value, preprocess_knn_data };
 

@@ -1,5 +1,5 @@
 // error_summary.rs
-use crate::knn::models::result::{ ClassificationTable, ErrorSummary };
+use crate::models::result::{ ClassificationTable, ErrorSummary };
 
 /// Calculate error summary based on classification table results
 pub fn calculate_error_summary(

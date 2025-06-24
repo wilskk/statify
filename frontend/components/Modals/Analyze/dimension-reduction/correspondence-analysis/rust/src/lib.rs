@@ -1,18 +1,7 @@
-// pub mod captca;
-// pub mod correspondence;
-// pub mod discriminant;
-// pub mod factor;
-// pub mod hierarchical;
-// pub mod kmeans;
-// pub mod knn;
-// pub mod mca;
-// pub mod multivariate;
-// pub mod overals;
-// pub mod repeated_measure;
-// pub mod roc_analysis;
-// pub mod roc_curve;
-// pub mod time_series;
-// pub mod tree;
-// pub mod twostep;
-// pub mod univariate;
-// pub mod varcomps;
+pub mod models;
+pub mod stats;
+pub mod utils;
+pub mod wasm;
+
+#[cfg(test)]
+pub mod test;

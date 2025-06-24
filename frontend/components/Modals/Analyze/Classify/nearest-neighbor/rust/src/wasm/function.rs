@@ -1,10 +1,10 @@
 use wasm_bindgen::prelude::*;
 
-use crate::knn::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
-use crate::knn::stats::core;
-use crate::knn::utils::converter::format_result;
-use crate::knn::utils::log::FunctionLogger;
-use crate::knn::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::models::{ config::KnnConfig, data::AnalysisData, result::NearestNeighborAnalysis };
+use crate::stats::core;
+use crate::utils::converter::format_result;
+use crate::utils::log::FunctionLogger;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,

@@ -1,14 +1,14 @@
 use wasm_bindgen::prelude::*;
 
-use crate::discriminant::models::{
+use crate::models::{
     config::DiscriminantConfig,
     data::AnalysisData,
     result::DiscriminantResult,
 };
-use crate::discriminant::stats::core;
-use crate::discriminant::utils::format_result;
-use crate::discriminant::utils::log::FunctionLogger;
-use crate::discriminant::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::stats::core;
+use crate::utils::format_result;
+use crate::utils::log::FunctionLogger;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,

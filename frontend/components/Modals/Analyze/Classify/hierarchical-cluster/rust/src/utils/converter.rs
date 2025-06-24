@@ -1,7 +1,7 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 
-use crate::hierarchical::models::result::{
+use crate::models::result::{
     CaseProcessingSummary,
     ClusteringResult,
     IciclePlot,
