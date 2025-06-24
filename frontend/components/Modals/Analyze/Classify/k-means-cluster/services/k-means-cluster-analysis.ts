@@ -2,7 +2,9 @@ import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { KMeansClusterAnalysisType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
 import { transformKMeansResult } from "./k-means-cluster-analysis-formatter";
 import { resultKMeans } from "./k-means-cluster-analysis-output";
-import init, {KMeansClusterAnalysis} from "@/components/Modals/Analyze/Classify/k-means-cluster/rust/pkg/wasm";
+import init, {
+    KMeansClusterAnalysis,
+} from "@/components/Modals/Analyze/Classify/k-means-cluster/rust/pkg/wasm";
 
 export async function analyzeKMeansCluster({
     configData,
@@ -42,6 +44,9 @@ export async function analyzeKMeansCluster({
     const results = kmeans.get_formatted_results();
     console.log("kmeans results", results);
 
+    const errors = kmeans.get_all_errors();
+    console.log("kmeans errors", errors);
+
     const formattedResults = transformKMeansResult(results ?? {});
     console.log("formattedResults", formattedResults);
 
@@ -53,4 +58,5 @@ export async function analyzeKMeansCluster({
         configData,
         variables,
     });
+    return { errors };
 }

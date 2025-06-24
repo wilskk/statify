@@ -14,8 +14,10 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeKMeansCluster } from "@/components/Modals/Analyze/Classify/k-means-cluster/services/k-means-cluster-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { useToast } from "@/hooks/use-toast";
 
 const KMeansClusterContainer = ({ onClose }: KMeansClusterContainerProps) => {
+    const { toast } = useToast();
     const variables = useVariableStore((state) => state.variables);
     const dataVariables = useDataStore((state) => state.data);
     const tempVariables = useMemo(
@@ -74,17 +76,43 @@ const KMeansClusterContainer = ({ onClose }: KMeansClusterContainerProps) => {
 
             await saveFormData("KMeansCluster", newFormData);
 
-            await analyzeKMeansCluster({
+            const result = await analyzeKMeansCluster({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
             });
+
+            if (result.errors.length > 0) {
+                const errorMessages = result.errors;
+                toast({
+                    title: "K-Means Cluster Analysis Error",
+                    description: (
+                        <ul className="list-inside list-disc text-sm">
+                            {errorMessages.map((msg, index) => (
+                                <li key={index}>{msg}</li>
+                            ))}
+                        </ul>
+                    ),
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: "Success! Your changes have been saved",
+                    description: "K-Means analysis completed successfully.",
+                });
+            }
         } catch (error) {
             console.error(error);
+            toast({
+                title: "An Unknown Error Occurred",
+                description:
+                    "An unexpected error occurred during the analysis.",
+                variant: "destructive",
+            });
+        } finally {
+            closeModal();
+            onClose();
         }
-
-        closeModal();
-        onClose();
     };
 
     const resetFormData = async () => {
