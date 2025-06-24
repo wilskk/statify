@@ -28,7 +28,7 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
         includeHeaders: options?.initialIncludeHeaders === undefined ? true : options.initialIncludeHeaders,
         includeVariableProperties: options?.initialIncludeVariableProperties === undefined ? false : options.initialIncludeVariableProperties,
         quoteStrings: options?.initialQuoteStrings === undefined ? true : options.initialQuoteStrings,
-        encoding: options?.initialEncoding || "UTF-8"
+        encoding: options?.initialEncoding || "utf-8"
     }));
 
     const handleChange = (field: keyof typeof exportOptions, value: string | boolean) => {

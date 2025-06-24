@@ -20,7 +20,7 @@ export interface DescriptiveStatisticsOptions {
   standardError: boolean;
 }
 
-export type DisplayOrderType = 'variableList' | 'alphabetic' | 'ascendingMeans' | 'descendingMeans';
+export type DisplayOrderType = 'variableList' | 'alphabetic' | 'mean' | 'ascendingMeans' | 'descendingMeans';
 
 // ---------------------------------
 // Variable Selection Types
@@ -31,45 +31,31 @@ export interface HighlightedVariableInfo {
 }
 
 // ---------------------------------
-// Data Fetching Types
-// ---------------------------------
-export interface FetchedData {
-  variableData: VariableData[] | null;
-  weightVariableData: (string | number)[] | null;
-}
-
-// ---------------------------------
 // Z-Score Data Types
 // ---------------------------------
-export interface ZScoreVariableInfo {
+export type ZScoreVariableInfo = {
   name: string;
   label: string;
-  type: "NUMERIC"; // Z-scores always numeric
+  type: "NUMERIC";
   width: number;
   decimals: number;
-  measure: "scale"; // Z-scores always scale measure
-}
+  measure: 'scale';
+};
 
-export interface ZScoreData {
+export type ZScoreData = {
   [variableName: string]: {
-    scores: (number | string)[];
-    variableInfo: ZScoreVariableInfo;
+    scores?: (string | number)[];
+    variableInfo?: ZScoreVariableInfo;
+    error?: string;
   };
-}
+};
 
 // ---------------------------------
-// Worker Types
+// Worker & Formatting Types
 // ---------------------------------
-export interface DescriptiveWorkerResult {
-  success: boolean;
-  statistics?: DescriptiveStatistics;
-  zScoreData?: ZScoreData | null;
-  error?: string;
-}
-
 export interface DescriptiveStatistics {
   title: string;
-  output_data: any; // Mengubah tipe ini agar lebih fleksibel untuk perubahan format
+  output_data: any;
   components: string;
   description: string;
 }
@@ -91,16 +77,28 @@ export interface TableRow {
   [key: string]: any;
 }
 
-export interface WorkerInput {
-  variableData: VariableData[];
-  weightVariableData: (string | number)[] | null;
-  params: DescriptiveStatisticsOptions;
-  saveStandardized: boolean;
+// Tipe yang lebih spesifik untuk hasil dari worker
+export interface DescriptiveStats {
+    N: number;
+    Missing: number;
+    Mean?: number | null;
+    Median?: number | null;
+    Sum?: number | null;
+    StdDev?: number | null;
+    Variance?: number | null;
+    Minimum?: number | null;
+    Maximum?: number | null;
+    Range?: number | null;
+    SEMean?: number | null;
+    Kurtosis?: number | null;
+    SEKurtosis?: number | null;
+    Skewness?: number | null;
+    SESkewness?: number | null;
 }
 
-export interface WorkerCalculationPromise {
-  resolve: (value: DescriptiveWorkerResult | null) => void;
-  reject: (reason: any) => void;
+export interface DescriptiveResult {
+    variable: Variable;
+    stats: DescriptiveStats;
 }
 
 // ---------------------------------
@@ -108,16 +106,6 @@ export interface WorkerCalculationPromise {
 // ---------------------------------
 export interface VariableSelectionProps {
   initialVariables?: Variable[];
-}
-
-export interface VariableSelectionResult {
-  availableVariables: Variable[];
-  selectedVariables: Variable[];
-  highlightedVariable: HighlightedVariableInfo | null;
-  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
-  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
   resetVariableSelection: () => void;
 }
 
@@ -125,6 +113,7 @@ export interface StatisticsSettingsProps {
   initialDisplayStatistics?: Partial<DescriptiveStatisticsOptions>;
   initialDisplayOrder?: DisplayOrderType;
   initialSaveStandardized?: boolean;
+  resetStatisticsSettings: () => void;
 }
 
 export interface StatisticsSettingsResult {
@@ -135,29 +124,6 @@ export interface StatisticsSettingsResult {
   setDisplayOrder: Dispatch<SetStateAction<DisplayOrderType>>;
   saveStandardized: boolean;
   setSaveStandardized: Dispatch<SetStateAction<boolean>>;
-  resetStatisticsSettings: () => void;
-}
-
-export interface DataFetchingProps {
-}
-
-export interface DataFetchingResult {
-  isLoading: boolean;
-  error: string | null;
-  fetchData: (variables: Variable[]) => Promise<FetchedData>;
-  clearError: () => void;
-}
-
-export interface DescriptivesWorkerProps {
-  workerUrl?: string;
-  timeoutDuration?: number;
-}
-
-export interface DescriptivesWorkerResult {
-  isCalculating: boolean;
-  error: string | null;
-  calculate: (input: WorkerInput) => Promise<DescriptiveWorkerResult | null>;
-  cancelCalculation: () => void;
 }
 
 export interface DescriptivesAnalysisProps extends Pick<BaseModalProps, 'onClose' | 'containerType'> {
@@ -168,8 +134,8 @@ export interface DescriptivesAnalysisProps extends Pick<BaseModalProps, 'onClose
 }
 
 export interface DescriptivesAnalysisResult {
-  isLoading: boolean;
-  errorMsg: string | null;
   runAnalysis: () => Promise<void>;
-  cancelAnalysis: () => void;
+  isCalculating: boolean;
+  cancelCalculation: () => void;
+  error: string | null;
 } 

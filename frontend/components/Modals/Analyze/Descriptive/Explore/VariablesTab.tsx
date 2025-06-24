@@ -2,7 +2,10 @@ import React, { FC, useCallback } from "react";
 import { InfoIcon } from "lucide-react";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { VariablesTabProps, HighlightedVariable } from "./types";
+import { VariablesTabProps } from "./types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 
 // Source types remain the same, but used internally by the parent mostly
 type AllSource = 'available' | 'dependent' | 'factor' | 'label';
@@ -20,8 +23,14 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToLabelVariable,
     reorderVariables,
     errorMsg,
-    containerType = "dialog"
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
+
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+    const varListsStep = getStepIndex('explore-variable-lists');
 
     // --- Adapt props for VariableListManager ---
     const variableIdKeyToUse: keyof Variable = 'tempId';
@@ -95,7 +104,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'dependent' || listId === 'factor') {
-            reorderVariables(listId as 'dependent' | 'factor', variables);
+            reorderVariables(listId, variables);
         }
         // Cannot reorder 'label' or 'available'
     }, [reorderVariables]);
@@ -103,18 +112,20 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // --- Render the manager component and error message ---
     return (
         <div>
-            <VariableListManager
-                availableVariables={availableVariables}
-                targetLists={targetLists}
-                variableIdKey={variableIdKeyToUse}
-                highlightedVariable={managerHighlightedVariable}
-                setHighlightedVariable={setManagerHighlightedVariable}
-                onMoveVariable={handleMoveVariable}
-                onReorderVariable={handleReorderVariables}
-                availableListHeight={'320px'}
-                // Using default icons and display names
-                // No specific footers needed here
-            />
+            <div id="explore-variable-lists" className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    availableListHeight={'320px'}
+                />
+                <ActiveElementHighlight active={tourActive && currentStep === varListsStep} />
+            </div>
+
             {errorMsg && (
                 <div className="col-span-2 text-destructive-foreground text-sm mt-3 p-2 bg-destructive border border-destructive/50 rounded">
                     {errorMsg}

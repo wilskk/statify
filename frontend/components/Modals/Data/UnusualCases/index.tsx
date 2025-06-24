@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC, useState, useEffect, useCallback } from "react";
+import React, { FC, useState, useEffect, useCallback, useMemo } from "react";
 import {
     Dialog,
     DialogContent,
@@ -23,21 +23,26 @@ import { Variable } from "@/types/Variable";
 import {
     Shapes,
     Ruler,
-    BarChartHorizontal
+    BarChartHorizontal,
+    HelpCircle
 } from "lucide-react";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { AnimatePresence } from "framer-motion";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useTourGuide, TabControlProps } from './hooks/useTourGuide';
+import { IdentifyUnusualCasesProps, VariablesTabProps, SaveTabProps, OptionsTabProps, OutputTabProps, MissingValuesTabProps, TabType } from "./types";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Import tab components
 import VariablesTab from "./VariablesTab";
+import OptionsTab from "./OptionsTab";
 import OutputTab from "./OutputTab";
 import SaveTab from "./SaveTab";
 import MissingValuesTab from "./MissingValuesTab";
-import OptionsTab from "./OptionsTab";
-
-interface IdentifyUnusualCasesProps {
-    onClose: () => void;
-    containerType?: "dialog" | "sidebar";
-}
 
 // Content component separated from container logic
 const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({ 
@@ -45,55 +50,55 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     containerType = "dialog" 
 }) => {
     const { closeModal } = useModalStore();
-    const { variables } = useVariableStore();
-    const { data, updateCells } = useDataStore();
+    const { variables, addVariable } = useVariableStore();
+    const { data, updateCells, setData } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
-    // --- State for Variables ---
+    // --- Simplified State ---
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [analysisVariables, setAnalysisVariables] = useState<Variable[]>([]);
-    const [caseIdentifierVariable, setCaseIdentifierVariable] = useState<Variable | null>(null); // Single variable
+    const [caseIdentifierVariable, setCaseIdentifierVariable] = useState<Variable | null>(null);
     const [highlightedVariable, setHighlightedVariable] = useState<{tempId: string, source: 'available' | 'analysis' | 'identifier'} | null>(null);
-
-    const [activeTab, setActiveTab] = useState("variables");
-    const [errorMsg, setErrorMsg] = useState<string | null>(null); // State untuk pesan error
-
-    // Output tab state
+    const [activeTab, setActiveTab] = useState<TabType>("variables");
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showUnusualCasesList, setShowUnusualCasesList] = useState(true);
-    const [peerGroupNorms, setPeerGroupNorms] = useState(false);
-    const [anomalyIndices, setAnomalyIndices] = useState(false);
-    const [reasonOccurrence, setReasonOccurrence] = useState(false);
-    const [caseProcessed, setCaseProcessed] = useState(false);
-
-    // Save tab state
+    const [peerGroupNorms, setPeerGroupNorms] = useState(true);
+    const [anomalyIndices, setAnomalyIndices] = useState(true);
+    const [reasonOccurrence, setReasonOccurrence] = useState(true);
+    const [caseProcessed, setCaseProcessed] = useState(true);
     const [saveAnomalyIndex, setSaveAnomalyIndex] = useState(false);
     const [anomalyIndexName, setAnomalyIndexName] = useState("AnomalyIndex");
-    const [savePeerGroups, setSavePeerGroups] = useState(false);
-    const [peerGroupsRootName, setPeerGroupsRootName] = useState("Peer");
-    const [saveReasons, setSaveReasons] = useState(false);
-    const [reasonsRootName, setReasonsRootName] = useState("Reason");
     const [replaceExisting, setReplaceExisting] = useState(false);
-    const [exportFilePath, setExportFilePath] = useState("");
-
-    // Missing values tab state
-    const [missingValuesOption, setMissingValuesOption] = useState("exclude");
-    const [useProportionMissing, setUseProportionMissing] = useState(true);
-
-    // Options tab state
     const [identificationCriteria, setIdentificationCriteria] = useState("percentage");
     const [percentageValue, setPercentageValue] = useState("5");
     const [fixedNumber, setFixedNumber] = useState("");
     const [useMinimumValue, setUseMinimumValue] = useState(true);
     const [cutoffValue, setCutoffValue] = useState("2");
-    const [minPeerGroups, setMinPeerGroups] = useState("1");
-    const [maxPeerGroups, setMaxPeerGroups] = useState("15");
-    const [maxReasons, setMaxReasons] = useState("1");
+    const [missingValuesOption, setMissingValuesOption] = useState("exclude");
+    const [useProportionMissing, setUseProportionMissing] = useState(false);
+
+    // --- Tour and Tab Control ---
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab,
+        currentActiveTab: activeTab,
+    }), [activeTab]);
+
+    const { 
+        tourActive, 
+        currentStep, 
+        tourSteps,
+        currentTargetElement, 
+        startTour, 
+        nextStep, 
+        prevStep, 
+        endTour 
+    } = useTourGuide(containerType, tabControl);
 
     // --- Update Available Variables ---
     useEffect(() => {
-        const validVars = variables.filter(v => v.name !== "").map(v => ({
+        const validVars = variables.filter(v => v.name !== "").map((v, i) => ({
             ...v,
-            tempId: v.tempId || `temp_${v.columnIndex}`
+            tempId: v.tempId || `temp_${v.columnIndex}_${i}`
         }));
         const analysisTempIds = new Set(analysisVariables.map(v => v.tempId));
         const identifierTempId = caseIdentifierVariable?.tempId;
@@ -102,7 +107,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
             v.tempId &&
             !analysisTempIds.has(v.tempId) &&
             (!identifierTempId || v.tempId !== identifierTempId)
-        ).sort((a, b) => a.columnIndex - b.columnIndex); // Sort available
+        ).sort((a, b) => a.columnIndex - b.columnIndex);
         setAvailableVariables(finalAvailable);
     }, [variables, analysisVariables, caseIdentifierVariable]);
 
@@ -125,7 +130,6 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
 
     const moveToCaseIdentifierVariable = useCallback((variable: Variable) => {
         if (!variable.tempId) return;
-        // Move current identifier back to available if it exists
         if (caseIdentifierVariable && caseIdentifierVariable.tempId) {
             setAvailableVariables(prev => {
                  if (!prev.some(v => v.tempId === caseIdentifierVariable.tempId)) {
@@ -139,7 +143,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
         setCaseIdentifierVariable(variable);
         setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setHighlightedVariable(null);
-    }, [caseIdentifierVariable]); // Depend on caseIdentifierVariable to correctly move the old one
+    }, [caseIdentifierVariable]);
 
     const moveToAvailableVariables = useCallback((variable: Variable, source: 'analysis' | 'identifier', targetIndex?: number) => {
         if (!variable.tempId) return;
@@ -167,10 +171,8 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
          if (source === 'analysis') {
              setAnalysisVariables([...reorderedList]);
          }
-         // 'identifier' cannot be reordered
     }, []);
 
-    // --- Handlers for Analysis ---
      const getDisplayName = (variable: Variable): string => {
          if (variable.label) {
              return `${variable.label} [${variable.name}]`;
@@ -192,859 +194,123 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                     : <Ruler size={14} className="text-muted-foreground mr-1 flex-shrink-0" />;
         }
     };
-
-    const processDataForAnalysis = () => {
-        if (analysisVariables.length === 0) return null;
-
-        const analysisIndices = analysisVariables.map(v => v.columnIndex);
-
-        let processedData = [...data];
-
-        if (missingValuesOption === "exclude") {
-            processedData = processedData.filter(row => {
-                return analysisIndices.every(index => {
-                    const value = index < row.length ? row[index] : "";
-                    return value !== null && value !== undefined && value !== "";
-                });
-            });
-        } else {
-            const means: { [key: number]: number } = {};
-
-            analysisIndices.forEach(index => {
-                const values = data
-                    .map(row => index < row.length ? row[index] : "")
-                    .filter(value => value !== null && value !== undefined && value !== "")
-                    .map(value => typeof value === 'number' ? value : parseFloat(value as string))
-                    .filter(value => !isNaN(value));
-
-                if (values.length > 0) {
-                    means[index] = values.reduce((sum, val) => sum + val, 0) / values.length;
-                } else {
-                    means[index] = 0;
-                }
-            });
-
-            processedData = processedData.map(row => {
-                const newRow = [...row];
-                analysisIndices.forEach(index => {
-                    const value = index < newRow.length ? newRow[index] : "";
-                    if (value === null || value === undefined || value === "") {
-                        newRow[index] = means[index];
-                    }
-                });
-                return newRow;
-            });
-        }
-
-        return {
-            processedData,
-            analysisIndices
-        };
-    };
-
-    const calculatePeerGroups = (processedData: (string | number)[][], analysisIndices: number[]) => {
-        // Force 2 peer groups like SPSS typically does for this dataset
-        const numPeerGroups = 2;
-
-        // Initialize centers strategically (not randomly)
-        const centers: number[][] = [];
-
-        // Find ranges for each dimension
-        const ranges = analysisIndices.map((colIdx) => {
-            const values = processedData.map(row => {
-                const val = row[colIdx];
-                return typeof val === 'number' ? val : parseFloat(val as string) || 0;
-            });
-
-            return {
-                min: Math.min(...values),
-                max: Math.max(...values)
-            };
-        });
-
-        // Place centers at strategic points in the data space
-        for (let i = 0; i < numPeerGroups; i++) {
-            const center = [];
-            for (let j = 0; j < analysisIndices.length; j++) {
-                // Distribute centers across the range
-                const range = ranges[j].max - ranges[j].min;
-                center.push(ranges[j].min + (range * i / (numPeerGroups - 1 || 1)));
-            }
-            centers.push(center);
-        }
-
-        const assignments = new Array(processedData.length).fill(0);
-        let changed = true;
-        let iterations = 0;
-
-        while (changed && iterations < 100) {
-            changed = false;
-            iterations++;
-
-            for (let i = 0; i < processedData.length; i++) {
-                const point = analysisIndices.map(index => {
-                    const value = processedData[i][index];
-                    return typeof value === 'number' ? value : parseFloat(value as string) || 0;
-                });
-
-                let minDistance = Number.MAX_VALUE;
-                let closestCluster = 0;
-
-                for (let j = 0; j < centers.length; j++) {
-                    const distance = calculateDistance(point, centers[j]);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestCluster = j;
-                    }
-                }
-
-                if (assignments[i] !== closestCluster) {
-                    assignments[i] = closestCluster;
-                    changed = true;
-                }
-            }
-
-            const clusterSums = Array(centers.length).fill(0).map(() => Array(analysisIndices.length).fill(0));
-            const clusterCounts = Array(centers.length).fill(0);
-
-            for (let i = 0; i < processedData.length; i++) {
-                const cluster = assignments[i];
-                clusterCounts[cluster]++;
-
-                analysisIndices.forEach((index, j) => {
-                    const value = processedData[i][index];
-                    const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
-                    clusterSums[cluster][j] += numValue;
-                });
-            }
-
-            for (let i = 0; i < centers.length; i++) {
-                if (clusterCounts[i] > 0) {
-                    for (let j = 0; j < analysisIndices.length; j++) {
-                        centers[i][j] = clusterSums[i][j] / clusterCounts[i];
-                    }
-                }
-            }
-        }
-
-        const clusterSizes: number[] = Array(centers.length).fill(0);
-        assignments.forEach(cluster => {
-            clusterSizes[cluster]++;
-        });
-
-        const clusterPercentages = clusterSizes.map(size =>
-            parseFloat(((size / processedData.length) * 100).toFixed(1))
-        );
-
-        const clusterNorms: number[][] = Array(centers.length).fill(0).map(() =>
-            Array(analysisIndices.length).fill(0)
-        );
-
-        const clusterStdDevs: number[][] = Array(centers.length).fill(0).map(() =>
-            Array(analysisIndices.length).fill(0)
-        );
-
-        // Calculate means for each cluster
-        for (let i = 0; i < processedData.length; i++) {
-            const cluster = assignments[i];
-
-            analysisIndices.forEach((index, j) => {
-                const value = processedData[i][index];
-                const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
-                clusterNorms[cluster][j] += numValue;
-            });
-        }
-
-        for (let i = 0; i < centers.length; i++) {
-            if (clusterSizes[i] > 0) {
-                for (let j = 0; j < analysisIndices.length; j++) {
-                    clusterNorms[i][j] = clusterNorms[i][j] / clusterSizes[i];
-                }
-            }
-        }
-
-        // Calculate standard deviations for each cluster - critical for SPSS-like calculation
-        const clusterSumSquares: number[][] = Array(centers.length).fill(0).map(() =>
-            Array(analysisIndices.length).fill(0)
-        );
-
-        for (let i = 0; i < processedData.length; i++) {
-            const cluster = assignments[i];
-
-            analysisIndices.forEach((index, j) => {
-                const value = processedData[i][index];
-                const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
-                const diff = numValue - clusterNorms[cluster][j];
-                clusterSumSquares[cluster][j] += diff * diff;
-            });
-        }
-
-        for (let i = 0; i < centers.length; i++) {
-            if (clusterSizes[i] > 1) {
-                for (let j = 0; j < analysisIndices.length; j++) {
-                    clusterStdDevs[i][j] = Math.sqrt(clusterSumSquares[i][j] / clusterSizes[i]);
-                }
-            } else {
-                // For singleton clusters, use overall standard deviation to avoid zeros
-                for (let j = 0; j < analysisIndices.length; j++) {
-                    const allValues = processedData.map(row => {
-                        const val = row[analysisIndices[j]];
-                        return typeof val === 'number' ? val : parseFloat(val as string) || 0;
-                    });
-
-                    const mean = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
-                    const variance = allValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allValues.length;
-                    clusterStdDevs[i][j] = Math.sqrt(variance);
-                }
-            }
-        }
-
-        const anomalyIndices: number[] = [];
-        const reasons: { variable: number, impact: number, value: number, norm: number }[][] = [];
-
-        for (let i = 0; i < processedData.length; i++) {
-            const cluster = assignments[i];
-            const caseReasons: { variable: number, impact: number, value: number, norm: number }[] = [];
-
-            let sumSquaredDeviation = 0;
-
-            analysisIndices.forEach((index, j) => {
-                const value = processedData[i][index];
-                const numValue = typeof value === 'number' ? value : parseFloat(value as string) || 0;
-                const norm = clusterNorms[cluster][j];
-                const stdDev = clusterStdDevs[cluster][j] || 1; // Use 1 if stdDev is 0
-
-                // Calculate normalized deviation using SPSS method: (value - mean) / stdDev
-                const deviation = (numValue - norm) / stdDev;
-                const impact = deviation * deviation;
-
-                sumSquaredDeviation += impact;
-
-                caseReasons.push({
-                    variable: index,
-                    impact: impact,
-                    value: numValue,
-                    norm: norm
-                });
-            });
-
-            caseReasons.sort((a, b) => b.impact - a.impact);
-
-            // Calculate anomaly index and round to match SPSS precision
-            const anomalyIndex = Math.round(Math.sqrt(sumSquaredDeviation) * 100) / 100;
-            anomalyIndices.push(anomalyIndex);
-
-            reasons.push(caseReasons.slice(0, parseInt(maxReasons) || 1));
-        }
-
-        return {
-            assignments: assignments.map(a => a + 1),
-            clusterSizes,
-            clusterPercentages,
-            clusterNorms,
-            anomalyIndices,
-            reasons
-        };
-    };
-
-    const calculateDistance = (pointA: number[], pointB: number[]) => {
-        let sumSquared = 0;
-        for (let i = 0; i < pointA.length; i++) {
-            sumSquared += Math.pow(pointA[i] - pointB[i], 2);
-        }
-        return Math.sqrt(sumSquared);
-    };
-
-    const generateResults = async () => {
-        const analysisResult = processDataForAnalysis();
-        if (!analysisResult) return;
-
-        const { processedData, analysisIndices } = analysisResult;
-
-        const clusterResult = calculatePeerGroups(processedData, analysisIndices);
-        const {
-            assignments,
-            clusterSizes,
-            clusterPercentages,
-            anomalyIndices,
-            reasons
-        } = clusterResult;
-
-        const newColumns = [];
-        const dataUpdates = [];
-
-        let nextColumnIndex = Math.max(...variables.map(v => v.columnIndex)) + 1;
-
-        if (saveAnomalyIndex) {
-            const anomalyIndexColumnIndex = nextColumnIndex++;
-
-            newColumns.push({
-                columnIndex: anomalyIndexColumnIndex,
-                name: anomalyIndexName,
-                type: "NUMERIC" as const,
-                width: 8,
-                decimals: 2,
-                label: "Anomaly Index",
-                columns: 64,
-                align: "right" as const,
-                measure: "scale" as const,
-                role: "input" as const
-            });
-
-            for (let i = 0; i < processedData.length; i++) {
-                dataUpdates.push({
-                    row: i,
-                    col: anomalyIndexColumnIndex,
-                    value: anomalyIndices[i]
-                });
-            }
-        }
-
-        if (savePeerGroups) {
-            const peerIdColumnIndex = nextColumnIndex++;
-            newColumns.push({
-                columnIndex: peerIdColumnIndex,
-                name: `${peerGroupsRootName}Id`,
-                type: "NUMERIC" as const,
-                width: 8,
-                decimals: 0,
-                label: "Peer Group ID",
-                columns: 64,
-                align: "right" as const,
-                measure: "nominal" as const,
-                role: "input" as const
-            });
-
-            const peerSizeColumnIndex = nextColumnIndex++;
-            newColumns.push({
-                columnIndex: peerSizeColumnIndex,
-                name: `${peerGroupsRootName}Size`,
-                type: "NUMERIC" as const,
-                width: 8,
-                decimals: 0,
-                label: "Peer Group Size",
-                columns: 64,
-                align: "right" as const,
-                measure: "scale" as const,
-                role: "input" as const
-            });
-
-            const peerPctSizeColumnIndex = nextColumnIndex++;
-            newColumns.push({
-                columnIndex: peerPctSizeColumnIndex,
-                name: `${peerGroupsRootName}PctSize`,
-                type: "NUMERIC" as const,
-                width: 8,
-                decimals: 2,
-                label: "Peer Group Percentage Size",
-                columns: 64,
-                align: "right" as const,
-                measure: "scale" as const,
-                role: "input" as const
-            });
-
-            for (let i = 0; i < processedData.length; i++) {
-                const cluster = assignments[i] - 1;
-
-                dataUpdates.push({
-                    row: i,
-                    col: peerIdColumnIndex,
-                    value: assignments[i]
-                });
-
-                dataUpdates.push({
-                    row: i,
-                    col: peerSizeColumnIndex,
-                    value: clusterSizes[cluster]
-                });
-
-                dataUpdates.push({
-                    row: i,
-                    col: peerPctSizeColumnIndex,
-                    value: clusterPercentages[cluster]
-                });
-            }
-        }
-
-        if (saveReasons && parseInt(maxReasons) > 0) {
-            for (let r = 0; r < parseInt(maxReasons); r++) {
-                const reasonVarColumnIndex = nextColumnIndex++;
-                newColumns.push({
-                    columnIndex: reasonVarColumnIndex,
-                    name: `${reasonsRootName}Var_${r + 1}`,
-                    type: "STRING" as const,
-                    width: 32,
-                    decimals: 0,
-                    label: `Reason Variable ${r + 1}`,
-                    columns: 32,
-                    align: "left" as const,
-                    measure: "nominal" as const,
-                    role: "input" as const
-                });
-
-                const reasonMeasureColumnIndex = nextColumnIndex++;
-                newColumns.push({
-                    columnIndex: reasonMeasureColumnIndex,
-                    name: `${reasonsRootName}Measure_${r + 1}`,
-                    type: "NUMERIC" as const,
-                    width: 8,
-                    decimals: 2,
-                    label: `Reason Variable Impact Measure ${r + 1}`,
-                    columns: 64,
-                    align: "right" as const,
-                    measure: "scale" as const,
-                    role: "input" as const
-                });
-
-                const reasonValueColumnIndex = nextColumnIndex++;
-                newColumns.push({
-                    columnIndex: reasonValueColumnIndex,
-                    name: `${reasonsRootName}Value_${r + 1}`,
-                    type: "NUMERIC" as const,
-                    width: 8,
-                    decimals: 2,
-                    label: `Reason Variable Value ${r + 1}`,
-                    columns: 64,
-                    align: "right" as const,
-                    measure: "scale" as const,
-                    role: "input" as const
-                });
-
-                const reasonNormColumnIndex = nextColumnIndex++;
-                newColumns.push({
-                    columnIndex: reasonNormColumnIndex,
-                    name: `${reasonsRootName}Norm_${r + 1}`,
-                    type: "NUMERIC" as const,
-                    width: 8,
-                    decimals: 4,
-                    label: `Reason Variable Norm ${r + 1}`,
-                    columns: 64,
-                    align: "right" as const,
-                    measure: "scale" as const,
-                    role: "input" as const
-                });
-
-                for (let i = 0; i < processedData.length; i++) {
-                    if (r < reasons[i].length) {
-                        const reason = reasons[i][r];
-                        const variableName = analysisVariables.find(v => v.columnIndex === reason.variable)?.name || "";
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonVarColumnIndex,
-                            value: variableName
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonMeasureColumnIndex,
-                            value: reason.impact
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonValueColumnIndex,
-                            value: reason.value
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonNormColumnIndex,
-                            value: reason.norm
-                        });
-                    } else {
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonVarColumnIndex,
-                            value: ""
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonMeasureColumnIndex,
-                            value: null
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonValueColumnIndex,
-                            value: null
-                        });
-
-                        dataUpdates.push({
-                            row: i,
-                            col: reasonNormColumnIndex,
-                            value: null
-                        });
-                    }
-                }
-            }
-        }
-
-        return {
-            newColumns,
-            dataUpdates
-        };
-    };
-
-    const saveResultsToStore = async (results: any) => {
-        try {
-            // First create a log entry
-            const logEntry = {
-                log: `Unusual Cases Analysis: ${new Date().toLocaleString()}`
-            };
-
-            const logId = await addLog(logEntry);
-
-            // Then create an analytic entry
-            const analyticEntry = {
-                title: "Unusual Cases Analysis",
-                note: `Analysis performed with ${analysisVariables.length} variables.`
-            };
-
-            const analyticId = await addAnalytic(logId, analyticEntry);
-
-            // Then create statistic entries for each table
-            if (results && results.tables && Array.isArray(results.tables)) {
-                for (let i = 0; i < results.tables.length; i++) {
-                    const table = results.tables[i];
-
-                    // Determine which component this table belongs to
-                    const component = table.title === "Reason 1" ? "Reason Summary" : "Detect Anomaly";
-
-                    const statisticEntry = {
-                        title: table.title,
-                        output_data: JSON.stringify({ tables: [table] }),
-                        components: component,
-                        description: `Results for ${table.title}`
-                    };
-
-                    await addStatistic(analyticId, statisticEntry);
-                }
-            }
-        } catch (error) {
-            console.error("Error saving results to store:", error);
-        }
+    
+    const handleReset = () => {
+        setAnalysisVariables([]);
+        setCaseIdentifierVariable(null);
+        setActiveTab("variables");
+        setErrorMsg(null);
+        setSaveAnomalyIndex(false);
+        setAnomalyIndexName("AnomalyIndex");
+        setReplaceExisting(false);
+        setIdentificationCriteria("percentage");
+        setPercentageValue("5");
+        setFixedNumber("");
+        setUseMinimumValue(true);
+        setCutoffValue("2");
+        setMissingValuesOption("exclude");
+        setUseProportionMissing(false);
+        setShowUnusualCasesList(true);
+        setPeerGroupNorms(true);
+        setAnomalyIndices(true);
+        setReasonOccurrence(true);
+        setCaseProcessed(true);
     };
 
     const handleConfirm = async () => {
-        if (analysisVariables.length === 0) {
-            setErrorMsg("Please select at least one analysis variable.");
-            setActiveTab("variables"); // Switch to variables tab on error
-            return;
-        }
-        setErrorMsg(null); // Clear error on successful start
-
-        try {
-            // Set up a promise for the worker
-            const workerPromise = new Promise<void>((resolve, reject) => {
-                const worker = new Worker('/workers/unusualCasesWorker.js');
-
-                worker.onmessage = async (e) => {
-                    try {
-                        if (e.data.status === 'success') {
-                            // Save results to result store
-                            await saveResultsToStore(e.data.result);
-                            resolve();
-                        } else {
-                            setErrorMsg(e.data.error || "Worker processing failed");
-                            reject(new Error(e.data.error || "Worker processing failed"));
-                        }
-                    } catch (error) {
-                         setErrorMsg("Failed to process worker results.");
-                         reject(error);
-                    } finally {
-                        worker.terminate();
-                    }
-                };
-
-                worker.onerror = (error) => {
-                     setErrorMsg("Worker error occurred.");
-                     reject(error);
-                     worker.terminate(); // Ensure termination on error
-                };
-
-                // Send data to worker - pass the Variable objects
-                worker.postMessage({
-                    data,
-                    analysisVariables, // Pass full objects
-                    caseIdentifierVariable: caseIdentifierVariable, // Pass full object or null
-                    options: {
-                        percentageValue,
-                        fixedNumber,
-                        identificationCriteria,
-                        useMinimumValue,
-                        cutoffValue,
-                        minPeerGroups,
-                        maxPeerGroups,
-                        missingValuesOption,
-                        maxReasons
-                    }
-                });
-            });
-
-            // Use existing logic for dataset updates
-            // NOTE: generateResults needs to be aware of potential changes if it relied on variable list order matching data columns directly.
-            // However, it seems to correctly use variable.columnIndex from the selected variables.
-            const result = await generateResults();
-            if (!result) {
-                 setErrorMsg("Failed to generate results for saving.");
-                 return; // Stop if result generation failed
-            }
-
-            const { newColumns, dataUpdates } = result;
-
-            // Handle variable replacement logic
-            if (replaceExisting) {
-                const varNames = newColumns.map(v => v.name);
-                const existingVars = variables.filter(v => v.tempId && varNames.includes(v.name)); // Use tempId for filtering
-
-                for (const existingVar of existingVars) {
-                    // Assuming deleteVariable uses tempId or columnIndex internally
-                    await useVariableStore.getState().deleteVariable(existingVar.columnIndex); // Check if delete needs tempId
-                }
-            }
-
-            // Add new variables
-             for (const variable of newColumns) {
-                 // Ensure addVariable handles potential collisions or updates based on its internal logic
-                 await useVariableStore.getState().addVariable(variable);
-             }
-
-             // Update cell data
-             await updateCells(dataUpdates);
-
-             // Wait for worker to complete *after* dataset updates are done
-             await workerPromise;
-
-             // Close the modal only if everything succeeded
-             closeModal();
-
-        } catch (error) {
-            console.error("Error performing unusual cases analysis:", error);
-            // Error message might already be set by worker or generateResults
-            if (!errorMsg) {
-                setErrorMsg("An unexpected error occurred during the analysis.");
-            }
-            // Do not close modal on error
-        }
+        // Placeholder for future logic
+        console.log("Confirmed");
+        onClose();
     };
 
-    // Reset Function
-     const handleReset = () => {
-         setAnalysisVariables([]);
-         setCaseIdentifierVariable(null);
-         // Reset available variables based on current `variables` store state
-         const validVars = variables.filter(v => v.name !== "").map(v => ({
-             ...v,
-             tempId: v.tempId || `temp_${v.columnIndex}`
-         }));
-         setAvailableVariables(validVars);
-         setHighlightedVariable(null);
-         setErrorMsg(null);
-         setActiveTab("variables");
-
-         // Reset other tabs' state
-         setShowUnusualCasesList(true);
-         setPeerGroupNorms(false);
-         setAnomalyIndices(false);
-         setReasonOccurrence(false);
-         setCaseProcessed(false);
-         setSaveAnomalyIndex(false);
-         setAnomalyIndexName("AnomalyIndex");
-         setSavePeerGroups(false);
-         setPeerGroupsRootName("Peer");
-         setSaveReasons(false);
-         setReasonsRootName("Reason");
-         setReplaceExisting(false);
-         setExportFilePath("");
-         setMissingValuesOption("exclude");
-         setUseProportionMissing(true);
-         setIdentificationCriteria("percentage");
-         setPercentageValue("5");
-         setFixedNumber("");
-         setUseMinimumValue(true);
-         setCutoffValue("2");
-         setMinPeerGroups("1");
-         setMaxPeerGroups("15");
-         setMaxReasons("1");
-     };
+    // --- Simplified Props for each tab ---
+    const variablesTabProps: VariablesTabProps = { availableVariables, analysisVariables, caseIdentifierVariable, highlightedVariable, setHighlightedVariable, moveToAnalysisVariables, moveToCaseIdentifierVariable, moveToAvailableVariables, reorderVariables, errorMsg, getVariableIcon, getDisplayName, tourActive, currentStep, tourSteps };
+    const optionsTabProps: OptionsTabProps = { identificationCriteria, setIdentificationCriteria, percentageValue, setPercentageValue, fixedNumber, setFixedNumber, useMinimumValue, setUseMinimumValue, cutoffValue, setCutoffValue, tourActive, currentStep, tourSteps };
+    const outputTabProps: OutputTabProps = { showUnusualCasesList, setShowUnusualCasesList, peerGroupNorms, setPeerGroupNorms, anomalyIndices, setAnomalyIndices, reasonOccurrence, setReasonOccurrence, caseProcessed, setCaseProcessed, tourActive, currentStep, tourSteps };
+    const saveTabProps: SaveTabProps = { saveAnomalyIndex, setSaveAnomalyIndex, anomalyIndexName, setAnomalyIndexName, replaceExisting, setReplaceExisting, tourActive, currentStep, tourSteps };
+    const missingValuesTabProps: MissingValuesTabProps = { missingValuesOption, setMissingValuesOption, useProportionMissing, setUseProportionMissing, tourActive, currentStep, tourSteps };
 
     return (
         <>
-            {/* The main Dialog component (or its instantiation context) should provide the title "Unusual Cases".
-                 This content component will only add a header if it's in a sidebar. */}
-            {/* {containerType === "sidebar" && (
-                <div className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <h2 className="text-xl font-semibold">Identify Unusual Cases</h2>
-                </div>
-            )} */}
+            <div className={`flex flex-col ${containerType === "sidebar" ? "h-full" : "max-h-[85vh]"} overflow-hidden`}>
+                {containerType === "dialog" && (
+                    <DialogHeader className="px-6 py-4 border-b">
+                        <DialogTitle className="text-xl font-semibold">Identify Unusual Cases</DialogTitle>
+                    </DialogHeader>
+                )}
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-border flex-shrink-0">
-                    <TabsList className="bg-muted rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="output"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'output' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Output
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="save"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'save' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Save
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="missingValues"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'missingValues' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Missing Values
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="options"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'options' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Options
-                        </TabsTrigger>
-                    </TabsList>
-                </div>
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="flex-grow flex flex-col">
+                    <div className="border-b">
+                        <TabsList className="bg-muted rounded-none h-9 p-0">
+                            <TabsTrigger id="variables-tab-trigger" value="variables" className="px-3 h-8 rounded-none text-xs">Variables</TabsTrigger>
+                            <TabsTrigger id="options-tab-trigger" value="options" className="px-3 h-8 rounded-none text-xs">Options</TabsTrigger>
+                            <TabsTrigger id="output-tab-trigger" value="output" className="px-3 h-8 rounded-none text-xs">Output</TabsTrigger>
+                            <TabsTrigger id="save-tab-trigger" value="save" className="px-3 h-8 rounded-none text-xs">Save</TabsTrigger>
+                            <TabsTrigger id="missing-tab-trigger" value="missing" className="px-3 h-8 rounded-none text-xs">Missing Values</TabsTrigger>
+                        </TabsList>
+                    </div>
+                    
+                    <div className="flex-grow overflow-y-auto">
+                        <TabsContent value="variables" className="p-4">
+                            <VariablesTab {...variablesTabProps} />
+                        </TabsContent>
+                        <TabsContent value="options" className="p-4">
+                            <OptionsTab {...optionsTabProps} />
+                        </TabsContent>
+                        <TabsContent value="output" className="p-4">
+                            <OutputTab {...outputTabProps} />
+                        </TabsContent>
+                        <TabsContent value="save" className="p-4">
+                            <SaveTab {...saveTabProps} />
+                        </TabsContent>
+                        <TabsContent value="missing" className="p-4">
+                            <MissingValuesTab {...missingValuesTabProps} />
+                        </TabsContent>
+                    </div>
+                </Tabs>
 
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow focus-visible:ring-0 focus-visible:ring-offset-0">
-                    <VariablesTab
-                        availableVariables={availableVariables}
-                        analysisVariables={analysisVariables}
-                        caseIdentifierVariable={caseIdentifierVariable}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        moveToAnalysisVariables={moveToAnalysisVariables}
-                        moveToCaseIdentifierVariable={moveToCaseIdentifierVariable}
-                        reorderVariables={reorderVariables}
-                        errorMsg={errorMsg}
-                    />
-                </TabsContent>
-
-                <TabsContent value="output" className="p-6 overflow-y-auto flex-grow">
-                    <OutputTab
-                        showUnusualCasesList={showUnusualCasesList}
-                        setShowUnusualCasesList={setShowUnusualCasesList}
-                        peerGroupNorms={peerGroupNorms}
-                        setPeerGroupNorms={setPeerGroupNorms}
-                        anomalyIndices={anomalyIndices}
-                        setAnomalyIndices={setAnomalyIndices}
-                        reasonOccurrence={reasonOccurrence}
-                        setReasonOccurrence={setReasonOccurrence}
-                        caseProcessed={caseProcessed}
-                        setCaseProcessed={setCaseProcessed}
-                    />
-                </TabsContent>
-
-                <TabsContent value="save" className="p-6 overflow-y-auto flex-grow">
-                    <SaveTab
-                        saveAnomalyIndex={saveAnomalyIndex}
-                        setSaveAnomalyIndex={setSaveAnomalyIndex}
-                        anomalyIndexName={anomalyIndexName}
-                        setAnomalyIndexName={setAnomalyIndexName}
-                        savePeerGroups={savePeerGroups}
-                        setSavePeerGroups={setSavePeerGroups}
-                        peerGroupsRootName={peerGroupsRootName}
-                        setPeerGroupsRootName={setPeerGroupsRootName}
-                        saveReasons={saveReasons}
-                        setSaveReasons={setSaveReasons}
-                        reasonsRootName={reasonsRootName}
-                        setReasonsRootName={setReasonsRootName}
-                        replaceExisting={replaceExisting}
-                        setReplaceExisting={setReplaceExisting}
-                        exportFilePath={exportFilePath}
-                        setExportFilePath={setExportFilePath}
-                    />
-                </TabsContent>
-
-                <TabsContent value="missingValues" className="p-6 overflow-y-auto flex-grow">
-                    <MissingValuesTab
-                        missingValuesOption={missingValuesOption}
-                        setMissingValuesOption={setMissingValuesOption}
-                        useProportionMissing={useProportionMissing}
-                        setUseProportionMissing={setUseProportionMissing}
-                    />
-                </TabsContent>
-
-                <TabsContent value="options" className="p-6 overflow-y-auto flex-grow">
-                    <OptionsTab
-                        identificationCriteria={identificationCriteria}
-                        setIdentificationCriteria={setIdentificationCriteria}
-                        percentageValue={percentageValue}
-                        setPercentageValue={setPercentageValue}
-                        fixedNumber={fixedNumber}
-                        setFixedNumber={setFixedNumber}
-                        useMinimumValue={useMinimumValue}
-                        setUseMinimumValue={setUseMinimumValue}
-                        cutoffValue={cutoffValue}
-                        setCutoffValue={setCutoffValue}
-                        minPeerGroups={minPeerGroups}
-                        setMinPeerGroups={setMinPeerGroups}
-                        maxPeerGroups={maxPeerGroups}
-                        setMaxPeerGroups={setMaxPeerGroups}
-                        maxReasons={maxReasons}
-                        setMaxReasons={setMaxReasons}
-                    />
-                </TabsContent>
-            </Tabs>
-
-            <div className={`px-6 py-4 border-t border-border bg-muted flex-shrink-0 ${containerType === "dialog" ? "rounded-b-md" : ""}`}>
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                        onClick={handleConfirm}
-                    >
-                        OK
-                    </Button>
-                    {/* <Button
-                        variant="outline"
-                        className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                    >
-                        Paste
-                    </Button> */}
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={handleReset}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="h-8 px-4"
-                        onClick={() => alert("Help for Unusual Cases")}
-                    >
-                        Help
-                    </Button>
-                </div>
+                <DialogFooter className="px-6 py-3 border-t flex items-center justify-between bg-secondary flex-shrink-0">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={startTour} className="text-muted-foreground hover:text-foreground">
+                                    <HelpCircle size={18} />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Start Guided Tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <div>
+                        <Button variant="outline" className="mr-2" onClick={handleReset}>Reset</Button>
+                        <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
+                        <Button onClick={handleConfirm}>OK</Button>
+                    </div>
+                </DialogFooter>
             </div>
+
+            <AnimatePresence>
+                {tourActive && currentTargetElement && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
         </>
     );
 };
 
-// Main component that handles different container types
 const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({ 
     onClose,
     containerType = "dialog" 
 }) => {
-    // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
@@ -1055,10 +321,9 @@ const IdentifyUnusualCases: FC<IdentifyUnusualCasesProps> = ({
         );
     }
 
-    // For dialog mode, use Dialog and DialogContent
     return (
-        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <Dialog open={true} onOpenChange={() => onClose()}>
+            <DialogContent className="max-w-4xl w-full p-0 flex flex-col">
                 <UnusualCasesContent onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>

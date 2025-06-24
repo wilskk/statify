@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { Variable } from '@/types/Variable';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { 
-  VariableSelectionProps, 
-  VariableSelectionResult, 
+  VariableSelectionProps,
   HighlightedVariableInfo 
 } from '../types';
 
 export const useVariableSelection = ({
   initialVariables = []
-}: VariableSelectionProps = {}): VariableSelectionResult => {
+}: Omit<VariableSelectionProps, 'resetVariableSelection'> = {}) => {
   const { variables } = useVariableStore();
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
   const [selectedVariables, setSelectedVariables] = useState<Variable[]>(initialVariables);

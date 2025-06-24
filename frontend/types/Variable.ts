@@ -74,5 +74,5 @@ export interface Variable {
 
 export interface VariableData {
     variable: Variable;
-    data: (string | number)[];
+    data: (string | number | null)[];
 }

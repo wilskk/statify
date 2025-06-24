@@ -13,8 +13,8 @@ export {
 export { default as EditMenu } from './EditMenu';
 
 // Export FindReplace components and types
-export { FindAndReplaceModal, FindReplaceMode } from './FindReplace/FindReplace';
-export { isFindReplaceModalType } from './FindReplace/FindReplace';
+export { FindAndReplaceModal, isFindReplaceModalType } from './FindReplace/FindReplace';
+export { FindReplaceMode } from './FindReplace/types';
 
 // Export GoTo components and types
 export { default as GoToModal, GoToMode } from './GoTo/GoTo';

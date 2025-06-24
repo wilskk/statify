@@ -16,5 +16,5 @@ export interface CsvExportOptions {
 
 export interface ExportCsvProps extends UseExportCsvOptions {
     onClose: () => void;
-    containerType?: "dialog" | "sidebar";
+    containerType?: "dialog" | "sidebar" | "panel";
 } 

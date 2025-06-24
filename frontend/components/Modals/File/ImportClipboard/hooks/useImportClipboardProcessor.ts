@@ -10,8 +10,8 @@ import {
 } from "../utils/utils";
 
 export const useImportClipboardProcessor = () => {
-    const { updateCells, resetData, addRows } = useDataStore();
-    const { resetVariables, addVariable } = useVariableStore();
+    const { setData } = useDataStore();
+    const { overwriteVariables } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
     const processClipboardData = useCallback(async (
@@ -50,9 +50,6 @@ export const useImportClipboardProcessor = () => {
                 throw new Error("No valid data found in the pasted text");
             }
             
-            await resetData();
-            await resetVariables();
-            
             let headers: string[];
             let dataRows: string[][];
             
@@ -67,6 +64,7 @@ export const useImportClipboardProcessor = () => {
                 dataRows = parsedDataResult;
             }
             
+            const newVariables: Variable[] = [];
             for (let colIndex = 0; colIndex < headers.length; colIndex++) {
                 const colData = dataRows.map(row => row[colIndex] || '');
                 const variableName = headers[colIndex] || `VAR${String(colIndex + 1).padStart(3, '0')}`;
@@ -104,27 +102,15 @@ export const useImportClipboardProcessor = () => {
                     missing: null
                 };
                 
-                await addVariable(newVar);
+                newVariables.push(newVar);
             }
             
-            if (dataRows.length > 0) {
-                const rowIndices = Array.from({ length: dataRows.length }, (_, i) => i);
-                await addRows(rowIndices);
-            }
-            
-            const allUpdates = [];
-            for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex++) {
-                const row = dataRows[rowIndex];
-                for (let colIndex = 0; colIndex < row.length; colIndex++) {
-                    let valueToSet = row[colIndex] || '';
-                    allUpdates.push({ row: rowIndex, col: colIndex, value: valueToSet });
-                }
-            }
-            
-            if (allUpdates.length > 0) {
-                await updateCells(allUpdates);
-            }
-            
+            // Bulk set data
+            setData(dataRows);
+
+            // Bulk set variables
+            overwriteVariables(newVariables);
+
             return { headers, data: dataRows };
             
         } catch (error) {
@@ -133,13 +119,7 @@ export const useImportClipboardProcessor = () => {
         } finally {
             setIsProcessing(false);
         }
-    }, [
-        updateCells, 
-        resetData, 
-        addRows, 
-        resetVariables, 
-        addVariable,
-    ]);
+    }, [setData, overwriteVariables]);
 
     return {
         isProcessing,

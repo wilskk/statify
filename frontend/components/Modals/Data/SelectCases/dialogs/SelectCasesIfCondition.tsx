@@ -169,25 +169,18 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
     const functionGroups = [
         "All",
         "Math",
-        "Text",
-        "Statistical"
+        "Text"
     ];
 
-    // Extended list of functions to match examples section height
+    // Simplified list of functions - focusing on essential ones
     const allFunctions = [
         // Math functions
         "ABS(x)", 
         "SQRT(x)",
         "ROUND(x)",
-        "INT(x)",
-        "MAX(x, y, ...)",
-        "MIN(x, y, ...)",
-        "SUM(x, y, ...)",
-        "POW(x, y)",
-        "EXP(x)",
-        "LOG(x)",
-        "LOG10(x)",
-        "MOD(x, y)",
+        "MAX(x, y)",
+        "MIN(x, y)",
+        "SUM(x, y)",
         
         // Text functions
         "CONCAT(str1, str2)",
@@ -195,20 +188,10 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
         "LOWER(text)",
         "UPPER(text)",
         "TRIM(text)",
-        "LEFT(text, n)",
-        "RIGHT(text, n)",
-        "SUBSTRING(text, start, end)",
         
-        // Statistical functions
-        "MEAN(x, y, ...)",
-        "MEDIAN(x, y, ...)",
-        "SD(x, y, ...)",
-        "COUNT(x, y, ...)",
-        "MISSING(var)",
-        "VARIANCE(x, y, ...)",
-        "STDEV(x, y, ...)",
-        "PERCENTILE(values, k)",
-        "QUARTILE(values, quart)"
+        // Statistical simplified
+        "MEAN(x, y)",
+        "COUNT(x)"
     ];
 
     // Filter functions based on selected group and search
@@ -218,9 +201,8 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
         // Filter by group
         if (selectedFunctionGroup !== "All") {
             const groupMap: Record<string, string[]> = {
-                "Math": ["ABS", "SQRT", "ROUND", "INT", "MAX", "MIN", "SUM"],
+                "Math": ["ABS", "SQRT", "ROUND", "MAX", "MIN", "SUM"],
                 "Text": ["CONCAT", "LENGTH", "LOWER", "UPPER", "TRIM"],
-                "Statistical": ["MEAN", "MEDIAN", "SD", "COUNT", "MISSING"]
             };
             
             const prefixes = groupMap[selectedFunctionGroup] || [];
@@ -291,22 +273,25 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
 
     return (
         <DialogContent
-            className="
-                max-w-full sm:max-w-[800px] w-full p-0 bg-popover border border-border
-                max-h-[100dvh] overflow-y-auto
-                sm:rounded-lg
-            "
-            style={{ maxHeight: "100dvh" }}
+            className="w-full p-0 border border-border rounded-md"
+            style={{ 
+                maxWidth: "700px",
+                width: "100%",
+                maxHeight: "550px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+            }}
         >
-            <div className="px-2 sm:px-4 py-2">
+            <div className="px-3 py-2 flex-shrink-0">
                 <DialogHeader className="p-0">
-                    <DialogTitle className="text-sm sm:text-base font-semibold text-popover-foreground flex items-center">
+                    <DialogTitle className="text-sm font-semibold flex items-center">
                         <span>Select Cases: If Condition</span>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 ml-1">
-                                        <HelpCircle size={16} />
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                                        <HelpCircle size={14} />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
@@ -317,15 +302,13 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </DialogTitle>
                 </DialogHeader>
             </div>
-            <Separator />
-            <div className="p-2 sm:p-3 md:p-4">
-                <div className="
-                    flex flex-col gap-2 md:grid md:grid-cols-12 md:gap-4
-                ">
+            <Separator className="flex-shrink-0" />
+            <div className="p-3 flex-grow overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                     {/* Left Column - Variables List */}
                     <div className="md:col-span-3">
-                        <Label className="text-xs font-medium block mb-1">Variables:</Label>
-                        <div className="border border-border rounded-md min-h-[100px] max-h-[160px] sm:max-h-[180px] bg-card overflow-hidden">
+                        <Label className="mb-1 block text-xs">Variables:</Label>
+                        <div className="border rounded-md bg-card h-[150px] overflow-hidden">
                             <ScrollArea className="h-full w-full">
                                 <div className="p-1">
                                     {variables.map((variable) => (
@@ -333,7 +316,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={variable.columnIndex}
                                             className={`
                                                 flex items-center p-1.5 border rounded-md cursor-pointer mb-1
-                                                hover:bg-accent text-xs sm:text-sm
+                                                hover:bg-accent text-xs
                                                 ${selectedVariable === variable.name ? "bg-primary/5 border-primary/40" : "border-border"}
                                             `}
                                             onClick={() => handleVariableClick(variable)}
@@ -341,7 +324,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                         >
                                             <div className="flex items-center w-full">
                                                 {getVariableIcon(variable)}
-                                                <span className="truncate">{variable.name}</span>
+                                                <span className="truncate ml-1">{variable.name}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -351,12 +334,12 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
 
                     {/* Middle Column - Expression Builder */}
-                    <div className="md:col-span-5 mt-2 md:mt-0">
-                        <div className="flex flex-col">
+                    <div className="md:col-span-5">
+                        <div className="flex flex-col h-full">
                             {/* Expression Input */}
                             <div className="mb-2">
                                 <div className="flex justify-between items-center mb-1">
-                                    <Label className="text-xs font-medium">Expression:</Label>
+                                    <Label className="text-xs">Expression:</Label>
                                     <div className="flex gap-1">
                                         <Button 
                                             variant="ghost" 
@@ -380,7 +363,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                     ref={textareaRef}
                                     value={condition}
                                     onChange={(e) => setCondition(e.target.value)}
-                                    className="min-h-[60px] text-xs sm:text-sm p-2 bg-muted font-mono resize-none"
+                                    className="min-h-[60px] h-[60px] p-2 bg-muted/50 font-mono resize-none text-xs"
                                     placeholder="Enter condition expression..."
                                     spellCheck={false}
                                     style={{ lineHeight: 1.5 }}
@@ -395,7 +378,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-card hover:bg-accent px-1"
+                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => handleOperatorClick(op.value)}
                                         >
                                             {op.label}
@@ -406,7 +389,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-card hover:bg-accent px-1"
+                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => handleOperatorClick(op.value)}
                                         >
                                             {op.label}
@@ -433,7 +416,7 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                             key={idx}
                                             variant="outline"
                                             size="sm"
-                                            className="h-6 text-xs bg-card hover:bg-accent px-1"
+                                            className="h-6 text-xs bg-muted/30 hover:bg-muted px-1"
                                             onClick={() => insertAtCursor(btn.value)}
                                         >
                                             {btn.label}
@@ -443,31 +426,47 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             </div>
 
                             {/* Common Expression Examples */}
-                            <div className="border border-border rounded-md p-2 bg-muted">
-                                <Label className="text-xs font-medium block mb-1">Examples:</Label>
-                                <div className="space-y-1 overflow-y-auto h-[52px]">
-                                    <Button variant="ghost" size="sm" className="h-6 text-xs justify-start px-2 font-mono w-full" 
-                                            onClick={() => setCondition("age > 25")}>
-                                        age {">"} 25
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-6 text-xs justify-start px-2 font-mono w-full"
-                                            onClick={() => setCondition("income >= 50000 & education > 12")}>
-                                        income {">="} 50000 & education {">"} 12
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="h-6 text-xs justify-start px-2 font-mono w-full"
-                                            onClick={() => setCondition("gender == \"F\" | gender == \"f\"")}>
-                                        gender == &quot;F&quot; | gender == &quot;f&quot;
-                                    </Button>
+                            <div className="border rounded-md p-2 bg-muted/50 flex-grow">
+                                <Label className="mb-1 block text-xs">Examples:</Label>
+                                <div className="overflow-hidden">
+                                    <ScrollArea className="h-[60px] w-full">
+                                        <div className="space-y-1">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 text-xs justify-start px-2 font-mono w-full" 
+                                                onClick={() => setCondition("age > 25")}
+                                            >
+                                                age {">"} 25
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 text-xs justify-start px-2 font-mono w-full"
+                                                onClick={() => setCondition("income >= 50000 & education > 12")}
+                                            >
+                                                income {">="} 50000 & education {">"} 12
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 text-xs justify-start px-2 font-mono w-full"
+                                                onClick={() => setCondition("gender == \"F\" | gender == \"f\"")}
+                                            >
+                                                gender == &quot;F&quot; | gender == &quot;f&quot;
+                                            </Button>
+                                        </div>
+                                    </ScrollArea>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Right Column - Function Groups */}
-                    <div className="md:col-span-4 mt-2 md:mt-0">
-                        <div className="flex flex-col">
+                    <div className="md:col-span-4">
+                        <div className="flex flex-col h-full">
                             <div className="mb-2">
-                                <Label className="text-xs font-medium block mb-1">Function group:</Label>
+                                <Label className="mb-1 block text-xs">Function group:</Label>
                                 <Select
                                     value={selectedFunctionGroup}
                                     onValueChange={setSelectedFunctionGroup}
@@ -486,9 +485,9 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                             </div>
 
                             <div className="mb-2">
-                                <Label className="text-xs font-medium block mb-1">Search functions:</Label>
+                                <Label className="mb-1 block text-xs">Search functions:</Label>
                                 <div className="relative">
-                                    <Search className="absolute left-2 top-1.5 h-4 w-4 text-muted-foreground" />
+                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         value={functionSearch}
                                         onChange={(e) => setFunctionSearch(e.target.value)}
@@ -498,9 +497,9 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                                 </div>
                             </div>
 
-                            <div>
-                                <Label className="text-xs font-medium block mb-1">Functions:</Label>
-                                <div className="border border-border rounded-md min-h-[100px] max-h-[160px] sm:max-h-[180px] bg-card">
+                            <div className="flex-grow">
+                                <Label className="mb-1 block text-xs">Functions:</Label>
+                                <div className="border rounded-md bg-card overflow-hidden h-[150px]">
                                     <ScrollArea className="h-full w-full">
                                         <div className="p-1">
                                             {filteredFunctions.length > 0 ? (
@@ -530,15 +529,17 @@ const SelectCasesIfCondition: FC<SelectCasesIfConditionProps> = ({
                     </div>
                 </div>
             </div>
-            <Separator />
-            <DialogFooter className="p-2 sm:p-3">
+            <Separator className="flex-shrink-0" />
+            <DialogFooter className="px-3 py-2 flex-shrink-0">
                 {validationError && (
-                    <div className="w-full mb-2">
+                    <div className="w-full mb-1">
                         <p className="text-xs text-destructive">{validationError}</p>
                     </div>
                 )}
-                <Button variant="outline" className="h-8 px-4 text-xs sm:text-sm mr-2" onClick={onClose}>Cancel</Button>
-                <Button className="h-8 px-4 text-xs sm:text-sm bg-primary hover:bg-primary/90" onClick={handleContinue}>Continue</Button>
+                <div className="flex gap-2 ml-auto">
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onClose}>Cancel</Button>
+                    <Button size="sm" className="h-7 text-xs" onClick={handleContinue}>Continue</Button>
+                </div>
             </DialogFooter>
         </DialogContent>
     );

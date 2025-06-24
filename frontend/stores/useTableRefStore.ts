@@ -1,30 +1,22 @@
 import { create } from "zustand";
-import { immer } from "zustand/middleware/immer"; // Menggunakan immer jika konsisten dengan store lain
-import { RefObject } from "react";
-import Handsontable from "handsontable";
-
-interface HotTableComponent {
-    hotInstance: Handsontable;
-}
+import React from "react";
 
 export interface TableRefState {
-    dataTableRef: RefObject<HotTableComponent> | null;
-    variableTableRef: RefObject<HotTableComponent> | null;
-    setDataTableRef: (ref: RefObject<HotTableComponent> | null) => void;
-    setVariableTableRef: (ref: RefObject<HotTableComponent> | null) => void;
+    viewMode: 'numeric' | 'label';
+    setViewMode: (mode: 'numeric' | 'label') => void;
+    toggleViewMode: () => void;
+    dataTableRef: React.RefObject<any> | null;
+    variableTableRef: React.RefObject<any> | null;
+    setDataTableRef: (ref: React.RefObject<any>) => void;
+    setVariableTableRef: (ref: React.RefObject<any>) => void;
 }
 
-export const useTableRefStore = create<TableRefState>()(
-    immer((set) => ({
-        dataTableRef: null,
-        variableTableRef: null,
-
-        setDataTableRef: (ref) => {
-            set({ dataTableRef: ref });
-        },
-
-        setVariableTableRef: (ref) => {
-            set({ variableTableRef: ref });
-        },
-    }))
-);
+export const useTableRefStore = create<TableRefState>((set) => ({
+    viewMode: 'numeric',
+    setViewMode: (mode) => set({ viewMode: mode }),
+    toggleViewMode: () => set((state) => ({ viewMode: state.viewMode === 'numeric' ? 'label' : 'numeric' })),
+    dataTableRef: null,
+    variableTableRef: null,
+    setDataTableRef: (ref) => set({ dataTableRef: ref }),
+    setVariableTableRef: (ref) => set({ variableTableRef: ref }),
+}));

@@ -202,7 +202,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
     };
 
     return (
-        <div className="my-4">
+        <div className="my-2">
             {parsedData.tables.map((table, tableIndex) => {
                 const { title, columnHeaders, rows } = table;
                 const levels = buildColumnLevels(columnHeaders);
@@ -215,7 +215,7 @@ const DataTableRenderer: React.FC<DataTableProps> = ({ data }) => {
                 return (
                     <table
                         key={tableIndex}
-                        className="border-collapse border border-border text-sm mb-6"
+                        className="border-collapse border border-border text-sm mb-3"
                     >
                         <thead>
                         <tr>
