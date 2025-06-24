@@ -105,9 +105,6 @@ export const KNNContainer = ({ onClose }: KNNContainerProps) => {
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

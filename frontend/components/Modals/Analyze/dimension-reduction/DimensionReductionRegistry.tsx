@@ -47,6 +47,21 @@ const OptimalScalingModal = lazy(() =>
         "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-main"
     ).then((module) => ({ default: module.OptScaContainer }))
 );
+const OptimalScalingCatpcaModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/optimal-scaling-catpca-main"
+    ).then((module) => ({ default: module.OptScaCatpcaContainer }))
+);
+const OptimalScalingOveralsModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/optimal-scaling-overals-main"
+    ).then((module) => ({ default: module.OptScaOveralsContainer }))
+);
+const OptimalScalingMcaModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/optimal-scaling-mca-main"
+    ).then((module) => ({ default: module.OptScaMCAContainer }))
+);
 
 /**
  * DIMENSION_REDUCTION_MODAL_COMPONENTS - Registry for dimension reduction modal components
@@ -63,8 +78,17 @@ export const DIMENSION_REDUCTION_MODAL_COMPONENTS: Record<
     [ModalType.ModalCorrespondenceAnalysis]: withSuspense(
         CorrespondenceAnalysisModal as any
     ) as React.ComponentType<BaseModalProps>,
-    [ModalType.ModalOptimalScaling]: withSuspense(
+    [ModalType.ModalDROptimalScaling]: withSuspense(
         OptimalScalingModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalOptimalScalingCATPCA]: withSuspense(
+        OptimalScalingCatpcaModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalOptimalScalingOVERALS]: withSuspense(
+        OptimalScalingOveralsModal as any
+    ) as React.ComponentType<BaseModalProps>,
+    [ModalType.ModalOptimalScalingMCA]: withSuspense(
+        OptimalScalingMcaModal as any
     ) as React.ComponentType<BaseModalProps>,
 };
 
@@ -100,5 +124,8 @@ export const DIMENSION_REDUCTION_MODAL_CONTAINER_PREFERENCES: Partial<
 > = {
     [ModalType.ModalFactor]: "sidebar",
     [ModalType.ModalCorrespondenceAnalysis]: "sidebar",
-    [ModalType.ModalOptimalScaling]: "sidebar",
+    [ModalType.ModalDROptimalScaling]: "sidebar",
+    [ModalType.ModalOptimalScalingCATPCA]: "sidebar",
+    [ModalType.ModalOptimalScalingOVERALS]: "sidebar",
+    [ModalType.ModalOptimalScalingMCA]: "sidebar",
 };

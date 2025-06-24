@@ -79,20 +79,20 @@ export const OptScaInitial = ({
         setIsDefineOpen(false);
         onContinue(mainState);
 
-        // if (selectedAnalysis === "Category Principal Components") {
-        //     closeModal();
-        //     openModal(ModalType.OptimalScalingCATPCA);
-        // }
+        if (selectedAnalysis === "Category Principal Components") {
+            closeModal();
+            openModal(ModalType.ModalOptimalScalingCATPCA);
+        }
 
-        // if (selectedAnalysis === "Nonlinear Canonical Correlation") {
-        //     closeModal();
-        //     openModal(ModalType.OptimalScalingOVERALS);
-        // }
+        if (selectedAnalysis === "Nonlinear Canonical Correlation") {
+            closeModal();
+            openModal(ModalType.ModalOptimalScalingOVERALS);
+        }
 
-        // if (selectedAnalysis === "Multiple Correspondence Analysis") {
-        //     closeModal();
-        //     openModal(ModalType.OptimalScalingMCA);
-        // }
+        if (selectedAnalysis === "Multiple Correspondence Analysis") {
+            closeModal();
+            openModal(ModalType.ModalOptimalScalingMCA);
+        }
     };
 
     const handleReset = () => {
