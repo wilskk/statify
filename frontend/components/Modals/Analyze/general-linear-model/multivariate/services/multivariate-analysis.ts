@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { MultivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate-worker";
-import init from "@/wasm/pkg";
 
 export async function analyzeMultivariate({
     configData,
@@ -45,7 +44,7 @@ export async function analyzeMultivariate({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const multivariate = new MultivariateAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,

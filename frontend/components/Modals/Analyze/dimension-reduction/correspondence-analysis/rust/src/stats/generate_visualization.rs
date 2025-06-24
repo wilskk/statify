@@ -1,4 +1,4 @@
-use crate::correspondence::models::{ config::CorrespondenceAnalysisConfig, data::AnalysisData };
+use crate::models::{ config::CorrespondenceAnalysisConfig, data::AnalysisData };
 
 use super::core::{ calculate_column_points, calculate_row_points };
 

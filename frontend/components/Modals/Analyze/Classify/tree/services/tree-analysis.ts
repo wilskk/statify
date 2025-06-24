@@ -1,14 +1,11 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { TreeAnalysisType } from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
-import init from "@/wasm/pkg";
 
 export async function analyzeTree({
     configData,
     dataVariables,
     variables,
 }: TreeAnalysisType) {
-    await init();
-
     const DependentVariable = configData.main.DependentTargetVar
         ? [configData.main.DependentTargetVar]
         : [];

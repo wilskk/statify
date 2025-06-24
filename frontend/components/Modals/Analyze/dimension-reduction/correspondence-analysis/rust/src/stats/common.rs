@@ -2,7 +2,7 @@ use std::collections::{ HashMap, HashSet };
 
 use statrs::distribution::{ ChiSquared, ContinuousCDF };
 
-use crate::correspondence::models::{
+use crate::models::{
     config::{ CorrespondenceAnalysisConfig, DefineRangeConfig },
     data::{ AnalysisData, DataRecord, DataValue },
     result::CorrespondenceTable,

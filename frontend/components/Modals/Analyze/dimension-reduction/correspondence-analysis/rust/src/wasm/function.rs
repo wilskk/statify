@@ -1,13 +1,13 @@
 use wasm_bindgen::prelude::*;
 
-use crate::correspondence::models::{
+use crate::models::{
     config::CorrespondenceAnalysisConfig,
     data::AnalysisData,
     result::CorrespondenceAnalysisResult,
 };
-use crate::correspondence::stats::core;
-use crate::correspondence::utils::converter::format_result;
-use crate::correspondence::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::stats::core;
+use crate::utils::converter::format_result;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
 
 pub fn run_analysis(
     data: &AnalysisData,

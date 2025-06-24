@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { VarianceCompsAnalysisType } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components-worker";
-import init from "@/wasm/pkg";
 
 export async function analyzeVarianceComps({
     configData,
@@ -53,7 +52,7 @@ export async function analyzeVarianceComps({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const varianceComps = new VarianceComponentsAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,

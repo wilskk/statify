@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocCurveAnalysisType } from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
-import init from "@/wasm/pkg";
 import { transformROCCurveResult } from "./roc-curve-analysis-formatter";
 import { resultROCCurve } from "./roc-curve-analysis-output";
 
@@ -31,7 +30,7 @@ export async function analyzeRocCurve({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const rocCurve = new RocCurve(
     //     slicedDataForTest,
     //     slicedDataForState,

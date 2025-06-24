@@ -1,4 +1,3 @@
-// kmeans-analysis-formatter.ts
 import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table, Row } from "@/types/Table";
 

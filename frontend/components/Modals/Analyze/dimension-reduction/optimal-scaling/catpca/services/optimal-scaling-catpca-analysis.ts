@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaCatpcaAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca-worker";
-import init from "@/wasm/pkg";
 
 export async function analyzeOptScaCatpca({
     configData,
@@ -35,7 +34,7 @@ export async function analyzeOptScaCatpca({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const catpca = new OptScaAnalysis(
     //     slicedDataForAnalysis,
     //     slicedDataForSupplement,

@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { HierClusAnalysisType } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster-worker";
-import init from "@/wasm/pkg";
 import { resultHierarchicalCluster } from "./hierarchical-cluster-analysis-output";
 import { transformHierClusResult } from "./hierarchical-cluster-analysis-formatter";
 
@@ -32,7 +31,7 @@ export async function analyzeHierClus({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const hc = new HierarchicalCluster(
     //     slicedDataForCluster,
     //     slicedDataForLabelCases,

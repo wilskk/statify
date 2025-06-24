@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { CorrespondenceAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
-import init from "@/wasm/pkg";
 import { transformCorrespondenceResult } from "./correspondence-analysis-formatter";
 import { resultCorrespondence } from "./correspondence-analysis-output";
 
@@ -42,7 +41,7 @@ export async function analyzeCorrespondence({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const correspondence = new CorrespondenceAnalysis(
     //     slicedDataForRow,
     //     slicedDataForCol,

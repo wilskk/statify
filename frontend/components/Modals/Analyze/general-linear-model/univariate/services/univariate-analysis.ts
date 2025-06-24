@@ -1,8 +1,8 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { UnivariateAnalysisType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import init, { UnivariateAnalysis } from "@/wasm/pkg";
 import { transformUnivariateResult } from "./univariate-analysis-formatter";
 import { resultUnivariateAnalysis } from "./univariate-analysis-output";
+import init, {UnivariateAnalysis} from "@/components/Modals/Analyze/general-linear-model/univariate/rust/pkg";
 
 export async function analyzeUnivariate({
     configData,

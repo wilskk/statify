@@ -1,7 +1,7 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 
-use crate::correspondence::models::result::{
+use crate::models::result::{
     CorrespondenceAnalysisResult,
     CorrespondenceTable,
     RowProfiles,

@@ -1,12 +1,12 @@
 use wasm_bindgen::prelude::*;
 
-use crate::correspondence::models::{
+use crate::models::{
     config::CorrespondenceAnalysisConfig,
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::CorrespondenceAnalysisResult,
 };
-use crate::correspondence::utils::{ converter::string_to_js_error, error::ErrorCollector };
-use crate::correspondence::wasm::function;
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::wasm::function;
 
 #[wasm_bindgen]
 pub struct CorrespondenceAnalysis {

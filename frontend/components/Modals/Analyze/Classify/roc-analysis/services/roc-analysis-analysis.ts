@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RocAnalysisAnalysisType } from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
-import init from "@/wasm/pkg";
 import { transformROCAnalysisResult } from "./roc-analysis-analysis-formatter";
 import { resultROCAnalysis } from "./roc-analysis-analysis-output";
 
@@ -41,7 +40,7 @@ export async function analyzeRocAnalysis({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const rocAnalysis = new RocAnalysis(
     //     slicedDataForTest,
     //     slicedDataForState,

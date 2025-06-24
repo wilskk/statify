@@ -1,4 +1,3 @@
-// improved-nearest-neighbor-formatter.ts
 import { formatDisplayNumber } from "@/hooks/useFormatter";
 import { ResultJson, Table } from "@/types/Table";
 

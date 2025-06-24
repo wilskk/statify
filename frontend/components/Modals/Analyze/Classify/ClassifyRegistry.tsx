@@ -50,12 +50,6 @@ const HierarchicalClusterModal = lazy(
             "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/hierarchical-cluster-main"
         )
 );
-const ClusterSilhouettesModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/cluster-silhouettes/cluster-silhouettes-main"
-        )
-);
 const TreeModal = lazy(
     () => import("@/components/Modals/Analyze/Classify/tree/dialogs/tree-main")
 );
@@ -99,9 +93,6 @@ export const CLASSIFY_MODAL_COMPONENTS: Record<
     ) as React.ComponentType<BaseModalProps>,
     [ModalType.ModalHierarchicalCluster]: withSuspense(
         HierarchicalClusterModal as any
-    ) as React.ComponentType<BaseModalProps>,
-    [ModalType.ModalClusterSilhouettes]: withSuspense(
-        ClusterSilhouettesModal as any
     ) as React.ComponentType<BaseModalProps>,
     [ModalType.ModalTree]: withSuspense(
         TreeModal as any
@@ -153,7 +144,6 @@ export const CLASSIFY_MODAL_CONTAINER_PREFERENCES: Partial<
     [ModalType.ModalTwoStepCluster]: "sidebar",
     [ModalType.ModalKMeansCluster]: "sidebar",
     [ModalType.ModalHierarchicalCluster]: "sidebar",
-    [ModalType.ModalClusterSilhouettes]: "sidebar",
     [ModalType.ModalTree]: "sidebar",
     [ModalType.ModalDiscriminant]: "sidebar",
     [ModalType.ModalNearestNeighbor]: "sidebar",

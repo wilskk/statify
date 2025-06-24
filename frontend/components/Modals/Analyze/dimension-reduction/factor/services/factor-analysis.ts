@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { FactorAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
-import init from "@/wasm/pkg";
 import { transformFactorAnalysisResult } from "./factor-analysis-formatter";
 import { resultFactorAnalysis } from "./factor-analysis-output";
 
@@ -31,7 +30,7 @@ export async function analyzeFactor({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const factor = new FactorAnalysis(
     //     slicedDataForTarget,
     //     slicedDataForValue,

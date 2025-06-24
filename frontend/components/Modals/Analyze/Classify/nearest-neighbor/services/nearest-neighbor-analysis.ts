@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { KNNAnalysisType } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
-import init from "@/wasm/pkg";
 import { transformNearestNeighborResult } from "./nearest-neighbor-analysis-formatter";
 import { resultNearestNeighbor } from "./nearest-neighbor-analysis-output";
 
@@ -57,7 +56,7 @@ export async function analyzeKNN({
 
     console.log("configData", configData);
 
-    await init();
+    // await init();
     // const knn = new KNNAnalysis(
     //     slicedDataForTarget,
     //     slicedDataForFeatures,

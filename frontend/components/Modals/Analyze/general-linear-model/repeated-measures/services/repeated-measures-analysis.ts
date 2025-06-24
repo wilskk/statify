@@ -1,6 +1,5 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { RepeatedMeasuresAnalysisType } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures-worker";
-import init from "@/wasm/pkg";
 
 export async function analyzeRepeatedMeasures({
     configData,
@@ -35,7 +34,7 @@ export async function analyzeRepeatedMeasures({
 
     console.log(configData);
 
-    await init();
+    // await init();
     // const repeatedMeasure = new RepeatedMeasureAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,

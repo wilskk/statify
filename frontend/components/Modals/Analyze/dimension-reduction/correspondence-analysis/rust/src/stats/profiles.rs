@@ -1,4 +1,4 @@
-use crate::correspondence::models::{
+use crate::models::{
     config::CorrespondenceAnalysisConfig,
     data::AnalysisData,
     result::{ ColumnProfiles, RowProfiles },
