@@ -92,7 +92,7 @@ export function useTimeHook(
         };
         
         saveFormData("TimeSeriesStore", dataToSave).catch(console.error);
-    }, [selectedPeriod, getYear(), getMonth(), getDay(), getHour(), isLoaded]);
+    }, [selectedPeriod, getYear, getMonth, getDay, getHour, isLoaded]);
 
     function handleSelectedPeriod(id: string) {
         const period = periods.find((p) => p.id === id);
