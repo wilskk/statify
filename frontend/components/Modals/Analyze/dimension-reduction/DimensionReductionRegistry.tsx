@@ -32,23 +32,20 @@ function withSuspense(
 }
 
 // Lazy load Dimension Reduction modals
-const FactorModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/factor-main"
-        )
+const FactorModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/factor-main"
+    ).then((module) => ({ default: module.FactorContainer }))
 );
-const CorrespondenceAnalysisModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/correspondence-analysis-main"
-        )
+const CorrespondenceAnalysisModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/correspondence-analysis-main"
+    ).then((module) => ({ default: module.CorrespondenceContainer }))
 );
-const OptimalScalingModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-main"
-        )
+const OptimalScalingModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-main"
+    ).then((module) => ({ default: module.OptScaContainer }))
 );
 
 /**

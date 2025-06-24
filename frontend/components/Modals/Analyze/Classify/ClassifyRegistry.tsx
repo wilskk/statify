@@ -32,11 +32,10 @@ function withSuspense(
 }
 
 // Lazy load Classify modals
-const TwoStepClusterModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/two-step-cluster-main"
-        )
+const TwoStepClusterModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/two-step-cluster-main"
+    ).then((module) => ({ default: module.TwoStepClusterContainer }))
 );
 const KMeansClusterModal = lazy(
     () =>
@@ -44,36 +43,35 @@ const KMeansClusterModal = lazy(
             "@/components/Modals/Analyze/Classify/k-means-cluster/dialogs/k-means-cluster-main"
         )
 );
-const HierarchicalClusterModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/hierarchical-cluster-main"
-        )
+const HierarchicalClusterModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/hierarchical-cluster-main"
+    ).then((module) => ({ default: module.HierClusContainer }))
 );
-const TreeModal = lazy(
-    () => import("@/components/Modals/Analyze/Classify/tree/dialogs/tree-main")
+const TreeModal = lazy(() =>
+    import("@/components/Modals/Analyze/Classify/tree/dialogs/tree-main").then(
+        (module) => ({ default: module.TreeContainer })
+    )
 );
-const DiscriminantModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/discriminant/dialogs/discriminant-main"
-        )
+const DiscriminantModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/discriminant/dialogs/discriminant-main"
+    ).then((module) => ({ default: module.DiscriminantContainer }))
 );
-const NearestNeighborModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/nearest-neighbor-main"
-        )
+const NearestNeighborModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/nearest-neighbor-main"
+    ).then((module) => ({ default: module.KNNContainer }))
 );
-const ROCCurveModal = lazy(
-    () =>
-        import("@/components/Modals/Analyze/Classify/roc-curve/dialogs/roc-curve-main")
+const ROCCurveModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/roc-curve/dialogs/roc-curve-main"
+    ).then((module) => ({ default: module.RocCurveContainer }))
 );
-const ROCAnalysisModal = lazy(
-    () =>
-        import(
-            "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/roc-analysis-main"
-        )
+const ROCAnalysisModal = lazy(() =>
+    import(
+        "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/roc-analysis-main"
+    ).then((module) => ({ default: module.RocAnalysisContainer }))
 );
 
 /**
