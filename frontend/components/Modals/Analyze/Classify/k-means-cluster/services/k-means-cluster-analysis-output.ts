@@ -170,6 +170,25 @@ export async function resultKMeans({
                     components: `Number of Cases in each Cluster`,
                 });
             }
+
+            /*
+             * 📊 Cluster Plot Result 📊
+             * */
+            if (formattedResult.charts && formattedResult.charts.length > 0) {
+                for (const chart of formattedResult.charts) {
+                    const chartId = await addAnalytic(logId, {
+                        title: chart.chartMetadata.title,
+                        note: chart.chartMetadata.description,
+                    });
+
+                    await addStatistic(chartId, {
+                        title: chart.chartMetadata.title,
+                        description: chart.chartMetadata.description,
+                        output_data: JSON.stringify({ charts: [chart] }),
+                        components: chart.chartType,
+                    });
+                }
+            }
         };
 
         await kMeansClusterAnalysisResult();
@@ -187,7 +206,7 @@ async function saveClusterResults(
     variables: Variable[]
 ) {
     const { addVariable } = useVariableStore.getState();
-    const { updateBulkCells } = useDataStore.getState();
+    const { updateCells } = useDataStore.getState();
 
     // Find the cluster membership table
     const clusterMembershipTable = formattedResult.tables.find(
@@ -258,7 +277,7 @@ async function saveClusterResults(
         }));
 
         if (clusterUpdates.length > 0) {
-            await updateBulkCells(clusterUpdates);
+            await updateCells(clusterUpdates);
         }
 
         nextColumnIndex++;
@@ -292,7 +311,7 @@ async function saveClusterResults(
         }));
 
         if (distanceUpdates.length > 0) {
-            await updateBulkCells(distanceUpdates);
+            await updateCells(distanceUpdates);
         }
     }
 }

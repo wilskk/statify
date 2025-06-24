@@ -1,5 +1,8 @@
+import { Chart } from "./Chart";
+
 export interface ResultJson {
     tables: Table[];
+    charts?: Chart[];
 }
 
 export interface Table {

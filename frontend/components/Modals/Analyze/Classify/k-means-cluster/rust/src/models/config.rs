@@ -68,6 +68,8 @@ pub struct OptionsConfig {
     pub anova: bool,
     #[serde(rename = "ClusterInfo")]
     pub cluster_info: bool,
+    #[serde(rename = "ClusterPlot")]
+    pub cluster_plot: bool,
     #[serde(rename = "ExcludeListWise")]
     pub exclude_list_wise: bool,
     #[serde(rename = "ExcludePairWise")]

@@ -10,6 +10,7 @@ pub struct ClusteringResult {
     pub distances_between_centers: Option<DistancesBetweenCenters>,
     pub anova: Option<ANOVATable>,
     pub cases_count: Option<CaseCountTable>,
+    pub cluster_plot: Option<ClusterPlot>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -76,4 +77,15 @@ pub struct ProcessedData {
     pub data_matrix: Vec<Vec<f64>>,
     pub case_numbers: Vec<i32>,
     pub case_names: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ClusterPlot {
+    pub x: Vec<f64>,
+    pub x_label: String,
+    pub y: Vec<f64>,
+    pub y_label: String,
+    pub cluster: Vec<i32>,
+    pub cluster_label: Vec<String>,
+    pub cluster_center: Vec<bool>,
 }

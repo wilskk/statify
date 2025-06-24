@@ -64,7 +64,7 @@ export const KMeansClusterOptions = ({
             <div className="p-4">
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="min-h-[175px] rounded-lg border md:min-w-[200px]"
+                    className="min-h-[200px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={55}>
                         <div className="flex flex-col gap-1 p-2">
@@ -112,6 +112,21 @@ export const KMeansClusterOptions = ({
                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
                                     Cluster Information
+                                </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="ClusterPlot"
+                                    checked={optionsState.ClusterPlot}
+                                    onCheckedChange={(checked: CheckedState) =>
+                                        handleChange("ClusterPlot", checked)
+                                    }
+                                />
+                                <label
+                                    htmlFor="ClusterPlot"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Cluster Plot
                                 </label>
                             </div>
                         </div>

@@ -69,6 +69,7 @@ export type KMeansClusterOptionsType = {
     InitialCluster: boolean;
     ANOVA: boolean;
     ClusterInfo: boolean;
+    ClusterPlot: boolean;
     ExcludeListWise: boolean;
     ExcludePairWise: boolean;
 };

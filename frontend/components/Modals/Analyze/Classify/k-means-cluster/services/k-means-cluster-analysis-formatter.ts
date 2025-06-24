@@ -4,6 +4,7 @@ import { ResultJson, Table, Row } from "@/types/Table";
 export function transformKMeansResult(data: any): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
+        charts: [],
     };
 
     // 1. Initial Cluster Centers
@@ -314,6 +315,49 @@ export function transformKMeansResult(data: any): ResultJson {
         }
 
         resultJson.tables.push(table);
+    }
+
+    if (data.cluster_plot) {
+        const plot = data.cluster_plot;
+        const chartData = plot.x.map((xVal: number, i: number) => ({
+            x: xVal,
+            y: plot.y[i],
+            category: plot.cluster_center[i]
+                ? `Center ${plot.cluster[i]}`
+                : `Cluster ${plot.cluster[i]}`,
+            label: plot.cluster_label[i],
+        }));
+
+        const chart = {
+            chartType: "Grouped Scatter Plot",
+            chartMetadata: {
+                axisInfo: {
+                    x: plot.x_label,
+                    y: plot.y_label,
+                    category: "Cluster",
+                },
+                description: `Scatter plot of ${plot.y_label} vs ${plot.x_label}, grouped by cluster.`,
+                notes: null,
+                title: "Cluster Plot",
+                subtitle: `${plot.y_label} vs ${plot.x_label}`,
+            },
+            chartData: chartData,
+            chartConfig: {
+                width: 600,
+                height: 400,
+                useAxis: true,
+                useLegend: true,
+                axisLabels: {
+                    x: plot.x_label,
+                    y: plot.y_label,
+                },
+            },
+        };
+
+        if (!resultJson.charts) {
+            resultJson.charts = [];
+        }
+        resultJson.charts.push(chart);
     }
 
     return resultJson;

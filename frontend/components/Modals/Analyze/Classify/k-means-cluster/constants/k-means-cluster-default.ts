@@ -39,6 +39,7 @@ export const KMeansClusterOptionsDefault: KMeansClusterOptionsType = {
     InitialCluster: true,
     ANOVA: false,
     ClusterInfo: false,
+    ClusterPlot: false,
     ExcludeListWise: true,
     ExcludePairWise: false,
 };

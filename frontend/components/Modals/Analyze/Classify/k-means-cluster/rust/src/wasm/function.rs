@@ -2,11 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::models::{ config::ClusterConfig, data::AnalysisData, result::ClusteringResult };
 use crate::utils::converter::format_result;
-use crate::utils::{
-    log::FunctionLogger,
-    converter::string_to_js_error,
-    error::ErrorCollector,
-};
+use crate::utils::{ log::FunctionLogger, converter::string_to_js_error, error::ErrorCollector };
 
 use crate::stats::core;
 
@@ -149,6 +145,22 @@ pub fn run_analysis(
         }
     }
 
+    // Opsi: Membuat Plot Cluster
+    // Membuat plot untuk visualisasi hasil clustering.
+    let mut cluster_plot = None;
+    if config.options.cluster_plot {
+        logger.add_log("create_cluster_plot");
+        match core::create_cluster_plot(&preprocessed_data, &config) {
+            Ok(plot) => {
+                web_sys::console::log_1(&format!("Plot cluster: {:?}", plot).into());
+                cluster_plot = Some(plot);
+            }
+            Err(e) => {
+                error_collector.add_error("create_cluster_plot", &e);
+            }
+        }
+    }
+
     // Menggabungkan semua hasil analisis ke dalam satu struktur data.
     let result = ClusteringResult {
         initial_centers,
@@ -158,6 +170,7 @@ pub fn run_analysis(
         distances_between_centers,
         anova,
         cases_count,
+        cluster_plot,
     };
 
     Ok(Some(result))

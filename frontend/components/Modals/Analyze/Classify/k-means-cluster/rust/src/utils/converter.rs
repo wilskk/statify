@@ -1,7 +1,12 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 
-use crate::models::result::{ ClusterMembership, ClusteringResult, DistancesBetweenCenters };
+use crate::models::result::{
+    ClusterMembership,
+    ClusteringResult,
+    DistancesBetweenCenters,
+    ClusterPlot,
+};
 
 pub fn string_to_js_error(error: String) -> JsValue {
     JsValue::from_str(&error)
@@ -26,6 +31,7 @@ struct FormatResult {
     distances_between_centers: Option<DistancesBetweenCenters>,
     anova: Option<FormattedANOVATable>,
     cases_count: Option<FormattedCaseCountTable>,
+    cluster_plot: Option<ClusterPlot>,
 }
 
 #[derive(Serialize)]
@@ -199,6 +205,7 @@ impl FormatResult {
             distances_between_centers: result.distances_between_centers.clone(),
             anova,
             cases_count,
+            cluster_plot: result.cluster_plot.clone(),
         }
     }
 }
