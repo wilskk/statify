@@ -20,5 +20,9 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "handsontable": "^15.3.0",
+    "onborda": "^1.2.5"
+  }
 }
