@@ -50,11 +50,93 @@ self.onmessage = function(e) {
     // Generate QQ plot data
     const qqPlotData = generateQQPlotData(residuals);
     
+    // Determine overall normality based on tests
+    const isNormal = shapiroWilk.isNormal && kolmogorovSmirnov.isNormal;
+    
+    // Create more focused interpretation that focuses on the assumption status and recommendations
+    let detailedInterpretation = isNormal
+      ? "The tests indicate that the residuals follow a normal distribution, which is a key assumption for linear regression."
+      : "Some tests suggest the residuals may not follow a normal distribution. This could affect the validity of statistical inferences from the model.";
+      
+    // Format results for the data-table component
+    const tableData = {
+      tables: [
+        {
+          title: "Normality Test Results",
+          columnHeaders: [
+            { header: "Test" },
+            { header: "Statistic" },
+            { header: "P-Value" },
+            { header: "Status" }
+          ],
+          rows: [
+            {
+              rowHeader: ["Shapiro-Wilk"],
+              "Statistic": shapiroWilk.statistic.toFixed(4),
+              "P-Value": shapiroWilk.pValue.toFixed(4),
+              "Status": shapiroWilk.isNormal ? "Normal" : "Not normally distributed"
+            },
+            {
+              rowHeader: ["Kolmogorov-Smirnov"],
+              "Statistic": kolmogorovSmirnov.statistic.toFixed(4),
+              "P-Value": kolmogorovSmirnov.pValue.toFixed(4),
+              "Status": kolmogorovSmirnov.isNormal ? "Normal" : "Not normally distributed"
+            },
+            {
+              rowHeader: ["Jarque-Bera"],
+              "Statistic": jarqueBera.statistic.toFixed(4),
+              "P-Value": jarqueBera.pValue.toFixed(4),
+              "Status": jarqueBera.isNormal ? "Normal" : "Not normally distributed"
+            }
+          ]
+        },
+        {
+          title: "Residual Statistics",
+          columnHeaders: [
+            { header: "Metric" },
+            { header: "Value" }
+          ],
+          rows: [
+            {
+              rowHeader: ["Sample Size"],
+              "Value": residuals.length.toString()
+            },
+            {
+              rowHeader: ["Mean"],
+              "Value": residualsMean.toFixed(4)
+            },
+            {
+              rowHeader: ["Standard Deviation"],
+              "Value": residualsStdDev.toFixed(4)
+            },
+            {
+              rowHeader: ["Skewness"],
+              "Value": jarqueBera.skewness.toFixed(4)
+            },
+            {
+              rowHeader: ["Kurtosis"],
+              "Value": jarqueBera.kurtosis.toFixed(4)
+            },
+            {
+              rowHeader: ["Minimum"],
+              "Value": Math.min(...residuals).toFixed(4)
+            },
+            {
+              rowHeader: ["Maximum"],
+              "Value": Math.max(...residuals).toFixed(4)
+            }
+          ]
+        }
+      ]
+    };
+    
     // Prepare final results
     const result = {
       title: "Normality Test Results",
       description: "Tests if the residuals from the regression model are normally distributed",
-      isNormal: shapiroWilk.isNormal && kolmogorovSmirnov.isNormal,
+      isNormal: isNormal,
+      interpretation: detailedInterpretation,
+      output_data: JSON.stringify(tableData),
       tests: {
         shapiroWilk,
         kolmogorovSmirnov,

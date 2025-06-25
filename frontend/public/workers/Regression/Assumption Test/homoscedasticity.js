@@ -80,10 +80,73 @@ self.onmessage = function(e) {
       // Check if the test was completed successfully
       const isHomoscedastic = breuschPaganTest.isHomoscedastic;
       
-      // Prepare results
+      // Format data for the data-table component in the Result output
+      const formattedTestTable = {
+        title: "Homoscedasticity Test Results",
+        columnHeaders: [
+          { header: "Test" },
+          { header: "Statistic" },
+          { header: "p-value" },
+          { header: "df" },
+          { header: "Status" }
+        ],
+        rows: [{
+          rowHeader: [breuschPaganTest.testName],
+          "Statistic": breuschPaganTest.statistic !== null ? breuschPaganTest.statistic.toFixed(4) : "N/A",
+          "p-value": breuschPaganTest.pValue !== null ? breuschPaganTest.pValue.toFixed(4) : "N/A",
+          "df": breuschPaganTest.df !== undefined ? breuschPaganTest.df.toString() : "N/A",
+          "Status": breuschPaganTest.isHomoscedastic ? "Homoscedastic" : "Heteroscedastic"
+        }]
+      };
+
+      // Format residual statistics table
+      const formattedResidualStatsTable = {
+        title: "Residual Statistics",
+        columnHeaders: [
+          { header: "Statistic" },
+          { header: "Value" }
+        ],
+        rows: [
+          {
+            rowHeader: ["Number of observations"],
+            "Value": residualStats.count.toString()
+          },
+          {
+            rowHeader: ["Mean of residuals"],
+            "Value": residualStats.mean.toFixed(4)
+          },
+          {
+            rowHeader: ["Standard deviation"],
+            "Value": residualStats.stdDev.toFixed(4)
+          },
+          {
+            rowHeader: ["Minimum"],
+            "Value": residualStats.min.toFixed(4)
+          },
+          {
+            rowHeader: ["Maximum"],
+            "Value": residualStats.max.toFixed(4)
+          }
+        ]
+      };
+
+      // Prepare interpretation text
+      let interpretationText = "";
+      if (isHomoscedastic) {
+        interpretationText = `The Breusch-Pagan test shows a p-value of ${breuschPaganTest.pValue?.toFixed(4) || 'N/A'}, which is ${breuschPaganTest.pValue !== null && breuschPaganTest.pValue > 0.05 ? 'above' : 'below'} the significance level of 0.05. Therefore, we ${isHomoscedastic ? 'fail to reject' : 'reject'} the null hypothesis of homoscedasticity. The residuals appear to have ${isHomoscedastic ? 'constant' : 'non-constant'} variance, indicating that the homoscedasticity assumption ${isHomoscedastic ? 'is satisfied' : 'is violated'}.`;
+      } else {
+        interpretationText = `The Breusch-Pagan test shows a p-value of ${breuschPaganTest.pValue?.toFixed(4) || 'N/A'}, which is ${breuschPaganTest.pValue !== null && breuschPaganTest.pValue > 0.05 ? 'above' : 'below'} the significance level of 0.05. Therefore, we ${isHomoscedastic ? 'fail to reject' : 'reject'} the null hypothesis of homoscedasticity. The residuals appear to have ${isHomoscedastic ? 'constant' : 'non-constant'} variance, indicating that the homoscedasticity assumption ${isHomoscedastic ? 'is satisfied' : 'is violated'}. This may affect the reliability of standard errors and confidence intervals in the regression model.`;
+      }
+
+      // Prepare results for output
+      const outputData = {
+        tables: [formattedTestTable, formattedResidualStatsTable],
+      };
+      
+      // Prepare final result
       const result = {
         title: "Homoscedasticity Test Results",
-        description: "Tests if the residuals have constant variance across all levels of predicted values",
+        description: interpretationText,
         isHomoscedastic: isHomoscedastic,
         tests: {
           breuschPagan: breuschPaganTest
@@ -93,7 +156,9 @@ self.onmessage = function(e) {
           residualVsFitted: residualVsFittedData,
           residualVsIndependent: residualVsIndependentData,
           scaleLocation: scaleLocationData
-        }
+        },
+        interpretation: interpretationText,
+        output_data: JSON.stringify(outputData)
       };
       
       self.postMessage(result);

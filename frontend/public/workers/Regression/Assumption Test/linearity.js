@@ -68,6 +68,14 @@ self.onmessage = function(e) {
       // Calculate RESET test
       const resetTest = calculateRESETTest(dependentData, independentVarData);
       
+      // Determine if the relationship is linear (p-value > 0.05)
+      const isLinear = resetTest.pValue > 0.05;
+      
+      // Create an interpretation message
+      const interpretation = isLinear
+        ? `The relationship between ${variableName} and the dependent variable appears to be linear (p-value > 0.05).`
+        : `The relationship between ${variableName} and the dependent variable appears to be non-linear (p-value ≤ 0.05).`;
+      
       // Prepare data for scatter plot visualization
       const scatterData = dependentData.map((y, index) => ({
         x: independentVarData[index],
@@ -78,9 +86,13 @@ self.onmessage = function(e) {
       results.push({
         variable: variableName,
         variableLabel: variableLabel,
-        correlation: correlation,
-        resetTest: resetTest,
-        isLinear: resetTest.pValue > 0.05, // If p-value > 0.05, we fail to reject the null hypothesis of linearity
+        correlation: parseFloat(correlation.toFixed(6)),
+        resetTest: {
+          fStatistic: parseFloat(resetTest.fStatistic.toFixed(6)),
+          pValue: parseFloat(resetTest.pValue.toFixed(6))
+        },
+        isLinear: isLinear,
+        interpretation: interpretation,
         scatterData: scatterData
       });
     }
@@ -90,12 +102,26 @@ self.onmessage = function(e) {
       return;
     }
     
+    // Count how many variables pass the linearity test
+    const linearCount = results.filter(r => r.isLinear).length;
+    const nonlinearCount = results.length - linearCount;
+    
     // Create a single summary result
     const summary = {
       title: "Linearity Test Results",
       description: "Tests if the relationship between dependent and independent variables is linear",
       allLinear: results.every(r => r.isLinear),
-      results: results
+      summary: {
+        totalVariables: results.length,
+        linearVariables: linearCount,
+        nonlinearVariables: nonlinearCount
+      },
+      results: results,
+      overallInterpretation: linearCount === results.length
+        ? "All independent variables have a linear relationship with the dependent variable."
+        : nonlinearCount === results.length
+          ? "None of the independent variables have a linear relationship with the dependent variable."
+          : `${linearCount} of ${results.length} independent variables have a linear relationship with the dependent variable.`
     };
     
     self.postMessage(summary);

@@ -52,7 +52,79 @@ self.addEventListener('message', function(e) {
     console.log("[Worker] Starting Durbin-Watson calculation with valid residuals");
     const results = calculateDurbinWatson(data.residuals);
     console.log("[Worker] Calculation complete:", results);
-    self.postMessage({ results });
+    
+    // Format data for result output
+    const formattedTestTable = {
+      title: "Durbin-Watson Test Results",
+      columnHeaders: [
+        { header: "Test" },
+        { header: "Value" },
+        { header: "Lower Bound" },
+        { header: "Upper Bound" },
+        { header: "Status" }
+      ],
+      rows: [{
+        rowHeader: ["Durbin-Watson"],
+        "Value": results.durbinWatsonStatistic.toFixed(4),
+        "Lower Bound": results.lowerBound.toFixed(2),
+        "Upper Bound": results.upperBound.toFixed(2),
+        "Status": results.durbinWatsonStatistic >= results.lowerBound && results.durbinWatsonStatistic <= results.upperBound ? 
+                 "No Autocorrelation" : 
+                 (results.durbinWatsonStatistic < results.lowerBound ? "Positive Autocorrelation" : "Negative Autocorrelation")
+      }]
+    };
+
+    // Prepare residual statistics
+    const residualStats = {
+      count: data.residuals.length,
+      firstFew: data.residuals.slice(0, 5).map(r => r.toFixed(4))
+    };
+    
+    // Format residual statistics
+    const residualStatsTable = {
+      title: "Sample Information",
+      columnHeaders: [
+        { header: "Statistic" },
+        { header: "Value" }
+      ],
+      rows: [
+        {
+          rowHeader: ["Number of observations"],
+          "Value": residualStats.count.toString()
+        }
+      ]
+    };
+    
+    // Prepare detailed interpretation
+    const interpretationText = results.interpretation;
+    
+    // Create extended interpretation with more explanation
+    const extendedInterpretation = `The Durbin-Watson statistic is ${results.durbinWatsonStatistic.toFixed(4)}, which falls ${
+      results.durbinWatsonStatistic >= results.lowerBound && results.durbinWatsonStatistic <= results.upperBound ? 
+      "between" : (results.durbinWatsonStatistic < results.lowerBound ? "below" : "above")
+    } the acceptable range of ${results.lowerBound.toFixed(2)} to ${results.upperBound.toFixed(2)}. 
+    ${
+      results.durbinWatsonStatistic >= results.lowerBound && results.durbinWatsonStatistic <= results.upperBound ?
+      "This indicates no significant autocorrelation in the residuals, meaning the nonautocorrelation assumption is satisfied." :
+      (results.durbinWatsonStatistic < results.lowerBound ? 
+        "This suggests positive autocorrelation in the residuals, meaning the nonautocorrelation assumption is violated. Positive autocorrelation indicates that consecutive error terms tend to have the same sign, which could affect the reliability of standard errors in the regression model." :
+        "This suggests negative autocorrelation in the residuals, meaning the nonautocorrelation assumption is violated. Negative autocorrelation indicates that consecutive error terms tend to have opposite signs, which could affect the reliability of standard errors in the regression model.")
+    }`;
+    
+    // Prepare output data for Result display
+    const outputData = {
+      tables: [formattedTestTable, residualStatsTable]
+    };
+    
+    // Send complete results back to the main thread
+    self.postMessage({ 
+      results: {
+        ...results,
+        interpretation: extendedInterpretation,
+        output_data: JSON.stringify(outputData)
+      } 
+    });
+    
   } catch (error) {
     console.error("[Worker] Error in nonautocorrelation test calculation:", error);
     self.postMessage({

@@ -46,14 +46,94 @@ self.onmessage = function(e) {
     // Determine if multicollinearity exists
     const hasMulticollinearity = detectMulticollinearity(correlationMatrix, vifValues);
     
-    // Prepare final results
+    // Generate interpretation of results
+    const interpretationLines = generateInterpretation(correlationMatrix, vifValues, independentVariableInfos);
+    
+    // Create a combined interpretation text
+    const interpretationText = interpretationLines.join(' ');
+    
+    // Format data for the data-table component in the Result output
+    const correlationTable = {
+      title: "Correlation Matrix",
+      columnHeaders: [
+        { header: "Variable" },
+        ...independentVariableInfos.map(v => ({ header: v.name }))
+      ],
+      rows: formattedResults.correlationMatrix.values.map((row, i) => {
+        const varName = independentVariableInfos[i].name;
+        const varLabel = independentVariableInfos[i].label;
+        const displayName = varLabel ? `${varName} (${varLabel})` : varName;
+        
+        return {
+          rowHeader: [displayName],
+          ...row.reduce((obj, val, j) => {
+            obj[independentVariableInfos[j].name] = val.toFixed(4);
+            return obj;
+          }, {})
+        };
+      })
+    };
+    
+    const vifTable = {
+      title: "Variance Inflation Factors (VIF)",
+      columnHeaders: [
+        { header: "Variable" },
+        { header: "VIF" },
+        { header: "Concern Level" }
+      ],
+      rows: formattedResults.vif.map(item => ({
+        rowHeader: [item.variableLabel ? `${item.variable} (${item.variableLabel})` : item.variable],
+        "VIF": isFinite(item.vif) ? item.vif.toFixed(4) : "∞",
+        "Concern Level": item.concern
+      }))
+    };
+    
+    // Add a concern level explanation table
+    const concernTable = {
+      title: "VIF Concern Levels",
+      columnHeaders: [
+        { header: "Level" },
+        { header: "VIF Range" },
+        { header: "Interpretation" }
+      ],
+      rows: [
+        {
+          rowHeader: ["Low"],
+          "VIF Range": "< 2",
+          "Interpretation": "No significant multicollinearity"
+        },
+        {
+          rowHeader: ["Moderate"],
+          "VIF Range": "2 - 5",
+          "Interpretation": "Moderate multicollinearity, may not require action"
+        },
+        {
+          rowHeader: ["High"],
+          "VIF Range": "5 - 10",
+          "Interpretation": "High multicollinearity, consider remedial measures"
+        },
+        {
+          rowHeader: ["Very High"],
+          "VIF Range": "> 10",
+          "Interpretation": "Severe multicollinearity, remedial action recommended"
+        }
+      ]
+    };
+    
+    // Prepare results for output
+    const outputData = {
+      tables: [correlationTable, vifTable, concernTable]
+    };
+    
+    // Prepare final result
     const result = {
       title: "Multicollinearity Test Results",
-      description: "Tests for correlation among independent variables",
+      description: interpretationText,
       hasMulticollinearity: hasMulticollinearity,
       correlationMatrix: formattedResults.correlationMatrix,
       vif: formattedResults.vif,
-      interpretation: generateInterpretation(correlationMatrix, vifValues, independentVariableInfos)
+      interpretation: interpretationText,
+      output_data: JSON.stringify(outputData)
     };
     
     console.log("Multicollinearity test completed:", {

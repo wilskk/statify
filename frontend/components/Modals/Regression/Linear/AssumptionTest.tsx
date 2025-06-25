@@ -9,6 +9,7 @@ import { useDataStore } from '@/stores/useDataStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import DataTableRenderer from '@/components/Output/table/data-table';
 
 export interface AssumptionTestParams {
   testLinearityEnabled: boolean;
@@ -167,12 +168,60 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
         } else {
           console.log("Linearity test results:", response);
           
-          // Save the results to statistics store
+          // Format the results for the data-table component in the Result output
+          const outputData = {
+            tables: [
+              {
+                title: "Linearity Test Results",
+                columnHeaders: [
+                  { header: "Variable" },
+                  { header: "Correlation" },
+                  { header: "F Statistic" },
+                  { header: "P Value" },
+                  { header: "Linearity Status" }
+                ],
+                rows: response.results.map((result: any) => ({
+                  rowHeader: [result.variableLabel ? `${result.variable} (${result.variableLabel})` : result.variable],
+                  "Correlation": result.correlation.toFixed(4),
+                  "F Statistic": result.resetTest.fStatistic.toFixed(4),
+                  "P Value": result.resetTest.pValue.toFixed(4),
+                  "Linearity Status": result.isLinear ? "Linear" : "Non-linear"
+                }))
+              },
+              {
+                title: "Linearity Test Summary",
+                columnHeaders: [
+                  { header: "Metric" },
+                  { header: "Value" }
+                ],
+                rows: [
+                  {
+                    rowHeader: ["Total Variables"],
+                    "Value": response.summary.totalVariables.toString()
+                  },
+                  {
+                    rowHeader: ["Variables with Linear Relationship"],
+                    "Value": response.summary.linearVariables.toString()
+                  },
+                  {
+                    rowHeader: ["Variables with Non-linear Relationship"],
+                    "Value": response.summary.nonlinearVariables.toString()
+                  },
+                  {
+                    rowHeader: ["Overall Assessment"],
+                    "Value": response.overallInterpretation
+                  }
+                ]
+              }
+            ]
+          };
+          
+          // Save the results to statistics store for display in Result output
           const linearityStat = {
             title: "Linearity Test Results",
-            output_data: JSON.stringify(response),
+            output_data: JSON.stringify(outputData),
             components: "LinearityTest",
-            description: "Tests the linearity assumption of regression model"
+            description: response.overallInterpretation
           };
           
           await addStatistic(analyticId, linearityStat);
@@ -307,9 +356,9 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
           // Save the results to statistics store
           const normalityStat = {
             title: "Normality Test Results",
-            output_data: JSON.stringify(response),
+            output_data: response.output_data || JSON.stringify(response),
             components: "NormalityTest",
-            description: "Tests if the residuals follow a normal distribution"
+            description: response.interpretation || "Tests if the residuals follow a normal distribution"
           };
           
           await addStatistic(analyticId, normalityStat);
@@ -441,12 +490,15 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
         } else {
           console.log("Homoscedasticity test results:", response);
           
+          // Parse the formatted output data from the worker
+          const outputData = response.output_data ? JSON.parse(response.output_data) : null;
+          
           // Save the results to statistics store
           const homoscedasticityStat = {
             title: "Homoscedasticity Test Results",
-            output_data: JSON.stringify(response),
+            output_data: response.output_data || JSON.stringify(response),
             components: "HomoscedasticityTest",
-            description: "Tests if the residuals have constant variance"
+            description: response.interpretation || "Tests if the residuals have constant variance"
           };
           
           await addStatistic(analyticId, homoscedasticityStat);
@@ -571,9 +623,9 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
           // Save the results to statistics store
           const multicollinearityStat = {
             title: "Multicollinearity Test Results",
-            output_data: JSON.stringify(response),
+            output_data: response.output_data || JSON.stringify(response),
             components: "MulticollinearityTest",
-            description: "Tests for correlation among independent variables"
+            description: response.interpretation || "Tests for correlation among independent variables"
           };
           
           await addStatistic(analyticId, multicollinearityStat);
@@ -819,9 +871,9 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
           // Save the results to statistics store
           const nonautocorrelationStat = {
             title: "Nonautocorrelation Test Results",
-            output_data: JSON.stringify(response),
+            output_data: response.results?.output_data || JSON.stringify(response),
             components: "NonautocorrelationTest",
-            description: "Tests for correlation between residuals over time"
+            description: response.results?.interpretation || "Tests for correlation between residuals over time"
           };
           
           await addStatistic(analyticId, nonautocorrelationStat);
