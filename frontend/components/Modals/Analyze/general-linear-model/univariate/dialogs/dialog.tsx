@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     ResizableHandle,
     ResizablePanel,
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 import {
     UnivariateDialogProps,
     UnivariateMainType,
@@ -33,86 +37,181 @@ export const UnivariateDialog = ({
     onReset,
 }: UnivariateDialogProps) => {
     const [mainState, setMainState] = useState<UnivariateMainType>({ ...data });
-    const [availableVariables, setAvailableVariables] = useState<string[]>([]);
-
     const { closeModal } = useModal();
+
+    const [availableVars, setAvailableVars] = useState<Variable[]>([]);
+    const [depVar, setDepVar] = useState<Variable[]>([]);
+    const [fixFactor, setFixFactor] = useState<Variable[]>([]);
+    const [randFactor, setRandFactor] = useState<Variable[]>([]);
+    const [covar, setCovar] = useState<Variable[]>([]);
+    const [wlsWeight, setWlsWeight] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
+    } | null>(null);
+
+    const listStateSetters: Record<
+        string,
+        React.Dispatch<React.SetStateAction<Variable[]>>
+    > = {
+        available: setAvailableVars,
+        DepVar: setDepVar,
+        FixFactor: setFixFactor,
+        RandFactor: setRandFactor,
+        Covar: setCovar,
+        WlsWeight: setWlsWeight,
+    };
 
     useEffect(() => {
         setMainState({ ...data });
-    }, [data]);
+
+        const allVariables: Variable[] = globalVariables.map((name, index) => ({
+            name,
+            tempId: name,
+            label: name,
+            columnIndex: index,
+            type: "NUMERIC",
+            width: 8,
+            decimals: 2,
+            align: "left",
+            missing: null,
+            measure: "unknown",
+            role: "input",
+            values: [],
+            columns: 0,
+        }));
+
+        const initialUsedNames = new Set(
+            [
+                data.DepVar,
+                ...(data.FixFactor || []),
+                ...(data.RandFactor || []),
+                ...(data.Covar || []),
+                data.WlsWeight,
+            ].filter(Boolean)
+        );
+
+        const varsMap = new Map(allVariables.map((v) => [v.name, v]));
+
+        setDepVar(
+            data.DepVar
+                ? ([varsMap.get(data.DepVar)].filter(Boolean) as Variable[])
+                : []
+        );
+        setFixFactor(
+            (data.FixFactor || [])
+                .map((name) => varsMap.get(name))
+                .filter(Boolean) as Variable[]
+        );
+        setRandFactor(
+            (data.RandFactor || [])
+                .map((name) => varsMap.get(name))
+                .filter(Boolean) as Variable[]
+        );
+        setCovar(
+            (data.Covar || [])
+                .map((name) => varsMap.get(name))
+                .filter(Boolean) as Variable[]
+        );
+        setWlsWeight(
+            data.WlsWeight
+                ? ([varsMap.get(data.WlsWeight)].filter(Boolean) as Variable[])
+                : []
+        );
+        setAvailableVars(
+            allVariables.filter((v) => !initialUsedNames.has(v.name))
+        );
+    }, [data, globalVariables]);
 
     useEffect(() => {
-        const usedVariables = [
-            mainState.DepVar,
-            ...(mainState.FixFactor || []),
-            ...(mainState.RandFactor || []),
-            ...(mainState.Covar || []),
-            mainState.WlsWeight,
-        ].filter(Boolean);
-
-        const updatedVariables = globalVariables.filter(
-            (variable) => !usedVariables.includes(variable)
-        );
-        setAvailableVariables(updatedVariables);
-    }, [mainState, globalVariables]);
-
-    const handleChange = (
-        field: keyof UnivariateMainType,
-        value: number | string | null
-    ) => {
         setMainState((prevState) => ({
             ...prevState,
-            [field]: value,
+            DepVar: depVar[0]?.name || null,
+            FixFactor: fixFactor.map((v) => v.name),
+            RandFactor: randFactor.map((v) => v.name),
+            Covar: covar.map((v) => v.name),
+            WlsWeight: wlsWeight[0]?.name || null,
         }));
-    };
+    }, [depVar, fixFactor, randFactor, covar, wlsWeight]);
 
-    const handleDrop = (target: string, variable: string) => {
-        setMainState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "DepVar") {
-                updatedState.DepVar = variable;
-            } else if (target === "FixFactor") {
-                updatedState.FixFactor = [
-                    ...(updatedState.FixFactor || []),
-                    variable,
-                ];
-            } else if (target === "Covar") {
-                updatedState.Covar = [...(updatedState.Covar || []), variable];
-            } else if (target === "RandFactor") {
-                updatedState.RandFactor = [
-                    ...(updatedState.RandFactor || []),
-                    variable,
-                ];
-            } else if (target === "WlsWeight") {
-                updatedState.WlsWeight = variable;
-            }
-            return updatedState;
-        });
-    };
+    const handleMoveVariable = useCallback(
+        (variable: Variable, fromListId: string, toListId: string) => {
+            const fromSetter = listStateSetters[fromListId];
+            const toSetter = listStateSetters[toListId];
+            const toListConfig = targetListsConfig.find(
+                (l) => l.id === toListId
+            );
 
-    const handleRemoveVariable = (target: string, variable?: string) => {
-        setMainState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "DepVar") {
-                updatedState.DepVar = "";
-            } else if (target === "FixFactor") {
-                updatedState.FixFactor = (updatedState.FixFactor || []).filter(
-                    (item) => item !== variable
+            if (fromSetter) {
+                fromSetter((prev) =>
+                    prev.filter((v) => v.tempId !== variable.tempId)
                 );
-            } else if (target === "Covar") {
-                updatedState.Covar = (updatedState.Covar || []).filter(
-                    (item) => item !== variable
-                );
-            } else if (target === "RandFactor") {
-                updatedState.RandFactor = (
-                    updatedState.RandFactor || []
-                ).filter((item) => item !== variable);
-            } else if (target === "WlsWeight") {
-                updatedState.WlsWeight = "";
             }
-            return updatedState;
-        });
-    };
+
+            if (toSetter) {
+                if (toListConfig?.maxItems === 1) {
+                    toSetter((prev) => {
+                        if (prev.length > 0 && listStateSetters.available) {
+                            const existingVar = prev[0];
+                            setAvailableVars((avail) => [
+                                ...avail,
+                                existingVar,
+                            ]);
+                        }
+                        return [variable];
+                    });
+                } else {
+                    toSetter((prev) => [...prev, variable]);
+                }
+            }
+        },
+        [depVar, fixFactor, randFactor, covar, wlsWeight]
+    );
+
+    const handleReorderVariable = useCallback(
+        (listId: string, newVariables: Variable[]) => {
+            const setter = listStateSetters[listId];
+            if (setter) {
+                setter(newVariables);
+            }
+        },
+        []
+    );
+
+    const targetListsConfig: TargetListConfig[] = [
+        {
+            id: "DepVar",
+            title: "Dependent Variable:",
+            variables: depVar,
+            height: "auto",
+            maxItems: 1,
+        },
+        {
+            id: "FixFactor",
+            title: "Fixed Factor(s):",
+            variables: fixFactor,
+            height: "100px",
+        },
+        {
+            id: "RandFactor",
+            title: "Random Factor(s):",
+            variables: randFactor,
+            height: "100px",
+        },
+        {
+            id: "Covar",
+            title: "Covariate(s):",
+            variables: covar,
+            height: "100px",
+        },
+        {
+            id: "WlsWeight",
+            title: "WLS Weight:",
+            variables: wlsWeight,
+            height: "auto",
+            maxItems: 1,
+        },
+    ];
 
     const handleContinue = () => {
         Object.entries(mainState).forEach(([key, value]) => {
@@ -140,287 +239,28 @@ export const UnivariateDialog = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex items-center space-x-2 p-4">
+            <div className="p-4">
                 <ResizablePanelGroup
                     direction="horizontal"
                     className="min-h-[400px] rounded-lg border md:min-w-[200px]"
                 >
-                    {/* Variable List */}
-                    <ResizablePanel defaultSize={25}>
-                        <ScrollArea>
-                            <div className="flex flex-col gap-1 justify-start items-start h-[500px] w-full p-2">
-                                {availableVariables.map(
-                                    (variable: string, index: number) => (
-                                        <Badge
-                                            key={index}
-                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                            variant="outline"
-                                            draggable
-                                            onDragStart={(e) =>
-                                                e.dataTransfer.setData(
-                                                    "text",
-                                                    variable
-                                                )
-                                            }
-                                        >
-                                            {variable}
-                                        </Badge>
-                                    )
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </ResizablePanel>
-                    <ResizableHandle withHandle />
-
-                    {/* Defining Variable */}
-                    <ResizablePanel defaultSize={55}>
-                        <div className="flex flex-col gap-2 p-2">
-                            <div className="w-full">
-                                <Label className="font-bold">
-                                    Dependent Variables:{" "}
-                                </Label>
-                                <div className="flex items-center space-x-2">
-                                    <div
-                                        className="w-full min-h-[40px] p-2 border rounded"
-                                        onDrop={(e) => {
-                                            handleDrop(
-                                                "DepVar",
-                                                e.dataTransfer.getData("text")
-                                            );
-                                        }}
-                                        onDragOver={(e) => e.preventDefault()}
-                                    >
-                                        {mainState.DepVar ? (
-                                            <Badge
-                                                className="text-start text-sm font-light p-2 cursor-pointer"
-                                                variant="outline"
-                                                onClick={() =>
-                                                    handleRemoveVariable(
-                                                        "DepVar"
-                                                    )
-                                                }
-                                            >
-                                                {mainState.DepVar}
-                                            </Badge>
-                                        ) : (
-                                            <span className="text-sm font-light text-gray-500">
-                                                Drop variables here.
-                                            </span>
-                                        )}
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        value={mainState.DepVar ?? ""}
-                                        name="DepVar"
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full">
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => {
-                                        const variable =
-                                            e.dataTransfer.getData("text");
-                                        handleDrop("FixFactor", variable);
-                                    }}
-                                >
-                                    <Label className="font-bold">
-                                        Fixed Factor(s):
-                                    </Label>
-                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                        <ScrollArea>
-                                            <div className="w-full h-[80px]">
-                                                {mainState.FixFactor &&
-                                                mainState.FixFactor.length >
-                                                    0 ? (
-                                                    <div className="flex flex-col gap-1">
-                                                        {mainState.FixFactor.map(
-                                                            (
-                                                                variable,
-                                                                index
-                                                            ) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "FixFactor",
-                                                                            variable
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {variable}
-                                                                </Badge>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variables here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        value={mainState.FixFactor ?? ""}
-                                        name="FixFactor"
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full">
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => {
-                                        const variable =
-                                            e.dataTransfer.getData("text");
-                                        handleDrop("RandFactor", variable);
-                                    }}
-                                >
-                                    <Label className="font-bold">
-                                        Random Factor(s):
-                                    </Label>
-                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                        <ScrollArea>
-                                            <div className="w-full h-[80px]">
-                                                {mainState.RandFactor &&
-                                                mainState.RandFactor.length >
-                                                    0 ? (
-                                                    <div className="flex flex-col gap-1">
-                                                        {mainState.RandFactor.map(
-                                                            (
-                                                                variable,
-                                                                index
-                                                            ) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "RandFactor",
-                                                                            variable
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {variable}
-                                                                </Badge>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variables here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        value={mainState.RandFactor ?? ""}
-                                        name="RandFactor"
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full">
-                                <div
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => {
-                                        const variable =
-                                            e.dataTransfer.getData("text");
-                                        handleDrop("Covar", variable);
-                                    }}
-                                >
-                                    <Label className="font-bold">
-                                        Covariate(s):
-                                    </Label>
-                                    <div className="w-full h-[100px] p-2 border rounded overflow-hidden">
-                                        <ScrollArea>
-                                            <div className="w-full h-[80px]">
-                                                {mainState.Covar &&
-                                                mainState.Covar.length > 0 ? (
-                                                    <div className="flex flex-col gap-1">
-                                                        {mainState.Covar.map(
-                                                            (
-                                                                variable,
-                                                                index
-                                                            ) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                    variant="outline"
-                                                                    onClick={() =>
-                                                                        handleRemoveVariable(
-                                                                            "Covar",
-                                                                            variable
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {variable}
-                                                                </Badge>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variables here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        value={mainState.Covar ?? ""}
-                                        name="Covar"
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full">
-                                <Label className="font-bold">WLS Weight:</Label>
-                                <div className="flex items-center space-x-2">
-                                    <div
-                                        className="w-full min-h-[40px] p-2 border rounded"
-                                        onDrop={(e) => {
-                                            handleDrop(
-                                                "WlsWeight",
-                                                e.dataTransfer.getData("text")
-                                            );
-                                        }}
-                                        onDragOver={(e) => e.preventDefault()}
-                                    >
-                                        {mainState.WlsWeight ? (
-                                            <Badge
-                                                className="text-start text-sm font-light p-2 cursor-pointer"
-                                                variant="outline"
-                                                onClick={() =>
-                                                    handleRemoveVariable(
-                                                        "WlsWeight"
-                                                    )
-                                                }
-                                            >
-                                                {mainState.WlsWeight}
-                                            </Badge>
-                                        ) : (
-                                            <span className="text-sm font-light text-gray-500">
-                                                Drop variables here.
-                                            </span>
-                                        )}
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        value={mainState.WlsWeight ?? ""}
-                                        name="WlsWeight"
-                                    />
-                                </div>
-                            </div>
+                    <ResizablePanel defaultSize={75}>
+                        <div className="p-2 h-full">
+                            <VariableListManager
+                                availableVariables={availableVars}
+                                targetLists={targetListsConfig}
+                                variableIdKey="tempId"
+                                highlightedVariable={highlightedVariable}
+                                setHighlightedVariable={setHighlightedVariable}
+                                onMoveVariable={handleMoveVariable}
+                                onReorderVariable={handleReorderVariable}
+                                showArrowButtons={true}
+                                availableListHeight="450px"
+                            />
                         </div>
                     </ResizablePanel>
                     <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={20}>
+                    <ResizablePanel defaultSize={25}>
                         <div className="flex flex-col w-full h-full items-center justify-between p-2">
                             <div className="flex flex-col gap-2 w-full">
                                 <Button

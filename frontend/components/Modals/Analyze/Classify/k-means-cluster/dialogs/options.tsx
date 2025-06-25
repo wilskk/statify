@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { HelpCircle } from "lucide-react";
 
 export const KMeansClusterOptions = ({
     isOptionsOpen,
@@ -61,7 +62,7 @@ export const KMeansClusterOptions = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="p-4">
+            <div className="p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="min-h-[200px] rounded-lg border md:min-w-[200px]"
@@ -168,24 +169,29 @@ export const KMeansClusterOptions = ({
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsOptionsOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOptionsOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

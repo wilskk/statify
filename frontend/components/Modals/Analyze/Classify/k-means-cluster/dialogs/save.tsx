@@ -7,6 +7,7 @@ import {
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
+import { HelpCircle } from "lucide-react";
 
 export const KMeansClusterSave = ({
     isSaveOpen,
@@ -46,7 +47,7 @@ export const KMeansClusterSave = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4">
+            <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="flex items-center space-x-2">
                     <Checkbox
                         id="ClusterMembership"
@@ -78,24 +79,29 @@ export const KMeansClusterSave = ({
                     </label>
                 </div>
             </div>
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsSaveOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsSaveOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

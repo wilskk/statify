@@ -11,6 +11,7 @@ export async function analyzeKMeansCluster({
     dataVariables,
     variables,
 }: KMeansClusterAnalysisType) {
+    console.log(configData);
     const TargetVariables = configData.main.TargetVar || [];
     const CaseTargetVariable = configData.main.CaseTarget
         ? [configData.main.CaseTarget]
@@ -30,7 +31,6 @@ export async function analyzeKMeansCluster({
 
     const varDefsForTarget = getVarDefs(variables, TargetVariables);
     const varDefsForCaseTarget = getVarDefs(variables, CaseTargetVariable);
-    console.log(configData);
 
     await init();
     const kmeans = new KMeansClusterAnalysis(

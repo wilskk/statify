@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     UnivariatePlotsProps,
@@ -15,6 +15,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Badge } from "@/components/ui/badge";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 
 export const UnivariatePlots = ({
     isPlotsOpen,
@@ -25,24 +29,87 @@ export const UnivariatePlots = ({
     const [plotsState, setPlotsState] = useState<UnivariatePlotsType>({
         ...data,
     });
-    const [isContinueDisabled, setIsContinueDisabled] = useState(false);
-    const [availableVariables, setAvailableVariables] = useState<string[]>([]);
-
-    // Add state for selected variables and plots
-    const [selectedVariable, setSelectedVariable] = useState<string | null>(
-        null
+    const [availableVars, setAvailableVars] = useState<Variable[]>([]);
+    const [horizontalAxisVars, setHorizontalAxisVars] = useState<Variable[]>(
+        []
     );
+    const [separateLinesVars, setSeparateLinesVars] = useState<Variable[]>([]);
+    const [separatePlotsVars, setSeparatePlotsVars] = useState<Variable[]>([]);
     const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
     const [plotsList, setPlotsList] = useState<string[]>([]);
+    const [allPlotVariables, setAllPlotVariables] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
+    } | null>(null);
+
+    const listStateSetters: Record<
+        string,
+        React.Dispatch<React.SetStateAction<Variable[]>>
+    > = {
+        available: setAvailableVars,
+        HorizontalAxis: setHorizontalAxisVars,
+        SeparateLines: setSeparateLinesVars,
+        SeparatePlots: setSeparatePlotsVars,
+    };
 
     useEffect(() => {
         if (isPlotsOpen) {
             setPlotsState({ ...data });
+            const allVariables: Variable[] = (data.SrcList || []).map(
+                (name, index) => ({
+                    name,
+                    tempId: name,
+                    label: name,
+                    columnIndex: index,
+                    type: "NUMERIC",
+                    width: 8,
+                    decimals: 2,
+                    align: "left",
+                    missing: null,
+                    measure: "unknown",
+                    role: "input",
+                    values: [],
+                    columns: 0,
+                })
+            );
+            setAllPlotVariables(allVariables);
 
-            setAvailableVariables(data.SrcList ?? []);
-            setPlotsList(data.FixFactorVars ?? []);
+            const varsMap = new Map(allVariables.map((v) => [v.name, v]));
+            const initialHorizontal = data.AxisList
+                ? ([varsMap.get(data.AxisList)].filter(Boolean) as Variable[])
+                : [];
+            const initialLines = data.LineList
+                ? ([varsMap.get(data.LineList)].filter(Boolean) as Variable[])
+                : [];
+            const initialPlots = data.PlotList
+                ? ([varsMap.get(data.PlotList)].filter(Boolean) as Variable[])
+                : [];
+
+            setHorizontalAxisVars(initialHorizontal);
+            setSeparateLinesVars(initialLines);
+            setSeparatePlotsVars(initialPlots);
+
+            const usedVarNames = new Set([
+                data.AxisList,
+                data.LineList,
+                data.PlotList,
+            ]);
+            setAvailableVars(
+                allVariables.filter((v) => !usedVarNames.has(v.name))
+            );
+            setPlotsList(data.FixFactorVars || []);
         }
     }, [isPlotsOpen, data]);
+
+    useEffect(() => {
+        setPlotsState((prev) => ({
+            ...prev,
+            AxisList: horizontalAxisVars[0]?.name || null,
+            LineList: separateLinesVars[0]?.name || null,
+            PlotList: separatePlotsVars[0]?.name || null,
+        }));
+    }, [horizontalAxisVars, separateLinesVars, separatePlotsVars]);
 
     const handleChange = (
         field: keyof UnivariatePlotsType,
@@ -70,147 +137,137 @@ export const UnivariatePlots = ({
         }));
     };
 
-    // Handle variable selection in Factors list
-    const handleVariableClick = (variable: string) => {
-        setSelectedVariable(variable);
-    };
+    const handleMoveVariable = useCallback(
+        (variable: Variable, fromListId: string, toListId: string) => {
+            const fromSetter = listStateSetters[fromListId];
+            const toSetter = listStateSetters[toListId];
 
-    // Handle plot selection in Plots list
+            if (fromSetter) {
+                fromSetter((prev) =>
+                    prev.filter((v) => v.name !== variable.name)
+                );
+            }
+
+            if (toSetter) {
+                if (
+                    targetListsConfig.find((l) => l.id === toListId)
+                        ?.maxItems === 1
+                ) {
+                    toSetter((prev) => {
+                        if (prev.length > 0) {
+                            setAvailableVars((avail) => [...avail, prev[0]]);
+                        }
+                        return [variable];
+                    });
+                } else {
+                    toSetter((prev) => [...prev, variable]);
+                }
+            }
+        },
+        []
+    );
+
+    const handleReorderVariable = useCallback(
+        (listId: string, newVariables: Variable[]) => {
+            const setter = listStateSetters[listId];
+            if (setter) {
+                setter(newVariables);
+            }
+        },
+        []
+    );
+
     const handlePlotClick = (plot: string) => {
         setSelectedPlot(plot);
+        const plotVarNames = plot.split("*");
+        const [hAxis, sLines, sPlots] = plotVarNames;
 
-        // Parse the selected plot to update fields
-        const parts = plot.split("*");
-        if (parts.length >= 3) {
-            setPlotsState((prev) => ({
-                ...prev,
-                AxisList: parts[0],
-                LineList: parts[1],
-                PlotList: parts[2],
-            }));
-        }
+        const currentTargetVars = [
+            ...horizontalAxisVars,
+            ...separateLinesVars,
+            ...separatePlotsVars,
+        ];
+        setAvailableVars((prev) => [...prev, ...currentTargetVars]);
+
+        const varsMap = new Map(allPlotVariables.map((v) => [v.name, v]));
+
+        const newHorizontal = hAxis
+            ? ([varsMap.get(hAxis)].filter(Boolean) as Variable[])
+            : [];
+        const newLines = sLines
+            ? ([varsMap.get(sLines)].filter(Boolean) as Variable[])
+            : [];
+        const newPlots = sPlots
+            ? ([varsMap.get(sPlots)].filter(Boolean) as Variable[])
+            : [];
+
+        setHorizontalAxisVars(newHorizontal);
+        setSeparateLinesVars(newLines);
+        setSeparatePlotsVars(newPlots);
+
+        const usedVarNames = new Set(plotVarNames);
+        setAvailableVars((prev) =>
+            prev.filter((v) => !usedVarNames.has(v.name))
+        );
     };
 
-    // Handle dropping variable to target fields
-    const handleDrop = (target: string, variable: string) => {
-        setPlotsState((prev) => ({
-            ...prev,
-            [target]: variable,
-        }));
-    };
-
-    const handleRemoveVariable = (target: keyof UnivariatePlotsType) => {
-        setPlotsState((prev) => ({
-            ...prev,
-            [target]: null,
-        }));
-    };
-
-    // Check if the Add button should be disabled based on requirements
     const isAddButtonDisabled = () => {
-        const { AxisList, LineList, PlotList } = plotsState;
+        const hAxis = horizontalAxisVars.length > 0;
+        const sLines = separateLinesVars.length > 0;
+        const sPlots = separatePlotsVars.length > 0;
 
-        // Case 1: If only Horizontal Axis is filled - can add
-        if (AxisList && !LineList && !PlotList) {
-            return false;
-        }
-
-        // Case 2: If only Separate Lines or only Separate Plots - cannot add
-        if ((!AxisList && LineList) || (!AxisList && PlotList)) {
-            return true;
-        }
-
-        // Case 3: If only Horizontal Axis and Separate Plots - cannot add
-        if (AxisList && !LineList && PlotList) {
-            return true;
-        }
-
-        // Case 4: If Horizontal Axis and Separate Lines - can add
-        if (AxisList && LineList) {
-            return false;
-        }
-
-        // Default: Cannot add if Horizontal Axis is not filled
+        if (hAxis && !sLines && !sPlots) return false;
+        if (hAxis && sLines) return false;
         return true;
     };
 
-    // Add button handler
     const handleAddPlot = () => {
-        const { AxisList, LineList, PlotList } = plotsState;
+        const hAxis = horizontalAxisVars[0]?.name;
+        const sLines = separateLinesVars[0]?.name;
+        const sPlots = separatePlotsVars[0]?.name;
 
-        if (!AxisList) return; // Horizontal Axis is required
+        if (!hAxis) return;
 
-        let newPlot;
-
-        // Case 1: Only Horizontal Axis
-        if (AxisList && !LineList && !PlotList) {
-            newPlot = AxisList;
-        }
-        // Case 4: Horizontal Axis and Separate Lines
-        else if (AxisList && LineList && !PlotList) {
-            newPlot = `${AxisList}*${LineList}`;
-        }
-        // Full case: All three are filled
-        else if (AxisList && LineList && PlotList) {
-            newPlot = `${AxisList}*${LineList}*${PlotList}`;
-        } else {
-            // Other combinations are not valid
-            return;
-        }
+        let newPlot = hAxis;
+        if (sLines) newPlot += `*${sLines}`;
+        if (sLines && sPlots) newPlot += `*${sPlots}`;
 
         if (!plotsList.includes(newPlot)) {
             const updatedPlots = [...plotsList, newPlot];
             setPlotsList(updatedPlots);
-
-            // Update form data
-            setPlotsState((prev) => ({
-                ...prev,
-                FixFactorVars: updatedPlots,
-            }));
+            setPlotsState((prev) => ({ ...prev, FixFactorVars: updatedPlots }));
         }
     };
 
-    // Change button handler
     const handleChangePlot = () => {
         if (!selectedPlot) return;
+        const hAxis = horizontalAxisVars[0]?.name;
+        const sLines = separateLinesVars[0]?.name;
+        const sPlots = separatePlotsVars[0]?.name;
 
-        const { AxisList, LineList, PlotList } = plotsState;
+        if (!hAxis) return;
 
-        if (!AxisList || !LineList || !PlotList) return;
+        let newPlot = hAxis;
+        if (sLines) newPlot += `*${sLines}`;
+        if (sLines && sPlots) newPlot += `*${sPlots}`;
 
-        const newPlot = `${AxisList}*${LineList}*${PlotList}`;
-
-        const updatedPlots = plotsList.map((plot) =>
-            plot === selectedPlot ? newPlot : plot
+        const updatedPlots = plotsList.map((p) =>
+            p === selectedPlot ? newPlot : p
         );
-
         setPlotsList(updatedPlots);
         setSelectedPlot(newPlot);
-
-        // Update form data
-        setPlotsState((prev) => ({
-            ...prev,
-            FixFactorVars: updatedPlots,
-        }));
+        setPlotsState((prev) => ({ ...prev, FixFactorVars: updatedPlots }));
     };
 
-    // Remove button handler
     const handleRemovePlot = () => {
         if (!selectedPlot) return;
-
-        const updatedPlots = plotsList.filter((plot) => plot !== selectedPlot);
+        const updatedPlots = plotsList.filter((p) => p !== selectedPlot);
         setPlotsList(updatedPlots);
         setSelectedPlot(null);
-
-        // Update form data
-        setPlotsState((prev) => ({
-            ...prev,
-            FixFactorVars: updatedPlots,
-        }));
+        setPlotsState((prev) => ({ ...prev, FixFactorVars: updatedPlots }));
     };
 
     const handleContinue = () => {
-        // Update FixFactorVars with plotsList
         const updatedState = {
             ...plotsState,
             FixFactorVars: plotsList,
@@ -222,6 +279,30 @@ export const UnivariatePlots = ({
         setIsPlotsOpen(false);
     };
 
+    const targetListsConfig: TargetListConfig[] = [
+        {
+            id: "HorizontalAxis",
+            title: "Horizontal Axis:",
+            variables: horizontalAxisVars,
+            height: "auto",
+            maxItems: 1,
+        },
+        {
+            id: "SeparateLines",
+            title: "Separate Lines:",
+            variables: separateLinesVars,
+            height: "auto",
+            maxItems: 1,
+        },
+        {
+            id: "SeparatePlots",
+            title: "Separate Plots:",
+            variables: separatePlotsVars,
+            height: "auto",
+            maxItems: 1,
+        },
+    ];
+
     if (!isPlotsOpen) return null;
 
     return (
@@ -229,165 +310,21 @@ export const UnivariatePlots = ({
             <div className="flex flex-col gap-2 p-4">
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="w-full min-h-[725px] rounded-lg border md:min-w-[200px]"
+                    className="w-full min-h-[775px] rounded-lg border md:min-w-[200px]"
                 >
-                    <ResizablePanel defaultSize={40}>
-                        <div className="flex flex-col gap-2 p-2">
-                            <ResizablePanelGroup direction="horizontal">
-                                <ResizablePanel defaultSize={50}>
-                                    <div className="flex flex-col gap-2 p-2">
-                                        <Label>Factors: </Label>
-                                        <div className="h-[200px] border rounded p-2 overflow-auto">
-                                            <div className="flex flex-col gap-1 justify-start items-start">
-                                                {availableVariables.map(
-                                                    (variable, index) => (
-                                                        <Badge
-                                                            key={index}
-                                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                            variant={
-                                                                selectedVariable ===
-                                                                variable
-                                                                    ? "default"
-                                                                    : "outline"
-                                                            }
-                                                            onClick={() =>
-                                                                handleVariableClick(
-                                                                    variable
-                                                                )
-                                                            }
-                                                            draggable
-                                                            onDragStart={(e) =>
-                                                                e.dataTransfer.setData(
-                                                                    "text",
-                                                                    variable
-                                                                )
-                                                            }
-                                                        >
-                                                            {variable}
-                                                        </Badge>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </ResizablePanel>
-                                <ResizableHandle withHandle />
-                                <ResizablePanel defaultSize={50}>
-                                    <div className="flex flex-col gap-4 p-2">
-                                        <div
-                                            className="flex flex-col gap-2"
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop(
-                                                    "AxisList",
-                                                    variable
-                                                );
-                                            }}
-                                        >
-                                            <Label>Horizontal Axis: </Label>
-                                            <div className="w-full border rounded p-2 min-h-10">
-                                                {plotsState.AxisList ? (
-                                                    <Badge
-                                                        className="text-start text-sm font-light p-2 cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleRemoveVariable(
-                                                                "AxisList"
-                                                            )
-                                                        }
-                                                    >
-                                                        {plotsState.AxisList}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variable here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div
-                                            className="flex flex-col gap-2"
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop(
-                                                    "LineList",
-                                                    variable
-                                                );
-                                            }}
-                                        >
-                                            <Label>Separate Lines: </Label>
-                                            <div className="w-full border rounded p-2 min-h-10">
-                                                {plotsState.LineList ? (
-                                                    <Badge
-                                                        className="text-start text-sm font-light p-2 cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleRemoveVariable(
-                                                                "LineList"
-                                                            )
-                                                        }
-                                                    >
-                                                        {plotsState.LineList}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variable here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div
-                                            className="flex flex-col gap-2"
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                            onDrop={(e) => {
-                                                const variable =
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    );
-                                                handleDrop(
-                                                    "PlotList",
-                                                    variable
-                                                );
-                                            }}
-                                        >
-                                            <Label>Separate Plots: </Label>
-                                            <div className="w-full border rounded p-2 min-h-10">
-                                                {plotsState.PlotList ? (
-                                                    <Badge
-                                                        className="text-start text-sm font-light p-2 cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleRemoveVariable(
-                                                                "PlotList"
-                                                            )
-                                                        }
-                                                    >
-                                                        {plotsState.PlotList}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-sm font-light text-gray-500">
-                                                        Drop variable here.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </ResizablePanel>
-                            </ResizablePanelGroup>
+                    <ResizablePanel defaultSize={55}>
+                        <div className="p-2 h-full">
+                            <VariableListManager
+                                availableVariables={availableVars}
+                                targetLists={targetListsConfig}
+                                variableIdKey="name"
+                                onMoveVariable={handleMoveVariable}
+                                onReorderVariable={handleReorderVariable}
+                                highlightedVariable={highlightedVariable}
+                                setHighlightedVariable={setHighlightedVariable}
+                                availableListHeight="225px"
+                                showArrowButtons
+                            />
                         </div>
                     </ResizablePanel>
                     <ResizableHandle />
@@ -425,7 +362,7 @@ export const UnivariatePlots = ({
                                     </Button>
                                 </div>
                             </div>
-                            <div className="h-[125px] border rounded p-2 overflow-auto">
+                            <div className="h-[75px] border rounded p-2 overflow-auto">
                                 <div className="flex flex-col gap-1 p-2">
                                     {plotsList.map((plot, index) => (
                                         <Badge
@@ -587,7 +524,7 @@ export const UnivariatePlots = ({
             <div className="flex-grow" />
             <div className="flex justify-start gap-2 p-4 border-t">
                 <Button
-                    disabled={isContinueDisabled}
+                    disabled={isAddButtonDisabled()}
                     type="button"
                     onClick={handleContinue}
                 >

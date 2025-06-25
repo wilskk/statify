@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     ResizableHandle,
@@ -24,6 +24,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModal } from "@/hooks/useModal";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
+import { HelpCircle } from "lucide-react";
 
 export const KMeansClusterDialog = ({
     isMainOpen,
@@ -40,29 +45,77 @@ export const KMeansClusterDialog = ({
     const [mainState, setMainState] = useState<KMeansClusterMainType>({
         ...data,
     });
-    const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+    const [availableVars, setAvailableVars] = useState<Variable[]>([]);
+    const [targetVars, setTargetVars] = useState<Variable[]>([]);
+    const [caseVars, setCaseVars] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
+    } | null>(null);
 
     const { closeModal } = useModal();
 
+    const listStateSetters: Record<
+        string,
+        React.Dispatch<React.SetStateAction<Variable[]>>
+    > = {
+        available: setAvailableVars,
+        TargetVar: setTargetVars,
+        CaseTarget: setCaseVars,
+    };
+
     useEffect(() => {
         setMainState({ ...data });
-    }, [data]);
+        const allVariables: Variable[] = globalVariables.map((name, index) => ({
+            name,
+            tempId: name,
+            label: name,
+            columnIndex: index,
+            type: "NUMERIC",
+            width: 8,
+            decimals: 2,
+            align: "left",
+            missing: null,
+            measure: "unknown",
+            role: "input",
+            values: [],
+            columns: 0,
+        }));
+
+        const initialUsedNames = new Set(
+            [...(data.TargetVar || []), data.CaseTarget].filter(Boolean)
+        );
+
+        const varsMap = new Map(allVariables.map((v) => [v.name, v]));
+
+        setTargetVars(
+            (data.TargetVar || [])
+                .map((name) => varsMap.get(name))
+                .filter(Boolean) as Variable[]
+        );
+
+        setCaseVars(
+            data.CaseTarget
+                ? ([varsMap.get(data.CaseTarget)].filter(Boolean) as Variable[])
+                : []
+        );
+
+        setAvailableVars(
+            allVariables.filter((v) => !initialUsedNames.has(v.name))
+        );
+    }, [data, globalVariables]);
 
     useEffect(() => {
-        const usedVariables = [
-            ...(mainState.TargetVar || []),
-            mainState.CaseTarget,
-        ].filter(Boolean);
-
-        const updatedVariables = globalVariables.filter(
-            (variable) => !usedVariables.includes(variable)
-        );
-        setAvailableVariables(updatedVariables);
-    }, [mainState, globalVariables]);
+        setMainState((prevState) => ({
+            ...prevState,
+            TargetVar: targetVars.map((v) => v.name),
+            CaseTarget: caseVars[0]?.name || null,
+        }));
+    }, [targetVars, caseVars]);
 
     const handleChange = (
         field: keyof KMeansClusterMainType,
-        value: CheckedState | number | boolean | string | null
+        value: CheckedState | number | boolean | string | string[] | null
     ) => {
         setMainState((prevState) => ({
             ...prevState,
@@ -70,34 +123,65 @@ export const KMeansClusterDialog = ({
         }));
     };
 
-    const handleDrop = (target: string, variable: string) => {
-        setMainState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "CaseTarget") {
-                updatedState.CaseTarget = variable;
-            } else if (target === "TargetVar") {
-                updatedState.TargetVar = [
-                    ...(updatedState.TargetVar || []),
-                    variable,
-                ];
-            }
-            return updatedState;
-        });
-    };
+    const handleMoveVariable = useCallback(
+        (variable: Variable, fromListId: string, toListId: string) => {
+            const fromSetter = listStateSetters[fromListId];
+            const toSetter = listStateSetters[toListId];
+            const toListConfig = targetListsConfig.find(
+                (l) => l.id === toListId
+            );
 
-    const handleRemoveVariable = (target: string, variable?: string) => {
-        setMainState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "CaseTarget") {
-                updatedState.CaseTarget = "";
-            } else if (target === "TargetVar") {
-                updatedState.TargetVar = (updatedState.TargetVar || []).filter(
-                    (item) => item !== variable
+            if (fromSetter) {
+                fromSetter((prev) =>
+                    prev.filter((v) => v.name !== variable.name)
                 );
             }
-            return updatedState;
-        });
-    };
+
+            if (toSetter) {
+                if (toListConfig?.maxItems === 1) {
+                    toSetter((prev) => {
+                        if (prev.length > 0 && listStateSetters.available) {
+                            const existingVar = prev[0];
+                            setAvailableVars((avail) => [
+                                ...avail,
+                                existingVar,
+                            ]);
+                        }
+                        return [variable];
+                    });
+                } else {
+                    toSetter((prev) => [...prev, variable]);
+                }
+            }
+        },
+        [targetVars, caseVars]
+    );
+
+    const handleReorderVariable = useCallback(
+        (listId: string, newVariables: Variable[]) => {
+            const setter = listStateSetters[listId];
+            if (setter) {
+                setter(newVariables);
+            }
+        },
+        []
+    );
+
+    const targetListsConfig: TargetListConfig[] = [
+        {
+            id: "TargetVar",
+            title: "Variables:",
+            variables: targetVars,
+            height: "225px",
+        },
+        {
+            id: "CaseTarget",
+            title: "Label Cases by:",
+            variables: caseVars,
+            height: "auto",
+            maxItems: 1,
+        },
+    ];
 
     const handleMethodGrp = (value: string) => {
         setMainState((prevState) => ({
@@ -149,177 +233,33 @@ export const KMeansClusterDialog = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-center gap-2 p-4">
+            <div className="flex flex-col items-center gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="horizontal"
-                    className="min-h-[200px] rounded-lg border md:min-w-[200px]"
+                    className="min-h-[350px] rounded-lg border md:min-w-[200px]"
                 >
-                    {/* Variable List */}
-                    <ResizablePanel defaultSize={25}>
-                        <ScrollArea>
-                            <div className="flex flex-col gap-1 justify-start items-start h-[400px] w-full p-2">
-                                {availableVariables.map(
-                                    (variable: string, index: number) => (
-                                        <Badge
-                                            key={index}
-                                            className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                            variant="outline"
-                                            draggable
-                                            onDragStart={(e) =>
-                                                e.dataTransfer.setData(
-                                                    "text",
-                                                    variable
-                                                )
-                                            }
-                                        >
-                                            {variable}
-                                        </Badge>
-                                    )
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </ResizablePanel>
-                    <ResizableHandle withHandle />
-
-                    {/* Defining Variable */}
-                    <ResizablePanel defaultSize={55}>
-                        <div className="flex flex-col h-full w-full items-start justify-start gap-2 p-2">
-                            <div
-                                className="flex flex-col gap-2 w-full"
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => {
-                                    const variable =
-                                        e.dataTransfer.getData("text");
-                                    handleDrop("TargetVar", variable);
-                                }}
-                            >
-                                <Label className="font-bold">Variables:</Label>
-                                <div className="w-full h-[225px] p-2 border rounded overflow-hidden">
-                                    <ScrollArea>
-                                        <div className="w-full h-[205px]">
-                                            {mainState.TargetVar &&
-                                            mainState.TargetVar.length > 0 ? (
-                                                <div className="flex flex-col gap-1">
-                                                    {mainState.TargetVar.map(
-                                                        (variable, index) => (
-                                                            <Badge
-                                                                key={index}
-                                                                className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                variant="outline"
-                                                                onClick={() =>
-                                                                    handleRemoveVariable(
-                                                                        "TargetVar",
-                                                                        variable
-                                                                    )
-                                                                }
-                                                            >
-                                                                {variable}
-                                                            </Badge>
-                                                        )
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm font-light text-gray-500">
-                                                    Drop variables here.
-                                                </span>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                                <input
-                                    type="hidden"
-                                    value={mainState.TargetVar ?? ""}
-                                    name="Independents"
-                                />
-                            </div>
-                            <div className="flex flex-col w-full gap-2">
-                                <div>
-                                    <Label className="font-bold">
-                                        Label Cases by:
-                                    </Label>
-                                    <div className="flex items-center space-x-2">
-                                        <div
-                                            className="w-full min-h-[40px] p-2 border rounded"
-                                            onDrop={(e) => {
-                                                handleDrop(
-                                                    "CaseTarget",
-                                                    e.dataTransfer.getData(
-                                                        "text"
-                                                    )
-                                                );
-                                            }}
-                                            onDragOver={(e) =>
-                                                e.preventDefault()
-                                            }
-                                        >
-                                            {mainState.CaseTarget ? (
-                                                <Badge
-                                                    className="text-start text-sm font-light p-2 cursor-pointer"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        handleRemoveVariable(
-                                                            "CaseTarget"
-                                                        )
-                                                    }
-                                                >
-                                                    {mainState.CaseTarget}
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-sm font-light text-gray-500">
-                                                    Drop variables here.
-                                                </span>
-                                            )}
-                                        </div>
-                                        <input
-                                            type="hidden"
-                                            value={mainState.CaseTarget ?? ""}
-                                            name="CaseTarget"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label className="font-bold">Method</Label>
-                                    <RadioGroup
-                                        value={
-                                            mainState.IterateClassify
-                                                ? "IterateClassify"
-                                                : "ClassifyOnly"
-                                        }
-                                        onValueChange={handleMethodGrp}
-                                    >
-                                        <div className="flex flex-row gap-2">
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem
-                                                    value="IterateClassify"
-                                                    id="IterateClassify"
-                                                />
-                                                <Label htmlFor="IterateClassify">
-                                                    Iterate and Classify
-                                                </Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem
-                                                    value="ClassifyOnly"
-                                                    id="ClassifyOnly"
-                                                />
-                                                <Label htmlFor="ClassifyOnly">
-                                                    Variables
-                                                </Label>
-                                            </div>
-                                        </div>
-                                    </RadioGroup>
-                                </div>
-                            </div>
+                    <ResizablePanel defaultSize={75}>
+                        <div className="p-2 h-full">
+                            <VariableListManager
+                                availableVariables={availableVars}
+                                targetLists={targetListsConfig}
+                                variableIdKey="name"
+                                highlightedVariable={highlightedVariable}
+                                setHighlightedVariable={setHighlightedVariable}
+                                onMoveVariable={handleMoveVariable}
+                                onReorderVariable={handleReorderVariable}
+                                showArrowButtons={true}
+                                availableListHeight="310px"
+                            />
                         </div>
                     </ResizablePanel>
-
-                    {/* Tools Area */}
-                    <ResizablePanel defaultSize={20}>
-                        <div className="flex flex-col h-full items-start justify-start gap-1 p-2">
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={25}>
+                        <div className="flex flex-col h-full w-full items-center justify-start gap-1 p-2">
                             <Button
                                 className="w-full"
                                 type="button"
-                                variant="secondary"
+                                variant="outline"
                                 onClick={openDialog(setIsIterateOpen)}
                             >
                                 Iterate...
@@ -327,7 +267,7 @@ export const KMeansClusterDialog = ({
                             <Button
                                 className="w-full"
                                 type="button"
-                                variant="secondary"
+                                variant="outline"
                                 onClick={openDialog(setIsSaveOpen)}
                             >
                                 Save...
@@ -335,7 +275,7 @@ export const KMeansClusterDialog = ({
                             <Button
                                 className="w-full"
                                 type="button"
-                                variant="secondary"
+                                variant="outline"
                                 onClick={openDialog(setIsOptionsOpen)}
                             >
                                 Options...
@@ -604,23 +544,33 @@ export const KMeansClusterDialog = ({
                     </AccordionItem>
                 </Accordion>
             </div>
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button type="button" onClick={handleContinue}>
-                    OK
-                </Button>
-                <Button type="button" variant="secondary" onClick={onReset}>
-                    Reset
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleDialog}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onReset}
+                        className="mr-2"
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleDialog}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button type="button" onClick={handleContinue}>
+                        OK
+                    </Button>
+                </div>
             </div>
         </div>
     );

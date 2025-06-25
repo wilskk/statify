@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
+import { HelpCircle } from "lucide-react";
 
 export const KMeansClusterIterate = ({
     isIterateOpen,
@@ -48,7 +49,7 @@ export const KMeansClusterIterate = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4">
+            <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="flex flex-row items-center gap-2">
                     <Label className="w-[300px]">Maximum Iteration: </Label>
                     <Input
@@ -95,24 +96,29 @@ export const KMeansClusterIterate = ({
                     </label>
                 </div>
             </div>
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsIterateOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsIterateOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );
