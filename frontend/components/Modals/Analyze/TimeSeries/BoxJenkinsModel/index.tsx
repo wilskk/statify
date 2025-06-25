@@ -75,7 +75,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 const savedData = await getFormData("BoxJenkinsModel", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
-                if (savedData.saveAsVariable) {
+                if (savedData?.saveAsVariable) {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
                 
@@ -112,7 +112,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [variables, setSaveAsVariable]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {

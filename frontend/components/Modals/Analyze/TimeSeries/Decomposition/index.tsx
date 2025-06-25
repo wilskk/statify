@@ -74,7 +74,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
                 const savedData = await getFormData("Decomposition", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
 
-                if (savedData.saveAsVariable) {
+                if (savedData?.saveAsVariable) {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
                 
@@ -111,7 +111,7 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [variables, setSaveAsVariable]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {
