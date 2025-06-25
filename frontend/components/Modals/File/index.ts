@@ -12,6 +12,7 @@ export {
 // but we export them here for backward compatibility and convenience
 export * from '@/components/Modals/File/ImportCsv';
 export * from '@/components/Modals/File/ImportExcel';
+export * from '@/components/Modals/File/ImportClipboard';
 export * from '@/components/Modals/File/ExportCsv';
 export * from '@/components/Modals/File/ExportExcel';
 export * from '@/components/Modals/File/OpenSavFile';
@@ -23,6 +24,7 @@ export const isFileModal = (type: ModalType): boolean => {
         ModalType.ImportCSV,
         ModalType.ReadCSVFile,
         ModalType.ImportExcel,
+        ModalType.ImportClipboard,
         ModalType.ReadExcelFile,
         ModalType.OpenData,
         ModalType.OpenOutput,

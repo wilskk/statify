@@ -1,6 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import '@/app/globals.css'
+import 'quill/dist/quill.core.css';
+import 'quill/dist/quill.snow.css';
 import React from "react";
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -21,7 +23,7 @@ export default function RootLayout({
             <body className={"h-full w-full m-0 p-0 grid grid-rows-[auto_1fr_auto] overflow-y-auto"}>
             <ThemeProvider
                 attribute="class"
-                defaultTheme="system"
+                defaultTheme="light"
                 enableSystem
                 disableTransitionOnChange
             >

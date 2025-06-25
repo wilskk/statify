@@ -30,22 +30,14 @@ export class DataService {
   }
   
   /**
-   * Apply bulk updates to the data
+   * Apply bulk updates to the data via repository.updateBulkCells for efficiency
    */
   async applyBulkUpdates(updates: { row: number; col: number; value: string | number }[]) {
     try {
-      // Group updates by row to minimize database operations
-      const rowUpdates = this._groupUpdatesByRow(updates);
-      const currentData = await dataRepository.getAllRows();
-      const updatedRowIndices: number[] = [];
-      
-      // Apply updates by row
-      for (const rowEntry of Array.from(rowUpdates.entries())) {
-        const [rowIndex, update] = rowEntry;
-        await this._updateSingleRow(rowIndex, update, currentData);
-        updatedRowIndices.push(rowIndex);
-      }
-      
+      // Deduplicate row indices for return
+      const updatedRowIndices = Array.from(new Set(updates.map(u => u.row)));
+      // Delegate to repository for batch update in single transaction
+      await dataRepository.updateBulkCells(updates);
       return updatedRowIndices;
     } catch (error) {
       console.error("Error in DataService.applyBulkUpdates:", error);

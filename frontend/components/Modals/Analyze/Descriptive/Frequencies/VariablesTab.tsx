@@ -3,32 +3,40 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { TourStep } from "./hooks/useTourGuide";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { VariableSelectionResult } from "./hooks/useVariableSelection";
+import { DisplaySettingsResult } from "./hooks/useDisplaySettings";
 
 export interface VariablesTabProps {
-    availableVariables: Variable[];
-    selectedVariables: Variable[];
-    highlightedVariable: { tempId: string, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'selected' } | null>>;
-    moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-    moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables?: (source: 'available' | 'selected', variables: Variable[]) => void;
-    showFrequencyTables: boolean;
-    setShowFrequencyTables: React.Dispatch<React.SetStateAction<boolean>>;
+    variableSelection: VariableSelectionResult;
+    displaySettings: DisplaySettingsResult;
     containerType?: "dialog" | "sidebar";
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
-    availableVariables,
-    selectedVariables,
-    highlightedVariable,
-    setHighlightedVariable,
-    moveToSelectedVariables,
-    moveToAvailableVariables,
-    reorderVariables = () => { console.warn("reorderVariables not implemented upstream"); },
-    showFrequencyTables,
-    setShowFrequencyTables,
-    containerType = "dialog"
+    variableSelection,
+    displaySettings,
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
+    const {
+        availableVariables,
+        selectedVariables,
+        highlightedVariable,
+        setHighlightedVariable,
+        moveToSelectedVariables,
+        moveToAvailableVariables,
+        reorderVariables,
+    } = variableSelection;
+
+    const { showFrequencyTables, setShowFrequencyTables } = displaySettings;
+    
     const variableIdKeyToUse: keyof Variable = 'tempId';
 
     // --- Adapt props for VariableListManager ---
@@ -79,37 +87,68 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // 5. Create footer rendering function
     const renderSelectedFooter = useCallback((listId: string) => {
         if (listId === 'selected') {
+            const stepIndex = tourSteps.findIndex(step => step.targetId === 'display-frequency-tables');
             return (
                 <div className="mt-4">
-                    <div className="flex items-center">
+                    <div className="flex items-center relative" id="display-frequency-tables">
                         <Checkbox
-                            id="displayFrequencyTables"
                             checked={showFrequencyTables}
                             onCheckedChange={(checked) => setShowFrequencyTables(!!checked)}
                             className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                            id="frequency-tables-checkbox"
                         />
-                        <Label htmlFor="displayFrequencyTables" className="text-sm cursor-pointer">
+                        <Label htmlFor="frequency-tables-checkbox" className="text-sm cursor-pointer">
                             Display frequency tables
                         </Label>
+                        <ActiveElementHighlight active={tourActive && currentStep === stepIndex} />
                     </div>
                 </div>
             );
         }
         return null;
-    }, [showFrequencyTables, setShowFrequencyTables]);
+    }, [showFrequencyTables, setShowFrequencyTables, tourActive, currentStep, tourSteps]);
 
-    // --- Render the manager component ---
+    const availableStepIndex = tourSteps.findIndex(step => step.targetId === 'frequencies-available-variables');
+    const selectedStepIndex = tourSteps.findIndex(step => step.targetId === 'frequencies-selected-variables');
+
+    // Render wrapper divs with IDs for tour targeting
     return (
-        <VariableListManager
-            availableVariables={availableVariables}
-            targetLists={targetLists}
-            variableIdKey={variableIdKeyToUse}
-            highlightedVariable={managerHighlightedVariable}
-            setHighlightedVariable={setManagerHighlightedVariable}
-            onMoveVariable={handleMoveVariable}
-            onReorderVariable={handleReorderVariables}
-            renderListFooter={renderSelectedFooter}
-        />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    renderListFooter={renderSelectedFooter}
+                />
+                <div id="frequencies-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === availableStepIndex} />
+                </div>
+                <div id="frequencies-selected-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+                    <ActiveElementHighlight active={tourActive && currentStep === selectedStepIndex} />
+                </div>
+            </div>
+            
+            {/* Properly positioned selected-variables-wrapper around the actual selected variables content */}
+            <div 
+                id="selected-variables-wrapper" 
+                style={{ 
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: 'none',
+                    opacity: 0
+                }}
+            >
+                {/* This element allows proper tour targeting while being invisible and not interfering with UI */}
+            </div>
+        </div>
     );
 };
 

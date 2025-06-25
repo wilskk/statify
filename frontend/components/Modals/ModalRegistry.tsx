@@ -6,10 +6,7 @@ import { FILE_MODAL_COMPONENTS, FILE_MODAL_CONTAINER_PREFERENCES } from '@/compo
 import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Data/';
 import { ANALYZE_MODAL_COMPONENTS, ANALYZE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze';
 import { EDIT_MODAL_COMPONENTS, EDIT_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Edit/';
-
-// Lazy load transform modals
-const ComputeVariableModal = lazy(() => import('@/components/Modals/Transform/ComputeVariableModal'));
-const RecodeSameVariablesModal = lazy(() => import('@/components/Modals/Transform/recodeSameVariables'));
+import { TRANSFORM_MODAL_COMPONENTS, TRANSFORM_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Transform';
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
 const ModalLinear = lazy(() => import('@/components/Modals/Regression/Linear/ModalLinear'));
@@ -88,10 +85,8 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Analyze modals - from dedicated registry
   ...ANALYZE_MODAL_COMPONENTS,
   
-  
-  // Transform modals - lazy loaded
-  [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
+  // Transform modals - from dedicated registry
+  ...TRANSFORM_MODAL_COMPONENTS,
   
   // Regression modals - lazy loaded
   [ModalType.ModalLinear]: withSuspense(ModalLinear as any) as React.ComponentType<BaseModalProps>,
@@ -150,9 +145,11 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
   // Analyze modals - from dedicated preferences
   ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
   
+  // Transform modals - from dedicated preferences
+  ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,
   
   // Chart modals yang kompleks selalu sebagai dialog
-  [ModalType.ChartBuilderModal]: "sidebar",
+  [ModalType.ChartBuilderModal]: "dialog",
   [ModalType.SimpleBarModal]: "sidebar",
   
   // Modal dengan form panjang lebih baik sebagai sidebar

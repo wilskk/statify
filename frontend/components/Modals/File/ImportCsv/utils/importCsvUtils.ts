@@ -1,13 +1,5 @@
 import { Variable } from "@/types/Variable";
-
-export interface CSVProcessingOptions {
-    firstLineContains: boolean;
-    removeLeading: boolean;
-    removeTrailing: boolean;
-    delimiter: "comma" | "semicolon" | "tab";
-    decimal: "period" | "comma";
-    textQualifier: "doubleQuote" | "singleQuote" | "none";
-}
+import { CSVProcessingOptions } from "../types";
 
 export class CSVProcessingError extends Error {
     constructor(message: string) {
@@ -94,7 +86,7 @@ export const processCSVContent = (fileContent: string, options: CSVProcessingOpt
                 width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v => v?.length || 0), variableName.length)),
                 decimals: isNumeric ? Math.min(potentialDecimals, 16) : 0,
                 label: '',
-                columns: 12,
+                columns: 64,
                 align: isNumeric ? 'right' : 'left',
                 measure: isNumeric ? 'scale' : 'nominal',
                 role: 'input',

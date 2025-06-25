@@ -2,15 +2,22 @@
 
 "use client";
 
-import React, { Suspense } from 'react';
-import DataTable from "@/components/pages/dashboard/dataTable/DataTable";
+import React, { Suspense, useEffect } from 'react';
+import Index from "@/components/pages/dashboard/dataTable";
 import { DataTableSkeleton } from "@/components/ui/Skeletons";
+import { useTableRefStore } from '@/stores/useTableRefStore';
 
 export default function DataPage() {
+    const { setViewMode } = useTableRefStore();
+    useEffect(() => {
+        setViewMode('numeric');
+        return () => setViewMode('numeric');
+    }, [setViewMode]);
+
     return (
         <div className="z-0 h-full w-full">
             <Suspense fallback={<DataTableSkeleton />}>
-                <DataTable />
+                <Index />
             </Suspense>
         </div>
     );

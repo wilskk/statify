@@ -12,6 +12,8 @@ import {
 import { useActions } from "@/hooks/actions";
 import { useModal } from "@/hooks/useModal";
 import { ModalType } from "@/types/modalTypes";
+import { FindReplaceMode } from "@/components/Modals/Edit/FindReplace/types";
+import { GoToMode } from "@/components/Modals/Edit/GoTo/types";
 
 const EditMenu: React.FC = () => {
     const { openModal } = useModal();
@@ -57,7 +59,7 @@ const EditMenu: React.FC = () => {
                 <MenubarItem
                     onClick={() => handleAction({ actionType: "PasteVariables" })}
                 >
-                    Paste Variables...
+                    Paste Variables
                 </MenubarItem>
                 <MenubarItem
                     onClick={() =>
@@ -85,18 +87,18 @@ const EditMenu: React.FC = () => {
                 </MenubarItem>
                 <MenubarSeparator />
                 {/*<MenubarItem>Search Data Files</MenubarItem>*/}
-                <MenubarItem onClick={() => openModal(ModalType.Find)}>
-                    Find...
+                <MenubarItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.FIND })}>
+                    Find
+                </MenubarItem>
+                <MenubarItem onClick={() => openModal(ModalType.FindAndReplace, { initialTab: FindReplaceMode.REPLACE })}>
+                    Replace
                 </MenubarItem>
                 {/*<MenubarItem>Find Next</MenubarItem>*/}
-                <MenubarItem onClick={() => openModal(ModalType.Replace)}>
-                    Replace...
+                <MenubarItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.CASE })}>
+                    Go to Case
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.GoToCase)}>
-                    Go to Case...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.GoToVariable)}>
-                    Go to Variable...
+                <MenubarItem onClick={() => openModal(ModalType.GoTo, { initialMode: GoToMode.VARIABLE })}>
+                    Go to Variable
                 </MenubarItem>
                 {/*<MenubarItem>Go to Imputation...</MenubarItem>*/}
                 {/*<MenubarSeparator />*/}

@@ -16,354 +16,218 @@ self.onmessage = function(e) {
     } = e.data;
 
     try {
-        // Process the duplicate cases
-        const result = processDuplicates({
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            throw new Error("Invalid data provided");
+        }
+
+        if (!matchingVariables || !Array.isArray(matchingVariables) || matchingVariables.length === 0) {
+            throw new Error("No matching variables provided");
+        }
+
+        // Process the data
+        const result = processDuplicateCases(
             data,
             matchingVariables,
             sortingVariables,
             sortOrder,
-            primaryCaseIndicator,
-            primaryName,
-            sequentialCount,
-            sequentialName,
-            moveMatchingToTop
-        });
-
-        // Generate statistics output
-        const statistics = generateStatistics(result, {
-            primaryName,
-            sequentialName,
-            sequentialCount,
-            displayFrequencies,
             primaryCaseIndicator
-        });
+        );
 
-        // Send results back to main thread
+        // Generate statistics if needed
+        const statistics = displayFrequencies ? generateStatistics(result, primaryName, sequentialCount, sequentialName) : [];
+
+        // Post results back to main thread
         self.postMessage({
             success: true,
-            result: result,
-            statistics: statistics
+            result: {
+                primaryValues: result.primaryValues,
+                sequenceValues: result.sequenceValues,
+                reorderedData: moveMatchingToTop ? result.reorderedData : null
+            },
+            statistics
         });
     } catch (error) {
         self.postMessage({
             success: false,
-            error: error.message
+            error: error.message || "Unknown error occurred"
         });
     }
 };
 
-// Process the duplicate cases
-function processDuplicates(params) {
-    const {
-        data,
-        matchingVariables,
-        sortingVariables,
-        sortOrder,
-        primaryCaseIndicator,
-        sequentialCount
-    } = params;
-
-    // Step 1: Group records by matching variables
-    const groups = {};
-    let totalDuplicates = 0;
-
-    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
-        const row = data[rowIndex];
-        const keyParts = [];
-
-        // Create composite key from all matching variables
-        for (const variable of matchingVariables) {
-            const colIndex = variable.columnIndex;
-            keyParts.push(row[colIndex] || "");
+/**
+ * Main function to process duplicate cases
+ */
+function processDuplicateCases(data, matchingVariables, sortingVariables, sortOrder, primaryCaseIndicator) {
+    // Extract headers and data rows
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    // Get column indices for matching variables
+    const matchingIndices = matchingVariables.map(v => v.columnIndex);
+    
+    // Get column indices for sorting variables
+    const sortingIndices = sortingVariables.map(v => v.columnIndex);
+    
+    // Create a map to group duplicate cases
+    const duplicateGroups = new Map();
+    
+    // Process each row to identify duplicates
+    dataRows.forEach((row, rowIndex) => {
+        // Create a key from the matching variables' values
+        const key = matchingIndices.map(idx => row[idx]).join('|');
+        
+        // Add to the group or create a new group
+        if (!duplicateGroups.has(key)) {
+            duplicateGroups.set(key, []);
         }
-
-        const key = JSON.stringify(keyParts);
-        if (!groups[key]) {
-            groups[key] = [];
-        }
-        groups[key].push(rowIndex);
-    }
-
-    // Step 2: Sort groups if sorting variables provided
-    for (const key in groups) {
-        if (groups[key].length > 1) {
-            totalDuplicates += groups[key].length - 1;
-        }
-
-        if (sortingVariables.length > 0) {
-            groups[key].sort((rowIdxA, rowIdxB) => {
-                for (const sortVar of sortingVariables) {
-                    const colIndex = sortVar.columnIndex;
-                    const valueA = data[rowIdxA][colIndex] || "";
-                    const valueB = data[rowIdxB][colIndex] || "";
-
-                    // Handle numeric comparison
-                    if (typeof valueA === 'number' && typeof valueB === 'number') {
-                        const diff = sortOrder === "ascending" ? valueA - valueB : valueB - valueA;
-                        if (diff !== 0) return diff;
-                    }
-                    // String comparison
-                    else {
-                        const strA = String(valueA).toLowerCase();
-                        const strB = String(valueB).toLowerCase();
-                        const compare = strA.localeCompare(strB);
-                        if (compare !== 0) return sortOrder === "ascending" ? compare : -compare;
+        
+        duplicateGroups.get(key).push({
+            rowIndex,
+            row
+        });
+    });
+    
+    // Sort within groups if sorting variables are provided
+    if (sortingIndices.length > 0) {
+        duplicateGroups.forEach(group => {
+            group.sort((a, b) => {
+                for (const idx of sortingIndices) {
+                    const aVal = a.row[idx];
+                    const bVal = b.row[idx];
+                    
+                    // Handle numeric values
+                    const aNum = !isNaN(parseFloat(aVal)) ? parseFloat(aVal) : aVal;
+                    const bNum = !isNaN(parseFloat(bVal)) ? parseFloat(bVal) : bVal;
+                    
+                    if (aNum !== bNum) {
+                        return sortOrder === "ascending" ? 
+                            (aNum < bNum ? -1 : 1) : 
+                            (aNum > bNum ? -1 : 1);
                     }
                 }
                 return 0;
             });
-        }
+        });
     }
-
-    // Step 3: Create reordered data if needed
-    let reorderedData = [...data];
-    let rowMapping = {};
-    let newGroups = {...groups};
-
-    if (params.moveMatchingToTop) {
+    
+    // Initialize arrays for results
+    const primaryValues = new Array(dataRows.length).fill(0);
+    const sequenceValues = new Array(dataRows.length).fill(0);
+    
+    // Process each group to mark primary cases and assign sequence numbers
+    duplicateGroups.forEach(group => {
+        // If only one case in the group, it's not a duplicate
+        if (group.length === 1) {
+            primaryValues[group[0].rowIndex] = 1; // Mark as primary
+            return;
+        }
+        
+        // Mark primary case based on selection (first or last)
+        const primaryIndex = primaryCaseIndicator === "first" ? 0 : group.length - 1;
+        primaryValues[group[primaryIndex].rowIndex] = 1;
+        
+        // Assign sequence numbers
+        group.forEach((item, i) => {
+            sequenceValues[item.rowIndex] = i + 1; // 1-based sequence number
+        });
+    });
+    
+    // Reorder data if moveMatchingToTop is true
+    let reorderedData = null;
+    if (true) { // Always calculate reordered data, filter by moveMatchingToTop flag when returning
+        // Create a copy of the original data
+        reorderedData = [headers]; // Start with headers
+        
+        // Add rows with duplicates first
         const duplicateRows = [];
-        const nonDuplicateRows = [];
-
-        for (const key in groups) {
-            const groupRows = groups[key];
-            if (groupRows.length > 1) {
-                duplicateRows.push(...groupRows);
+        const uniqueRows = [];
+        
+        duplicateGroups.forEach(group => {
+            if (group.length > 1) {
+                // This is a duplicate group
+                group.forEach(item => {
+                    duplicateRows.push(item.row);
+                });
             } else {
-                nonDuplicateRows.push(groupRows[0]);
+                // This is a unique row
+                uniqueRows.push(group[0].row);
             }
-        }
-
-        const newRowOrder = [...duplicateRows, ...nonDuplicateRows];
-        reorderedData = newRowOrder.map(idx => data[idx]);
-
-        // Create mapping from old indices to new indices
-        for (let i = 0; i < newRowOrder.length; i++) {
-            rowMapping[newRowOrder[i]] = i;
-        }
-
-        // Update groups with new indices
-        newGroups = {};
-        for (const key in groups) {
-            newGroups[key] = groups[key].map(oldIdx => rowMapping[oldIdx]);
-        }
-    } else {
-        // If not reordering, create 1:1 mapping
-        for (let i = 0; i < data.length; i++) {
-            rowMapping[i] = i;
-        }
+        });
+        
+        // Combine duplicate rows and unique rows
+        reorderedData = reorderedData.concat(duplicateRows, uniqueRows);
     }
-
-    // Step 4: Create indicator variables
-    const primaryValues = Array(reorderedData.length).fill(0);
-    const sequenceValues = Array(reorderedData.length).fill(0);
-
-    for (const key in newGroups) {
-        const group = newGroups[key];
-        if (group.length > 0) {
-            // Set primary indicator
-            const primaryIndex = primaryCaseIndicator === "last" ? group.length - 1 : 0;
-            primaryValues[group[primaryIndex]] = 1;
-
-            // Create sequence values if needed
-            if (sequentialCount) {
-                for (let i = 0; i < group.length; i++) {
-                    sequenceValues[group[i]] = i + 1;
-                }
-            }
-        }
-    }
-
-    // Count frequencies for primary indicator
-    const primaryFrequencies = {
-        0: 0, // Duplicates
-        1: 0  // Primary cases
-    };
-
-    for (const value of primaryValues) {
-        primaryFrequencies[value]++;
-    }
-
-    // Count frequencies for sequential counter if needed
-    const sequenceFrequencies = {};
-
-    if (sequentialCount) {
-        for (const value of sequenceValues) {
-            if (!sequenceFrequencies[value]) {
-                sequenceFrequencies[value] = 0;
-            }
-            sequenceFrequencies[value]++;
-        }
-    }
-
+    
     return {
-        reorderedData,
         primaryValues,
         sequenceValues,
-        primaryFrequencies,
-        sequenceFrequencies,
-        totalDuplicates,
-        totalGroups: Object.keys(newGroups).filter(key => newGroups[key].length > 1).length,
-        groups: newGroups
+        reorderedData
     };
 }
 
-// Generate statistics output for display
-function generateStatistics(result, options) {
-    const {
-        primaryName,
-        sequentialName,
-        sequentialCount,
-        displayFrequencies,
-        primaryCaseIndicator
-    } = options;
-
-    const {
-        primaryFrequencies,
-        sequenceFrequencies
-    } = result;
-
-    const totalCases = result.primaryValues.length;
-
-    // Create statistics output
+/**
+ * Generate statistics for display
+ */
+function generateStatistics(result, primaryName, sequentialCount, sequentialName) {
     const statistics = [];
-
-    // TABLE 1: Basic statistics
-    const statsTable = {
-        "title": "Statistics",
-        "columnHeaders": [
-            { "header": "" },
-            { "header": `Indicator of each ${primaryCaseIndicator} matching case as Primary` },
-            { "header": "Sequential count of matching cases" }
-        ],
-        "rows": [
-            {
-                "rowHeader": ["N", "Valid"],
-                [`Indicator of each ${primaryCaseIndicator} matching case as Primary`]: totalCases,
-                "Sequential count of matching cases": totalCases
-            },
-            {
-                "rowHeader": ["N", "Missing"],
-                [`Indicator of each ${primaryCaseIndicator} matching case as Primary`]: 0,
-                "Sequential count of matching cases": 0
-            }
-        ]
-    };
-
+    
+    // Count primary and duplicate cases
+    const primaryCount = result.primaryValues.filter(v => v === 1).length;
+    const duplicateCount = result.primaryValues.filter(v => v === 0).length;
+    
+    // Primary case frequency table
     statistics.push({
-        title: "Basic Statistics",
-        component: "table",
-        output_data: JSON.stringify({ tables: [statsTable] }),
-        description: "Basic statistics for created variables"
-    });
-
-    // TABLE 2: Primary indicator frequencies
-    if (displayFrequencies) {
-        const primaryTable = {
-            "title": `${primaryName}`,
-            "columnHeaders": [
-                { "header": "" },
-                { "header": "" },
-                { "header": "Frequency" },
-                { "header": "Percent" },
-                { "header": "Valid Percent", "key": "ValidPercent" },
-                { "header": "Cumulative Percent", "key": "CumulativePercent" }
+        title: `Frequency Table: ${primaryName}`,
+        description: "Frequency distribution of primary and duplicate cases",
+        component: "FrequencyTable",
+        output_data: {
+            rows: [
+                { label: "Duplicate case", value: "0", count: duplicateCount, percent: (duplicateCount / result.primaryValues.length * 100).toFixed(1) },
+                { label: "Primary case", value: "1", count: primaryCount, percent: (primaryCount / result.primaryValues.length * 100).toFixed(1) },
+                { label: "Total", value: "", count: result.primaryValues.length, percent: "100.0" }
             ],
-            "rows": [
-                {
-                    "rowHeader": ["Valid"],
-                    "children": [
-                        {
-                            "rowHeader": [null, "Duplicate Case"],
-                            "Frequency": primaryFrequencies[0],
-                            "Percent": Number(((primaryFrequencies[0] / totalCases) * 100).toFixed(1)),
-                            "ValidPercent": Number(((primaryFrequencies[0] / totalCases) * 100).toFixed(1)),
-                            "CumulativePercent": Number(((primaryFrequencies[0] / totalCases) * 100).toFixed(1))
-                        },
-                        {
-                            "rowHeader": [null, "Primary Case"],
-                            "Frequency": primaryFrequencies[1],
-                            "Percent": Number(((primaryFrequencies[1] / totalCases) * 100).toFixed(1)),
-                            "ValidPercent": Number(((primaryFrequencies[1] / totalCases) * 100).toFixed(1)),
-                            "CumulativePercent": 100.0
-                        },
-                        {
-                            "rowHeader": [null, "Total"],
-                            "Frequency": totalCases,
-                            "Percent": 100.0,
-                            "ValidPercent": 100.0,
-                            "CumulativePercent": ""
-                        }
-                    ]
-                }
-            ]
-        };
-
-        statistics.push({
-            title: "Primary Case Indicator",
-            component: "table",
-            output_data: JSON.stringify({ tables: [primaryTable] }),
-            description: "Frequency distribution of primary case indicator variable"
-        });
-    }
-
-    // TABLE 3: Sequential counter frequencies
-    if (displayFrequencies && sequentialCount) {
-        // Get all sequence values and sort them
-        const sequenceKeys = Object.keys(sequenceFrequencies)
-            .map(Number)
-            .sort((a, b) => a - b);
-
-        const sequenceRows = [];
-        let cumulativePercent = 0;
-
-        for (const value of sequenceKeys) {
-            const frequency = sequenceFrequencies[value];
-            const percent = Number(((frequency / totalCases) * 100).toFixed(1));
-            cumulativePercent += percent;
-
-            sequenceRows.push({
-                "rowHeader": [null, String(value)],
-                "Frequency": frequency,
-                "Percent": percent,
-                "ValidPercent": percent,
-                "CumulativePercent": Number(cumulativePercent.toFixed(1))
-            });
+            headers: ["Category", "Value", "Count", "Percent"]
         }
-
-        // Add total row
-        sequenceRows.push({
-            "rowHeader": [null, "Total"],
-            "Frequency": totalCases,
-            "Percent": 100.0,
-            "ValidPercent": 100.0,
-            "CumulativePercent": ""
+    });
+    
+    // Add sequence statistics if enabled
+    if (sequentialCount) {
+        // Count occurrences of each sequence value
+        const sequenceCounts = {};
+        result.sequenceValues.forEach(val => {
+            sequenceCounts[val] = (sequenceCounts[val] || 0) + 1;
         });
-
-        const sequenceTable = {
-            "title": sequentialName,
-            "columnHeaders": [
-                { "header": "" },
-                { "header": "" },
-                { "header": "Frequency" },
-                { "header": "Percent" },
-                { "header": "Valid Percent", "key": "ValidPercent" },
-                { "header": "Cumulative Percent", "key": "CumulativePercent" }
-            ],
-            "rows": [
-                {
-                    "rowHeader": ["Valid"],
-                    "children": sequenceRows
-                }
-            ]
-        };
-
+        
+        // Convert to rows for display
+        const sequenceRows = Object.keys(sequenceCounts)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(key => {
+                const count = sequenceCounts[key];
+                return {
+                    label: key === "0" ? "Non-matching case" : `Sequence ${key}`,
+                    value: key,
+                    count: count,
+                    percent: (count / result.sequenceValues.length * 100).toFixed(1)
+                };
+            });
+        
+        sequenceRows.push({
+            label: "Total",
+            value: "",
+            count: result.sequenceValues.length,
+            percent: "100.0"
+        });
+        
         statistics.push({
-            title: "Sequential Count",
-            component: "table",
-            output_data: JSON.stringify({ tables: [sequenceTable] }),
-            description: "Frequency distribution of sequential count variable"
+            title: `Frequency Table: ${sequentialName}`,
+            description: "Frequency distribution of case sequence numbers",
+            component: "FrequencyTable",
+            output_data: {
+                rows: sequenceRows,
+                headers: ["Sequence", "Value", "Count", "Percent"]
+            }
         });
     }
-
+    
     return statistics;
 }

@@ -2,8 +2,10 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
 import { variableService } from "@/services/data";
-import { Variable, ValueLabel, VariableType } from "@/types/Variable";
+import { Variable } from "@/types/Variable";
 import { v4 as uuidv4 } from 'uuid';
+import { transformVariablesToTableData } from '@/components/pages/dashboard/variableTable/utils';
+import { useDataStore } from '@/stores/useDataStore';
 
 export type VariableStoreError = {
     message: string;
@@ -21,22 +23,35 @@ const inferDefaultValues = (type: Variable['type']): Partial<Variable> => {
     };
 };
 
+// SPSS reserved keywords (cannot be used as variable names)
+const RESERVED_KEYWORDS = new Set(["ALL","AND","BY","EQ","GE","GT","LE","LT","NE","NOT","OR","TO","WITH"]);
+
 const processVariableName = (name: string, existingVariables: Variable[]): {
     isValid: boolean;
     message?: string;
     processedName?: string;
 } => {
     if (!name) return { isValid: false, message: "Variable name cannot be empty" };
-    let processedName = name;
-    if (!/^[a-zA-Z@#$]/.test(processedName)) processedName = 'var_' + processedName;
-    processedName = processedName.replace(/[^a-zA-Z0-9@#$_.]/g, '_').replace(/\s+/g, '_').replace(/\.$/, '_');
-    if (processedName.length > 64) processedName = processedName.substring(0, 64);
+    // Trim and replace spaces
+    let processedName = name.trim().replace(/\s+/g, '_');
+    // Keep only allowed chars: letters, digits, dot, underscore, @, #, $
+    processedName = processedName.replace(/[^A-Za-z0-9._@#$]/g, '_');
+    // Must start with letter or @,#,$
+    if (!/^[A-Za-z@#$]/.test(processedName)) processedName = 'VAR_' + processedName;
+    // Remove trailing dots or underscores
+    processedName = processedName.replace(/[._]+$/g, '');
+    // Enforce max length 64
+    if (processedName.length > 64) processedName = processedName.slice(0, 64);
+    // Avoid reserved keywords (case-insensitive)
+    if (RESERVED_KEYWORDS.has(processedName.toUpperCase())) processedName = 'VAR_' + processedName;
+    // Ensure uniqueness (case-insensitive)
     const existingNames = existingVariables.map(v => v.name.toLowerCase());
     if (existingNames.includes(processedName.toLowerCase())) {
         let counter = 1;
+        const base = processedName.slice(0, 60);
         let uniqueName = processedName;
         while (existingNames.includes(uniqueName.toLowerCase())) {
-            uniqueName = `${processedName.substring(0, 60)}_${counter}`;
+            uniqueName = `${base}_${counter}`;
             counter++;
         }
         processedName = uniqueName;
@@ -45,7 +60,8 @@ const processVariableName = (name: string, existingVariables: Variable[]): {
 };
 
 const createDefaultVariable = (index: number, existingVariables: Variable[] = []): Variable => {
-    const regex = /^var(\d+)$/;
+    // Match existing default names case-insensitively
+    const regex = /^var(\d+)$/i;
     let maxNum = 0;
     existingVariables.forEach(v => {
         const match = v.name.match(regex);
@@ -54,7 +70,8 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
             if (num > maxNum) maxNum = num;
         }
     });
-    const baseName = `var${maxNum + 1}`;
+    // Use uppercase prefix for default variable names
+    const baseName = `VAR${maxNum + 1}`;
     const nameResult = processVariableName(baseName, existingVariables);
     return {
         tempId: uuidv4(),
@@ -91,54 +108,69 @@ const omitTempId = <T extends { tempId?: string }>(obj: T): Omit<T, 'tempId'> =>
 const findVariableIndexByIdentifier = (variables: Variable[], identifier: number | string): number => {
     if (typeof identifier === 'number') {
         return variables.findIndex(v => v.columnIndex === identifier);
-    } else {
-        return variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
     }
-};
-
-// Helper function for standardizing variables after service operations
-const standardizeVariables = (variables: Variable[]): Variable[] => {
-    return variables
-        .filter(isValidVariable)
-        .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
-        .sort((a, b) => a.columnIndex - b.columnIndex);
+    const key = String(identifier).toLowerCase();
+    return variables.findIndex(v => v.name.toLowerCase() === key);
 };
 
 // Helper function for updating state after successful operation
 const updateStateAfterSuccess = (set: any, variables: Variable[]) => {
     set((draft: any) => {
-        draft.variables = standardizeVariables(variables);
+        draft.variables = variables
+            .filter(isValidVariable)
+            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+            .sort((a, b) => a.columnIndex - b.columnIndex);
         draft.lastUpdated = new Date();
         draft.error = null;
         draft.isLoading = false;
     });
 };
 
+// Unified error handler for store actions
+const handleError = (set: any, source: string) => (error: any) => {
+    console.error(`Error in ${source}:`, error);
+    set((draft: any) => {
+        draft.error = { message: error.message || `Error in ${source}`, source, originalError: error };
+        draft.isLoading = false;
+    });
+};
+
 interface VariableStoreState {
+    // State
     variables: Variable[];
     isLoading: boolean;
     error: VariableStoreError | null;
     lastUpdated: Date | null;
 
-    setVariables: (variables: Variable[]) => void;
-    updateVariable: <K extends keyof Variable>(
-        identifier: number | string,
-        field: K,
-        value: Variable[K]
-    ) => Promise<void>;
-    updateMultipleFields: (
-        identifier: number | string, 
-        changes: Partial<Variable>
-    ) => Promise<void>;
-    addVariable: (variableData?: Partial<Variable>) => Promise<void>;
+    // Initialization & state management
     loadVariables: () => Promise<void>;
     resetVariables: () => Promise<void>;
+    setVariables: (variables: Variable[]) => void;
+
+    // Accessors
+    getVariableByColumnIndex: (columnIndex: number) => Variable | undefined;
+    // Table data for UI
+    getTableData: () => (string | number)[][];
+    // Unified insert/remove helpers
+    insertVariableAt: (columnIndex: number) => Promise<void>;
+    removeVariableAt: (columnIndex: number) => Promise<void>;
+
+    // Single-item operations
+    addVariable: (variableData?: Partial<Variable>) => Promise<void>;
+    updateVariable: <K extends keyof Variable>(identifier: number | string, field: K, value: Variable[K]) => Promise<void>;
+    updateMultipleFields: (identifier: number | string, changes: Partial<Variable>) => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
-    overwriteVariables: (variables: Variable[]) => Promise<void>;
+
+    // Batch operations
     addMultipleVariables: (variablesData: Partial<Variable>[]) => Promise<void>;
-    sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
+    updateMultipleVariables: (batch: { identifier: number | string; changes: Partial<Variable> }[]) => Promise<void>;
+    overwriteVariables: (variables: Variable[]) => Promise<void>;
     ensureCompleteVariables: (targetMaxColumnIndex?: number) => Promise<void>;
+    sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     saveVariables: () => Promise<void>;
+
+    // Internal helper
+    syncFull: (full: Variable[]) => Promise<void>;
 }
 
 // Helper to enforce measure constraint
@@ -167,6 +199,12 @@ const enforceMeasureConstraint = (changes: Partial<Variable>, existingVariable?:
     return finalChanges;
 };
 
+// Static mapping for field names by column index
+const FIELD_NAME_MAPPING = [
+  "name", "type", "width", "decimals", "label", "values", "missing",
+  "columns", "align", "measure", "role"
+] as const;
+
 export const useVariableStore = create<VariableStoreState>()(
     devtools(
         immer((set, get) => ({
@@ -177,56 +215,39 @@ export const useVariableStore = create<VariableStoreState>()(
 
             setVariables: (variables) => {
                 set((draft) => {
-                    draft.variables = standardizeVariables(variables);
+                    draft.variables = variables
+                        .filter(isValidVariable)
+                        .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+                        .sort((a, b) => a.columnIndex - b.columnIndex);
                     draft.lastUpdated = new Date();
                 });
             },
 
+            // helper: import & sync variables in batch (refresh IDs from DB)
+            syncFull: async (full: Variable[]) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                await variableService.importVariables(full);
+                // Reload with IDs and unique indexes
+                const refreshed = await variableService.getAllVariables();
+                updateStateAfterSuccess(set, refreshed);
+            },
+
             ensureCompleteVariables: async (targetMaxColumnIndex?) => {
                 try {
-                    const existingVariables = [...get().variables];
-                    
-                    // Determine the maximum index to check against
-                    const maxExistingIndex = existingVariables.length > 0
-                        ? Math.max(...existingVariables.map(v => v.columnIndex))
-                        : -1;
-                    
-                    // Use targetMaxColumnIndex if provided and it's greater than maxExistingIndex
-                    const maxIndexToCheck = targetMaxColumnIndex !== undefined && targetMaxColumnIndex > maxExistingIndex
-                        ? targetMaxColumnIndex
-                        : maxExistingIndex;
-
-                    // If no variables exist and no target is provided, nothing to do
-                    if (maxIndexToCheck === -1) return;
-
-                    const targetLength = maxIndexToCheck + 1; // We need indices from 0 to maxIndexToCheck
-                    const newVariablesToCreate: Variable[] = [];
-                    const existingIndices = new Set(existingVariables.map(v => v.columnIndex));
-
-                    // Check indices from 0 up to the determined maximum
-                    for (let i = 0; i < targetLength; i++) {
-                        if (!existingIndices.has(i)) {
-                            const defaultVar = createDefaultVariable(i, [...existingVariables, ...newVariablesToCreate]);
-                            newVariablesToCreate.push(defaultVar);
-                        }
+                    const existing = [...get().variables];
+                    const maxIdx = existing.length > 0 ? Math.max(...existing.map(v => v.columnIndex)) : -1;
+                    const limit = targetMaxColumnIndex !== undefined && targetMaxColumnIndex > maxIdx
+                        ? targetMaxColumnIndex : maxIdx;
+                    if (limit === -1) return;
+                    const newVars: Variable[] = [];
+                    const used = new Set(existing.map(v => v.columnIndex));
+                    for (let i = 0; i <= limit; i++) {
+                        if (!used.has(i)) newVars.push(createDefaultVariable(i, [...existing, ...newVars]));
                     }
-
-                    if (newVariablesToCreate.length > 0) {
-                        console.log(`[ensureCompleteVariables] Adding ${newVariablesToCreate.length} default variables up to index ${maxIndexToCheck}.`);
-                        
-                        // Add variables using variableService
-                        for (const variable of newVariablesToCreate) {
-                            await variableService.saveVariable(variable);
-                        }
-                        
-                        // Refresh variables from service
-                        const updatedVariables = await variableService.getAllVariables();
-                        updateStateAfterSuccess(set, updatedVariables);
+                    if (newVars.length) {
+                        await get().syncFull([...existing, ...newVars]);
                     }
-                } catch (error: any) {
-                    console.error("Error in ensureCompleteVariables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error ensuring complete variables", source: "ensureCompleteVariables", originalError: error }; });
-                }
+                } catch (error: any) { handleError(set, 'ensureCompleteVariables')(error); }
             },
 
             updateVariable: async <K extends keyof Variable>(
@@ -239,6 +260,7 @@ export const useVariableStore = create<VariableStoreState>()(
             },
 
             updateMultipleFields: async (identifier, changes) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 let variableIndexInState: number = -1;
                 let originalVariable: Variable | null = null;
 
@@ -279,140 +301,74 @@ export const useVariableStore = create<VariableStoreState>()(
                         }
                         draft.lastUpdated = new Date();
                         draft.error = null;
+                        draft.isLoading = false;
                     });
-                } catch (error: any) {
-                    console.error("Error in updateMultipleFields:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error updating multiple fields", source: "updateMultipleFields", originalError: error }; });
-                }
+                } catch (error: any) { handleError(set, 'updateMultipleFields')(error); }
+            },
+
+            // Batch-update multiple variables atomically
+            updateMultipleVariables: async (batch: { identifier: number | string; changes: Partial<Variable> }[]) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                try {
+                    const current = [...get().variables];
+                    const updated = current.map(v => {
+                        const found = batch.find(item => typeof item.identifier === 'number'
+                            ? v.columnIndex === item.identifier
+                            : v.name.toLowerCase() === String(item.identifier).toLowerCase());
+                        return found ? { ...v, ...found.changes } : v;
+                    });
+                    await get().syncFull(updated);
+                } catch (error: any) { handleError(set, 'updateMultipleVariables')(error); }
             },
 
             addVariable: async (variableData?) => {
                 try {
-                    // Get all current variables
-                    const allCurrentVariables = get().variables;
-                    const maxExistingIndex = allCurrentVariables.length > 0 
-                        ? Math.max(...allCurrentVariables.map(v => v.columnIndex))
-                        : -1;
-                    const intendedIndex = variableData?.columnIndex ?? (maxExistingIndex + 1);
-
-                    const variableExistsAtIndex = allCurrentVariables.some(v => v.columnIndex === intendedIndex);
-
-                    // Create the base new variable details first
-                    const defaultVar = createDefaultVariable(intendedIndex, allCurrentVariables);
-                    const inferredValues = variableData?.type ? inferDefaultValues(variableData.type) : {};
-                    const newVariableBase: Variable = {
-                        ...defaultVar,
-                        ...inferredValues,
-                        ...variableData,
-                        columnIndex: intendedIndex,
-                        tempId: variableData?.tempId ?? defaultVar.tempId
-                    };
-                    
-                    const nameResult = processVariableName(newVariableBase.name, allCurrentVariables);
-                    const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
-                    let finalNewVariable = { ...newVariableBase, name: finalName };
-                    finalNewVariable = { ...finalNewVariable, ...enforceMeasureConstraint(finalNewVariable, null) };
-
-                    if (variableExistsAtIndex) {
-                        // Insertion case - need to shift existing variables
-                        console.log(`[addVariable] Insertion case detected for index: ${intendedIndex}`);
-                        
-                        // Shift variables with columnIndex >= intendedIndex
-                        const variablesToShift = get().variables.filter(v => v.columnIndex >= intendedIndex);
-                        
-                        // Save new variable first
-                        await variableService.saveVariable(finalNewVariable);
-                        
-                        // Update shifted variables
-                        for (const variable of variablesToShift) {
-                            const shiftedVar = {
-                                ...variable,
-                                columnIndex: variable.columnIndex + 1
-                            };
-                            await variableService.saveVariable(shiftedVar);
-                        }
-                    } else {
-                        // Simple append case
-                        console.log(`[addVariable] Append/GapFill case for index: ${intendedIndex}`);
-                        await variableService.saveVariable(finalNewVariable);
-                    }
-                    
-                    // Reload variables to get updated state
-                    const updatedVariables = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, updatedVariables);
-                    
-                    // Check for and fill any gaps in the sequence
-                    await get().ensureCompleteVariables();
-                } catch (error: any) {
-                    console.error("Error in addVariable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error adding variable", source: "addVariable", originalError: error }; });
-                }
+                    // SPSS contiguous: fill any gaps before new index
+                    const initial = [...get().variables];
+                    const maxInitial = initial.length > 0 ? Math.max(...initial.map(v => v.columnIndex)) : -1;
+                    const idx = variableData?.columnIndex ?? (maxInitial + 1);
+                    await get().ensureCompleteVariables(idx - 1);
+                    const existing = [...get().variables];
+                    const defaultVar = createDefaultVariable(idx, existing);
+                    const inferred = variableData?.type ? inferDefaultValues(variableData.type) : {};
+                    const baseVar: Variable = { ...defaultVar, ...inferred, ...variableData, columnIndex: idx, tempId: variableData?.tempId ?? defaultVar.tempId };
+                    const nameRes = processVariableName(baseVar.name, existing);
+                    const finalName = nameRes.processedName ?? baseVar.name;
+                    const constraintChanges = enforceMeasureConstraint({ ...baseVar, name: finalName }, null as any);
+                    const newVar: Variable = { ...baseVar, name: finalName, ...constraintChanges };
+                    const shifted = existing.map(v => v.columnIndex >= idx ? { ...v, columnIndex: v.columnIndex + 1 } : v);
+                    const full = [...shifted, newVar].sort((a, b) => a.columnIndex - b.columnIndex);
+                    await get().syncFull(full);
+                } catch (error: any) { handleError(set, 'addVariable')(error); }
             },
 
             addMultipleVariables: async (variablesData) => {
                 try {
-                    // Get current variables
-                    const allCurrentVariables = get().variables;
-                    let tempIndexCounter = 1;
-                    const variablesToAdd: Variable[] = [];
-                    
-                    // Prepare variables to add with processed names and constraints
+                    const existing = [...get().variables];
+                    // Fill missing default variables before batch add
+                    const maxIndexToAdd = variablesData.length > 0
+                        ? Math.max(...variablesData.map(d => d.columnIndex ?? 0))
+                        : -1;
+                    if (maxIndexToAdd > 0) await get().ensureCompleteVariables(maxIndexToAdd - 1);
+                    let counter = 1;
+                    const toAdd: Variable[] = [];
                     for (const data of variablesData) {
-                        const maxCurrentIndex = [...allCurrentVariables, ...variablesToAdd].reduce(
-                            (max, v) => Math.max(max, v.columnIndex), -1
-                        );
-                        const intendedIndex = data.columnIndex ?? (maxCurrentIndex + tempIndexCounter++);
-                        
-                        // Check for collisions
-                        const collision = [...allCurrentVariables, ...variablesToAdd].some(
-                            v => v.columnIndex === intendedIndex
-                        );
-                        if (collision) {
-                            throw new Error(`Cannot add multiple variables: Column index ${intendedIndex} collision detected.`);
-                        }
-                        
-                        // Create a properly formatted variable
-                        const currentAndPrepared = [...allCurrentVariables, ...variablesToAdd];
-                        const defaultVar = createDefaultVariable(intendedIndex, currentAndPrepared);
-                        const inferredValues = data.type ? inferDefaultValues(data.type) : {};
-                        const newVariableBase: Variable = {
-                            ...defaultVar,
-                            ...inferredValues,
-                            ...data,
-                            columnIndex: intendedIndex,
-                            tempId: data.tempId ?? defaultVar.tempId
-                        };
-                        
-                        // Process the name
-                        const nameResult = processVariableName(newVariableBase.name, currentAndPrepared);
-                        const finalName = (nameResult.isValid && nameResult.processedName) 
-                            ? nameResult.processedName 
-                            : newVariableBase.name;
-                        
-                        let finalVariable = { ...newVariableBase, name: finalName };
-                        finalVariable = { ...finalVariable, ...enforceMeasureConstraint(finalVariable, null) };
-                        
-                        variablesToAdd.push(finalVariable);
+                        const maxCur = [...existing, ...toAdd].reduce((m,v) => Math.max(m, v.columnIndex), -1);
+                        const idx = data.columnIndex ?? (maxCur + counter++);
+                        if ([...existing, ...toAdd].some(v => v.columnIndex === idx)) throw new Error(`Column index ${idx} collision`);
+                        const def = createDefaultVariable(idx, [...existing, ...toAdd]);
+                        const inferred = data.type ? inferDefaultValues(data.type) : {};
+                        const base: Variable = { ...def, ...inferred, ...data, columnIndex: idx, tempId: data.tempId ?? def.tempId };
+                        const nameResult = processVariableName(base.name, [...existing, ...toAdd]);
+                        const processedName = nameResult.processedName ?? base.name;
+                        const constraint = enforceMeasureConstraint({ ...base, name: processedName }, null as any);
+                        const final: Variable = { ...base, name: processedName, ...constraint };
+                        toAdd.push(final);
                     }
-                    
-                    // Use variableService to import all variables at once
-                    if (variablesToAdd.length > 0) {
-                        // Add variables one by one to ensure proper handling
-                        for (const variable of variablesToAdd) {
-                            await variableService.saveVariable(variable);
-                        }
-                        
-                        // Refresh the variable list
-                        const updatedVariables = await variableService.getAllVariables();
-                        updateStateAfterSuccess(set, updatedVariables);
-                        
-                        // Ensure complete variable set
-                        await get().ensureCompleteVariables();
+                    if (toAdd.length) {
+                        await get().syncFull([...existing, ...toAdd]);
                     }
-                } catch (error: any) {
-                    console.error("Error adding multiple variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error adding multiple variables", source: "addMultipleVariables", originalError: error }; });
-                }
+                } catch (error: any) { handleError(set, 'addMultipleVariables')(error); }
             },
 
             loadVariables: async () => {
@@ -420,94 +376,51 @@ export const useVariableStore = create<VariableStoreState>()(
                 try {
                     const variablesFromService = await variableService.getAllVariables();
                     updateStateAfterSuccess(set, variablesFromService);
-                } catch (error: any) {
-                    console.error("Error loading variables:", error);
-                    set((draft) => {
-                        draft.isLoading = false;
-                        draft.error = { message: error.message || "Failed to load variables", source: "loadVariables", originalError: error };
-                    });
-                }
+                } catch (error: any) { handleError(set, 'loadVariables')(error); }
             },
 
             resetVariables: async () => {
                 try {
-                    // Clear all variables using service
                     await variableService.clearAllVariables();
-                    
-                    // Update store state
-                    set((draft) => {
-                        draft.variables = [];
-                        draft.lastUpdated = new Date();
-                        draft.error = null;
-                        draft.isLoading = false;
-                    });
-                } catch (error: any) {
-                    console.error("Error resetting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error resetting variables", source: "resetVariables", originalError: error }; });
-                }
+                    updateStateAfterSuccess(set, []);
+                } catch (error: any) { handleError(set, 'resetVariables')(error); }
             },
 
             deleteVariable: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    // Find variable to delete in state
-                    const variableToDelete = get().variables.find(v => v.columnIndex === columnIndex);
-                    if (!variableToDelete || variableToDelete.id === undefined) {
-                        console.warn(`Variable with column index ${columnIndex} not found for deletion.`);
+                    const toDel = get().variables.find(v => v.columnIndex === columnIndex);
+                    if (!toDel?.id) {
+                        console.warn(`No variable at index ${columnIndex}`);
+                        // Reset loading state when no ID to delete
+                        set(draft => { draft.isLoading = false; });
                         return;
                     }
-                    
-                    // Delete variable via service
-                    await variableService.deleteVariable(variableToDelete.id);
-                    
-                    // Get remaining variables and reindex them
-                    const remainingVariables = get().variables
-                        .filter(v => v.columnIndex !== columnIndex)
-                        .sort((a, b) => a.columnIndex - b.columnIndex);
-                    
-                    // Reindex variables
-                    for (let i = 0; i < remainingVariables.length; i++) {
-                        const variable = remainingVariables[i];
-                        if (variable.columnIndex !== i) {
-                            // Update variable index if needed
-                            const updatedVariable = { ...variable, columnIndex: i };
-                            await variableService.saveVariable(updatedVariable);
-                        }
+                    await variableService.deleteVariable(toDel.id);
+                    const rem = get().variables.filter(v => v.columnIndex !== columnIndex)
+                        .sort((a,b) => a.columnIndex - b.columnIndex)
+                        .map((v,i) => ({ ...v, columnIndex: i }));
+                    if (rem.length) {
+                        await get().syncFull(rem);
+                    } else {
+                        updateStateAfterSuccess(set, []);
                     }
-                    
-                    // Refresh variables from service
-                    const updatedVariables = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, updatedVariables);
-                } catch (error: any) {
-                    console.error("Error deleting variable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error deleting variable", source: "deleteVariable", originalError: error }; });
-                }
+                } catch (error: any) { handleError(set, 'deleteVariable')(error); }
             },
 
             overwriteVariables: async (newVariables) => {
-                set((draft) => { draft.isLoading = true; draft.error = null; });
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    // Filter incoming newVariables to ensure they are valid before sending to service
-                    const validNewVariables = newVariables.filter(isValidVariable);
-                    // It's important that what's sent to the service is as clean as possible,
-                    // though the service should also have its own validation.
-                    // Omit tempId as it's a frontend-only concept for this store's logic.
-                    await variableService.importVariables(validNewVariables.map(omitTempId));
-                    
-                    const variablesFromService = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, variablesFromService);
-                } catch (error: any) {
-                    console.error("Error overwriting variables:", error);
-                    set((draft) => {
-                        draft.isLoading = false;
-                        draft.error = { message: error.message || "Failed to overwrite variables", source: "overwriteVariables", originalError: error };
-                    });
-                }
+                    const valid = newVariables.filter(isValidVariable).map(omitTempId);
+                    await get().syncFull(valid);
+                } catch (error: any) { handleError(set, 'overwriteVariables')(error); }
             },
 
             sortVariables: async (direction, columnIndex) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
                     // Get field to sort by based on columnIndex
-                    const field = getFieldNameByColumnIndex(columnIndex);
+                    const field = FIELD_NAME_MAPPING[columnIndex] ?? null;
                     if (!field) {
                         console.warn(`Invalid column index ${columnIndex} for sorting.`);
                         return;
@@ -543,43 +456,40 @@ export const useVariableStore = create<VariableStoreState>()(
                     }));
                     
                     // Use variableService to update all variables
-                    await variableService.importVariables(updatedVariables);
-                    
-                    // Refresh variables from service
-                    const refreshedVariables = await variableService.getAllVariables();
-                    updateStateAfterSuccess(set, refreshedVariables);
-                } catch (error: any) {
-                    console.error("Error sorting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error sorting variables", source: "sortVariables", originalError: error }; });
-                }
+                    await get().syncFull(updatedVariables);
+                } catch (error: any) { handleError(set, 'sortVariables')(error); }
             },
 
             saveVariables: async () => {
-                const currentVariables = get().variables;
+                const full = get().variables;
+                await get().syncFull(full);
+            },
+
+            getVariableByColumnIndex: (columnIndex: number) => {
+                return get().variables.find(v => v.columnIndex === columnIndex);
+            },
+            getTableData: () => transformVariablesToTableData(get().variables),
+
+            // Unified insert/remove helpers
+            insertVariableAt: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    // Save all variables via service
-                    await variableService.importVariables(currentVariables);
-                    
-                    set((draft) => { 
-                        draft.error = null; 
-                        draft.lastUpdated = new Date(); 
-                    });
-                } catch (error: any) {
-                    console.error("Failed to explicitly save variables:", error);
-                    set((draft) => {
-                        draft.error = { message: error.message || "Failed to save variables during explicit save", source: "saveVariables", originalError: error };
-                    });
-                    throw error;
-                }
-            }
+                    await get().ensureCompleteVariables(columnIndex - 1);
+                    await get().addVariable({ columnIndex });
+                    await useDataStore.getState().addColumns([columnIndex]);
+                } catch (error: any) { handleError(set, 'insertVariableAt')(error); }
+            },
+            removeVariableAt: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                try {
+                    await get().deleteVariable(columnIndex);
+                    await useDataStore.getState().deleteColumn(columnIndex);
+                } catch (error: any) { handleError(set, 'removeVariableAt')(error); }
+            },
         }))
     )
 );
 
 function getFieldNameByColumnIndex(columnIndex: number): string | null {
-    const fieldMapping = [
-        "name", "type", "width", "decimals", "label", "values", "missing",
-        "columns", "align", "measure", "role"
-    ];
-    return columnIndex >= 0 && columnIndex < fieldMapping.length ? fieldMapping[columnIndex] : null;
+    return FIELD_NAME_MAPPING[columnIndex] ?? null;
 }
