@@ -1,4 +1,9 @@
 import * as d3 from "d3";
+import {
+  addChartTitle,
+  ChartTitleOptions,
+  generateAxisTicks,
+} from "./chartUtils";
 
 interface ChartData {
   category: string;
@@ -116,7 +121,24 @@ export const createAreaChart = (
   data: { category: string; value: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   console.log("Creating area chart with data:", data);
 
@@ -135,11 +157,13 @@ export const createAreaChart = (
   const maxYValue = d3.max(validData, (d) => d.value) ?? 0;
   const maxCategoryLength = d3.max(validData, (d) => d.category.length) ?? 0;
 
-  const marginTop = useAxis ? 30 : 0;
+  const marginTop = useAxis ? 60 : 0;
   const marginRight = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? String(Math.ceil(maxYValue)).length * 7 + 10 : 0;
+  const marginLeft = useAxis
+    ? String(Math.ceil(maxYValue)).length * 17 + 10
+    : 0;
   const marginBottom =
-    useAxis && (maxCategoryLength > 10 || validData.length > 10) ? 50 : 0;
+    useAxis && (maxCategoryLength > 10 || validData.length > 10) ? 20 : 10;
 
   // Skala X dan Y
   const x = d3
@@ -148,17 +172,28 @@ export const createAreaChart = (
     .range([marginLeft, width - marginRight])
     .padding(0.2);
 
+  // Y axis min/max/majorIncrement
+  let yMin = 0;
+  let yMax = maxYValue * 1.1;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
   const y = d3
     .scaleLinear()
-    .domain([0, maxYValue * 1.1]) // tambah 10% padding atas
-    .nice()
+    .domain([yMin, yMax])
     .range([height - marginBottom, marginTop]);
 
   // Area generator
   const area = d3
     .area<{ category: string; value: number }>()
     .x((d) => x(d.category)! + x.bandwidth() / 2)
-    .y0(y(0))
+    .y0(y(yMin))
     .y1((d) => y(d.value));
 
   // SVG
@@ -174,8 +209,20 @@ export const createAreaChart = (
     ])
     .attr("style", "max-width: 100%; height: auto; overflow: visible;");
 
+  // Tambahkan judul dan subtitle jika ada
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
   // Area path
-  svg.append("path").datum(validData).attr("fill", "steelblue").attr("d", area);
+  svg
+    .append("path")
+    .datum(validData)
+    .attr(
+      "fill",
+      chartColors && chartColors.length > 0 ? chartColors[0] : "steelblue"
+    )
+    .attr("d", area);
 
   // Axis
   if (useAxis) {
@@ -195,10 +242,18 @@ export const createAreaChart = (
     }
 
     // Y Axis
-    svg
+    let yAxisGen = d3.axisLeft(y).ticks(height / 40);
+    if (majorIncrement && majorIncrement > 0) {
+      const tickVals = Array.from(
+        { length: Math.floor((yMax - yMin) / majorIncrement) + 1 },
+        (_, i) => yMin + i * majorIncrement
+      );
+      yAxisGen = yAxisGen.tickValues(tickVals);
+    }
+    const yAxis = svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).ticks(height / 40))
+      .call(yAxisGen)
       .call((g) => g.select(".domain").remove())
       .call((g) =>
         g
@@ -206,16 +261,32 @@ export const createAreaChart = (
           .clone()
           .attr("x2", width - marginLeft - marginRight)
           .attr("stroke-opacity", 0.1)
-      )
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft + 5)
-          .attr("y", marginTop - 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Value")
       );
+
+    // Add X axis label if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", (width + marginLeft + marginRight) / 2)
+        .attr("y", height + marginTop + marginBottom - 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.x);
+    }
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -(height + marginTop + marginBottom) / 2)
+        .attr("y", 18)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();
@@ -234,20 +305,38 @@ export const createStackedAreaChart = (
   data: ChartData[],
   width: number = 928,
   height: number = 500,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ): SVGElement | null => {
   // Validasi data
   if (!data || data.length === 0) {
     console.error("No data provided for the stacked area chart.");
     return null;
   }
+  console.log("Data", data);
 
   // Definisi margin
   const margin = {
-    top: useAxis ? 20 : 0,
+    top: useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0,
     right: useAxis ? 20 : 0,
-    bottom: useAxis ? 120 : 0,
-    left: useAxis ? 60 : 0,
+    bottom: useAxis ? 60 : 0, // Lebih banyak ruang untuk label X yang diputar dan legenda
+    left: useAxis ? 80 : 0, // Cukup ruang untuk label Y
   };
 
   const innerWidth = width - margin.left - margin.right;
@@ -293,24 +382,31 @@ export const createStackedAreaChart = (
     .padding(0.5);
 
   // Skala Y
-  const y = d3
-    .scaleLinear()
-    .domain([0, d3.max(stackedData, (layer) => d3.max(layer, (d) => d[1]))!])
-    .range([innerHeight, 0])
-    .nice();
+  let yMin = 0;
+  let yMax = d3.max(stackedData, (layer) => d3.max(layer, (d) => d[1]))!;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+  const y = d3.scaleLinear().domain([yMin, yMax]).range([innerHeight, 0]);
 
   // Skala Warna
   const color = d3
     .scaleOrdinal<string>()
     .domain(subcategories)
-    .range(d3.schemeTableau10);
+    .range(chartColors || d3.schemeTableau10);
 
   // Area Generator
   const area = d3
     .area<d3.SeriesPoint<{ category: string } & Record<string, number>>>()
     .x((d) => x(d.data.category)!)
-    .y0((d) => y(d[0]))
-    .y1((d) => y(d[1]))
+    .y0((d) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], d[0]))))
+    .y1((d) => y(Math.max(y.domain()[0], Math.min(y.domain()[1], d[1]))))
     .curve(d3.curveLinear);
   // .curve(d3.curveMonotoneX); //alternatif
 
@@ -326,27 +422,35 @@ export const createStackedAreaChart = (
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
   // Tambahkan Y-axis dan grid lines jika useAxis adalah true
   if (useAxis) {
+    const yAxis = d3.axisLeft(y);
+    if (
+      majorIncrement &&
+      typeof yMin === "number" &&
+      typeof yMax === "number" &&
+      !isNaN(majorIncrement) &&
+      !isNaN(yMin) &&
+      !isNaN(yMax)
+    ) {
+      const ticks = generateAxisTicks(yMin, yMax, majorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
+
     chart
       .append("g")
-      .call(d3.axisLeft(y).ticks(height / 80))
-      .call((g) => g.select(".domain").remove())
+      .call(yAxis)
       .call((g) =>
         g
           .selectAll(".tick line")
           .clone()
           .attr("x2", innerWidth)
           .attr("stroke-opacity", 0.1)
-      )
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -margin.left)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Value")
       );
   }
 
@@ -377,67 +481,15 @@ export const createStackedAreaChart = (
     svg
       .append("text")
       .attr("x", margin.left + innerWidth / 2)
-      .attr("y", height - margin.bottom / 2 - 15)
+      .attr("y", height - margin.bottom + 35)
       .attr("text-anchor", "middle")
       .attr("font-size", "12px")
-      .text("Category");
-
-    // Menambahkan label sumbu Y
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(margin.top + innerHeight / 2))
-      .attr("y", margin.left / 2 - 10)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text("Value");
+      .text(axisLabels?.x || "Category");
   }
 
   // Tambahkan legenda
   if (useAxis) {
     // Menambahkan legenda
-    // const legendGroup = svg
-    //   .append("g")
-    //   .attr("font-family", "sans-serif")
-    //   .attr("font-size", 10)
-    //   .attr("text-anchor", "start")
-    //   .attr(
-    //     "transform",
-    //     `translate(${margin.left}, ${height - margin.bottom + 30})`
-    //   );
-
-    // const legendItemWidth = 19;
-    // const legendItemHeight = 19;
-    // const labelOffset = 5;
-    // const legendSpacingX = 130;
-    // const legendSpacingY = 25;
-    // const legendMaxWidth = width - margin.left - margin.right;
-    // const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    // subcategories.forEach((subcategory, index) => {
-    //   const row = Math.floor(index / itemsPerRow);
-    //   const col = index % itemsPerRow;
-    //   const xOffset = col * legendSpacingX;
-    //   const yOffset = row * legendSpacingY;
-
-    //   // Menambahkan swatch
-    //   legendGroup
-    //     .append("rect")
-    //     .attr("x", xOffset)
-    //     .attr("y", yOffset)
-    //     .attr("width", legendItemWidth)
-    //     .attr("height", legendItemHeight)
-    //     .attr("fill", color(subcategory));
-
-    //   // Menambahkan label teks
-    //   legendGroup
-    //     .append("text")
-    //     .attr("x", xOffset + legendItemWidth + labelOffset)
-    //     .attr("y", yOffset + legendItemHeight / 2)
-    //     .attr("dy", "0.35em")
-    //     .text(subcategory);
-    // });
-    // Tambahkan legenda
     const legend = svg
       .append("g")
       .attr("font-family", "sans-serif")
@@ -487,26 +539,6 @@ export const createStackedAreaChart = (
       .style("border", "1px solid #d3d3d3")
       .style("border-radius", "4px")
       .style("pointer-events", "none");
-
-    // // Tambahkan interaksi pada path
-    // chart
-    //   .selectAll("path")
-    //   .data(stackedData)
-    //   .join("path")
-    //   .attr("fill", (d) => color(d.key)!)
-    //   .attr("d", area)
-    //   .on("mouseover", function (event, d) {
-    //     tooltip.transition().duration(200).style("opacity", 1);
-    //     tooltip
-    //       .html(`Subcategory: ${d.key}`)
-    //       .style("left", event.pageX + 10 + "px")
-    //       .style("top", event.pageY - 28 + "px");
-    //   })
-    //   .on("mouseout", function () {
-    //     tooltip.transition().duration(500).style("opacity", 0);
-    //   })
-    //   .append("title")
-    //   .text((d) => d.key as string);
   }
 
   // Mengembalikan elemen SVG

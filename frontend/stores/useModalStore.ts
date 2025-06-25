@@ -4,16 +4,17 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
 export enum ModalType {
-        Statistics = 'Statistics',
-        SaveLinear = 'SaveLinear',
-        OptionsLinear = 'OptionsLinear',
-        BootstrapLinear = 'BootstrapLinear',
-        PlotsLinear = 'PlotsLinear',
+  Statistics = "Statistics",
+  SaveLinear = "SaveLinear",
+  OptionsLinear = "OptionsLinear",
+  BootstrapLinear = "BootstrapLinear",
+  PlotsLinear = "PlotsLinear",
   OpenFile = "openFile",
   SaveFile = "saveFile",
   ExportData = "exportData",
   ComputeVariable = "computeVariable",
   RecodeSameVariables = "recodeSameVariables",
+  RecodeDifferentVariables = "recodeDifferentVariables",
 
   // Punya Nopal
   ModalAutomaticLinearModeling = "modalAutomaticLinearModeling",
@@ -59,7 +60,7 @@ export enum ModalType {
   // Time Series
   Smoothing = "smoothing", //Time Series Smoothing
   Decomposition = "decomposition", //Time Series Decomposition
-  Autocorrelation = 'autocorrelation', //Time Series Stationary Test
+  Autocorrelation = "autocorrelation", //Time Series Stationary Test
   UnitRootTest = "unitRootTest", //Time Series Stationary Test
   BoxJenkinsModel = "BoxJenkinsModel", //Time Series Create Model
   FrequenciesStatistic = "frequenciesStatistic",
@@ -111,7 +112,6 @@ export enum ModalType {
   SelectCases = "selectCases",
   WeightCases = "weightCases",
 
-
   // Descriptive
   Frequencies = "frequencies",
   Descriptive = "descriptive",
@@ -128,12 +128,12 @@ export enum ModalType {
   PairedSamplesTTest = "pairedSamplesTTest",
 
   // Nonparametric Test
-  ChiSquare = 'chiSquare',
-  Runs = 'runs',
-  TwoIndependentSamples = 'twoIndependentSamples',
-  KIndependentSamples = 'kIndependentSamples',
-  TwoRelatedSamples = 'twoRelatedSamples',
-  KRelatedSamples = 'kRelatedSamples',
+  ChiSquare = "chiSquare",
+  Runs = "runs",
+  TwoIndependentSamples = "twoIndependentSamples",
+  KIndependentSamples = "kIndependentSamples",
+  TwoRelatedSamples = "twoRelatedSamples",
+  KRelatedSamples = "kRelatedSamples",
 
   //Chart Builder
   ChartBuilderModal = "chartBuilderModal",
@@ -159,21 +159,20 @@ interface ModalStoreState {
 }
 
 export const useModalStore = create<ModalStoreState>()(
-    devtools((set, get) => ({
-      modals: [],
-      isStatisticProgress: false,
-      openModal: (type, props) => {
-        console.log('openModal', type, props);
-        set((state) => ({ modals: [...state.modals, { type, props }] }));
-      },
-      closeModal: () => {
-        set((state) => ({ modals: state.modals.slice(0, -1) }));
-      },
-      closeAllModals: () => {
-        set({ modals: [] });
-      },
-      setStatisticProgress: (value: boolean) =>
-          set({ isStatisticProgress: value }),
-    }))
+  devtools((set, get) => ({
+    modals: [],
+    isStatisticProgress: false,
+    openModal: (type, props) => {
+      console.log("openModal", type, props);
+      set((state) => ({ modals: [...state.modals, { type, props }] }));
+    },
+    closeModal: () => {
+      set((state) => ({ modals: state.modals.slice(0, -1) }));
+    },
+    closeAllModals: () => {
+      set({ modals: [] });
+    },
+    setStatisticProgress: (value: boolean) =>
+      set({ isStatisticProgress: value }),
+  }))
 );
-

@@ -569,8 +569,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
           data4,
           width,
           height,
-          useaxis,
-          false
+          useaxis
         );
         if (svgRef.current && chartNode) {
           svgRef.current.appendChild(chartNode);
@@ -695,8 +694,8 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
       } else if (chartType === "Scatter Plot Matrix") {
         const chartNode = chartUtils.createScatterPlotMatrix(
           data16,
-          width,
-          height,
+          Math.max(width, height),
+          Math.max(width, height),
           useaxis
         );
 

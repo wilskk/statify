@@ -1,4 +1,7 @@
 import * as d3 from "d3";
+import { addChartTitle, ChartTitleOptions } from "./chartUtils";
+
+const colorScheme = d3.schemeCategory10;
 
 // export const createPieChart = (
 //   data: { category: string; value: number }[], // Data dengan kategori dan nilai
@@ -126,7 +129,9 @@ export const createPieChart = (
   data: { category: string; value: number }[],
   width: number = 928,
   height: number = Math.min(width, 500),
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  chartColors?: string[]
 ) => {
   console.log("Creating pie chart with data:", data);
 
@@ -142,28 +147,19 @@ export const createPieChart = (
     return null;
   }
 
-  const numCategories = validData.length;
-  let colorScheme: readonly string[];
-
-  if (numCategories === 1) {
-    colorScheme = [d3.schemeBlues[9][4]];
-  } else if (numCategories <= 9) {
-    colorScheme = d3.schemeBlues[numCategories];
-  } else {
-    colorScheme = d3.schemeBlues[9];
-  }
-
   const color = d3
     .scaleOrdinal<string>()
     .domain(validData.map((d) => d.category))
-    .range(colorScheme);
+    .range(chartColors || colorScheme);
 
   const pie = d3
     .pie<{ category: string; value: number }>()
     .sort(null)
     .value((d) => d.value);
 
-  const outerRadius = Math.min(width, height) / 2 - 1;
+  // Tambahkan margin atas agar judul tidak tertutup
+  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
+  const outerRadius = Math.min(width, height - marginTop) / 2 - 1;
   const labelRadius = outerRadius * 1.1;
 
   const arc = d3
@@ -178,20 +174,25 @@ export const createPieChart = (
 
   const arcs = pie(validData);
 
-  const margin = useAxis ? 80 : 0; // Tambahan ruang supaya label tidak terpotong
+  // SVG: viewBox dari 0,0 supaya title selalu di atas
   const svg = d3
     .create("svg")
     .attr("width", width)
     .attr("height", height)
-    .attr("viewBox", [
-      -width / 2 - margin,
-      -height / 2 - margin,
-      width + 2 * margin,
-      height + 2 * margin,
-    ]);
+    .attr("viewBox", [0, 0, width, height]);
+
+  // Tambahkan judul dan subtitle dengan helper agar konsisten
+  if (titleOptions) {
+    addChartTitle(svg, { ...titleOptions });
+  }
+
+  // Bungkus semua pie chart dalam group yang di-translate ke tengah (digeser ke bawah marginTop)
+  const chartGroup = svg
+    .append("g")
+    .attr("transform", `translate(${width / 2}, ${(height + marginTop) / 2})`);
 
   // Slices
-  svg
+  chartGroup
     .append("g")
     .attr("stroke", "white")
     .selectAll("path")
@@ -204,7 +205,7 @@ export const createPieChart = (
 
   if (useAxis) {
     // Garis penghubung (leader lines)
-    svg
+    chartGroup
       .append("g")
       .attr("fill", "none")
       .attr("stroke", "#999")
@@ -225,7 +226,7 @@ export const createPieChart = (
     // Label kategori + nilai
     const calculatedFontSize = 18;
 
-    svg
+    chartGroup
       .append("g")
       .selectAll("text")
       .data(arcs)
@@ -247,4 +248,19 @@ export const createPieChart = (
   }
 
   return svg.node();
+};
+
+export const createDonutChart = (
+  data: { category: string; value: number }[],
+  width: number,
+  height: number,
+  useAxis: boolean = true,
+  chartColors?: string[]
+) => {
+  // ... existing code ...
+  const color = d3
+    .scaleOrdinal<string>()
+    .domain(data.map((d) => d.category))
+    .range(chartColors || colorScheme);
+  // ... existing code ...
 };

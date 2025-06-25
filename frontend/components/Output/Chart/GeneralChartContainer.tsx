@@ -1,14 +1,37 @@
 import React, { useEffect, useRef, useState } from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
+import { Button } from "@/components/ui/button";
+import { Download, Copy, Check, Image, FileType, View } from "lucide-react";
+import { toast } from "sonner";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // Define type untuk data chart
 interface ChartData {
   chartType: string;
   chartData: any[];
-  config: {
+  chartConfig: {
     width: number;
     height: number;
     useAxis?: boolean;
+    axisLabels: {
+      x: string;
+      y: string;
+    };
+    axisScaleOptions?: {
+      x?: {
+        min?: string;
+        max?: string;
+        majorIncrement?: string;
+        origin?: string;
+      };
+      y?: {
+        min?: string;
+        max?: string;
+        majorIncrement?: string;
+        origin?: string;
+      };
+    };
+    chartColor?: string[];
   };
   chartMetadata: {
     axisInfo: {
@@ -16,6 +39,10 @@ interface ChartData {
       value: string;
     };
     description: string;
+    title?: string;
+    subtitle?: string;
+    titleFontSize?: number;
+    subtitleFontSize?: number;
   };
 }
 
@@ -26,7 +53,22 @@ interface GeneralChartContainerProps {
 const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   data,
 }) => {
-  const chartRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState<{
+    [key: string]: { svg?: boolean; png?: boolean };
+  }>({});
+  const [chartNodes, setChartNodes] = useState<
+    {
+      id: string;
+      chartNode: HTMLElement | SVGElement | null;
+      chartType: string;
+      width: number;
+      height: number;
+    }[]
+  >([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewChart, setPreviewChart] = useState<
+    HTMLElement | SVGElement | null
+  >(null);
 
   const [chartDimensions, setChartDimensions] = useState<{
     width: number;
@@ -36,47 +78,180 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
     height: 600, // Default height
   });
 
+  const [actionsHidden, setActionsHidden] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const actionTimers = useRef<{
+    [key: string]: NodeJS.Timeout | number | null;
+  }>({});
+
   // Parse data jika berbentuk string
   const parsedData = typeof data === "string" ? JSON.parse(data) : data;
 
-  useEffect(() => {
-    if (chartRef.current) {
-      console.log("data di container chart", parsedData);
+  const handleCopyChart = async (
+    chartId: string,
+    format: "svg" | "png" = "svg"
+  ) => {
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) return;
 
-      // Hapus SVG sebelumnya untuk menghindari duplikasi
-      // const existingSvgs = chartRef.current.querySelectorAll("svg");
-      // existingSvgs.forEach((svg) => svg.remove());
-      // Hapus elemen sebelumnya dengan lebih aman
-      while (chartRef.current.firstChild) {
-        chartRef.current.removeChild(chartRef.current.firstChild);
+    const svgElement = chartElement.querySelector("svg");
+    if (!svgElement) return;
+
+    try {
+      if (format === "svg") {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        await navigator.clipboard.writeText(svgData);
+      } else {
+        // Convert SVG to PNG
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img: HTMLImageElement = document.createElement("img");
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(svgBlob);
+
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            if (ctx) {
+              ctx.fillStyle = "#fff";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0);
+            }
+            canvas.toBlob((blob) => {
+              if (blob) {
+                navigator.clipboard
+                  .write([
+                    new ClipboardItem({
+                      "image/png": blob,
+                    }),
+                  ])
+                  .then(resolve)
+                  .catch(reject);
+              } else {
+                reject(new Error("Failed to create blob"));
+              }
+            }, "image/png");
+          };
+          img.onerror = reject;
+          img.src = url;
+        });
       }
 
-      // Periksa jika ada chart data
-      if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
-        // Iterasi untuk setiap chart dalam parsedData.charts
-        parsedData.charts.forEach((chartData: ChartData, index: number) => {
+      setCopied((prev) => ({
+        ...prev,
+        [chartId]: {
+          ...prev[chartId],
+          [format]: true,
+        },
+      }));
+      toast.success(`Chart copied as ${format.toUpperCase()}`);
+      setTimeout(() => {
+        setCopied((prev) => ({
+          ...prev,
+          [chartId]: {
+            ...prev[chartId],
+            [format]: false,
+          },
+        }));
+      }, 500);
+    } catch (err) {
+      toast.error(`Failed to copy chart as ${format.toUpperCase()}`);
+    }
+  };
+
+  const handleDownloadChart = async (
+    chartId: string,
+    format: "svg" | "png"
+  ) => {
+    const chartElement = document.getElementById(chartId);
+    if (!chartElement) return;
+
+    const svgElement = chartElement.querySelector("svg");
+    if (!svgElement) return;
+
+    try {
+      if (format === "svg") {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const blob = new Blob([svgData], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${chartId}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img: HTMLImageElement = document.createElement("img");
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          if (ctx) {
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+          }
+          const pngUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = pngUrl;
+          link.download = `${chartId}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        };
+        img.src = url;
+      }
+      toast.success(`Chart downloaded as ${format.toUpperCase()}`);
+    } catch (err) {
+      toast.error("Failed to download chart");
+    }
+  };
+
+  useEffect(() => {
+    console.log("data di kontainer", parsedData);
+    if (parsedData && parsedData.charts && Array.isArray(parsedData.charts)) {
+      const nodes = parsedData.charts.map(
+        (chartData: ChartData, index: number) => {
           const {
             chartType,
             chartData: chartDataPoints,
-            config,
+            chartConfig,
             chartMetadata,
           } = chartData;
-          const width = config?.width || chartDimensions.width;
-          const height = config?.height || chartDimensions.height;
-          const useAxis = config?.useAxis ?? true;
-
-          console.log("chartData", chartDataPoints);
-
-          // Buat grafik berdasarkan jenisnya
+          const width = chartConfig?.width || chartDimensions.width;
+          const height = chartConfig?.height || chartDimensions.height;
+          const useAxis = chartConfig?.useAxis ?? true;
           let chartNode: HTMLElement | SVGElement | null = null;
-
           switch (chartType) {
             case "Vertical Bar Chart":
               chartNode = chartUtils.createVerticalBarChart2(
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Vertical Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Horizontal Bar Chart":
@@ -84,7 +259,17 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                chartConfig?.chartColor?.[0] || "hsl(var(--primary))",
+                0.007,
+                {
+                  title: chartMetadata?.title || "Horizontal Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions
               );
               break;
             case "Pie Chart":
@@ -92,7 +277,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Pie Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.chartColor
               );
               break;
             case "Scatter Plot":
@@ -100,7 +292,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Scatter Plot With Fit Line":
@@ -108,7 +309,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Scatter Plot With Fit Line",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Line Chart":
@@ -116,7 +326,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Line Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Area Chart":
@@ -124,7 +343,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Area Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Vertical Stacked Bar Chart":
@@ -132,7 +360,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Vertical Stacked Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Horizontal Stacked Bar Chart":
@@ -140,7 +377,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Horizontal Stacked Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Clustered Bar Chart":
@@ -148,7 +394,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Clustered Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Multiple Line Chart":
@@ -156,7 +411,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Multiple Line Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Boxplot":
@@ -164,7 +428,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Boxplot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Histogram":
@@ -172,7 +445,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Histogram",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Error Bar Chart":
@@ -180,7 +462,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Error Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Stacked Area Chart":
@@ -188,7 +479,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Stacked Area Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Grouped Scatter Plot":
@@ -196,7 +496,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Grouped Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Dot Plot":
@@ -204,7 +513,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Dot Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Frequency Polygon":
@@ -212,7 +530,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Frequency Polygon",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Population Pyramid":
@@ -220,7 +547,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Population Pyramid",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Clustered Error Bar Chart":
@@ -228,7 +564,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Clustered Error Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Stacked Histogram":
@@ -236,7 +581,15 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Clustered Error Bar Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.chartColor
               );
               break;
             case "Scatter Plot Matrix":
@@ -244,7 +597,15 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Scatter Plot Matrix",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.chartColor
               );
               break;
             case "Clustered Boxplot":
@@ -252,7 +613,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Clustered Boxplot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "1-D Boxplot":
@@ -389,25 +759,21 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
             case "Stem And Leaf Plot":
               chartNode = chartUtils.createStemAndLeafPlot(
                 chartDataPoints as unknown as { [stem: string]: number[] },
-
                 width,
                 height,
                 useAxis
               );
               break;
-
             default:
               console.warn(`Unsupported chart type: ${chartType}`);
           }
-
-          // Jika chartNode ada, tambahkan ke chartRef
-          if (chartNode && chartRef.current) {
-            chartRef.current.appendChild(chartNode);
-          }
-        });
-      }
+          const uniqueId = `chart-${Date.now()}-${index}`;
+          return { id: uniqueId, chartNode, chartType, width, height };
+        }
+      );
+      setChartNodes(nodes);
     }
-  }, [parsedData, chartDimensions]); // Include chartDimensions in the dependency array
+  }, [data, chartDimensions]);
 
   // Menentukan ukuran kontainer berdasarkan dimensi chart
   const containerStyle = {
@@ -417,11 +783,156 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   };
 
   return (
-    <div
-      ref={chartRef}
-      style={containerStyle}
-      className="chart-container"
-    ></div>
+    <div>
+      {chartNodes.map(({ id, chartNode, chartType, width, height }, idx) => (
+        <div
+          key={id}
+          className="relative group mb-8"
+          style={{ minHeight: 400 }}
+          onMouseEnter={() => {
+            if (actionTimers.current[id])
+              clearTimeout(actionTimers.current[id]!);
+            actionTimers.current[id] = setTimeout(() => {
+              setActionsHidden((prev) => ({ ...prev, [id]: true }));
+            }, 3000);
+          }}
+          onMouseLeave={() => {
+            if (actionTimers.current[id])
+              clearTimeout(actionTimers.current[id]!);
+            setActionsHidden((prev) => ({ ...prev, [id]: false }));
+          }}
+        >
+          <div
+            className={
+              "flex justify-end gap-2 mb-2 transition-opacity chart-actions " +
+              (actionsHidden[id]
+                ? "opacity-0"
+                : "opacity-0 group-hover:opacity-100 pointer-events-auto")
+            }
+            onMouseEnter={() => {
+              if (actionTimers.current[id])
+                clearTimeout(actionTimers.current[id]!);
+              setActionsHidden((prev) => ({ ...prev, [id]: false }));
+            }}
+            onMouseLeave={() => {
+              actionTimers.current[id] = setTimeout(() => {
+                setActionsHidden((prev) => ({ ...prev, [id]: true }));
+              }, 3000);
+            }}
+          >
+            <button
+              className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                copied[id]?.svg ? "text-green-600" : ""
+              } ${
+                actionsHidden[id] ? "pointer-events-none cursor-default" : ""
+              }`}
+              onClick={() => handleCopyChart(id, "svg")}
+              title="Copy as SVG"
+            >
+              {copied[id]?.svg ? (
+                <Check className="w-4 h-4 inline-block mr-1" />
+              ) : (
+                <Copy className="w-4 h-4 inline-block mr-1" />
+              )}
+              <FileType className="w-4 h-4 inline-block mr-1" />
+              <span className="text-xs">SVG</span>
+            </button>
+            <button
+              className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                copied[id]?.png ? "text-green-600" : ""
+              } ${
+                actionsHidden[id] ? "pointer-events-none cursor-default" : ""
+              }`}
+              onClick={() => handleCopyChart(id, "png")}
+              title="Copy as PNG"
+            >
+              {copied[id]?.png ? (
+                <Check className="w-4 h-4 inline-block mr-1" />
+              ) : (
+                <Copy className="w-4 h-4 inline-block mr-1" />
+              )}
+              <Image className="w-4 h-4 inline-block mr-1" />
+              <span className="text-xs">PNG</span>
+            </button>
+            <button
+              className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                actionsHidden[id] ? "pointer-events-none cursor-default" : ""
+              }`}
+              onClick={() => handleDownloadChart(id, "svg")}
+              title="Download as SVG"
+            >
+              <Download className="w-4 h-4 inline-block mr-1" />
+              <FileType className="w-4 h-4 inline-block mr-1" />
+              <span className="text-xs">SVG</span>
+            </button>
+            <button
+              className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                actionsHidden[id] ? "pointer-events-none cursor-default" : ""
+              }`}
+              onClick={() => handleDownloadChart(id, "png")}
+              title="Download as PNG"
+            >
+              <Download className="w-4 h-4 inline-block mr-1" />
+              <Image className="w-4 h-4 inline-block mr-1" />
+              <span className="text-xs">PNG</span>
+            </button>
+            {/* <button
+              className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
+                actionsHidden[id] ? "pointer-events-none cursor-default" : ""
+              }`}
+              onClick={() => {
+                setPreviewChart(
+                  chartNode
+                    ? (chartNode.cloneNode(true) as HTMLElement | SVGElement)
+                    : null
+                );
+                setPreviewOpen(true);
+              }}
+              title="Preview Chart"
+            >
+              <View className="w-4 h-4" />
+            </button> */}
+          </div>
+          <div className="w-full h-full flex items-center justify-center">
+            <div
+              id={id}
+              style={{
+                width: width,
+                height: height,
+              }}
+            >
+              {/* Render chartNode as HTML */}
+              {chartNode && (
+                <div
+                  ref={(el) => {
+                    if (el && chartNode) {
+                      el.innerHTML = "";
+                      el.appendChild(chartNode);
+                    }
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="flex flex-col items-center justify-center max-w-4xl w-full h-[80vh]">
+          {previewChart && (
+            <div className="overflow-auto w-full h-full flex items-center justify-center">
+              <div
+                ref={(el) => {
+                  if (el && previewChart) {
+                    el.innerHTML = "";
+                    el.appendChild(previewChart);
+                  }
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

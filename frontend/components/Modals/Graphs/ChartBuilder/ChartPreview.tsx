@@ -6,6 +6,9 @@ import * as d3 from "d3";
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import clsx from "clsx";
+import { createVerticalBarChart2 } from "@/utils/chartBuilder/chartTypes/barChartUtils";
+import { createHorizontalBarChart } from "@/utils/chartBuilder/chartTypes/barChartUtils";
+import { createLineChart } from "@/utils/chartBuilder/chartTypes/lineChartUtils";
 
 interface ChartPreviewProps {
   chartType: ChartType;
@@ -16,20 +19,20 @@ interface ChartPreviewProps {
   side2Variables: string[];
   bottomVariables: string[];
   bottom2Variables: string[];
-  filterVariables: string[];
   colorVariables: string[];
+  filterVariables: string[];
   lowVariables: string[];
   highVariables: string[];
   closeVariables: string[];
-  onDropSide: (newSideVariables: string[]) => void;
-  onDropSide2: (newSideVariables: string[]) => void;
-  onDropBottom: (newBottomVariables: string[]) => void;
-  onDropBottom2: (newBottom2Variables: string[]) => void;
-  onDropFilter: (newFilterVariables: string[]) => void;
-  onDropColor: (newColorVariables: string[]) => void;
-  onDropLow: (newLowVariables: string[]) => void;
-  onDropHigh: (newHighVariables: string[]) => void;
-  onDropClose: (newCloseVariables: string[]) => void;
+  onDropSide: (variables: string[]) => void;
+  onDropSide2: (variables: string[]) => void;
+  onDropBottom: (variables: string[]) => void;
+  onDropBottom2: (variables: string[]) => void;
+  onDropColor: (variables: string[]) => void;
+  onDropFilter: (variables: string[]) => void;
+  onDropLow: (variables: string[]) => void;
+  onDropHigh: (variables: string[]) => void;
+  onDropClose: (variables: string[]) => void;
   handleRemoveVariable: (
     type: "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2",
     index: number
@@ -42,6 +45,24 @@ interface ChartPreviewProps {
     highVariables: string[],
     closeVariables: string[]
   ) => boolean;
+  // Add new props for chart customization
+  chartTitle?: string;
+  chartSubtitle?: string;
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  // Tambahkan props baru untuk axis scale
+  xAxisMin?: string;
+  xAxisMax?: string;
+  xAxisMajorIncrement?: string;
+  xAxisOrigin?: string;
+  yAxisMin?: string;
+  yAxisMax?: string;
+  yAxisMajorIncrement?: string;
+  yAxisOrigin?: string;
+  // Tambahkan prop chartColors
+  chartColors?: string[];
+  chartTitleFontSize?: number;
+  chartSubtitleFontSize?: number;
 }
 
 // Definisi interface untuk data chart
@@ -66,25 +87,42 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   side2Variables,
   bottomVariables,
   bottom2Variables,
+  colorVariables,
   filterVariables,
   lowVariables,
   highVariables,
   closeVariables,
-  colorVariables,
   onDropSide,
   onDropSide2,
   onDropBottom,
   onDropBottom2,
-  onDropFilter,
   onDropColor,
+  onDropFilter,
   onDropLow,
   onDropHigh,
   onDropClose,
   handleRemoveVariable,
   validateChartVariables,
+  chartTitle,
+  chartSubtitle,
+  xAxisLabel,
+  yAxisLabel,
+  xAxisMin,
+  xAxisMax,
+  xAxisMajorIncrement,
+  xAxisOrigin,
+  yAxisMin,
+  yAxisMax,
+  yAxisMajorIncrement,
+  yAxisOrigin,
+  chartColors,
+  chartTitleFontSize,
+  chartSubtitleFontSize,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [chartData, setChartData] = useState(null);
+  const [modalType, setModalType] = useState<
+    "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2"
+  >("side");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -123,7 +161,16 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
   // Fungsi untuk membuka modal
   const handleOpenModal = (
-    type: "side" | "bottom" | "low" | "high" | "close" | "side2" | "bottom2"
+    type:
+      | "side"
+      | "bottom"
+      | "low"
+      | "high"
+      | "close"
+      | "side2"
+      | "bottom2"
+      | "color"
+      | "filter"
   ) => {
     setModalState({ type, isOpen: true });
   };
@@ -1094,76 +1141,16 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     });
   };
 
-  const getJSONForChart = async () => {
-    // Validasi Input
-    // if (!validateChartVariables(chartType, sideVariables, bottomVariables)) {
-    //   return null; // Kembalikan null jika validasi gagal
-    // }
-
-    setIsCalculating(true);
-    setErrorMsg(null);
-
+  const getChartData = async () => {
     try {
-      // Inisialisasi worker
-      const worker = new Worker("/workers/ChartBuilder/DefaultChartPrep.js");
-
-      const chartConfig = {
-        width: 800,
-        height: 600,
-        chartColor: ["red"],
-        useAxis: true,
-        useLegend: true,
-      };
-
-      // Siapkan data yang akan dikirim ke worker
-      const workerData = {
-        chartType,
-        chartVariables: {
-          y: sideVariables,
-          x: bottomVariables,
-          groupBy: colorVariables,
-        },
-        chartMetadata: {
-          note: "Mengecualikan nilai missing",
-        },
-        chartConfig,
-        data,
-        variables,
-      };
-
-      worker.postMessage(workerData);
-
-      return new Promise((resolve, reject) => {
-        worker.onmessage = (event) => {
-          const { success, chartJSON, error } = event.data;
-
-          if (success) {
-            setIsCalculating(false);
-            resolve(chartJSON); // Kembalikan chartJSON jika sukses
-          } else {
-            setErrorMsg(error || "Worker gagal menghasilkan chart.");
-            setIsCalculating(false);
-            reject(error || "Worker gagal menghasilkan chart.");
-          }
-
-          worker.terminate();
-        };
-
-        worker.onerror = (error) => {
-          console.error("Worker error:", error);
-          setErrorMsg(
-            "Terjadi kesalahan pada worker. Periksa konsol untuk detail."
-          );
-          setIsCalculating(false);
-          worker.terminate();
-          reject("Worker error");
-        };
-      });
+      const response = await fetch("/api/chart-data");
+      if (!response.ok) {
+        throw new Error("Failed to fetch chart data");
+      }
+      return await response.json();
     } catch (error) {
-      console.error("Error during chart generation:", error);
-      setErrorMsg("Gagal memulai proses pembuatan chart.");
-      setIsCalculating(false);
-      return null; // Kembalikan null jika terjadi kesalahan
+      console.error("Error fetching chart data:", error);
+      return null;
     }
   };
 
@@ -1175,9 +1162,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       // Ambil data untuk chart, jika variabel tidak ada gunakan data default
       const chartData = getDataForChart();
 
-      // const chartJSON = getJSONForChart();
-      console.log("JSON chart", chartData);
-
       // Switch case untuk memilih jenis chart berdasarkan chartType
       let chartNode = null;
 
@@ -1187,7 +1171,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             chartData.length === 0
               ? chartUtils.createVerticalBarChart2(
                   [
-                    // Default data jika tidak ada variabel yang dipilih
                     { category: "A", value: 30 },
                     { category: "B", value: 80 },
                     { category: "C", value: 45 },
@@ -1197,7 +1180,34 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ],
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  {
+                    title: chartTitle || "Vertical Bar Chart",
+                    subtitle: chartSubtitle || "Sample Data",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || "Category",
+                    y: yAxisLabel || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 )
               : chartUtils.createVerticalBarChart2(
                   chartData.filter(
@@ -1205,7 +1215,42 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ),
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  {
+                    title:
+                      chartTitle ||
+                      `Vertical Bar Chart: ${bottomVariables[0] || ""} vs ${
+                        sideVariables[0] || ""
+                      }`,
+                    subtitle:
+                      chartSubtitle ||
+                      `Showing distribution of ${
+                        sideVariables[0] || ""
+                      } across ${bottomVariables[0] || ""} categories`,
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || bottomVariables[0] || "Category",
+                    y: yAxisLabel || sideVariables[0] || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 );
           break;
 
@@ -1214,7 +1259,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             chartData.length === 0
               ? chartUtils.createHorizontalBarChart(
                   [
-                    // Default data jika tidak ada variabel yang dipilih
                     { category: "A", value: 30 },
                     { category: "B", value: 80 },
                     { category: "C", value: 45 },
@@ -1224,13 +1268,79 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ],
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  undefined,
+                  undefined,
+                  {
+                    title: chartTitle || "Horizontal Bar Chart",
+                    subtitle: chartSubtitle || "Sample Data",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || "Category",
+                    y: yAxisLabel || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 )
               : chartUtils.createHorizontalBarChart(
                   chartData,
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  undefined,
+                  undefined,
+                  {
+                    title:
+                      chartTitle ||
+                      `Horizontal Bar Chart: ${bottomVariables[0] || ""} vs ${
+                        sideVariables[0] || ""
+                      }`,
+                    subtitle:
+                      chartSubtitle ||
+                      `Showing distribution of ${
+                        sideVariables[0] || ""
+                      } across ${bottomVariables[0] || ""} categories`,
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || bottomVariables[0] || "Category",
+                    y: yAxisLabel || sideVariables[0] || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 );
           break;
 
@@ -1245,17 +1355,75 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "female", subcategory: "white", value: 15 },
                   { category: "female", subcategory: "green", value: 10 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category,
-                  subcategory: d.subcategory || "",
-                  value: d.value,
-                }));
+              : chartData
+                  .filter(
+                    (d) =>
+                      d.category &&
+                      d.category.trim() !== "" &&
+                      d.value != null &&
+                      d.value !== 0
+                  )
+                  .map((d) => ({
+                    category: d.category,
+                    subcategory: d.subcategory || "",
+                    value: d.value,
+                  }));
+
+          const formatLimitedList = (
+            items: string[],
+            limit: number = 3
+          ): string => {
+            const limited = items.slice(0, limit);
+            const remaining = items.length - limit;
+            if (remaining > 0) {
+              return `${limited.join(", ")} and ${remaining} more`;
+            }
+            return limited.join(", ");
+          };
 
           chartNode = chartUtils.createVerticalStackedBarChart(
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `Vertical Stacked Bar Chart`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing distribution of ${formatLimitedList(
+                      sideVariables
+                    )} across ${bottomVariables[0]} categories`
+                  : `Sample Data`),
+
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y:
+                yAxisLabel ||
+                (sideVariables.length > 0
+                  ? formatLimitedList(sideVariables)
+                  : "Value"),
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1271,17 +1439,74 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "female", subcategory: "white", value: 15 },
                   { category: "female", subcategory: "green", value: 10 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category,
-                  subcategory: d.subcategory || "",
-                  value: d.value,
-                }));
+              : chartData
+                  .filter(
+                    (d) =>
+                      d.category &&
+                      d.category.trim() !== "" &&
+                      d.value != null &&
+                      d.value !== 0
+                  )
+                  .map((d) => ({
+                    category: d.category,
+                    subcategory: d.subcategory || "",
+                    value: d.value,
+                  }));
+
+          const formatLimitedList = (
+            items: string[],
+            limit: number = 3
+          ): string => {
+            const limited = items.slice(0, limit);
+            const remaining = items.length - limit;
+            if (remaining > 0) {
+              return `${limited.join(", ")} and ${remaining} more`;
+            }
+            return limited.join(", ");
+          };
 
           chartNode = chartUtils.createHorizontalStackedBarChart(
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `Horizontal Stacked Bar Chart`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing distribution of ${formatLimitedList(
+                      sideVariables
+                    )} across ${bottomVariables[0]} categories`
+                  : `Sample Data`),
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y:
+                yAxisLabel ||
+                (sideVariables.length > 0
+                  ? formatLimitedList(sideVariables)
+                  : "Value"),
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1297,17 +1522,74 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "female", subcategory: "white", value: 15 },
                   { category: "female", subcategory: "green", value: 10 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category,
-                  subcategory: d.subcategory || "",
-                  value: d.value,
-                }));
+              : chartData
+                  .filter(
+                    (d) =>
+                      d.category &&
+                      d.category.trim() !== "" &&
+                      d.value != null &&
+                      d.value !== 0
+                  )
+                  .map((d) => ({
+                    category: d.category,
+                    subcategory: d.subcategory || "",
+                    value: d.value,
+                  }));
+
+          const formatLimitedList = (
+            items: string[],
+            limit: number = 3
+          ): string => {
+            const limited = items.slice(0, limit);
+            const remaining = items.length - limit;
+            if (remaining > 0) {
+              return `${limited.join(", ")} and ${remaining} more`;
+            }
+            return limited.join(", ");
+          };
 
           chartNode = chartUtils.createClusteredBarChart(
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `Clustered Bar Chart`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing distribution of ${formatLimitedList(
+                      sideVariables
+                    )} across ${bottomVariables[0]} categories`
+                  : `Sample Data`),
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y:
+                yAxisLabel ||
+                (sideVariables.length > 0
+                  ? formatLimitedList(sideVariables)
+                  : "Value"),
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1317,7 +1599,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             chartData.length === 0
               ? chartUtils.createLineChart(
                   [
-                    // Default data jika tidak ada variabel yang dipilih
                     { category: "Jan", value: 10 },
                     { category: "Feb", value: 30 },
                     { category: "Mar", value: 55 },
@@ -1333,7 +1614,34 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ],
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  {
+                    title: "Line Chart",
+                    subtitle: "Sample Data",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: "Category",
+                    y: "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 )
               : chartUtils.createLineChart(
                   chartData.filter(
@@ -1341,7 +1649,42 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ),
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  {
+                    title:
+                      chartTitle ||
+                      `Line Chart: ${bottomVariables[0] || ""} vs ${
+                        sideVariables[0] || ""
+                      }`,
+                    subtitle:
+                      chartSubtitle ||
+                      `Showing trend of ${sideVariables[0] || ""} over ${
+                        bottomVariables[0] || ""
+                      } categories`,
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || bottomVariables[0] || "Category",
+                    y: yAxisLabel || sideVariables[0] || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 );
           break;
 
@@ -1380,17 +1723,74 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                     value: 10,
                   },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category,
-                  subcategory: d.subcategory || "",
-                  value: d.value,
-                }));
+              : chartData
+                  .filter(
+                    (d) =>
+                      d.category &&
+                      d.category.trim() !== "" &&
+                      d.value != null &&
+                      d.value !== 0
+                  )
+                  .map((d) => ({
+                    category: d.category,
+                    subcategory: d.subcategory || "",
+                    value: d.value,
+                  }));
+
+          const formatLimitedList = (
+            items: string[],
+            limit: number = 3
+          ): string => {
+            const limited = items.slice(0, limit);
+            const remaining = items.length - limit;
+            if (remaining > 0) {
+              return `${limited.join(", ")} and ${remaining} more`;
+            }
+            return limited.join(", ");
+          };
 
           chartNode = chartUtils.createMultilineChart(
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `Multiple Line Chart`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing trends of ${formatLimitedList(
+                      sideVariables
+                    )} across ${bottomVariables[0]} categories`
+                  : `Sample Data`),
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y:
+                yAxisLabel ||
+                (sideVariables.length > 0
+                  ? formatLimitedList(sideVariables)
+                  : "Value"),
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1400,7 +1800,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             chartData.length === 0
               ? chartUtils.createPieChart(
                   [
-                    // Data default jika tidak ada variabel yang dipilih
                     { category: "A", value: 30 },
                     { category: "B", value: 80 },
                     { category: "C", value: 45 },
@@ -1409,9 +1808,33 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                     { category: "F", value: 90 },
                   ],
                   width,
-                  height
+                  height,
+                  useaxis,
+                  {
+                    title: chartTitle || "Pie Chart",
+                    subtitle: chartSubtitle || "Sample Data",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  chartColors
                 )
-              : chartUtils.createPieChart(chartData, width, height);
+              : chartUtils.createPieChart(
+                  chartData,
+                  width,
+                  height,
+                  useaxis,
+                  {
+                    title: chartTitle || "Pie Chart",
+                    subtitle: chartSubtitle || "",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  chartColors
+                );
           break;
 
         case "Area Chart":
@@ -1419,7 +1842,6 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             chartData.length === 0
               ? chartUtils.createAreaChart(
                   [
-                    // Default data jika tidak ada variabel yang dipilih
                     { category: "Jan", value: 10 },
                     { category: "Feb", value: 30 },
                     { category: "Mar", value: 55 },
@@ -1435,9 +1857,76 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   ],
                   width,
                   height,
-                  useaxis
+                  useaxis,
+                  {
+                    title: chartTitle || "Area Chart",
+                    subtitle: chartSubtitle || "Sample Data",
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || "Category",
+                    y: yAxisLabel || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
                 )
-              : chartUtils.createAreaChart(chartData, width, height, useaxis);
+              : chartUtils.createAreaChart(
+                  chartData,
+                  width,
+                  height,
+                  useaxis,
+                  {
+                    title:
+                      chartTitle ||
+                      `Area Chart: ${bottomVariables[0] || ""} vs ${
+                        sideVariables[0] || ""
+                      }`,
+                    subtitle:
+                      chartSubtitle ||
+                      `Showing distribution of ${
+                        sideVariables[0] || ""
+                      } across ${bottomVariables[0] || ""} categories`,
+                    titleColor: "hsl(var(--foreground))",
+                    subtitleColor: "hsl(var(--muted-foreground))",
+                    titleFontSize: 16,
+                    subtitleFontSize: 12,
+                  },
+                  {
+                    x: xAxisLabel || bottomVariables[0] || "Category",
+                    y: yAxisLabel || sideVariables[0] || "Value",
+                  },
+                  {
+                    x: {
+                      min: xAxisMin,
+                      max: xAxisMax,
+                      majorIncrement: xAxisMajorIncrement,
+                      origin: xAxisOrigin,
+                    },
+                    y: {
+                      min: yAxisMin,
+                      max: yAxisMax,
+                      majorIncrement: yAxisMajorIncrement,
+                      origin: yAxisOrigin,
+                    },
+                  },
+                  chartColors
+                );
           break;
 
         case "Histogram": // Menambahkan case baru untuk Histogram
@@ -1451,7 +1940,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             histogramData, // Pastikan ini hanya array angka
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Histogram",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Class",
+              y: yAxisLabel || sideVariables[0] || "Frequency",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1483,7 +1997,38 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             scatterData, // Data untuk Scatter plot
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `${chartType}`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing relationship between ${bottomVariables[0]} and ${sideVariables[0]}`
+                  : "Sample Data"),
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1515,7 +2060,38 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             scatterWithFitLineData, // Data untuk Scatter plot dengan Fit Line
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `${chartType}`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing relationship between ${bottomVariables[0]} and ${sideVariables[0]}`
+                  : "Sample Data"),
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1545,7 +2121,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             boxPlotData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Boxplot",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1595,7 +2196,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             errorBardata,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Error Bar Chart",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1616,17 +2242,44 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   { category: "Wed", subcategory: "Product 2", value: 25 },
                   { category: "Wed", subcategory: "Product 3", value: 40 },
                 ]
-              : chartData.map((d) => ({
-                  category: d.category,
-                  subcategory: d.subcategory || "",
-                  value: d.value,
-                }));
+              : chartData
+                  .filter((d) => d.category !== "")
+                  .map((d) => ({
+                    category: d.category,
+                    subcategory: d.subcategory || "",
+                    value: d.value,
+                  }));
 
           chartNode = chartUtils.createStackedAreaChart(
             stackedAreaData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Stacked Area Chart",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1668,7 +2321,36 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             groupedScatterData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || `${chartType}`,
+              subtitle:
+                chartSubtitle ||
+                (bottomVariables.length > 0 && sideVariables.length > 0
+                  ? `Showing relationship between ${bottomVariables[0]} and ${sideVariables[0]}`
+                  : "Sample Data"),
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "X Axis",
+              y: yAxisLabel || sideVariables[0] || "Y Axis",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1693,7 +2375,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             dotPlotData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Dot Plot",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: 16,
+              subtitleFontSize: 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y: yAxisLabel || sideVariables[0] || "Value",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1746,7 +2453,34 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Population Pyramid",
+              subtitle: chartSubtitle || "Sample Data",
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || "Population",
+              y: yAxisLabel || "Age Group",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1774,7 +2508,34 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             formattedData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Frequency Polygon",
+              subtitle: chartSubtitle || "Sample Data",
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || "Category",
+              y: yAxisLabel || "Frequency",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
         }
@@ -1808,7 +2569,34 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             clusteredErrorBardata, // Data untuk Box Plot
             width,
             height,
-            useaxis // Pilihan untuk menampilkan sumbu
+            useaxis,
+            {
+              title: chartTitle || "Clustered Error Bar Chart",
+              subtitle: chartSubtitle || "Sample Data",
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || "Category",
+              y: yAxisLabel || "Value",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -1839,8 +2627,21 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           chartNode = chartUtils.createScatterPlotMatrix(
             scatterPlotMatrixData, // Data untuk Scatter Plot Matrix
             width,
-            height,
-            useaxis
+            height + 100,
+            useaxis,
+            {
+              title: chartTitle || "Scatter Plot Matrix",
+              subtitle: chartSubtitle || "Sample Data",
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || "X",
+              y: yAxisLabel || "Y",
+            },
+            chartColors
           );
           break;
 
@@ -1874,7 +2675,21 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           chartNode = chartUtils.createStackedHistogram(
             stackedHistogramData, // Data untuk Scatter Plot Matrix
             width,
-            height
+            height,
+            useaxis,
+            {
+              title: chartTitle || "Stacked Histogram",
+              subtitle: chartSubtitle || "Sample Data",
+              titleColor: "hsl(var(--foreground))",
+              subtitleColor: "hsl(var(--muted-foreground))",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || "Category",
+              y: yAxisLabel || "Count",
+            },
+            chartColors
           );
           break;
 
@@ -1924,7 +2739,32 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             clusteredBoxplotData,
             width,
             height,
-            useaxis
+            useaxis,
+            {
+              title: chartTitle || "Clustered Boxplot",
+              subtitle: chartSubtitle || "Sample Data",
+              titleFontSize: chartTitleFontSize || 16,
+              subtitleFontSize: chartSubtitleFontSize || 12,
+            },
+            {
+              x: xAxisLabel || bottomVariables[0] || "Category",
+              y: yAxisLabel || sideVariables[0] || "Value",
+            },
+            {
+              x: {
+                min: xAxisMin,
+                max: xAxisMax,
+                majorIncrement: xAxisMajorIncrement,
+                origin: xAxisOrigin,
+              },
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                majorIncrement: yAxisMajorIncrement,
+                origin: yAxisOrigin,
+              },
+            },
+            chartColors
           );
           break;
 
@@ -3031,438 +3871,424 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
     height,
     variables,
     getDataForChart,
+    chartTitle,
+    chartSubtitle,
+    xAxisLabel,
+    yAxisLabel,
+    xAxisMin,
+    xAxisMax,
+    xAxisMajorIncrement,
+    xAxisOrigin,
+    yAxisMin,
+    yAxisMax,
+    yAxisMajorIncrement,
+    yAxisOrigin,
+    chartColors,
   ]);
 
   return (
-    <div className="flex justify-center items-center p-5 border-2 border-gray-200 rounded-lg">
-      <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[780px] h-[550px] flex flex-col justify-between">
-        <h3 className="text-lg font-semibold text-black text-center mb-4">
-          CHART PREVIEW
-        </h3>
-
-        {/* Label "Set Color" */}
-        {chartVariableConfig[chartType]?.color &&
-          (chartVariableConfig[chartType].color?.min !== 0 ||
-            chartVariableConfig[chartType].color?.max !== 0) && (
-            <div
-              className="absolute top-4 right-4 p-2 border border-dashed border-gray-400 rounded-lg text-gray-500"
-              onDrop={(e) => handleDrop(e, "color")}
-              onDragOver={handleDragOver}
-            >
-              {colorVariables.length === 0 ? (
-                <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md">
-                  Group by
-                </div>
-              ) : (
-                colorVariables.map((variable, index) => (
-                  <div
-                    key={index}
-                    className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md"
-                  >
-                    {variable}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-        {/* Label "Filter" */}
-        {chartVariableConfig[chartType]?.filter &&
-          (chartVariableConfig[chartType].filter?.min !== 0 ||
-            chartVariableConfig[chartType].filter?.max !== 0) && (
-            <div
-              className="absolute right-[-20px] top-1/2 transform -translate-y-1/2 flex justify-center items-center w-[100px] h-auto"
-              onDrop={(e) => handleDrop(e, "filter")}
-              onDragOver={handleDragOver}
-            >
-              {filterVariables.length === 0 ? (
-                <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center">
-                  Filter?
-                </div>
-              ) : (
-                filterVariables.map((variable, index) => (
-                  <div
-                    key={index}
-                    className="bg-green-500 text-white p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
-                  >
-                    {variable}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-        {/* Label "Side" */}
+    <div className="flex flex-col p-5 border-2 border-gray-200 rounded-lg pb-24">
+      {/* Label Chart Preview di tengah atas kotak putih */}
+      <div
+        className="flex justify-center items-center w-full"
+        style={{ marginTop: "10px", marginBottom: "0px" }}
+      >
+        <span
+          className="text-lg font-semibold text-gray-500 uppercase tracking-widest px-6 py-1 rounded border border-gray-200 shadow-sm"
+          style={{ letterSpacing: "0.18em" }}
+        >
+          <span role="img" aria-label="component" className="mr-2">
+            🧩
+          </span>{" "}
+          Chart Preview{" "}
+          <span role="img" aria-label="component" className="mr-2">
+            🧩
+          </span>
+        </span>
+      </div>
+      {/* Wrapper agar kotak abu-abu tetap center dan tidak melebar */}
+      <div className="w-full flex justify-center relative">
+        {/* Semua drop area di luar kotak abu-abu */}
+        {/* Side (kiri) */}
         {chartVariableConfig[chartType]?.side &&
           (chartVariableConfig[chartType].side?.min !== 0 ||
             chartVariableConfig[chartType].side?.max !== 0) && (
-            <div
-              className={clsx(
-                "absolute top-1/2 left-[-60px] transform -translate-y-1/2 rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer",
-                (chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart") &&
-                  "border-3 border-green-500"
-              )}
-              onDrop={(e) => handleDrop(e, "side")}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => handleOpenModal("side")} // Bisa klik di mana saja
-            >
-              {sideVariables.length === 0 ? (
-                <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                  {chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart"
-                    ? "Y axis"
-                    : "No variables selected"}
-                </div>
-              ) : (
-                (() => {
-                  const maxWidth = 100; // Lebar maksimal container
-                  let totalWidth = 0;
-                  let displayedVars = [];
-                  const spaceBetween = 4;
-                  let hiddenCount = 0;
-
-                  const estimateButtonWidth = (text: string) =>
-                    Math.max(40, text.length * 8);
-
-                  for (let i = 0; i < sideVariables.length; i++) {
-                    let btnWidth = estimateButtonWidth(sideVariables[i]);
-
-                    if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
-                      displayedVars.push(sideVariables[i]);
-                      totalWidth += btnWidth + spaceBetween;
-                    } else {
-                      hiddenCount = sideVariables.length - i;
-                      break;
+            <div className="absolute left-[-70px] top-1/2 -translate-y-1/2 z-10">
+              {/* ...side drop area JSX... */}
+              {/* Copy dari JSX lama untuk side */}
+              <div
+                className={clsx(
+                  "rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer",
+                  (chartType === "3D Bar Chart2" ||
+                    chartType === "3D Scatter Plot" ||
+                    chartType === "Grouped 3D Scatter Plot" ||
+                    chartType === "Clustered 3D Bar Chart" ||
+                    chartType === "Stacked 3D Bar Chart") &&
+                    "border-3 border-green-500"
+                )}
+                onDrop={(e) => handleDrop(e, "side")}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => handleOpenModal("side")}
+              >
+                {sideVariables.length === 0 ? (
+                  <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
+                    {chartType === "3D Bar Chart2" ||
+                    chartType === "3D Scatter Plot" ||
+                    chartType === "Grouped 3D Scatter Plot" ||
+                    chartType === "Clustered 3D Bar Chart" ||
+                    chartType === "Stacked 3D Bar Chart"
+                      ? "Y axis"
+                      : "No variables selected"}
+                  </div>
+                ) : (
+                  (() => {
+                    const maxWidth = 100;
+                    let totalWidth = 0;
+                    let displayedVars = [];
+                    const spaceBetween = 4;
+                    let hiddenCount = 0;
+                    const estimateButtonWidth = (text: string) =>
+                      Math.max(40, text.length * 8);
+                    for (let i = 0; i < sideVariables.length; i++) {
+                      let btnWidth = estimateButtonWidth(sideVariables[i]);
+                      if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
+                        displayedVars.push(sideVariables[i]);
+                        totalWidth += btnWidth + spaceBetween;
+                      } else {
+                        hiddenCount = sideVariables.length - i;
+                        break;
+                      }
                     }
-                  }
-
-                  return (
-                    <div className="flex flex-wrap space-x-1 justify-center w-full">
-                      {/* Semua ini bisa diklik karena ada onClick di parent */}
-                      {displayedVars.map((variable, index) => (
-                        <div
-                          key={index}
-                          className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                          style={{ minWidth: "40px" }}
-                        >
-                          {variable}
-                        </div>
-                      ))}
-
-                      {hiddenCount > 0 && (
-                        <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                          +{hiddenCount} more
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()
-              )}
+                    return (
+                      <div className="flex flex-wrap space-x-1 justify-center w-full">
+                        {displayedVars.map((variable, index) => (
+                          <div
+                            key={index}
+                            className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
+                            style={{ minWidth: "40px" }}
+                          >
+                            {variable}
+                          </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
+                            +{hiddenCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
             </div>
           )}
-
-        {/* Label "Side2" */}
+        {/* Side2 (kanan) */}
         {chartVariableConfig[chartType]?.side2 &&
           (chartVariableConfig[chartType].side2?.min !== 0 ||
             chartVariableConfig[chartType].side2?.max !== 0) && (
-            <div
-              className="absolute top-1/2 right-[-60px] transform -translate-y-1/2 rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer"
-              onDrop={(e) => handleDrop(e, "side2")}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => handleOpenModal("side2")} // Bisa klik di mana saja
-            >
-              {side2Variables.length === 0 ? (
-                <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
-                  No variables selected
-                </div>
-              ) : (
-                (() => {
-                  const maxWidth = 100; // Lebar maksimal container
-                  let totalWidth = 0;
-                  let displayedVars = [];
-                  const spaceBetween = 4;
-                  let hiddenCount = 0;
-
-                  const estimateButtonWidth = (text: string) =>
-                    Math.max(40, text.length * 8);
-
-                  for (let i = 0; i < side2Variables.length; i++) {
-                    let btnWidth = estimateButtonWidth(side2Variables[i]);
-
-                    if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
-                      displayedVars.push(side2Variables[i]);
-                      totalWidth += btnWidth + spaceBetween;
-                    } else {
-                      hiddenCount = side2Variables.length - i;
-                      break;
+            <div className="absolute right-[-70px] top-1/2 -translate-y-1/2 z-10">
+              {/* ...side2 drop area JSX... */}
+              {/* Copy dari JSX lama untuk side2 */}
+              <div
+                className="rotate-90 flex flex-wrap space-x-1 w-[200px] justify-center items-center border border-gray-400 rounded-md p-1 cursor-pointer"
+                onDrop={(e) => handleDrop(e, "side2")}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => handleOpenModal("side2")}
+              >
+                {side2Variables.length === 0 ? (
+                  <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
+                    No variables selected
+                  </div>
+                ) : (
+                  (() => {
+                    const maxWidth = 100;
+                    let totalWidth = 0;
+                    let displayedVars = [];
+                    const spaceBetween = 4;
+                    let hiddenCount = 0;
+                    const estimateButtonWidth = (text: string) =>
+                      Math.max(40, text.length * 8);
+                    for (let i = 0; i < side2Variables.length; i++) {
+                      let btnWidth = estimateButtonWidth(side2Variables[i]);
+                      if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
+                        displayedVars.push(side2Variables[i]);
+                        totalWidth += btnWidth + spaceBetween;
+                      } else {
+                        hiddenCount = side2Variables.length - i;
+                        break;
+                      }
                     }
-                  }
-
-                  return (
-                    <div className="flex flex-wrap space-x-1 justify-center w-full">
-                      {/* Semua ini bisa diklik karena ada onClick di parent */}
-                      {displayedVars.map((variable, index) => (
-                        <div
-                          key={index}
-                          className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                          style={{ minWidth: "40px" }}
-                        >
-                          {variable}
-                        </div>
-                      ))}
-
-                      {hiddenCount > 0 && (
-                        <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                          +{hiddenCount} more
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()
-              )}
+                    return (
+                      <div className="flex flex-wrap space-x-1 justify-center w-full">
+                        {displayedVars.map((variable, index) => (
+                          <div
+                            key={index}
+                            className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
+                            style={{ minWidth: "40px" }}
+                          >
+                            {variable}
+                          </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
+                            +{hiddenCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
             </div>
           )}
-
-        {/* Label "Bottom" */}
+        {/* Bottom (bawah tengah) */}
         {chartVariableConfig[chartType]?.bottom &&
           (chartVariableConfig[chartType].bottom?.min !== 0 ||
             chartVariableConfig[chartType].bottom?.max !== 0) && (
             <div
-              className={clsx(
-                "absolute bottom-4 left-1/2 transform -translate-x-1/2 flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer",
-                (chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart") &&
-                  "border-red-500 left-1/3"
-              )}
-              onDrop={(e) => handleDrop(e, "bottom")}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => handleOpenModal("bottom")} // Klik bisa di mana saja
+              className="absolute left-1/2 bottom-4 -translate-x-1/2 z-10"
+              style={{ bottom: "-60px" }}
             >
-              {bottomVariables.length === 0 ? (
-                <div
-                  className={clsx(
-                    "bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center"
-                  )}
-                >
-                  {chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart"
-                    ? "X axis"
-                    : "No variables selected"}
-                </div>
-              ) : (
-                (() => {
-                  const maxWidth = 100;
-                  let totalWidth = 0;
-                  let displayedVars = [];
-                  const spaceBetween = 4;
-                  let hiddenCount = 0;
-
-                  const estimateButtonWidth = (text: string) =>
-                    Math.max(40, text.length * 8);
-
-                  for (let i = 0; i < bottomVariables.length; i++) {
-                    let btnWidth = estimateButtonWidth(bottomVariables[i]);
-
-                    if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
-                      displayedVars.push(bottomVariables[i]);
-                      totalWidth += btnWidth + spaceBetween;
-                    } else {
-                      hiddenCount = bottomVariables.length - i;
-                      break;
+              {/* ...bottom drop area JSX... */}
+              {/* Copy dari JSX lama untuk bottom */}
+              <div
+                className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                onDrop={(e) => handleDrop(e, "bottom")}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => handleOpenModal("bottom")}
+              >
+                {bottomVariables.length === 0 ? (
+                  <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
+                    {chartType === "3D Bar Chart2" ||
+                    chartType === "3D Scatter Plot" ||
+                    chartType === "Grouped 3D Scatter Plot" ||
+                    chartType === "Clustered 3D Bar Chart" ||
+                    chartType === "Stacked 3D Bar Chart"
+                      ? "X axis"
+                      : "No variables selected"}
+                  </div>
+                ) : (
+                  (() => {
+                    const maxWidth = 100;
+                    let totalWidth = 0;
+                    let displayedVars = [];
+                    const spaceBetween = 4;
+                    let hiddenCount = 0;
+                    const estimateButtonWidth = (text: string) =>
+                      Math.max(40, text.length * 8);
+                    for (let i = 0; i < bottomVariables.length; i++) {
+                      let btnWidth = estimateButtonWidth(bottomVariables[i]);
+                      if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
+                        displayedVars.push(bottomVariables[i]);
+                        totalWidth += btnWidth + spaceBetween;
+                      } else {
+                        hiddenCount = bottomVariables.length - i;
+                        break;
+                      }
                     }
-                  }
-
-                  return (
-                    <div className="flex flex-wrap space-x-1 justify-center w-full">
-                      {/* Semua ini bisa diklik karena ada onClick di parent */}
-                      {displayedVars.map((variable, index) => (
-                        <div
-                          key={index}
-                          className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                          style={{ minWidth: "40px" }}
-                        >
-                          {variable}
-                        </div>
-                      ))}
-
-                      {hiddenCount > 0 && (
-                        <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                          +{hiddenCount} more
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()
-              )}
+                    return (
+                      <div className="flex flex-wrap space-x-1 justify-center w-full">
+                        {displayedVars.map((variable, index) => (
+                          <div
+                            key={index}
+                            className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
+                            style={{ minWidth: "40px" }}
+                          >
+                            {variable}
+                          </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
+                            +{hiddenCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
             </div>
           )}
-
-        {/* Label "High" */}
-        {(() => {
-          const variables = [];
-
-          if (
-            (chartVariableConfig[chartType]?.high?.min ?? 0) >= 1 ||
-            (chartVariableConfig[chartType]?.high?.max ?? 0) >= 1
-          ) {
-            variables.push("High Variable?");
-          }
-          if (
-            (chartVariableConfig[chartType]?.low?.min ?? 0) >= 1 ||
-            (chartVariableConfig[chartType]?.low?.max ?? 0) >= 1
-          ) {
-            variables.push("Low Variable?");
-          }
-          if (
-            (chartVariableConfig[chartType]?.close?.min ?? 0) >= 1 ||
-            (chartVariableConfig[chartType]?.close?.max ?? 0) >= 1
-          ) {
-            variables.push("Close Variable?");
-          }
-
-          if (variables.length === 0) return null;
-
-          const containerWidth = 400; // Lebar maksimum kontainer
-          const itemWidth = `${(containerWidth - 20) / variables.length}px`; // Lebar tiap item berdasarkan jumlah
-
-          return (
-            <div className="absolute top-1/2 left-[-160px] transform -translate-y-1/2 rotate-90 flex flex-wrap justify-center items-center w-[400px] gap-1 cursor-pointer">
-              {variables.map((label, index) => {
-                // Create the simplified drop zone for handleDrop (e.g. "high", "low", "close")
-                const dropZone = label
-                  .toLowerCase()
-                  .replace(" variable?", "") as "high" | "low" | "close";
-
-                return (
-                  <div
-                    key={index}
-                    className={`${
-                      dropZone === "high" && highVariables.length > 0
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : dropZone === "low" && lowVariables.length > 0
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : dropZone === "close" && closeVariables.length > 0
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-gray-300 text-gray-500 border-gray-500"
-                    } p-2 rounded-md text-sm shadow-md text-center border border-dashed`}
-                    style={{ width: itemWidth }} // Set width based on number of elements
-                    onDrop={(e) => handleDrop(e, dropZone)} // Pass simplified drop zone (e.g. "high", "low", "close")
-                    onDragOver={(e) => e.preventDefault()}
-                    onClick={() => handleOpenModal(dropZone)} // Klik bisa di mana saja
-                  >
-                    {/* Menampilkan variabel yang sudah di-drop atau label default */}
-                    {
-                      dropZone === "high" && highVariables.length > 0
-                        ? highVariables.join(", ") // Jika ada variabel, tampilkan
-                        : dropZone === "low" && lowVariables.length > 0
-                        ? lowVariables.join(", ") // Jika ada variabel, tampilkan
-                        : dropZone === "close" && closeVariables.length > 0
-                        ? closeVariables.join(", ") // Jika ada variabel, tampilkan
-                        : label // Jika tidak ada variabel, tampilkan label default
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        {/* Label "Bottom2" */}
+        {/* Bottom2 (bawah kanan) */}
         {chartVariableConfig[chartType]?.bottom2 &&
           (chartVariableConfig[chartType].bottom2?.min !== 0 ||
             chartVariableConfig[chartType].bottom2?.max !== 0) && (
             <div
-              className={clsx(
-                "absolute bottom-4 right-5 transform -translate-x-1/2 flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer",
-                (chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart") &&
-                  "border-3 border-blue-900"
-              )}
-              onDrop={(e) => handleDrop(e, "bottom2")}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => handleOpenModal("bottom2")} // Bisa klik di mana saja
+              className="absolute right-4 bottom-4 z-10"
+              style={{ bottom: "-60px" }}
             >
-              {bottom2Variables.length === 0 ? (
-                <div
-                  className={clsx(
-                    "bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center"
-                  )}
-                >
-                  {chartType === "3D Bar Chart2" ||
-                  chartType === "3D Scatter Plot" ||
-                  chartType === "Grouped 3D Scatter Plot" ||
-                  chartType === "Clustered 3D Bar Chart" ||
-                  chartType === "Stacked 3D Bar Chart"
-                    ? "Z axis"
-                    : "No variables selected"}
-                </div>
-              ) : (
-                (() => {
-                  const maxWidth = 100; // Lebar maksimal container
-                  let totalWidth = 0;
-                  let displayedVars = [];
-                  const spaceBetween = 4;
-                  let hiddenCount = 0;
-
-                  const estimateButtonWidth = (text: string) =>
-                    Math.max(40, text.length * 8);
-
-                  for (let i = 0; i < bottom2Variables.length; i++) {
-                    let btnWidth = estimateButtonWidth(bottom2Variables[i]);
-
-                    if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
-                      displayedVars.push(bottom2Variables[i]);
-                      totalWidth += btnWidth + spaceBetween;
-                    } else {
-                      hiddenCount = bottom2Variables.length - i;
-                      break;
+              {/* ...bottom2 drop area JSX... */}
+              {/* Copy dari JSX lama untuk bottom2 */}
+              <div
+                className="flex justify-center items-center space-x-1 w-[200px] border border-gray-400 rounded-md p-1 cursor-pointer"
+                onDrop={(e) => handleDrop(e, "bottom2")}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => handleOpenModal("bottom2")}
+              >
+                {bottom2Variables.length === 0 ? (
+                  <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md w-full text-center">
+                    {chartType === "3D Bar Chart2" ||
+                    chartType === "3D Scatter Plot" ||
+                    chartType === "Grouped 3D Scatter Plot" ||
+                    chartType === "Clustered 3D Bar Chart" ||
+                    chartType === "Stacked 3D Bar Chart"
+                      ? "Z axis"
+                      : "No variables selected"}
+                  </div>
+                ) : (
+                  (() => {
+                    const maxWidth = 100;
+                    let totalWidth = 0;
+                    let displayedVars = [];
+                    const spaceBetween = 4;
+                    let hiddenCount = 0;
+                    const estimateButtonWidth = (text: string) =>
+                      Math.max(40, text.length * 8);
+                    for (let i = 0; i < bottom2Variables.length; i++) {
+                      let btnWidth = estimateButtonWidth(bottom2Variables[i]);
+                      if (totalWidth + btnWidth + spaceBetween <= maxWidth) {
+                        displayedVars.push(bottom2Variables[i]);
+                        totalWidth += btnWidth + spaceBetween;
+                      } else {
+                        hiddenCount = bottom2Variables.length - i;
+                        break;
+                      }
                     }
-                  }
-
-                  return (
-                    <div className="flex flex-wrap space-x-1 justify-center w-full">
-                      {/* Semua ini bisa diklik karena ada onClick di parent */}
-                      {displayedVars.map((variable, index) => (
-                        <div
-                          key={index}
-                          className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
-                          style={{ minWidth: "40px" }}
-                        >
-                          {variable}
-                        </div>
-                      ))}
-
-                      {hiddenCount > 0 && (
-                        <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
-                          +{hiddenCount} more
-                        </div>
-                      )}
+                    return (
+                      <div className="flex flex-wrap space-x-1 justify-center w-full">
+                        {displayedVars.map((variable, index) => (
+                          <div
+                            key={index}
+                            className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md text-center"
+                            style={{ minWidth: "40px" }}
+                          >
+                            {variable}
+                          </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="bg-gray-500 text-white p-2 rounded-md text-sm shadow-md text-center">
+                            +{hiddenCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+          )}
+        {/* Color/Group (pojok kanan atas kotak putih) */}
+        {chartVariableConfig[chartType]?.color &&
+          (chartVariableConfig[chartType].color?.min !== 0 ||
+            chartVariableConfig[chartType].color?.max !== 0) && (
+            <div className="absolute top-[-20px] right-[-10px] z-10">
+              {/* ...color drop area JSX... */}
+              <div
+                className="p-2 border border-dashed border-gray-400 rounded-lg text-gray-500"
+                onDrop={(e) => handleDrop(e, "color")}
+                onDragOver={handleDragOver}
+                onClick={() => handleOpenModal("color")}
+              >
+                {colorVariables.length === 0 ? (
+                  <div className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md">
+                    Group by
+                  </div>
+                ) : (
+                  colorVariables.map((variable, index) => (
+                    <div
+                      key={index}
+                      className="bg-blue-500 text-white p-2 rounded-md text-sm shadow-md"
+                    >
+                      {variable}
                     </div>
-                  );
-                })()
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        {/* Filter (kanan tengah kotak putih, mirip side2) */}
+        {chartVariableConfig[chartType]?.filter &&
+          (chartVariableConfig[chartType].filter?.min !== 0 ||
+            chartVariableConfig[chartType].filter?.max !== 0) && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+              {/* ...filter drop area JSX... */}
+              <div
+                className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                onDrop={(e) => handleDrop(e, "filter")}
+                onDragOver={handleDragOver}
+                onClick={() => handleOpenModal("filter")}
+              >
+                {filterVariables.length === 0
+                  ? "Filter?"
+                  : filterVariables.map((variable, index) => (
+                      <div
+                        key={index}
+                        className="bg-green-500 text-white p-2 rounded-md text-sm shadow-md rotate-90 w-full text-center"
+                      >
+                        {variable}
+                      </div>
+                    ))}
+              </div>
+            </div>
+          )}
+        {/* Low (kiri bawah) */}
+        {chartVariableConfig[chartType]?.low &&
+          (chartVariableConfig[chartType].low?.min !== 0 ||
+            chartVariableConfig[chartType].low?.max !== 0) && (
+            <div className="absolute left-[-70px] bottom-10 z-10">
+              {/* ...low drop area JSX... */}
+              <div
+                className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md"
+                onDrop={(e) => handleDrop(e, "low")}
+                onDragOver={handleDragOver}
+                onClick={() => handleOpenModal("low")}
+              >
+                {lowVariables.length === 0
+                  ? "Low Variable?"
+                  : lowVariables.join(", ")}
+              </div>
+            </div>
+          )}
+        {/* High (kiri atas) */}
+        {chartVariableConfig[chartType]?.high &&
+          (chartVariableConfig[chartType].high?.min !== 0 ||
+            chartVariableConfig[chartType].high?.max !== 0) && (
+            <div className="absolute left-[-70px] top-10 z-10">
+              {/* ...high drop area JSX... */}
+              <div
+                className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md"
+                onDrop={(e) => handleDrop(e, "high")}
+                onDragOver={handleDragOver}
+                onClick={() => handleOpenModal("high")}
+              >
+                {highVariables.length === 0
+                  ? "High Variable?"
+                  : highVariables.join(", ")}
+              </div>
+            </div>
+          )}
+        {/* Close (bawah kiri) */}
+        {chartVariableConfig[chartType]?.close &&
+          (chartVariableConfig[chartType].close?.min !== 0 ||
+            chartVariableConfig[chartType].close?.max !== 0) && (
+            <div className="absolute left-10 bottom-[-60px] z-10">
+              {/* ...close drop area JSX... */}
+              <div
+                className="bg-gray-300 text-gray-500 p-2 rounded-md text-sm shadow-md"
+                onDrop={(e) => handleDrop(e, "close")}
+                onDragOver={handleDragOver}
+                onClick={() => handleOpenModal("close")}
+              >
+                {closeVariables.length === 0
+                  ? "Close Variable?"
+                  : closeVariables.join(", ")}
+              </div>
             </div>
           )}
 
         {/* Modal untuk semua variabel */}
-        {modalState.isOpen && (
-          <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg">
+        {/* {modalState.isOpen && (
+          <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg z-[9999]">
             <div className="bg-white p-4 rounded-lg shadow-lg w-64">
               <h2 className="text-lg font-bold mb-2 text-center">
                 All{" "}
@@ -3523,34 +4349,117 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
-        {chartType === "3D Bar Chart2" ||
-        chartType === "Clustered 3D Bar Chart" ||
-        chartType === "Stacked 3D Bar Chart" ||
-        chartType === "3D Scatter Plot" ||
-        chartType === "Grouped 3D Scatter Plot" ? (
-          <div className="w-full h-full flex justify-center items-center pb-10">
+        {/* Kotak chart preview, hanya chart */}
+        <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[650px] max-w-full h-[550px] flex flex-col justify-between mt-8">
+          {/* Modal untuk semua variabel */}
+          {modalState.isOpen && (
+            <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg z-[9999]">
+              <div className="bg-white p-4 rounded-lg shadow-lg w-64">
+                <h2 className="text-lg font-bold mb-2 text-center">
+                  All{" "}
+                  {modalState.type === "side"
+                    ? "Side"
+                    : modalState.type === "side2"
+                    ? "Side2"
+                    : modalState.type === "bottom"
+                    ? "Bottom"
+                    : modalState.type === "bottom2"
+                    ? "Bottom2"
+                    : modalState.type === "color"
+                    ? "Color"
+                    : modalState.type === "filter"
+                    ? "Filter"
+                    : modalState.type === "low"
+                    ? "Low"
+                    : modalState.type === "high"
+                    ? "High"
+                    : modalState.type === "close"
+                    ? "Close"
+                    : "Undefined"}{" "}
+                  Variables
+                </h2>
+                <ul className="space-y-1">
+                  {variablesToShow.map((variable: string, index: number) => (
+                    <li
+                      key={index}
+                      className="p-1 bg-gray-200 rounded text-sm flex justify-between items-center"
+                    >
+                      <span>{variable}</span>
+                      <button
+                        className="text-red-500 font-bold text-xs"
+                        onClick={() =>
+                          handleRemoveVariable(
+                            modalState.type as
+                              | "side"
+                              | "bottom"
+                              | "low"
+                              | "high"
+                              | "close"
+                              | "side2"
+                              | "bottom2",
+                            index
+                          )
+                        }
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className="mt-4 px-4 py-2 bg-red-500 text-white rounded w-full"
+                  onClick={handleCloseModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Chart content saja */}
+          {chartType === "3D Bar Chart2" ||
+          chartType === "Clustered 3D Bar Chart" ||
+          chartType === "Stacked 3D Bar Chart" ||
+          chartType === "3D Scatter Plot" ||
+          chartType === "Grouped 3D Scatter Plot" ? (
+            <div className="w-full h-full flex justify-center items-center pb-10">
+              <div
+                id="chart-container"
+                ref={chartContainerRef}
+                className="min-w-[600px] min-h-[480px] max-w-full max-h-full"
+              />
+            </div>
+          ) : (
             <div
-              id="chart-container"
-              ref={chartContainerRef}
-              className="min-w-[600px] min-h-[400px] max-w-full max-h-full"
-            />
-          </div>
-        ) : (
-          <svg
-            ref={svgRef}
-            className="w-full h-full"
-            preserveAspectRatio="xMidYMid meet"
-            viewBox="0 0 650 500"
-            style={{
-              width: "100%",
-              height: "100%",
-              maxWidth: "100%",
-              maxHeight: "100%",
-            }}
-          />
-        )}
+              className="chart-svg-center-container flex justify-center bg-white items-center"
+              style={{
+                position: "absolute",
+                top: "24px",
+                left: "24px",
+                right: "24px",
+                bottom: "24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1,
+              }}
+            >
+              <svg
+                ref={svgRef}
+                className="w-full h-full"
+                preserveAspectRatio="xMidYMid meet"
+                viewBox="0 0 680 550"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
