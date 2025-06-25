@@ -1,31 +1,28 @@
 "use client";
-import React, { useState, FC, useEffect, useCallback } from "react";
+
+import React, { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import type { Variable, VariableType } from "@/types/Variable";
+import { BaseModalProps } from "@/types/modalTypes";
 import RecodeVariablesTab from "./RecodeVariablesTab";
 import OldNewValuesSetup from "./OldNewValuesSetup";
+
+export enum RecodeMode {
+    SAME_VARIABLES = "recodeSameVariables",
+}
 
 export interface RecodeRule {
   id: string;
@@ -44,34 +41,164 @@ export interface RecodeRule {
   newValueDisplay: string;
 }
 
-interface RecodeSameVariablesModalProps {
-  onClose: () => void;
+// Interface extending BaseModalProps for type safety with our modal system
+export interface RecodeSameVariablesModalProps extends BaseModalProps {
+    // Additional props specific to this modal
 }
 
-const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
-  const allVariablesFromStore = useVariableStore.getState().variables;
-  const dataStore = useDataStore();
-  const { toast } = useToast();
-  const resultStore = useResultStore();
+// Interface for the content component
+interface RecodeSameVariablesContentProps {
+    onClose: () => void;
+    containerType?: 'dialog' | 'sidebar';
+    availableVariables: Variable[];
+    variablesToRecode: Variable[];
+    highlightedVariable: { tempId: string, source: 'available' | 'recodeList' } | null;
+    recodeListType: 'NUMERIC' | 'STRING' | null;
+    showOldNewSetup: boolean;
+    recodeRules: RecodeRule[];
+    isProcessing: boolean;
+    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ tempId: string, source: 'available' | 'recodeList' } | null>>;
+    moveToRightPane: (variable: Variable, targetIndex?: number) => void;
+    moveToLeftPane: (variable: Variable, targetIndex?: number) => void;
+    reorderVariables: (source: 'available' | 'recodeList', reorderedList: Variable[]) => void;
+    handleShowOldNewSetup: () => void;
+    handleHideOldNewSetup: () => void;
+    setRecodeRules: React.Dispatch<React.SetStateAction<RecodeRule[]>>;
+    handleOk: () => Promise<void>;
+    handlePaste: () => void;
+    handleReset: () => void;
+}
 
-  const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
-  const [variablesToRecode, setVariablesToRecode] = useState<Variable[]>([]);
-  const [highlightedVariable, setHighlightedVariable] = useState<{
-    tempId: string;
-    source: "available" | "recodeList";
-  } | null>(null);
-  const [recodeListType, setRecodeListType] = useState<
-    "NUMERIC" | "STRING" | null
-  >(null);
+// Content component
+const RecodeSameVariablesContent: React.FC<RecodeSameVariablesContentProps> = ({
+    onClose,
+    containerType = 'dialog',
+    availableVariables,
+    variablesToRecode,
+    highlightedVariable,
+    recodeListType,
+    showOldNewSetup,
+    recodeRules,
+    isProcessing,
+    setHighlightedVariable,
+    moveToRightPane,
+    moveToLeftPane,
+    reorderVariables,
+    handleShowOldNewSetup,
+    handleHideOldNewSetup,
+    setRecodeRules,
+    handleOk,
+    handlePaste,
+    handleReset
+}) => {
+    const { toast } = useToast();
+    
+    return (
+        <div className="flex flex-col h-full">
+            {/* Main Content */}
+            <div className="p-6 flex-grow overflow-y-auto">
+                {recodeListType && containerType === "dialog" && (
+                    <div className="mb-4">
+                        <p className="text-sm text-muted-foreground">
+                            Current variable type: <span className="font-medium">{recodeListType}</span>
+                        </p>
+                    </div>
+                )}
 
-  const [showOldNewSetup, setShowOldNewSetup] = useState(false);
-  const [recodeRules, setRecodeRules] = useState<RecodeRule[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+                {showOldNewSetup ? (
+                    <OldNewValuesSetup 
+                        recodeListType={recodeListType}
+                        recodeRules={recodeRules}
+                        setRecodeRules={setRecodeRules}
+                        onCloseSetup={handleHideOldNewSetup}
+                        variableCount={variablesToRecode.length}
+                    />
+                ) : (
+                    <RecodeVariablesTab
+                        availableVariables={availableVariables}
+                        variablesToRecode={variablesToRecode}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToRightPane={moveToRightPane}
+                        moveToLeftPane={moveToLeftPane}
+                        reorderVariables={reorderVariables}
+                    />
+                )}
+            </div>
+            
+            {/* Additional Controls */}
+            <div className="px-6 py-4 border-t border-[#E6E6E6] flex-shrink-0 flex flex-col space-y-3">
+                {!showOldNewSetup && (
+                    <div className="flex space-x-2">
+                        <Button 
+                            variant="outline" 
+                            className="flex-1" 
+                            onClick={() => {
+                                if (variablesToRecode.length === 0) {
+                                    toast({
+                                        title: "No variables selected",
+                                        description: "Please select at least one variable to recode.",
+                                        variant: "destructive",
+                                    });
+                                    return;
+                                }
+                                handleShowOldNewSetup();
+                            }}
+                        >
+                            Old and New Values...
+                        </Button>
+                        <Button variant="outline" className="flex-1">If... (optional case selection condition)</Button>
+                    </div>
+                )}
+            </div>
 
-  // Alert dialog state
-  const [showTypeAlert, setShowTypeAlert] = useState(false);
-  const [incompatibleVariable, setIncompatibleVariable] =
-    useState<Variable | null>(null);
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[#E6E6E6] flex-shrink-0 bg-muted">
+                <div className="flex justify-end space-x-2 w-full">
+                    {showOldNewSetup ? (
+                        <>
+                            <Button variant="outline" onClick={handleHideOldNewSetup}>Back to Variables</Button>
+                        </>
+                    ) : null}
+                    <Button 
+                        variant="default" 
+                        onClick={handleOk}
+                        disabled={isProcessing || variablesToRecode.length === 0 || recodeRules.length === 0}
+                    >
+                        {isProcessing ? "Processing..." : "OK"}
+                    </Button>
+                    <Button variant="outline" onClick={handlePaste}>Paste</Button>
+                    <Button variant="outline" onClick={handleReset}>Reset</Button>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button variant="outline">Help</Button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Main component that manages state and renders the content
+export const RecodeSameVariablesModal: React.FC<RecodeSameVariablesModalProps> = ({
+    onClose,
+    containerType = "dialog",
+    ...props
+}) => {
+    const allVariablesFromStore = useVariableStore.getState().variables;
+    const dataStore = useDataStore();
+    const { toast } = useToast();
+
+    // State management
+    const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
+    const [variablesToRecode, setVariablesToRecode] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{ tempId: string, source: 'available' | 'recodeList' } | null>(null);
+    const [recodeListType, setRecodeListType] = useState<'NUMERIC' | 'STRING' | null>(null);
+    const [showOldNewSetup, setShowOldNewSetup] = useState(false);
+    const [recodeRules, setRecodeRules] = useState<RecodeRule[]>([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    // Alert dialog state
+    const [showTypeAlert, setShowTypeAlert] = useState(false);
+    const [incompatibleVariable, setIncompatibleVariable] = useState<Variable | null>(null);
 
   useEffect(() => {
     const recodeVarTempIds = new Set(variablesToRecode.map((v) => v.tempId));
@@ -87,48 +214,38 @@ const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
     }
   }, [allVariablesFromStore, variablesToRecode, recodeListType]);
 
-  const moveToRightPane = useCallback(
-    (variable: Variable, targetIndex?: number) => {
-      if (!variable.tempId) return;
-      const varType = variable.type;
-      if (variablesToRecode.length === 0) {
-        if (varType === "NUMERIC" || varType === "STRING") {
-          setRecodeListType(varType);
+    // Handler functions
+    const moveToRightPane = useCallback((variable: Variable, targetIndex?: number) => {
+        if (!variable.tempId) return;
+        const varType = variable.type;
+        if (variablesToRecode.length === 0) {
+            if (varType === "NUMERIC" || varType === "STRING") {
+                setRecodeListType(varType);
+            } else {
+                console.warn(`Variable ${variable.name} is not NUMERIC or STRING and cannot be recoded.`);
+                return;
+            }
         } else {
-          console.warn(
-            `Variable ${variable.name} is not NUMERIC or STRING and cannot be recoded.`
-          );
-          return;
+            if (varType !== recodeListType) {
+                // Instead of console warning, show alert dialog
+                setIncompatibleVariable(variable);
+                setShowTypeAlert(true);
+                return;
+            }
         }
-      } else {
-        if (varType !== recodeListType) {
-          // Instead of console warning, show alert dialog
-          setIncompatibleVariable(variable);
-          setShowTypeAlert(true);
-          return;
-        }
-      }
-      setAvailableVariables((prev) =>
-        prev.filter((v) => v.tempId !== variable.tempId)
-      );
-      setVariablesToRecode((prev) => {
-        if (prev.some((v) => v.tempId === variable.tempId)) return prev;
-        const newList = [...prev];
-        if (
-          typeof targetIndex === "number" &&
-          targetIndex >= 0 &&
-          targetIndex <= newList.length
-        ) {
-          newList.splice(targetIndex, 0, variable);
-        } else {
-          newList.push(variable);
-        }
-        return newList;
-      });
-      setHighlightedVariable(null);
-    },
-    [variablesToRecode, recodeListType]
-  );
+        setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
+        setVariablesToRecode(prev => {
+            if (prev.some(v => v.tempId === variable.tempId)) return prev;
+            const newList = [...prev];
+            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
+                newList.splice(targetIndex, 0, variable);
+            } else {
+                newList.push(variable);
+            }
+            return newList;
+        });
+        setHighlightedVariable(null);
+    }, [variablesToRecode, recodeListType]);
 
   const moveToLeftPane = useCallback(
     (variable: Variable, targetIndex?: number) => {
@@ -171,100 +288,83 @@ const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
     []
   );
 
-  // Fungsi untuk mengevaluasi nilai berdasarkan aturan recode
-  const evaluateValueWithRules = (
-    value: string | number,
-    rules: RecodeRule[]
-  ): string | number | null => {
-    // Jika nilai adalah string kosong, kembalikan apa adanya
-    if (value === "") {
-      return value;
-    }
+    // Helper function to evaluate rules
+    const evaluateValueWithRules = (value: string | number, rules: RecodeRule[]): string | number | null => {
+        // Jika nilai adalah string kosong, kembalikan apa adanya
+        if (value === "") {
+            return value;
+        }
 
     const numericValue = typeof value === "string" ? parseFloat(value) : value;
     const isNumericType = recodeListType === "NUMERIC";
     const isValidNumber = !isNaN(numericValue);
 
-    for (const rule of rules) {
-      switch (rule.oldValueType) {
-        case "value":
-          // Untuk tipe STRING, bandingkan nilai secara langsung
-          if (!isNumericType && value === rule.oldValue) {
-            return rule.newValue;
-          }
-          // Untuk tipe NUMERIC, pastikan nilai valid dan cocok
-          if (
-            isNumericType &&
-            isValidNumber &&
-            numericValue === rule.oldValue
-          ) {
-            return rule.newValue;
-          }
-          break;
-
-        case "range":
-          if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
-            const [min, max] = rule.oldValue;
-            if (
-              min !== null &&
-              max !== null &&
-              numericValue >= min &&
-              numericValue <= max
-            ) {
-              return rule.newValue;
+        for (const rule of rules) {
+            switch(rule.oldValueType) {
+                case 'value':
+                    // Untuk tipe STRING, bandingkan nilai secara langsung
+                    if (!isNumericType && value === rule.oldValue) {
+                        return rule.newValue;
+                    }
+                    // Untuk tipe NUMERIC, pastikan nilai valid dan cocok
+                    if (isNumericType && isValidNumber && numericValue === rule.oldValue) {
+                        return rule.newValue;
+                    }
+                    break;
+                
+                case 'range':
+                    if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
+                        const [min, max] = rule.oldValue;
+                        if (min !== null && max !== null && numericValue >= min && numericValue <= max) {
+                            return rule.newValue;
+                        }
+                    }
+                    break;
+                
+                case 'rangeLowest':
+                    if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
+                        const [, max] = rule.oldValue;
+                        if (max !== null && numericValue <= max) {
+                            return rule.newValue;
+                        }
+                    }
+                    break;
+                
+                case 'rangeHighest':
+                    if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
+                        const [min] = rule.oldValue;
+                        if (min !== null && numericValue >= min) {
+                            return rule.newValue;
+                        }
+                    }
+                    break;
+                
+                case 'systemMissing':
+                    if (value === null || value === undefined) {
+                        return rule.newValue;
+                    }
+                    break;
+                
+                case 'systemOrUserMissing':
+                    if (value === null || value === undefined) {
+                        return rule.newValue;
+                    }
+                    break;
+                
+                case 'else':
+                    continue;
             }
-          }
-          break;
-
-        case "rangeLowest":
-          if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
-            const [, max] = rule.oldValue;
-            if (max !== null && numericValue <= max) {
-              return rule.newValue;
-            }
-          }
-          break;
-
-        case "rangeHighest":
-          if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
-            const [min] = rule.oldValue;
-            if (min !== null && numericValue >= min) {
-              return rule.newValue;
-            }
-          }
-          break;
-
-        case "systemMissing":
-          // System missing biasanya direpresentasikan sebagai nilai kosong
-          if (value === null || value === undefined) {
-            return rule.newValue;
-          }
-          break;
-
-        case "systemOrUserMissing":
-          // System missing atau user missing (biasanya kode khusus)
-          if (value === null || value === undefined) {
-            return rule.newValue;
-          }
-          // Implementasi user missing dapat ditambahkan di sini
-          break;
-
-        case "else":
-          // Rule 'else' akan diproses di akhir loop jika tidak ada rule lain yang cocok
-          // Simpan dulu dan jangan return langsung
-          continue;
-      }
-    }
-
-    // Cek apakah ada rule 'else' setelah semua rule lain dievaluasi
-    const elseRule = rules.find((r) => r.oldValueType === "else");
-    if (elseRule) {
-      return elseRule.newValue;
-    }
-
-    // Jika tidak ada rule yang cocok, kembalikan nilai original
-    return value;
-  };
+        }
+        
+        // Check for 'else' rule
+        const elseRule = rules.find(r => r.oldValueType === 'else');
+        if (elseRule) {
+            return elseRule.newValue;
+        }
+        
+        // Return original value if no matching rule
+        return value;
+    };
 
   const handleOk = async () => {
     if (variablesToRecode.length === 0) {
@@ -285,6 +385,39 @@ const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
       return;
     }
 
+        setIsProcessing(true);
+        try {
+            // Untuk setiap variabel yang dipilih
+            for (const variable of variablesToRecode) {
+                // Dapatkan data variabel
+                const { data } = await dataStore.getVariableData(variable);
+                const columnIndex = variable.columnIndex;
+                
+                if (columnIndex === undefined || columnIndex < 0) {
+                    console.error(`Invalid column index for variable ${variable.name}`);
+                    continue;
+                }
+
+                // Untuk setiap nilai dalam kolom, terapkan aturan recode
+                const updates = data.map((value, rowIndex) => {
+                    const newValue = evaluateValueWithRules(value, recodeRules);
+                    
+                    // Jika nilai berubah, tambahkan ke daftar perubahan
+                    if (newValue !== value) {
+                        return {
+                            row: rowIndex,
+                            col: columnIndex,
+                            value: newValue === null ? "" : newValue
+                        };
+                    }
+                    return null;
+                }).filter(update => update !== null);
+
+                // Jika ada perubahan, terapkan ke datastore
+                if (updates.length > 0) {
+                    await dataStore.updateCells(updates);
+                }
+            }
     setIsProcessing(true);
     try {
       // Process each variable
@@ -500,28 +633,55 @@ const Index: FC<RecodeSameVariablesModalProps> = ({ onClose }) => {
           </div>
         </DialogFooter>
       </DialogContent>
+    return (
+        <div className="flex-grow overflow-y-auto flex flex-col h-full bg-background text-foreground">
+            <RecodeSameVariablesContent
+                onClose={onClose}
+                containerType={containerType}
+                availableVariables={availableVariables}
+                variablesToRecode={variablesToRecode}
+                highlightedVariable={highlightedVariable}
+                recodeListType={recodeListType}
+                showOldNewSetup={showOldNewSetup}
+                recodeRules={recodeRules}
+                isProcessing={isProcessing}
+                setHighlightedVariable={setHighlightedVariable}
+                moveToRightPane={moveToRightPane}
+                moveToLeftPane={moveToLeftPane}
+                reorderVariables={reorderVariables}
+                handleShowOldNewSetup={() => setShowOldNewSetup(true)}
+                handleHideOldNewSetup={() => setShowOldNewSetup(false)}
+                setRecodeRules={setRecodeRules}
+                handleOk={handleOk}
+                handlePaste={handlePaste}
+                handleReset={handleReset}
+            />
 
-      {/* Type Mismatch Alert Dialog */}
-      <AlertDialog open={showTypeAlert} onOpenChange={setShowTypeAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Variable Type Mismatch</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cannot add {incompatibleVariable?.name} (
-              {incompatibleVariable?.type}) to the list. Currently selected
-              variables are of type {recodeListType}. Variables to recode must
-              be of the same type (either all NUMERIC or all STRING).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setShowTypeAlert(false)}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
+            {/* Type Mismatch Alert Dialog */}
+            <AlertDialog open={showTypeAlert} onOpenChange={setShowTypeAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Variable Type Mismatch</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cannot add {incompatibleVariable?.name} ({incompatibleVariable?.type}) to the list. 
+                            Currently selected variables are of type {recodeListType}.
+                            
+                            Variables to recode must be of the same type (either all NUMERIC or all STRING).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setShowTypeAlert(false)}>OK</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    );
 };
 
-export default Index;
+export const isRecodeSameVariablesModalType = (type: string): boolean => {
+    return type === RecodeMode.SAME_VARIABLES;
+};
+
+export default RecodeSameVariablesModal;
+
+

@@ -12,118 +12,56 @@ import {
     AlertDialogHeader,
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import type { StatisticsOptions } from "@/types/Analysis";
 import { useMobile } from '@/hooks/useMobile';
+import { TourStep } from "./hooks/useTourGuide";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { StatisticsSettingsResult } from "./hooks";
 
-interface StatisticsTabProps {
-    showStatistics: boolean;
-    setShowStatistics: Dispatch<SetStateAction<boolean>>;
-
-    // Percentiles
-    quartilesChecked: boolean;
-    setQuartilesChecked: Dispatch<SetStateAction<boolean>>;
-    cutPointsChecked: boolean;
-    setCutPointsChecked: Dispatch<SetStateAction<boolean>>;
-    cutPointsValue: string;
-    setCutPointsValue: Dispatch<SetStateAction<string>>;
-    enablePercentiles: boolean;
-    setEnablePercentiles: Dispatch<SetStateAction<boolean>>;
-    percentileValues: string[];
-    setPercentileValues: Dispatch<SetStateAction<string[]>>;
-    currentPercentileInput: string;
-    setCurrentPercentileInput: Dispatch<SetStateAction<string>>;
-    selectedPercentileItem: string | null;
-    setSelectedPercentileItem: Dispatch<SetStateAction<string | null>>;
-
-    // Central Tendency
-    meanChecked: boolean;
-    setMeanChecked: Dispatch<SetStateAction<boolean>>;
-    medianChecked: boolean;
-    setMedianChecked: Dispatch<SetStateAction<boolean>>;
-    modeChecked: boolean;
-    setModeChecked: Dispatch<SetStateAction<boolean>>;
-    sumChecked: boolean;
-    setSumChecked: Dispatch<SetStateAction<boolean>>;
-
-    // Dispersion
-    stdDevChecked: boolean;
-    setStdDevChecked: Dispatch<SetStateAction<boolean>>;
-    varianceChecked: boolean;
-    setVarianceChecked: Dispatch<SetStateAction<boolean>>;
-    rangeChecked: boolean;
-    setRangeChecked: Dispatch<SetStateAction<boolean>>;
-    minChecked: boolean;
-    setMinChecked: Dispatch<SetStateAction<boolean>>;
-    maxChecked: boolean;
-    setMaxChecked: Dispatch<SetStateAction<boolean>>;
-    seMeanChecked: boolean;
-    setSeMeanChecked: Dispatch<SetStateAction<boolean>>;
-
-    // Distribution
-    skewnessChecked: boolean;
-    setSkewnessChecked: Dispatch<SetStateAction<boolean>>;
-    kurtosisChecked: boolean;
-    setKurtosisChecked: Dispatch<SetStateAction<boolean>>;
+export interface StatisticsTabProps {
+    settings: StatisticsSettingsResult;
+    containerType?: "dialog" | "sidebar";
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const StatisticsTab: FC<StatisticsTabProps> = ({
-    showStatistics,
-    setShowStatistics,
-    // Destructure all new props
-    quartilesChecked, setQuartilesChecked,
-    cutPointsChecked, setCutPointsChecked,
-    cutPointsValue, setCutPointsValue,
-    enablePercentiles, setEnablePercentiles,
-    percentileValues, setPercentileValues,
-    currentPercentileInput, setCurrentPercentileInput,
-    selectedPercentileItem, setSelectedPercentileItem,
-    meanChecked, setMeanChecked,
-    medianChecked, setMedianChecked,
-    modeChecked, setModeChecked,
-    sumChecked, setSumChecked,
-    stdDevChecked, setStdDevChecked,
-    varianceChecked, setVarianceChecked,
-    rangeChecked, setRangeChecked,
-    minChecked, setMinChecked,
-    maxChecked, setMaxChecked,
-    seMeanChecked, setSeMeanChecked,
-    skewnessChecked, setSkewnessChecked,
-    kurtosisChecked, setKurtosisChecked
+    settings,
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
-    // Remove internal state for statistics options
-    // const [percentileValues, setPercentileValues] = useState<string[]>([]);
-    // const [currentPercentile, setCurrentPercentile] = useState(""); // Renamed to currentPercentileInput
-    // const [selectedPercentile, setSelectedPercentile] = useState<string | null>(null); // Renamed to selectedPercentileItem
-    // const [cutPointsValue, setCutPointsValue] = useState("10");
-    // const [enablePercentiles, setEnablePercentiles] = useState(false);
+    // Destructure all required state and setters from the settings object
+    const {
+        showStatistics, setShowStatistics,
+        quartilesChecked, setQuartilesChecked,
+        cutPointsChecked, setCutPointsChecked,
+        cutPointsValue, setCutPointsValue,
+        enablePercentiles, setEnablePercentiles,
+        percentileValues, setPercentileValues,
+        currentPercentileInput, setCurrentPercentileInput,
+        selectedPercentileItem, setSelectedPercentileItem,
+        meanChecked, setMeanChecked,
+        medianChecked, setMedianChecked,
+        modeChecked, setModeChecked,
+        sumChecked, setSumChecked,
+        stdDevChecked, setStdDevChecked,
+        varianceChecked, setVarianceChecked,
+        rangeChecked, setRangeChecked,
+        minChecked, setMinChecked,
+        maxChecked, setMaxChecked,
+        seMeanChecked, setSeMeanChecked,
+        skewnessChecked, setSkewnessChecked,
+        kurtosisChecked, setKurtosisChecked
+    } = settings;
 
     // Keep alert state internal to this component
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState({ title: "", description: "" });
-
-    // Remove internal state for individual checkboxes
-    // const [quartilesChecked, setQuartilesChecked] = useState(false);
-    // const [cutPointsChecked, setCutPointsChecked] = useState(false);
-    // const [meanChecked, setMeanChecked] = useState(false);
-    // const [medianChecked, setMedianChecked] = useState(false);
-    // const [modeChecked, setModeChecked] = useState(false);
-    // const [sumChecked, setSumChecked] = useState(false);
-    // const [stdDevChecked, setStdDevChecked] = useState(false);
-    // const [varianceChecked, setVarianceChecked] = useState(false);
-    // const [rangeChecked, setRangeChecked] = useState(false);
-    // const [minChecked, setMinChecked] = useState(false);
-    // const [maxChecked, setMaxChecked] = useState(false);
-    // const [seMeanChecked, setSeMeanChecked] = useState(false);
-    // const [kurtosisChecked, setKurtosisChecked] = useState(false);
-    // const [skewnessChecked, setSkewnessChecked] = useState(false);
+    const [inlineAlertMessage, setInlineAlertMessage] = useState<string | null>(null); // For sidebar alerts
 
     const { isMobile, isPortrait } = useMobile();
-
-    // Remove useEffect that reported changes via onOptionsChange
-    // useEffect(() => { ... onOptionsChange(options); }, [...dependencies]);
-
-    // Remove Reset Effect (reset is handled in index.tsx now)
-    // useEffect(() => { if (resetCounter > 0) { ... } }, [resetCounter]);
 
     const getTextClass = (disabled: boolean) => {
         return disabled ? "text-muted-foreground" : "";
@@ -137,27 +75,35 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         return true;
     };
 
+    const showAlert = (title: string, description: string) => {
+        if (containerType === "sidebar") {
+            setInlineAlertMessage(`${title}: ${description}`);
+        } else {
+            setAlertMessage({ title, description });
+            setAlertOpen(true);
+        }
+    };
+
     // Update percentile handlers to use props
     const handleAddPercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (!currentPercentileInput) return; // Use prop state
 
         // Validate the percentile value is between 0-100
         if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Invalid percentile",
-                description: "Percentile must be a number between 0 and 100"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Invalid percentile",
+                "Percentile must be a number between 0 and 100"
+            );
             return;
         }
 
         // Check for duplicates
         if (percentileValues.includes(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Duplicate percentile",
-                description: "This percentile value already exists"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Duplicate percentile",
+                "This percentile value already exists"
+            );
             return;
         }
 
@@ -166,6 +112,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleChangePercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (!selectedPercentileItem || !currentPercentileInput) return; // Use prop states
 
         // Skip if no actual change
@@ -177,21 +124,19 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
 
         // Validate the percentile value is between 0-100
         if (!validatePercentileValue(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Invalid percentile",
-                description: "Percentile must be a number between 0 and 100"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Invalid percentile",
+                "Percentile must be a number between 0 and 100"
+            );
             return;
         }
 
         // Check if the new value would create a duplicate
         if (percentileValues.includes(currentPercentileInput)) { // Use prop state
-            setAlertMessage({
-                title: "Duplicate percentile",
-                description: "This percentile value already exists"
-            });
-            setAlertOpen(true);
+            showAlert(
+                "Duplicate percentile",
+                "This percentile value already exists"
+            );
             return;
         }
 
@@ -205,6 +150,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
     };
 
     const handleRemovePercentile = () => {
+        setInlineAlertMessage(null); // Clear previous inline alert
         if (selectedPercentileItem) { // Use prop state
             setPercentileValues(percentileValues.filter(p => p !== selectedPercentileItem)); // Use prop setter & state
             setSelectedPercentileItem(null); // Use prop setter
@@ -212,21 +158,31 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
         }
     };
 
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
+
     return (
         <div className={`grid ${isMobile && isPortrait ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
-            <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
-                        <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction>OK</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {containerType === "dialog" && (
+                <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
+                            <AlertDialogDescription>{alertMessage.description}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction onClick={() => setAlertOpen(false)}>OK</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            {containerType === "sidebar" && inlineAlertMessage && (
+                <div className="col-span-full p-2 mb-2 text-sm text-destructive-foreground bg-destructive rounded-md">
+                    {inlineAlertMessage}
+                     <Button variant="ghost" size="sm" onClick={() => setInlineAlertMessage(null)} className="ml-2 text-destructive-foreground hover:bg-destructive/80">Dismiss</Button>
+                </div>
+            )}
 
-            <div className="border border-border rounded-md p-4 space-y-3 bg-card">
+            <div id="percentile-values-section" className="border border-border rounded-md p-4 space-y-3 bg-card relative">
                 <div className={`text-sm font-medium ${getTextClass(!showStatistics)}`}>Percentile Values</div>
                 <div className="flex items-center">
                     <Checkbox
@@ -316,9 +272,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         </div>
                     )}
                 </div>
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("percentile-values-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="central-tendency-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Central Tendency</div>
                 {[
                     { id: "mean", label: "Mean", checked: meanChecked, setter: setMeanChecked },
@@ -337,9 +294,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("central-tendency-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="dispersion-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Dispersion</div>
                 {[
                     { id: "stddev", label: "Std. deviation", checked: stdDevChecked, setter: setStdDevChecked },
@@ -360,9 +318,10 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("dispersion-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 space-y-2 bg-card">
+            <div id="distribution-section" className="border border-border rounded-md p-4 space-y-2 bg-card relative">
                 <div className={`text-sm font-medium mb-2 ${getTextClass(!showStatistics)}`}>Distribution</div>
                 {[
                     { id: "skewness", label: "Skewness", checked: skewnessChecked, setter: setSkewnessChecked },
@@ -379,6 +338,7 @@ const StatisticsTab: FC<StatisticsTabProps> = ({
                         <Label htmlFor={id} className={`text-sm cursor-pointer ${getTextClass(!showStatistics)}`}>{label}</Label>
                     </div>
                 ))}
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("distribution-section")} />
             </div>
         </div>
     );

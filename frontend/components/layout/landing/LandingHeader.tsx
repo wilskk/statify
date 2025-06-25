@@ -20,7 +20,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { useState } from 'react';
-import { ModeToggle } from "@/components/mode-toggle";
+// import { ModeToggle } from "@/components/mode-toggle";
 
 export default function LandingHeader() {
     const [open, setOpen] = useState(false);
@@ -73,7 +73,7 @@ export default function LandingHeader() {
                             <span>Masuk</span>
                         </Button>
                     </Link>
-                    <ModeToggle />
+                    {/* <ModeToggle /> */}
                 </div>
 
                 {/* Mobile Menu - Dengan warna monokromatik dan spacing yang konsisten */}

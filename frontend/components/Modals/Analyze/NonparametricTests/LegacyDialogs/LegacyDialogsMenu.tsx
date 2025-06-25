@@ -17,24 +17,24 @@ const NonparametricTestsMenu: FC = () => {
                 Legacy Dialogs
             </MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>
+                {/* <MenubarItem onClick={() => openModal(ModalType.ChiSquare)}>
                     Chi-square...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Runs)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.Runs)}>
                     Runs...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.TwoIndependentSamples)}>
                     2 Independent Samples...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.KIndependentSamples)}>
                     K Independent Samples...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.TwoRelatedSamples)}>
                     2 Related Samples...
-                </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>
+                </MenubarItem> */}
+                {/* <MenubarItem onClick={() => openModal(ModalType.KRelatedSamples)}>
                     K Related Samples...
-                </MenubarItem>
+                </MenubarItem> */}
             </MenubarContent>
         </MenubarMenu>
     );

@@ -1,44 +1,77 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TourStep } from "./types";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
+    if (!active) return null;
+    
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none"
+        />
+    );
+};
 
 interface OptionsTabProps {
     isAlreadySorted: boolean;
     setIsAlreadySorted: (value: boolean) => void;
     sortBeforeAggregating: boolean;
     setSortBeforeAggregating: (value: boolean) => void;
+    containerType?: "dialog" | "sidebar" | "panel";
+    tourActive: boolean;
+    currentStep: number;
+    tourSteps: TourStep[];
 }
 
 const OptionsTab: FC<OptionsTabProps> = ({
-                                             isAlreadySorted,
-                                             setIsAlreadySorted,
-                                             sortBeforeAggregating,
-                                             setSortBeforeAggregating
-                                         }) => {
+    isAlreadySorted,
+    setIsAlreadySorted,
+    sortBeforeAggregating,
+    setSortBeforeAggregating,
+    containerType = "dialog",
+    tourActive,
+    currentStep,
+    tourSteps,
+}) => {
+    const isStepActive = (targetId: string) => {
+        return tourActive && tourSteps[currentStep]?.targetId === targetId;
+    };
+
     return (
         <div className="border border-border p-2 rounded-md bg-card">
             <div className="text-xs font-semibold mb-2 text-foreground">Options for Very Large Datasets</div>
             <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="already-sorted"
-                        className="w-3 h-3"
-                        checked={isAlreadySorted}
-                        onCheckedChange={(checked) => setIsAlreadySorted(!!checked)}
-                    />
-                    <Label htmlFor="already-sorted" className="text-xs cursor-pointer text-foreground">
+                <div className="flex items-center space-x-2 relative" id="aggregate-option-sorted-wrapper">
+                    <div className="relative mt-0.5">
+                        <Checkbox
+                            id="already-sorted"
+                            className="w-3 h-3"
+                            checked={isAlreadySorted}
+                            onCheckedChange={(checked) => setIsAlreadySorted(!!checked)}
+                        />
+                         <ActiveElementHighlight active={isStepActive("aggregate-option-sorted-wrapper")} />
+                    </div>
+                    <Label htmlFor="already-sorted" className={cn("text-xs cursor-pointer text-foreground", isStepActive("aggregate-option-sorted-wrapper") && "text-primary font-medium")}>
                         File is already sorted on break variable(s)
                     </Label>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="sort-before"
-                        className="w-3 h-3"
-                        checked={sortBeforeAggregating}
-                        onCheckedChange={(checked) => setSortBeforeAggregating(!!checked)}
-                    />
-                    <Label htmlFor="sort-before" className="text-xs cursor-pointer text-foreground">
+                <div className="flex items-center space-x-2 relative" id="aggregate-option-sort-before-wrapper">
+                    <div className="relative mt-0.5">
+                        <Checkbox
+                            id="sort-before"
+                            className="w-3 h-3"
+                            checked={sortBeforeAggregating}
+                            onCheckedChange={(checked) => setSortBeforeAggregating(!!checked)}
+                        />
+                        <ActiveElementHighlight active={isStepActive("aggregate-option-sort-before-wrapper")} />
+                    </div>
+                    <Label htmlFor="sort-before" className={cn("text-xs cursor-pointer text-foreground", isStepActive("aggregate-option-sort-before-wrapper") && "text-primary font-medium")}>
                         Sort file before aggregating
                     </Label>
                 </div>

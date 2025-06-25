@@ -112,3 +112,164 @@
   display: none; /* Chrome, Safari, Opera */
   height: 0; /* Ensure no space is taken */
 }
+
+/* resize-content class untuk memastikan konten sidebar menyesuaikan ukuran */
+.resize-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Pastikan semua konten dalam resize-content mengikuti batasan ukuran */
+.resize-content > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Perbaikan khusus untuk Handsontable dalam sidebar */
+.resize-content .handsontable {
+  width: 100% !important;
+}
+
+.resize-content .handsontable .wtHolder,
+.resize-content .handsontable .wtHider {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* Layout dashboard */
+.dashboard-layout {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Panel styling */
+[data-radix-panel] {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Perbaikan untuk tabel dalam panel */
+.hot-container-excel {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.hot-container-excel .ht_master,
+.hot-container-excel .handsontable {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Fix untuk container dan wrapper */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Add animation for the help content */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Custom data table styling */
+.data-table-modern table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: auto;
+  margin: 0 auto;
+}
+
+/* Remove border-collapse from other tables */
+table:not(.data-table-modern table) {
+  border-collapse: collapse;
+}
+
+/* Modern flat table styles */
+.data-table-modern {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  padding: 1.5rem;
+}
+
+/* Container with subtle border */
+.data-table-modern > div {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  overflow: hidden;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* Flat table header styling */
+.data-table-modern thead th {
+  background-color: var(--muted);
+  color: var(--foreground);
+  font-weight: 600;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.data-table-modern thead tr:first-child th {
+  background-color: var(--primary-foreground);
+  border-bottom: 2px solid var(--border);
+  font-weight: 700;
+}
+
+/* Table cell padding and alignment */
+.data-table-modern td {
+  padding: 10px 16px;
+}
+
+/* Row styling */
+.data-table-modern tbody tr:hover {
+  background-color: var(--accent);
+}
+
+.data-table-modern tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Fixed table header */
+.data-table-modern thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Responsive table */
+@media (max-width: 640px) {
+  .data-table-modern {
+    padding: 0.75rem;
+  }
+  
+  .data-table-modern table {
+    font-size: 0.75rem;
+  }
+  
+  .data-table-modern th,
+  .data-table-modern td {
+    padding: 8px 12px !important;
+  }
+}

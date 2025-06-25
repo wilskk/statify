@@ -15,7 +15,21 @@ import {
     ArrowBigLeft
 } from "lucide-react";
 import { Variable } from "@/types/Variable";
-import { AggregatedVariable } from './index';
+import { AggregatedVariable, TourStep } from './types';
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
+    if (!active) return null;
+    
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none"
+        />
+    );
+};
 
 interface VariablesTabProps {
     availableVariables: Variable[];
@@ -40,31 +54,39 @@ interface VariablesTabProps {
     moveFromAggregated: (variable: AggregatedVariable) => void;
     reorderBreakVariables: (variables: Variable[]) => void;
     reorderAggregatedVariables: (variables: AggregatedVariable[]) => void;
+    containerType?: "dialog" | "sidebar" | "panel";
+    tourActive: boolean;
+    currentStep: number;
+    tourSteps: TourStep[];
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
-                                                 availableVariables,
-                                                 breakVariables,
-                                                 aggregatedVariables,
-                                                 highlightedVariable,
-                                                 breakName,
-                                                 setBreakName,
-                                                 handleVariableSelect,
-                                                 handleVariableDoubleClick,
-                                                 handleAggregatedVariableSelect,
-                                                 handleAggregatedDoubleClick,
-                                                 handleTopArrowClick,
-                                                 handleBottomArrowClick,
-                                                 handleFunctionClick,
-                                                 handleNameLabelClick,
-                                                 getDisplayName,
-                                                 moveToBreak,
-                                                 moveFromBreak,
-                                                 moveToAggregated,
-                                                 moveFromAggregated,
-                                                 reorderBreakVariables,
-                                                 reorderAggregatedVariables
-                                             }) => {
+    availableVariables,
+    breakVariables,
+    aggregatedVariables,
+    highlightedVariable,
+    breakName,
+    setBreakName,
+    handleVariableSelect,
+    handleVariableDoubleClick,
+    handleAggregatedVariableSelect,
+    handleAggregatedDoubleClick,
+    handleTopArrowClick,
+    handleBottomArrowClick,
+    handleFunctionClick,
+    handleNameLabelClick,
+    getDisplayName,
+    moveToBreak,
+    moveFromBreak,
+    moveToAggregated,
+    moveFromAggregated,
+    reorderBreakVariables,
+    reorderAggregatedVariables,
+    containerType = "dialog",
+    tourActive,
+    currentStep,
+    tourSteps,
+}) => {
     // DnD state
     const [draggedItem, setDraggedItem] = useState<{
         variable: Variable | AggregatedVariable,
@@ -73,6 +95,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
     } | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState<'available' | 'break' | 'aggregated' | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+    const isStepActive = (targetId: string) => {
+        return tourActive && tourSteps[currentStep]?.targetId === targetId;
+    };
 
     const getVariableIcon = (variable: Variable) => {
         switch (variable.measure) {
@@ -451,64 +477,80 @@ const VariablesTab: FC<VariablesTabProps> = ({
     return (
         <div className="grid grid-cols-4 gap-4 py-2">
             {/* Available Variables Column */}
-            <div className="col-span-2 flex flex-col">
-                <Label className="text-xs font-semibold mb-1">Available Variables</Label>
+            <div className="col-span-2 flex flex-col relative" id="aggregate-available-vars-wrapper">
+                <Label className={cn("text-xs font-semibold mb-1", isStepActive("aggregate-available-vars-wrapper") && "text-primary")}>Available Variables</Label>
                 {renderVariableList(availableVariables, 'available', '250px')}
+                <ActiveElementHighlight active={isStepActive("aggregate-available-vars-wrapper")} />
             </div>
 
             {/* Target Variables Column */}
             <div className="col-span-2 space-y-4">
-                <div>
-                    <div className="flex items-center mb-1">
+                <div className="relative">
+                    <div className="flex items-center mb-1 relative" id="aggregate-to-break-arrow">
                         {renderArrowButton('break')}
-                        <Label className="text-xs font-semibold">Break Variable(s):</Label>
+                        <Label className={cn("text-xs font-semibold", isStepActive("aggregate-to-break-arrow") && "text-primary", isStepActive("aggregate-break-vars-wrapper") && "text-primary")}>Break Variable(s):</Label>
+                        <ActiveElementHighlight active={isStepActive("aggregate-to-break-arrow")} />
                     </div>
-                    {renderVariableList(breakVariables, 'break', '80px')}
+                    <div className="relative" id="aggregate-break-vars-wrapper">
+                        {renderVariableList(breakVariables, 'break', '80px')}
+                        <ActiveElementHighlight active={isStepActive("aggregate-break-vars-wrapper")} />
+                    </div>
                 </div>
 
-                <div>
-                    <div className="flex items-center mb-1">
+                <div className="relative">
+                    <div className="flex items-center mb-1 relative" id="aggregate-to-aggregated-arrow">
                         {renderArrowButton('aggregated')}
-                        <Label className="text-xs font-semibold">Aggregated Variables</Label>
+                        <Label className={cn("text-xs font-semibold", isStepActive("aggregate-to-aggregated-arrow") && "text-primary", isStepActive("aggregate-aggregated-vars-wrapper") && "text-primary")}>Aggregated Variables</Label>
+                         <ActiveElementHighlight active={isStepActive("aggregate-to-aggregated-arrow")} />
                     </div>
                     <div className="text-xs mb-1">Summaries of Variable(s):</div>
-                    {renderAggregatedList(aggregatedVariables, '110px')}
-
-                    <div className="flex gap-1 mt-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-7"
-                            onClick={handleFunctionClick}
-                            disabled={!(highlightedVariable?.source === 'aggregated')}
-                        >
-                            Function...
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-7"
-                            onClick={handleNameLabelClick}
-                            disabled={!(highlightedVariable?.source === 'aggregated')}
-                        >
-                            Name & Label...
-                        </Button>
+                    <div className="relative" id="aggregate-aggregated-vars-wrapper">
+                        {renderAggregatedList(aggregatedVariables, '110px')}
+                        <ActiveElementHighlight active={isStepActive("aggregate-aggregated-vars-wrapper")} />
                     </div>
 
-                    <div className="flex items-center mt-1 gap-2">
+                    <div className="flex gap-1 mt-1">
+                        <div className="relative" id="aggregate-function-button">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={handleFunctionClick}
+                                disabled={!(highlightedVariable?.source === 'aggregated')}
+                            >
+                                Function...
+                            </Button>
+                            <ActiveElementHighlight active={isStepActive("aggregate-function-button")} />
+                        </div>
+                        <div className="relative" id="aggregate-name-label-button">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={handleNameLabelClick}
+                                disabled={!(highlightedVariable?.source === 'aggregated')}
+                            >
+                                Name & Label...
+                            </Button>
+                            <ActiveElementHighlight active={isStepActive("aggregate-name-label-button")} />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center mt-1 gap-2 relative" id="aggregate-n-cases-wrapper">
                         <div className="flex items-center gap-1">
                             <Checkbox id="number-cases" className="w-3 h-3" />
-                            <Label htmlFor="number-cases" className="text-xs">Number of cases</Label>
+                            <Label htmlFor="number-cases" className={cn("text-xs", isStepActive("aggregate-n-cases-wrapper") && "text-primary")}>Number of cases</Label>
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <Label className="text-xs">Name:</Label>
+                            <Label className={cn("text-xs", isStepActive("aggregate-n-cases-wrapper") && "text-primary")}>Name:</Label>
                             <Input
                                 value={breakName}
                                 onChange={(e) => setBreakName(e.target.value)}
                                 className="h-6 text-xs w-24"
                             />
                         </div>
+                        <ActiveElementHighlight active={isStepActive("aggregate-n-cases-wrapper")} />
                     </div>
                 </div>
             </div>

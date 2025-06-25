@@ -1,3 +1,4 @@
+
 import { Variable } from "@/types/Variable";
 
 type VariableType = {

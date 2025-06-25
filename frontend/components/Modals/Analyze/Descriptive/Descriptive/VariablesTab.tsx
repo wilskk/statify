@@ -1,28 +1,28 @@
-import React, { FC, useCallback, useMemo } from "react";
+import React, { FC, useCallback, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Variable } from "@/types/Variable";
-import {
-    Shapes,
-    Ruler,
-    BarChartHorizontal,
-    MoveHorizontal,
-    GripVertical,
-    InfoIcon
-} from "lucide-react";
-import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { HighlightedVariableInfo } from "./types";
+import { Dispatch, SetStateAction } from "react";
+import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { TourStep } from "./hooks/useTourGuide";
+import { InfoIcon } from "lucide-react";
 
-interface VariablesTabProps {
+export interface VariablesTabProps {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    highlightedVariable: { columnIndex: number, source: 'available' | 'selected' } | null;
-    setHighlightedVariable: React.Dispatch<React.SetStateAction<{ columnIndex: number, source: 'available' | 'selected' } | null>>;
+    highlightedVariable: HighlightedVariableInfo | null;
+    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariableInfo | null>>;
     moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
     moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
+    reorderVariables: (source: 'selected', variables: Variable[]) => void;
     saveStandardized: boolean;
-    setSaveStandardized: React.Dispatch<React.SetStateAction<boolean>>;
+    setSaveStandardized: Dispatch<SetStateAction<boolean>>;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const VariablesTab: FC<VariablesTabProps> = ({
@@ -34,16 +34,42 @@ const VariablesTab: FC<VariablesTabProps> = ({
     moveToAvailableVariables,
     reorderVariables,
     saveStandardized,
-    setSaveStandardized
+    setSaveStandardized,
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
-    const variableIdKeyToUse: keyof Variable = 'columnIndex';
+    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const [allowUnknown, setAllowUnknown] = useState(false);
 
-    // Filter availableVariables to include only NUMERIC and DATE types
-    const filteredAvailableVariables = useMemo(() => {
-        return availableVariables.filter(
-            (variable) => variable.type === 'NUMERIC' || variable.type === 'DATE'
-        );
-    }, [availableVariables]);
+    const getDisplayName = (variable: Variable) => {
+        if (!variable.label) return variable.name;
+        return `${variable.label} [${variable.name}]`;
+    };
+
+    const isVariableDisabled = useCallback((variable: Variable): boolean => {
+        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
+                                (variable.measure === 'scale' || variable.measure === 'ordinal');
+        
+        if (isNormallyValid) return false;
+        if (variable.measure === 'unknown') return !allowUnknown;
+        
+        return true;
+    }, [allowUnknown]);
+
+    const handleDoubleClick = (variable: Variable, sourceListId: string) => {
+        // Prevent moving from available to selected if it's disabled
+        if (sourceListId === 'available' && isVariableDisabled(variable)) {
+            return;
+        }
+
+        if (sourceListId === 'available') {
+            moveToSelectedVariables(variable);
+        } else if (sourceListId === 'selected') {
+            // Always allow moving back to available
+            moveToAvailableVariables(variable);
+        }
+    };
 
     const targetLists: TargetListConfig[] = [
         {
@@ -51,34 +77,33 @@ const VariablesTab: FC<VariablesTabProps> = ({
             title: 'Variable(s):',
             variables: selectedVariables,
             height: '300px',
-            draggableItems: true,
-            droppable: true
         }
     ];
 
     const managerHighlightedVariable = highlightedVariable
-        ? { id: highlightedVariable.columnIndex.toString(), source: highlightedVariable.source }
+        ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
         : null;
 
     const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
-        const colIndex = value ? parseInt(value.id, 10) : null;
-        if (value && (value.source === 'available' || value.source === 'selected') && colIndex !== null && !isNaN(colIndex)) {
-            setHighlightedVariable({ columnIndex: colIndex, source: value.source as 'available' | 'selected' });
+        if (value && (value.source === 'available' || value.source === 'selected')) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'selected' });
         } else {
-            if (value && (isNaN(colIndex ?? NaN))) {
-                 console.warn(`Could not parse columnIndex from id: ${value.id}. Check variable data consistency.`);
-            }
             setHighlightedVariable(null);
         }
     }, [setHighlightedVariable]);
 
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        // Prevent moving to selected if it's disabled
+        if (toListId === 'selected' && isVariableDisabled(variable)) {
+            return;
+        }
+
         if (toListId === 'selected') {
             moveToSelectedVariables(variable, targetIndex);
         } else if (toListId === 'available') {
             moveToAvailableVariables(variable, targetIndex);
         }
-    }, [moveToSelectedVariables, moveToAvailableVariables]);
+    }, [moveToSelectedVariables, moveToAvailableVariables, isVariableDisabled]);
 
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
         if (listId === 'selected') {
@@ -88,9 +113,10 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const renderSelectedFooter = useCallback((listId: string) => {
         if (listId === 'selected') {
+            const stepIndex = tourSteps.findIndex(step => step.targetId === 'save-standardized-section');
             return (
                 <div className="mt-4">
-                    <div className="flex items-center">
+                    <div id="save-standardized-section" className="flex items-center relative">
                         <Checkbox
                             id="saveStandardized"
                             checked={saveStandardized}
@@ -100,24 +126,60 @@ const VariablesTab: FC<VariablesTabProps> = ({
                         <Label htmlFor="saveStandardized" className="text-sm cursor-pointer">
                             Save standardized values as variables
                         </Label>
+                        <ActiveElementHighlight active={tourActive && currentStep === stepIndex} />
                     </div>
                 </div>
             );
         }
         return null;
-    }, [saveStandardized, setSaveStandardized]);
+    }, [saveStandardized, setSaveStandardized, tourActive, currentStep, tourSteps]);
 
+    const renderExtraInfo = () => (
+        <>
+            <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border mt-2">
+                <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
+                <span>Drag or double-click to move variables.</span>
+            </div>
+            <div className="flex items-center mt-2 p-1.5">
+                <Checkbox
+                    id="allowUnknown"
+                    checked={allowUnknown}
+                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
+                    className="mr-2 h-4 w-4"
+                />
+                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
+                    Treat &apos;unknown&apos; as Scale and allow selection
+                </Label>
+            </div>
+        </>
+    );
+    
     return (
-        <VariableListManager
-            availableVariables={filteredAvailableVariables}
-            targetLists={targetLists}
-            variableIdKey={variableIdKeyToUse}
-            highlightedVariable={managerHighlightedVariable}
-            setHighlightedVariable={setManagerHighlightedVariable}
-            onMoveVariable={handleMoveVariable}
-            onReorderVariable={handleReorderVariables}
-            renderListFooter={renderSelectedFooter}
-        />
+        <div className="space-y-4">
+            <div className="relative">
+                <VariableListManager
+                    availableVariables={availableVariables}
+                    targetLists={targetLists}
+                    variableIdKey={variableIdKeyToUse}
+                    highlightedVariable={managerHighlightedVariable}
+                    setHighlightedVariable={setManagerHighlightedVariable}
+                    onMoveVariable={handleMoveVariable}
+                    onReorderVariable={handleReorderVariables}
+                    onVariableDoubleClick={handleDoubleClick}
+                    getDisplayName={getDisplayName}
+                    isVariableDisabled={isVariableDisabled}
+                    showArrowButtons={true}
+                    renderListFooter={renderSelectedFooter}
+                    renderExtraInfoContent={renderExtraInfo}
+                />
+                <div id="descriptive-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+             <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'descriptive-available-variables')} />
+                </div>
+                <div id="descriptive-selected-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+             <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'descriptive-selected-variables')} />
+                </div>
+            </div>
+        </div>
     );
 };
 

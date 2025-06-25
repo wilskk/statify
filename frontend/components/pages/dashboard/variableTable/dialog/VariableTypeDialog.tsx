@@ -15,6 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMobile } from '@/hooks/useMobile';
 import { cn } from '@/lib/utils';
+import { Separator } from "@/components/ui/separator";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 
 type VariableType =
     | "NUMERIC"
@@ -67,24 +75,23 @@ interface VariableTypeDialogProps {
 }
 
 export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
-                                                                          open,
-                                                                          onOpenChange,
-                                                                          onSave,
-                                                                          initialType,
-                                                                          initialWidth,
-                                                                          initialDecimals
-                                                                      }) => {
+    open,
+    onOpenChange,
+    onSave,
+    initialType,
+    initialWidth,
+    initialDecimals
+}) => {
     const { isMobile } = useMobile();
     const [selectedType, setSelectedType] = useState<string>(initialType);
     const [width, setWidth] = useState<number>(initialWidth);
     const [decimals, setDecimals] = useState<number>(initialDecimals);
-    const [dateFormat, setDateFormat] = useState<string>("dd-mmm-yyyy");
+    const [dateFormat, setDateFormat] = useState<string>("dd/mm/yyyy");
     const [dollarFormat, setDollarFormat] = useState<string>("$### ###,###.##");
     const [selectedCurrencyFormat, setSelectedCurrencyFormat] = useState<string>("CCA");
 
     const dateFormats = React.useMemo<DateFormatOption[]>(() => [
-        { value: "dd-mmm-yyyy", label: "dd-mmm-yyyy", type: "DATE", width: 11 },
-        { value: "dd-mmm-yy", label: "dd-mmm-yy", type: "DATE", width: 9 },
+        { value: "dd/mm/yyyy", label: "dd/mm/yyyy", type: "DATE", width: 10 },
         { value: "mm/dd/yyyy", label: "mm/dd/yyyy", type: "ADATE", width: 10 },
         { value: "mm/dd/yy", label: "mm/dd/yy", type: "ADATE", width: 8 },
         { value: "dd.mm.yyyy", label: "dd.mm.yyyy", type: "EDATE", width: 10 },
@@ -116,7 +123,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
         { value: "Monday, Tuesday, ...", label: "Monday, Tuesday, ...", type: "WKDAY", width: 9 },
         { value: "Mon, Tue, Wed, ...", label: "Mon, Tue, Wed, ...", type: "WKDAY", width: 3 },
         { value: "January, February, ...", label: "January, February, ...", type: "MONTH", width: 9 },
-        { value: "Jan, Feb, Mar, ...", label: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 }
+        { value: "Jan, Feb, Mar, ...", label: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 },
     ], []);
 
     // Dollar format options
@@ -132,21 +139,9 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
     ], []);
 
     useEffect(() => {
-        const defaultDateFormat = dateFormats.find(f => f.value === "dd-mmm-yyyy");
-        if (defaultDateFormat) {
-            if (selectedType === "DATE") {
-                setWidth(defaultDateFormat.width);
-            }
-        }
-
-        const defaultDollarFormat = dollarFormats.find(f => f.value === "$### ###,###.##");
-        if (defaultDollarFormat) {
-            if (selectedType === "DOLLAR") {
-                setWidth(defaultDollarFormat.width);
-                setDecimals(defaultDollarFormat.decimals);
-            }
-        }
-    }, [selectedType, dateFormats, dollarFormats]);
+        setDateFormat(initialType);
+        setDollarFormat(initialType === 'DOLLAR' ? "$### ###,###.##" : initialType);
+    }, [initialType]);
 
     // Set default values based on type
     useEffect(() => {
@@ -173,8 +168,15 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                 setWidth(format.width);
                 setDecimals(format.decimals);
             } else {
-                setWidth(8);
-                setDecimals(2);
+                // Fallback for DOLLAR if format not found (e.g., during initial load)
+                const defaultFormat = dollarFormats.find(f => f.value === "$### ###,###.##");
+                if(defaultFormat){
+                    setWidth(defaultFormat.width);
+                    setDecimals(defaultFormat.decimals);
+                } else {
+                    setWidth(8);
+                    setDecimals(2);
+                }
             }
         } else if (selectedType === "CUSTOM_CURRENCY") {
             setWidth(8);
@@ -249,32 +251,50 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={cn(
-                "p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]",
-                isMobile ? "max-w-[95vw] h-full max-h-full rounded-none border-none" : "max-w-[650px]"
-            )}>
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-[22px] font-semibold">Variable Type</DialogTitle>
-                </DialogHeader>
+            <DialogContent
+                className="w-full p-0 border border-border rounded-md shadow-lg"
+                style={{ 
+                    maxWidth: isMobile ? "95vw" : "480px",
+                    width: "100%",
+                    maxHeight: isMobile ? "100vh" : "65vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden"
+                }}
+            >
+                <div className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <DialogHeader className="p-0">
+                        <DialogTitle className="text-sm font-semibold flex items-center">
+                            <span>Variable Type</span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 ml-1">
+                                            <HelpCircle size={14} />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs">Set the type and format properties for this variable.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogTitle>
+                    </DialogHeader>
+                </div>
+                <Separator className="flex-shrink-0" />
 
-                <div className="flex-grow overflow-y-auto px-6 py-4">
-                    <div className={cn("gap-4", isMobile ? "grid grid-cols-1" : "grid grid-cols-2")}>
-                        <div className="space-y-1.5">
+                <div className="flex-grow overflow-y-auto p-3">
+                    <div className={cn("gap-3", isMobile ? "grid grid-cols-1" : "grid grid-cols-2")}>
+                        <div className="space-y-1">
                             <RadioGroup value={selectedType} onValueChange={setSelectedType}>
                                 {[
                                     { id: "NUMERIC", label: "Numeric" },
-                                    { id: "COMMA", label: "Comma" },
-                                    { id: "DOT", label: "Dot" },
-                                    { id: "SCIENTIFIC", label: "Scientific notation" },
-                                    { id: "DATE", label: "Date" },
-                                    { id: "DOLLAR", label: "Dollar" },
-                                    { id: "CUSTOM_CURRENCY", label: "Custom currency" },
                                     { id: "STRING", label: "String" },
-                                    { id: "RESTRICTED_NUMERIC", label: "Restricted Numeric (integer with leading zeros)" }
+                                    { id: "DATE", label: "dd/mm/yyyy" }
                                 ].map((type) => (
-                                    <div key={type.id} className="flex items-center space-x-2 py-1.5">
+                                    <div key={type.id} className="flex items-center space-x-2 py-1">
                                         <RadioGroupItem value={type.id} id={type.id} />
-                                        <Label htmlFor={type.id} className="text-foreground">
+                                        <Label htmlFor={type.id} className="text-sm">
                                             {type.label}
                                         </Label>
                                     </div>
@@ -282,12 +302,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                             </RadioGroup>
                         </div>
 
-                        <div className="h-72 overflow-y-auto border border-border rounded p-1.5">
-                            <div className="space-y-4">
+                        <div className="h-52 overflow-y-auto border border-border rounded-md p-2.5 bg-card/50">
+                            <div className="space-y-3">
                                 {isNumericType && (
-                                    <div className="space-y-3">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="width" className="text-foreground">
+                                    <div className="space-y-2.5">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="width" className="text-sm">
                                                 Width:
                                             </Label>
                                             <Input
@@ -297,11 +317,12 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 onChange={(e) => setWidth(Number(e.target.value))}
                                                 min={1}
                                                 max={64}
+                                                className="h-7 text-sm"
                                             />
                                         </div>
                                         {selectedType !== "RESTRICTED_NUMERIC" && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="decimals" className="text-foreground">
+                                            <div className="space-y-1">
+                                                <Label htmlFor="decimals" className="text-sm">
                                                     Decimal Places:
                                                 </Label>
                                                 <Input
@@ -311,6 +332,7 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                     onChange={(e) => setDecimals(Number(e.target.value))}
                                                     min={0}
                                                     max={16}
+                                                    className="h-7 text-sm"
                                                 />
                                             </div>
                                         )}
@@ -318,24 +340,24 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                 )}
 
                                 {isDateType && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">Format:</Label>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-sm">Format:</Label>
                                             <Select value={dateFormat} onValueChange={handleDateFormatChange}>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="h-7 text-sm">
                                                     <SelectValue placeholder="Select format" />
                                                 </SelectTrigger>
-                                                <SelectContent className="max-h-72">
-                                                    {dateFormats.map(format => (
-                                                        <SelectItem key={format.value} value={format.value}>
+                                                <SelectContent className="max-h-60">
+                                                    {dateFormats.filter(format => format.type === selectedType).map(format => (
+                                                        <SelectItem key={format.value} value={format.value} className="text-sm">
                                                             {format.label}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dateWidth" className="text-foreground">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="dateWidth" className="text-sm">
                                                 Width:
                                             </Label>
                                             <Input
@@ -343,15 +365,15 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                                 type="number"
                                                 value={width}
                                                 readOnly
-                                                className="bg-muted"
+                                                className="h-7 text-sm bg-muted"
                                             />
                                         </div>
                                     </div>
                                 )}
 
                                 {selectedType === "STRING" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="characters" className="text-foreground">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="characters" className="text-sm">
                                             Characters:
                                         </Label>
                                         <Input
@@ -361,156 +383,43 @@ export const VariableTypeDialog: React.FC<VariableTypeDialogProps> = ({
                                             onChange={(e) => setWidth(Number(e.target.value))}
                                             min={1}
                                             max={64}
+                                            className="h-7 text-sm"
                                         />
-                                    </div>
-                                )}
-
-                                {selectedType === "CUSTOM_CURRENCY" && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">Currency Format:</Label>
-                                            <div className="border rounded h-20 overflow-y-auto">
-                                                {[
-                                                    { type: "CCA", label: "CCA" },
-                                                    { type: "CCB", label: "CCB" },
-                                                    { type: "CCC", label: "CCC" },
-                                                    { type: "CCD", label: "CCD" },
-                                                    { type: "CCE", label: "CCE" }
-                                                ].map((currency) => (
-                                                    <div
-                                                        key={currency.type}
-                                                        className={`p-1.5 cursor-pointer border-l-2 ${selectedCurrencyFormat === currency.type ? 'bg-accent border-l-primary' : 'border-l-transparent hover:bg-accent'}`}
-                                                        onClick={() => {
-                                                            setSelectedCurrencyFormat(currency.type);
-                                                        }}
-                                                    >
-                                                        {currency.label}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="currencyWidth" className="text-foreground">
-                                                Width:
-                                            </Label>
-                                            <Input
-                                                id="currencyWidth"
-                                                type="number"
-                                                value={width}
-                                                onChange={(e) => setWidth(Number(e.target.value))}
-                                                min={1}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="currencyDecimals" className="text-foreground">
-                                                Decimal Places:
-                                            </Label>
-                                            <Input
-                                                id="currencyDecimals"
-                                                type="number"
-                                                value={decimals}
-                                                onChange={(e) => setDecimals(Number(e.target.value))}
-                                                min={0}
-                                                max={16}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selectedType === "DOLLAR" && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">Dollar Format:</Label>
-                                            <div className="border rounded h-24 overflow-y-auto">
-                                                {dollarFormats.map(format => (
-                                                    <div
-                                                        key={format.value}
-                                                        className={`p-1.5 cursor-pointer border-l-2 ${dollarFormat === format.value ? 'bg-accent border-l-primary' : 'border-l-transparent hover:bg-accent'}`}
-                                                        onClick={() => handleDollarFormatSelect(format.value)}
-                                                    >
-                                                        {format.label}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dollarWidth" className="text-foreground">
-                                                Width:
-                                            </Label>
-                                            <Input
-                                                id="dollarWidth"
-                                                type="number"
-                                                value={width}
-                                                readOnly
-                                                className="bg-muted"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="dollarDecimals" className="text-foreground">
-                                                Decimal Places:
-                                            </Label>
-                                            <Input
-                                                id="dollarDecimals"
-                                                type="number"
-                                                value={decimals}
-                                                readOnly
-                                                className="bg-muted"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {["CCA", "CCB", "CCC", "CCD", "CCE"].includes(selectedType) && (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-foreground">
-                                                {selectedType} Currency Format
-                                            </Label>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="customCurrencyWidth" className="text-foreground">
-                                                Width:
-                                            </Label>
-                                            <Input
-                                                id="customCurrencyWidth"
-                                                type="number"
-                                                value={width}
-                                                onChange={(e) => setWidth(Number(e.target.value))}
-                                                min={1}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="customCurrencyDecimals" className="text-foreground">
-                                                Decimal Places:
-                                            </Label>
-                                            <Input
-                                                id="customCurrencyDecimals"
-                                                type="number"
-                                                value={decimals}
-                                                onChange={(e) => setDecimals(Number(e.target.value))}
-                                                min={0}
-                                                max={16}
-                                            />
-                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-start mt-4 text-sm">
-                        <div className="text-blue-600 mr-2 text-2xl">ⓘ</div>
+                    <div className="flex items-start mt-3 text-xs bg-blue-50 dark:bg-blue-950/30 p-2 rounded-md border-l-2 border-blue-500">
+                        <div className="text-blue-600 mr-2 flex-shrink-0">
+                            <HelpCircle size={14} />
+                        </div>
                         <div>
                             The Numeric type honors the digit grouping setting, while the Restricted Numeric never uses digit grouping.
                         </div>
                     </div>
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t border-border flex-shrink-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSave}>OK</Button>
+                <Separator className="flex-shrink-0" />
+                <DialogFooter className="px-4 py-2 flex-shrink-0 bg-muted/30">
+                    <div className="flex gap-2 ml-auto">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-xs" 
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="h-7 text-xs bg-primary hover:bg-primary/90" 
+                            onClick={handleSave}
+                        >
+                            OK
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

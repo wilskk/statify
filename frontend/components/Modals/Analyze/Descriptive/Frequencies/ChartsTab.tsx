@@ -2,38 +2,47 @@ import React, { FC, useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { TourStep } from "./hooks/useTourGuide";
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { ChartsSettingsResult } from "./hooks";
 
-interface ChartsTabProps {
-    showCharts: boolean;
-    setShowCharts: React.Dispatch<React.SetStateAction<boolean>>;
-    chartType: "none" | "barCharts" | "pieCharts" | "histograms";
-    setChartType: React.Dispatch<React.SetStateAction<"none" | "barCharts" | "pieCharts" | "histograms">>;
-    chartValues: "frequencies" | "percentages";
-    setChartValues: React.Dispatch<React.SetStateAction<"frequencies" | "percentages">>;
-    showNormalCurve: boolean;
-    setShowNormalCurve: React.Dispatch<React.SetStateAction<boolean>>;
+export interface ChartsTabProps {
+    settings: ChartsSettingsResult;
+    containerType?: "dialog" | "sidebar";
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const ChartsTab: FC<ChartsTabProps> = ({
-    showCharts,
-    setShowCharts,
-    chartType,
-    setChartType,
-    chartValues,
-    setChartValues,
-    showNormalCurve,
-    setShowNormalCurve,
+    settings,
+    containerType = "dialog",
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
+    const {
+        showCharts,
+        setShowCharts,
+        chartType,
+        setChartType,
+        chartValues,
+        setChartValues,
+        showNormalCurve,
+        setShowNormalCurve,
+    } = settings;
+
     // Function to determine text styling based on disabled state
     const getTextClass = (disabled: boolean) => {
         return disabled ? "text-muted-foreground" : "";
     };
 
     const isChartValuesDisabled = !showCharts || chartType === "none" || chartType === "histograms";
+    const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
 
     return (
         <div className="grid grid-cols-1 gap-6">
-            <div className="border border-border rounded-md p-4 bg-card">
+            <div id="chart-type-section" className="border border-border rounded-md p-4 bg-card relative">
                 <div className="flex items-center mb-4">
                     <Checkbox
                         id="displayCharts"
@@ -97,9 +106,10 @@ const ChartsTab: FC<ChartsTabProps> = ({
                         </Label>
                     </div>
                 </RadioGroup>
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("chart-type-section")} />
             </div>
 
-            <div className="border border-border rounded-md p-4 bg-card">
+            <div id="chart-values-section" className="border border-border rounded-md p-4 bg-card relative">
                 <div className={`text-sm font-medium mb-3 ${getTextClass(isChartValuesDisabled)}`}>Chart Values</div>
                 <RadioGroup
                     value={chartValues}
@@ -137,6 +147,7 @@ const ChartsTab: FC<ChartsTabProps> = ({
                         </Label>
                     </div>
                 </RadioGroup>
+                <ActiveElementHighlight active={tourActive && currentStep === getStepIndex("chart-values-section")} />
             </div>
         </div>
     );

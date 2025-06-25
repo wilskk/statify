@@ -1,0 +1,158 @@
+import { useState, useCallback } from 'react';
+import { useDataStore } from '@/stores/useDataStore';
+import { useVariableStore } from '@/stores/useVariableStore';
+import { useResultStore } from '@/stores/useResultStore';
+import { CrosstabsAnalysisParams } from '../types';
+import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
+import type { Variable } from '@/types/Variable';
+
+export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: () => void) => {
+    const [isCalculating, setIsCalculating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    
+    const { data } = useDataStore();
+    const { variables } = useVariableStore();
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
+
+    const runAnalysis = useCallback(async () => {
+        const { rowVariables, columnVariables, options } = params;
+
+        if (rowVariables.length === 0 || columnVariables.length === 0) {
+            return;
+        }
+
+        setIsCalculating(true);
+        setError(null);
+
+        const worker = new Worker('/workers/DescriptiveStatistics/manager.js');
+        let resultCount = 0;
+        let totalJobs = 0;
+
+        const variablePairs: { rowVar: Variable, colVar: Variable }[] = [];
+        for (const rowVar of rowVariables) {
+            for (const colVar of columnVariables) {
+                variablePairs.push({ rowVar, colVar });
+            }
+        }
+        totalJobs = variablePairs.length;
+
+        const handleWorkerMessage = async (variableName: string, event: MessageEvent) => {
+            resultCount++;
+            const { status, results, error: workerError } = event.data;
+
+            const [rowVarName, colVarName] = variableName.split(' * ');
+            const pair = variablePairs.find(p => p.rowVar.name === rowVarName && p.colVar.name === colVarName);
+
+            if (status === 'error') {
+                console.error(`Worker error for ${variableName}:`, workerError);
+                setError((prev) => prev ? `${prev}\n${variableName}: ${workerError}` : `${variableName}: ${workerError}`);
+            } else if (pair) {
+                try {
+                    const { rowVar, colVar } = pair;
+                    const crosstabParams = {
+                        ...params,
+                        rowVariables: [rowVar],
+                        columnVariables: [colVar]
+                    };
+                    const logMsg = `CROSSTABS TABLES=${rowVar.name} BY ${colVar.name}.`;
+                    const logId = await addLog({ log: logMsg });
+                    
+                    const analyticId = await addAnalytic(logId, {
+                        title: "Crosstabs",
+                        note: `Crosstabulation for ${rowVar.label || rowVar.name} by ${colVar.label || colVar.name}`
+                    });
+
+                    const caseProcessingSummary = formatCaseProcessingSummary(results, crosstabParams);
+                    const crosstabulationTable = formatCrosstabulationTable(results, crosstabParams);
+
+                    // Pisahkan Case Processing dan Crosstabs menjadi dua statistik terpisah
+                    
+                    // Statistik 1: Case Processing Summary
+                    if (caseProcessingSummary !== null && analyticId) {
+                        await addStatistic(analyticId, {
+                            title: `Case Processing: ${rowVar.label || rowVar.name} by ${colVar.label || colVar.name}`,
+                            output_data: JSON.stringify({ 
+                                tables: [{ 
+                                    title: caseProcessingSummary.title, 
+                                    columnHeaders: caseProcessingSummary.columnHeaders, 
+                                    rows: caseProcessingSummary.rows 
+                                }] 
+                            }),
+                            components: "DataTableRenderer",
+                            description: "Case processing summary statistics"
+                        });
+                    }
+
+                    // Statistik 2: Crosstab Results
+                    if (crosstabulationTable !== null && analyticId) {
+                        await addStatistic(analyticId, {
+                            title: `Crosstabs: ${rowVar.label || rowVar.name} by ${colVar.label || colVar.name}`,
+                            output_data: JSON.stringify({ 
+                                tables: [{ 
+                                    title: crosstabulationTable.title, 
+                                    columnHeaders: crosstabulationTable.columnHeaders, 
+                                    rows: crosstabulationTable.rows 
+                                }] 
+                            }),
+                            components: "DataTableRenderer",
+                            description: "Crosstabulation results"
+                        });
+                    }
+                } catch (e) {
+                    const err = e instanceof Error ? e.message : String(e);
+                    console.error("Crosstabs Analysis UI Error:", err);
+                    setError((prev) => prev ? `${prev}\nUI Error: ${err}` : `UI Error: ${err}`);
+                }
+            }
+            
+            if (resultCount === totalJobs) {
+                setIsCalculating(false);
+                if (!error) onClose();
+                worker.terminate();
+            }
+        };
+
+        const handleWorkerError = (err: ErrorEvent) => {
+            console.error("Worker instantiation error:", err);
+            setError(`Failed to load the analysis worker. ${err.message}`);
+            setIsCalculating(false);
+            worker.terminate();
+        };
+
+        worker.onmessage = (event) => handleWorkerMessage(event.data.variableName, event);
+        worker.onerror = handleWorkerError;
+
+        variablePairs.forEach(({ rowVar, colVar }) => {
+            const rowVariable = variables.find((v: Variable) => v.name === rowVar.name);
+            const colVariable = variables.find((v: Variable) => v.name === colVar.name);
+
+            if (!rowVariable || !colVariable) {
+                setError(`Variable definition not found for ${rowVar.name} or ${colVar.name}`);
+                return;
+            }
+
+            const requiredVars = [
+                { name: rowVar.name, index: rowVariable.columnIndex },
+                { name: colVar.name, index: colVariable.columnIndex }
+            ];
+
+            const analysisData = data.map((d: any[]) => {
+                const rowObject: { [key: string]: any } = {};
+                requiredVars.forEach(v => {
+                    rowObject[v.name] = d[v.index];
+                });
+                return rowObject;
+            });
+            
+            worker.postMessage({
+                analysisType: 'crosstabs',
+                variable: { row: rowVariable, col: colVariable },
+                data: analysisData,
+                weights: null,
+                options,
+            });
+        });
+    }, [params, data, variables, addLog, addAnalytic, addStatistic, onClose, error]);
+
+    return { runAnalysis, isCalculating, error };
+};

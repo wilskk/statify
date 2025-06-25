@@ -1,8 +1,4 @@
-export interface TimeComponent {
-    name: string;
-    value: number;
-    periodicity?: number;
-}
+import { TimeComponent } from "./types";
 
 export const getTimeComponentsFromCase = (selectedCase: string): TimeComponent[] => {
     const components: TimeComponent[] = [];
@@ -189,14 +185,17 @@ export const formatDateString = (
     const timeParts: string[] = [];
 
     if (componentNames.includes("hour") || componentNames.includes("work hour")) {
-        timeParts.push((values["hour"] || values["work hour"]).toString());
+        const hourValue = values["hour"] !== undefined ? values["hour"] : values["work hour"];
+        if (hourValue !== undefined) {
+            timeParts.push(hourValue.toString());
+        }
     }
 
-    if (componentNames.includes("minute")) {
+    if (componentNames.includes("minute") && values["minute"] !== undefined) {
         timeParts.push(values["minute"].toString().padStart(2, "0"));
     }
 
-    if (componentNames.includes("second")) {
+    if (componentNames.includes("second") && values["second"] !== undefined) {
         timeParts.push(values["second"].toString().padStart(2, "0"));
     }
 
@@ -236,7 +235,7 @@ export const getMaxRow = (data: any[]): number => {
 export const generateSampleData = async (
     timeComponents: TimeComponent[],
     createdVariables: any[],
-    updateBulkCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
+    updateCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
     existingRowCount: number
 ): Promise<void> => {
     const rowCount = existingRowCount > 0 ? existingRowCount : 20;
@@ -304,7 +303,7 @@ export const generateSampleData = async (
     }
 
     if (updates.length > 0) {
-        await updateBulkCells(updates);
+        await updateCells(updates);
     }
 };
 
@@ -314,7 +313,7 @@ export const createDateVariables = async (
     variables: any[],
     addVariable: (variable: any) => Promise<void>,
     resetVariables: () => Promise<void>,
-    updateBulkCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
+    updateCells: (updates: { row: number; col: number; value: any }[]) => Promise<void>,
     existingRowCount: number
 ): Promise<void> => {
     if (selectedCase === "Not dated") {
@@ -372,5 +371,5 @@ export const createDateVariables = async (
         await addVariable(variable);
     }
 
-    await generateSampleData(timeComponents, variablesToCreate, updateBulkCells, existingRowCount);
+    await generateSampleData(timeComponents, variablesToCreate, updateCells, existingRowCount);
 };

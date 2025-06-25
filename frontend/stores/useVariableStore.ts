@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { devtools } from "zustand/middleware";
-import db from "@/lib/db";
-import { Variable, ValueLabel } from "@/types/Variable";
+import { variableService } from "@/services/data";
+import { Variable } from "@/types/Variable";
 import { v4 as uuidv4 } from 'uuid';
+import { transformVariablesToTableData } from '@/components/pages/dashboard/variableTable/utils';
+import { useDataStore } from '@/stores/useDataStore';
 
 export type VariableStoreError = {
     message: string;
@@ -21,22 +23,35 @@ const inferDefaultValues = (type: Variable['type']): Partial<Variable> => {
     };
 };
 
+// SPSS reserved keywords (cannot be used as variable names)
+const RESERVED_KEYWORDS = new Set(["ALL","AND","BY","EQ","GE","GT","LE","LT","NE","NOT","OR","TO","WITH"]);
+
 const processVariableName = (name: string, existingVariables: Variable[]): {
     isValid: boolean;
     message?: string;
     processedName?: string;
 } => {
     if (!name) return { isValid: false, message: "Variable name cannot be empty" };
-    let processedName = name;
-    if (!/^[a-zA-Z@#$]/.test(processedName)) processedName = 'var_' + processedName;
-    processedName = processedName.replace(/[^a-zA-Z0-9@#$_.]/g, '_').replace(/\s+/g, '_').replace(/\.$/, '_');
-    if (processedName.length > 64) processedName = processedName.substring(0, 64);
+    // Trim and replace spaces
+    let processedName = name.trim().replace(/\s+/g, '_');
+    // Keep only allowed chars: letters, digits, dot, underscore, @, #, $
+    processedName = processedName.replace(/[^A-Za-z0-9._@#$]/g, '_');
+    // Must start with letter or @,#,$
+    if (!/^[A-Za-z@#$]/.test(processedName)) processedName = 'VAR_' + processedName;
+    // Remove trailing dots or underscores
+    processedName = processedName.replace(/[._]+$/g, '');
+    // Enforce max length 64
+    if (processedName.length > 64) processedName = processedName.slice(0, 64);
+    // Avoid reserved keywords (case-insensitive)
+    if (RESERVED_KEYWORDS.has(processedName.toUpperCase())) processedName = 'VAR_' + processedName;
+    // Ensure uniqueness (case-insensitive)
     const existingNames = existingVariables.map(v => v.name.toLowerCase());
     if (existingNames.includes(processedName.toLowerCase())) {
         let counter = 1;
+        const base = processedName.slice(0, 60);
         let uniqueName = processedName;
         while (existingNames.includes(uniqueName.toLowerCase())) {
-            uniqueName = `${processedName.substring(0, 60)}_${counter}`;
+            uniqueName = `${base}_${counter}`;
             counter++;
         }
         processedName = uniqueName;
@@ -45,7 +60,8 @@ const processVariableName = (name: string, existingVariables: Variable[]): {
 };
 
 const createDefaultVariable = (index: number, existingVariables: Variable[] = []): Variable => {
-    const regex = /^var(\d+)$/;
+    // Match existing default names case-insensitively
+    const regex = /^var(\d+)$/i;
     let maxNum = 0;
     existingVariables.forEach(v => {
         const match = v.name.match(regex);
@@ -54,7 +70,8 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
             if (num > maxNum) maxNum = num;
         }
     });
-    const baseName = `var${maxNum + 1}`;
+    // Use uppercase prefix for default variable names
+    const baseName = `VAR${maxNum + 1}`;
     const nameResult = processVariableName(baseName, existingVariables);
     return {
         tempId: uuidv4(),
@@ -63,39 +80,97 @@ const createDefaultVariable = (index: number, existingVariables: Variable[] = []
     };
 };
 
+// Helper function to validate a variable object
+const isValidVariable = (variable: any): variable is Variable => {
+    return variable &&
+           typeof variable.columnIndex === 'number' &&
+           typeof variable.name === 'string' &&
+           variable.name !== "" &&
+           typeof variable.type === 'string' &&
+           variable.type !== "" &&
+           typeof variable.width === 'number' &&
+           typeof variable.decimals === 'number' &&
+           Array.isArray(variable.values) &&
+           (variable.missing === null || typeof variable.missing === 'object') &&
+           typeof variable.columns === 'number' &&
+           typeof variable.align === 'string' &&
+           typeof variable.measure === 'string' &&
+           typeof variable.role === 'string';
+};
+
 // Helper function to omit tempId
 const omitTempId = <T extends { tempId?: string }>(obj: T): Omit<T, 'tempId'> => {
     const { tempId, ...rest } = obj;
     return rest;
 };
 
+// Helper function for finding variable index by identifier (number or string)
+const findVariableIndexByIdentifier = (variables: Variable[], identifier: number | string): number => {
+    if (typeof identifier === 'number') {
+        return variables.findIndex(v => v.columnIndex === identifier);
+    }
+    const key = String(identifier).toLowerCase();
+    return variables.findIndex(v => v.name.toLowerCase() === key);
+};
+
+// Helper function for updating state after successful operation
+const updateStateAfterSuccess = (set: any, variables: Variable[]) => {
+    set((draft: any) => {
+        draft.variables = variables
+            .filter(isValidVariable)
+            .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+            .sort((a, b) => a.columnIndex - b.columnIndex);
+        draft.lastUpdated = new Date();
+        draft.error = null;
+        draft.isLoading = false;
+    });
+};
+
+// Unified error handler for store actions
+const handleError = (set: any, source: string) => (error: any) => {
+    console.error(`Error in ${source}:`, error);
+    set((draft: any) => {
+        draft.error = { message: error.message || `Error in ${source}`, source, originalError: error };
+        draft.isLoading = false;
+    });
+};
+
 interface VariableStoreState {
+    // State
     variables: Variable[];
     isLoading: boolean;
     error: VariableStoreError | null;
     lastUpdated: Date | null;
 
-    setVariables: (variables: Variable[]) => void;
-    updateVariable: <K extends keyof Variable>(
-        identifier: number | string, // columnIndex or name
-        field: K,
-        value: Variable[K]
-    ) => Promise<void>;
-    updateMultipleFields: (
-        identifier: number | string, // columnIndex or name
-        changes: Partial<Variable>
-    ) => Promise<void>;
-    addVariable: (variableData?: Partial<Variable>) => Promise<void>;
-    getVariableByColumnIndex: (columnIndex: number) => Variable | undefined;
-    getVariableByName: (name: string) => Variable | undefined;
+    // Initialization & state management
     loadVariables: () => Promise<void>;
     resetVariables: () => Promise<void>;
+    setVariables: (variables: Variable[]) => void;
+
+    // Accessors
+    getVariableByColumnIndex: (columnIndex: number) => Variable | undefined;
+    // Table data for UI
+    getTableData: () => (string | number)[][];
+    // Unified insert/remove helpers
+    insertVariableAt: (columnIndex: number) => Promise<void>;
+    removeVariableAt: (columnIndex: number) => Promise<void>;
+
+    // Single-item operations
+    addVariable: (variableData?: Partial<Variable>) => Promise<void>;
+    updateVariable: <K extends keyof Variable>(identifier: number | string, field: K, value: Variable[K]) => Promise<void>;
+    updateMultipleFields: (identifier: number | string, changes: Partial<Variable>) => Promise<void>;
     deleteVariable: (columnIndex: number) => Promise<void>;
-    overwriteVariables: (variables: Variable[]) => Promise<void>;
+
+    // Batch operations
     addMultipleVariables: (variablesData: Partial<Variable>[]) => Promise<void>;
-    sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
+    updateMultipleVariables: (batch: { identifier: number | string; changes: Partial<Variable> }[]) => Promise<void>;
+    overwriteVariables: (variables: Variable[]) => Promise<void>;
     ensureCompleteVariables: (targetMaxColumnIndex?: number) => Promise<void>;
+    sortVariables: (direction: 'asc' | 'desc', columnIndex: number) => Promise<void>;
     saveVariables: () => Promise<void>;
+
+    // Internal helper
+    syncFull: (full: Variable[]) => Promise<void>;
 }
 
 // Helper to enforce measure constraint
@@ -124,68 +199,55 @@ const enforceMeasureConstraint = (changes: Partial<Variable>, existingVariable?:
     return finalChanges;
 };
 
+// Static mapping for field names by column index
+const FIELD_NAME_MAPPING = [
+  "name", "type", "width", "decimals", "label", "values", "missing",
+  "columns", "align", "measure", "role"
+] as const;
+
 export const useVariableStore = create<VariableStoreState>()(
     devtools(
         immer((set, get) => ({
-            variables: [],
+            variables: [] as Variable[],
             isLoading: false,
             error: null,
             lastUpdated: null,
 
             setVariables: (variables) => {
                 set((draft) => {
-                    draft.variables = variables;
+                    draft.variables = variables
+                        .filter(isValidVariable)
+                        .map(v => ({ ...v, tempId: v.tempId || uuidv4() }))
+                        .sort((a, b) => a.columnIndex - b.columnIndex);
                     draft.lastUpdated = new Date();
                 });
             },
 
-            ensureCompleteVariables: async (targetMaxColumnIndex?: number) => {
+            // helper: import & sync variables in batch (refresh IDs from DB)
+            syncFull: async (full: Variable[]) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                await variableService.importVariables(full);
+                // Reload with IDs and unique indexes
+                const refreshed = await variableService.getAllVariables();
+                updateStateAfterSuccess(set, refreshed);
+            },
+
+            ensureCompleteVariables: async (targetMaxColumnIndex?) => {
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        const existingVariables = [...get().variables];
-                        
-                        // Determine the maximum index to check against
-                        const maxExistingIndex = existingVariables.length > 0
-                            ? Math.max(...existingVariables.map(v => v.columnIndex))
-                            : -1;
-                        
-                        // Use targetMaxColumnIndex if provided and it's greater than maxExistingIndex
-                        const maxIndexToCheck = targetMaxColumnIndex !== undefined && targetMaxColumnIndex > maxExistingIndex
-                            ? targetMaxColumnIndex
-                            : maxExistingIndex;
-
-                        // If no variables exist and no target is provided, nothing to do
-                        if (maxIndexToCheck === -1) return;
-
-                        const targetLength = maxIndexToCheck + 1; // We need indices from 0 to maxIndexToCheck
-                        const newVariablesToCreate: Variable[] = [];
-                        const existingIndices = new Set(existingVariables.map(v => v.columnIndex));
-
-                        // Check indices from 0 up to the determined maximum
-                        for (let i = 0; i < targetLength; i++) {
-                            if (!existingIndices.has(i)) {
-                                const defaultVar = createDefaultVariable(i, [...existingVariables, ...newVariablesToCreate]);
-                                newVariablesToCreate.push(defaultVar);
-                            }
-                        }
-
-                        if (newVariablesToCreate.length > 0) {
-                            console.log(`[ensureCompleteVariables] Adding ${newVariablesToCreate.length} default variables up to index ${maxIndexToCheck}.`);
-                            // Omit tempId before adding to DB
-                            const variablesForDb = newVariablesToCreate.map(omitTempId);
-                            await db.variables.bulkAdd(variablesForDb);
-                            set((draft) => {
-                                // Keep tempId in state
-                                draft.variables = [...draft.variables, ...newVariablesToCreate]
-                                    .sort((a, b) => a.columnIndex - b.columnIndex);
-                                draft.lastUpdated = new Date();
-                            });
-                        }
-                    });
-                } catch (error: any) {
-                    console.error("Error in ensureCompleteVariables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error ensuring complete variables", source: "ensureCompleteVariables", originalError: error }; });
-                }
+                    const existing = [...get().variables];
+                    const maxIdx = existing.length > 0 ? Math.max(...existing.map(v => v.columnIndex)) : -1;
+                    const limit = targetMaxColumnIndex !== undefined && targetMaxColumnIndex > maxIdx
+                        ? targetMaxColumnIndex : maxIdx;
+                    if (limit === -1) return;
+                    const newVars: Variable[] = [];
+                    const used = new Set(existing.map(v => v.columnIndex));
+                    for (let i = 0; i <= limit; i++) {
+                        if (!used.has(i)) newVars.push(createDefaultVariable(i, [...existing, ...newVars]));
+                    }
+                    if (newVars.length) {
+                        await get().syncFull([...existing, ...newVars]);
+                    }
+                } catch (error: any) { handleError(set, 'ensureCompleteVariables')(error); }
             },
 
             updateVariable: async <K extends keyof Variable>(
@@ -193,70 +255,18 @@ export const useVariableStore = create<VariableStoreState>()(
                 field: K,
                 value: Variable[K]
             ) => {
-                let variableIndexInState: number = -1;
-                let originalVariable: Variable | null = null;
-
-                try {
-                    // 1. Find variable in state
-                    if (typeof identifier === 'number') {
-                        variableIndexInState = get().variables.findIndex(v => v.columnIndex === identifier);
-                    } else {
-                        variableIndexInState = get().variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
-                    }
-                    if (variableIndexInState === -1) throw new Error(`Variable "${identifier}" not found in state.`);
-                    originalVariable = { ...get().variables[variableIndexInState] }; // Get a copy
-
-                    // 2. Prepare initial changes & inferred values
-                    let updatedFields: Partial<Variable> = { [field]: value };
-                    let inferred: Partial<Variable> = {};
-                    if (field === 'name' && typeof value === 'string') {
-                        const otherVariables = get().variables.filter((_, i) => i !== variableIndexInState);
-                        const nameResult = processVariableName(value, otherVariables);
-                        if (!nameResult.isValid) throw new Error(nameResult.message || "Invalid variable name");
-                        updatedFields.name = nameResult.processedName;
-                    } else if (field === 'type' && value !== originalVariable.type) {
-                        inferred = inferDefaultValues(value as Variable['type']);
-                    }
-
-                    // 3. Combine changes and enforce constraints
-                    let changesToApply = { ...inferred, ...updatedFields };
-                    changesToApply = enforceMeasureConstraint(changesToApply, originalVariable);
-
-                    // 4. Update Database
-                    await db.transaction('rw', db.variables, async () => {
-                        let updateCount = 0;
-                        const whereClause = typeof identifier === 'number'
-                            ? db.variables.where('columnIndex').equals(identifier)
-                            : db.variables.where('name').equalsIgnoreCase(identifier);
-                        updateCount = await whereClause.modify(changesToApply);
-                        if (updateCount === 0) throw new Error(`Variable "${identifier}" not found in DB for update.`);
-                    });
-
-                    // 5. Update State
-                    set((draft) => {
-                        if (variableIndexInState !== -1) {
-                            Object.assign(draft.variables[variableIndexInState], changesToApply);
-                        }
-                        draft.lastUpdated = new Date();
-                        draft.error = null;
-                    });
-                } catch (error: any) {
-                    console.error("Error in updateVariable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error updating variable", source: "updateVariable", originalError: error }; });
-                }
+                // Simply delegate to updateMultipleFields with a single field update
+                return get().updateMultipleFields(identifier, { [field]: value } as Partial<Variable>);
             },
 
             updateMultipleFields: async (identifier, changes) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 let variableIndexInState: number = -1;
                 let originalVariable: Variable | null = null;
 
                 try {
                     // 1. Find variable in state
-                    if (typeof identifier === 'number') {
-                        variableIndexInState = get().variables.findIndex(v => v.columnIndex === identifier);
-                    } else {
-                        variableIndexInState = get().variables.findIndex(v => v.name.toLowerCase() === identifier.toLowerCase());
-                    }
+                    variableIndexInState = findVariableIndexByIdentifier(get().variables, identifier);
                     if (variableIndexInState === -1) throw new Error(`Variable "${identifier}" not found in state.`);
                     originalVariable = { ...get().variables[variableIndexInState] }; // Get a copy
 
@@ -280,15 +290,9 @@ export const useVariableStore = create<VariableStoreState>()(
                     let changesToApply = { ...inferred, ...processedChanges };
                     changesToApply = enforceMeasureConstraint(changesToApply, originalVariable);
 
-                    // 4. Update Database
-                    await db.transaction('rw', db.variables, async () => {
-                        let updateCount = 0;
-                        const whereClause = typeof identifier === 'number'
-                            ? db.variables.where('columnIndex').equals(identifier)
-                            : db.variables.where('name').equalsIgnoreCase(identifier);
-                         updateCount = await whereClause.modify(changesToApply);
-                        if (updateCount === 0) throw new Error(`Variable "${identifier}" not found in DB for multi-update.`);
-                    });
+                    // Save changes via variableService
+                    const updatedVariable = { ...originalVariable, ...changesToApply };
+                    await variableService.saveVariable(updatedVariable);
 
                     // 5. Update State
                     set((draft) => {
@@ -297,358 +301,195 @@ export const useVariableStore = create<VariableStoreState>()(
                         }
                         draft.lastUpdated = new Date();
                         draft.error = null;
+                        draft.isLoading = false;
                     });
-                } catch (error: any) {
-                    console.error("Error in updateMultipleFields:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error updating multiple fields", source: "updateMultipleFields", originalError: error }; });
-                }
+                } catch (error: any) { handleError(set, 'updateMultipleFields')(error); }
             },
 
-            addVariable: async (variableData?: Partial<Variable>) => {
+            // Batch-update multiple variables atomically
+            updateMultipleVariables: async (batch: { identifier: number | string; changes: Partial<Variable> }[]) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
-                        const maxExistingIndex = allCurrentVariables.length > 0 ? allCurrentVariables[allCurrentVariables.length - 1].columnIndex : -1;
-                        const intendedIndex = variableData?.columnIndex ?? (maxExistingIndex + 1);
-
-                        const variableExistsAtIndex = allCurrentVariables.some(v => v.columnIndex === intendedIndex);
-
-                        // Create the base new variable details first
-                        const defaultVar = createDefaultVariable(intendedIndex, allCurrentVariables);
-                        const inferredValues = variableData?.type ? inferDefaultValues(variableData.type) : {};
-                        const newVariableBase: Variable = {
-                            ...defaultVar,
-                            ...inferredValues,
-                            ...variableData,
-                            columnIndex: intendedIndex,
-                            tempId: variableData?.tempId ?? defaultVar.tempId
-                        };
-                        const nameResult = processVariableName(newVariableBase.name, allCurrentVariables);
-                        const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
-                        let finalNewVariable = { ...newVariableBase, name: finalName };
-                        finalNewVariable = { ...finalNewVariable, ...enforceMeasureConstraint(finalNewVariable, null) };
-
-                        // Variable for Database (omit tempId)
-                        const variableForDb = omitTempId(finalNewVariable);
-
-                        if (variableExistsAtIndex) {
-                            // --- Insertion Logic --- 
-                            console.log(`[addVariable] Insertion case detected for index: ${intendedIndex}`);
-                            
-                            // 1. Filter variables before, at, and after the insertion point
-                            const varsBefore = allCurrentVariables.filter(v => v.columnIndex < intendedIndex);
-                            const varsToShift = allCurrentVariables.filter(v => v.columnIndex >= intendedIndex);
-
-                            // 2. Increment columnIndex for shifted variables
-                            const shiftedVars = varsToShift.map(v => ({ ...v, columnIndex: v.columnIndex + 1 }));
-
-                            // 3. Combine all parts: before + new + shifted
-                            const finalVariableListState = [...varsBefore, finalNewVariable, ...shiftedVars];
-                            // Omit tempId for DB operation
-                            const finalVariableListDb = finalVariableListState.map(omitTempId);
-
-                            await db.variables.clear();
-                            await db.variables.bulkPut(finalVariableListDb);
-
-                            // 5. Update state with tempId included
-                            set((draft) => {
-                                draft.variables = finalVariableListState;
-                                draft.lastUpdated = new Date();
-                                draft.error = null;
-                            });
-
-                        } else {
-                            // --- Append / Gap Fill Logic --- 
-                            console.log(`[addVariable] Append/GapFill case for index: ${intendedIndex}`);
-                            
-                            // 1. Add the single new variable to the database
-                            await db.variables.add(variableForDb);
-
-                            // 2. Update state: add the new variable and sort 
-                            set((draft) => {
-                                draft.variables.push(finalNewVariable);
-                                draft.variables.sort((a, b) => a.columnIndex - b.columnIndex);
-                                draft.lastUpdated = new Date();
-                                draft.error = null;
-                            });
-                            // ensureCompleteVariables will be called after transaction
-                        }
+                    const current = [...get().variables];
+                    const updated = current.map(v => {
+                        const found = batch.find(item => typeof item.identifier === 'number'
+                            ? v.columnIndex === item.identifier
+                            : v.name.toLowerCase() === String(item.identifier).toLowerCase());
+                        return found ? { ...v, ...found.changes } : v;
                     });
+                    await get().syncFull(updated);
+                } catch (error: any) { handleError(set, 'updateMultipleVariables')(error); }
+            },
 
-                    // Call ensureCompleteVariables *after* the transaction only if it wasn't an insertion
-                    // Insertions rebuild the whole index, so gaps shouldn't exist.
-                    const variableExistsAtIndexAfterTx = get().variables.some(v => v.columnIndex === variableData?.columnIndex);
-                    if (variableData?.columnIndex === undefined || !variableExistsAtIndexAfterTx) {
-                        // Likely an append or gap fill, run ensure
-                        await get().ensureCompleteVariables();
-                    }
-
-                } catch (error: any) {
-                    console.error("Error in addVariable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error adding variable", source: "addVariable", originalError: error }; });
-                }
+            addVariable: async (variableData?) => {
+                try {
+                    // SPSS contiguous: fill any gaps before new index
+                    const initial = [...get().variables];
+                    const maxInitial = initial.length > 0 ? Math.max(...initial.map(v => v.columnIndex)) : -1;
+                    const idx = variableData?.columnIndex ?? (maxInitial + 1);
+                    await get().ensureCompleteVariables(idx - 1);
+                    const existing = [...get().variables];
+                    const defaultVar = createDefaultVariable(idx, existing);
+                    const inferred = variableData?.type ? inferDefaultValues(variableData.type) : {};
+                    const baseVar: Variable = { ...defaultVar, ...inferred, ...variableData, columnIndex: idx, tempId: variableData?.tempId ?? defaultVar.tempId };
+                    const nameRes = processVariableName(baseVar.name, existing);
+                    const finalName = nameRes.processedName ?? baseVar.name;
+                    const constraintChanges = enforceMeasureConstraint({ ...baseVar, name: finalName }, null as any);
+                    const newVar: Variable = { ...baseVar, name: finalName, ...constraintChanges };
+                    const shifted = existing.map(v => v.columnIndex >= idx ? { ...v, columnIndex: v.columnIndex + 1 } : v);
+                    const full = [...shifted, newVar].sort((a, b) => a.columnIndex - b.columnIndex);
+                    await get().syncFull(full);
+                } catch (error: any) { handleError(set, 'addVariable')(error); }
             },
 
             addMultipleVariables: async (variablesData) => {
-                 const addedVariablesState: Variable[] = []; // Keep track of variables added to state (with tempId)
-                 try {
-                     await db.transaction('rw', db.variables, async () => {
-                         const allCurrentVariables = await db.variables.orderBy('columnIndex').toArray();
-                         let tempIndexCounter = 1;
-                         const variablesToAddState: Variable[] = []; // Temp list with tempId
-                         const variablesToAddDb: Omit<Variable, 'tempId'>[] = []; // Temp list without tempId
-
-                         for (const data of variablesData) {
-                             // Simplified logic: Assume append or explicit non-colliding index for now
-                             const maxCurrentIndex = [...allCurrentVariables, ...variablesToAddState].reduce((max, v) => Math.max(max, v.columnIndex), -1);
-                             const intendedIndex = data.columnIndex ?? (maxCurrentIndex + tempIndexCounter++);
-
-                             const collision = [...allCurrentVariables, ...variablesToAddState].some(v => v.columnIndex === intendedIndex);
-                             if (collision) {
-                                 // Simple error handling for now
-                                  throw new Error(`Cannot add multiple variables: Column index ${intendedIndex} collision detected.`);
-                             }
-
-                             const currentAndPrepared = [...allCurrentVariables, ...variablesToAddState];
-                             const defaultVar = createDefaultVariable(intendedIndex, currentAndPrepared);
-                             const inferredValues = data.type ? inferDefaultValues(data.type) : {};
-                             const newVariableBase: Variable = {
-                                 ...defaultVar,
-                                 ...inferredValues,
-                                 ...data,
-                                 columnIndex: intendedIndex,
-                                 tempId: data.tempId ?? defaultVar.tempId
-                             };
-                             const nameResult = processVariableName(newVariableBase.name, currentAndPrepared);
-                             const finalName = (nameResult.isValid && nameResult.processedName) ? nameResult.processedName : newVariableBase.name;
-                             let finalVariable = { ...newVariableBase, name: finalName };
-                             finalVariable = { ...finalVariable, ...enforceMeasureConstraint(finalVariable, null) };
-
-                             variablesToAddState.push(finalVariable); // Add to state list (with tempId)
-                             variablesToAddDb.push(omitTempId(finalVariable)); // Add to DB list (without tempId)
-                             addedVariablesState.push(finalVariable); // Track for ensureCompleteVariables later
-                         }
-
-                         await db.variables.bulkAdd(variablesToAddDb); // Add to DB without tempId
-
-                         set(draft => {
-                             // Update state with tempId included
-                             draft.variables = [...allCurrentVariables, ...variablesToAddState]
-                                 .sort((a, b) => a.columnIndex - b.columnIndex);
-                             draft.lastUpdated = new Date();
-                             draft.error = null;
-                         });
-                     });
-                    if (addedVariablesState.length > 0) {
-                         await get().ensureCompleteVariables();
-                     }
-                 } catch (error: any) {
-                     console.error("Error adding multiple variables:", error);
-                     set((draft) => { draft.error = { message: error.message || "Error adding multiple variables", source: "addMultipleVariables", originalError: error }; });
-                 }
-            },
-
-            getVariableByColumnIndex: (columnIndex) => {
-                return get().variables.find((v) => v.columnIndex === columnIndex);
-            },
-
-            getVariableByName: (name) => {
-                return get().variables.find(v => v.name.toLowerCase() === name.toLowerCase());
+                try {
+                    const existing = [...get().variables];
+                    // Fill missing default variables before batch add
+                    const maxIndexToAdd = variablesData.length > 0
+                        ? Math.max(...variablesData.map(d => d.columnIndex ?? 0))
+                        : -1;
+                    if (maxIndexToAdd > 0) await get().ensureCompleteVariables(maxIndexToAdd - 1);
+                    let counter = 1;
+                    const toAdd: Variable[] = [];
+                    for (const data of variablesData) {
+                        const maxCur = [...existing, ...toAdd].reduce((m,v) => Math.max(m, v.columnIndex), -1);
+                        const idx = data.columnIndex ?? (maxCur + counter++);
+                        if ([...existing, ...toAdd].some(v => v.columnIndex === idx)) throw new Error(`Column index ${idx} collision`);
+                        const def = createDefaultVariable(idx, [...existing, ...toAdd]);
+                        const inferred = data.type ? inferDefaultValues(data.type) : {};
+                        const base: Variable = { ...def, ...inferred, ...data, columnIndex: idx, tempId: data.tempId ?? def.tempId };
+                        const nameResult = processVariableName(base.name, [...existing, ...toAdd]);
+                        const processedName = nameResult.processedName ?? base.name;
+                        const constraint = enforceMeasureConstraint({ ...base, name: processedName }, null as any);
+                        const final: Variable = { ...base, name: processedName, ...constraint };
+                        toAdd.push(final);
+                    }
+                    if (toAdd.length) {
+                        await get().syncFull([...existing, ...toAdd]);
+                    }
+                } catch (error: any) { handleError(set, 'addMultipleVariables')(error); }
             },
 
             loadVariables: async () => {
                 set((draft) => { draft.isLoading = true; draft.error = null; });
                 try {
-                    let loadedVariables: Variable[] = [];
-                    await db.transaction('r', db.variables, async () => {
-                        const variablesFromDb = await db.variables.toArray();
-                        // Add tempId to each variable loaded from DB for state management
-                        loadedVariables = variablesFromDb.map(v => ({
-                            ...v,
-                            tempId: v.tempId || uuidv4() // Assign new tempId if missing (should always be missing from DB)
-                        }));
-                    });
-
-                    const sortedVariables = loadedVariables.sort((a, b) => a.columnIndex - b.columnIndex);
-
-                    set((draft) => {
-                        draft.variables = sortedVariables;
-                        draft.lastUpdated = new Date();
-                        draft.isLoading = false;
-                    });
-
-                    // Ensure completeness potentially adds more variables, which will get tempId via createDefaultVariable
-                    await get().ensureCompleteVariables();
-                } catch (error: any) {
-                    console.error("Error loading variables:", error);
-                    set((draft) => {
-                        draft.error = { message: error.message || "Error loading variables", source: "loadVariables", originalError: error };
-                        draft.isLoading = false;
-                    });
-                }
+                    const variablesFromService = await variableService.getAllVariables();
+                    updateStateAfterSuccess(set, variablesFromService);
+                } catch (error: any) { handleError(set, 'loadVariables')(error); }
             },
 
             resetVariables: async () => {
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        await db.variables.clear();
-                        set((draft) => {
-                            draft.variables = [];
-                            draft.lastUpdated = new Date();
-                            draft.error = null;
-                            draft.isLoading = false;
-                        });
-                    });
-                } catch (error: any) {
-                    console.error("Error resetting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error resetting variables", source: "resetVariables", originalError: error }; });
-                }
+                    await variableService.clearAllVariables();
+                    updateStateAfterSuccess(set, []);
+                } catch (error: any) { handleError(set, 'resetVariables')(error); }
             },
 
             deleteVariable: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        const deletedCount = await db.variables.where('columnIndex').equals(columnIndex).delete();
-                        if (deletedCount === 0) {
-                            console.warn(`Variable with column index ${columnIndex} not found in DB for deletion.`);
-                            return;
-                        }
-                        const remainingVariables = await db.variables.orderBy('columnIndex').toArray();
-                        const finalVariablesState = remainingVariables.map((variableFromDb, index) => {
-                             // Find the corresponding tempId from the state using the database id
-                             const tempId = get().variables.find(v => v.id === variableFromDb.id)?.tempId;
-                             return {
-                                 ...variableFromDb,
-                                 columnIndex: index, // Re-index
-                                 tempId: tempId // Re-attach tempId if found
-                             };
-                         });
-
-                         // Prepare for DB (omit tempId)
-                         const finalVariablesDb = finalVariablesState.map(omitTempId);
-
-                        await db.variables.clear();
-                        if (finalVariablesDb.length > 0) await db.variables.bulkPut(finalVariablesDb);
-
-                        // Update state (with tempId)
-                        set((draft) => {
-                            draft.variables = finalVariablesState;
-                            draft.lastUpdated = new Date();
-                            draft.error = null;
-                        });
-                    });
-                } catch (error: any) {
-                    console.error("Error deleting variable:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error deleting variable", source: "deleteVariable", originalError: error }; });
-                }
+                    const toDel = get().variables.find(v => v.columnIndex === columnIndex);
+                    if (!toDel?.id) {
+                        console.warn(`No variable at index ${columnIndex}`);
+                        // Reset loading state when no ID to delete
+                        set(draft => { draft.isLoading = false; });
+                        return;
+                    }
+                    await variableService.deleteVariable(toDel.id);
+                    const rem = get().variables.filter(v => v.columnIndex !== columnIndex)
+                        .sort((a,b) => a.columnIndex - b.columnIndex)
+                        .map((v,i) => ({ ...v, columnIndex: i }));
+                    if (rem.length) {
+                        await get().syncFull(rem);
+                    } else {
+                        updateStateAfterSuccess(set, []);
+                    }
+                } catch (error: any) { handleError(set, 'deleteVariable')(error); }
             },
 
-            overwriteVariables: async (variables) => {
+            overwriteVariables: async (newVariables) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        // Generate tempId if missing and normalize
-                         const normalizedVariablesState = variables
-                             .sort((a, b) => (a.columnIndex ?? Infinity) - (b.columnIndex ?? Infinity))
-                             .map((variable, index) => {
-                                 const constrainedChanges = enforceMeasureConstraint(variable, null);
-                                 return {
-                                     ...variable, // Keep original fields
-                                     ...constrainedChanges, // Apply constraints
-                                     columnIndex: index, // Normalize index
-                                     tempId: variable.tempId ?? uuidv4() // Ensure tempId exists
-                                 };
-                             });
-
-                        // Prepare for DB (omit tempId)
-                        const normalizedVariablesDb = normalizedVariablesState.map(omitTempId);
-
-                        await db.variables.clear();
-                        await db.variables.bulkPut(normalizedVariablesDb);
-
-                        // Update state (with tempId)
-                        set((draft) => {
-                            draft.variables = normalizedVariablesState;
-                            draft.lastUpdated = new Date();
-                            draft.error = null;
-                        });
-                    });
-                } catch (error: any) {
-                    console.error("Error overwriting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error overwriting variables", source: "overwriteVariables", originalError: error }; });
-                }
+                    const valid = newVariables.filter(isValidVariable).map(omitTempId);
+                    await get().syncFull(valid);
+                } catch (error: any) { handleError(set, 'overwriteVariables')(error); }
             },
 
             sortVariables: async (direction, columnIndex) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        // Sort variables from state (which include tempId)
-                        const variablesToSort = [...get().variables];
-                        const field = getFieldNameByColumnIndex(columnIndex);
-                        if (!field) {
-                            console.warn(`Invalid column index ${columnIndex} for sorting.`);
-                            return;
+                    // Get field to sort by based on columnIndex
+                    const field = FIELD_NAME_MAPPING[columnIndex] ?? null;
+                    if (!field) {
+                        console.warn(`Invalid column index ${columnIndex} for sorting.`);
+                        return;
+                    }
+                    
+                    // Sort variables
+                    const variablesToSort = [...get().variables];
+                    variablesToSort.sort((a, b) => {
+                        const aValue = a[field as keyof Variable]; 
+                        const bValue = b[field as keyof Variable];
+                        
+                        if (aValue == null && bValue == null) return 0;
+                        if (aValue == null) return direction === 'asc' ? -1 : 1;
+                        if (bValue == null) return direction === 'asc' ? 1 : -1;
+                        
+                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                            return direction === 'asc' ? aValue - bValue : bValue - aValue;
                         }
-                        variablesToSort.sort((a, b) => {
-                            const aValue = a[field as keyof Variable]; const bValue = b[field as keyof Variable];
-                            if (aValue == null && bValue == null) return 0;
-                            if (aValue == null) return direction === 'asc' ? -1 : 1;
-                            if (bValue == null) return direction === 'asc' ? 1 : -1;
-                            if (typeof aValue === 'number' && typeof bValue === 'number') return direction === 'asc' ? aValue - bValue : bValue - aValue;
-                            if (typeof aValue === 'string' && typeof bValue === 'string') return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-                            const aStr = String(aValue).toLowerCase(); const bStr = String(bValue).toLowerCase();
-                            return direction === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
-                        });
-                        const updatedVariablesState = variablesToSort.map((variable, index) => ({
-                            ...variable, // Keep tempId
-                            columnIndex: index
-                        }));
-
-                        // Prepare for DB (omit tempId)
-                        const updatedVariablesDb = updatedVariablesState.map(omitTempId);
-
-                        await db.variables.clear();
-                        await db.variables.bulkPut(updatedVariablesDb);
-
-                        // Update state (with tempId)
-                        set((draft) => {
-                            draft.variables = updatedVariablesState;
-                            draft.lastUpdated = new Date();
-                        });
+                        
+                        if (typeof aValue === 'string' && typeof bValue === 'string') {
+                            return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                        
+                        const aStr = String(aValue).toLowerCase();
+                        const bStr = String(bValue).toLowerCase();
+                        return direction === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
                     });
-                } catch (error: any) {
-                    console.error("Error sorting variables:", error);
-                    set((draft) => { draft.error = { message: error.message || "Error sorting variables", source: "sortVariables", originalError: error }; });
-                }
+                    
+                    // Reindex variables
+                    const updatedVariables = variablesToSort.map((variable, index) => ({
+                        ...variable,
+                        columnIndex: index
+                    }));
+                    
+                    // Use variableService to update all variables
+                    await get().syncFull(updatedVariables);
+                } catch (error: any) { handleError(set, 'sortVariables')(error); }
             },
 
             saveVariables: async () => {
-                const currentVariablesState = get().variables; // Includes tempId
+                const full = get().variables;
+                await get().syncFull(full);
+            },
+
+            getVariableByColumnIndex: (columnIndex: number) => {
+                return get().variables.find(v => v.columnIndex === columnIndex);
+            },
+            getTableData: () => transformVariablesToTableData(get().variables),
+
+            // Unified insert/remove helpers
+            insertVariableAt: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
                 try {
-                    await db.transaction('rw', db.variables, async () => {
-                        // Prepare for DB (omit tempId)
-                        const variablesForDb = currentVariablesState.map(omitTempId);
-                        await db.variables.clear();
-                        if (variablesForDb.length > 0) {
-                            await db.variables.bulkPut(variablesForDb);
-                        }
-                    });
-                    set((draft) => { draft.error = null; draft.lastUpdated = new Date(); });
-                } catch (error: any) {
-                    console.error("Failed to explicitly save variables:", error);
-                    set((draft) => {
-                        draft.error = { message: error.message || "Failed to save variables during explicit save", source: "saveVariables", originalError: error };
-                    });
-                    throw error;
-                }
-            }
+                    await get().ensureCompleteVariables(columnIndex - 1);
+                    await get().addVariable({ columnIndex });
+                    await useDataStore.getState().addColumns([columnIndex]);
+                } catch (error: any) { handleError(set, 'insertVariableAt')(error); }
+            },
+            removeVariableAt: async (columnIndex: number) => {
+                set(draft => { draft.isLoading = true; draft.error = null; });
+                try {
+                    await get().deleteVariable(columnIndex);
+                    await useDataStore.getState().deleteColumn(columnIndex);
+                } catch (error: any) { handleError(set, 'removeVariableAt')(error); }
+            },
         }))
     )
 );
 
 function getFieldNameByColumnIndex(columnIndex: number): string | null {
-    const fieldMapping = [
-        "name", "type", "width", "decimals", "label", "values", "missing",
-        "columns", "align", "measure", "role"
-    ];
-    return columnIndex >= 0 && columnIndex < fieldMapping.length ? fieldMapping[columnIndex] : null;
+    return FIELD_NAME_MAPPING[columnIndex] ?? null;
 }

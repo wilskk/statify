@@ -9,8 +9,15 @@ import {
     MenubarItem,
     MenubarSeparator,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
+import { useModal } from "@/hooks/useModal";
 
+/**
+ * DataMenu - Menu component for Data operations
+ * 
+ * Provides menu items for accessing the various data-related modal operations
+ * such as variable configuration, case operations, and data structure operations.
+ */
 const DataMenu: React.FC = () => {
     const { openModal } = useModal();
 
@@ -21,48 +28,47 @@ const DataMenu: React.FC = () => {
                 <MenubarItem
                     onClick={() => openModal(ModalType.DefineVarProps)}
                 >
-                    Define Variable Properties...
+                    Define Variable Properties
                 </MenubarItem>
                 <MenubarItem
                     onClick={() => openModal(ModalType.SetMeasurementLevel)}
                 >
-                    Set Measurement Level...
+                    Set Measurement Level
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.DefineDateTime)}>
-                    Define Date and Time...
+                    Define Date and Time
                 </MenubarItem>
                 <MenubarSeparator />
                 {/*<MenubarItem onClick={() => openModal(ModalType.Validate)}>*/}
                 {/*    Validation...*/}
                 {/*</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.DuplicateCases)}>
-                    Identify Duplicate Cases...
+                    Identify Duplicate Cases
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.UnusualCases)}>
-                    Identify Unusual Cases...
+                    Identify Unusual Cases
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.SortCases)}>
-                    Sort Cases...
+                    Sort Cases
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.SortVars)}>
                     Sort Variables...
+                </MenubarItem>                <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
+                    Transpose
                 </MenubarItem>
-                <MenubarItem onClick={() => openModal(ModalType.Transpose)}>
-                    Transpose...
+                <MenubarItem onClick={() => openModal(ModalType.Restructure)}>
+                    Restructure
                 </MenubarItem>
-                {/*<MenubarItem onClick={() => openModal(ModalType.Restructure)}>*/}
-                {/*    Restructure...*/}
-                {/*</MenubarItem>*/}
                 <MenubarItem onClick={() => openModal(ModalType.Aggregate)}>
-                    Aggregate...
+                    Aggregate
                 </MenubarItem>
                 <MenubarSeparator />
-                {/*<MenubarItem onClick={() => openModal(ModalType.SelectCases)}>*/}
-                {/*    Select Cases...*/}
-                {/*</MenubarItem>*/}
+                <MenubarItem onClick={() => openModal(ModalType.SelectCases)}>
+                    Select Cases
+                </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.WeightCases)}>
-                    Weight Cases...
+                    Weight Cases
                 </MenubarItem>
             </MenubarContent>
         </MenubarMenu>

@@ -36,6 +36,9 @@ export const ClassifyModals: React.FC<ClassifyModalsProps> = ({
     onClose,
     props,
 }) => {
+    // These modal types don't exist in ModalType enum yet
+    // Uncomment when these are added to the ModalType enum
+    /*
     switch (modalType) {
         case ModalType.TwoStepCluster:
             return <TwoStepClusterContainer onClose={onClose} {...props} />;
@@ -56,9 +59,15 @@ export const ClassifyModals: React.FC<ClassifyModalsProps> = ({
         default:
             return null;
     }
+    */
+    return null;
 };
 
 export const isClassifyModal = (type: ModalType): boolean => {
+    // These modal types don't exist in ModalType enum yet
+    // Return false until they are added
+    return false;
+    /*
     return [
         ModalType.TwoStepCluster,
         ModalType.KMeansCluster,
@@ -69,4 +78,5 @@ export const isClassifyModal = (type: ModalType): boolean => {
         ModalType.ROCCurve,
         ModalType.ROCAnalysis,
     ].includes(type);
+    */
 };

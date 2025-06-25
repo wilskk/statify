@@ -1,44 +1,49 @@
 import React, { FC } from "react";
 import {
+    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, HelpCircle } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager from "@/components/Common/VariableListManager";
 import type { TargetListConfig } from "@/components/Common/VariableListManager";
+import { VariableTabProps } from "./types"; // Import from new types.ts
 
 // Props interface for VariableTab component
-interface VariableTabProps {
-    onClose: () => void;
-    unknownVariables: Variable[];
-    nominalVariables: Variable[];
-    ordinalVariables: Variable[];
-    scaleVariables: Variable[];
-    highlightedVariable: { id: string, source: string } | null;
-    setHighlightedVariable: (value: { id: string, source: string } | null) => void;
-    handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
-    handleReorderVariable: (listId: string, variables: Variable[]) => void;
-    handleSave: () => void;
-    handleReset: () => void;
-}
+// interface VariableTabProps { // This will be removed
+//     onClose: () => void;
+//     unknownVariables: Variable[];
+//     nominalVariables: Variable[];
+//     ordinalVariables: Variable[];
+//     scaleVariables: Variable[];
+//     highlightedVariable: { id: string, source: string } | null;
+//     setHighlightedVariable: (value: { id: string, source: string } | null) => void;
+//     handleMoveVariable: (variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => void;
+//     handleReorderVariable: (listId: string, variables: Variable[]) => void;
+//     handleSave: () => void;
+//     handleReset: () => void;
+//     containerType?: "dialog" | "sidebar";
+// }
 
-const VariableTab: FC<VariableTabProps> = ({
-                                               onClose,
-                                               unknownVariables,
-                                               nominalVariables,
-                                               ordinalVariables,
-                                               scaleVariables,
-                                               highlightedVariable,
-                                               setHighlightedVariable,
-                                               handleMoveVariable,
-                                               handleReorderVariable,
-                                               handleSave,
-                                               handleReset
-                                           }) => {
+// The content component that's shared between dialog and sidebar
+const VariableTabContent: FC<VariableTabProps> = ({
+    onClose,
+    unknownVariables,
+    nominalVariables,
+    ordinalVariables,
+    scaleVariables,
+    highlightedVariable,
+    setHighlightedVariable,
+    handleMoveVariable,
+    handleReorderVariable,
+    handleSave,
+    handleReset,
+    containerType = "dialog"
+}) => {
     // Configure target lists for VariableListManager
     const targetLists: TargetListConfig[] = [
         {
@@ -65,11 +70,7 @@ const VariableTab: FC<VariableTabProps> = ({
     ];
 
     return (
-        <DialogContent className="max-w-[700px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
-            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Set Measurement Level</DialogTitle>
-            </DialogHeader>
-
+        <>
             <div className="p-6 overflow-y-auto flex-grow">
                 <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
                     <InfoIcon className="text-accent-foreground h-4 w-4 flex-shrink-0" />
@@ -93,21 +94,63 @@ const VariableTab: FC<VariableTabProps> = ({
                 />
             </div>
 
-            <div className="flex items-center px-6 py-3 border-t border-border bg-muted text-xs text-muted-foreground flex-shrink-0">
-                <InfoIcon size={14} className="mr-2 flex-shrink-0" />
-                <span>Variables will retain their assigned measurement level for statistical analysis</span>
-            </div>
-
-            <DialogFooter className="px-6 py-4 border-t border-border bg-muted flex-shrink-0 rounded-b-md">
-                <div className="flex justify-end space-x-3">
-                    <Button size="sm" onClick={handleSave}>OK</Button>
-                    {/* <Button variant="outline" size="sm">Paste</Button> */}
-                    <Button variant="outline" size="sm" onClick={handleReset}>Reset</Button>
-                    <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-                    <Button variant="outline" size="sm">Help</Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                {/* Left: Help icon (Removed) */}
+                <div className="flex items-center text-muted-foreground">
+                    {/* <HelpCircle size={18} className="mr-1" /> */}
                 </div>
-            </DialogFooter>
-        </DialogContent>
+                {/* Right: Buttons */} 
+                <div>
+                    {/* <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={handleReset}
+                    >
+                        Reset
+                    </Button> */}
+                    <Button
+                        variant="outline"
+                        className="mr-2"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave}>
+                        OK
+                    </Button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+// Main component that handles different container types
+const VariableTab: FC<VariableTabProps> = (props) => {
+    const { containerType = "dialog", onClose } = props;
+    
+    // If sidebar mode, use a div container
+    if (containerType === "sidebar") {
+        return (
+            <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
+                <div className="flex-grow flex flex-col overflow-hidden">
+                    {/* Title for sidebar mode - TEMPORARILY COMMENTED OUT FOR DIAGNOSIS */}
+                    {/* <h2 className="text-lg font-semibold px-6 py-4 border-b border-border">Set Measurement Level</h2> */}
+                    <VariableTabContent {...props} />
+                </div>
+            </div>
+        );
+    }
+
+    // For dialog mode, VariableTab now renders the Dialog, DialogContent, DialogHeader, and DialogTitle
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-[700px] p-0 bg-popover border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                    <DialogTitle className="text-[22px] font-semibold text-popover-foreground">Set Measurement Level</DialogTitle>
+                </DialogHeader>
+                <VariableTabContent {...props} />
+            </DialogContent>
+        </Dialog>
     );
 };
 

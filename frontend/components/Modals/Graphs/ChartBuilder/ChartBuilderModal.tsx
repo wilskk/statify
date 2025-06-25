@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -47,12 +48,14 @@ import {
 } from "@/components/ui/select";
 import { HexColorPicker } from "react-colorful";
 import { chartConfigOptions } from "./ChartConfigOptions";
+import { X } from "lucide-react";
 
 interface ChartBuilderModalProps {
   onClose: () => void;
+  containerType?: "dialog" | "sidebar";
 }
 
-const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
+const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containerType = "dialog" }) => {
   const [chartType, setChartType] = useState<ChartType>("Vertical Bar Chart");
   const [sideVariables, setSideVariables] = useState<string[]>([]);
   const [side2Variables, setSide2Variables] = useState<string[]>([]);
@@ -661,6 +664,10 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       </DialogHeader>
 
       <div className="grid grid-cols-12 gap-6 py-4">
+  // Content for both dialog and sidebar rendering
+  const ModalContent = () => (
+    <>
+      <div className="grid grid-cols-3 gap-6 py-4">
         {/* Kolom Kiri - Pilih Variabel dan Jenis Chart */}
         <div
           className={
@@ -1338,32 +1345,70 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
       {/* Error Message */}
       {errorMsg && <div className="text-red-500 text-sm mb-2">{errorMsg}</div>}
+    </>
+  );
 
-      <DialogFooter>
-        <Button variant="outline" onClick={handleResetVariables}>
-          Reset
+  const ModalFooter = () => (
+    <>
+      {/* Reset Button */}
+      <Button variant="outline" onClick={handleResetVariables}>
+        Reset
+      </Button>
+      <Button variant="outline" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button
+        onClick={handleGenerateChart}
+        disabled={isCalculating || data.length === 0}
+      >
+        {isCalculating ? (
+          <>
+            <svg
+              className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
+              viewBox="0 0 24 24"
+            ></svg>
+            Generating...
+          </>
+        ) : (
+          "Generate Chart"
+        )}
+      </Button>
+    </>
+  );
+
+  // Render as dialog
+  if (containerType === "dialog") {
+    return (
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent className="sm:max-h-[90%] max-w-[90%] overflow-auto">
+          <DialogHeader className="p-2 m-0">
+            <DialogTitle className="sr-only">Chart Builder</DialogTitle>
+          </DialogHeader>
+          <ModalContent />
+          <DialogFooter>
+            <ModalFooter />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Render as sidebar
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
+        <div></div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+          <X className="h-4 w-4" />
         </Button>
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleGenerateChart}
-          disabled={isCalculating || data.length === 0}
-        >
-          {isCalculating ? (
-            <>
-              <svg
-                className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-gray-900 rounded-full"
-                viewBox="0 0 24 24"
-              ></svg>
-              Generating...
-            </>
-          ) : (
-            "Generate Chart"
-          )}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+      <div className="flex-grow overflow-y-auto p-6">
+        <ModalContent />
+      </div>
+      <div className="px-6 py-4 border-t border-border mt-auto flex justify-end space-x-2 bg-muted/50 shrink-0">
+        <ModalFooter />
+      </div>
+    </div>
   );
 };
 

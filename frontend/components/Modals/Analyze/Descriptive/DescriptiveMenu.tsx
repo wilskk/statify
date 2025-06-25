@@ -9,7 +9,8 @@ import {
     MenubarItem,
     MenubarSeparator,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import { ModalType } from "@/types/modalTypes";
+import { useModal } from "@/hooks/useModal";
 
 const DescriptiveMenu: React.FC = () => {
     const { openModal } = useModal();
@@ -18,8 +19,8 @@ const DescriptiveMenu: React.FC = () => {
         <MenubarMenu>
             <MenubarTrigger>Descriptive</MenubarTrigger>
             <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.Descriptive)}>
-                    Descriptive...
+                <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>
+                    Descriptives...
                 </MenubarItem>
                 <MenubarItem onClick={() => openModal(ModalType.Explore)}>
                     Explore...
@@ -31,6 +32,7 @@ const DescriptiveMenu: React.FC = () => {
                 {/* <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>
                     Crosstabs...
                 </MenubarItem> */}
+                {/* 
                 <MenubarSeparator />
                 <MenubarItem onClick={() => openModal(ModalType.Ratio)}>
                     Ratio...
@@ -42,6 +44,7 @@ const DescriptiveMenu: React.FC = () => {
                 <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>
                     Q-Q Plots...
                 </MenubarItem>
+                */}
             </MenubarContent>
         </MenubarMenu>
     );

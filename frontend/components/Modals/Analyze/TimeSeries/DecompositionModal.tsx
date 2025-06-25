@@ -64,7 +64,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
 
     // Store references
     const { variables, loadVariables, addVariable } = useVariableStore();
-    const { data, updateBulkCells } = useDataStore();
+    const { data, updateCells } = useDataStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     // Local state management
@@ -303,7 +303,7 @@ const DecompositionModal: FC<DecompositionModalProps> = ({ onClose }) => {
             
             // Use bulk update to efficiently add all data
             if (updates.length > 0) {
-                await updateBulkCells(updates);
+                await updateCells(updates);
             }
             
             // Increment column index for next variable
