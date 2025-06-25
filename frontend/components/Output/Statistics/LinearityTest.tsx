@@ -99,7 +99,7 @@ const LinearityTest: React.FC<LinearityTestProps> = ({ data }) => {
         <div className="text-sm mt-4">
           <p><strong>Interpretation:</strong></p>
           <ul className="list-disc list-inside space-y-1 mt-2">
-            <li>The RESET test evaluates if there's a non-linear relationship between variables.</li>
+            <li>The RESET test evaluates if there&apos;s a non-linear relationship between variables.</li>
             <li>A p-value greater than 0.05 indicates a linear relationship (fail to reject linearity).</li>
             <li>A p-value less than 0.05 suggests a non-linear relationship (reject linearity).</li>
             <li>If non-linearity is detected, consider transforming your variables (log, square root, etc.) or using non-linear models.</li>

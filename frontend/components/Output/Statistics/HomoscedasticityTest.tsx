@@ -48,7 +48,7 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
         <h2 className="text-xl font-bold">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
 
-        <Alert variant={isHomoscedastic ? 'default' : 'warning'}>
+        <Alert variant={isHomoscedastic ? 'default' : 'destructive'}>
           <AlertTitle>
             {isHomoscedastic ? 'Residuals have constant variance' : 'Residuals may not have constant variance'}
           </AlertTitle>
@@ -93,7 +93,7 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
                         {testResult.isHomoscedastic ? (
                           <><Check className="h-4 w-4 text-green-500 mr-2" /> Homoscedastic</>
                         ) : (
-                          <><X className="h-4 w-4 text-yellow-500 mr-2" /> Heteroscedastic</>
+                          <><X className="h-4 w-4 text-red-500 mr-2" /> Heteroscedastic</>
                         )}
                       </TableCell>
                     </TableRow>

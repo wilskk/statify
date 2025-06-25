@@ -44,7 +44,7 @@ const NormalityTest: React.FC<NormalityTestProps> = ({ data }) => {
         <h2 className="text-xl font-bold">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
 
-        <Alert variant={isNormal ? 'default' : 'warning'}>
+        <Alert variant={isNormal ? 'default' : 'destructive'}>
           <AlertTitle>
             {isNormal ? 'Residuals are normally distributed' : 'Residuals may not be normally distributed'}
           </AlertTitle>
@@ -69,7 +69,7 @@ const NormalityTest: React.FC<NormalityTestProps> = ({ data }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.values(tests).map((test: NormalityTest) => (
+                {Object.values(tests).map((test: any) => (
                   <TableRow key={test.testName}>
                     <TableCell>{test.testName}</TableCell>
                     <TableCell>{test.statistic.toFixed(4)}</TableCell>
@@ -78,7 +78,7 @@ const NormalityTest: React.FC<NormalityTestProps> = ({ data }) => {
                       {test.isNormal ? (
                         <><Check className="h-4 w-4 text-green-500 mr-2" /> Normal</>
                       ) : (
-                        <><X className="h-4 w-4 text-yellow-500 mr-2" /> Non-normal</>
+                        <><X className="h-4 w-4 text-red-500 mr-2" /> Non-normal</>
                       )}
                     </TableCell>
                   </TableRow>
