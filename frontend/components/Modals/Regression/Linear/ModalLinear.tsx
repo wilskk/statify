@@ -96,7 +96,7 @@ const defaultAssumptionTestParams: AssumptionTestParams = {
   testNormalityEnabled: false,
   testHomoscedasticityEnabled: false,
   testMulticollinearityEnabled: false,
-  testAutocorrelationEnabled: false,
+  testNonautocorrelationEnabled: false,
 };
 
 const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dialog" }) => {

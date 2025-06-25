@@ -54,15 +54,15 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
           </AlertTitle>
           <AlertDescription>
             {isHomoscedastic 
-              ? 'The tests indicate that the residuals have constant variance across all levels of predicted values, which is a key assumption for linear regression.' 
-              : 'Some tests suggest the residuals may not have constant variance. This heteroscedasticity could affect the validity of statistical inferences from the model.'
+              ? 'The test indicates that the residuals have constant variance across all levels of predicted values, which is a key assumption for linear regression.' 
+              : 'The test suggests the residuals may not have constant variance. This heteroscedasticity could affect the validity of statistical inferences from the model.'
             }
           </AlertDescription>
         </Alert>
 
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-semibold mb-2">Homoscedasticity Tests</h3>
+            <h3 className="font-semibold mb-2">Homoscedasticity Test</h3>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -146,8 +146,6 @@ const HomoscedasticityTest: React.FC<HomoscedasticityTestProps> = ({ data }) => 
           <p><strong>Interpretation:</strong></p>
           <ul className="list-disc list-inside space-y-1 mt-2">
             <li><strong>Breusch-Pagan Test:</strong> Tests if the variance of residuals depends on the values of the independent variables.</li>
-            <li><strong>White Test:</strong> A more general test that doesn't assume a specific form of heteroscedasticity.</li>
-            <li><strong>Goldfeld-Quandt Test:</strong> Compares variances of residuals between subsets of data ordered by a variable.</li>
             <li>A p-value greater than 0.05 indicates constant variance (homoscedasticity).</li>
             <li>A p-value less than 0.05 suggests non-constant variance (heteroscedasticity).</li>
             <li>If heteroscedasticity is detected, consider using robust standard errors, weighted least squares, or transforming variables.</li>

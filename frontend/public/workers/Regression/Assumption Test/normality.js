@@ -38,7 +38,6 @@ self.onmessage = function(e) {
     // Perform normality tests
     const shapiroWilk = calculateShapiroWilk(residuals);
     const kolmogorovSmirnov = calculateKolmogorovSmirnov(residuals);
-    const andersonDarling = calculateAndersonDarling(residuals);
     const jarqueBera = calculateJarqueBera(residuals);
     
     // Calculate mean and standard deviation of residuals
@@ -59,7 +58,6 @@ self.onmessage = function(e) {
       tests: {
         shapiroWilk,
         kolmogorovSmirnov,
-        andersonDarling,
         jarqueBera
       },
       residualStats: {
@@ -458,55 +456,6 @@ function approximateKSPValue(d, n) {
   if (adjustedD < 0.8) return 0.1;
   if (adjustedD < 0.9) return 0.05;
   if (adjustedD < 1.0) return 0.01;
-  return 0.001;
-}
-
-// Calculate Anderson-Darling test for normality
-function calculateAndersonDarling(data) {
-  const n = data.length;
-  
-  // Sort the data
-  const sortedData = [...data].sort((a, b) => a - b);
-  
-  // Calculate mean and standard deviation
-  const dataMean = mean(sortedData);
-  const dataStdDev = standardDeviation(sortedData, dataMean);
-  
-  // Calculate Anderson-Darling statistic
-  let sum = 0;
-  
-  for (let i = 0; i < n; i++) {
-    const z = (sortedData[i] - dataMean) / dataStdDev;
-    const Fi = normalCDF(z);
-    const term1 = (2 * i + 1) * Math.log(Fi);
-    const term2 = (2 * n - 2 * i - 1) * Math.log(1 - Fi);
-    sum += term1 + term2;
-  }
-  
-  const A2 = -n - sum / n;
-  
-  // Calculate p-value (simplified approximation)
-  // This is a very simplified approximation 
-  const pValue = approximateADPValue(A2, n);
-  
-  return {
-    testName: "Anderson-Darling",
-    statistic: A2,
-    pValue: pValue,
-    isNormal: pValue > 0.05,
-    criticalValue: 0.05
-  };
-}
-
-// Simple approximation of Anderson-Darling p-value
-function approximateADPValue(A2, n) {
-  // Simplified approximation
-  if (A2 < 0.2) return 0.9;
-  if (A2 < 0.34) return 0.5;
-  if (A2 < 0.5) return 0.2;
-  if (A2 < 0.75) return 0.1;
-  if (A2 < 1.0) return 0.05;
-  if (A2 < 1.5) return 0.01;
   return 0.001;
 }
 

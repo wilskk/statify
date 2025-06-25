@@ -44,49 +44,19 @@ self.onmessage = function(e) {
       const regression = multipleLinearRegression(dependentData, X);
       const { residuals, yHat, beta } = regression;
       
-      // Perform homoscedasticity tests
+      // Perform Breusch-Pagan test for homoscedasticity
       let breuschPaganTest = { testName: "Breusch-Pagan", error: "Test failed", isHomoscedastic: true };
-      let whiteTest = { testName: "White", error: "Test failed", isHomoscedastic: true };
-      let goldfeld_QuandtTest = { testName: "Goldfeld-Quandt", error: "Test failed", isHomoscedastic: true };
       
       // Calculate squared residuals
       const squaredResiduals = residuals.map(r => r * r);
       
-      // Try to run each test, but don't fail the entire process if one fails
+      // Try to run the test, but don't fail the entire process if it fails
       try {
         breuschPaganTest = calculateBreuschPaganTest(X, residuals);
       } catch (testError) {
         console.error("Breusch-Pagan test error:", testError);
         breuschPaganTest = { 
           testName: "Breusch-Pagan", 
-          statistic: null, 
-          pValue: null, 
-          isHomoscedastic: true, 
-          criticalValue: 0.05,
-          error: "Test failed: " + testError.message
-        };
-      }
-      
-      try {
-        whiteTest = calculateWhiteTest(X, residuals, yHat);
-      } catch (testError) {
-        console.error("White test error:", testError);
-        whiteTest = { 
-          testName: "White", 
-          statistic: null, 
-          pValue: null, 
-          isHomoscedastic: true, 
-          criticalValue: 0.05,
-          error: "Test failed: " + testError.message
-        };
-      }
-      
-      try {
-        goldfeld_QuandtTest = calculateGoldfeldQuandtTest(X, dependentData);
-      } catch (testError) {
-        console.error("Goldfeld-Quandt test error:", testError);
-        goldfeld_QuandtTest = { 
-          testName: "Goldfeld-Quandt", 
           statistic: null, 
           pValue: null, 
           isHomoscedastic: true, 
@@ -107,34 +77,8 @@ self.onmessage = function(e) {
       // Generate scale-location plot data (sqrt of abs residuals vs fitted)
       const scaleLocationData = generateScaleLocationData(residuals, yHat);
       
-      // Check if at least one test was completed successfully
-      let testsCompleted = 0;
-      let testsIndicatingHomoscedasticity = 0;
-      
-      if (breuschPaganTest.pValue !== null) {
-        testsCompleted++;
-        if (breuschPaganTest.isHomoscedastic) testsIndicatingHomoscedasticity++;
-      }
-      
-      if (whiteTest.pValue !== null) {
-        testsCompleted++;
-        if (whiteTest.isHomoscedastic) testsIndicatingHomoscedasticity++;
-      }
-      
-      if (goldfeld_QuandtTest.pValue !== null) {
-        testsCompleted++;
-        if (goldfeld_QuandtTest.isHomoscedastic) testsIndicatingHomoscedasticity++;
-      }
-      
-      let isHomoscedastic;
-      
-      // If no tests completed successfully, report inconclusive
-      if (testsCompleted === 0) {
-        isHomoscedastic = true; // Default to true
-      } else {
-        // If at least half the tests show homoscedasticity, report homoscedastic
-        isHomoscedastic = testsIndicatingHomoscedasticity >= testsCompleted / 2;
-      }
+      // Check if the test was completed successfully
+      const isHomoscedastic = breuschPaganTest.isHomoscedastic;
       
       // Prepare results
       const result = {
@@ -142,9 +86,7 @@ self.onmessage = function(e) {
         description: "Tests if the residuals have constant variance across all levels of predicted values",
         isHomoscedastic: isHomoscedastic,
         tests: {
-          breuschPagan: breuschPaganTest,
-          white: whiteTest,
-          goldfeldQuandt: goldfeld_QuandtTest
+          breuschPagan: breuschPaganTest
         },
         residualStats: residualStats,
         visualizations: {
@@ -516,183 +458,14 @@ function calculateBreuschPaganTest(X, residuals) {
   }
 }
 
-// Calculate White test for homoscedasticity
-function calculateWhiteTest(X, residuals, yHat) {
-  try {
-    const n = residuals.length;
-    
-    // Get squared residuals
-    const squaredResiduals = residuals.map(r => r * r);
-    
-    // Create matrix with yHat, yHat^2, and interaction terms
-    // For simplicity, we'll just use yHat and yHat^2 for the White test
-    const augmentedX = [];
-    for (let i = 0; i < n; i++) {
-      const yHatVal = yHat[i];
-      const yHatSq = yHatVal * yHatVal;
-      augmentedX.push([1, yHatVal, yHatSq]);
-    }
-    
-    // Run regression of squared residuals on augmented X
-    const regression = multipleLinearRegression(squaredResiduals, augmentedX);
-    
-    // Calculate R-squared from this regression
-    const r2 = regression.r2;
-    
-    // Calculate test statistic: n * R^2
-    const testStatistic = n * r2;
-    
-    // Calculate degrees of freedom (number of regressors excluding constant)
-    const df = augmentedX[0].length - 1;
-    
-    // Calculate p-value (chi-squared distribution with df degrees of freedom)
-    const pValue = 1 - chiSquareCDF(testStatistic, df);
-    
-    return {
-      testName: "White",
-      statistic: testStatistic,
-      pValue: pValue,
-      isHomoscedastic: pValue > 0.05,
-      criticalValue: 0.05,
-      df: df
-    };
-  } catch (error) {
-    console.error("Error in White test:", error);
-    return {
-      testName: "White",
-      statistic: null,
-      pValue: null,
-      isHomoscedastic: true, // Default to true on error
-      criticalValue: 0.05,
-      error: "Test failed: " + error.message
-    };
-  }
-}
-
-// Calculate Goldfeld-Quandt test for homoscedasticity
-function calculateGoldfeldQuandtTest(X, y) {
-  try {
-    // This is a simplified version of the Goldfeld-Quandt test
-    // In practice, you would sort data by a variable expected to be related to heteroscedasticity
-    
-    const n = y.length;
-    
-    // Make sure we have enough observations
-    if (n < 20) {
-      return {
-        testName: "Goldfeld-Quandt",
-        statistic: null,
-        pValue: null,
-        isHomoscedastic: true, // Default to true for small samples
-        criticalValue: 0.05,
-        error: "Not enough observations for Goldfeld-Quandt test (minimum 20 required)"
-      };
-    }
-    
-    // Make sure we have enough observations after splitting
-    const centerProportion = 1/3;
-    const centerSize = Math.floor(n * centerProportion);
-    const firstSize = Math.floor((n - centerSize) / 2);
-    const lastSize = n - centerSize - firstSize;
-    
-    if (firstSize <= X[0].length || lastSize <= X[0].length) {
-      return {
-        testName: "Goldfeld-Quandt",
-        statistic: null,
-        pValue: null,
-        isHomoscedastic: true,
-        criticalValue: 0.05,
-        error: "Not enough observations in each group after splitting"
-      };
-    }
-    
-    // Define which variable to sort by (using first independent variable)
-    const sortVariable = X.map(row => row[1]); // First independent variable (after intercept)
-    
-    // Create index array and sort by sortVariable
-    const indices = Array(n).fill().map((_, i) => i);
-    indices.sort((a, b) => sortVariable[a] - sortVariable[b]);
-    
-    // Sort X and y by indices
-    const sortedX = indices.map(i => X[i]);
-    const sortedY = indices.map(i => y[i]);
-    
-    // Remove center observations (typically 1/3 of the data)
-    const firstGroupX = sortedX.slice(0, firstSize);
-    const firstGroupY = sortedY.slice(0, firstSize);
-    const lastGroupX = sortedX.slice(-lastSize);
-    const lastGroupY = sortedY.slice(-lastSize);
-    
-    // Run regressions on each group
-    const firstRegression = multipleLinearRegression(firstGroupY, firstGroupX);
-    const lastRegression = multipleLinearRegression(lastGroupY, lastGroupX);
-    
-    // Calculate residual sum of squares for each group
-    const rss1 = firstRegression.sse;
-    const rss2 = lastRegression.sse;
-    
-    // Calculate test statistic (F-statistic)
-    const dof = firstGroupY.length - firstGroupX[0].length; // Degrees of freedom
-    const fStatistic = (rss2 / dof) / (rss1 / dof);
-    
-    // Calculate p-value (F-distribution with dof, dof degrees of freedom)
-    // One-tailed test, so we use 1 - F_cdf if F > 1, or F_cdf if F < 1
-    let pValue;
-    if (fStatistic > 1) {
-      pValue = 1 - fCDF(fStatistic, dof, dof);
-    } else {
-      pValue = fCDF(fStatistic, dof, dof);
-    }
-    
-    return {
-      testName: "Goldfeld-Quandt",
-      statistic: fStatistic,
-      pValue: pValue,
-      isHomoscedastic: pValue > 0.05,
-      criticalValue: 0.05,
-      df1: dof,
-      df2: dof
-    };
-  } catch (error) {
-    console.error("Error in Goldfeld-Quandt test:", error);
-    return {
-      testName: "Goldfeld-Quandt",
-      statistic: null,
-      pValue: null,
-      isHomoscedastic: true, // Default to true on error
-      criticalValue: 0.05,
-      error: "Test failed: " + error.message
-    };
-  }
-}
-
-// F-distribution CDF approximation
-function fCDF(x, df1, df2) {
-  // This is a simplified approximation of the F-distribution CDF
-  // For more accuracy, you would use a statistical library
-  
+// Chi-squared cumulative distribution function
+function chiSquareCDF(x, df) {
   if (x <= 0) return 0;
   
-  // Beta function relationship
-  const beta = (df1 * x) / (df1 * x + df2);
-  
-  // Incomplete beta function approximation
-  return incompleteBeta(beta, df1/2, df2/2);
-}
-
-// Incomplete beta function approximation
-function incompleteBeta(x, a, b) {
-  // Very simplified approximation - use with caution
-  if (x <= 0) return 0;
-  if (x >= 1) return 1;
-  
-  // Simple approximation
-  return Math.pow(x, a) / (a * beta(a, b));
-}
-
-// Beta function
-function beta(a, b) {
-  return (gamma(a) * gamma(b)) / gamma(a + b);
+  // Approximation for chi-squared CDF
+  // This is simplified - more accurate implementations exist
+  const p = Math.exp(-0.5 * x) * Math.pow(x, df / 2 - 1) / (Math.pow(2, df / 2) * gamma(df / 2));
+  return 1 - p;
 }
 
 // Gamma function approximation (Lanczos approximation)
@@ -714,16 +487,6 @@ function gamma(z) {
   
   const t = z + p.length - 1.5;
   return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
-}
-
-// Chi-squared cumulative distribution function
-function chiSquareCDF(x, df) {
-  if (x <= 0) return 0;
-  
-  // Approximation for chi-squared CDF
-  // This is simplified - more accurate implementations exist
-  const p = Math.exp(-0.5 * x) * Math.pow(x, df / 2 - 1) / (Math.pow(2, df / 2) * gamma(df / 2));
-  return 1 - p;
 }
 
 // Generate data for residuals vs. fitted values plot

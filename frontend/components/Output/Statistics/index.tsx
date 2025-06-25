@@ -6,6 +6,7 @@ import LinearityTest from './LinearityTest';
 import NormalityTest from './NormalityTest';
 import HomoscedasticityTest from './HomoscedasticityTest';
 import AutocorrelationTest from './AutocorrelationTest';
+import NonautocorrelationTest from './NonautocorrelationTest';
 import MulticollinearityTest from './MulticollinearityTest';
 
 // Define the StatisticsComponentsRegistry interface
@@ -26,6 +27,9 @@ export const StatisticsComponents: StatisticsComponentsRegistry = {
   
   // Add AutocorrelationTest component
   'AutocorrelationTest': AutocorrelationTest,
+  
+  // Add NonautocorrelationTest component
+  'NonautocorrelationTest': NonautocorrelationTest,
   
   // Add MulticollinearityTest component
   'MulticollinearityTest': MulticollinearityTest,

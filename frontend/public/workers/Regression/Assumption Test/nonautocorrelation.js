@@ -1,4 +1,4 @@
-// Web Worker for Autocorrelation Testing in Regression Analysis
+// Web Worker for Nonautocorrelation Testing in Regression Analysis
 // Main method: Durbin-Watson test
 
 // Listen for messages from the main thread
@@ -6,7 +6,7 @@ self.addEventListener('message', function(e) {
   const data = e.data;
   
   // Log received data
-  console.log("[Worker] Received data for autocorrelation test:", {
+  console.log("[Worker] Received data for nonautocorrelation test:", {
     hasData: !!data,
     hasResiduals: data && Array.isArray(data.residuals),
     residualsLength: data?.residuals?.length,
@@ -54,15 +54,15 @@ self.addEventListener('message', function(e) {
     console.log("[Worker] Calculation complete:", results);
     self.postMessage({ results });
   } catch (error) {
-    console.error("[Worker] Error in autocorrelation test calculation:", error);
+    console.error("[Worker] Error in nonautocorrelation test calculation:", error);
     self.postMessage({
-      error: `Error in autocorrelation test: ${error.message}`
+      error: `Error in nonautocorrelation test: ${error.message}`
     });
   }
 });
 
 /**
- * Calculate the Durbin-Watson statistic for autocorrelation detection
+ * Calculate the Durbin-Watson statistic for nonautocorrelation detection
  * 
  * @param {Array<number>} residuals - The residuals from regression model
  * @returns {Object} Results of the Durbin-Watson test
@@ -117,11 +117,11 @@ function calculateDurbinWatson(residuals) {
   let interpretation = '';
   
   if (dwStatistic < 1.5) {
-    interpretation = 'Positive autocorrelation detected';
+    interpretation = 'Positive autocorrelation detected (nonautocorrelation assumption violated)';
   } else if (dwStatistic > 2.5) {
-    interpretation = 'Negative autocorrelation detected';
+    interpretation = 'Negative autocorrelation detected (nonautocorrelation assumption violated)';
   } else {
-    interpretation = 'No autocorrelation detected';
+    interpretation = 'No autocorrelation detected (nonautocorrelation assumption met)';
   }
   
   return {

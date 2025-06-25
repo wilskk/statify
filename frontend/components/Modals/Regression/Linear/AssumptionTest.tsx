@@ -15,7 +15,7 @@ export interface AssumptionTestParams {
   testNormalityEnabled: boolean;
   testHomoscedasticityEnabled: boolean;
   testMulticollinearityEnabled: boolean;
-  testAutocorrelationEnabled: boolean;
+  testNonautocorrelationEnabled: boolean;
 }
 
 interface AssumptionTestProps {
@@ -50,10 +50,10 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
   const [multicollinearityTestError, setMulticollinearityTestError] = useState<string | null>(null);
   const [multicollinearityTestSuccess, setMulticollinearityTestSuccess] = useState(false);
   
-  // Add states for autocorrelation test
-  const [isTestingAutocorrelation, setIsTestingAutocorrelation] = useState(false);
-  const [autocorrelationTestError, setAutocorrelationTestError] = useState<string | null>(null);
-  const [autocorrelationTestSuccess, setAutocorrelationTestSuccess] = useState(false);
+  // Add states for nonautocorrelation test
+  const [isTestingNonautocorrelation, setIsTestingNonautocorrelation] = useState(false);
+  const [nonautocorrelationTestError, setNonautocorrelationTestError] = useState<string | null>(null);
+  const [nonautocorrelationTestSuccess, setNonautocorrelationTestSuccess] = useState(false);
   
   const data = useDataStore((state) => state.data);
   const { addLog, addAnalytic, addStatistic } = useResultStore();
@@ -598,17 +598,17 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
     }
   };
 
-  const handleTestAutocorrelationClick = async () => {
+  const handleTestNonautocorrelationClick = async () => {
     try {
-      setIsTestingAutocorrelation(true);
-      setAutocorrelationTestError(null);
-      setAutocorrelationTestSuccess(false);
+      setIsTestingNonautocorrelation(true);
+      setNonautocorrelationTestError(null);
+      setNonautocorrelationTestSuccess(false);
       
       if (!selectedDependentVariable || selectedIndependentVariables.length === 0) {
         throw new Error('Please select a dependent variable and at least one independent variable');
       }
       
-      console.log("Starting autocorrelation test with data:", {
+      console.log("Starting nonautocorrelation test with data:", {
         dataLength: data.length,
         dependentVar: selectedDependentVariable.name,
         independentVars: selectedIndependentVariables.map(v => v.name)
@@ -759,7 +759,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
         residuals.push(y[i] - fitted);
       }
       
-      console.log("Calculated residuals for autocorrelation test:", {
+      console.log("Calculated residuals for nonautocorrelation test:", {
         residualsLength: residuals.length,
         residualsSample: residuals.slice(0, 5)
       });
@@ -775,7 +775,7 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
       // Create log message
       const logMessage = `TESTING LINEAR REGRESSION ASSUMPTIONS
-      /TEST AUTOCORRELATION 
+      /TEST NONAUTOCORRELATION 
       /DEPENDENT ${selectedDependentVariable.name} 
       /INDEPENDENT ${selectedIndependentVariables.map(v => v.name).join(' ')}.`;
       
@@ -784,65 +784,65 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
       
       const analytic = {
         title: "Linear Regression Assumption Tests",
-        note: "Autocorrelation Test",
+        note: "Nonautocorrelation Test",
       };
       const analyticId = await addAnalytic(logId, analytic);
       
       // Create and start the worker
-      const autocorrelationWorker = new Worker('/workers/Regression/Assumption Test/autocorrelation.js');
+      const nonautocorrelationWorker = new Worker('/workers/Regression/Assumption Test/nonautocorrelation.js');
       
       // Prepare the data to send to the worker
       const workerData = {
         residuals: residuals
       };
       
-      console.log("Sending data to autocorrelation worker:", {
+      console.log("Sending data to nonautocorrelation worker:", {
         residualsLength: workerData.residuals.length,
         residualsSample: workerData.residuals.slice(0, 5)
       });
       
-      autocorrelationWorker.postMessage(workerData);
+      nonautocorrelationWorker.postMessage(workerData);
       
-      autocorrelationWorker.onmessage = async (e: MessageEvent) => {
+      nonautocorrelationWorker.onmessage = async (e: MessageEvent) => {
         const response = e.data;
         
         if (response.error) {
-          console.error("Autocorrelation test worker error:", response.error);
-          setAutocorrelationTestError(response.error);
+          console.error("Nonautocorrelation test worker error:", response.error);
+          setNonautocorrelationTestError(response.error);
         } else {
-          console.log("Autocorrelation test results:", response);
+          console.log("Nonautocorrelation test results:", response);
           // Add more detailed logging of results
-          console.log("Full autocorrelation results:", JSON.stringify(response.results));
+          console.log("Full nonautocorrelation results:", JSON.stringify(response.results));
           console.log("DW Statistic value:", response.results?.durbinWatsonStatistic);
           console.log("Interpretation:", response.results?.interpretation);
           
           // Save the results to statistics store
-          const autocorrelationStat = {
-            title: "Autocorrelation Test Results",
+          const nonautocorrelationStat = {
+            title: "Nonautocorrelation Test Results",
             output_data: JSON.stringify(response),
-            components: "AutocorrelationTest",
+            components: "NonautocorrelationTest",
             description: "Tests for correlation between residuals over time"
           };
           
-          await addStatistic(analyticId, autocorrelationStat);
-          setAutocorrelationTestSuccess(true);
+          await addStatistic(analyticId, nonautocorrelationStat);
+          setNonautocorrelationTestSuccess(true);
         }
         
-        setIsTestingAutocorrelation(false);
-        autocorrelationWorker.terminate();
+        setIsTestingNonautocorrelation(false);
+        nonautocorrelationWorker.terminate();
       };
       
-      autocorrelationWorker.onerror = (error: ErrorEvent) => {
-        console.error("Autocorrelation test worker error:", error);
-        setAutocorrelationTestError(error.message);
-        setIsTestingAutocorrelation(false);
-        autocorrelationWorker.terminate();
+      nonautocorrelationWorker.onerror = (error: ErrorEvent) => {
+        console.error("Nonautocorrelation test worker error:", error);
+        setNonautocorrelationTestError(error.message);
+        setIsTestingNonautocorrelation(false);
+        nonautocorrelationWorker.terminate();
       };
       
     } catch (error) {
-      console.error("Error in autocorrelation test:", error);
-      setAutocorrelationTestError(error instanceof Error ? error.message : 'Unknown error');
-      setIsTestingAutocorrelation(false);
+      console.error("Error in nonautocorrelation test:", error);
+      setNonautocorrelationTestError(error instanceof Error ? error.message : 'Unknown error');
+      setIsTestingNonautocorrelation(false);
     }
   };
 
@@ -976,18 +976,18 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
         </Alert>
       )}
 
-      {autocorrelationTestError && (
+      {nonautocorrelationTestError && (
         <Alert variant="destructive">
-          <AlertTitle>Autocorrelation Test Error</AlertTitle>
-          <AlertDescription>{autocorrelationTestError}</AlertDescription>
+          <AlertTitle>Nonautocorrelation Test Error</AlertTitle>
+          <AlertDescription>{nonautocorrelationTestError}</AlertDescription>
         </Alert>
       )}
 
-      {autocorrelationTestSuccess && (
+      {nonautocorrelationTestSuccess && (
         <Alert>
-          <AlertTitle>Autocorrelation Test Success</AlertTitle>
+          <AlertTitle>Nonautocorrelation Test Success</AlertTitle>
           <AlertDescription>
-            Autocorrelation test completed successfully. Check the Output View to see the results.
+            Nonautocorrelation test completed successfully. Check the Output View to see the results.
           </AlertDescription>
         </Alert>
       )}
@@ -1064,20 +1064,20 @@ const AssumptionTest: React.FC<AssumptionTestProps> = ({
 
             <div className="flex justify-between items-center">
               <div>
-                <Label className="font-semibold">Autocorrelation Test</Label>
+                <Label className="font-semibold">Nonautocorrelation Test</Label>
                 <p className="text-xs text-muted-foreground">Tests for correlation between residuals</p>
               </div>
               <Button 
-                onClick={handleTestAutocorrelationClick}
-                disabled={isTestingAutocorrelation || !selectedDependentVariable || selectedIndependentVariables.length === 0}
+                onClick={handleTestNonautocorrelationClick}
+                disabled={isTestingNonautocorrelation || !selectedDependentVariable || selectedIndependentVariables.length === 0}
               >
-                {isTestingAutocorrelation ? (
+                {isTestingNonautocorrelation ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Testing...
                   </>
                 ) : (
-                  'Test Autocorrelation'
+                  'Test Nonautocorrelation'
                 )}
               </Button>
             </div>
