@@ -19,6 +19,7 @@ import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeUnivariate } from "@/components/Modals/Analyze/general-linear-model/univariate/services/univariate-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { toast } from "sonner";
 
 export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -54,7 +55,7 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                     setFormData({ ...UnivariateDefault });
                 }
             } catch (error) {
-                console.error("Failed to load form data:", error);
+                toast.error("Failed to load form data:", error ?? "");
             }
         };
 
@@ -160,7 +161,10 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
     };
 
     const executeUnivariate = async (mainData: UnivariateMainType) => {
-        try {
+        closeModal();
+        onClose();
+
+        const promise = async () => {
             const newFormData = {
                 ...formData,
                 main: mainData,
@@ -173,12 +177,23 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
                 dataVariables: dataVariables,
                 variables: variables,
             });
-        } catch (error) {
-            console.error(error);
-        }
+        };
 
-        closeModal();
-        onClose();
+        toast.promise(promise, {
+            loading: "Running Univariate analysis...",
+            success: () => {
+                return "Univariate analysis has been completed successfully.";
+            },
+            error: (err) => {
+                return (
+                    <span>
+                        An error occurred during Univariate analysis.
+                        <br />
+                        Error: {String(err)}
+                    </span>
+                );
+            },
+        });
     };
 
     const resetFormData = async () => {
@@ -186,13 +201,8 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
             await clearFormData("Univariate");
             setFormData({ ...UnivariateDefault });
         } catch (error) {
-            console.error("Failed to clear form data:", error);
+            toast.error("Failed to clear form data:", error ?? "");
         }
-    };
-
-    const handleClose = () => {
-        closeModal();
-        onClose();
     };
 
     const openSection = (

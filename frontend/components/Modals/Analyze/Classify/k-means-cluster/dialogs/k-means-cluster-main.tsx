@@ -47,7 +47,7 @@ export const KMeansClusterContainer = ({
                     setFormData({ ...KMeansClusterDefault });
                 }
             } catch (error) {
-                console.error("Failed to load form data:", error);
+                toast.error("Failed to load form data:", error ?? "");
             }
         };
 
@@ -109,13 +109,8 @@ export const KMeansClusterContainer = ({
             await clearFormData("KMeansCluster");
             setFormData({ ...KMeansClusterDefault });
         } catch (error) {
-            console.error("Failed to clear form data:", error);
+            toast.error("Failed to clear form data:", error ?? "");
         }
-    };
-
-    const handleClose = () => {
-        closeModal();
-        onClose();
     };
 
     const openSection = (section: "main" | "iterate" | "save" | "options") => {
@@ -143,10 +138,6 @@ export const KMeansClusterContainer = ({
     };
 
     const handleContinue = () => {
-        openSection("main");
-    };
-
-    const handleCancel = () => {
         openSection("main");
     };
 

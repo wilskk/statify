@@ -380,6 +380,7 @@ export const KMeansClusterDialog = ({
                                                     checked={
                                                         mainState.ReadInitial
                                                     }
+                                                    disabled={true}
                                                     onCheckedChange={(
                                                         checked
                                                     ) =>
@@ -404,6 +405,7 @@ export const KMeansClusterDialog = ({
                                                             : "ExternalDatafile"
                                                     }
                                                     disabled={
+                                                        true ||
                                                         !mainState.ReadInitial
                                                     }
                                                     onValueChange={
@@ -432,6 +434,7 @@ export const KMeansClusterDialog = ({
                                                                     ""
                                                                 }
                                                                 disabled={
+                                                                    true ||
                                                                     !mainState.OpenDataset
                                                                 }
                                                                 onChange={(e) =>
@@ -467,6 +470,7 @@ export const KMeansClusterDialog = ({
                                                                     ""
                                                                 }
                                                                 disabled={
+                                                                    true ||
                                                                     !mainState.ExternalDatafile
                                                                 }
                                                                 onChange={(e) =>
@@ -486,6 +490,7 @@ export const KMeansClusterDialog = ({
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
                                                     id="WriteFinal"
+                                                    disabled={true}
                                                     checked={
                                                         mainState.WriteFinal
                                                     }
@@ -541,6 +546,7 @@ export const KMeansClusterDialog = ({
                                                                     ""
                                                                 }
                                                                 disabled={
+                                                                    true ||
                                                                     !mainState.NewDataset
                                                                 }
                                                                 onChange={(e) =>
@@ -575,6 +581,7 @@ export const KMeansClusterDialog = ({
                                                                     ""
                                                                 }
                                                                 disabled={
+                                                                    true ||
                                                                     !mainState.DataFile
                                                                 }
                                                                 onChange={(e) =>
