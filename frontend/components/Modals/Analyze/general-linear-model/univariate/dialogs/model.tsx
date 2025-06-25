@@ -36,6 +36,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 export const UnivariateModel = ({
     isModelOpen,
@@ -281,6 +282,19 @@ export const UnivariateModel = ({
     // Handle Add button click - add the current build term to FactorsModel
     const handleAddTermClick = () => {
         if (currentBuildTerm.length > 0) {
+            if (currentBuildTerm.includes("{variable}")) {
+                toast.warning("Please select a variable to complete the term.");
+                return;
+            }
+            if (
+                currentBuildTerm.endsWith(" * ") ||
+                currentBuildTerm.endsWith("(")
+            ) {
+                toast.warning(
+                    "Please complete the term before adding it to the model."
+                );
+                return;
+            }
             // Balance any open parentheses
             let term = currentBuildTerm;
             for (let i = 0; i < parenthesesDepth; i++) {
@@ -378,7 +392,7 @@ export const UnivariateModel = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4">
+            <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[550px] rounded-lg border md:min-w-[300px]"
@@ -684,7 +698,7 @@ export const UnivariateModel = ({
                                                     )
                                                 }
                                                 onClick={handleByClick}
-                                                title="By"
+                                                title="By *"
                                             >
                                                 By *
                                             </Button>
@@ -830,25 +844,29 @@ export const UnivariateModel = ({
                     </div>
                 </div>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsModelOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsModelOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

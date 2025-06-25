@@ -152,7 +152,7 @@ export const UnivariateContrast = ({
 
     return (
         <div className="flex flex-col w-full h-full">
-            <div className="w-full flex flex-col items-start gap-2 p-4">
+            <div className="w-full flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="w-full flex flex-col gap-2">
                     <div className="w-full">
                         <Label className="font-bold">Factors: </Label>
@@ -274,25 +274,29 @@ export const UnivariateContrast = ({
                     </ResizablePanelGroup>
                 </div>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsContrastOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsContrastOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

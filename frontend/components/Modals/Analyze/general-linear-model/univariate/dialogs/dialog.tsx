@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModal } from "@/hooks/useModal";
+import { toast } from "sonner";
 
 export const UnivariateDialog = ({
     isMainOpen,
@@ -214,6 +215,22 @@ export const UnivariateDialog = ({
     ];
 
     const handleContinue = () => {
+        if (depVar.length === 0) {
+            toast.warning("Please select a dependent variable.");
+            return;
+        }
+
+        if (
+            fixFactor.length === 0 &&
+            randFactor.length === 0 &&
+            covar.length === 0
+        ) {
+            toast.warning(
+                "Please select at least one fixed factor, random factor, or covariate."
+            );
+            return;
+        }
+
         Object.entries(mainState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateMainType, value);
         });
@@ -239,7 +256,7 @@ export const UnivariateDialog = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="p-4">
+            <div className="p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="horizontal"
                     className="min-h-[400px] rounded-lg border md:min-w-[200px]"
@@ -265,56 +282,56 @@ export const UnivariateDialog = ({
                             <div className="flex flex-col gap-2 w-full">
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsModelOpen)}
                                 >
                                     Model
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsContrastOpen)}
                                 >
                                     Contrasts
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsPlotsOpen)}
                                 >
                                     Plots
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsPostHocOpen)}
                                 >
                                     Post Hoc
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsEMMeansOpen)}
                                 >
                                     EM Means
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsSaveOpen)}
                                 >
                                     Save
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsOptionsOpen)}
                                 >
                                     Options
                                 </Button>
                                 <Button
                                     className="w-full"
-                                    variant="secondary"
+                                    variant="outline"
                                     onClick={openDialog(setIsBootstrapOpen)}
                                 >
                                     Bootstrap
@@ -324,24 +341,33 @@ export const UnivariateDialog = ({
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button type="button" onClick={handleContinue}>
-                    OK
-                </Button>
-                <Button type="button" variant="secondary" onClick={onReset}>
-                    Reset
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleDialog}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onReset}
+                        className="mr-2"
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleDialog}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button type="button" onClick={handleContinue}>
+                        OK
+                    </Button>
+                </div>
             </div>
         </div>
     );

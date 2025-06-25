@@ -38,20 +38,30 @@ export const KMeansClusterContainer = ({
 
     useEffect(() => {
         const loadFormData = async () => {
-            try {
-                const savedData = await getFormData("KMeansCluster");
-                if (savedData) {
-                    const { id, ...formDataWithoutId } = savedData;
-                    setFormData(formDataWithoutId);
-                } else {
-                    setFormData({ ...KMeansClusterDefault });
-                }
-            } catch (error) {
-                toast.error("Failed to load form data:", error ?? "");
+            const savedData = await getFormData("KMeansCluster");
+            if (savedData) {
+                const { id, ...formDataWithoutId } = savedData;
+                setFormData(formDataWithoutId);
+            } else {
+                setFormData({ ...KMeansClusterDefault });
             }
         };
 
-        loadFormData();
+        toast.promise(loadFormData, {
+            loading: "Loading K-Means Cluster settings...",
+            success: () => {
+                return "K-Means Cluster settings loaded successfully.";
+            },
+            error: (err) => {
+                return (
+                    <span>
+                        An error occurred while loading settings.
+                        <br />
+                        Error: {String(err)}
+                    </span>
+                );
+            },
+        });
     }, []);
 
     const updateFormData = <T extends keyof typeof formData>(
@@ -106,8 +116,8 @@ export const KMeansClusterContainer = ({
 
     const resetFormData = async () => {
         try {
-            await clearFormData("KMeansCluster");
             setFormData({ ...KMeansClusterDefault });
+            await clearFormData("KMeansCluster");
         } catch (error) {
             toast.error("Failed to clear form data:", error ?? "");
         }

@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModal } from "@/hooks/useModal";
+import { toast } from "sonner";
 import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
@@ -208,6 +209,12 @@ export const KMeansClusterDialog = ({
     };
 
     const handleContinue = () => {
+        if (targetVars.length === 0) {
+            toast.warning(
+                "Please select at least one variable for clustering."
+            );
+            return;
+        }
         Object.entries(mainState).forEach(([key, value]) => {
             updateFormData(key as keyof KMeansClusterMainType, value);
         });
@@ -305,6 +312,7 @@ export const KMeansClusterDialog = ({
                                                 type="number"
                                                 placeholder=""
                                                 value={mainState.Cluster ?? ""}
+                                                min={2}
                                                 onChange={(e) =>
                                                     handleChange(
                                                         "Cluster",

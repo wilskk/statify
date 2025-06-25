@@ -39,6 +39,7 @@ import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
+import { toast } from "sonner";
 
 export const UnivariatePostHoc = ({
     isPostHocOpen,
@@ -147,6 +148,12 @@ export const UnivariatePostHoc = ({
     };
 
     const handleContinue = () => {
+        if (postHocState.Dunnett && !postHocState.CategoryMethod) {
+            toast.warning(
+                "Please select a control category for the Dunnett test."
+            );
+            return;
+        }
         Object.entries(postHocState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariatePostHocType, value);
         });
@@ -166,10 +173,10 @@ export const UnivariatePostHoc = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="w-full min-h-[525px] rounded-lg border md:min-w-[200px]"
+                    className="w-full min-h-[650px] rounded-lg border md:min-w-[200px]"
                 >
                     <ResizablePanel defaultSize={50}>
                         <div className="p-2 h-full">
@@ -181,7 +188,7 @@ export const UnivariatePostHoc = ({
                                 onReorderVariable={handleReorderVariable}
                                 highlightedVariable={highlightedVariable}
                                 setHighlightedVariable={setHighlightedVariable}
-                                availableListHeight="280px"
+                                availableListHeight="200px"
                                 showArrowButtons
                             />
                         </div>
@@ -674,21 +681,25 @@ export const UnivariatePostHoc = ({
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button type="button" onClick={handleContinue}>
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsPostHocOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsPostHocOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button type="button" onClick={handleContinue}>
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     UnivariateBootstrapProps,
@@ -16,6 +16,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 
 export const UnivariateBootstrap = ({
     isBootstrapOpen,
@@ -26,28 +31,65 @@ export const UnivariateBootstrap = ({
     const [bootstrapState, setBootstrapState] =
         useState<UnivariateBootstrapType>({ ...data });
     const [isContinueDisabled, setIsContinueDisabled] = useState(false);
-    const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+
+    const [availableVars, setAvailableVars] = useState<Variable[]>([]);
+    const [strataVars, setStrataVars] = useState<Variable[]>([]);
+    const [highlightedVariable, setHighlightedVariable] = useState<{
+        id: string;
+        source: string;
+    } | null>(null);
+
+    const listStateSetters: Record<
+        string,
+        React.Dispatch<React.SetStateAction<Variable[]>>
+    > = {
+        available: setAvailableVars,
+        StrataVars: setStrataVars,
+    };
 
     useEffect(() => {
         if (isBootstrapOpen) {
             setBootstrapState({ ...data });
-            setAvailableVariables(data.Variables ?? []);
+
+            const allVariables: Variable[] = (data.Variables || []).map(
+                (name, index) => ({
+                    name,
+                    tempId: name,
+                    label: name,
+                    columnIndex: index,
+                    type: "NUMERIC",
+                    width: 8,
+                    decimals: 2,
+                    align: "left",
+                    missing: null,
+                    measure: "unknown",
+                    role: "input",
+                    values: [],
+                    columns: 0,
+                })
+            );
+
+            const initialUsedNames = new Set(data.StrataVariables || []);
+            const varsMap = new Map(allVariables.map((v) => [v.name, v]));
+
+            setStrataVars(
+                (data.StrataVariables || [])
+                    .map((name) => varsMap.get(name))
+                    .filter(Boolean) as Variable[]
+            );
+
+            setAvailableVars(
+                allVariables.filter((v) => !initialUsedNames.has(v.name))
+            );
         }
     }, [isBootstrapOpen, data]);
 
     useEffect(() => {
-        const usedVariables = [
-            ...(bootstrapState.StrataVariables || []),
-        ].filter(Boolean);
-
-        if (data.Variables) {
-            const updatedVariables = data.Variables.filter(
-                (variable) => !usedVariables.includes(variable)
-            );
-
-            setAvailableVariables(updatedVariables);
-        }
-    }, [bootstrapState, data.Variables]);
+        setBootstrapState((prevState) => ({
+            ...prevState,
+            StrataVariables: strataVars.map((v) => v.name),
+        }));
+    }, [strataVars]);
 
     const handleChange = (
         field: keyof UnivariateBootstrapType,
@@ -75,32 +117,71 @@ export const UnivariateBootstrap = ({
         }));
     };
 
-    const handleDrop = (target: string, variable: string) => {
-        setBootstrapState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "StrataVariables") {
-                updatedState.StrataVariables = [
-                    ...(updatedState.StrataVariables || []),
-                    variable,
-                ];
-            }
-            return updatedState;
-        });
-    };
+    const handleMoveVariable = useCallback(
+        (variable: Variable, fromListId: string, toListId: string) => {
+            const fromSetter = listStateSetters[fromListId];
+            const toSetter = listStateSetters[toListId];
 
-    const handleRemoveVariable = (target: string, variable?: string) => {
-        setBootstrapState((prev) => {
-            const updatedState = { ...prev };
-            if (target === "StrataVariables") {
-                updatedState.StrataVariables = (
-                    updatedState.StrataVariables || []
-                ).filter((item) => item !== variable);
+            if (fromSetter) {
+                fromSetter((prev) =>
+                    prev.filter((v) => v.tempId !== variable.tempId)
+                );
             }
-            return updatedState;
-        });
-    };
+
+            if (toSetter) {
+                toSetter((prev) => [...prev, variable]);
+            }
+        },
+        [strataVars]
+    );
+
+    const handleReorderVariable = useCallback(
+        (listId: string, newVariables: Variable[]) => {
+            const setter = listStateSetters[listId];
+            if (setter) {
+                setter(newVariables);
+            }
+        },
+        []
+    );
+
+    const targetListsConfig: TargetListConfig[] = [
+        {
+            id: "StrataVars",
+            title: "Strata Variables:",
+            variables: strataVars,
+            height: "150px",
+        },
+    ];
 
     const handleContinue = () => {
+        if (bootstrapState.PerformBootStrapping) {
+            if (
+                !bootstrapState.NumOfSamples ||
+                bootstrapState.NumOfSamples <= 0
+            ) {
+                toast.warning("Number of samples must be a positive number.");
+                return;
+            }
+            if (
+                !bootstrapState.Level ||
+                bootstrapState.Level <= 0 ||
+                bootstrapState.Level >= 100
+            ) {
+                toast.warning("Confidence level must be between 0 and 100.");
+                return;
+            }
+            if (
+                bootstrapState.Stratified &&
+                (!bootstrapState.StrataVariables ||
+                    bootstrapState.StrataVariables.length === 0)
+            ) {
+                toast.warning(
+                    "Please select at least one strata variable for stratified sampling."
+                );
+                return;
+            }
+        }
         Object.entries(bootstrapState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateBootstrapType, value);
         });
@@ -111,7 +192,7 @@ export const UnivariateBootstrap = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col items-start gap-2 p-4">
+            <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center space-x-2">
                         <Checkbox
@@ -191,9 +272,9 @@ export const UnivariateBootstrap = ({
                 </div>
                 <ResizablePanelGroup
                     direction="vertical"
-                    className="w-full min-h-[330px] rounded-lg border md:min-w-[200px]"
+                    className="w-full min-h-[500px] rounded-lg border md:min-w-[200px]"
                 >
-                    <ResizablePanel defaultSize={30}>
+                    <ResizablePanel defaultSize={25}>
                         <div className="flex flex-col h-full gap-2 p-2">
                             <Label className="font-bold">
                                 Confidence Intervals
@@ -253,7 +334,7 @@ export const UnivariateBootstrap = ({
                         </div>
                     </ResizablePanel>
                     <ResizableHandle />
-                    <ResizablePanel defaultSize={55}>
+                    <ResizablePanel defaultSize={75}>
                         <div className="flex flex-col h-full gap-2 p-2">
                             <Label className="font-bold">Sampling</Label>
                             <RadioGroup
@@ -283,144 +364,52 @@ export const UnivariateBootstrap = ({
                                             Stratified
                                         </Label>
                                     </div>
-                                    <ResizablePanelGroup direction="horizontal">
-                                        <ResizablePanel defaultSize={50}>
-                                            <div className="flex flex-col gap-2 p-2">
-                                                <Label>Variables:</Label>
-                                                <div>
-                                                    <ScrollArea className="h-[100px] w-full p-2 border rounded">
-                                                        <div className="flex flex-col gap-1 justify-start items-start">
-                                                            {availableVariables.map(
-                                                                (
-                                                                    variable: string,
-                                                                    index: number
-                                                                ) => (
-                                                                    <Badge
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                        className="w-full text-start text-sm font-light p-2 cursor-pointer"
-                                                                        variant="outline"
-                                                                        draggable
-                                                                        onDragStart={(
-                                                                            e
-                                                                        ) =>
-                                                                            e.dataTransfer.setData(
-                                                                                "text",
-                                                                                variable
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            variable
-                                                                        }
-                                                                    </Badge>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    </ScrollArea>
-                                                </div>
-                                            </div>
-                                        </ResizablePanel>
-                                        <ResizableHandle withHandle />
-                                        <ResizablePanel defaultSize={50}>
-                                            <div className="flex flex-col gap-2 p-2">
-                                                <div
-                                                    onDragOver={(e) =>
-                                                        e.preventDefault()
-                                                    }
-                                                    onDrop={(e) => {
-                                                        const variable =
-                                                            e.dataTransfer.getData(
-                                                                "text"
-                                                            );
-                                                        handleDrop(
-                                                            "StrataVariables",
-                                                            variable
-                                                        );
-                                                    }}
-                                                >
-                                                    <Label>
-                                                        Strata Variables:
-                                                    </Label>
-                                                    <div>
-                                                        <ScrollArea className="h-[100px] w-full p-2 border rounded">
-                                                            {bootstrapState.StrataVariables &&
-                                                            bootstrapState
-                                                                .StrataVariables
-                                                                .length > 0 ? (
-                                                                <div className="flex flex-col gap-1 justify-start items-start">
-                                                                    {bootstrapState.StrataVariables.map(
-                                                                        (
-                                                                            variable,
-                                                                            index
-                                                                        ) => (
-                                                                            <Badge
-                                                                                key={
-                                                                                    index
-                                                                                }
-                                                                                className="text-start text-sm font-light p-2 cursor-pointer"
-                                                                                variant="outline"
-                                                                                onClick={() =>
-                                                                                    handleRemoveVariable(
-                                                                                        "StrataVariables",
-                                                                                        variable
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    variable
-                                                                                }
-                                                                            </Badge>
-                                                                        )
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-sm font-light text-gray-500">
-                                                                    Drop
-                                                                    variables
-                                                                    here.
-                                                                </span>
-                                                            )}
-                                                        </ScrollArea>
-                                                    </div>
-                                                    <input
-                                                        type="hidden"
-                                                        value={
-                                                            bootstrapState.StrataVariables ??
-                                                            ""
-                                                        }
-                                                        name="Independents"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </ResizablePanel>
-                                    </ResizablePanelGroup>
+                                    <VariableListManager
+                                        availableVariables={availableVars}
+                                        targetLists={targetListsConfig}
+                                        variableIdKey="tempId"
+                                        highlightedVariable={
+                                            highlightedVariable
+                                        }
+                                        setHighlightedVariable={
+                                            setHighlightedVariable
+                                        }
+                                        onMoveVariable={handleMoveVariable}
+                                        onReorderVariable={
+                                            handleReorderVariable
+                                        }
+                                        showArrowButtons={true}
+                                        availableListHeight="200px"
+                                    />
                                 </div>
                             </RadioGroup>
                         </div>
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsBootstrapOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsBootstrapOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

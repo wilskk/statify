@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "sonner";
 
 export const UnivariateOptions = ({
     isOptionsOpen,
@@ -54,6 +55,14 @@ export const UnivariateOptions = ({
     };
 
     const handleContinue = () => {
+        if (
+            optionsState.SigLevel === null ||
+            optionsState.SigLevel <= 0 ||
+            optionsState.SigLevel >= 1
+        ) {
+            toast.warning("Significance level must be between 0 and 1.");
+            return;
+        }
         Object.entries(optionsState).forEach(([key, value]) => {
             updateFormData(key as keyof UnivariateOptionsType, value);
         });
@@ -64,7 +73,7 @@ export const UnivariateOptions = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[450px] rounded-lg border md:min-w-[200px]"
@@ -424,25 +433,29 @@ export const UnivariateOptions = ({
                     </div>
                 </div>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isContinueDisabled}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsOptionsOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsOptionsOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={isContinueDisabled}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

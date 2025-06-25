@@ -19,6 +19,7 @@ import VariableListManager, {
     TargetListConfig,
 } from "@/components/Common/VariableListManager";
 import type { Variable } from "@/types/Variable";
+import { toast } from "sonner";
 
 export const UnivariatePlots = ({
     isPlotsOpen,
@@ -226,7 +227,12 @@ export const UnivariatePlots = ({
         const sLines = separateLinesVars[0]?.name;
         const sPlots = separatePlotsVars[0]?.name;
 
-        if (!hAxis) return;
+        if (!hAxis) {
+            toast.warning(
+                "A horizontal axis variable is required to add a plot."
+            );
+            return;
+        }
 
         let newPlot = hAxis;
         if (sLines) newPlot += `*${sLines}`;
@@ -245,7 +251,12 @@ export const UnivariatePlots = ({
         const sLines = separateLinesVars[0]?.name;
         const sPlots = separatePlotsVars[0]?.name;
 
-        if (!hAxis) return;
+        if (!hAxis) {
+            toast.warning(
+                "A horizontal axis variable is required to change a plot."
+            );
+            return;
+        }
 
         let newPlot = hAxis;
         if (sLines) newPlot += `*${sLines}`;
@@ -307,7 +318,7 @@ export const UnivariatePlots = ({
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex flex-col gap-2 p-4">
+            <div className="flex flex-col gap-2 p-4 flex-grow">
                 <ResizablePanelGroup
                     direction="vertical"
                     className="w-full min-h-[775px] rounded-lg border md:min-w-[200px]"
@@ -521,25 +532,29 @@ export const UnivariatePlots = ({
                     </label>
                 </div>
             </div>
-            <div className="flex-grow" />
-            <div className="flex justify-start gap-2 p-4 border-t">
-                <Button
-                    disabled={isAddButtonDisabled()}
-                    type="button"
-                    onClick={handleContinue}
-                >
-                    Continue
-                </Button>
-                <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setIsPlotsOpen(false)}
-                >
-                    Cancel
-                </Button>
-                <Button type="button" variant="secondary">
-                    Help
-                </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div>
+                    <Button type="button" variant="ghost">
+                        Help
+                    </Button>
+                </div>
+                <div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsPlotsOpen(false)}
+                        className="mr-2"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        disabled={!selectedPlot}
+                        type="button"
+                        onClick={handleContinue}
+                    >
+                        Continue
+                    </Button>
+                </div>
             </div>
         </div>
     );

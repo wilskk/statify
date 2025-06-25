@@ -46,20 +46,30 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
 
     useEffect(() => {
         const loadFormData = async () => {
-            try {
-                const savedData = await getFormData("Univariate");
-                if (savedData) {
-                    const { id, ...formDataWithoutId } = savedData;
-                    setFormData(formDataWithoutId);
-                } else {
-                    setFormData({ ...UnivariateDefault });
-                }
-            } catch (error) {
-                toast.error("Failed to load form data:", error ?? "");
+            const savedData = await getFormData("Univariate");
+            if (savedData) {
+                const { id, ...formDataWithoutId } = savedData;
+                setFormData(formDataWithoutId);
+            } else {
+                setFormData({ ...UnivariateDefault });
             }
         };
 
-        loadFormData();
+        toast.promise(loadFormData, {
+            loading: "Loading Univariate Analysis settings...",
+            success: () => {
+                return "Univariate Analysis settings loaded successfully.";
+            },
+            error: (err) => {
+                return (
+                    <span>
+                        An error occurred while loading settings.
+                        <br />
+                        Error: {String(err)}
+                    </span>
+                );
+            },
+        });
     }, []);
 
     useEffect(() => {
