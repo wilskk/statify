@@ -22,7 +22,6 @@ interface BoxJenkinsModelProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    saveAsVariable: boolean;
 }
 
 const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) => {
@@ -121,10 +120,13 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
                     selectedVariables,
-                    saveAsVariable
+                };
+                const stateToSave = {
+                    ...variableToSave,
+                    saveAsVariable,
                 };
                 await saveFormData("BoxJenkinsModel", stateToSave, "variables");
             } catch (error) {

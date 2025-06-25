@@ -22,7 +22,6 @@ interface SmoothingProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    saveAsVariable: boolean;
 }
 
 const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
@@ -119,9 +118,12 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
                     selectedVariables,
+                };
+                const stateToSave = {
+                    ...variableToSave,
                     saveAsVariable,
                 };
                 await saveFormData("Smoothing", stateToSave, "variables");

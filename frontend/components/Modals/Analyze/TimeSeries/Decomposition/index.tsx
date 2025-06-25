@@ -22,7 +22,6 @@ interface DecompositionProps {
 interface VariableState {
     availableVariables: Variable[];
     selectedVariables: Variable[];
-    saveAsVariable: boolean;
 }
 
 const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
@@ -120,9 +119,12 @@ const Decomposition: FC<DecompositionProps> = ({ onClose, containerType }) => {
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
                     selectedVariables,
+                };
+                const stateToSave = {
+                    ...variableToSave,
                     saveAsVariable,
                 };
                 await saveFormData("Decomposition", stateToSave, "variables");
