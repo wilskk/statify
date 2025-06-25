@@ -88,6 +88,7 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Analyze modals - from dedicated registry
   ...ANALYZE_MODAL_COMPONENTS,
   
+  
   // Transform modals - lazy loaded
   [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
@@ -148,6 +149,7 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
   
   // Analyze modals - from dedicated preferences
   ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
+  
   
   // Chart modals yang kompleks selalu sebagai dialog
   [ModalType.ChartBuilderModal]: "sidebar",
