@@ -15,6 +15,7 @@ pub struct ClusteringResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ANOVATable {
     pub clusters: HashMap<String, ANOVACluster>,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -48,12 +49,13 @@ pub struct IterationHistory {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IterationStep {
     pub iteration: i32,
-    pub changes: HashMap<String, f64>,
+    pub changes: Vec<(String, f64)>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClusterMembership {
     pub case_number: i32,
+    pub case_name: Option<String>,
     pub cluster: i32,
     pub distance: f64,
 }
@@ -73,4 +75,5 @@ pub struct ProcessedData {
     pub variables: Vec<String>,
     pub data_matrix: Vec<Vec<f64>>,
     pub case_numbers: Vec<i32>,
+    pub case_names: Option<Vec<String>>,
 }

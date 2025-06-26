@@ -6,6 +6,7 @@ import { FILE_MODAL_COMPONENTS, FILE_MODAL_CONTAINER_PREFERENCES } from '@/compo
 import { DATA_MODAL_COMPONENTS, DATA_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Data/';
 import { ANALYZE_MODAL_COMPONENTS, ANALYZE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze';
 import { EDIT_MODAL_COMPONENTS, EDIT_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Edit/';
+import { TIME_SERIES_MODAL_COMPONENTS, TIME_SERIES_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Analyze/TimeSeries';
 import { TRANSFORM_MODAL_COMPONENTS, TRANSFORM_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/Transform';
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
@@ -21,11 +22,11 @@ const SimpleBarModal = lazy(() => import('@/components/Modals/Graphs/LegacyDialo
 const ChartBuilderModal = lazy(() => import('@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal'));
 
 // Lazy load time series modals
-const SmoothingModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/SmoothingModal'));
-const DecompositionModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/DecompositionModal'));
-const AutocorrelationModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/AutocorrelationModal'));
-const UnitRootTestModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/UnitRootTestModal'));
-const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal'));
+const SmoothingModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Smoothing'));
+const DecompositionModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Decomposition'));
+const AutocorrelationModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Autocorrelation'));
+const UnitRootTestModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/UnitRootTest'));
+const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel'));
 
 /**
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
@@ -85,8 +86,12 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Analyze modals - from dedicated registry
   ...ANALYZE_MODAL_COMPONENTS,
   
-  // Transform modals - from dedicated registry
-  ...TRANSFORM_MODAL_COMPONENTS,
+  // Time series modals - from dedicated registry
+  ...TIME_SERIES_MODAL_COMPONENTS,
+  
+  // Transform modals - lazy loaded
+  // [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
+  // [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
   
   // Regression modals - lazy loaded
   [ModalType.ModalLinear]: withSuspense(ModalLinear as any) as React.ComponentType<BaseModalProps>,
@@ -99,7 +104,7 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Chart modals - lazy loaded
   [ModalType.ChartBuilderModal]: withSuspense(ChartBuilderModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.SimpleBarModal]: withSuspense(SimpleBarModal as any) as React.ComponentType<BaseModalProps>,
-  
+
   // Time series modals - lazy loaded
   [ModalType.Smoothing]: withSuspense(SmoothingModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.Decomposition]: withSuspense(DecompositionModal as any) as React.ComponentType<BaseModalProps>,
@@ -144,6 +149,9 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
   
   // Analyze modals - from dedicated preferences
   ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
+  
+  // Time series modals - from dedicated preferences
+  ...TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
   
   // Transform modals - from dedicated preferences
   ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,

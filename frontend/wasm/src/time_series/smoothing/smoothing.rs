@@ -3,15 +3,20 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct Smoothing {
     data_header: String, // Header data
-    data: Vec<f64>,      // Data input
+    data: Vec<f64>, // Data input
     time_header: String, // Header waktu
-    time: Vec<String>,   // Waktu terkait data
+    time: Vec<String>, // Waktu terkait data
 }
 
 #[wasm_bindgen]
-impl Smoothing{
+impl Smoothing {
     #[wasm_bindgen(constructor)]
-    pub fn new(data_header: String, data: Vec<f64>, time_header: String, time: Vec<String>) -> Smoothing {
+    pub fn new(
+        data_header: String,
+        data: Vec<f64>,
+        time_header: String,
+        time: Vec<String>
+    ) -> Smoothing {
         Smoothing {
             data_header,
             data,

@@ -1,4 +1,3 @@
-// calculate_distance.rs
 use std::collections::HashMap;
 use crate::hierarchical::models::{
     config::{ ClusterConfig, IntervalMethod, CountsMethod, BinaryMethod },
@@ -16,6 +15,8 @@ use super::core::{
     squared_euclidean_distance,
 };
 
+// Fungsi utama untuk menghitung jarak antara dua kasus
+// Menentukan tipe pengukuran jarak berdasarkan konfigurasi
 pub fn calculate_distance(
     case1: &HashMap<String, DataValue>,
     case2: &HashMap<String, DataValue>,
@@ -29,7 +30,7 @@ pub fn calculate_distance(
     } else if config.method.binary {
         calculate_binary_distance(case1, case2, variables, &config.method.binary_method, config)
     } else {
-        // Default to squared Euclidean distance
+        // Default ke jarak Euclidean kuadrat
         calculate_interval_distance(
             case1,
             case2,
@@ -40,6 +41,7 @@ pub fn calculate_distance(
     }
 }
 
+// Ekstrak nilai numerik dari kasus untuk variabel yang ditentukan
 fn extract_numeric_values(case: &HashMap<String, DataValue>, variables: &[String]) -> Vec<f64> {
     variables
         .iter()
@@ -49,6 +51,7 @@ fn extract_numeric_values(case: &HashMap<String, DataValue>, variables: &[String
         .collect()
 }
 
+// Menghitung jarak interval antara dua kasus
 fn calculate_interval_distance(
     case1: &HashMap<String, DataValue>,
     case2: &HashMap<String, DataValue>,
@@ -62,6 +65,7 @@ fn calculate_interval_distance(
     compute_interval_distance(&values1, &values2, measure, config)
 }
 
+// Menghitung jarak counts antara dua kasus
 fn calculate_counts_distance(
     case1: &HashMap<String, DataValue>,
     case2: &HashMap<String, DataValue>,
@@ -75,6 +79,7 @@ fn calculate_counts_distance(
     compute_counts_distance(&values1, &values2, method)
 }
 
+// Menghitung jarak binary antara dua kasus
 fn calculate_binary_distance(
     case1: &HashMap<String, DataValue>,
     case2: &HashMap<String, DataValue>,
@@ -88,6 +93,7 @@ fn calculate_binary_distance(
     compute_binary_distance(&values1, &values2, method, config)
 }
 
+// Menghitung jarak antar variabel
 pub fn calculate_variable_distance(
     variable_values: &HashMap<String, Vec<f64>>,
     var1: &str,
@@ -102,15 +108,15 @@ pub fn calculate_variable_distance(
         } else if config.method.binary {
             compute_binary_distance(values1, values2, &config.method.binary_method, config)
         } else {
-            // Default to squared Euclidean
+            // Default ke jarak Euclidean kuadrat
             compute_interval_distance(values1, values2, &IntervalMethod::SquaredEuclidean, config)
         }
     } else {
-        0.0 // Default if no values found
+        0.0 // Default jika tidak ditemukan nilai
     }
 }
 
-// Simplified distance calculation functions
+// Implementasi berbagai fungsi pengukuran jarak interval
 pub fn compute_interval_distance(
     values1: &[f64],
     values2: &[f64],
@@ -136,6 +142,7 @@ pub fn compute_interval_distance(
     }
 }
 
+// Implementasi pengukuran jarak untuk data counts
 fn compute_counts_distance(values1: &[f64], values2: &[f64], method: &CountsMethod) -> f64 {
     match method {
         CountsMethod::CHISQ => {
@@ -170,6 +177,7 @@ fn compute_counts_distance(values1: &[f64], values2: &[f64], method: &CountsMeth
     }
 }
 
+// Implementasi pengukuran jarak/kesamaan untuk data binary
 fn compute_binary_distance(
     values1: &[f64],
     values2: &[f64],

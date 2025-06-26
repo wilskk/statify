@@ -75,12 +75,14 @@ pub fn run_overals_algorithm(
 
     // Initialize object scores
     let mut object_scores = initialize_object_scores(dimensions, num_cases, use_random_init);
+    web_sys::console::log_1(&format!("Initial object scores: {:?}", object_scores).into());
 
     // Center and normalize object scores
     center_and_normalize_scores(&mut object_scores);
 
     // Discover categories for each variable
     let category_values = discover_categories(data);
+    web_sys::console::log_1(&format!("Category values: {:?}", category_values).into());
 
     // Initialize category quantifications and variable weights
     let (mut variable_weights, mut category_quantifications) =

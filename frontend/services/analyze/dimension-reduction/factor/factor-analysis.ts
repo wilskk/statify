@@ -8,12 +8,7 @@ export async function analyzeFactor({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: FactorAnalysisType) {
-    await init();
-
     const targetVariables = configData.main.TargetVar || [];
     const valueTarget = configData.main.ValueTarget
         ? [configData.main.ValueTarget]
@@ -36,6 +31,7 @@ export async function analyzeFactor({
 
     console.log(configData);
 
+    await init();
     // const factor = new FactorAnalysis(
     //     slicedDataForTarget,
     //     slicedDataForValue,
@@ -57,9 +53,6 @@ export async function analyzeFactor({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultFactorAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

@@ -6,12 +6,7 @@ export async function analyzeVarianceComps({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: VarianceCompsAnalysisType) {
-    await init();
-
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
     const CovariateVariables = configData.main.Covar || [];
@@ -58,13 +53,16 @@ export async function analyzeVarianceComps({
 
     console.log(configData);
 
-    // const varianceComps = new VarianceCompsAnalysis(
+    await init();
+    // const varianceComps = new VarianceComponentsAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,
+    //     slicedDataForRandomFactor,
     //     slicedDataForCovariate,
     //     slicedDataForWlsWeight,
     //     varDefsForDependent,
     //     varDefsForFixFactor,
+    //     varDefsForRandomFactor,
     //     varDefsForCovariate,
     //     varDefsForWlsWeight,
     //     configData
@@ -82,10 +80,7 @@ export async function analyzeVarianceComps({
     /*
      * 🎉 Final Result Process 🎯
      * */
-    // await resultVarianceCompsAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
+    // await resultVarianceComponents({
     //     formattedResult: formattedResults ?? [],
     // });
 }

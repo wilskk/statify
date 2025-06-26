@@ -148,7 +148,7 @@ export const UnivariateContrast = ({
         <>
             {/* Contrast Dialog */}
             <Dialog open={isContrastOpen} onOpenChange={setIsContrastOpen}>
-                <DialogContent className="sm:max-w-sm">
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Univariate: Contrast</DialogTitle>
                     </DialogHeader>

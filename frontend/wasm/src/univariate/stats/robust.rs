@@ -1,5 +1,5 @@
 // robust.rs
-use nalgebra::DMatrix;
+use nalgebra::{ DMatrix, DVector };
 
 use crate::univariate::models::{
     config::UnivariateConfig,
@@ -7,15 +7,7 @@ use crate::univariate::models::{
     result::{ ConfidenceInterval, ParameterEstimateEntry, ParameterEstimates },
 };
 
-use super::core::{
-    calculate_t_critical,
-    calculate_t_significance,
-    extract_dependent_value,
-    get_factor_levels,
-    data_value_to_string,
-    to_dmatrix,
-    to_dvector,
-};
+use super::core::*;
 
 /// Calculate parameter estimates with robust standard errors
 pub fn calculate_robust_parameter_estimates(
@@ -63,7 +55,7 @@ pub fn calculate_robust_parameter_estimates(
     // Extract y values and build X matrix
     for records in &data.dependent_data {
         for record in records {
-            if let Some(y) = extract_dependent_value(record, &dep_var_name) {
+            if let Some(y) = extract_numeric_from_record(record, &dep_var_name) {
                 y_values.push(y);
 
                 // Create a row for X matrix
@@ -103,7 +95,8 @@ pub fn calculate_robust_parameter_estimates(
                             .get(covar)
                             .map(|val| {
                                 match val {
-                                    DataValue::Number(n) => *n,
+                                    DataValue::Number(n) => *n as f64,
+                                    DataValue::NumberFloat(f) => *f,
                                     DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                     _ => 0.0,
                                 }
@@ -127,8 +120,16 @@ pub fn calculate_robust_parameter_estimates(
         return Err("No valid data for robust standard errors calculation".to_string());
     }
 
-    let y = to_dvector(&y_values);
-    let x = to_dmatrix(&x_matrix);
+    let y = DVector::from_row_slice(&y_values);
+
+    // Convert x_matrix to DMatrix
+    let nrows = x_matrix.len();
+    let ncols = if nrows > 0 { x_matrix[0].len() } else { 0 };
+    let mut x_data = Vec::with_capacity(nrows * ncols);
+    for row in &x_matrix {
+        x_data.extend_from_slice(row);
+    }
+    let x = DMatrix::from_row_slice(nrows, ncols, &x_data);
 
     // Calculate OLS parameters and residuals
     let xtx = &x.transpose() * &x;
@@ -164,23 +165,23 @@ pub fn calculate_robust_parameter_estimates(
         } else if config.options.hc2 {
             // HC2: Leverage adjustment
             for i in 0..n {
-                omega[(i, i)] = residuals[i].powi(2) / (1.0 - h_diag[i]);
+                omega[(i, i)] = residuals[i].powi(2) / (1.0f64 - h_diag[i]);
             }
         } else if config.options.hc3 {
             // HC3: Secondary leverage adjustment
             for i in 0..n {
-                omega[(i, i)] = residuals[i].powi(2) / (1.0 - h_diag[i]).powi(2);
+                omega[(i, i)] = residuals[i].powi(2) / (1.0f64 - h_diag[i]).powi(2);
             }
         } else if config.options.hc4 {
             // HC4: Cribari-Neto adjustment
             for i in 0..n {
                 let delta_i = (4.0f64).min(((n as f64) * h_diag[i]) / (p as f64));
-                omega[(i, i)] = residuals[i].powi(2) / (1.0 - h_diag[i]).powf(delta_i);
+                omega[(i, i)] = residuals[i].powi(2) / (1.0f64 - h_diag[i]).powf(delta_i);
             }
         } else {
             // Default to HC3 if none specified
             for i in 0..n {
-                omega[(i, i)] = residuals[i].powi(2) / (1.0 - h_diag[i]).powi(2);
+                omega[(i, i)] = residuals[i].powi(2) / (1.0f64 - h_diag[i]).powi(2);
             }
         }
 
@@ -204,10 +205,10 @@ pub fn calculate_robust_parameter_estimates(
             let std_error = robust_se[i];
             let t_value = b / std_error;
             let df = n - p;
-            let significance = calculate_t_significance(df, t_value);
+            let significance = calculate_t_significance(t_value, df);
 
             // Calculate confidence interval
-            let t_critical = calculate_t_critical(df, config.options.sig_level / 2.0);
+            let t_critical = calculate_t_critical(Some(config.options.sig_level / 2.0), df);
             let ci_width = std_error * t_critical;
 
             // Add parameter
@@ -224,14 +225,39 @@ pub fn calculate_robust_parameter_estimates(
                 partial_eta_squared: t_value.powi(2) / (t_value.powi(2) + (df as f64)),
                 noncent_parameter: t_value.abs(),
                 observed_power: if config.options.obs_power {
-                    1.0 - (-t_value.abs() * 0.5).exp()
+                    1.0f64 - (-t_value.abs() * 0.5).exp()
                 } else {
                     0.0
                 },
+                is_redundant: false,
             });
         }
 
-        Ok(ParameterEstimates { estimates })
+        // Add notes about the robust estimation method used
+        let mut notes = Vec::new();
+
+        // Determine which HC method was used
+        let hc_method = if config.options.hc0 {
+            "HC0 (White's original estimator)"
+        } else if config.options.hc1 {
+            "HC1 (Finite sample correction)"
+        } else if config.options.hc2 {
+            "HC2 (Leverage adjustment)"
+        } else if config.options.hc3 {
+            "HC3 (Secondary leverage adjustment)"
+        } else if config.options.hc4 {
+            "HC4 (Cribari-Neto adjustment)"
+        } else {
+            "HC3 (Secondary leverage adjustment)" // Default
+        };
+
+        notes.push(format!("a. Robust standard errors calculated using {} method", hc_method));
+        notes.push(format!("b. Computed using alpha = {:.2}", config.options.sig_level));
+        if config.options.obs_power {
+            notes.push("c. Observed Power is computed using alpha = .05".to_string());
+        }
+
+        Ok(ParameterEstimates { estimates, notes })
     } else {
         Err("Matrix inversion failed in robust standard errors calculation".to_string())
     }

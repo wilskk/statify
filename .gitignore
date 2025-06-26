@@ -59,6 +59,8 @@ yarn-error.log*
 
 # dist
 /dist
+
+# tests
 backend/dist
 /_test/
 

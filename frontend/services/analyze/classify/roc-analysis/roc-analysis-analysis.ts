@@ -8,12 +8,7 @@ export async function analyzeRocAnalysis({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: RocAnalysisAnalysisType) {
-    await init();
-
     const TestVariables = configData.main.TestTargetVariable || [];
     const StateVariable = configData.main.StateTargetVariable
         ? [configData.main.StateTargetVariable]
@@ -46,6 +41,7 @@ export async function analyzeRocAnalysis({
 
     console.log(configData);
 
+    await init();
     // const rocAnalysis = new RocAnalysis(
     //     slicedDataForTest,
     //     slicedDataForState,
@@ -65,13 +61,10 @@ export async function analyzeRocAnalysis({
     // const formattedResults = transformROCAnalysisResult(results);
     // console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
     // await resultROCAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

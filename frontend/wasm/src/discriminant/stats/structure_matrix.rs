@@ -1,11 +1,26 @@
 use std::collections::HashMap;
-use nalgebra::DMatrix;
-use rayon::prelude::*;
 
 use crate::discriminant::models::{ result::StructureMatrix, AnalysisData, DiscriminantConfig };
-use crate::discriminant::stats::canonical_functions::calculate_canonical_functions;
-use super::core::{ extract_analyzed_dataset, get_stepwise_selected_variables, AnalyzedDataset };
 
+use super::core::{
+    calculate_canonical_functions,
+    calculate_correlation,
+    calculate_eigen_statistics,
+    extract_analyzed_dataset,
+    extract_case_values,
+};
+
+/// Calculate structure matrix for discriminant functions
+///
+/// This function calculates the pooled within-groups correlations between
+/// each original variable and each discriminant function.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A StructureMatrix object with correlations between variables and functions
 pub fn calculate_structure_matrix(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -14,160 +29,95 @@ pub fn calculate_structure_matrix(
 
     // Extract analyzed dataset
     let dataset = extract_analyzed_dataset(data, config)?;
+    let variables = &config.main.independent_variables;
 
-    // Get variables to use
-    let variables = if config.main.stepwise {
-        get_stepwise_selected_variables(data, config)?
-    } else {
-        config.main.independent_variables.clone()
-    };
-
-    let num_vars = variables.len();
-
-    // Calculate canonical functions
+    // Calculate discriminant functions and get eigenvalues
     let canonical_functions = calculate_canonical_functions(data, config)?;
+    let eigen_stats = calculate_eigen_statistics(data, config)?;
 
-    // Number of discriminant functions
-    let num_groups = dataset.group_labels.len();
-    let num_functions = std::cmp::min(num_groups - 1, num_vars);
+    // Number of functions
+    let num_functions = eigen_stats.eigenvalue.len();
 
-    if num_functions == 0 {
-        return Err("Not enough groups or variables for structure matrix".to_string());
-    }
+    // Initialize structure matrix
+    let mut correlations = HashMap::new();
 
-    // Calculate pooled within-groups covariance matrix
-    let pooled_within = calculate_pooled_within_matrix(&dataset, &variables);
-
-    // Extract eigenvectors from canonical functions
-    let mut eigenvectors = vec![vec![0.0; num_functions]; num_vars];
-    for (i, var) in variables.iter().enumerate() {
-        if let Some(coef_values) = canonical_functions.coefficients.get(var) {
-            for j in 0..num_functions {
-                if j < coef_values.len() {
-                    eigenvectors[i][j] = coef_values[j];
-                }
-            }
-        }
-    }
-
-    // Calculate within-groups correlation matrix
-    let within_corr = calculate_within_correlation_matrix(&pooled_within);
-
-    // Calculate structure matrix (pooled within-groups correlations) - parallelize by variable
-    let correlations: HashMap<String, Vec<f64>> = variables
-        .par_iter()
-        .enumerate()
-        .map(|(i, var)| {
-            let mut corr_values = Vec::with_capacity(num_functions);
-
-            for j in 0..num_functions {
-                // Calculate correlation between variable i and discriminant function j
-                let correlation = (0..num_vars).fold(0.0, |acc, k| {
-                    acc + within_corr[(i, k)] * eigenvectors[k][j]
-                });
-
-                corr_values.push(correlation);
-            }
-
-            (var.clone(), corr_values)
-        })
+    // Calculate and store discriminant scores for each case
+    let mut all_function_scores: Vec<Vec<f64>> = vec![Vec::new(); num_functions];
+    let mut all_variable_values: HashMap<String, Vec<f64>> = variables
+        .iter()
+        .map(|var| (var.clone(), Vec::new()))
         .collect();
 
-    // Sort variables by absolute magnitude of correlation with first function
-    let mut sorted_variables = variables.clone();
-    sorted_variables.sort_by(|a, b| {
-        let corr_a = correlations.get(a).unwrap_or(&vec![0.0])[0].abs();
-        let corr_b = correlations.get(b).unwrap_or(&vec![0.0])[0].abs();
-        corr_b.partial_cmp(&corr_a).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    // Calculate function scores for all cases
+    for group_data in &data.group_data {
+        for case in group_data {
+            // Extract case values for independent variables
+            let case_values = extract_case_values(case, variables);
+            if case_values.len() != variables.len() {
+                continue;
+            }
+
+            // Calculate discriminant scores for this case
+            let discriminant_scores = variables
+                .iter()
+                .enumerate()
+                .fold(vec![0.0; num_functions], |mut scores, (var_idx, var_name)| {
+                    if let Some(coefs) = canonical_functions.coefficients.get(var_name) {
+                        for func_idx in 0..num_functions {
+                            if func_idx < coefs.len() && var_idx < case_values.len() {
+                                scores[func_idx] += case_values[var_idx] * coefs[func_idx];
+                            }
+                        }
+                    }
+                    scores
+                });
+
+            // Add constants
+            let mut final_scores = discriminant_scores.clone();
+            if let Some(constants) = canonical_functions.coefficients.get("(Constant)") {
+                for func_idx in 0..num_functions.min(constants.len()) {
+                    final_scores[func_idx] += constants[func_idx];
+                }
+            }
+
+            // Store function scores and variable values
+            for func_idx in 0..num_functions {
+                all_function_scores[func_idx].push(final_scores[func_idx]);
+            }
+
+            for (var_idx, var_name) in variables.iter().enumerate() {
+                if var_idx < case_values.len() {
+                    all_variable_values.get_mut(var_name).unwrap().push(case_values[var_idx]);
+                }
+            }
+        }
+    }
+
+    // Calculate correlations between each variable and each function
+    for var_name in variables {
+        let var_values = all_variable_values.get(var_name).unwrap();
+        let mut var_correlations = Vec::with_capacity(num_functions);
+
+        for func_idx in 0..num_functions {
+            let func_scores = &all_function_scores[func_idx];
+
+            // Ensure we have enough data
+            if var_values.len() == func_scores.len() && !var_values.is_empty() {
+                let correlation = calculate_correlation(var_values, func_scores);
+                var_correlations.push(correlation);
+            } else {
+                var_correlations.push(0.0);
+            }
+        }
+
+        correlations.insert(var_name.clone(), var_correlations);
+    }
+
+    // Create function names (Function 1, Function 2, etc.)
+    let functions: Vec<String> = (1..=num_functions).map(|i| format!("Function {}", i)).collect();
 
     Ok(StructureMatrix {
-        variables: sorted_variables,
+        variables: variables.clone(),
         correlations,
     })
-}
-
-pub fn calculate_pooled_within_matrix(
-    dataset: &AnalyzedDataset,
-    variables: &[String]
-) -> DMatrix<f64> {
-    let num_vars = variables.len();
-    let mut pooled_within = DMatrix::zeros(num_vars, num_vars);
-    let mut total_df = 0;
-
-    for group in &dataset.group_labels {
-        let n = dataset.group_data
-            .get(&variables[0])
-            .and_then(|g| g.get(group))
-            .map_or(0, |v| v.len());
-
-        if n <= 1 {
-            continue;
-        }
-
-        let df = n - 1;
-        total_df += df;
-
-        // Calculate covariance for each variable pair
-        for (i, var_i) in variables.iter().enumerate() {
-            for (j, var_j) in variables.iter().enumerate() {
-                if
-                    let (Some(values_i), Some(values_j)) = (
-                        dataset.group_data.get(var_i).and_then(|g| g.get(group)),
-                        dataset.group_data.get(var_j).and_then(|g| g.get(group)),
-                    )
-                {
-                    if values_i.len() > 1 && values_i.len() == values_j.len() {
-                        let mean_i = dataset.group_means[group][var_i];
-                        let mean_j = dataset.group_means[group][var_j];
-
-                        // Calculate covariance
-                        let mut cov_sum = 0.0;
-                        for k in 0..values_i.len() {
-                            cov_sum += (values_i[k] - mean_i) * (values_j[k] - mean_j);
-                        }
-                        let cov = cov_sum / ((values_i.len() - 1) as f64);
-
-                        pooled_within[(i, j)] += (df as f64) * cov;
-                    }
-                }
-            }
-        }
-    }
-
-    if total_df > 0 {
-        pooled_within /= total_df as f64;
-    }
-
-    // Add small regularization to ensure invertibility
-    let epsilon = 1e-8;
-    for i in 0..num_vars {
-        pooled_within[(i, i)] += epsilon;
-    }
-
-    pooled_within
-}
-
-pub fn calculate_within_correlation_matrix(pooled_within: &DMatrix<f64>) -> DMatrix<f64> {
-    let n = pooled_within.nrows();
-    let mut within_corr = DMatrix::zeros(n, n);
-
-    for i in 0..n {
-        for j in 0..n {
-            if i == j {
-                within_corr[(i, j)] = 1.0;
-            } else {
-                let std_i = pooled_within[(i, i)].sqrt();
-                let std_j = pooled_within[(j, j)].sqrt();
-
-                if std_i > 0.0 && std_j > 0.0 {
-                    within_corr[(i, j)] = pooled_within[(i, j)] / (std_i * std_j);
-                } else {
-                    within_corr[(i, j)] = 0.0;
-                }
-            }
-        }
-    }
-
-    within_corr
 }

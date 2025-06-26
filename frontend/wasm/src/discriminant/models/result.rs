@@ -37,8 +37,6 @@ pub struct DiscriminantResult {
     pub classification_function_coefficients: Option<ClassificationFunctionCoefficients>,
     #[serde(rename = "discriminant_histograms")]
     pub discriminant_histograms: Option<DiscriminantHistograms>,
-    #[serde(rename = "executed_functions")]
-    pub executed_functions: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -74,6 +72,8 @@ pub struct GroupStatistics {
     pub means: HashMap<String, Vec<f64>>,
     #[serde(rename = "std_deviations")]
     pub std_deviations: HashMap<String, Vec<f64>>,
+    pub unweighted_n: HashMap<String, Vec<f64>>,
+    pub weighted_n: HashMap<String, Vec<f64>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -141,6 +141,7 @@ pub struct BoxMTest {
     pub df2: f64,
     #[serde(rename = "p_value")]
     pub p_value: f64,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -150,6 +151,8 @@ pub struct PooledMatrices {
     pub covariance: HashMap<String, HashMap<String, f64>>,
     #[serde(rename = "correlation")]
     pub correlation: HashMap<String, HashMap<String, f64>>,
+    #[serde(rename = "note_df")]
+    pub note_df: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -158,6 +161,8 @@ pub struct CovarianceMatrices {
     pub variables: Vec<String>,
     #[serde(rename = "matrices")]
     pub matrices: HashMap<String, HashMap<String, HashMap<String, f64>>>,
+    #[serde(rename = "note_df")]
+    pub note_df: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -170,6 +175,7 @@ pub struct LogDeterminants {
     pub rank_pooled: i32,
     #[serde(rename = "pooled_log_determinant")]
     pub pooled_log_determinant: f64,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -199,6 +205,15 @@ pub struct StepwiseStatistics {
     pub variables_not_in_analysis: HashMap<String, Vec<VariableNotInAnalysis>>,
     #[serde(rename = "pairwise_comparisons")]
     pub pairwise_comparisons: HashMap<String, HashMap<String, Vec<PairwiseComparison>>>,
+    pub note: StepwiseNote,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StepwiseNote {
+    pub max_steps: String,
+    pub min_f_to_enter: String,
+    pub max_f_to_remove: String,
+    pub note: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

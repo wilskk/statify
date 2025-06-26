@@ -138,10 +138,12 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Time Series</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem onClick={()=>openModal(ModalType.Decomposition)}>Decomposition</MenubarItem>
                         <MenubarItem onClick={()=>openModal(ModalType.Smoothing)}>Smoothing</MenubarItem>
+                        <MenubarItem onClick={()=>openModal(ModalType.Decomposition)}>Decomposition</MenubarItem>
+                        <MenubarSeparator />
                         <MenubarItem onClick={()=>openModal(ModalType.Autocorrelation)}>Autocorrelation</MenubarItem>
                         <MenubarItem onClick={()=>openModal(ModalType.UnitRootTest)}>Unit Root Test</MenubarItem>
+                        <MenubarSeparator />
                         <MenubarItem onClick={()=>openModal(ModalType.BoxJenkinsModel)}>Box-Jenkins Model</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>

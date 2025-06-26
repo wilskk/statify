@@ -6,12 +6,7 @@ export async function analyzeMultivariate({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: MultivariateAnalysisType) {
-    await init();
-
     const DependentVariables = configData.main.DepVar || [];
     const FixFactorVariables = configData.main.FixFactor || [];
     const CovariateVariables = configData.main.Covar || [];
@@ -50,6 +45,7 @@ export async function analyzeMultivariate({
 
     console.log(configData);
 
+    await init();
     // const multivariate = new MultivariateAnalysis(
     //     slicedDataForDependent,
     //     slicedDataForFixFactor,
@@ -75,9 +71,6 @@ export async function analyzeMultivariate({
      * 🎉 Final Result Process 🎯
      * */
     // await resultMultivariateAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

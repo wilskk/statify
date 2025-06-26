@@ -1,4 +1,3 @@
-// proximity_matrix.rs
 use std::collections::HashMap;
 use crate::hierarchical::models::{
     config::ClusterConfig,
@@ -13,6 +12,7 @@ use super::core::{
     extract_case_label,
 };
 
+// Fungsi utama untuk menghasilkan matriks proximity
 pub fn generate_proximity_matrix(
     data: &AnalysisData,
     config: &ClusterConfig
@@ -36,6 +36,7 @@ pub fn generate_proximity_matrix(
     Ok(ProximityMatrix { distances })
 }
 
+// Menghasilkan matriks proximity untuk kasus
 fn generate_case_proximity_matrix(
     data: &AnalysisData,
     config: &ClusterConfig,
@@ -48,7 +49,7 @@ fn generate_case_proximity_matrix(
     let case_count = data.cluster_data[0].len();
     let mut distances = HashMap::new();
 
-    // Extract case data
+    // Ekstrak data kasus
     let case_values: Vec<HashMap<String, DataValue>> = (0..case_count)
         .map(|case_idx| {
             let mut values = HashMap::new();
@@ -66,16 +67,16 @@ fn generate_case_proximity_matrix(
         })
         .collect();
 
-    // Create case labels using the updated extract_case_label function
+    // Buat label kasus menggunakan fungsi extract_case_label yang diperbarui
     let case_labels: Vec<String> = (0..case_count)
         .map(|case_idx| extract_case_label(data, config, case_idx))
         .collect();
 
-    // Calculate distances - could be parallelized for better performance
+    // Hitung jarak - bisa diparalelkan untuk kinerja yang lebih baik
     for i in 0..case_count {
         for j in 0..case_count {
             let distance = if i == j {
-                0.0 // Distance to self is always 0
+                0.0 // Jarak ke diri sendiri selalu 0
             } else {
                 calculate_distance(&case_values[i], &case_values[j], variables, config)
             };
@@ -87,6 +88,7 @@ fn generate_case_proximity_matrix(
     Ok(distances)
 }
 
+// Menghasilkan matriks proximity untuk variabel
 fn generate_variable_proximity_matrix(
     data: &AnalysisData,
     config: &ClusterConfig,
@@ -99,7 +101,7 @@ fn generate_variable_proximity_matrix(
     let mut distances = HashMap::new();
     let case_count = data.cluster_data[0].len();
 
-    // For each variable, collect its values across all cases
+    // Untuk setiap variabel, kumpulkan nilainya di semua kasus
     let mut variable_values: HashMap<String, Vec<f64>> = HashMap::new();
 
     for var in variables {
@@ -124,14 +126,14 @@ fn generate_variable_proximity_matrix(
         variable_values.insert(var.clone(), values);
     }
 
-    // Calculate distances between all pairs of variables
+    // Hitung jarak antara semua pasangan variabel
     for i in 0..variables.len() {
         for j in 0..variables.len() {
             let var_i = &variables[i];
             let var_j = &variables[j];
 
             let distance = if i == j {
-                0.0 // Distance to self is always 0
+                0.0 // Jarak ke diri sendiri selalu 0
             } else {
                 calculate_variable_distance(&variable_values, var_i, var_j, config)
             };
@@ -143,12 +145,12 @@ fn generate_variable_proximity_matrix(
     Ok(distances)
 }
 
-// Functions to transform proximity matrix values
+// Fungsi untuk mentransformasi nilai matriks proximity
 pub fn transform_proximity_values(
     distances: &mut HashMap<(String, String), f64>,
     config: &ClusterConfig
 ) -> Result<(), String> {
-    // Apply transformations in order: abs value, sign change, rescale
+    // Terapkan transformasi secara berurutan: abs value, sign change, rescale
     if config.method.abs_value {
         for value in distances.values_mut() {
             *value = value.abs();
@@ -165,7 +167,7 @@ pub fn transform_proximity_values(
         let values: Vec<f64> = distances.values().cloned().collect();
         let stats = calculate_statistics(&values);
 
-        // Rescale all values to [0,1]
+        // Rescale semua nilai ke [0,1]
         if stats.range > 0.0 {
             for value in distances.values_mut() {
                 *value = (*value - stats.min) / stats.range;

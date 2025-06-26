@@ -2,24 +2,23 @@ use wasm_bindgen::prelude::*;
 
 use crate::twostep::models::{ config::ClusterConfig, data::AnalysisData, result::ClusteringResult };
 use crate::twostep::utils::converter::format_result;
+use crate::twostep::utils::log::FunctionLogger;
 use crate::twostep::utils::{ converter::string_to_js_error, error::ErrorCollector };
 use crate::twostep::stats::core;
 
 pub fn run_analysis(
     data: &AnalysisData,
     config: &ClusterConfig,
-    error_collector: &mut ErrorCollector
+    error_collector: &mut ErrorCollector,
+    logger: &mut FunctionLogger
 ) -> Result<Option<ClusteringResult>, JsValue> {
     web_sys::console::log_1(&"Starting Two-Step Cluster Analysis".into());
-
-    // Initialize result with executed functions tracking
-    let mut executed_functions = Vec::new();
 
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
     // Step 1: Prepare data for clustering
-    executed_functions.push("prepare_clustering_data".to_string());
+    logger.add_log("prepare_clustering_data");
     let prepared_data = match core::prepare_clustering_data(data, config) {
         Ok(prepared) => { prepared }
         Err(e) => {
@@ -29,7 +28,7 @@ pub fn run_analysis(
     };
 
     // Calculate model summary
-    executed_functions.push("calculate_model_summary".to_string());
+    logger.add_log("calculate_model_summary");
     let model_summary = match core::calculate_model_summary(&prepared_data, config) {
         Ok(summary) => {
             web_sys::console::log_1(&format!("Model Summary: {:?}", summary).into());
@@ -43,6 +42,7 @@ pub fn run_analysis(
 
     // Step 2: Calculate the cell distribution
     let cell_distribution = if config.output.clust_var {
+        logger.add_log("calculate_cell_distribution");
         match core::calculate_cell_distribution(&prepared_data, config) {
             Ok(distribution) => {
                 // Log the cell distribution for debugging
@@ -59,7 +59,7 @@ pub fn run_analysis(
     };
 
     // Step 3: Calculate cluster profiles
-    executed_functions.push("calculate_cluster_profiles".to_string());
+    logger.add_log("calculate_cluster_profiles");
     let cluster_profiles = match core::calculate_cluster_profiles(&prepared_data, config) {
         Ok(profiles) => {
             // Log the cluster profiles for debugging
@@ -73,7 +73,7 @@ pub fn run_analysis(
     };
 
     // Step 4: Calculate auto clustering if enabled
-    executed_functions.push("calculate_auto_clustering".to_string());
+    logger.add_log("calculate_auto_clustering");
     let auto_clustering = if config.main.auto {
         match core::calculate_auto_clustering(&prepared_data, config) {
             Ok(auto) => {
@@ -91,7 +91,7 @@ pub fn run_analysis(
     };
 
     // Step 5: Calculate cluster distribution
-    executed_functions.push("calculate_cluster_distribution".to_string());
+    logger.add_log("calculate_cluster_distribution");
     let cluster_distribution = match core::calculate_cluster_distribution(&prepared_data, config) {
         Ok(distribution) => {
             // Log the cluster distribution for debugging
@@ -105,7 +105,7 @@ pub fn run_analysis(
     };
 
     // Step 6: Calculate clusters
-    executed_functions.push("calculate_clusters".to_string());
+    logger.add_log("calculate_clusters");
     let clusters = match core::calculate_clusters(&prepared_data, config) {
         Ok(clusters_data) => {
             // Log the clusters for debugging
@@ -119,7 +119,7 @@ pub fn run_analysis(
     };
 
     // Step 7: Calculate predictor importance
-    executed_functions.push("calculate_predictor_importance".to_string());
+    logger.add_log("calculate_predictor_importance");
     let predictor_importance = match core::calculate_predictor_importance(&prepared_data, config) {
         Ok(importance) => {
             // Log the predictor importance for debugging
@@ -133,6 +133,7 @@ pub fn run_analysis(
     };
 
     // Cluster Sizes
+    logger.add_log("calculate_cluster_sizes");
     let cluster_sizes = match core::calculate_cluster_sizes(&prepared_data, config) {
         Ok(sizes) => Some(sizes),
         Err(e) => {
@@ -167,8 +168,8 @@ pub fn get_formatted_results(result: &Option<ClusteringResult>) -> Result<JsValu
     format_result(result)
 }
 
-pub fn get_executed_functions(_result: &Option<ClusteringResult>) -> Result<JsValue, JsValue> {
-    Err(string_to_js_error("Not implemented".to_string()))
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
+    Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }
 
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {

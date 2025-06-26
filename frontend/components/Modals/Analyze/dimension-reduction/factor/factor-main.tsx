@@ -16,7 +16,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeFactor } from "@/services/analyze/dimension-reduction/factor/factor-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -38,7 +37,6 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -85,9 +83,6 @@ export const FactorContainer = ({ onClose }: FactorContainerProps) => {
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

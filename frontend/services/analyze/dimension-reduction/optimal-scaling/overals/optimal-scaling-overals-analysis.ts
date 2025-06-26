@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaOveralsAnalysisType } from "@/models/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-worker";
-import init, { OVERALSAnalysis } from "@/wasm/pkg/wasm";
+import init from "@/wasm/pkg/wasm";
 
 // Helper function to extract just the variable name from a string like "age (Ordinal 1 10) (Ordinal 1 5)"
 function extractVariableName(variableStr: string) {
@@ -12,12 +12,7 @@ export async function analyzeOptScaOverals({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaOveralsAnalysisType) {
-    await init();
-
     // Keep the original nested structure from configData
     const SetTargetVariable = configData?.main?.SetTargetVariable || [];
     const PlotsTargetVariable = configData.main.PlotsTargetVariable || [];
@@ -57,34 +52,27 @@ export async function analyzeOptScaOverals({
 
     const varDefsForPlotsTarget = getVarDefs(variables, PlotsTargetVariable);
 
-    console.log("Original SetTargetVariable structure:", SetTargetVariable);
-    console.log(
-        "Maintained nested structure - slicedDataSets:",
-        slicedDataSets
-    );
-    console.log("Maintained nested structure - varDefsSets:", varDefsSets);
+    console.log(configData);
 
-    const overals = new OVERALSAnalysis(
-        slicedDataSets, // Now a nested structure
-        slicedDataForPlotsTarget,
-        varDefsSets, // Now a nested structure
-        varDefsForPlotsTarget,
-        configData
-    );
+    await init();
+    // const overals = new OVERALSAnalysis(
+    //     slicedDataSets,
+    //     slicedDataForPlotsTarget,
+    //     varDefsSets,
+    //     varDefsForPlotsTarget,
+    //     configData
+    // );
 
-    const results = overals.get_results();
-    const error = overals.get_all_errors();
+    // const results = overals.get_results();
+    // const error = overals.get_all_errors();
 
-    console.log("Results", results);
-    console.log(error);
+    // console.log("Results", results);
+    // console.log(error);
 
     /*
      * 🎉 Final Result Process 🎯
      * */
     // await resultOVERALSAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

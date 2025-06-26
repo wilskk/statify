@@ -1,14 +1,14 @@
 // two-step-cluster-analysis-output.ts
 import { TwoStepClusterFinalResultType } from "@/models/classify/two-step-cluster/two-step-cluste-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultTwoStepCluster({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: TwoStepClusterFinalResultType) {
     try {
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

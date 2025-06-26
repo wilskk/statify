@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeCorrespondence } from "@/services/analyze/dimension-reduction/correspondence-analysis/correspondence-analysis-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 import { useMetaStore } from "@/stores/useMetaStore";
@@ -43,7 +42,6 @@ export const CorrespondenceContainer = ({
     const [isPlotsOpen, setIsPlotsOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -109,9 +107,6 @@ export const CorrespondenceContainer = ({
                 dataVariables: dataVariables,
                 variables: variables,
                 meta: meta,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);
