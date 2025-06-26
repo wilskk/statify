@@ -1,5 +1,5 @@
 import init, {Arima} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../timeSeriesGenerateDate';
+import {generateDate} from '../../TimeSeriesGenerateDate';
 
 export async function handleBoxJenkinsModel(
     data: (number)[], 
