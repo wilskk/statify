@@ -1,5 +1,5 @@
 import init, {Smoothing} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleSmoothing(
     data: (number)[], 

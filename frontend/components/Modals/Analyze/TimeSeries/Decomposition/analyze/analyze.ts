@@ -1,6 +1,6 @@
 import { se } from 'date-fns/locale';
 import init, {Decomposition} from '../../../../../../src/wasm/pkg/wasm.js';
-import {generateDate} from '../../TimeSeriesGenerateDate';
+import {generateDate} from '../../timeSeriesGenerateDate';
 
 export async function handleDecomposition(
     data: (number)[],
