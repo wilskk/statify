@@ -9,7 +9,7 @@ import { useDataStore } from '@/stores/useDataStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import DataTableRenderer from '@/components/Output/Table/data-table';
+import DataTableRenderer from '@/components/Output/table/data-table';
 
 export interface AssumptionTestParams {
   testLinearityEnabled: boolean;
