@@ -76,16 +76,22 @@ const Statistics: React.FC<StatisticsProps> = ({ params, onChange }) => {
       case 'durbinWatson': setDurbinWatson(value); break;
       case 'casewiseDiagnostics':
         setCasewiseDiagnostics(value);
-        if (!value) {
-            setSelectedResidualOption(''); // Also update dependent state locally
-            onChange({ casewiseDiagnostics: value, selectedResidualOption: '' }); // Propagate both changes
-            return; // Exit early as onChange was called
+        if (value) {
+            // Default to 'outliers' when Casewise Diagnostics is checked
+            setSelectedResidualOption('outliers');
+            onChange({ casewiseDiagnostics: value, selectedResidualOption: 'outliers' });
+            return; // Exit early as onChange was called with both changes
+        } else {
+            // Clear radio button selection if Casewise Diagnostics is unchecked
+            setSelectedResidualOption('');
+            onChange({ casewiseDiagnostics: value, selectedResidualOption: '' });
+            return; // Exit early
         }
-        break;
+        // No break needed due to return statements
       case 'selectedResidualOption': setSelectedResidualOption(value); break;
       case 'outlierThreshold': setOutlierThreshold(value); break;
     }
-    // Propagate change to parent
+    // Propagate change to parent if not handled by specific cases above
     onChange({ [field]: value });
   };
 

@@ -1,11 +1,11 @@
 // casewise_diagnostics.js
 
 self.onmessage = function(e) {
-    const { dependent, independent } = e.data;
+    const { dependent, independent, dependentVariableInfo, threshold } = e.data;
     
     // Validasi input
-    if (!dependent || !independent) {
-      self.postMessage({ error: "Data dependent dan independent harus disediakan." });
+    if (!dependent || !independent || !dependentVariableInfo) {
+      self.postMessage({ error: "Data dependent, independent, dan dependentVariableInfo harus disediakan." });
       return;
     }
     if (!Array.isArray(dependent) || !Array.isArray(independent)) {
@@ -62,16 +62,23 @@ self.onmessage = function(e) {
     
     // Bangun data casewise diagnostics
     const cases = [];
+    const depVarName = dependentVariableInfo.name;
+
     for (let i = 0; i < n; i++) {
-      cases.push({
+      const caseData = {
         caseNumber: (i + 1).toString(),
-        var00001: round(y[i], 2),                // Nilai aktual
         predictedValue: round(predicted[i], 4),
         residual: round(residuals[i], 4),
         stdResidual: round(stdResiduals[i], 3)
-      });
+      };
+      caseData[depVarName] = round(y[i], 2);
+      cases.push(caseData);
     }
     
+    const depVarHeader = (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') 
+      ? dependentVariableInfo.label 
+      : dependentVariableInfo.name;
+
     const result = {
       tables: [
         {
@@ -79,14 +86,14 @@ self.onmessage = function(e) {
           columnHeaders: [
             { header: "Case Number" },
             { header: "Std. Residual", key: "stdResidual" },
-            { header: "VAR00001", key: "var00001" },
+            { header: depVarHeader, key: depVarName },
             { header: "Predicted Value", key: "predictedValue" },
             { header: "Residual", key: "residual" }
           ],
           rows: cases.map(item => ({
             rowHeader: [item.caseNumber],
             stdResidual: item.stdResidual,
-            var00001: item.var00001,
+            [depVarName]: item[depVarName],
             predictedValue: item.predictedValue,
             residual: item.residual
           }))

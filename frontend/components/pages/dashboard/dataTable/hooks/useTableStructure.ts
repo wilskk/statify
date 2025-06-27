@@ -36,6 +36,7 @@ export const useTableStructure = (
             const variable = variableMap.get(index);
             if (variable) {
                 const iconElement = getVariableIcon(variable);
+                // eslint-disable-next-line testing-library/render-result-naming-convention
                 const iconHtml = ReactDOMServer.renderToStaticMarkup(iconElement);
                 const variableName = (variable.name && variable.name.trim() !== '') ? variable.name : 'var';
                 return `<div class="col-header-container">${iconHtml}<span class="colHeader">${variableName}</span></div>`;

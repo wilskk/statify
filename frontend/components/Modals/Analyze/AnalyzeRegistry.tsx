@@ -19,6 +19,13 @@ import {
     GENERAL_LINEAR_MODEL_MODAL_CONTAINER_PREFERENCES,
 } from "./general-linear-model";
 
+// Import from TimeSeries registry 
+import {
+    TIME_SERIES_MODAL_COMPONENTS,
+    TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
+    isTimeSeriesModal
+} from './TimeSeries';
+
 /**
  * ANALYZE_MODAL_COMPONENTS - Central registry for all Analyze modals
  *
@@ -34,6 +41,10 @@ export const ANALYZE_MODAL_COMPONENTS: Record<
     ...DIMENSION_REDUCTION_MODAL_COMPONENTS,
     ...GENERAL_LINEAR_MODEL_MODAL_COMPONENTS,
 
+    
+    // Time Series modals
+    ...TIME_SERIES_MODAL_COMPONENTS,
+    
     // Future categories will be added here
     // ...COMPARE_MEANS_MODAL_COMPONENTS,
     // ...NONPARAMETRIC_MODAL_COMPONENTS,
@@ -73,6 +84,10 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
     ...DIMENSION_REDUCTION_MODAL_CONTAINER_PREFERENCES,
     ...GENERAL_LINEAR_MODEL_MODAL_CONTAINER_PREFERENCES,
 
+    
+    // Time Series modals
+    ...TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
+    
     // Future categories will be added here
 };
 
@@ -83,5 +98,5 @@ export const ANALYZE_MODAL_CONTAINER_PREFERENCES: Partial<
  * @returns Whether the modal is an Analyze modal
  */
 export const isAnalyzeModal = (type: ModalType): boolean => {
-    return type in ANALYZE_MODAL_COMPONENTS;
-};
+    return type in ANALYZE_MODAL_COMPONENTS || isTimeSeriesModal(type);
+}; 
