@@ -9,12 +9,7 @@ export async function analyzeCorrespondence({
     dataVariables,
     variables,
     meta,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: CorrespondenceAnalysisType) {
-    await init();
-
     const RowVariable = configData.main.RowTargetVar
         ? [configData.main.RowTargetVar]
         : [];
@@ -47,6 +42,7 @@ export async function analyzeCorrespondence({
 
     console.log(configData);
 
+    await init();
     // const correspondence = new CorrespondenceAnalysis(
     //     slicedDataForRow,
     //     slicedDataForCol,
@@ -70,13 +66,10 @@ export async function analyzeCorrespondence({
     // );
     // console.log("formattedResults", formattedResults);
 
-    // /*
-    //  * 🎉 Final Result Process 🎯
-    //  * */
-    // await resultCorrespondence({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
+    /*
+     * 🎉 Final Result Process 🎯
+     * */
+    // await resultCorrespondenceAnalysis({
     //     formattedResult: formattedResults ?? [],
     // });
 }

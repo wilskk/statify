@@ -1,19 +1,44 @@
+//! Classification results for discriminant analysis.
+//!
+//! This module implements functions to calculate classification results,
+//! including original and cross-validated classifications.
+
 use std::collections::HashMap;
+use nalgebra::DVector;
 use rayon::prelude::*;
 
-use crate::discriminant::models::result::{ CanonicalFunctions, EigenDescription };
+use crate::discriminant::models::result::{
+    CanonicalFunctions,
+    ClassificationFunctionCoefficients,
+    EigenDescription,
+};
 use crate::discriminant::models::{
     data::DataValue,
     result::ClassificationResults,
     AnalysisData,
     DiscriminantConfig,
 };
-use crate::discriminant::stats::canonical_functions::{
+
+use super::core::{
     calculate_canonical_functions,
     calculate_eigen_statistics,
+    calculate_pooled_within_matrix,
+    extract_analyzed_dataset,
+    extract_case_values,
+    AnalyzedDataset,
 };
-use super::core::{ extract_analyzed_dataset, extract_case_values, AnalyzedDataset };
 
+/// Calculate classification results for discriminant analysis
+///
+/// This function calculates the classification results for both original
+/// and cross-validated (leave-one-out) classifications.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A ClassificationResults object with classification matrices and percentages
 pub fn calculate_classification_results(
     data: &AnalysisData,
     config: &DiscriminantConfig
@@ -119,6 +144,16 @@ pub fn calculate_classification_results(
     })
 }
 
+/// Extract record groups mapping
+///
+/// This function maps record indices to group names.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `grouping_variable` - Name of the grouping variable
+///
+/// # Returns
+/// A HashMap mapping record indices to group names
 pub fn extract_record_groups(
     data: &AnalysisData,
     grouping_variable: &str
@@ -146,6 +181,19 @@ pub fn extract_record_groups(
     case_groups
 }
 
+/// Calculate cross-validation results using leave-one-out method
+///
+/// This function performs leave-one-out cross-validation, where each case
+/// is classified using discriminant functions derived from all other cases.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+/// * `dataset` - The analyzed dataset
+/// * `record_groups` - Mapping of record indices to group names
+///
+/// # Returns
+/// A tuple of (cross-validated classification, cross-validated percentages)
 fn calculate_cross_validation(
     data: &AnalysisData,
     config: &DiscriminantConfig,
@@ -272,6 +320,20 @@ fn calculate_cross_validation(
     Ok((Some(cross_validated_classification), Some(cross_validated_percentage)))
 }
 
+/// Classify a case using discriminant functions
+///
+/// This function assigns a case to a group based on its discriminant scores
+/// and the posterior probabilities of group membership.
+///
+/// # Parameters
+/// * `case_values` - Values of the independent variables for the case
+/// * `canonical_functions` - Canonical discriminant functions
+/// * `eigen_stats` - Eigenvalues and related statistics
+/// * `dataset` - The analyzed dataset
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// The index of the predicted group
 fn classify_case(
     case_values: &[f64],
     canonical_functions: &CanonicalFunctions,
@@ -356,6 +418,16 @@ fn classify_case(
         .unwrap_or(0)
 }
 
+/// Calculate group prior probabilities
+///
+/// This function calculates prior probabilities for groups based on
+/// either equal probabilities or group sizes.
+///
+/// # Parameters
+/// * `dataset` - The analyzed dataset
+///
+/// # Returns
+/// A vector of prior probabilities for each group
 fn calculate_group_priors(dataset: &AnalyzedDataset) -> Vec<f64> {
     let num_groups = dataset.group_labels.len();
 
@@ -381,4 +453,105 @@ fn calculate_group_priors(dataset: &AnalyzedDataset) -> Vec<f64> {
         .into_iter()
         .map(|size| (size as f64) / (total_cases as f64))
         .collect()
+}
+
+/// Calculate Fisher's linear discriminant function coefficients
+///
+/// This function calculates the classification function coefficients (Fisher's linear
+/// discriminant functions) that can be used directly for classification.
+///
+/// # Parameters
+/// * `data` - The analysis data
+/// * `config` - The discriminant analysis configuration
+///
+/// # Returns
+/// A ClassificationFunctionCoefficients object with coefficients for each group
+pub fn calculate_summary_classification(
+    data: &AnalysisData,
+    config: &DiscriminantConfig
+) -> Result<ClassificationFunctionCoefficients, String> {
+    web_sys::console::log_1(&"Executing calculate_classification_function_coefficients".into());
+
+    // Extract analyzed dataset
+    let dataset = extract_analyzed_dataset(data, config)?;
+    let variables = &config.main.independent_variables;
+
+    // Calculate pooled within-groups covariance matrix
+    let pooled_within = calculate_pooled_within_matrix(&dataset, variables);
+
+    // Get pooled within-groups inverse matrix
+    let pooled_within_inv = match pooled_within.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("Failed to invert pooled within-groups matrix".to_string());
+        }
+    };
+
+    // Initialize coefficient structure
+    let mut coefficients: HashMap<String, Vec<f64>> = HashMap::new();
+    let mut constant_terms: Vec<f64> = Vec::with_capacity(dataset.group_labels.len());
+    let mut groups: Vec<usize> = Vec::with_capacity(dataset.group_labels.len());
+
+    // Calculate classification function coefficients for each group
+    for (group_idx, group) in dataset.group_labels.iter().enumerate() {
+        // Add to groups vector (1-based indexing for output)
+        groups.push(group_idx + 1);
+
+        // Get group means as vector
+        let mut group_means = DVector::zeros(variables.len());
+        for (var_idx, var_name) in variables.iter().enumerate() {
+            let mean = dataset.group_means
+                .get(group)
+                .and_then(|m| m.get(var_name))
+                .copied()
+                .unwrap_or(0.0);
+            group_means[var_idx] = mean;
+        }
+
+        // Calculate b_ij = (n-g) * sum_l(w_il^* * x_lj)
+        // where w_il^* is the (i,l)th element of the inverse of the pooled within-groups matrix
+        // and x_lj is the mean of the lth variable in the jth group
+        for (var_idx, var_name) in variables.iter().enumerate() {
+            // Calculate coefficient for this variable for this group
+            let coef =
+                ((dataset.total_cases - dataset.num_groups) as f64) *
+                (0..variables.len())
+                    .map(|l| pooled_within_inv[(var_idx, l)] * group_means[l])
+                    .sum::<f64>();
+
+            // Add coefficient to the map
+            coefficients
+                .entry(var_name.clone())
+                .or_insert_with(|| vec![0.0; dataset.group_labels.len()])[group_idx] = coef;
+        }
+
+        // Calculate constant term a_j = log p_j - 0.5 * sum_i(b_ij * x_ij)
+        // where p_j is the prior probability of group j
+        let prior = 1.0 / (dataset.group_labels.len() as f64); // Equal priors by default
+        let log_prior = prior.ln();
+
+        let half_sum =
+            0.5 *
+            variables
+                .iter()
+                .enumerate()
+                .map(|(var_idx, var_name)| {
+                    let coef = coefficients
+                        .get(var_name)
+                        .map(|c| c[group_idx])
+                        .unwrap_or(0.0);
+                    let mean = group_means[var_idx];
+                    coef * mean
+                })
+                .sum::<f64>();
+
+        constant_terms.push(log_prior - half_sum);
+    }
+
+    Ok(ClassificationFunctionCoefficients {
+        groups,
+        variables: variables.clone(),
+        coefficients,
+        constant_terms,
+    })
 }

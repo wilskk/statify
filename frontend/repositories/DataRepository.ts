@@ -120,7 +120,7 @@ export class DataRepository {
   /**
    * Perform multiple cell updates and deletes in a single transaction
    */
-  async updateBulkCells(
+  async updateCells(
     cells: Array<{ row: number, col: number, value: string | number }>,
     keysToDelete?: Array<[number, number]>
   ): Promise<void> {

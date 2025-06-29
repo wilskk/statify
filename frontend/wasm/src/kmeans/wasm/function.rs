@@ -2,24 +2,26 @@ use wasm_bindgen::prelude::*;
 
 use crate::kmeans::models::{ config::ClusterConfig, data::AnalysisData, result::ClusteringResult };
 use crate::kmeans::utils::converter::format_result;
-use crate::kmeans::utils::{ converter::string_to_js_error, error::ErrorCollector };
+use crate::kmeans::utils::{
+    log::FunctionLogger,
+    converter::string_to_js_error,
+    error::ErrorCollector,
+};
 use crate::kmeans::stats::core;
 
 pub fn run_analysis(
     data: &AnalysisData,
     config: &ClusterConfig,
-    error_collector: &mut ErrorCollector
+    error_collector: &mut ErrorCollector,
+    logger: &mut FunctionLogger
 ) -> Result<Option<ClusteringResult>, JsValue> {
     web_sys::console::log_1(&"Starting K-Means Cluster analysis".into());
-
-    // Initialize result with executed functions tracking
-    let mut executed_functions = Vec::new();
 
     // Log configuration to track which methods will be executed
     web_sys::console::log_1(&format!("Config: {:?}", config).into());
 
     // Step 1: Preprocess data
-    executed_functions.push("preprocess_data".to_string());
+    logger.add_log("preprocess_data");
     let preprocessed_data = match core::preprocess_data(data, config) {
         Ok(processed) => {
             // Log the preprocessed data for debugging
@@ -33,7 +35,7 @@ pub fn run_analysis(
     };
 
     // Step 2: Initialize clusters
-    executed_functions.push("initialize_clusters".to_string());
+    logger.add_log("initialize_clusters");
     let mut initial_centers = None;
     if config.options.initial_cluster {
         match core::initialize_clusters(&preprocessed_data, config) {
@@ -50,7 +52,7 @@ pub fn run_analysis(
     }
 
     // Step 3: Iteration history
-    executed_functions.push("iteration_history".to_string());
+    logger.add_log("iteration_history");
     let mut iteration_history = None;
     match core::generate_iteration_history(&preprocessed_data, config) {
         Ok(history) => {
@@ -64,7 +66,7 @@ pub fn run_analysis(
     }
 
     // Step 4: Cluster membership
-    executed_functions.push("cluster_membership".to_string());
+    logger.add_log("cluster_membership");
     let mut cluster_membership = None;
     match core::generate_cluster_membership(&preprocessed_data, config) {
         Ok(membership) => {
@@ -78,8 +80,8 @@ pub fn run_analysis(
     }
 
     // Step 5: Final cluster centers
+    logger.add_log("final_cluster_centers");
     let mut final_cluster_centers = None;
-    executed_functions.push("final_cluster_centers".to_string());
     match core::generate_final_cluster_centers(&preprocessed_data, config) {
         Ok(centers) => {
             // Log the final cluster centers for debugging
@@ -92,8 +94,8 @@ pub fn run_analysis(
     }
 
     // Step 6: Distances between centers
+    logger.add_log("distances_between_centers");
     let mut distances_between_centers = None;
-    executed_functions.push("distances_between_centers".to_string());
     match core::calculate_distances_between_centers(&preprocessed_data, config) {
         Ok(distances) => {
             // Log the distances between centers for debugging
@@ -108,7 +110,7 @@ pub fn run_analysis(
     // Additional optional analyses based on configuration
     let mut anova = None;
     if config.options.anova {
-        executed_functions.push("calculate_anova".to_string());
+        logger.add_log("calculate_anova");
         match core::calculate_anova(&preprocessed_data, &config) {
             Ok(result) => {
                 // Log the ANOVA result for debugging
@@ -124,7 +126,7 @@ pub fn run_analysis(
     // Case count table
     let mut cases_count = None;
     if config.options.cluster_info {
-        executed_functions.push("generate_case_count".to_string());
+        logger.add_log("generate_case_count");
         match core::generate_case_count(&preprocessed_data, &config) {
             Ok(count) => {
                 // Log the case count for debugging
@@ -162,11 +164,8 @@ pub fn get_formatted_results(result: &Option<ClusteringResult>) -> Result<JsValu
     format_result(result)
 }
 
-pub fn get_executed_functions(result: &Option<Vec<String>>) -> Result<JsValue, JsValue> {
-    match result {
-        Some(functions) => Ok(serde_wasm_bindgen::to_value(functions).unwrap()),
-        None => Err(string_to_js_error("No analysis has been performed".to_string())),
-    }
+pub fn get_all_log(logger: &FunctionLogger) -> Result<JsValue, JsValue> {
+    Ok(serde_wasm_bindgen::to_value(&logger.get_executed_functions()).unwrap_or(JsValue::NULL))
 }
 
 pub fn get_all_errors(error_collector: &ErrorCollector) -> JsValue {

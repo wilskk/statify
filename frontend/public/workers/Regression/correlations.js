@@ -1,8 +1,8 @@
 self.onmessage = function(e) {
-  const { dependent, independent } = e.data;
+  const { dependent, independent, dependentVariableInfo, independentVariableInfos } = e.data;
 
-  if (!dependent || !independent) {
-    self.postMessage({ error: "Data dependent dan independent harus disediakan." });
+  if (!dependent || !independent || !dependentVariableInfo || !independentVariableInfos) {
+    self.postMessage({ error: "Data dependent, independent, dan info variabel harus disediakan." });
     return;
   }
   if (!Array.isArray(dependent) || !Array.isArray(independent)) {
@@ -12,6 +12,27 @@ self.onmessage = function(e) {
 
   const numIndependentVars = independent.length;
   const n = dependent.length;
+
+  // Create a unified list of all variable details (name, label, displayName)
+  const allVariableDetails = [
+    {
+      name: dependentVariableInfo.name,
+      label: dependentVariableInfo.label,
+      displayName: (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') 
+        ? dependentVariableInfo.label 
+        : dependentVariableInfo.name
+    },
+    ...independentVariableInfos.map(info => ({
+      name: info.name,
+      label: info.label,
+      displayName: (info.label && info.label.trim() !== '') 
+        ? info.label 
+        : info.name
+    }))
+  ];
+
+  const allDataArrays = [dependent, ...independent]; // Keep this for accessing data by index
+  const numTotalVars = allVariableDetails.length;
 
   function mean(arr) {
     return arr.reduce((sum, val) => sum + val, 0) / arr.length;
@@ -96,61 +117,66 @@ self.onmessage = function(e) {
   }
 
   function calculatePValue(r, n) {
+    if (Math.abs(r) === 1.0) return 0.000; // Perfect correlation
     const df = n - 2;
-    const t = r * Math.sqrt(df / (1 - r * r));
-    return 0.5 * betai(df / 2, 0.5, df / (t * t + df));
+    if (df <= 0) return 1.000; // Not enough data
+    const tAbs = Math.abs(r * Math.sqrt(df / (1 - r * r)));
+    // For t-distribution, P(T > t) for one tail
+    // SPSS Sig. (1-tailed) for correlations is often just p/2 from a two-tailed test.
+    // A direct t-test p-value (two-tailed) is 2 * (1 - tCDF(tAbs, df)) or betai for (t^2 / (df + t^2))
+    // For 1-tailed, it depends on the hypothesis. SPSS usually shows significance levels.
+    // Using 0.5 * betai(df / 2, 0.5, df / (tAbs * tAbs + df)) for one tail probability, assuming t is positive.
+    // Or simply 1 - TDist.cdf(t, df) if t is positive from a library.
+    // Let's use a common approach based on Pearson's r for p-value (two-tailed) then halve it.
+    const pTwoTailed = betai(df / 2, 0.5, df / (tAbs * tAbs + df));
+    return pTwoTailed < 0 ? 0 : pTwoTailed / 2; // SPSS shows 1-tailed, so divide by 2
   }
 
   function round(num) {
+    if (typeof num === 'string') return num; // if it's already a string like "."
     return Math.round(num * 1000) / 1000;
   }
 
-  const allVariables = [dependent, ...independent];
-  const variableNames = ["VAR00001"];
-  for (let i = 0; i < numIndependentVars; i++) {
-    variableNames.push(`VAR0000${i+2}`);
-  }
-
-  const numTotalVars = numIndependentVars + 1;
-
   const columnHeaders = [
-    { header: "" },
-    { header: "" }
+    { header: "" }, // For the main row headers like "Pearson Correlation"
+    { header: "" }  // For the variable name/label row sub-headers
   ];
 
-  for (let i = 0; i < numTotalVars; i++) {
-    columnHeaders.push({ header: variableNames[i] });
-  }
+  allVariableDetails.forEach(varDetail => {
+    columnHeaders.push({ header: varDetail.displayName, key: varDetail.name });
+  });
 
   const correlationRows = [];
   const sigRows = [];
   const nRows = [];
 
   for (let i = 0; i < numTotalVars; i++) {
+    const currentRowVarDetail = allVariableDetails[i];
     const correlationChildren = {
-      rowHeader: [null, variableNames[i]]
+      rowHeader: [null, currentRowVarDetail.displayName]
     };
 
     const sigChildren = {
-      rowHeader: [null, variableNames[i]]
+      rowHeader: [null, currentRowVarDetail.displayName]
     };
 
     const nChildren = {
-      rowHeader: [null, variableNames[i]]
+      rowHeader: [null, currentRowVarDetail.displayName]
     };
 
     for (let j = 0; j < numTotalVars; j++) {
+      const currentColVarDetail = allVariableDetails[j];
       if (i === j) {
-        correlationChildren[variableNames[j]] = 1.000;
-        sigChildren[variableNames[j]] = ".";
-        nChildren[variableNames[j]] = n;
+        correlationChildren[currentColVarDetail.name] = 1.000;
+        sigChildren[currentColVarDetail.name] = "."; // SPSS shows blank or dot for diagonal
+        nChildren[currentColVarDetail.name] = n;
       } else {
-        const r = correlation(allVariables[i], allVariables[j]);
+        const r = correlation(allDataArrays[i], allDataArrays[j]);
         const pValue = calculatePValue(r, n);
 
-        correlationChildren[variableNames[j]] = round(r);
-        sigChildren[variableNames[j]] = round(pValue);
-        nChildren[variableNames[j]] = n;
+        correlationChildren[currentColVarDetail.name] = round(r);
+        sigChildren[currentColVarDetail.name] = round(pValue);
+        nChildren[currentColVarDetail.name] = n;
       }
     }
 

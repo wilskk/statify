@@ -1,234 +1,243 @@
-// parameter_estimates.rs
 use crate::univariate::models::{
     config::UnivariateConfig,
     data::AnalysisData,
-    result::{
-        ConfidenceInterval,
-        GeneralEstimableFunction,
-        ParameterEstimateEntry,
-        ParameterEstimates,
-    },
+    result::{ ConfidenceInterval, ParameterEstimateEntry, ParameterEstimates },
 };
+use std::collections::HashMap;
 
-use super::core::{
-    calculate_mean,
-    calculate_observed_power_t,
-    calculate_t_critical,
-    calculate_t_significance,
-    count_total_cases,
-    extract_dependent_value,
-    get_factor_levels,
-    get_level_values,
-};
+use super::core::*;
 
-/// Calculate general estimable function if requested
-pub fn calculate_general_estimable_function(
-    data: &AnalysisData,
-    config: &UnivariateConfig
-) -> Result<GeneralEstimableFunction, String> {
-    if !config.options.general_fun {
-        return Err("General estimable function not requested in configuration".to_string());
-    }
-
-    let mut matrix = Vec::new();
-    let mut row = Vec::new();
-
-    // Add intercept term
-    if config.model.intercept {
-        row.push(1);
-    }
-
-    // Add zeros for factor parameters
-    if let Some(factors) = &config.main.fix_factor {
-        for factor in factors {
-            let factor_levels = get_factor_levels(data, factor)?;
-            for _ in 0..factor_levels.len() - 1 {
-                row.push(0);
-            }
-        }
-    }
-
-    matrix.push(row);
-
-    // Add rows for each factor level
-    if let Some(factors) = &config.main.fix_factor {
-        for (f_idx, factor) in factors.iter().enumerate() {
-            let factor_levels = get_factor_levels(data, factor)?;
-
-            let mut base_idx = 1; // Start after intercept
-            if config.model.intercept {
-                // Skip parameters for factors before this one
-                for i in 0..f_idx {
-                    let prev_factor = &factors[i];
-                    let prev_levels = get_factor_levels(data, prev_factor)?;
-                    base_idx += prev_levels.len() - 1;
-                }
-            }
-
-            for (l_idx, level) in factor_levels.iter().enumerate() {
-                if l_idx == factor_levels.len() - 1 {
-                    continue; // Skip reference level
-                }
-
-                let mut row = vec![0; matrix[0].len()];
-                let param_idx = base_idx + l_idx;
-                if param_idx < row.len() {
-                    row[param_idx] = 1;
-                    matrix.push(row);
-                }
-            }
-        }
-    }
-
-    Ok(GeneralEstimableFunction { matrix })
-}
-
-/// Calculate parameter estimates if requested
+/// Calculate parameter estimates using a General Linear Model (GLM) approach.
 pub fn calculate_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<ParameterEstimates, String> {
     if !config.options.param_est {
-        return Err("Parameter estimates not requested in configuration".to_string());
+        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
     }
 
-    let dep_var_name = match &config.main.dep_var {
-        Some(name) => name.clone(),
-        None => {
-            return Err("No dependent variable specified in configuration".to_string());
-        }
-    };
+    let design_info = create_design_response_weights(data, config)?;
 
-    let mut estimates = Vec::new();
-    let n_total = count_total_cases(data);
-
-    // Extract all dependent values for calculations
-    let mut all_values = Vec::new();
-    for records in &data.dependent_data {
-        for record in records {
-            if let Some(value) = extract_dependent_value(record, &dep_var_name) {
-                all_values.push(value);
-            }
-        }
+    if design_info.n_samples == 0 {
+        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
     }
 
-    let grand_mean = calculate_mean(&all_values);
-    let error_variance =
-        all_values
-            .iter()
-            .map(|val| (val - grand_mean).powi(2))
-            .sum::<f64>() / ((n_total - 1) as f64);
+    if
+        design_info.p_parameters == 0 &&
+        !config.model.intercept &&
+        config.main.fix_factor.as_ref().map_or(true, |ff| ff.is_empty()) &&
+        config.main.covar.as_ref().map_or(true, |cv| cv.is_empty())
+    {
+        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
+    }
 
-    // Add intercept parameter
-    if config.model.intercept {
-        let intercept_value = grand_mean;
-        let std_error = (error_variance / (n_total as f64)).sqrt();
-        let t_value = intercept_value / std_error;
-        let sig_level = calculate_t_significance(n_total - 1, t_value);
-        let ci_width =
-            std_error * calculate_t_critical(n_total - 1, config.options.sig_level / 2.0);
-        let lower_bound = intercept_value - ci_width;
-        let upper_bound = intercept_value + ci_width;
-        let partial_eta_squared = t_value.powi(2) / (t_value.powi(2) + ((n_total - 1) as f64));
-        let noncent_parameter = t_value.abs();
-        let observed_power = calculate_observed_power_t(
-            n_total - 1,
-            t_value,
-            config.options.sig_level
+    let ztwz_matrix = create_cross_product_matrix(&design_info)?;
+    let swept_info = perform_sweep_and_extract_results(&ztwz_matrix, design_info.p_parameters)?;
+
+    let beta_hat_vec = &swept_info.beta_hat;
+    let g_inv_matrix = &swept_info.g_inv;
+    let rss = swept_info.s_rss;
+
+    let n_samples = design_info.n_samples;
+    let r_x_rank = design_info.r_x_rank;
+
+    let df_error_val = if n_samples > r_x_rank { (n_samples - r_x_rank) as f64 } else { 0.0 };
+
+    if df_error_val < 0.0 {
+        return Err(
+            format!("Degrees of freedom for error ({}) must be non-negative.", df_error_val)
         );
+    }
+    let df_error_usize = df_error_val as usize;
+
+    let mse = if df_error_val > 0.0 { rss / df_error_val } else { f64::NAN };
+    let mut estimates = Vec::new();
+    let sig_level = config.options.sig_level;
+    let sig_level_opt = Some(sig_level);
+
+    // Get all parameter names using the design info and data
+    let all_parameter_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
+
+    // Create a map for quick lookup of estimated beta values and their indices
+    let mut estimated_params_map: HashMap<String, (usize, f64, f64)> = HashMap::new();
+    for i in 0..design_info.p_parameters {
+        let param_name = &all_parameter_names[i];
+        let beta_val = beta_hat_vec.get(i).cloned().unwrap_or(0.0);
+        let g_ii = g_inv_matrix.get((i, i)).cloned().unwrap_or(0.0);
+        estimated_params_map.insert(param_name.clone(), (i, beta_val, g_ii));
+    }
+
+    // Track aliased terms
+    let mut term_is_aliased_map: HashMap<String, bool> = HashMap::new();
+
+    // Process each parameter
+    for param_name in &all_parameter_names {
+        let (
+            final_b,
+            final_std_err,
+            final_t_val,
+            final_param_sig,
+            final_ci_lower,
+            final_ci_upper,
+            final_partial_eta_sq,
+            final_non_cent_param,
+            final_obs_power,
+            is_redundant_param,
+        ) = if let Some((_idx, beta_val, g_ii)) = estimated_params_map.get(param_name) {
+            let is_redundant = g_ii.abs() < 1e-9 || g_ii.is_nan();
+            term_is_aliased_map
+                .entry(param_name.split('=').next().unwrap_or(param_name).to_string())
+                .and_modify(|e| {
+                    *e = *e || is_redundant;
+                })
+                .or_insert(is_redundant);
+
+            if is_redundant {
+                (
+                    0.0,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    f64::NAN,
+                    true,
+                )
+            } else {
+                let std_err = if mse.is_nan() || mse < 0.0 || *g_ii < 0.0 {
+                    f64::NAN
+                } else {
+                    (mse * *g_ii).sqrt()
+                };
+                let t_val = if std_err.is_nan() || std_err.abs() < 1e-9 {
+                    f64::NAN
+                } else {
+                    *beta_val / std_err
+                };
+                let param_sig = if t_val.is_nan() || df_error_usize == 0 {
+                    f64::NAN
+                } else {
+                    calculate_t_significance(t_val.abs(), df_error_usize)
+                };
+                let t_crit = if df_error_usize == 0 {
+                    f64::NAN
+                } else {
+                    calculate_t_critical(sig_level_opt, df_error_usize)
+                };
+                let (ci_lower, ci_upper) = if t_crit.is_nan() || std_err.is_nan() {
+                    (f64::NAN, f64::NAN)
+                } else {
+                    (*beta_val - t_crit * std_err, *beta_val + t_crit * std_err)
+                };
+                let non_cent_param = if t_val.is_nan() { f64::NAN } else { t_val.abs() };
+                let obs_power = if t_val.is_nan() || df_error_usize == 0 {
+                    f64::NAN
+                } else {
+                    calculate_observed_power_t(t_val.abs(), df_error_usize, sig_level_opt)
+                };
+                let partial_eta_sq_val = if t_val.is_nan() {
+                    f64::NAN
+                } else if df_error_val == 0.0 {
+                    if beta_val.abs() > 1e-9 { 1.0 } else { f64::NAN }
+                } else {
+                    let t_sq = t_val.powi(2);
+                    let den = t_sq + df_error_val;
+                    if den.abs() > 1e-12 {
+                        (t_sq / den).max(0.0).min(1.0)
+                    } else {
+                        if t_sq.abs() < 1e-12 { 0.0 } else { f64::NAN }
+                    }
+                };
+                (
+                    *beta_val,
+                    std_err,
+                    t_val,
+                    param_sig,
+                    ci_lower,
+                    ci_upper,
+                    partial_eta_sq_val,
+                    non_cent_param,
+                    obs_power,
+                    false,
+                )
+            }
+        } else {
+            term_is_aliased_map
+                .entry(param_name.split('=').next().unwrap_or(param_name).to_string())
+                .or_insert(false);
+            (
+                0.0,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                f64::NAN,
+                false,
+            )
+        };
 
         estimates.push(ParameterEstimateEntry {
-            parameter: "Intercept".to_string(),
-            b: intercept_value,
-            std_error,
-            t_value,
-            significance: sig_level,
+            parameter: param_name.clone(),
+            b: final_b,
+            std_error: final_std_err,
+            t_value: final_t_val,
+            significance: final_param_sig,
             confidence_interval: ConfidenceInterval {
-                lower_bound,
-                upper_bound,
+                lower_bound: final_ci_lower,
+                upper_bound: final_ci_upper,
             },
-            partial_eta_squared,
-            noncent_parameter,
-            observed_power,
+            partial_eta_squared: final_partial_eta_sq,
+            noncent_parameter: final_non_cent_param,
+            observed_power: final_obs_power,
+            is_redundant: is_redundant_param,
         });
     }
 
-    // Add parameters for factors
-    if let Some(factors) = &config.main.fix_factor {
-        for factor in factors {
-            let factor_levels = get_factor_levels(data, factor)?;
-            let reference_level = factor_levels.last().unwrap().clone(); // Use last level as reference
+    // Generate notes
+    let mut notes = Vec::new();
+    let mut note_letter = 'a';
 
-            // For each level except the reference level
-            for i in 0..factor_levels.len() - 1 {
-                let level = &factor_levels[i];
+    // Add note about redundant parameters
+    let mut aliased_terms_for_note: Vec<String> = term_is_aliased_map
+        .iter()
+        .filter(|(_, &is_aliased)| is_aliased)
+        .map(|(term_name, _)| term_name.clone())
+        .collect();
+    aliased_terms_for_note.sort();
+    aliased_terms_for_note.dedup();
 
-                // Get values for this level and reference level
-                let level_values = get_level_values(data, factor, level, &dep_var_name)?;
-                let ref_values = get_level_values(data, factor, &reference_level, &dep_var_name)?;
-
-                // Calculate parameter estimate (difference from reference level)
-                let level_mean = calculate_mean(&level_values);
-                let ref_mean = calculate_mean(&ref_values);
-                let effect = level_mean - ref_mean;
-
-                // Calculate standard error
-                let level_n = level_values.len() as f64;
-                let ref_n = ref_values.len() as f64;
-                let std_error = (error_variance * (1.0 / level_n + 1.0 / ref_n)).sqrt();
-
-                // Calculate t-statistic and significance
-                let t_value = effect / std_error;
-                let df = n_total - factors.len();
-                let sig_level = calculate_t_significance(df, t_value);
-
-                // Calculate confidence interval
-                let ci_width = std_error * calculate_t_critical(df, config.options.sig_level / 2.0);
-                let lower_bound = effect - ci_width;
-                let upper_bound = effect + ci_width;
-
-                // Calculate effect size and power
-                let partial_eta_squared = t_value.powi(2) / (t_value.powi(2) + (df as f64));
-                let noncent_parameter = t_value.abs();
-                let observed_power = calculate_observed_power_t(
-                    df,
-                    t_value,
-                    config.options.sig_level
-                );
-
-                estimates.push(ParameterEstimateEntry {
-                    parameter: format!("{}={}", factor, level),
-                    b: effect,
-                    std_error,
-                    t_value,
-                    significance: sig_level,
-                    confidence_interval: ConfidenceInterval {
-                        lower_bound,
-                        upper_bound,
-                    },
-                    partial_eta_squared,
-                    noncent_parameter,
-                    observed_power,
-                });
-            }
-
-            // Add null parameter for reference level
-            estimates.push(ParameterEstimateEntry {
-                parameter: format!("{}={}", factor, reference_level),
-                b: 0.0,
-                std_error: 0.0,
-                t_value: 0.0,
-                significance: 0.0,
-                confidence_interval: ConfidenceInterval {
-                    lower_bound: 0.0,
-                    upper_bound: 0.0,
-                },
-                partial_eta_squared: 0.0,
-                noncent_parameter: 0.0,
-                observed_power: 0.0,
-            });
-        }
+    if !aliased_terms_for_note.is_empty() {
+        notes.push(
+            format!("{}. This parameter is set to zero because it is redundant.", note_letter)
+        );
+        note_letter = ((note_letter as u8) + 1) as char;
     }
 
-    Ok(ParameterEstimates { estimates })
+    // Add note about degrees of freedom
+    if df_error_val == 0.0 {
+        notes.push(
+            format!("{}. Degrees of freedom for error are 0. Statistics depending on df_error (like t-tests, CIs, Obs. Power, Significance) may not be computable or meaningful.", note_letter)
+        );
+        note_letter = ((note_letter as u8) + 1) as char;
+    }
+
+    // Add note about significance level
+    notes.push(format!("{}. Computed using alpha = {:.2}", note_letter, sig_level));
+    note_letter = ((note_letter as u8) + 1) as char;
+
+    // Add note about observed power
+    notes.push(
+        format!(
+            "{}. Observed Power (for t-tests) is computed using alpha = {:.2} for its critical value.",
+            note_letter,
+            sig_level
+        )
+    );
+
+    Ok(ParameterEstimates { estimates, notes })
 }

@@ -20,7 +20,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeOptScaMCA } from "@/services/analyze/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -49,7 +48,6 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
     const dialogRef = useRef<DialogHandlers>(null);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -173,9 +171,6 @@ export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

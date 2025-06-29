@@ -1,7 +1,7 @@
 // coefficients_partandpartial.js
 
 self.onmessage = function(e) {
-    const { dependent, independents } = e.data;
+    const { dependent, independents, independentVariableInfos } = e.data;
     
     // Validasi input
     if (!dependent || !independents) {
@@ -212,8 +212,9 @@ self.onmessage = function(e) {
       const partialStr = formatVal(r_partial);
       const partStr = formatVal(r_part);
       
-      // Penamaan variabel independen (misal: VAR00002, VAR00003, dst.)
-      const varName = "VAR0000" + (i + 2);
+      // Penamaan variabel independen: prioritaskan label, fallback ke nama
+      const varInfo = independentVariableInfos[i];
+      const varName = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
       const modelNum = (i + 1).toString();
       
       // Tambahkan baris hasil ke array rows

@@ -1,6 +1,6 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { KMeansClusterAnalysisType } from "@/models/classify/k-means-cluster/k-means-cluster-worker";
-import init from "@/wasm/pkg/wasm";
+// import init, { KMeansClusterAnalysis } from "@/wasm/pkg/wasm";
 import { transformKMeansResult } from "./k-means-cluster-analysis-formatter";
 import { resultKMeans } from "./k-means-cluster-analysis-output";
 
@@ -8,12 +8,7 @@ export async function analyzeKMeansCluster({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: KMeansClusterAnalysisType) {
-    await init();
-
     const TargetVariables = configData.main.TargetVar || [];
     const CaseTargetVariable = configData.main.CaseTarget
         ? [configData.main.CaseTarget]
@@ -35,6 +30,7 @@ export async function analyzeKMeansCluster({
     const varDefsForCaseTarget = getVarDefs(variables, CaseTargetVariable);
     console.log(configData);
 
+    // await init();
     // const kmeans = new KMeansClusterAnalysis(
     //     slicedDataForTarget,
     //     slicedDataForCaseTarget,
@@ -53,9 +49,8 @@ export async function analyzeKMeansCluster({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultKMeans({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
+    //     configData,
+    //     variables,
     // });
 }

@@ -43,15 +43,44 @@ pub struct AgglomerationSchedule {
     pub stages: Vec<AgglomerationStage>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DendrogramNode {
-    pub case: String,
-    pub linkage_distance: f64,
-}
-
+// Completely redesigned dendrogram structure
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Dendrogram {
-    pub nodes: Vec<DendrogramNode>,
+    // The root node of the dendrogram tree
+    pub root: DendrogramNode,
+    // The maximum height in the tree (for scaling)
+    pub max_height: f64,
+    // Number of cases/items
+    pub num_items: usize,
+    // Case labels in their original order
+    pub case_labels: Vec<String>,
+    // Case ordering as they appear in the dendrogram (left to right)
+    pub ordered_cases: Vec<usize>,
+}
+
+// Redesigned node structure for the dendrogram
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DendrogramNode {
+    // Unique identifier for the node
+    pub id: usize,
+    // The height (distance) at which this cluster forms
+    pub height: f64,
+    // The cases contained in this cluster (as indices)
+    pub cases: Vec<usize>,
+    // Left child node (if any)
+    pub left: Option<Box<DendrogramNode>>,
+    // Right child node (if any)
+    pub right: Option<Box<DendrogramNode>>,
+    // Whether this is a leaf node
+    pub is_leaf: bool,
+    // The stage at which this node was created
+    pub stage: Option<usize>,
+    // Horizontal position for visualization (normalized)
+    pub x_position: Option<f64>,
+    // Case label (if this is a leaf node)
+    pub label: Option<String>,
+    // Case number (if this is a leaf node)
+    pub case_number: Option<usize>,
 }
 
 // Structure to track clusters during agglomeration
@@ -66,11 +95,15 @@ pub struct ClusterState {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IciclePlot {
+    // The orientation of the plot ("vertical" or "horizontal")
     pub orientation: String,
-    pub clusters: Vec<String>,
-    pub num_clusters: Vec<usize>,
+    // HashMap mapping case labels to their complete sequence of cluster counts
+    pub case_clusters: HashMap<String, Vec<usize>>,
+    // The starting cluster number for display
     pub start_cluster: i32,
+    // The ending cluster number for display
     pub stop_cluster: i32,
+    // The step size between cluster numbers
     pub step_by: i32,
 }
 
@@ -78,14 +111,4 @@ pub struct IciclePlot {
 pub struct ClusterMembership {
     pub num_clusters: usize,
     pub case_assignments: Vec<usize>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DendrogramTreeNode {
-    pub id: usize, // Node ID
-    pub left: Option<Box<DendrogramTreeNode>>, // Left child
-    pub right: Option<Box<DendrogramTreeNode>>, // Right child
-    pub cases: Vec<usize>, // Case indices in this node
-    pub height: f64, // Merge height/distance
-    pub label: Option<String>, // Label (only for leaf nodes)
 }

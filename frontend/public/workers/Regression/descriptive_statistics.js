@@ -1,8 +1,8 @@
 self.onmessage = function(e) {
-  const { dependent, independent } = e.data;
+  const { dependent, independent, dependentVariableInfo, independentVariableInfos } = e.data;
 
-  if (!dependent || !independent) {
-    self.postMessage({ error: "Data dependent dan independent harus disediakan." });
+  if (!dependent || !independent || !dependentVariableInfo || !independentVariableInfos) {
+    self.postMessage({ error: "Data dependent, independent, dependentVariableInfo, dan independentVariableInfos harus disediakan." });
     return;
   }
   if (!Array.isArray(dependent) || !Array.isArray(independent)) {
@@ -22,25 +22,32 @@ self.onmessage = function(e) {
 
   const rows = [];
 
+  const depDisplayName = (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') 
+    ? dependentVariableInfo.label 
+    : dependentVariableInfo.name;
+
   const statsDependent = {
-    variable: "VAR00001",
+    variable: depDisplayName,
     mean: parseFloat(mean(dependent).toFixed(2)),
     stdDeviation: parseFloat(sampleStdDev(dependent).toFixed(5)),
     n: dependent.length
   };
 
-  rows.push(Object.assign({ rowHeader: ["VAR00001"] }, statsDependent));
+  rows.push(Object.assign({ rowHeader: [depDisplayName] }, statsDependent));
 
   for (let i = 0; i < independent.length; i++) {
-    const varName = `VAR0000${i+2}`;
+    const varInfo = independentVariableInfos[i];
+    const indepDisplayName = (varInfo.label && varInfo.label.trim() !== '') 
+      ? varInfo.label 
+      : varInfo.name;
     const statsIndependent = {
-      variable: varName,
+      variable: indepDisplayName,
       mean: parseFloat(mean(independent[i]).toFixed(2)),
       stdDeviation: parseFloat(sampleStdDev(independent[i]).toFixed(5)),
       n: independent[i].length
     };
 
-    rows.push(Object.assign({ rowHeader: [varName] }, statsIndependent));
+    rows.push(Object.assign({ rowHeader: [indepDisplayName] }, statsIndependent));
   }
 
   const result = {

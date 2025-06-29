@@ -18,7 +18,6 @@ import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { analyzeDiscriminant } from "@/services/analyze/classify/discriminant/discriminant-analysis";
-import { useResultStore } from "@/stores/useResultStore";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
 export const DiscriminantContainer = ({
@@ -44,7 +43,6 @@ export const DiscriminantContainer = ({
     const [isBootstrapOpen, setIsBootstrapOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -125,9 +123,6 @@ export const DiscriminantContainer = ({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

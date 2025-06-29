@@ -19,17 +19,15 @@ import {
   EDIT_MODAL_CONTAINER_PREFERENCES,
 } from "@/components/Modals/Edit/";
 import {
+  TIME_SERIES_MODAL_COMPONENTS,
+  TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
+} from "@/components/Modals/Analyze/TimeSeries";
+import {
   TRANSFORM_MODAL_COMPONENTS,
   TRANSFORM_MODAL_CONTAINER_PREFERENCES,
 } from "@/components/Modals/Transform";
 
 // Lazy load regression modals - komponen yang jarang digunakan dan mungkin besar
-const ModalAutomaticLinearModeling = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/AutomaticLinearModeling/ModalAutomaticLinearModeling"
-    )
-);
 const ModalLinear = lazy(
   () => import("@/components/Modals/Regression/Linear/ModalLinear")
 );
@@ -51,50 +49,6 @@ const ModalCurveEstimation = lazy(
       "@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation"
     )
 );
-const ModalPartialLeastSquares = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/PartialLeastSquares/ModalPartialLeastSquares"
-    )
-);
-const ModalBinaryLogistic = lazy(
-  () =>
-    import("@/components/Modals/Regression/BinaryLogistic/ModalBinaryLogistic")
-);
-const ModalMultinomialLogistic = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/MultinomialLogistic/ModalMultinomialLogistic"
-    )
-);
-const ModalOrdinal = lazy(
-  () => import("@/components/Modals/Regression/Ordinal/ModalOrdinal")
-);
-const ModalProbit = lazy(
-  () => import("@/components/Modals/Regression/Probit/ModalProbit")
-);
-const ModalNonlinear = lazy(
-  () => import("@/components/Modals/Regression/Nonlinear/ModalNonlinear")
-);
-const ModalTwoStageLeastSquares = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/TwoStageLeastSquares/ModalTwoStageLeastSquares"
-    )
-);
-const ModalWeightEstimation = lazy(
-  () =>
-    import(
-      "@/components/Modals/Regression/WeightEstimation/ModalWeightEstimation"
-    )
-);
-const ModalQuantiles = lazy(
-  () => import("@/components/Modals/Regression/Quantiles/ModalQuantiles")
-);
-const ModalOptimalScaling = lazy(
-  () =>
-    import("@/components/Modals/Regression/OptimalScaling/ModalOptimalScaling")
-);
 
 // Lazy load chart modals
 const SimpleBarModal = lazy(
@@ -107,19 +61,19 @@ const ChartBuilderModal = lazy(
 
 // Lazy load time series modals
 const SmoothingModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/SmoothingModal")
+  () => import("@/components/Modals/Analyze/TimeSeries/Smoothing")
 );
 const DecompositionModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/DecompositionModal")
+  () => import("@/components/Modals/Analyze/TimeSeries/Decomposition")
 );
 const AutocorrelationModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/AutocorrelationModal")
+  () => import("@/components/Modals/Analyze/TimeSeries/Autocorrelation")
 );
 const UnitRootTestModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/UnitRootTestModal")
+  () => import("@/components/Modals/Analyze/TimeSeries/UnitRootTest")
 );
 const BoxJenkinsModelModal = lazy(
-  () => import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModelModal")
+  () => import("@/components/Modals/Analyze/TimeSeries/BoxJenkinsModel")
 );
 
 /**
@@ -184,13 +138,14 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Analyze modals - from dedicated registry
   ...ANALYZE_MODAL_COMPONENTS,
 
-  // Transform modals - from dedicated registry
-  ...TRANSFORM_MODAL_COMPONENTS,
+  // Time series modals - from dedicated registry
+  ...TIME_SERIES_MODAL_COMPONENTS,
+
+  // Transform modals - lazy loaded
+  // [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
+  // [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
 
   // Regression modals - lazy loaded
-  [ModalType.ModalAutomaticLinearModeling]: withSuspense(
-    ModalAutomaticLinearModeling as any
-  ) as React.ComponentType<BaseModalProps>,
   [ModalType.ModalLinear]: withSuspense(
     ModalLinear as any
   ) as React.ComponentType<BaseModalProps>,
@@ -208,36 +163,6 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   ) as React.ComponentType<BaseModalProps>,
   [ModalType.ModalCurveEstimation]: withSuspense(
     ModalCurveEstimation as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalPartialLeastSquares]: withSuspense(
-    ModalPartialLeastSquares as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalBinaryLogistic]: withSuspense(
-    ModalBinaryLogistic as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalMultinomialLogistic]: withSuspense(
-    ModalMultinomialLogistic as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalOrdinal]: withSuspense(
-    ModalOrdinal as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalProbit]: withSuspense(
-    ModalProbit as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalNonlinear]: withSuspense(
-    ModalNonlinear as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalWeightEstimation]: withSuspense(
-    ModalWeightEstimation as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalTwoStageLeastSquares]: withSuspense(
-    ModalTwoStageLeastSquares as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalQuantiles]: withSuspense(
-    ModalQuantiles as any
-  ) as React.ComponentType<BaseModalProps>,
-  [ModalType.ModalOptimalScaling]: withSuspense(
-    ModalOptimalScaling as any
   ) as React.ComponentType<BaseModalProps>,
 
   // Chart modals - lazy loaded
@@ -306,6 +231,9 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<
 
   // Analyze modals - from dedicated preferences
   ...ANALYZE_MODAL_CONTAINER_PREFERENCES,
+
+  // Time series modals - from dedicated preferences
+  ...TIME_SERIES_MODAL_CONTAINER_PREFERENCES,
 
   // Transform modals - from dedicated preferences
   ...TRANSFORM_MODAL_CONTAINER_PREFERENCES,

@@ -1,15 +1,14 @@
 // univariate-analysis-output.ts
 import { UnivariateFinalResultType } from "@/models/general-linear-model/univariate/univariate-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultUnivariateAnalysis({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: UnivariateFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

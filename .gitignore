@@ -59,8 +59,11 @@ yarn-error.log*
 
 # dist
 /dist
+
+# tests
 backend/dist
 /_test/
 
 # node_modules
 _tes/
+/_skripsi penulisan
