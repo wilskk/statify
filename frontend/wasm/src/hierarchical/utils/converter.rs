@@ -1,7 +1,12 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 
-use crate::hierarchical::models::result::{ CaseProcessingSummary, ClusteringResult, IciclePlot };
+use crate::hierarchical::models::result::{
+    CaseProcessingSummary,
+    ClusteringResult,
+    IciclePlot,
+    DendrogramNode,
+};
 
 pub fn string_to_js_error(error: String) -> JsValue {
     JsValue::from_str(&error)
@@ -58,13 +63,25 @@ struct FormattedAgglomerationStage {
 
 #[derive(Serialize)]
 struct FormattedDendrogram {
-    nodes: Vec<FormattedDendrogramNode>,
+    root: FormattedDendrogramNode,
+    max_height: f64,
+    num_items: usize,
+    case_labels: Vec<String>,
+    ordered_cases: Vec<usize>,
 }
 
 #[derive(Serialize)]
 struct FormattedDendrogramNode {
-    case: String,
-    linkage_distance: f64,
+    id: usize,
+    height: f64,
+    cases: Vec<usize>,
+    left: Option<Box<FormattedDendrogramNode>>,
+    right: Option<Box<FormattedDendrogramNode>>,
+    is_leaf: bool,
+    stage: Option<usize>,
+    x_position: Option<f64>,
+    label: Option<String>,
+    case_number: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -119,18 +136,13 @@ impl FormatResult {
         });
 
         let dendrogram = result.dendrogram.as_ref().map(|dend| {
-            let nodes = dend.nodes
-                .iter()
-                .map(|node| {
-                    FormattedDendrogramNode {
-                        case: node.case.clone(),
-                        linkage_distance: node.linkage_distance,
-                    }
-                })
-                .collect();
-
+            // Convert the hierarchical dendrogram structure
             FormattedDendrogram {
-                nodes,
+                root: Self::format_dendrogram_node(&dend.root),
+                max_height: dend.max_height,
+                num_items: dend.num_items,
+                case_labels: dend.case_labels.clone(),
+                ordered_cases: dend.ordered_cases.clone(),
             }
         });
 
@@ -163,6 +175,26 @@ impl FormatResult {
             icicle_plot: result.icicle_plot.clone(),
             executed_functions: result.executed_functions.clone(),
             cluster_memberships,
+        }
+    }
+
+    // Helper function to recursively format dendrogram nodes
+    fn format_dendrogram_node(node: &DendrogramNode) -> FormattedDendrogramNode {
+        FormattedDendrogramNode {
+            id: node.id,
+            height: node.height,
+            cases: node.cases.clone(),
+            left: node.left
+                .as_ref()
+                .map(|left_node| Box::new(Self::format_dendrogram_node(left_node))),
+            right: node.right
+                .as_ref()
+                .map(|right_node| Box::new(Self::format_dendrogram_node(right_node))),
+            is_leaf: node.is_leaf,
+            stage: node.stage,
+            x_position: node.x_position,
+            label: node.label.clone(),
+            case_number: node.case_number,
         }
     }
 }

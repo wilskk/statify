@@ -16,7 +16,6 @@ import {
 } from "@/models/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals";
 import { analyzeOptScaOverals } from "@/services/analyze/dimension-reduction/optimal-scaling/overals/optimal-scaling-overals-analysis";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -42,7 +41,6 @@ export const OptScaOveralsContainer = ({
     const dialogRef = useRef<DialogHandlers>(null);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -105,9 +103,6 @@ export const OptScaOveralsContainer = ({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

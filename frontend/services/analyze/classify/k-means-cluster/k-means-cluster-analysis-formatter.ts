@@ -102,24 +102,43 @@ export function transformKMeansResult(data: any): ResultJson {
 
     // 3. Cluster Membership
     if (data.cluster_membership) {
+        // Check if any case has a name
+        const hasCaseNames = data.cluster_membership.some(
+            (membership: any) =>
+                membership.case_name && membership.case_name.trim() !== ""
+        );
+
+        // Create column headers based on whether we have case names
+        const columnHeaders = [
+            { header: "Case Number", key: "case_number" },
+            ...(hasCaseNames
+                ? [{ header: "Case Name", key: "case_name" }]
+                : []),
+            { header: "Cluster", key: "cluster" },
+            { header: "Distance", key: "distance" },
+        ];
+
         const table: Table = {
             key: "cluster_membership",
             title: "Cluster Membership",
-            columnHeaders: [
-                { header: "Case Number", key: "case_number" },
-                { header: "Cluster", key: "cluster" },
-                { header: "Distance", key: "distance" },
-            ],
+            columnHeaders,
             rows: [],
         };
 
         // Fill data rows
         data.cluster_membership.forEach((membership: any) => {
-            table.rows.push({
+            const rowData: any = {
                 rowHeader: [membership.case_number.toString()],
                 cluster: membership.cluster.toString(),
                 distance: formatDisplayNumber(membership.distance),
-            });
+            };
+
+            // Only add case_name if we're displaying that column
+            if (hasCaseNames) {
+                rowData.case_name = membership.case_name || "";
+            }
+
+            table.rows.push(rowData);
         });
 
         resultJson.tables.push(table);
@@ -263,42 +282,32 @@ export function transformKMeansResult(data: any): ResultJson {
             key: "number_of_cases",
             title: "Number of Cases in each Cluster",
             columnHeaders: [
-                { header: "", key: "var" },
-                ...data.cases_count.clusters.map(
-                    (cluster: any, index: number) => ({
-                        header: cluster.cluster,
-                        key: `cluster_${cluster.cluster}`,
-                    })
-                ),
+                { header: "", key: "label" },
+                { header: "", key: "cluster" },
+                { header: "", key: "total" },
             ],
             rows: [],
         };
 
-        // Create a row with all cluster counts
-        const clusterCountsRow: any = {
-            rowHeader: [""],
-        };
-
-        data.cases_count.clusters.forEach((cluster: any) => {
-            clusterCountsRow[`cluster_${cluster.cluster}`] =
-                formatDisplayNumber(cluster.count);
+        data.cases_count.clusters.forEach((cluster: any, index: number) => {
+            table.rows.push({
+                rowHeader:
+                    index === 0
+                        ? ["Cluster", cluster.cluster]
+                        : ["", cluster.cluster],
+                total: formatDisplayNumber(cluster.count),
+            });
         });
 
-        // Add a "Valid" label to the first row
-        const validRow = {
-            ...clusterCountsRow,
-            rowHeader: ["Valid"],
-        };
-        table.rows.push(validRow);
-
-        // Add total count as the last row
-        table.rows.push({
-            rowHeader: [""],
-            total: formatDisplayNumber(data.cases_count.valid),
-        });
+        if (data.cases_count.valid >= 0) {
+            table.rows.push({
+                rowHeader: ["Valid"],
+                total: formatDisplayNumber(data.cases_count.valid),
+            });
+        }
 
         // Add missing row if there are any missing cases
-        if (data.cases_count.missing > 0) {
+        if (data.cases_count.missing >= 0) {
             table.rows.push({
                 rowHeader: ["Missing"],
                 total: formatDisplayNumber(data.cases_count.missing),

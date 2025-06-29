@@ -1,11 +1,13 @@
 use serde::{ Deserialize, Serialize };
-use std::collections::HashMap;
+use std::collections::{ HashMap, BTreeMap };
+use nalgebra::{ DMatrix, DVector };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnivariateResult {
     pub between_subjects_factors: Option<HashMap<String, BetweenSubjectFactors>>,
     pub descriptive_statistics: Option<HashMap<String, DescriptiveStatistics>>,
     pub levene_test: Option<Vec<LeveneTest>>,
+    pub heteroscedasticity_tests: Option<HeteroscedasticityTests>,
     pub tests_of_between_subjects_effects: Option<TestsBetweenSubjectsEffects>,
     pub parameter_estimates: Option<ParameterEstimates>,
     pub general_estimable_function: Option<GeneralEstimableFunction>,
@@ -17,26 +19,42 @@ pub struct UnivariateResult {
     pub robust_parameter_estimates: Option<ParameterEstimates>,
     pub plots: Option<HashMap<String, PlotData>>,
     pub saved_variables: Option<SavedVariables>,
-    pub executed_functions: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DesignMatrixInfo {
+    pub x: DMatrix<f64>,
+    pub y: DVector<f64>,
+    pub w: Option<DVector<f64>>,
+    pub n_samples: usize,
+    pub p_parameters: usize,
+    pub r_x_rank: usize,
+    pub term_column_indices: HashMap<String, (usize, usize)>,
+    pub intercept_column: Option<usize>,
+    pub term_names: Vec<String>,
+    pub case_indices_to_keep: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SweptMatrixInfo {
+    /// G: p×p symmetric g₂ general inverse of X'WX (after negation of swept result)
+    pub g_inv: DMatrix<f64>,
+    /// B̂: p×r matrix of parameter estimates
+    pub beta_hat: DVector<f64>,
+    /// S: symmetric r×r matrix of residual sums of squares and cross-products
+    pub s_rss: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BetweenSubjectFactors {
-    pub factors: HashMap<String, usize>,
+    pub factors: BTreeMap<String, usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DescriptiveStatistics {
     pub dependent_variable: String,
-    pub groups: Vec<StatGroup>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct StatGroup {
-    pub factor_name: String,
-    pub factor_value: String,
-    pub stats: StatsEntry,
-    pub subgroups: Vec<StatGroup>,
+    pub stats_entries: HashMap<String, StatsEntry>,
+    pub factor_names: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,12 +67,17 @@ pub struct StatsEntry {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LeveneTest {
     pub dependent_variable: String,
-    pub f_statistic: f64,
-    pub df1: usize,
-    pub df2: usize,
-    pub significance: f64,
-    pub function: String,
+    pub entries: Vec<LeveneTestEntry>,
     pub design: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LeveneTestEntry {
+    pub function: String,
+    pub levene_statistic: f64,
+    pub df1: usize,
+    pub df2: f64,
+    pub significance: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -62,9 +85,10 @@ pub struct TestsBetweenSubjectsEffects {
     pub source: HashMap<String, TestEffectEntry>,
     pub r_squared: f64,
     pub adjusted_r_squared: f64,
+    pub notes: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestEffectEntry {
     pub sum_of_squares: f64,
     pub df: usize,
@@ -76,9 +100,25 @@ pub struct TestEffectEntry {
     pub observed_power: f64,
 }
 
+impl TestEffectEntry {
+    pub fn empty_effect(df: usize) -> Self {
+        TestEffectEntry {
+            sum_of_squares: 0.0,
+            df,
+            mean_square: 0.0,
+            f_value: f64::NAN,
+            significance: f64::NAN,
+            partial_eta_squared: 0.0,
+            noncent_parameter: 0.0,
+            observed_power: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParameterEstimates {
     pub estimates: Vec<ParameterEstimateEntry>,
+    pub notes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,6 +132,7 @@ pub struct ParameterEstimateEntry {
     pub partial_eta_squared: f64,
     pub noncent_parameter: f64,
     pub observed_power: f64,
+    pub is_redundant: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -102,7 +143,15 @@ pub struct ConfidenceInterval {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralEstimableFunction {
-    pub matrix: Vec<Vec<i32>>,
+    pub estimable_function: GeneralEstimableFunctionEntry,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneralEstimableFunctionEntry {
+    pub parameter: Vec<String>,
+    pub l_label: Vec<String>,
+    pub l_matrix: Vec<Vec<i32>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -136,17 +185,10 @@ pub struct SpreadVsLevelPoint {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HeteroscedasticityTests {
-    pub breusch_pagan: Option<BPTest>,
     pub white: Option<WhiteTest>,
+    pub breusch_pagan: Option<BPTest>,
     pub modified_breusch_pagan: Option<ModifiedBPTest>,
     pub f_test: Option<FTest>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BPTest {
-    pub statistic: f64,
-    pub df: usize,
-    pub p_value: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -154,6 +196,15 @@ pub struct WhiteTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BPTest {
+    pub statistic: f64,
+    pub df: usize,
+    pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -161,6 +212,7 @@ pub struct ModifiedBPTest {
     pub statistic: f64,
     pub df: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -169,6 +221,7 @@ pub struct FTest {
     pub df1: usize,
     pub df2: usize,
     pub p_value: f64,
+    pub note: Vec<String>,
 }
 
 // Añadir estas nuevas estructuras

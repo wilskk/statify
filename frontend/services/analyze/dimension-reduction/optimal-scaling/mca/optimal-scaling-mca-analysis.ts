@@ -1,17 +1,12 @@
 import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
 import { OptScaMCAAnalysisType } from "@/models/dimension-reduction/optimal-scaling/mca/optimal-scaling-mca-worker";
-import init from "@/wasm/pkg/wasm";
+// import init, { MultipleCorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaMCA({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: OptScaMCAAnalysisType) {
-    await init();
-
     const AnalysisVariables = configData.main.AnalysisVars || [];
     const SupplementVariables = configData.main.SuppleVars || [];
     const LabelingVariables = configData.main.LabelingVars || [];
@@ -40,6 +35,7 @@ export async function analyzeOptScaMCA({
 
     console.log(configData);
 
+    // await init();
     // const mca = new MultipleCorrespondenceAnalysis(
     //     slicedDataForAnalysis,
     //     slicedDataForSupplement,
@@ -63,9 +59,6 @@ export async function analyzeOptScaMCA({
      * 🎉 Final Result Process 🎯
      * */
     // await resultMCAAnalysis({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

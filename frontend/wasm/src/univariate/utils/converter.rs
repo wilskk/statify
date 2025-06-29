@@ -1,9 +1,11 @@
 use wasm_bindgen::JsValue;
 use serde::Serialize;
+use std::collections::HashMap;
 
 use crate::univariate::models::result::{
     ContrastCoefficients,
     GeneralEstimableFunction,
+    HeteroscedasticityTests,
     LackOfFitTests,
     LeveneTest,
     ParameterEstimateEntry,
@@ -11,7 +13,7 @@ use crate::univariate::models::result::{
     PlotData,
     SavedVariables,
     SpreadVsLevelPoint,
-    StatGroup,
+    StatsEntry,
     TestEffectEntry,
     UnivariateResult,
 };
@@ -35,6 +37,7 @@ struct FormatResult {
     between_subjects_factors: Option<Vec<FormattedBetweenSubjectFactor>>,
     descriptive_statistics: Option<Vec<FormattedDescriptiveStatistic>>,
     levene_test: Option<Vec<LeveneTest>>,
+    heteroscedasticity_tests: Option<HeteroscedasticityTests>,
     tests_of_between_subjects_effects: Option<FormattedTestsBetweenSubjectsEffects>,
     parameter_estimates: Option<ParameterEstimates>,
     general_estimable_function: Option<GeneralEstimableFunction>,
@@ -46,7 +49,6 @@ struct FormatResult {
     robust_parameter_estimates: Option<ParameterEstimates>,
     plots: Option<Vec<FormattedPlot>>,
     saved_variables: Option<SavedVariables>,
-    executed_functions: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -64,7 +66,8 @@ struct FactorEntry {
 #[derive(Serialize)]
 struct FormattedDescriptiveStatistic {
     dependent_variable: String,
-    groups: Vec<StatGroup>,
+    flat_entries: HashMap<String, StatsEntry>,
+    factor_names: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -131,7 +134,8 @@ impl FormatResult {
                 .map(|(_, stat)| {
                     FormattedDescriptiveStatistic {
                         dependent_variable: stat.dependent_variable.clone(),
-                        groups: stat.groups.clone(),
+                        flat_entries: stat.stats_entries.clone(),
+                        factor_names: stat.factor_names.clone(),
                     }
                 })
                 .collect()
@@ -203,6 +207,7 @@ impl FormatResult {
             between_subjects_factors,
             descriptive_statistics,
             levene_test: result.levene_test.clone(),
+            heteroscedasticity_tests: result.heteroscedasticity_tests.clone(),
             tests_of_between_subjects_effects,
             parameter_estimates: result.parameter_estimates.clone(),
             general_estimable_function: result.general_estimable_function.clone(),
@@ -214,7 +219,6 @@ impl FormatResult {
             robust_parameter_estimates: result.robust_parameter_estimates.clone(),
             plots,
             saved_variables: result.saved_variables.clone(),
-            executed_functions: result.executed_functions.clone(),
         }
     }
 }

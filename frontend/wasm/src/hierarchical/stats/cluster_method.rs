@@ -1,31 +1,21 @@
-// cluster_method.rs
+// File: cluster_method.rs
 use crate::hierarchical::models::{ config::ClusMethod, result::ClusterState };
 use nalgebra::DMatrix;
 
-// Find the two closest clusters and returns their indices and distance
+// Menemukan dua cluster terdekat dan mengembalikan indeksnya serta jarak
 pub fn find_closest_clusters(state: &ClusterState) -> Option<(usize, usize, f64)> {
     let n_clusters = state.clusters.len();
     if n_clusters < 2 {
         return None;
     }
 
-    // Convert distances to DMatrix for better operations
-    let mut distances_mat = DMatrix::from_element(n_clusters, n_clusters, f64::MAX);
-    for i in 0..n_clusters {
-        for j in 0..n_clusters {
-            if i != j {
-                distances_mat[(i, j)] = state.distances[i][j];
-            }
-        }
-    }
-
-    // Find minimum value and its indices
+    // Cari nilai minimum dan indeksnya secara langsung tanpa konversi ke DMatrix
     let mut min_distance = f64::MAX;
     let mut closest_pair = None;
 
     for i in 0..n_clusters {
         for j in i + 1..n_clusters {
-            let distance = distances_mat[(i, j)];
+            let distance = state.distances[i][j];
             if distance < min_distance {
                 min_distance = distance;
                 closest_pair = Some((i, j, distance));
@@ -36,7 +26,10 @@ pub fn find_closest_clusters(state: &ClusterState) -> Option<(usize, usize, f64)
     closest_pair
 }
 
-// Calculate new distance between merged cluster and other clusters
+// Menggabungkan cluster dan memperbarui cluster state
+// SUDAH DIGANTI dengan implementasi yang lebih baik di agglomeration.rs
+
+// Menghitung jarak baru antara cluster yang digabung dan cluster lainnya
 pub fn calculate_new_distance(
     method: &ClusMethod,
     n_keep: usize,
@@ -46,146 +39,141 @@ pub fn calculate_new_distance(
     d_remove_other: f64,
     d_keep_remove: f64
 ) -> f64 {
-    // Convert to float for calculations
+    // Konversi ke float untuk perhitungan
     let n_keep = n_keep as f64;
     let n_remove = n_remove as f64;
     let n_other = n_other as f64;
+    let n_t = n_keep + n_remove; // Ukuran cluster gabungan
 
     match method {
         ClusMethod::AverageBetweenGroups => {
-            (n_keep * d_keep_other + n_remove * d_remove_other) / (n_keep + n_remove)
+            // Formula: s_tr = (N_p*s_pr + N_q*s_qr) / (N_p + N_q)
+            (n_keep * d_keep_other + n_remove * d_remove_other) / n_t
         }
-        ClusMethod::AverageWithinGroups => { (d_keep_other + d_remove_other) / 2.0 }
-        ClusMethod::SingleLinkage => { d_keep_other.min(d_remove_other) }
-        ClusMethod::CompleteLinkage => { d_keep_other.max(d_remove_other) }
+        ClusMethod::AverageWithinGroups => {
+            // Formula simplifikasi dari: (SUM_p + SUM_q + s_pq) / ((N_p + N_q)*(N_p + N_q - 1)/2)
+            (d_keep_other + d_remove_other) / 2.0
+        }
+        ClusMethod::SingleLinkage => {
+            // Minimal distance for dissimilarity matrices
+            d_keep_other.min(d_remove_other)
+        }
+        ClusMethod::CompleteLinkage => {
+            // Maximal distance for dissimilarity matrices
+            d_keep_other.max(d_remove_other)
+        }
         ClusMethod::Centroid => {
-            let numerator =
-                n_keep * d_keep_other +
+            // Formula: s_tr = (N_p*s_pr + N_q*s_qr - N_p*N_q*s_pq/(N_p + N_q)) / (N_p + N_q)
+            (n_keep * d_keep_other +
                 n_remove * d_remove_other -
-                (n_keep * n_remove * d_keep_remove) / (n_keep + n_remove);
-            numerator / (n_keep + n_remove)
+                (n_keep * n_remove * d_keep_remove) / n_t) /
+                n_t
         }
-        ClusMethod::Median => { (d_keep_other + d_remove_other) / 2.0 - d_keep_remove / 4.0 }
+        ClusMethod::Median => {
+            // Formula: s_tr = (s_pr + s_qr)/2 - s_pq/4
+            (d_keep_other + d_remove_other) / 2.0 - d_keep_remove / 4.0
+        }
         ClusMethod::Ward => {
-            let n_total = n_keep + n_remove;
+            // Formula: s_tr = [(N_r + N_p)*s_rp + (N_r + N_q)*s_rq - N_r*s_pq] / (N_t + N_r)
             ((n_other + n_keep) * d_keep_other +
                 (n_other + n_remove) * d_remove_other -
                 n_other * d_keep_remove) /
-                (n_total + n_other)
+                (n_t + n_other)
         }
     }
 }
 
-// Merge clusters and update the cluster state
-pub fn merge_clusters(state: &mut ClusterState, keep_idx: usize, remove_idx: usize) {
-    // Merge cluster elements
+// Menggabungkan cluster dan memperbarui distances dengan implementasi yang disederhanakan
+pub fn merge_clusters(
+    state: &mut ClusterState,
+    keep_idx: usize,
+    remove_idx: usize,
+    cluster_sizes: &[usize]
+) {
+    // Validasi indeks
+    if keep_idx >= state.clusters.len() || remove_idx >= state.clusters.len() {
+        // Tangani kesalahan dengan aman, kembalikan tanpa mengubah state
+        return;
+    }
+
+    // 1. Gabungkan elemen cluster
     let mut merged_cluster = state.clusters[keep_idx].clone();
     merged_cluster.extend(state.clusters[remove_idx].clone());
     state.clusters[keep_idx] = merged_cluster;
 
+    // 2. Pertahankan matriks jarak asli sebelum dimodifikasi
+    let original_distances = state.distances.clone();
+    let n_clusters = state.clusters.len();
+
+    // 3. Hapus cluster yang sudah digabung
     state.clusters.remove(remove_idx);
 
-    // Update distances
-    update_distances(state, keep_idx, remove_idx);
-}
+    // 4. Buat matriks jarak baru dengan dimensi yang tepat
+    let new_n_clusters = n_clusters - 1;
+    let mut new_distances = vec![vec![0.0; new_n_clusters]; new_n_clusters];
 
-// Update distance matrix after merging clusters
-pub fn update_distances(state: &mut ClusterState, keep_idx: usize, remove_idx: usize) {
-    // Clone necessary data to avoid borrowing conflicts
-    let method = state.method.clone();
-    let n_clusters_original = state.clusters.len() + 1; // +1 because we've already removed a cluster
-
-    // Get cluster sizes before any modifications
-    let cluster_sizes: Vec<usize> = state.clusters
-        .iter()
-        .map(|c| c.len())
-        .collect();
-    let remove_cluster_size = state.clusters[keep_idx].len() - cluster_sizes[keep_idx]; // Size of the removed cluster
-
-    // Store original distances for calculation (only the ones we need)
-    let mut original_distances = Vec::new();
-    for i in 0..n_clusters_original {
-        if i != remove_idx {
-            let old_i = if i > remove_idx { i - 1 } else { i };
-            original_distances.push((i, state.distances[old_i].clone()));
-        }
-    }
-
-    // Create new distance matrix
-    let n_clusters = state.clusters.len();
-    let mut new_distances = vec![vec![0.0; n_clusters]; n_clusters];
-
-    // Copy distances that don't involve the merged clusters
-    for i in 0..n_clusters {
-        for j in 0..n_clusters {
+    // 5. Isi matriks jarak baru
+    for i in 0..new_n_clusters {
+        for j in 0..i {
+            // Hanya isi setengah matriks, kemudian copy untuk simetri
             if i == j {
                 new_distances[i][j] = 0.0;
                 continue;
             }
 
-            let old_i = if i >= remove_idx { i + 1 } else { i };
-            let old_j = if j >= remove_idx { j + 1 } else { j };
+            // Hitung jarak baru jika i atau j adalah cluster gabungan
+            if i == keep_idx || j == keep_idx {
+                let other_idx = if i == keep_idx { j } else { i };
 
-            // Find distances in our original copies
-            if old_i != keep_idx && old_i != remove_idx && old_j != keep_idx && old_j != remove_idx {
-                // Find the correct original distance from our stored copies
-                let dist_i = &original_distances
-                    .iter()
-                    .find(|(idx, _)| *idx == old_i)
-                    .unwrap().1;
-                new_distances[i][j] = dist_i[old_j];
+                // Transformasikan indeks other_idx ke indeks asli
+                let orig_other_idx = if other_idx < remove_idx { other_idx } else { other_idx + 1 };
+
+                // Ambil jarak yang diperlukan dari matriks asli
+                let d_keep_other = original_distances[keep_idx][orig_other_idx];
+                let d_remove_other = original_distances[remove_idx][orig_other_idx];
+                let d_keep_remove = original_distances[keep_idx][remove_idx];
+
+                // Dapatkan ukuran cluster dengan aman
+                let n_keep = if keep_idx < cluster_sizes.len() {
+                    cluster_sizes[keep_idx]
+                } else {
+                    1
+                };
+                let n_remove = if remove_idx < cluster_sizes.len() {
+                    cluster_sizes[remove_idx]
+                } else {
+                    1
+                };
+                let n_other = if orig_other_idx < cluster_sizes.len() {
+                    cluster_sizes[orig_other_idx]
+                } else {
+                    1
+                };
+
+                // Hitung jarak baru
+                new_distances[i][j] = calculate_new_distance(
+                    &state.method,
+                    n_keep,
+                    n_remove,
+                    n_other,
+                    d_keep_other,
+                    d_remove_other,
+                    d_keep_remove
+                );
+            } else {
+                // Untuk cluster yang tidak berubah, salin jarak dari matriks asli
+                let orig_i = if i < remove_idx { i } else { i + 1 };
+                let orig_j = if j < remove_idx { j } else { j + 1 };
+                new_distances[i][j] = original_distances[orig_i][orig_j];
             }
+
+            // Salin untuk menjaga simetri
+            new_distances[j][i] = new_distances[i][j];
         }
+        // Diagonal selalu 0
+        new_distances[i][i] = 0.0;
     }
 
-    // Calculate new distances for the merged cluster
-    for i in 0..n_clusters {
-        if i == keep_idx {
-            continue; // Skip self-distance
-        }
-
-        let old_i = if i >= remove_idx { i + 1 } else { i };
-
-        // Get original distances needed for calculation
-        let keep_other_dist = if
-            let Some((_, dists)) = original_distances.iter().find(|(idx, _)| *idx == keep_idx)
-        {
-            dists[old_i]
-        } else {
-            0.0
-        };
-
-        let remove_other_dist = if
-            let Some((_, dists)) = original_distances.iter().find(|(idx, _)| *idx == remove_idx)
-        {
-            dists[old_i]
-        } else {
-            0.0
-        };
-
-        let keep_remove_dist = if
-            let Some((_, dists)) = original_distances.iter().find(|(idx, _)| *idx == keep_idx)
-        {
-            dists[remove_idx]
-        } else {
-            0.0
-        };
-
-        // Calculate new distance based on the method
-        let new_dist = calculate_new_distance(
-            &method,
-            cluster_sizes[keep_idx],
-            remove_cluster_size,
-            cluster_sizes[if old_i >= remove_idx { old_i - 1 } else { old_i }],
-            keep_other_dist,
-            remove_other_dist,
-            keep_remove_dist
-        );
-
-        new_distances[keep_idx][i] = new_dist;
-        new_distances[i][keep_idx] = new_dist; // Ensure symmetry
-    }
-
-    // Update the state's distance matrix
+    // 6. Perbarui matriks jarak state
     state.distances = new_distances;
 }

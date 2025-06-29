@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeRepeatedMeasures } from "@/services/analyze/general-linear-model/repeated-measures/repeated-measures-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -46,7 +45,6 @@ export const RepeatedMeasuresContainer = ({
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -168,9 +166,6 @@ export const RepeatedMeasuresContainer = ({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

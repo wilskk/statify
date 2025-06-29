@@ -1,15 +1,14 @@
 // correspondence-analysis-output.ts
 import { CorrespondenceFinalResultType } from "@/models/dimension-reduction/correspondence-analysis/correspondence-analysis-worker";
 import { Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultCorrespondence({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
 }: CorrespondenceFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key

@@ -8,12 +8,7 @@ export async function analyzeHierClus({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: HierClusAnalysisType) {
-    await init();
-
     const ClusterVariables = configData.main.Variables || [];
 
     const LabelCasesVariable = configData.main.LabelCases
@@ -37,6 +32,7 @@ export async function analyzeHierClus({
 
     console.log(configData);
 
+    await init();
     // const hc = new HierarchicalCluster(
     //     slicedDataForCluster,
     //     slicedDataForLabelCases,
@@ -46,9 +42,11 @@ export async function analyzeHierClus({
     // );
 
     // const results = hc.get_formatted_results();
+    // const results_original = hc.get_results();
     // const error = hc.get_all_errors();
 
     // console.log("Results:", results);
+    // console.log("Original Results: ", results_original);
     // console.log("Errors:", error);
 
     // const formattedResults = transformHierClusResult(results);
@@ -58,9 +56,6 @@ export async function analyzeHierClus({
     //  * 🎉 Final Result Process 🎯
     //  * */
     // await resultHierarchicalCluster({
-    //     addLog,
-    //     addAnalytic,
-    //     addStatistic,
     //     formattedResult: formattedResults ?? [],
     // });
 }

@@ -6,6 +6,7 @@ use crate::hierarchical::models::{
 
 use super::core::generate_agglomeration_schedule_wrapper;
 
+// Fungsi untuk mendapatkan keanggotaan cluster
 pub fn get_cluster_memberships(
     data: &AnalysisData,
     config: &ClusterConfig
@@ -54,6 +55,7 @@ pub fn get_cluster_memberships(
     Ok(result)
 }
 
+// Membuat keanggotaan cluster berdasarkan jadwal aglomerasi
 pub fn generate_cluster_membership(
     stages: &[AgglomerationStage],
     num_cases: usize,

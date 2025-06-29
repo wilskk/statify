@@ -6,9 +6,6 @@ export async function analyzeTree({
     configData,
     dataVariables,
     variables,
-    addLog,
-    addAnalytic,
-    addStatistic,
 }: TreeAnalysisType) {
     await init();
 

@@ -50,7 +50,6 @@ struct FormatResult {
     prior_probabilities: Option<FormattedPriorProbabilities>,
     classification_function_coefficients: Option<FormattedClassificationFunctionCoefficients>,
     discriminant_histograms: Option<FormattedDiscriminantHistograms>,
-    executed_functions: Option<Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -689,7 +688,6 @@ impl FormatResult {
             prior_probabilities,
             classification_function_coefficients,
             discriminant_histograms,
-            executed_functions: Some(result.executed_functions.clone()),
         }
     }
 }

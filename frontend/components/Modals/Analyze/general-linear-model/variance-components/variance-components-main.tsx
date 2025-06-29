@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useModal } from "@/hooks/useModal";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
 import { analyzeVarianceComps } from "@/services/analyze/general-linear-model/variance-components/variance-components-analysis";
 import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
 
@@ -36,7 +35,6 @@ export const VarianceCompsContainer = ({
     const [isSaveOpen, setIsSaveOpen] = useState(false);
 
     const { closeModal } = useModal();
-    const { addLog, addAnalytic, addStatistic } = useResultStore();
 
     useEffect(() => {
         const loadFormData = async () => {
@@ -108,9 +106,6 @@ export const VarianceCompsContainer = ({
                 configData: newFormData,
                 dataVariables: dataVariables,
                 variables: variables,
-                addLog,
-                addAnalytic,
-                addStatistic,
             });
         } catch (error) {
             console.error(error);

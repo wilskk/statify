@@ -1,15 +1,19 @@
 // k-means-cluster-analysis-output.ts
 import { KMeansClusterFinalResultType } from "@/models/classify/k-means-cluster/k-means-cluster-worker";
 import { Table } from "@/types/Table";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultKMeans({
-    addLog,
-    addAnalytic,
-    addStatistic,
     formattedResult,
+    configData,
+    variables,
 }: KMeansClusterFinalResultType) {
     try {
-        console.log("formattedResult", formattedResult);
+        const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
+
         const findTable = (key: string) => {
             const foundTable = formattedResult.tables.find(
                 (table: Table) => table.key === key
@@ -80,6 +84,18 @@ export async function resultKMeans({
                     output_data: clusterMembership,
                     components: `Cluster Membership`,
                 });
+
+                // Save Cluster Membership and Distance as variables if enabled
+                if (
+                    configData.save.ClusterMembership ||
+                    configData.save.DistanceClusterCenter
+                ) {
+                    await saveClusterResults(
+                        formattedResult,
+                        configData,
+                        variables
+                    );
+                }
             }
 
             /*
@@ -160,5 +176,124 @@ export async function resultKMeans({
         await kMeansClusterAnalysisResult();
     } catch (e) {
         console.error(e);
+    }
+}
+
+/**
+ * Save cluster membership and distance from cluster center as new variables
+ */
+async function saveClusterResults(
+    formattedResult: any,
+    configData: any,
+    variables: Variable[]
+) {
+    const { addVariable } = useVariableStore.getState();
+    const { updateCells } = useDataStore.getState();
+
+    // Find the cluster membership table
+    const clusterMembershipTable = formattedResult.tables.find(
+        (table: Table) => table.key === "cluster_membership"
+    );
+
+    if (
+        !clusterMembershipTable ||
+        !clusterMembershipTable.rows ||
+        clusterMembershipTable.rows.length === 0
+    ) {
+        console.error("No cluster membership data found for saving variables");
+        return;
+    }
+
+    // Get next column index
+    let nextColumnIndex = variables.length;
+
+    // Generate unique variable names
+    const generateUniqueName = (prefix: string) => {
+        let idx = 1;
+        let name = `${prefix}_${idx}`;
+        while (variables.some((v) => v.name === name)) {
+            idx++;
+            name = `${prefix}_${idx}`;
+        }
+        return name;
+    };
+
+    // Extract cluster membership values and distance values
+    const clusterValues: string[] = [];
+    const distanceValues: string[] = [];
+
+    clusterMembershipTable.rows.forEach((row: any) => {
+        if (row.cluster) {
+            clusterValues.push(row.cluster.toString());
+        }
+        if (row.distance) {
+            distanceValues.push(row.distance.toString());
+        }
+    });
+
+    // Save cluster membership as a new variable
+    if (configData.save.ClusterMembership && clusterValues.length > 0) {
+        const clusterVarName = generateUniqueName("CM");
+
+        const newClusterVariable: Partial<Variable> = {
+            name: clusterVarName,
+            columnIndex: nextColumnIndex,
+            type: "NUMERIC",
+            label: "Cluster Membership",
+            values: [],
+            missing: null,
+            measure: "nominal",
+            width: 8,
+            decimals: 0,
+            columns: 200,
+            align: "right",
+        };
+
+        await addVariable(newClusterVariable);
+
+        // Create updates for cluster values
+        const clusterUpdates = clusterValues.map((value, rowIndex) => ({
+            row: rowIndex,
+            col: nextColumnIndex,
+            value: value,
+        }));
+
+        if (clusterUpdates.length > 0) {
+            await updateCells(clusterUpdates);
+        }
+
+        nextColumnIndex++;
+    }
+
+    // Save distance from cluster center as a new variable
+    if (configData.save.DistanceClusterCenter && distanceValues.length > 0) {
+        const distanceVarName = generateUniqueName("CD");
+
+        const newDistanceVariable: Partial<Variable> = {
+            name: distanceVarName,
+            columnIndex: nextColumnIndex,
+            type: "NUMERIC",
+            label: "Distance from Cluster Center",
+            values: [],
+            missing: null,
+            measure: "scale",
+            width: 8,
+            decimals: 3,
+            columns: 200,
+            align: "right",
+        };
+
+        await addVariable(newDistanceVariable);
+
+        // Create updates for distance values
+        const distanceUpdates = distanceValues.map((value, rowIndex) => ({
+            row: rowIndex,
+            col: nextColumnIndex,
+            value: value,
+        }));
+
+        if (distanceUpdates.length > 0) {
+            await updateCells(distanceUpdates);
+        }
     }
 }

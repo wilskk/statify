@@ -14,8 +14,11 @@ pub fn generate_cluster_membership(
         .enumerate()
         .map(|(idx, case)| {
             let (cluster, distance) = find_nearest_cluster(case, &final_centers);
+            let case_name = data.case_names.as_ref().and_then(|names| names.get(idx).cloned());
+
             ClusterMembership {
                 case_number: data.case_numbers[idx],
+                case_name,
                 cluster: (cluster + 1) as i32,
                 distance,
             }

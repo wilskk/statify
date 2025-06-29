@@ -4,13 +4,9 @@ use crate::univariate::models::{
     data::{ AnalysisData, DataValue },
     result::SavedVariables,
 };
+use nalgebra::DMatrix;
 
-use super::core::{
-    extract_dependent_value,
-    get_factor_levels,
-    data_value_to_string,
-    matrix_inverse,
-};
+use super::core::{ extract_numeric_from_record, get_factor_levels, data_value_to_string };
 
 /// Save variables as requested in the configuration
 pub fn save_variables(
@@ -60,7 +56,7 @@ pub fn save_variables(
     // Build design matrix based on factors and covariates
     for records in &data.dependent_data {
         for record in records {
-            if let Some(y) = extract_dependent_value(record, &dep_var_name) {
+            if let Some(y) = extract_numeric_from_record(record, &dep_var_name) {
                 y_values.push(y);
 
                 // Create row for X matrix
@@ -95,7 +91,8 @@ pub fn save_variables(
                             .get(covar)
                             .map(|val| {
                                 match val {
-                                    DataValue::Number(n) => *n,
+                                    DataValue::Number(n) => *n as f64,
+                                    DataValue::NumberFloat(f) => *f,
                                     DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                                     _ => 0.0,
                                 }
@@ -113,7 +110,8 @@ pub fn save_variables(
                 if let Some(wls_weight) = &config.main.wls_weight {
                     if let Some(value) = record.values.get(wls_weight) {
                         weight = match value {
-                            DataValue::Number(n) => *n,
+                            DataValue::Number(n) => *n as f64,
+                            DataValue::NumberFloat(f) => *f,
                             DataValue::Boolean(b) => if *b { 1.0 } else { 0.0 }
                             _ => 1.0,
                         };
@@ -145,7 +143,18 @@ pub fn save_variables(
     }
 
     // Calculate (X'WX)^-1
-    let xtx_inv = matrix_inverse(&xtx)?;
+    let xtx_matrix = DMatrix::from_vec(p, p, xtx.into_iter().flatten().collect());
+    let xtx_inv = match xtx_matrix.try_inverse() {
+        Some(inv) => inv,
+        None => {
+            return Err("Matrix is not invertible".to_string());
+        }
+    };
+    let xtx_inv: Vec<Vec<f64>> = xtx_inv
+        .as_slice()
+        .chunks(p)
+        .map(|chunk| chunk.to_vec())
+        .collect();
 
     // Calculate X'WY
     let mut xty = vec![0.0; p];
@@ -198,7 +207,7 @@ pub fn save_variables(
     }
 
     // Calculate MSE
-    let mut mse = 0.0;
+    let mut mse: f64 = 0.0;
     for i in 0..n {
         mse += residuals[i].powi(2) * weight_values[i];
     }
