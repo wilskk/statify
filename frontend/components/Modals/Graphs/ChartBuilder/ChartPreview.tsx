@@ -9,6 +9,8 @@ import clsx from "clsx";
 import { createVerticalBarChart2 } from "@/utils/chartBuilder/chartTypes/barChartUtils";
 import { createHorizontalBarChart } from "@/utils/chartBuilder/chartTypes/barChartUtils";
 import { createLineChart } from "@/utils/chartBuilder/chartTypes/lineChartUtils";
+import { ChartService, DataProcessingService } from "@/services/chart";
+import GeneralChartContainer from "@/components/Output/Chart/GeneralChartContainer";
 
 interface ChartPreviewProps {
   chartType: ChartType;
@@ -127,6 +129,10 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
   const [isCalculating, setIsCalculating] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // State untuk testing ChartService
+  const [chartServiceOutput, setChartServiceOutput] = useState<any>(null);
+  const [showChartServiceTest, setShowChartServiceTest] = useState(false);
 
   const variables = useVariableStore.getState().variables;
   const data = useDataStore((state) => state.data);
@@ -1252,6 +1258,163 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   },
                   chartColors
                 );
+          // 🧪 TEST: ChartService call dengan DataProcessingService untuk debugging
+          try {
+            console.log(
+              "🧪 ChartPreview: Testing DataProcessingService + ChartService..."
+            );
+            console.log("📊 Raw data:", data);
+            console.log("📋 Variables:", variables);
+            console.log("🎯 Bottom variables:", bottomVariables);
+            console.log("📈 Side variables:", sideVariables);
+
+            if (data.length > 0 && sideVariables.length > 0) {
+              // Step 1: Process raw data menggunakan DataProcessingService
+              // Contoh dengan berbagai opsi processing
+              const processingOptions = {
+                // aggregation: "none" as const, // Bisa: "sum", "count", "average", "none"
+                filterEmpty: true,
+                sortBy: "category",
+                sortOrder: "asc" as const,
+                limit: undefined, // Bisa set limit jika perlu
+              };
+
+              const chartVariables = {
+                x: bottomVariables, // Variabel untuk x-axis (category)
+                y: sideVariables, // Variabel untuk y-axis (value)
+                groupBy: colorVariables, // Variabel untuk grouping/color
+                low: lowVariables, // Variabel untuk low values
+                high: highVariables, // Variabel untuk high values
+                close: closeVariables, // Variabel untuk close values
+                z: bottom2Variables, // Variabel untuk z-axis (3D charts)
+                y2: side2Variables, // Variabel untuk secondary y-axis
+              };
+
+              console.log("🔧 Processing options:", processingOptions);
+              console.log("📊 Chart variables mapping:", chartVariables);
+
+              const processedData = DataProcessingService.processDataForChart({
+                chartType: chartType,
+                rawData: data,
+                variables: variables,
+                chartVariables: chartVariables,
+                processingOptions: processingOptions,
+              });
+
+              console.log("🔄 Processed data:", processedData);
+
+              if (processedData.length > 0) {
+                // Step 2: Create chart JSON menggunakan ChartService
+                const chartServiceJSON = ChartService.createChartJSON({
+                  chartType: chartType, // Gunakan chartType yang sebenarnya
+                  chartData: processedData, // Gunakan processedData, bukan chartData
+                  chartMetadata: {
+                    title: chartTitle || `${chartType}`,
+                    subtitle:
+                      chartSubtitle ||
+                      `Showing distribution of ${
+                        sideVariables[0] || ""
+                      } across ${bottomVariables[0] || ""} categories`,
+                    description: `${chartType} showing data distribution`,
+                    titleFontSize: chartTitleFontSize || 16,
+                    subtitleFontSize: chartSubtitleFontSize || 12,
+                    axisInfo: {
+                      category: xAxisLabel || bottomVariables[0] || "Category",
+                      value: yAxisLabel || sideVariables[0] || "Value",
+                    },
+                  },
+                  chartConfig: {
+                    chartColor: chartColors,
+                    width: width,
+                    height: height,
+                    useAxis: useaxis,
+                    useLegend: true,
+                    axisLabels: {
+                      x: xAxisLabel || bottomVariables[0] || "Category",
+                      y: yAxisLabel || sideVariables[0] || "Value",
+                    },
+                    axisScaleOptions: {
+                      x: {
+                        min: xAxisMin,
+                        max: xAxisMax,
+                        majorIncrement: xAxisMajorIncrement,
+                        origin: xAxisOrigin,
+                      },
+                      y: {
+                        min: yAxisMin,
+                        max: yAxisMax,
+                        majorIncrement: yAxisMajorIncrement,
+                        origin: yAxisOrigin,
+                      },
+                    },
+                  },
+                  chartVariables: {
+                    x: bottomVariables,
+                    y: sideVariables,
+                  },
+                });
+
+                console.log(
+                  "🎯 ChartService Generated JSON:",
+                  chartServiceJSON
+                );
+
+                // Set state untuk render dengan GeneralChartContainer
+                setChartServiceOutput(chartServiceJSON);
+                setShowChartServiceTest(true);
+
+                // 🧪 TEST: Contoh penggunaan lain untuk debugging
+                console.log("🧪 Additional DataProcessingService examples:");
+
+                // Contoh 1: Processing dengan aggregation "average"
+                try {
+                  const avgProcessedData =
+                    DataProcessingService.processDataForChart({
+                      chartType: chartType,
+                      rawData: data,
+                      variables: variables,
+                      chartVariables: chartVariables,
+                      processingOptions: {
+                        ...processingOptions,
+                        aggregation: "average",
+                      },
+                    });
+                  console.log("📊 Average processed data:", avgProcessedData);
+                } catch (error) {
+                  console.log("⚠️ Average processing failed:", error);
+                }
+
+                // Contoh 2: Processing dengan aggregation "count"
+                try {
+                  const countProcessedData =
+                    DataProcessingService.processDataForChart({
+                      chartType: chartType,
+                      rawData: data,
+                      variables: variables,
+                      chartVariables: chartVariables,
+                      processingOptions: {
+                        ...processingOptions,
+                        aggregation: "count",
+                      },
+                    });
+                  console.log("📊 Count processed data:", countProcessedData);
+                } catch (error) {
+                  console.log("⚠️ Count processing failed:", error);
+                }
+              } else {
+                console.log("⚠️ No processed data available for ChartService");
+              }
+            } else {
+              console.log(
+                "⚠️ No raw data or variables available for processing"
+              );
+            }
+          } catch (error) {
+            console.error(
+              "❌ DataProcessingService + ChartService Error:",
+              error
+            );
+          }
           break;
 
         case "Horizontal Bar Chart":
@@ -1425,6 +1588,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
         }
 
@@ -1508,6 +1672,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
         }
 
@@ -1591,6 +1756,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
         }
 
@@ -1686,6 +1852,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   },
                   chartColors
                 );
+
           break;
 
         case "Multiple Line Chart": {
@@ -1827,7 +1994,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
                   useaxis,
                   {
                     title: chartTitle || "Pie Chart",
-                    subtitle: chartSubtitle || "",
+                    subtitle: chartSubtitle || "Sample Data",
                     titleColor: "hsl(var(--foreground))",
                     subtitleColor: "hsl(var(--muted-foreground))",
                     titleFontSize: 16,
@@ -1967,6 +2134,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Scatter Plot": // Menambahkan case baru untuk Scatter plot
@@ -2030,6 +2198,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Scatter Plot With Fit Line": // Menambahkan case baru untuk Scatter plot dengan Fit Line
@@ -2352,6 +2521,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Dot Plot":
@@ -2598,6 +2768,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Scatter Plot Matrix":
@@ -2643,6 +2814,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Stacked Histogram":
@@ -2691,6 +2863,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "Frequency Polygon":
@@ -2766,6 +2939,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             },
             chartColors
           );
+
           break;
 
         case "1-D Boxplot": // Menambahkan case baru untuk BoxPlot
@@ -2793,6 +2967,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis // Pilihan untuk menampilkan sumbu
           );
+
           break;
 
         case "Simple Range Bar": // Menambahkan case baru untuk BoxPlot
@@ -2828,6 +3003,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis // Pilihan untuk menampilkan sumbu
           );
+
           break;
 
         case "Clustered Range Bar": // Menambahkan case baru untuk BoxPlot
@@ -2922,6 +3098,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis // Pilihan untuk menampilkan sumbu
           );
+
           break;
 
         case "High-Low-Close Chart": // Menambahkan case baru untuk BoxPlot
@@ -3000,6 +3177,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           // console.log(y.range(), y.domain());
           console.log(d3.select("#above").node());
           console.log(d3.select("#below").node());
+
           break;
 
         case "Vertical Bar & Line Chart":
@@ -3025,6 +3203,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis
           );
+
           break;
 
         case "Vertical Bar & Line Chart2":
@@ -3238,6 +3417,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis
           );
+
           break;
 
         case "Drop Line Chart":
@@ -3268,6 +3448,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis
           );
+
           break;
 
         case "Summary Point Plot":
@@ -3299,28 +3480,43 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           break;
 
         case "Stem And Leaf Plot":
-          const stemLeafData =
+          const stemLeafData: Array<{ stem: string; leaves: number[] }> =
             chartData.length === 0
-              ? {
-                  "1": [2, 5],
-                  "2": [1, 2, 4],
-                  "3": [1, 5, 6, 7],
-                  "4": [2, 6, 7, 8, 9],
-                  "5": [2, 3, 4, 5, 6, 7, 11],
-                  "6": [1, 1, 1, 8, 9],
-                }
-              : chartData.reduce((acc: Record<string, number[]>, d) => {
-                  const value = Number(d.value);
-                  if (isNaN(value)) return acc;
-
-                  const stem = Math.floor(value / 10).toString();
-                  const leaf = value % 10;
-
-                  if (!acc[stem]) acc[stem] = [];
-                  acc[stem].push(leaf);
-
-                  return acc;
-                }, {});
+              ? [
+                  { stem: "1", leaves: [2, 5] },
+                  { stem: "2", leaves: [1, 2, 4] },
+                  { stem: "3", leaves: [1, 5, 6, 7] },
+                  { stem: "4", leaves: [2, 6, 7, 8, 9] },
+                  { stem: "5", leaves: [2, 3, 4, 5, 6, 7, 11] },
+                  { stem: "6", leaves: [1, 1, 1, 8, 9] },
+                ]
+              : (() => {
+                  // Jika sudah array of object (format baru)
+                  if (
+                    Array.isArray(chartData) &&
+                    chartData[0]?.stem &&
+                    chartData[0]?.leaves
+                  ) {
+                    return chartData as unknown as Array<{
+                      stem: string;
+                      leaves: number[];
+                    }>;
+                  }
+                  // Jika masih array of { value: number }
+                  const stemMap: Record<string, number[]> = {};
+                  chartData.forEach((d) => {
+                    const value = Number(d.value);
+                    if (isNaN(value)) return;
+                    const stem = Math.floor(value / 10).toString();
+                    const leaf = value % 10;
+                    if (!stemMap[stem]) stemMap[stem] = [];
+                    stemMap[stem].push(leaf);
+                  });
+                  return Object.keys(stemMap).map((stem) => ({
+                    stem,
+                    leaves: stemMap[stem].sort((a, b) => a - b),
+                  }));
+                })();
 
           chartNode = chartUtils.createStemAndLeafPlot(
             stemLeafData,
@@ -3328,6 +3524,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             height,
             useaxis
           );
+
           break;
 
         case "Violin Plot":
@@ -4287,7 +4484,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           )}
 
         {/* Modal untuk semua variabel */}
-        {/* {modalState.isOpen && (
+        {modalState.isOpen && (
           <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg z-[9999]">
             <div className="bg-white p-4 rounded-lg shadow-lg w-64">
               <h2 className="text-lg font-bold mb-2 text-center">
@@ -4349,74 +4546,10 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
               </button>
             </div>
           </div>
-        )} */}
+        )}
 
         {/* Kotak chart preview, hanya chart */}
         <div className="relative bg-gray-100 border-2 border-gray-300 rounded-lg p-2 w-[650px] max-w-full h-[550px] flex flex-col justify-between mt-8">
-          {/* Modal untuk semua variabel */}
-          {modalState.isOpen && (
-            <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center rounded-lg z-[9999]">
-              <div className="bg-white p-4 rounded-lg shadow-lg w-64">
-                <h2 className="text-lg font-bold mb-2 text-center">
-                  All{" "}
-                  {modalState.type === "side"
-                    ? "Side"
-                    : modalState.type === "side2"
-                    ? "Side2"
-                    : modalState.type === "bottom"
-                    ? "Bottom"
-                    : modalState.type === "bottom2"
-                    ? "Bottom2"
-                    : modalState.type === "color"
-                    ? "Color"
-                    : modalState.type === "filter"
-                    ? "Filter"
-                    : modalState.type === "low"
-                    ? "Low"
-                    : modalState.type === "high"
-                    ? "High"
-                    : modalState.type === "close"
-                    ? "Close"
-                    : "Undefined"}{" "}
-                  Variables
-                </h2>
-                <ul className="space-y-1">
-                  {variablesToShow.map((variable: string, index: number) => (
-                    <li
-                      key={index}
-                      className="p-1 bg-gray-200 rounded text-sm flex justify-between items-center"
-                    >
-                      <span>{variable}</span>
-                      <button
-                        className="text-red-500 font-bold text-xs"
-                        onClick={() =>
-                          handleRemoveVariable(
-                            modalState.type as
-                              | "side"
-                              | "bottom"
-                              | "low"
-                              | "high"
-                              | "close"
-                              | "side2"
-                              | "bottom2",
-                            index
-                          )
-                        }
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  className="mt-4 px-4 py-2 bg-red-500 text-white rounded w-full"
-                  onClick={handleCloseModal}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
           {/* Chart content saja */}
           {chartType === "3D Bar Chart2" ||
           chartType === "Clustered 3D Bar Chart" ||
@@ -4461,6 +4594,25 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           )}
         </div>
       </div>
+      {/* ChartService Test Output */}
+      {showChartServiceTest && chartServiceOutput && (
+        <div className="mt-6 p-4 border-2 border-green-500 rounded-lg bg-green-50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-green-800">
+              🧪 ChartService Test Output
+            </h3>
+            <button
+              onClick={() => setShowChartServiceTest(false)}
+              className="text-green-600 hover:text-green-800 text-xl font-bold"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="bg-white p-4 rounded border">
+            <GeneralChartContainer data={chartServiceOutput} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import { Button } from "@/components/ui/button";
 import { Download, Copy, Check, Image, FileType, View } from "lucide-react";
-import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // Define type untuk data chart
@@ -149,7 +148,6 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
           [format]: true,
         },
       }));
-      toast.success(`Chart copied as ${format.toUpperCase()}`);
       setTimeout(() => {
         setCopied((prev) => ({
           ...prev,
@@ -160,7 +158,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
         }));
       }, 500);
     } catch (err) {
-      toast.error(`Failed to copy chart as ${format.toUpperCase()}`);
+      // Error saat copy chart, tidak perlu aksi toast
     }
   };
 
@@ -215,9 +213,8 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
         };
         img.src = url;
       }
-      toast.success(`Chart downloaded as ${format.toUpperCase()}`);
     } catch (err) {
-      toast.error("Failed to download chart");
+      // Error saat download chart, tidak perlu aksi toast
     }
   };
 

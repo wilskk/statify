@@ -1160,9 +1160,7 @@ self.onmessage = function (event) {
               },
               description: `Distribution of ${xVariable} and ${yVariable} based on ${groupByVariable}.`,
               notes: chartMetadata.note || null,
-              title:
-                chartMetadata.title ||
-                `Grouped Scatter Plot: ${xVariable} vs ${yVariable}`,
+              title: chartMetadata.title || `Grouped Scatter Plot`,
               subtitle:
                 chartMetadata.subtitle ||
                 `Showing relationship between ${xVariable}, ${yVariable}, and ${groupByVariable}`,

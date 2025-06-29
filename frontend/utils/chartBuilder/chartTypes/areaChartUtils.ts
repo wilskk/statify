@@ -153,9 +153,17 @@ export const createAreaChart = (
 
   console.log("Filtered valid data:", validData);
 
+  // Tambahkan uniqueId ke setiap data point
+  const processedData = validData.map((d, i) => ({
+    ...d,
+    uniqueId: `${d.category}_${i}`,
+    displayLabel: d.category,
+  }));
+
   // Hitung margin secara dinamis
-  const maxYValue = d3.max(validData, (d) => d.value) ?? 0;
-  const maxCategoryLength = d3.max(validData, (d) => d.category.length) ?? 0;
+  const maxYValue = d3.max(processedData, (d) => d.value) ?? 0;
+  const maxCategoryLength =
+    d3.max(processedData, (d) => d.displayLabel.length) ?? 0;
 
   const marginTop = useAxis ? 60 : 0;
   const marginRight = useAxis ? 30 : 0;
@@ -163,12 +171,13 @@ export const createAreaChart = (
     ? String(Math.ceil(maxYValue)).length * 17 + 10
     : 0;
   const marginBottom =
-    useAxis && (maxCategoryLength > 10 || validData.length > 10) ? 20 : 10;
+    useAxis && (maxCategoryLength > 10 || processedData.length > 10) ? 20 : 10;
 
   // Skala X dan Y
+  // X pakai uniqueId
   const x = d3
     .scaleBand()
-    .domain(validData.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.2);
 
@@ -191,8 +200,8 @@ export const createAreaChart = (
 
   // Area generator
   const area = d3
-    .area<{ category: string; value: number }>()
-    .x((d) => x(d.category)! + x.bandwidth() / 2)
+    .area<{ uniqueId: string; value: number }>()
+    .x((d, i) => x(d.uniqueId)! + x.bandwidth() / 2)
     .y0(y(yMin))
     .y1((d) => y(d.value));
 
@@ -217,7 +226,7 @@ export const createAreaChart = (
   // Area path
   svg
     .append("path")
-    .datum(validData)
+    .datum(processedData)
     .attr(
       "fill",
       chartColors && chartColors.length > 0 ? chartColors[0] : "steelblue"
@@ -226,13 +235,18 @@ export const createAreaChart = (
 
   // Axis
   if (useAxis) {
-    // X Axis
+    // X Axis pakai uniqueId, label pakai displayLabel
     const xAxis = svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+      .call(
+        d3.axisBottom(x).tickFormat((d) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? dataPoint.displayLabel : d;
+        })
+      );
 
-    if (maxCategoryLength > 10 || validData.length > 10) {
+    if (maxCategoryLength > 10 || processedData.length > 10) {
       xAxis
         .selectAll("text")
         .style("text-anchor", "end")

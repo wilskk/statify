@@ -60,23 +60,31 @@ export const createVerticalBarChart2 = (
   console.log("Creating chart with filtered data:", filteredData);
   console.log("Creating chart with data:", axisLabels);
 
-  const maxValue = d3.max(filteredData, (d) => d.value) as number;
+  // Handle duplicate categories by creating unique identifiers
+  const processedData = filteredData.map((d, index) => ({
+    ...d,
+    originalCategory: d.category,
+    uniqueId: `${d.category}_${index}`, // Create unique ID for positioning
+    displayLabel: d.category, // Keep original category name for display
+  }));
 
-  // Label X dinamis
+  const maxValue = d3.max(processedData, (d) => d.value) as number;
+
+  // Label X dinamis - use original category names for width calculation
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = "10px sans-serif";
   const maxXLabelWidth =
-    d3.max(filteredData, (d) => ctx.measureText(d.category).width) ?? 0;
+    d3.max(processedData, (d) => ctx.measureText(d.displayLabel).width) ?? 0;
   const yTicks = d3.scaleLinear().domain([0, maxValue]).ticks(5);
   const maxYLabelWidth =
     d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
 
-  const needRotateX = maxXLabelWidth > width / filteredData.length;
+  const needRotateX = maxXLabelWidth > width / processedData.length;
 
   // Margin
   const xLabelLength = axisLabels?.x ? axisLabels.x.length : 0;
   const yLabelLength = axisLabels?.y ? axisLabels.y.length : 0;
-  const marginBottom = useAxis ? 10 : 0;
+  const marginBottom = useAxis ? 30 : 0;
   const marginLeft = useAxis
     ? Math.max(maxYLabelWidth + (axisLabels?.y ? 60 : 20), 60, yLabelLength * 7)
     : 0;
@@ -101,10 +109,10 @@ export const createVerticalBarChart2 = (
     .nice()
     .range([height - marginBottom, marginTop]);
 
-  // X scale (band) - for completeness, but min/max rarely used for band
+  // X scale (band) - use unique IDs for positioning, but display original category names
   const x = d3
     .scaleBand()
-    .domain(filteredData.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
@@ -124,9 +132,9 @@ export const createVerticalBarChart2 = (
   svg
     .append("g")
     .selectAll("rect")
-    .data(filteredData)
+    .data(processedData)
     .join("rect")
-    .attr("x", (d) => x(d.category) || 0)
+    .attr("x", (d) => x(d.uniqueId) || 0)
     .attr("y", (d) => y(d.value))
     .attr("height", (d) => (y(yMin) as number) - (y(d.value) as number))
     .attr("width", x.bandwidth())
@@ -147,6 +155,12 @@ export const createVerticalBarChart2 = (
       .call((g) =>
         g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
       );
+
+    // Update tick labels to show original category names
+    xAxis.selectAll("text").text((d) => {
+      const dataPoint = processedData.find((item) => item.uniqueId === d);
+      return dataPoint ? dataPoint.displayLabel : d;
+    });
 
     if (needRotateX) {
       xAxis
@@ -231,16 +245,25 @@ export const createHorizontalBarChart = (
     { x: "category", y: "value" }
   );
 
+  // Handle duplicate categories by creating unique identifiers
+  const processedData = filteredData.map((d, index) => ({
+    ...d,
+    originalCategory: d.category,
+    uniqueId: `${d.category}_${index}`, // Create unique ID for positioning
+    displayLabel: d.category, // Keep original category name for display
+  }));
+
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = "10px sans-serif";
 
   const maxCategoryWidth =
-    d3.max(filteredData.map((d) => ctx.measureText(d.category).width)) ?? 0;
+    d3.max(processedData.map((d) => ctx.measureText(d.displayLabel).width)) ??
+    0;
 
   // Margin definitions (move up here)
   const xScaleTemp = d3
     .scaleLinear()
-    .domain([0, d3.max(filteredData, (d) => d.value) ?? 0]);
+    .domain([0, d3.max(processedData, (d) => d.value) ?? 0]);
   const xTicks = xScaleTemp.ticks(5).map((d) => d.toFixed(0) + "%");
   const maxTickWidth = d3.max(xTicks.map((t) => ctx.measureText(t).width)) ?? 0;
 
@@ -259,7 +282,7 @@ export const createHorizontalBarChart = (
 
   // X scale
   let xMin = 0;
-  let xMax = d3.max(filteredData, (d) => d.value) as number;
+  let xMax = d3.max(processedData, (d) => d.value) as number;
   let majorIncrement = axisScaleOptions?.x?.majorIncrement
     ? Number(axisScaleOptions.x.majorIncrement)
     : undefined;
@@ -275,10 +298,10 @@ export const createHorizontalBarChart = (
     .nice()
     .range([marginLeft, width - marginRight]);
 
-  // Y scale (band)
+  // Y scale (band) - use unique IDs for positioning, but display original category names
   const y = d3
     .scaleBand()
-    .domain(filteredData.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .rangeRound([marginTop, height - marginBottom])
     .paddingInner(0.1)
     .paddingOuter(0.02); // Lebih rapat ke tepi
@@ -306,10 +329,10 @@ export const createHorizontalBarChart = (
         : barColor
     )
     .selectAll("rect")
-    .data(filteredData)
+    .data(processedData)
     .join("rect")
     .attr("x", x(xMin))
-    .attr("y", (d) => y(d.category) ?? 0)
+    .attr("y", (d) => y(d.uniqueId) ?? 0)
     .attr("width", (d) => x(d.value) - x(xMin))
     .attr("height", y.bandwidth());
 
@@ -326,11 +349,16 @@ export const createHorizontalBarChart = (
       .call(xAxis)
       .call((g) => g.select(".domain").remove());
 
-    // Horizontal Bar Chart axis Y (categorical)
+    // Horizontal Bar Chart axis Y (categorical) - use unique IDs for positioning, but display original names as labels
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).tickFormat((d) => String(d)))
+      .call(
+        d3.axisLeft(y).tickFormat((d) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? dataPoint.displayLabel : d;
+        })
+      )
       .call((g) => g.select(".domain").remove());
 
     // Add X axis label if provided
@@ -1056,7 +1084,7 @@ export const createClusteredBarChart = (
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
       .call(yAxis)
-      .call((g: any) => g.select(".domain").remove())
+      .call((g) => g.select(".domain").remove())
       .call((g) =>
         g.selectAll(".tick line").attr("stroke", "hsl(var(--border))")
       )
@@ -2701,7 +2729,7 @@ export const createBarAndLineChart2 = (
 };
 
 export const createStemAndLeafPlot = (
-  data: { [stem: string]: number[] },
+  data: Array<{ stem: string; leaves: number[] }>,
   width: number,
   height: number,
   useaxis: boolean = true
@@ -2734,10 +2762,10 @@ export const createStemAndLeafPlot = (
       `max-width: 100%; height: auto; font-family: 'Courier New', monospace;`
     );
 
-  const sortedKeys = Object.keys(data)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map((n) => n.toString());
+  // Urutkan stem secara numerik
+  const sortedData = data
+    .slice()
+    .sort((a, b) => Number(a.stem) - Number(b.stem));
 
   if (useaxis) {
     svg
@@ -2756,8 +2784,8 @@ export const createStemAndLeafPlot = (
     .append("g")
     .attr("transform", `translate(${startX}, ${y})`);
 
-  sortedKeys.forEach((stem, i) => {
-    const leaves = data[stem].slice().sort((a, b) => a - b);
+  sortedData.forEach((row, i) => {
+    const leaves = row.leaves.slice().sort((a, b) => a - b);
     const leafText = leaves.map((v) => v.toString()).join(" ");
 
     const group = rowGroup
@@ -2783,7 +2811,7 @@ export const createStemAndLeafPlot = (
       .attr("dominant-baseline", "middle")
       .style("font-size", `${bodyFontSize}px`)
       .style("font-weight", "bold")
-      .text(stem);
+      .text(row.stem);
 
     // Leaf area
     group
@@ -2805,15 +2833,15 @@ export const createStemAndLeafPlot = (
       .text(leafText);
   });
 
-  if (useaxis && sortedKeys.length > 0 && data[sortedKeys[1]]?.length > 0) {
-    const firstStem = sortedKeys[1];
-    const firstLeaf = data[firstStem][0];
+  if (useaxis && sortedData.length > 0 && sortedData[0].leaves.length > 0) {
+    const firstStem = sortedData[0].stem;
+    const firstLeaf = sortedData[0].leaves[0];
     const defaultKeyText = `Key: ${firstStem} | ${firstLeaf} = ${firstStem}${firstLeaf}`;
 
     svg
       .append("text")
       .attr("x", width / 2)
-      .attr("y", y + sortedKeys.length * lineHeight + 25)
+      .attr("y", y + sortedData.length * lineHeight + 25)
       .attr("text-anchor", "middle")
       .style("font-size", `${keyFontSize}px`)
       .style("font-style", "italic")

@@ -826,18 +826,24 @@ export const createDotPlot = (
   const marginBottom = useAxis ? (axisLabels?.x ? 40 : 20) : 10;
   const marginLeft = useAxis ? (axisLabels?.y ? 80 : 40) : 10;
   const dotRadius = 7;
-  const dotSpacing = dotRadius * 1.8;
 
-  // Skala X: Kategori
+  // Tambahkan uniqueId ke setiap data point
+  const processedData = data.map((d, i) => ({
+    ...d,
+    uniqueId: `${d.category}_${i}`,
+    displayLabel: d.category,
+  }));
+
+  // Skala X: satu band per data point, urut sesuai data
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.5);
 
   // Skala Y: Nilai dari data
   let yMin = 0;
-  let yMax = d3.max(data, (d) => d.value) || 0;
+  let yMax = d3.max(processedData, (d) => d.value) || 0;
   let yAxisMajorIncrement = axisScaleOptions?.y?.majorIncrement
     ? Number(axisScaleOptions.y.majorIncrement)
     : undefined;
@@ -862,38 +868,38 @@ export const createDotPlot = (
     .attr("height", height)
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
-  // .attr("style", "max-width: 100%; max-height:50%;");
 
   // Add title if provided
   if (titleOptions) {
     addChartTitle(svg, titleOptions);
   }
 
-  // Draw the dots
-  svg
+  // Draw the dots (apa adanya, satu group per data point, urut sesuai input)
+  const dotGroup = svg
     .append("g")
     .attr(
       "fill",
       chartColors && chartColors.length > 0 ? chartColors[0] : "steelblue"
-    )
-    .selectAll("g")
-    .data(data)
-    .join("g")
-    .attr("transform", (d) => {
-      const xPos = x(d.category) ?? 0;
-      return `translate(${xPos + x.bandwidth() / 2}, 0)`;
-    })
-    .selectAll("circle")
-    .data((d) => d3.range(d.value))
-    .join("circle")
-    .attr("cx", 0)
-    .attr("cy", (d, i) => y(i + 1))
-    .attr("r", dotRadius);
+    );
+
+  processedData.forEach((d) => {
+    const xBase = x(d.uniqueId)! + x.bandwidth() / 2;
+    for (let i = 0; i < d.value; i++) {
+      dotGroup
+        .append("circle")
+        .attr("cx", xBase)
+        .attr("cy", y(i + 1))
+        .attr("r", dotRadius);
+    }
+  });
 
   // Menambahkan axis
   if (useAxis) {
-    const xAxis = d3.axisBottom(x);
-    // No X axis major increment for scaleBand
+    // X axis: satu band per data point, label pakai nama kategori asli
+    const xAxis = d3.axisBottom(x).tickFormat((d) => {
+      const dataPoint = processedData.find((item) => item.uniqueId === d);
+      return dataPoint ? dataPoint.displayLabel : d;
+    });
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)

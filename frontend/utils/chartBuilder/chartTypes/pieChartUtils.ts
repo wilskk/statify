@@ -158,7 +158,7 @@ export const createPieChart = (
     .value((d) => d.value);
 
   // Tambahkan margin atas agar judul tidak tertutup
-  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
   const outerRadius = Math.min(width, height - marginTop) / 2 - 1;
   const labelRadius = outerRadius * 1.1;
 

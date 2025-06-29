@@ -1,10 +1,10 @@
 // types/modalTypes.ts
 
-import React from 'react';
+import React from "react";
 
 /**
  * ModalType - Enum untuk semua tipe modal dalam aplikasi
- * 
+ *
  * Digunakan untuk:
  * 1. Mengidentifikasi modal secara unik
  * 2. Menjamin type-safety dalam kode
@@ -24,11 +24,11 @@ export enum ModalType {
   ExportExcel = "ExportExcel",
   Exit = "Exit",
   ImportClipboard = "ImportClipboard",
-  
+
   // Edit modals - Operasi pencarian dan navigasi
   FindAndReplace = "FindAndReplace",
   GoTo = "GoTo",
-  
+
   // Data modals - Operasi manipulasi dan pengaturan data
   DefineVarProps = "DefineVarProps",
   VarPropsEditor = "VarPropsEditor",
@@ -47,11 +47,12 @@ export enum ModalType {
   MultipleResponse = "MultipleResponse",
   NewCustomAttr = "NewCustomAttr",
   SelectCases = "SelectCases",
-  
+
   // Transform modals - Transformasi variabel dan data
   ComputeVariable = "ComputeVariable",
   RecodeSameVariables = "RecodeSameVariables",
-  
+  RecodeDifferentVariables = "RecodeDifferentVariables",
+
   // Regression modals - Analisis regresi dan model terkait
   ModalAutomaticLinearModeling = "ModalAutomaticLinearModeling",
   ModalLinear = "ModalLinear",
@@ -70,11 +71,11 @@ export enum ModalType {
   ModalTwoStageLeastSquares = "ModalTwoStageLeastSquares",
   ModalQuantiles = "ModalQuantiles",
   ModalOptimalScaling = "ModalOptimalScaling",
-  
+
   // Chart modals - Pembuatan dan konfigurasi grafik
   ChartBuilderModal = "ChartBuilderModal",
   SimpleBarModal = "SimpleBarModal",
-  
+
   // Time series modals - Analisis deret waktu
   Smoothing = "Smoothing",
   Decomposition = "Decomposition",
@@ -94,7 +95,7 @@ export enum ModalType {
 
 /**
  * ModalCategory - Kategori untuk pengelompokan modal
- * 
+ *
  * Digunakan untuk mengorganisir modal berdasarkan fungsi
  * dan menempatkannya dalam menu yang sesuai.
  */
@@ -111,7 +112,7 @@ export enum ModalCategory {
 
 /**
  * BaseModalProps - Interface dasar untuk props semua modal
- * 
+ *
  * Semua komponen modal harus menerima props ini.
  * Untuk mendukung fleksibilitas, beberapa props yang diperlukan oleh
  * komponen modal tertentu dibuat opsional dengan tanda tanya (?)
@@ -120,23 +121,23 @@ export interface BaseModalProps {
   // Props wajib untuk semua modal
   onClose: () => void;
   containerType?: "dialog" | "sidebar";
-  
+
   // Container override untuk memaksa tipe container tertentu
   containerOverride?: "dialog" | "sidebar";
-  
+
   // Props opsional untuk modal tertentu
-  isOpen?: boolean;                    // Untuk file modals
-  params?: any;                        // Untuk regression modals
-  onChange?: (params: any) => void;    // Untuk regression modals
-  availablePlotVariables?: any[];      // Untuk PlotsLinear
-  
+  isOpen?: boolean; // Untuk file modals
+  params?: any; // Untuk regression modals
+  onChange?: (params: any) => void; // Untuk regression modals
+  availablePlotVariables?: any[]; // Untuk PlotsLinear
+
   // Mendukung props tambahan lainnya
   [key: string]: any;
 }
 
 /**
  * ModalMetadata - Metadata untuk modal
- * 
+ *
  * Berisi informasi tambahan tentang modal yang dapat
  * digunakan untuk UI atau logika khusus.
  */
@@ -150,7 +151,7 @@ export interface ModalMetadata {
 
 /**
  * MODAL_CATEGORIES - Pemetaan modal ke kategori
- * 
+ *
  * Setiap ModalType dipetakan ke ModalCategory yang sesuai.
  */
 export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
@@ -167,11 +168,11 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.ExportExcel]: ModalCategory.File,
   [ModalType.Exit]: ModalCategory.File,
   [ModalType.ImportClipboard]: ModalCategory.File,
-  
+
   // Edit modals
   [ModalType.FindAndReplace]: ModalCategory.Edit,
   [ModalType.GoTo]: ModalCategory.Edit,
-  
+
   // Data modals
   [ModalType.DefineVarProps]: ModalCategory.Data,
   [ModalType.VarPropsEditor]: ModalCategory.Data,
@@ -190,11 +191,12 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.MultipleResponse]: ModalCategory.Data,
   [ModalType.NewCustomAttr]: ModalCategory.Data,
   [ModalType.SelectCases]: ModalCategory.Data,
-  
+
   // Transform modals
   [ModalType.ComputeVariable]: ModalCategory.Transform,
   [ModalType.RecodeSameVariables]: ModalCategory.Transform,
-  
+  [ModalType.RecodeDifferentVariables]: ModalCategory.Transform,
+
   // Regression modals
   [ModalType.ModalAutomaticLinearModeling]: ModalCategory.Regression,
   [ModalType.ModalLinear]: ModalCategory.Regression,
@@ -213,11 +215,11 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.ModalTwoStageLeastSquares]: ModalCategory.Regression,
   [ModalType.ModalQuantiles]: ModalCategory.Regression,
   [ModalType.ModalOptimalScaling]: ModalCategory.Regression,
-  
+
   // Chart modals
   [ModalType.ChartBuilderModal]: ModalCategory.Graphs,
   [ModalType.SimpleBarModal]: ModalCategory.Graphs,
-  
+
   // Time series modals
   [ModalType.Smoothing]: ModalCategory.TimeSeries,
   [ModalType.Decomposition]: ModalCategory.TimeSeries,
@@ -237,26 +239,28 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
 
 /**
  * isModalInCategory - Memeriksa apakah modal termasuk dalam kategori tertentu
- * 
+ *
  * @param type - Tipe modal yang diperiksa
  * @param category - Kategori yang dicek
  * @returns true jika modal ada dalam kategori tersebut
  */
-export const isModalInCategory = (type: ModalType, category: ModalCategory): boolean => 
-  MODAL_CATEGORIES[type] === category;
+export const isModalInCategory = (
+  type: ModalType,
+  category: ModalCategory
+): boolean => MODAL_CATEGORIES[type] === category;
 
 /**
  * isFileModal - Memeriksa apakah modal adalah tipe File
- * 
+ *
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe File
  */
-export const isFileModal = (type: ModalType): boolean => 
+export const isFileModal = (type: ModalType): boolean =>
   isModalInCategory(type, ModalCategory.File);
 
 /**
  * isDataModal - Memeriksa apakah modal adalah tipe Data
- * 
+ *
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe Data
  */
@@ -265,7 +269,7 @@ export const isDataModal = (type: ModalType): boolean =>
 
 /**
  * isEditModal - Memeriksa apakah modal adalah tipe Edit
- * 
+ *
  * @param type - Tipe modal yang diperiksa
  * @returns true jika modal adalah tipe Edit
  */
@@ -274,16 +278,17 @@ export const isEditModal = (type: ModalType): boolean =>
 
 /**
  * getModalTitle - Mendapatkan judul yang sesuai untuk modal
- * 
+ *
  * @param type - Tipe modal
  * @returns Judul yang sesuai untuk modal tersebut
  */
 export function getModalTitle(type: ModalType): string {
   // Konversi dari enum ke format title case yang user-friendly
-  const rawTitle = type.toString()
-    .replace(/([A-Z])/g, ' $1')  // Add space before capital letters
-    .replace(/^./, str => str.toUpperCase()); // Capitalize first letter
-  
+  const rawTitle = type
+    .toString()
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+
   // Handle special cases
   switch (type) {
     case ModalType.ImportCSV:
@@ -339,7 +344,7 @@ export function getModalTitle(type: ModalType): string {
     case ModalType.DefineDateTime:
       return "Define Date and Time";
     case ModalType.DuplicateCases:
-      return "Identify Duplicate Cases";  
+      return "Identify Duplicate Cases";
     case ModalType.UnusualCases:
       return "Identify Unusual Cases";
     case ModalType.Restructure:
@@ -358,7 +363,9 @@ export function getModalTitle(type: ModalType): string {
       return "New Custom Attribute";
     case ModalType.SelectCases:
       return "Select Cases";
+    case ModalType.RecodeDifferentVariables:
+      return "Recode into Different Variables";
     default:
       return rawTitle.trim();
   }
-} 
+}

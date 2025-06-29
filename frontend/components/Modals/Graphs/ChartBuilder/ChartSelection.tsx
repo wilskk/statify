@@ -368,12 +368,14 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         },
       ];
 
-      const data27 = {
-        "1": [2, 5],
-        "2": [1, 2, 4],
-        "3": [1, 5, 6, 7],
-        "4": [2],
-      };
+      const data27 = [
+        { stem: "1", leaves: [2, 5] },
+        { stem: "2", leaves: [1, 2, 4] },
+        { stem: "3", leaves: [1, 5, 6, 7] },
+        { stem: "4", leaves: [2, 6, 7, 8, 9] },
+        { stem: "5", leaves: [2, 3, 4, 5, 6, 7, 11] },
+        { stem: "6", leaves: [1, 1, 1, 8, 9] },
+      ];
 
       const data28 = [
         { category: "A", value: 10 },

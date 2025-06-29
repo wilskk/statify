@@ -132,22 +132,29 @@ export const createLineChart = (
     { x: "category", y: "value" }
   );
 
+  // Tambahkan uniqueId ke setiap data point
+  const processedData = filteredData.map((d, i) => ({
+    ...d,
+    uniqueId: `${d.category}_${i}`,
+    displayLabel: d.category,
+  }));
+
   // Mengukur panjang label secara dinamis
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = "10px sans-serif"; // Pastikan font ini sesuai dengan font axis
 
   // Menghitung panjang label X secara dinamis
   const maxXLabelWidth =
-    d3.max(filteredData, (d) => ctx.measureText(d.category).width) ?? 0;
+    d3.max(processedData, (d) => ctx.measureText(d.displayLabel).width) ?? 0;
   const yTicks = d3
     .scaleLinear()
-    .domain([0, d3.max(filteredData, (d) => d.value)!])
+    .domain([0, d3.max(processedData, (d) => d.value)!])
     .ticks(5);
   const maxYLabelWidth =
     d3.max(yTicks.map((tick) => ctx.measureText(tick.toFixed(0)).width)) ?? 0;
 
   // Menentukan apakah rotasi diperlukan
-  const needRotateX = maxXLabelWidth > width / filteredData.length;
+  const needRotateX = maxXLabelWidth > width / processedData.length;
 
   // Menyesuaikan margin berdasarkan apakah rotasi diperlukan
   const marginBottom = useAxis
@@ -166,15 +173,16 @@ export const createLineChart = (
   const marginRight = useAxis ? 30 : 0;
 
   // Skala X dan Y
+  // X pakai uniqueId
   const x = d3
     .scaleBand()
-    .domain(filteredData.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
   // Y axis min/max/majorIncrement
-  let yMin = d3.min(filteredData, (d) => d.value) ?? 0;
-  let yMax = d3.max(filteredData, (d) => d.value) ?? 1;
+  let yMin = d3.min(processedData, (d) => d.value) ?? 0;
+  let yMax = d3.max(processedData, (d) => d.value) ?? 1;
   let majorIncrement = axisScaleOptions?.y?.majorIncrement
     ? Number(axisScaleOptions.y.majorIncrement)
     : undefined;
@@ -209,8 +217,8 @@ export const createLineChart = (
 
   // Mendeklarasikan generator garis
   const line = d3
-    .line<{ category: string; value: number }>()
-    .x((d) => x(d.category)! + x.bandwidth() / 2)
+    .line<{ uniqueId: string; value: number }>()
+    .x((d, i) => x(d.uniqueId)! + x.bandwidth() / 2)
     .y((d) => y(d.value)!)
     .curve(d3.curveLinear);
 
@@ -223,14 +231,19 @@ export const createLineChart = (
       chartColors && chartColors.length > 0 ? chartColors[0] : "steelblue"
     )
     .attr("stroke-width", 1.5)
-    .attr("d", line(filteredData));
+    .attr("d", line(processedData));
 
   if (useAxis) {
-    // X-Axis (Horizontal)
+    // X-Axis (Horizontal) pakai uniqueId, label pakai displayLabel
     const xAxis = svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+      .call(
+        d3.axisBottom(x).tickFormat((d) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? dataPoint.displayLabel : d;
+        })
+      );
 
     // Rotasi label X jika perlu
     if (needRotateX) {

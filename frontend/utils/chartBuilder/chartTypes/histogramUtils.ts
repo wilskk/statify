@@ -491,14 +491,20 @@ export const createFrequencyPolygon = (
     return null;
   }
 
-  // Extend data with zero values to create boundary points
-  const firstCategory = validData[0].category || "No Category";
-  const lastCategory =
-    validData[validData.length - 1].category || "No Category";
-  const extendedData = [
-    { category: "start", value: 0 },
-    ...validData,
-    { category: "end", value: 0 },
+  // Buat array kategori X (dengan boundary di luar range data)
+  const startKey = "__boundary_start__";
+  const endKey = "__boundary_end__";
+  const xDomain = [startKey, ...validData.map((d, i) => `cat_${i}`), endKey];
+
+  // Data plot: boundary 0 di kiri, semua data, boundary 0 di kanan
+  const plotData = [
+    { xKey: startKey, category: "", value: 0 },
+    ...validData.map((d, i) => ({
+      xKey: `cat_${i}`,
+      category: d.category,
+      value: d.value,
+    })),
+    { xKey: endKey, category: "", value: 0 },
   ];
 
   // Set margins based on whether axes are enabled
@@ -507,15 +513,15 @@ export const createFrequencyPolygon = (
   const marginBottom = useAxis ? (axisLabels?.x ? 10 : 0) : 0;
   const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 0;
 
-  // Set scales for X and Y axes
+  // Skala X: scalePoint dengan domain boundary + data
   const x = d3
     .scalePoint()
-    .domain(extendedData.map((d) => d.category))
+    .domain(xDomain)
     .range([marginLeft, width - marginRight]);
 
   // Set domain Y dari axisScaleOptions jika ada
   let yMin = 0;
-  let yMax = d3.max(extendedData, (d) => d.value) as number;
+  let yMax = d3.max(plotData, (d) => d.value) as number;
   let majorIncrement = axisScaleOptions?.y?.majorIncrement
     ? Number(axisScaleOptions.y.majorIncrement)
     : undefined;
@@ -556,15 +562,15 @@ export const createFrequencyPolygon = (
   // Append frequency polygon line to the SVG
   svg
     .append("path")
-    .datum(extendedData)
+    .datum(plotData)
     .attr("fill", "none")
     .attr("stroke", mainColor)
     .attr("stroke-width", 2)
     .attr(
       "d",
       d3
-        .line<{ category: string; value: number }>()
-        .x((d) => x(d.category)!)
+        .line<(typeof plotData)[0]>()
+        .x((d) => x(d.xKey)!)
         .y((d) => y(Math.max(yMin, Math.min(yMax, d.value))))
         .curve(d3.curveMonotoneX)
     );
@@ -573,30 +579,40 @@ export const createFrequencyPolygon = (
   svg
     .append("g")
     .selectAll("circle")
-    .data(extendedData)
+    .data(plotData)
     .join("circle")
-    .attr("cx", (d) => x(d.category)!)
+    .attr("cx", (d) => x(d.xKey)!)
     .attr("cy", (d) => y(Math.max(yMin, Math.min(yMax, d.value))))
     .attr("r", 4)
     .attr("fill", mainColor);
 
   // If axis is enabled, append X and Y axes
   if (useAxis) {
+    // X axis: label kategori asli untuk data, kosong untuk boundary
     svg
       .append("g")
       .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0));
+      .call(
+        d3
+          .axisBottom(x)
+          .tickFormat((d) => {
+            if (d === startKey || d === endKey) return "";
+            const idx = parseInt(d.replace("cat_", ""));
+            return validData[idx] ? validData[idx].category : "";
+          })
+          .tickSizeOuter(0)
+      );
 
-    let yAxis = d3.axisLeft(y);
+    let yAxis;
     if (majorIncrement && majorIncrement > 0) {
       // Generate ticks sesuai majorIncrement
       const ticks = [];
       for (let v = yMin; v <= yMax; v += majorIncrement) {
         ticks.push(v);
       }
-      yAxis = yAxis.tickValues(ticks);
+      yAxis = d3.axisLeft(y).tickValues(ticks);
     } else {
-      yAxis = yAxis.ticks(height / 40);
+      yAxis = d3.axisLeft(y).ticks(height / 40);
     }
     svg
       .append("g")
@@ -781,60 +797,36 @@ export const createStackedHistogram = (
   if (useAxis) {
     svg
       .append("g")
-      .attr("transform", `translate(${marginLeft},${marginTop})`)
+      .attr("transform", `translate(${marginLeft}, ${marginTop})`)
       .call(d3.axisLeft(y).ticks(height / 40))
       .call((g) => g.select(".domain").remove());
-
-    // Label sumbu Y
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", `rotate(-90)`)
-        .attr("x", -(marginTop + height / 2))
-        .attr("y", 20)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.y);
-    }
   }
 
-  // Tambahkan legenda di bawah chart, rata tengah
-  if (useAxis) {
-    const legendItemWidth = 80;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const totalLegendWidth = categories.length * legendItemWidth;
-    const legendStartX = (svgWidth - totalLegendWidth) / 2;
-    const legendY = marginTop + height + marginBottom + 10;
-
-    const legend = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 12)
-      .attr("text-anchor", "start")
-      .selectAll("g")
-      .data(categories)
-      .join("g")
-      .attr(
-        "transform",
-        (d, i) => `translate(${legendStartX + i * legendItemWidth},${legendY})`
-      );
-
-    legend
-      .append("rect")
-      .attr("width", 19)
-      .attr("height", legendItemHeight)
-      .attr("fill", (d: string) => String(color(d)));
-
-    legend
+  // Label sumbu X (selalu di bawah chart, bukan di bawah judul)
+  if (useAxis && axisLabels?.x) {
+    svg
       .append("text")
-      .attr("x", 19 + labelOffset)
-      .attr("y", legendItemHeight / 2)
-      .attr("dy", "0.35em")
-      .text((d) => d);
+      .attr("x", marginLeft + width / 2)
+      .attr("y", marginTop + height + marginBottom - 20)
+      .attr("text-anchor", "middle")
+      .attr("fill", "hsl(var(--foreground))")
+      .style("font-size", "14px")
+      .text(axisLabels.x);
   }
 
-  // Kembalikan node SVG
+  // Label sumbu Y
+  if (useAxis && axisLabels?.y) {
+    svg
+      .append("text")
+      .attr("transform", `rotate(-90)`)
+      .attr("x", -(marginTop + height / 2))
+      .attr("y", 20)
+      .attr("text-anchor", "middle")
+      .attr("fill", "hsl(var(--foreground))")
+      .style("font-size", "14px")
+      .text(axisLabels.y);
+  }
+
+  // Return the SVG node
   return svg.node();
 };

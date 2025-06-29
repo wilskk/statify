@@ -39,9 +39,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -73,7 +73,7 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
         label: true,
         min: false,
         max: false,
-        majorIncrement: false,
+        majorIncrement: true,
         origin: false,
       },
     },
@@ -146,9 +146,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
       },
       y: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
     },
@@ -164,9 +164,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -189,9 +189,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {

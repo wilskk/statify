@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +23,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
+import { useDataStore, CellUpdate } from "@/stores/useDataStore";
 import type { Variable, VariableType } from "@/types/Variable";
 import RecodeVariablesTab from "../recodeSameVariables/RecodeVariablesTab";
 import OldNewValuesSetup from "../recodeSameVariables/OldNewValuesSetup";
 import { useResultStore } from "@/stores/useResultStore";
+import { X } from "lucide-react";
 
 export interface RecodeRule {
   id: string;
@@ -53,9 +55,13 @@ interface RecodeMapping {
 
 interface RecodeDifferentVariablesModalProps {
   onClose: () => void;
+  containerType?: "dialog" | "sidebar";
 }
 
-const Index: FC<RecodeDifferentVariablesModalProps> = ({ onClose }) => {
+const Index: FC<RecodeDifferentVariablesModalProps> = ({
+  onClose,
+  containerType = "dialog",
+}) => {
   const allVariablesFromStore = useVariableStore.getState().variables;
   const dataStore = useDataStore();
   const { toast } = useToast();
@@ -71,9 +77,11 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({ onClose }) => {
     "NUMERIC" | "STRING" | null
   >(null);
 
-  const [showOldNewSetup, setShowOldNewSetup] = useState(false);
   const [recodeRules, setRecodeRules] = useState<RecodeRule[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"setup" | "rules">("setup");
 
   // Alert dialog state
   const [showTypeAlert, setShowTypeAlert] = useState(false);
@@ -363,17 +371,17 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({ onClose }) => {
 
     setIsProcessing(true);
     try {
-      let newDataMatrix = dataStore.data.map((row) => [...row]);
-      let currentColumnIndex = allVariablesFromStore.length;
       const variableStore = useVariableStore.getState();
+      let currentColumnIndex = allVariablesFromStore.length;
 
+      // Step 1: Add all variables first (sama seperti ComputeVariable)
+      const newVariablesToAdd: Partial<Variable>[] = [];
       for (const mapping of recodeMappings) {
-        const newVariable = {
+        const newVariable: Partial<Variable> = {
           name: mapping.targetName,
           label: mapping.targetLabel,
           type: recodeListType || "NUMERIC",
           columnIndex: currentColumnIndex,
-          tempId: `temp_${Date.now()}_${currentColumnIndex}`,
           width: 8,
           decimals: 2,
           values: [],
@@ -388,31 +396,50 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({ onClose }) => {
             : "nominal") as Variable["measure"],
           role: "input" as Variable["role"],
         };
+        newVariablesToAdd.push(newVariable);
+        currentColumnIndex++;
+      }
+
+      // Add variables first - ini akan membuat kolom tersedia
+      if (newVariablesToAdd.length > 0) {
+        await variableStore.addMultipleVariables(newVariablesToAdd);
+      }
+
+      // Step 2: Prepare cell updates (sama seperti ComputeVariable)
+      const bulkUpdates: CellUpdate[] = [];
+      let columnOffset = allVariablesFromStore.length;
+
+      for (const mapping of recodeMappings) {
         // Get data from source variable
         const { data } = await dataStore.getVariableData(
           mapping.sourceVariable
         );
+
         // Apply recode rules to create new data
         const newData = data.map((value) => {
           const recodedValue = evaluateValueWithRules(value, recodeRules);
           return recodedValue === null ? "" : recodedValue;
         });
-        // Pastikan newData sepanjang newDataMatrix
-        const paddedNewData = Array(newDataMatrix.length)
-          .fill("")
-          .map((_, i) => newData[i] ?? "");
-        // Tambahkan kolom baru ke setiap baris
-        newDataMatrix = newDataMatrix.map((row, rowIndex) => {
-          const newRow = [...row];
-          newRow.push(paddedNewData[rowIndex]);
-          return newRow;
+
+        // Add to bulk updates
+        newData.forEach((value, rowIndex) => {
+          bulkUpdates.push({
+            row: rowIndex,
+            col: columnOffset,
+            value: value,
+          });
         });
-        // Tambahkan variabel baru ke variableStore
-        variableStore.addVariable(newVariable);
-        currentColumnIndex++;
+
+        columnOffset++;
       }
-      // Update dataStore dengan newDataMatrix
-      await dataStore.setDataAndSync(newDataMatrix);
+
+      // Step 3: Apply all updates using updateCells (sama seperti ComputeVariable)
+      if (bulkUpdates.length > 0) {
+        await useDataStore.getState().updateCells(bulkUpdates);
+      }
+
+      // Step 4: Save using pendingUpdates (sama seperti ComputeVariable)
+      await useDataStore.getState().saveData();
 
       // Add log entry
       const recodeRulesText = recodeRules
@@ -520,196 +547,214 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({ onClose }) => {
     }
   };
 
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent
-        className="transition-all duration-300 p-0"
-        style={{
-          width: showOldNewSetup ? 1220 : 700,
-          maxWidth: "95vw",
-          minWidth: 350,
-        }}
+  const RecodeContent = () => (
+    <>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "setup" | "rules")}
+        className="w-full flex flex-col flex-grow overflow-hidden"
       >
-        <div className="flex flex-row h-full">
-          {/* Kiri: Konten utama */}
-          <div className="flex-1 p-6 min-w-[350px]">
-            <DialogHeader>
-              <DialogTitle>Recode into Different Variables</DialogTitle>
+        <div className="border-b border-border flex-shrink-0">
+          <TabsList className="bg-muted rounded-none h-9 p-0">
+            <TabsTrigger
+              value="setup"
+              className={`px-4 h-8 rounded-none text-sm ${
+                activeTab === "setup"
+                  ? "bg-card border-t border-l border-r border-border"
+                  : ""
+              }`}
+            >
+              Setup
+            </TabsTrigger>
+            <TabsTrigger
+              value="rules"
+              className={`px-4 h-8 rounded-none text-sm ${
+                activeTab === "rules"
+                  ? "bg-card border-t border-l border-r border-border"
+                  : ""
+              }`}
+            >
+              Rules
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="setup" className="p-6 overflow-y-auto flex-grow">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <RecodeVariablesTab
+                availableVariables={availableVariables}
+                variablesToRecode={variablesToRecode}
+                highlightedVariable={highlightedVariable}
+                setHighlightedVariable={setHighlightedVariable}
+                moveToRightPane={moveToRightPane}
+                moveToLeftPane={moveToLeftPane}
+                reorderVariables={reorderVariables}
+              />
+            </div>
+            <div>
+              <ul className="border rounded p-2 h-48 overflow-y-auto">
+                {recodeMappings.map((m, i) => (
+                  <li
+                    key={m.sourceVariable.tempId}
+                    className={`p-2 flex items-center gap-2 cursor-pointer rounded ${
+                      selectedMappingIndex === i ? "bg-blue-100" : ""
+                    }`}
+                    onClick={() => handleSelectMapping(i)}
+                  >
+                    <span>
+                      {m.sourceVariable.name} --&gt; {m.targetName || "?"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveToLeftPane(m.sourceVariable);
+                      }}
+                    >
+                      🗑️
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex flex-col gap-2 border rounded p-2">
+                {selectedMappingIndex !== null && (
+                  <>
+                    <label className="text-sm font-medium">Name:</label>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                    <label className="text-sm font-medium">Label:</label>
+                    <Input
+                      value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                    />
+                    <Button onClick={handleChangeMapping} className="mt-2">
+                      Change
+                    </Button>
+                  </>
+                )}
+                {selectedMappingIndex === null && (
+                  <div className="text-gray-400 text-sm">
+                    Select a variable to edit output name/label
+                  </div>
+                )}
+              </div>
+              {/* Checkbox cast output */}
+              <div className="mt-4 flex flex-col gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={outputType === "STRING"}
+                    onChange={(e) =>
+                      setOutputType(e.target.checked ? "STRING" : "NUMERIC")
+                    }
+                  />
+                  Output variables are strings
+                </label>
+                {outputType === "STRING" && (
+                  <div className="flex items-center gap-2 ml-6">
+                    Width:
+                    <input
+                      type="number"
+                      min={1}
+                      max={255}
+                      value={stringWidth}
+                      onChange={(e) => setStringWidth(Number(e.target.value))}
+                      className="w-16 border rounded px-1"
+                    />
+                  </div>
+                )}
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={convertStringToNumber}
+                    disabled={outputType !== "NUMERIC"}
+                    onChange={(e) => setConvertStringToNumber(e.target.checked)}
+                  />
+                  Convert numeric strings to numbers
+                </label>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="rules" className="p-6 overflow-y-auto flex-grow">
+          <OldNewValuesSetup
+            recodeListType={recodeListType}
+            recodeRules={recodeRules}
+            setRecodeRules={setRecodeRules}
+            onCloseSetup={() => {}}
+            variableCount={variablesToRecode.length}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <div className="px-6 py-3 border-t border-border flex items-center justify-end bg-secondary flex-shrink-0">
+        <Button variant="outline" className="mr-2" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleOk}
+          disabled={isProcessing || recodeMappings.length === 0}
+        >
+          {isProcessing ? "Processing..." : "OK"}
+        </Button>
+      </div>
+
+      {/* Type Mismatch Alert Dialog */}
+      <AlertDialog open={showTypeAlert} onOpenChange={setShowTypeAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incompatible Variable Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              {incompatibleVariable && (
+                <>
+                  The variable &quot;{incompatibleVariable.name}&quot; has a
+                  different type than the variables already selected for
+                  recoding. All variables must be of the same type (either all
+                  NUMERIC or all STRING).
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  return (
+    <>
+      {containerType === "dialog" ? (
+        <Dialog open={true} onOpenChange={onClose}>
+          <DialogContent className="max-w-4xl p-0 bg-card border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold">
+                Recode into Different Variables
+              </DialogTitle>
               <DialogDescription>
-                {/* Create new variables by recoding existing ones. */}
+                Create new variables by recoding existing ones.
               </DialogDescription>
             </DialogHeader>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <RecodeVariablesTab
-                  availableVariables={availableVariables}
-                  variablesToRecode={variablesToRecode}
-                  highlightedVariable={highlightedVariable}
-                  setHighlightedVariable={setHighlightedVariable}
-                  moveToRightPane={moveToRightPane}
-                  moveToLeftPane={moveToLeftPane}
-                  reorderVariables={reorderVariables}
-                />
-              </div>
-              <div>
-                <ul className="border rounded p-2 h-48 overflow-y-auto">
-                  {recodeMappings.map((m, i) => (
-                    <li
-                      key={m.sourceVariable.tempId}
-                      className={`p-2 flex items-center gap-2 cursor-pointer rounded ${
-                        selectedMappingIndex === i ? "bg-blue-100" : ""
-                      }`}
-                      onClick={() => handleSelectMapping(i)}
-                    >
-                      <span>
-                        {m.sourceVariable.name} --&gt; {m.targetName || "?"}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          moveToLeftPane(m.sourceVariable);
-                        }}
-                      >
-                        🗑️
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 flex flex-col gap-2 border rounded p-2">
-                  {selectedMappingIndex !== null && (
-                    <>
-                      <label className="text-sm font-medium">Name:</label>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
-                      <label className="text-sm font-medium">Label:</label>
-                      <Input
-                        value={editLabel}
-                        onChange={(e) => setEditLabel(e.target.value)}
-                      />
-                      <Button onClick={handleChangeMapping} className="mt-2">
-                        Change
-                      </Button>
-                    </>
-                  )}
-                  {selectedMappingIndex === null && (
-                    <div className="text-gray-400 text-sm">
-                      Select a variable to edit output name/label
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <Button
-                    onClick={() => setShowOldNewSetup(true)}
-                    className="w-full"
-                  >
-                    Define Old and New Values
-                  </Button>
-                </div>
-                {/* Checkbox cast output */}
-                <div className="mt-4 flex flex-col gap-2 text-sm">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={outputType === "STRING"}
-                      onChange={(e) =>
-                        setOutputType(e.target.checked ? "STRING" : "NUMERIC")
-                      }
-                    />
-                    Output variables are strings
-                  </label>
-                  {outputType === "STRING" && (
-                    <div className="flex items-center gap-2 ml-6">
-                      Width:
-                      <input
-                        type="number"
-                        min={1}
-                        max={255}
-                        value={stringWidth}
-                        onChange={(e) => setStringWidth(Number(e.target.value))}
-                        className="w-16 border rounded px-1"
-                      />
-                    </div>
-                  )}
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={convertStringToNumber}
-                      disabled={outputType !== "NUMERIC"}
-                      onChange={(e) =>
-                        setConvertStringToNumber(e.target.checked)
-                      }
-                    />
-                    Convert numeric strings to numbers
-                  </label>
-                </div>
-              </div>
+            <div className="flex-grow flex flex-col overflow-hidden">
+              <RecodeContent />
             </div>
-
-            <DialogFooter className="mt-8">
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleOk}
-                disabled={isProcessing || recodeMappings.length === 0}
-              >
-                {isProcessing ? "Processing..." : "OK"}
-              </Button>
-            </DialogFooter>
-
-            <AlertDialog open={showTypeAlert} onOpenChange={setShowTypeAlert}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Incompatible Variable Type
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {incompatibleVariable && (
-                      <>
-                        The variable &quot;{incompatibleVariable.name}&quot; has
-                        a different type than the variables already selected for
-                        recoding. All variables must be of the same type (either
-                        all NUMERIC or all STRING).
-                      </>
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogAction>OK</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        // Sidebar mode
+        <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground w-[900px]">
+          <div className="flex-grow flex flex-col overflow-hidden">
+            <RecodeContent />
           </div>
-          {/* Kanan: Side panel OldNewValuesSetup */}
-          {showOldNewSetup && (
-            <div className="w-[600px] border-l bg-white h-full flex flex-col relative">
-              <button
-                onClick={() => setShowOldNewSetup(false)}
-                className="absolute top-12 right-4 text-lg px-2 py-1 z-10 hover:bg-gray-100 rounded-full"
-                aria-label="Close define panel"
-                type="button"
-              >
-                ×
-              </button>
-              <div className="flex-1 overflow-y-auto p-4 pt-10">
-                <OldNewValuesSetup
-                  recodeListType={recodeListType}
-                  recodeRules={recodeRules}
-                  setRecodeRules={setRecodeRules}
-                  onCloseSetup={() => setShowOldNewSetup(false)}
-                  variableCount={variablesToRecode.length}
-                />
-              </div>
-            </div>
-          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
 };
 

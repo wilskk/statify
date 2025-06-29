@@ -591,136 +591,6 @@ export const createHighLowCloseChart = (
   return svg.node();
 };
 
-//ASLI TANPA FILTER
-// export const createDifferenceArea = (
-//   data: { category: string; value0: number; value1: number }[],
-//   width: number,
-//   height: number,
-//   useAxis: boolean = true // Tambahkan parameter useAxis dengan default true
-// ) => {
-//   console.log("Creating differencearea with data", data);
-//   // Menentukan margin hanya jika axis digunakan
-//   const marginTop = useAxis ? 30 : 0;
-//   const marginRight = useAxis ? 30 : 0;
-//   const marginBottom = useAxis ? 50 : 0;
-//   const marginLeft = useAxis ? 30 : 0;
-
-//   // Skala X dan Y
-//   const x = d3
-//     .scaleBand()
-//     .domain(data.map((d) => d.category))
-//     .range([marginLeft, width - marginRight])
-//     .padding(0.1);
-
-//   const y = d3
-//     .scaleLinear()
-//     .domain([
-//       d3.min(data, (d) => Math.min(d.value0, d.value1)) ?? 0,
-//       d3.max(data, (d) => Math.max(d.value0, d.value1)) ?? 100,
-//     ])
-//     .nice()
-//     .range([height - marginBottom, marginTop]);
-
-//   // Warna area
-//   const colors = { above: "#1F77B4", below: "#FF7F0E" };
-
-//   // SVG Container
-//   const svg = d3
-//     .create("svg")
-//     .attr("viewBox", `0 0 ${width} ${height}`)
-//     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;")
-//     .datum(data);
-
-//   // Tampilkan sumbu jika useAxis = true
-//   if (useAxis) {
-//     // Sumbu X
-//     svg
-//       .append("g")
-//       .attr("transform", `translate(0,${height - marginBottom})`)
-//       .call(d3.axisBottom(x))
-//       .call((g) => g.select(".domain").remove());
-
-//     // Sumbu Y
-//     svg
-//       .append("g")
-//       .attr("transform", `translate(${marginLeft},0)`)
-//       .call(d3.axisLeft(y))
-//       .call((g) => g.select(".domain").remove())
-//       .call((g) =>
-//         g
-//           .selectAll(".tick line")
-//           .clone()
-//           .attr("x2", width - marginLeft - marginRight)
-//           .attr("stroke-opacity", 0.1)
-//       );
-//   }
-
-//   // Area di atas garis tengah (value1 > value0)
-//   const areaAbove = d3
-//     .area<{ category: string; value0: number; value1: number }>()
-//     .curve(d3.curveStep)
-//     .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
-//     .y0((d) => y(d.value0))
-//     .y1((d) => y(d.value1));
-
-//   // Area di bawah garis tengah (value0 > value1)
-//   const areaBelow = d3
-//     .area<{ category: string; value0: number; value1: number }>()
-//     .curve(d3.curveStep)
-//     .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
-//     .y0((d) => y(d.value1))
-//     .y1((d) => y(d.value0));
-
-//   // Filter data agar area tidak tumpang tindih
-//   const dataAbove = data.map((d) =>
-//     d.value1 > d.value0
-//       ? { ...d, value0: d.value0, value1: d.value1 }
-//       : { ...d, value0: d.value1, value1: d.value1 }
-//   );
-
-//   const dataBelow = data.map((d) =>
-//     d.value0 > d.value1
-//       ? { ...d, value0: d.value0, value1: d.value1 }
-//       : { ...d, value0: d.value0, value1: d.value0 }
-//   );
-
-//   // Buat grup untuk area warna
-//   const areaGroup = svg.append("g");
-
-//   // Area biru (hanya untuk value1 > value0)
-//   areaGroup
-//     .append("path")
-//     .attr("fill", colors.above)
-//     .attr("fill-opacity", "0.7")
-//     .attr("d", areaAbove(dataAbove));
-
-//   // Area oranye (hanya untuk value0 > value1)
-//   areaGroup
-//     .append("path")
-//     .attr("fill", colors.below)
-//     .attr("fill-opacity", "0.7")
-//     .attr("d", areaBelow(dataBelow));
-
-//   // Garis tengah antara value0 dan value1
-//   svg
-//     .append("path")
-//     .attr("fill", "none")
-//     .attr("stroke", "black")
-//     .attr("stroke-width", 1.5)
-//     .attr("stroke-linejoin", "round")
-//     .attr("stroke-linecap", "round")
-//     .attr(
-//       "d",
-//       d3
-//         .line<{ category: string; value0: number; value1: number }>()
-//         .curve(d3.curveStep)
-//         .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
-//         .y((d) => y(d.value0))(data)
-//     );
-
-//   return svg.node();
-// };
-
 export const createDifferenceArea = (
   data: { category: string; value0: number; value1: number }[],
   width: number,
@@ -740,24 +610,32 @@ export const createDifferenceArea = (
 
   console.log("FIltered Data", filteredData);
 
+  // Tambahkan uniqueId ke setiap data point untuk X axis
+  const processedData = filteredData.map((d, i) => ({
+    ...d,
+    uniqueId: `${d.category}_${i}`,
+    displayLabel: d.category,
+  }));
+
   // Menentukan margin hanya jika axis digunakan
   const marginTop = useAxis ? 30 : 0;
   const marginRight = useAxis ? 30 : 0;
   const marginBottom = useAxis ? 50 : 0;
   const marginLeft = useAxis ? 30 : 0;
 
-  // Skala X dan Y
+  // Skala X: satu band per data point, urut sesuai data
   const x = d3
     .scaleBand()
-    .domain(filteredData.map((d) => d.category))
+    .domain(processedData.map((d) => d.uniqueId))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // Skala Y
   const y = d3
     .scaleLinear()
     .domain([
-      d3.min(filteredData, (d) => Math.min(d.value0, d.value1)) ?? 0,
-      d3.max(filteredData, (d) => Math.max(d.value0, d.value1)) ?? 100,
+      d3.min(processedData, (d) => Math.min(d.value0, d.value1)) ?? 0,
+      d3.max(processedData, (d) => Math.max(d.value0, d.value1)) ?? 100,
     ])
     .nice()
     .range([height - marginBottom, marginTop]);
@@ -770,15 +648,20 @@ export const createDifferenceArea = (
     .create("svg")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;")
-    .datum(filteredData);
+    .datum(processedData);
 
   // Tampilkan sumbu jika useAxis = true
   if (useAxis) {
-    // Sumbu X
+    // Sumbu X: satu band per data point, label pakai nama kategori asli
     svg
       .append("g")
       .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x))
+      .call(
+        d3.axisBottom(x).tickFormat((d) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? dataPoint.displayLabel : d;
+        })
+      )
       .call((g) => g.select(".domain").remove());
 
     // Sumbu Y
@@ -798,28 +681,28 @@ export const createDifferenceArea = (
 
   // Area di atas garis tengah (value1 > value0)
   const areaAbove = d3
-    .area<{ category: string; value0: number; value1: number }>()
+    .area<(typeof processedData)[0]>()
     .curve(d3.curveStep)
-    .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
+    .x((d) => (x(d.uniqueId) ?? 0) + x.bandwidth() / 2)
     .y0((d) => y(d.value0))
     .y1((d) => y(d.value1));
 
   // Area di bawah garis tengah (value0 > value1)
   const areaBelow = d3
-    .area<{ category: string; value0: number; value1: number }>()
+    .area<(typeof processedData)[0]>()
     .curve(d3.curveStep)
-    .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
+    .x((d) => (x(d.uniqueId) ?? 0) + x.bandwidth() / 2)
     .y0((d) => y(d.value1))
     .y1((d) => y(d.value0));
 
   // Filter data agar area tidak tumpang tindih
-  const dataAbove = filteredData.map((d) =>
+  const dataAbove = processedData.map((d) =>
     d.value1 > d.value0
       ? { ...d, value0: d.value0, value1: d.value1 }
       : { ...d, value0: d.value1, value1: d.value1 }
   );
 
-  const dataBelow = filteredData.map((d) =>
+  const dataBelow = processedData.map((d) =>
     d.value0 > d.value1
       ? { ...d, value0: d.value0, value1: d.value1 }
       : { ...d, value0: d.value0, value1: d.value0 }
@@ -853,10 +736,10 @@ export const createDifferenceArea = (
     .attr(
       "d",
       d3
-        .line<{ category: string; value0: number; value1: number }>()
+        .line<(typeof processedData)[0]>()
         .curve(d3.curveStep)
-        .x((d) => (x(d.category) ?? 0) + x.bandwidth() / 2)
-        .y((d) => y(d.value0))(filteredData)
+        .x((d) => (x(d.uniqueId) ?? 0) + x.bandwidth() / 2)
+        .y((d) => y(d.value0))(processedData)
     );
 
   if (useAxis) {
