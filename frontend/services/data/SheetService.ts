@@ -85,16 +85,17 @@ export class SheetService {
 
         const finalVarMap = new Map<number, any>();
         [...allCurrentVars, ...newVars].forEach(v => {
-            if (!finalVarMap.has(v.columnIndex)) {
-                finalVarMap.set(v.columnIndex, v);
-            }
+            finalVarMap.set(v.columnIndex, v);
         });
         const finalSortedIndices = Array.from(finalVarMap.keys()).sort((a, b) => a - b);
 
-        const finalVars = finalSortedIndices.map((originalIndex, newIndex) => ({
-            ...finalVarMap.get(originalIndex),
-            columnIndex: newIndex,
-        }));
+        const finalVars = finalSortedIndices.map((originalIndex, newIndex) => {
+            const { id, ...rest } = finalVarMap.get(originalIndex); // Destructure to remove 'id'
+            return {
+                ...rest,
+                columnIndex: newIndex,
+            };
+        });
         
         const maxOriginalIndex = Math.max(...finalSortedIndices, 0);
         const newData = allData.map(oldRow => {

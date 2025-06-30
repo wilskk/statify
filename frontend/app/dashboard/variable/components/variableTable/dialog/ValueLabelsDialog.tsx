@@ -105,13 +105,9 @@ export const ValueLabelsDialog = ({
         if (valueLabel === "") {
             valueLabel = value === " " ? "[Space]" : value;
         }
-        if (!variableId) {
-            setError("Variable ID is missing. Cannot add label.");
-            return null;
-        }
 
         const newValue: ValueLabel = {
-            variableId,
+            variableId: variableId ?? 0, // Use 0 as a placeholder if ID is not available yet
             value: processedValue,
             label: valueLabel
         };

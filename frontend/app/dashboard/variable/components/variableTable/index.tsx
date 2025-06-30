@@ -1,91 +1,55 @@
 // components/VariableTable.tsx (sesuaikan path jika perlu)
 "use client";
 
-import React, { useCallback, useMemo, useRef } from "react";
-import { HotTable } from "@handsontable/react-wrapper";
-import { registerAllModules } from "handsontable/registry";
+import React, { useRef, useMemo, useCallback } from 'react';
+import { HotTable } from '@handsontable/react-wrapper';
+import { registerAllModules } from 'handsontable/registry';
 import Handsontable from 'handsontable';
-import "handsontable/dist/handsontable.full.min.css";
+import 'handsontable/dist/handsontable.full.min.css';
 
-import { VariableTypeDialog } from "./dialog/VariableTypeDialog";
-import { ValueLabelsDialog } from "./dialog/ValueLabelsDialog";
-import { MissingValuesDialog } from "./dialog/MissingValuesDialog";
-
-import { colHeaders, columns, DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH, DEFAULT_VARIABLE_DECIMALS, COLUMN_INDEX, DATE_VARIABLE_TYPES } from "./tableConfig";
-import { transformVariablesToTableData } from './utils';
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useVariableTableDialogs } from './hooks/useVariableTableDialogs';
-import { useVariableTableEvents } from './hooks/useVariableTableEvents';
-import { VariableType } from "@/types/Variable";
 import './VariableTable.css';
+import { colHeaders, columns, DEFAULT_MIN_ROWS, DEFAULT_VARIABLE_TYPE, DEFAULT_VARIABLE_WIDTH, DEFAULT_VARIABLE_DECIMALS, COLUMN_INDEX, DATE_VARIABLE_TYPES } from './tableConfig';
+import { useVariableTableLogic } from './hooks/useVariableTableLogic';
+import { transformVariablesToTableData } from './utils';
+
+import { VariableTypeDialog } from './dialog/VariableTypeDialog';
+import { ValueLabelsDialog } from './dialog/ValueLabelsDialog';
+import { MissingValuesDialog } from './dialog/MissingValuesDialog';
+import { Variable, VariableType } from '@/types/Variable';
 
 registerAllModules();
 
 export default function VariableTable() {
-    const hotTableRef = useRef<any>(null);
-    const variables = useVariableStore(state => state.variables);
-    const tableData = useMemo(() => transformVariablesToTableData(variables), [variables]);
+    const hotTableRef = useRef(null);
 
     const {
-        showTypeDialog, setShowTypeDialog,
-        showValuesDialog, setShowValuesDialog,
-        showMissingDialog, setShowMissingDialog,
+        variables,
+        handleBeforeChange,
+        handleAfterSelectionEnd,
+        handleContextMenu,
+        showTypeDialog,
+        setShowTypeDialog,
+        showValuesDialog,
+        setShowValuesDialog,
+        showMissingDialog,
+        setShowMissingDialog,
         selectedVariable,
         selectedVariableType,
-        openDialog,
         handleTypeChange,
         handleValuesChange,
         handleMissingChange,
-        setSelectedCell,
-    } = useVariableTableDialogs();
+    } = useVariableTableLogic(hotTableRef);
 
-    const {
-        handleBeforeChange,
-        handleAfterSelectionEnd,
-        handleInsertVariable,
-        handleDeleteVariable,
-        handleCopyVariable,
-    } = useVariableTableEvents({
-        hotTableRef,
-        variables,
-        openDialog,
-        setSelectedCell,
-    });
-    
-    const handleContextMenu = useCallback((key: string, selection: any) => {
-        switch (key) {
-            case 'insert_variable':
-                handleInsertVariable();
-                break;
-            case 'copy_variable':
-                handleCopyVariable();
-                break;
-            case 'delete_variable':
-                handleDeleteVariable();
-                break;
-            default:
-                break;
-        }
-    }, [handleInsertVariable, handleCopyVariable, handleDeleteVariable]);
-    
-    const variableCount = variables.length;
+    const tableData = useMemo(() => transformVariablesToTableData(variables), [variables]);
 
-    const handleAfterGetRowHeader = useCallback((row: number, TH: HTMLTableCellElement) => {
-        if (row >= variableCount) {
-            TH.classList.add('grayed-header');
-        } else {
-            TH.classList.remove('grayed-header');
-        }
-    }, [variableCount]);
-
-    const dynamicCellsConfig = useCallback((row: number, col: number, prop: string | number) => {
+    const dynamicCellsConfig = useCallback((row: number, col: number) => {
         if (col === COLUMN_INDEX.MEASURE) {
             const currentVar = variables.find(v => v.columnIndex === row);
             const currentType = currentVar?.type;
             const currentMeasure = currentVar?.measure;
 
             let allowedMeasures: string[] = [];
-            if (currentType && DATE_VARIABLE_TYPES.includes(currentType)) {
+            if (currentType && DATE_VARIABLE_TYPES.includes(currentType as VariableType)) {
                 allowedMeasures = ['scale'];
             } else if (currentType === 'STRING') {
                 allowedMeasures = ['nominal', 'ordinal'];
@@ -107,10 +71,10 @@ export default function VariableTable() {
 
         return {};
     }, [variables]);
-
+    
     return (
-        <div className="h-full w-full relative">
-            <div className="h-full w-full relative z-0 overflow-hidden">
+        <div className="relative w-full h-full border-t border-border">
+            <div className="hot-container w-full h-full overflow-hidden relative z-0">
                 <HotTable
                     ref={hotTableRef}
                     data={tableData}
@@ -118,56 +82,53 @@ export default function VariableTable() {
                     columns={columns}
                     cells={dynamicCellsConfig}
                     rowHeaders={true}
-                    width="100%"
                     height="100%"
-                    autoWrapRow={true}
-                    autoWrapCol={true}
+                    width="100%"
+                    minRows={DEFAULT_MIN_ROWS}
                     manualColumnResize={true}
+                    manualRowResize={true}
+                    licenseKey="non-commercial-and-evaluation"
                     contextMenu={{
                         items: {
-                            insert_variable: { name: 'Insert Variable' },
-                            copy_variable:   { name: 'Copy Variable' },
-                            delete_variable: { name: 'Delete Variable' },
+                            'insert_variable': { name: 'Insert Variable' },
+                            'delete_variable': { name: 'Delete Variable' },
+                            'copy_variable': { name: 'Copy Variable Definition (JSON)' }
                         },
-                        callback: handleContextMenu,
+                        callback: (key, selection) => handleContextMenu(key),
                     }}
-                    licenseKey="non-commercial-and-evaluation"
-                    minSpareRows={1}
-                    afterGetRowHeader={handleAfterGetRowHeader}
                     beforeChange={handleBeforeChange}
                     afterSelectionEnd={handleAfterSelectionEnd}
-                    outsideClickDeselects={false}
                     selectionMode="single"
                 />
             </div>
 
-            {selectedVariable && showTypeDialog && (
+            {showTypeDialog && (
                 <VariableTypeDialog
                     open={showTypeDialog}
                     onOpenChange={setShowTypeDialog}
                     onSave={handleTypeChange}
-                    initialType={selectedVariable.type ?? DEFAULT_VARIABLE_TYPE}
-                    initialWidth={selectedVariable.width}
-                    initialDecimals={selectedVariable.decimals}
+                    initialType={selectedVariable?.type ?? DEFAULT_VARIABLE_TYPE}
+                    initialWidth={selectedVariable?.width ?? DEFAULT_VARIABLE_WIDTH}
+                    initialDecimals={selectedVariable?.decimals ?? DEFAULT_VARIABLE_DECIMALS}
                 />
             )}
-            {selectedVariable && showValuesDialog && (
+            {showValuesDialog && (
                 <ValueLabelsDialog
                     open={showValuesDialog}
                     onOpenChange={setShowValuesDialog}
                     onSave={handleValuesChange}
-                    initialValues={selectedVariable.values || []}
-                    variableId={selectedVariable.id}
-                    variableType={selectedVariableType ?? DEFAULT_VARIABLE_TYPE}
+                    initialValues={selectedVariable?.values || []}
+                    variableId={selectedVariable?.id}
+                    variableType={selectedVariableType}
                 />
             )}
-            {selectedVariable && showMissingDialog && (
+            {showMissingDialog && (
                 <MissingValuesDialog
                     open={showMissingDialog}
                     onOpenChange={setShowMissingDialog}
                     onSave={handleMissingChange}
-                    initialMissingValues={selectedVariable.missing || null}
-                    variableType={selectedVariableType ?? DEFAULT_VARIABLE_TYPE}
+                    initialMissingValues={selectedVariable?.missing || null}
+                    variableType={selectedVariableType}
                 />
             )}
         </div>

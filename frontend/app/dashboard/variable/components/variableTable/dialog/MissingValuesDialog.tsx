@@ -30,7 +30,7 @@ interface MissingValuesDialogProps {
     onOpenChange: (open: boolean) => void;
     onSave: (missingValues: MissingValuesSpec | null) => void;
     initialMissingValues: MissingValuesSpec | null;
-    variableType: VariableType;
+    variableType?: VariableType;
 }
 
 export const MissingValuesDialog: React.FC<MissingValuesDialogProps> = ({

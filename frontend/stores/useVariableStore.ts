@@ -75,8 +75,8 @@ export const createDefaultVariable = (index: number, existingVariables: Variable
     const nameResult = processVariableName(baseName, existingVariables);
     return {
         tempId: uuidv4(),
-        columnIndex: index, name: nameResult.processedName || baseName, type: undefined, width: 8, decimals: 0,
-        label: "", values: [], missing: null, columns: 64, align: "left", measure: "unknown", role: "input"
+        columnIndex: index, name: nameResult.processedName || baseName, type: "NUMERIC", width: 8, decimals: 2,
+        label: "", values: [], missing: null, columns: 64, align: "right", measure: "unknown", role: "input"
     };
 };
 
