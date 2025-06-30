@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import DataTableRenderer from "./Table/data-table";
+import DataTableRenderer from "@/components/Output/Table/data-table";
 import { Card } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
 import { useResultStore } from "@/stores/useResultStore";
