@@ -12,8 +12,7 @@ import {
     DescriptiveStatistics,
     FrequenciesResult
 } from '../types';
-// import { processAndAddCharts } from '../utils/chartProcessor';
-import { formatStatisticsTable, formatFrequencyTable } from '../utils/formatters';
+import { processAndAddCharts, formatStatisticsTable, formatFrequencyTable } from '../utils';
 import { Variable } from '@/types/Variable';
 
 /**
@@ -90,17 +89,14 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                     }
                 }
             }
-            /* if(showCharts && chartOptions && results.frequencyTables) {
-                // The useResultStore does not have an `addChart` method.
-                // This logic should be adapted if chart storage is implemented.
-                // For now, we are just processing and logging.
-                console.log("Chart processing would happen here.");
-            } */
+            if (showCharts && chartOptions && results.frequencyTables) {
+                await processAndAddCharts(analyticId, results.frequencyTables, chartOptions);
+            }
             onClose();
         } else {
             setErrorMsg(error || 'An unknown error occurred in the worker.');
         }
-    }, [addStatistic, showFrequencyTables, showStatistics, onClose, selectedVariables]);
+    }, [addStatistic, showFrequencyTables, showStatistics, onClose, selectedVariables, showCharts, chartOptions]);
 
     const runAnalysis = useCallback(async () => {
         if (selectedVariables.length === 0) {

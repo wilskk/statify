@@ -1,8 +1,10 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CellsTabProps } from "./types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CellsTabProps, NonintegerWeightsType } from "./types";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { useMetaStore } from "@/stores/useMetaStore";
 
 const CellsTab: FC<CellsTabProps> = ({
     options,
@@ -11,10 +13,15 @@ const CellsTab: FC<CellsTabProps> = ({
     currentStep = 0,
     tourSteps = [],
 }) => {
+    const { meta } = useMetaStore();
+    const isWeightActive = !!meta.weight;
+
     const getStepIndex = (targetId: string) => tourSteps.findIndex(step => step.targetId === targetId);
     
     const countsStep = getStepIndex('crosstabs-counts-section');
     const percentagesStep = getStepIndex('crosstabs-percentages-section');
+    const residualsStep = getStepIndex('crosstabs-residuals-section');
+    const nonintegerWeightsStep = getStepIndex('crosstabs-noninteger-weights-section');
 
     const handleCellChange = (key: keyof typeof options.cells, value: boolean) => {
         setOptions(prev => ({
@@ -24,6 +31,20 @@ const CellsTab: FC<CellsTabProps> = ({
                 [key]: value,
             }
         }));
+    };
+
+    const handleResidualChange = (key: keyof typeof options.residuals, value: boolean) => {
+        setOptions(prev => ({
+            ...prev,
+            residuals: {
+                ...prev.residuals,
+                [key]: value,
+            }
+        }));
+    };
+
+    const handleWeightChange = (value: NonintegerWeightsType) => {
+        setOptions(prev => ({ ...prev, nonintegerWeights: value }));
     };
 
     return (
@@ -43,7 +64,6 @@ const CellsTab: FC<CellsTabProps> = ({
                                 Observed
                             </Label>
                         </div>
-
                         <div className="flex items-center">
                             <Checkbox
                                 id="expectedCounts"
@@ -63,43 +83,68 @@ const CellsTab: FC<CellsTabProps> = ({
                     <div className="text-sm font-medium mb-3">Percentages</div>
                     <div className="space-y-2">
                         <div className="flex items-center">
-                            <Checkbox
-                                id="rowPercentages"
-                                checked={options.cells.row}
-                                onCheckedChange={(checked) => handleCellChange('row', !!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">
-                                Row
-                            </Label>
+                            <Checkbox id="rowPercentages" checked={options.cells.row} onCheckedChange={(checked) => handleCellChange('row', !!checked)} className="mr-2" />
+                            <Label htmlFor="rowPercentages" className="text-sm cursor-pointer">Row</Label>
                         </div>
-
                         <div className="flex items-center">
-                            <Checkbox
-                                id="columnPercentages"
-                                checked={options.cells.column}
-                                onCheckedChange={(checked) => handleCellChange('column', !!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">
-                                Column
-                            </Label>
+                            <Checkbox id="columnPercentages" checked={options.cells.column} onCheckedChange={(checked) => handleCellChange('column', !!checked)} className="mr-2" />
+                            <Label htmlFor="columnPercentages" className="text-sm cursor-pointer">Column</Label>
                         </div>
-
                         <div className="flex items-center">
-                            <Checkbox
-                                id="totalPercentages"
-                                checked={options.cells.total}
-                                onCheckedChange={(checked) => handleCellChange('total', !!checked)}
-                                className="mr-2"
-                            />
-                            <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">
-                                Total
-                            </Label>
+                            <Checkbox id="totalPercentages" checked={options.cells.total} onCheckedChange={(checked) => handleCellChange('total', !!checked)} className="mr-2" />
+                            <Label htmlFor="totalPercentages" className="text-sm cursor-pointer">Total</Label>
                         </div>
                     </div>
                     <ActiveElementHighlight active={tourActive && currentStep === percentagesStep} />
                 </div>
+
+                <div id="crosstabs-residuals-section" className="bg-card border border-border rounded-md p-4 relative">
+                    <div className="text-sm font-medium mb-3">Residuals</div>
+                    <div className="space-y-2">
+                        <div className="flex items-center">
+                            <Checkbox id="unstandardizedResiduals" checked={options.residuals.unstandardized} onCheckedChange={(checked) => handleResidualChange('unstandardized', !!checked)} className="mr-2" />
+                            <Label htmlFor="unstandardizedResiduals" className="text-sm cursor-pointer">Unstandardized</Label>
+                        </div>
+                        <div className="flex items-center">
+                            <Checkbox id="standardizedResiduals" checked={options.residuals.standardized} onCheckedChange={(checked) => handleResidualChange('standardized', !!checked)} className="mr-2" />
+                            <Label htmlFor="standardizedResiduals" className="text-sm cursor-pointer">Standardized</Label>
+                        </div>
+                        <div className="flex items-center">
+                            <Checkbox id="adjStandardizedResiduals" checked={options.residuals.adjustedStandardized} onCheckedChange={(checked) => handleResidualChange('adjustedStandardized', !!checked)} className="mr-2" />
+                            <Label htmlFor="adjStandardizedResiduals" className="text-sm cursor-pointer">Adjusted standardized</Label>
+                        </div>
+                    </div>
+                    <ActiveElementHighlight active={tourActive && currentStep === residualsStep} />
+                </div>
+
+                {isWeightActive && (
+                    <div id="crosstabs-noninteger-weights-section" className="bg-card border border-border rounded-md p-4 relative">
+                        <div className="text-sm font-medium mb-3">Noninteger Weights</div>
+                        <RadioGroup value={options.nonintegerWeights} onValueChange={handleWeightChange} className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="roundCase" id="roundCase" />
+                                <Label htmlFor="roundCase" className="font-normal cursor-pointer">Round case weights</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="roundCell" id="roundCell" />
+                                <Label htmlFor="roundCell" className="font-normal cursor-pointer">Round cell counts</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="truncateCase" id="truncateCase" />
+                                <Label htmlFor="truncateCase" className="font-normal cursor-pointer">Truncate case weights</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="truncateCell" id="truncateCell" />
+                                <Label htmlFor="truncateCell" className="font-normal cursor-pointer">Truncate cell counts</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="noAdjustment" id="noAdjustment" />
+                                <Label htmlFor="noAdjustment" className="font-normal cursor-pointer">No adjustments</Label>
+                            </div>
+                        </RadioGroup>
+                        <ActiveElementHighlight active={tourActive && currentStep === nonintegerWeightsStep} />
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -66,6 +66,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
             column: false,
             total: false,
         },
+        residuals: {
+            unstandardized: false,
+            standardized: false,
+            adjustedStandardized: false,
+        },
+        nonintegerWeights: 'roundCell',
     });
     
     const { variables } = useVariableStore();
@@ -103,6 +109,12 @@ const CrosstabsContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog
                 column: false,
                 total: false,
             },
+            residuals: {
+                unstandardized: false,
+                standardized: false,
+                adjustedStandardized: false,
+            },
+            nonintegerWeights: 'roundCell',
         });
     };
 

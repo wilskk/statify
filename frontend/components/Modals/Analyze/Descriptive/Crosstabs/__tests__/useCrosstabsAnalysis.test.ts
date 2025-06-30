@@ -1,13 +1,13 @@
 import { renderHook, act } from '@testing-library/react';
 import { useCrosstabsAnalysis } from '../hooks/useCrosstabsAnalysis';
-import { useDataStore } from '@/stores/useDataStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
 import { CrosstabsAnalysisParams } from '../types';
 import type { Variable } from '@/types/Variable';
 
-// Mock stores
-jest.mock('@/stores/useDataStore');
+// Mock stores and hooks
+jest.mock('@/hooks/useAnalysisData');
 jest.mock('@/stores/useVariableStore');
 jest.mock('@/stores/useResultStore');
 
@@ -28,9 +28,8 @@ global.Worker = jest.fn().mockImplementation(() => ({
   },
 }));
 
-
 // Mock implementations
-const mockedUseDataStore = useDataStore as unknown as jest.Mock;
+const mockedUseAnalysisData = useAnalysisData as unknown as jest.Mock;
 const mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
 const mockedUseResultStore = useResultStore as unknown as jest.Mock;
 
@@ -49,10 +48,12 @@ const mockData = [
     [2, 'B'],
 ];
 
+const mockWeights = [1, 2];
+
 describe('useCrosstabsAnalysis', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedUseDataStore.mockReturnValue({ data: mockData });
+    mockedUseAnalysisData.mockReturnValue({ data: mockData, weights: mockWeights });
     mockedUseVariableStore.mockReturnValue({ variables: mockVariables });
     mockedUseResultStore.mockReturnValue({
         addLog: mockAddLog,
@@ -68,6 +69,8 @@ describe('useCrosstabsAnalysis', () => {
     columnVariables: [mockVariables[1]],
     options: {
         cells: { observed: true, expected: false, row: false, column: false, total: false },
+        residuals: { unstandardized: false, standardized: false, adjustedStandardized: false },
+        nonintegerWeights: 'roundCell',
     },
   };
 
@@ -102,7 +105,7 @@ describe('useCrosstabsAnalysis', () => {
         analysisType: 'crosstabs',
         variable: { row: mockVariables[0], col: mockVariables[1] },
         data: [{ var1: 1, var2: 'A' }, { var1: 2, var2: 'B' }],
-        weights: null,
+        weights: mockWeights,
         options: defaultParams.options,
     });
 

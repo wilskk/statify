@@ -14,7 +14,7 @@ import {
     TabsTrigger
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Loader2 } from "lucide-react";
 import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
@@ -23,6 +23,7 @@ import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useVariableStore } from "@/stores/useVariableStore";
 
 import VariablesTab from "./components/VariablesTab";
 import StatisticsTab from "./components/StatisticsTab";
@@ -31,6 +32,9 @@ import { baseTourSteps, TabType } from './hooks/tourConfig';
 // Komponen utama konten Descriptives yang agnostik terhadap container
 const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "statistics">("variables");
+    const { isLoading: isVariablesLoading, error: variablesError } = useVariableStore(
+        (state) => ({ isLoading: state.isLoading, error: state.error })
+    );
     
     const {
         availableVariables,
@@ -103,6 +107,59 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         };
     }, [cancelCalculation]);
 
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
+                </div>
+            );
+        }
+
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
+                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
+                    <VariablesTab
+                        availableVariables={availableVariables}
+                        selectedVariables={selectedVariables}
+                        highlightedVariable={highlightedVariable}
+                        setHighlightedVariable={setHighlightedVariable}
+                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToAvailableVariables={moveToAvailableVariables}
+                        reorderVariables={reorderVariables}
+                        saveStandardized={saveStandardized}
+                        setSaveStandardized={setSaveStandardized}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
+                    />
+                </TabsContent>
+
+                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
+                    <StatisticsTab
+                        displayStatistics={displayStatistics}
+                        updateStatistic={updateStatistic}
+                        displayOrder={displayOrder}
+                        setDisplayOrder={setDisplayOrder}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
+                    />
+                </TabsContent>
+            </>
+        );
+    }
+
     return (
         <>
             {/* Add tour popup */}
@@ -133,34 +190,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     </TabsList>
                 </div>
 
-                <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
-                    <VariablesTab
-                        availableVariables={availableVariables}
-                        selectedVariables={selectedVariables}
-                        highlightedVariable={highlightedVariable}
-                        setHighlightedVariable={setHighlightedVariable}
-                        moveToSelectedVariables={moveToSelectedVariables}
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        reorderVariables={reorderVariables}
-                        saveStandardized={saveStandardized}
-                        setSaveStandardized={setSaveStandardized}
-                        tourActive={tourActive}
-                        currentStep={currentStep}
-                        tourSteps={tourSteps}
-                    />
-                </TabsContent>
-
-                <TabsContent value="statistics" className="p-6 overflow-y-auto flex-grow">
-                    <StatisticsTab
-                        displayStatistics={displayStatistics}
-                        updateStatistic={updateStatistic}
-                        displayOrder={displayOrder}
-                        setDisplayOrder={setDisplayOrder}
-                        tourActive={tourActive}
-                        currentStep={currentStep}
-                        tourSteps={tourSteps}
-                    />
-                </TabsContent>
+                {renderContent()}
             </Tabs>
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
@@ -208,7 +238,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
                     <Button
                         id="descriptive-ok-button"
                         onClick={runAnalysis}
-                        disabled={isCalculating || selectedVariables.length === 0}
+                        disabled={isCalculating || selectedVariables.length === 0 || isVariablesLoading || !!variablesError}
                     >
                         {isCalculating ? "Processing..." : "OK"}
                     </Button>

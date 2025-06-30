@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, FC, useMemo, useEffect } from "react";
+import React, { useState, FC, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -25,7 +25,6 @@ import { useVariableManagement } from "./hooks/useVariableManagement";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { usePlotsSettings } from "./hooks/usePlotsSettings";
 import { useExploreAnalysis } from "./hooks/useExploreAnalysis";
-import { useDataStore } from "@/stores/useDataStore";
 
 // Child Components
 import VariablesTab from "./VariablesTab";
@@ -93,44 +92,6 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         }
         return null;
     }, [error, isCalculating, variableManager.dependentVariables]);
-
-    const getVariableData = useDataStore((state) => state.getVariableData);
-
-    useEffect(() => {
-        const processVariables = async () => {
-            if (variableManager.dependentVariables.length > 0) {
-
-                const variablesWithData = await Promise.all(
-                    variableManager.dependentVariables.map(v => getVariableData(v))
-                );
-
-                const variablesToSend = variablesWithData.map(v => {
-                    return {
-                        name: v.variable.name,
-                        missingValues: v.variable.missing,
-                        type: v.variable.type,
-                        data: v.data
-                    };
-                });
-
-                console.log(
-                    '--- [UI] Preparing to send variables to worker ---',
-                    JSON.parse(JSON.stringify(variablesToSend))
-                );
-
-                // Assuming descriptiveWorker.process is called elsewhere in the code
-                // Replace this with the actual call to your worker
-                // descriptiveWorker.process(variablesToSend).then((result) => {
-                //     if (result) {
-                //         setCaseProcessingSummary(result.caseProcessingSummary);
-                //     }
-                // });
-            }
-        };
-
-        processVariables();
-
-    }, [variableManager.dependentVariables, getVariableData]);
 
     return (
         <>

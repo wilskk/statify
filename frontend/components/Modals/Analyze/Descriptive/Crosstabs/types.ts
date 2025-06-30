@@ -47,6 +47,12 @@ export interface CrosstabsAnalysisParams {
             column: boolean;
             total: boolean;
         },
+        residuals: {
+            unstandardized: boolean;
+            standardized: boolean;
+            adjustedStandardized: boolean;
+        },
+        nonintegerWeights: NonintegerWeightsType;
     }
 }
 

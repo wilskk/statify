@@ -13,9 +13,6 @@ interface ZScoreProcessingParams {
  * pemrosesan dan penyimpanan data Z-score yang diterima dari worker.
  */
 export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => {
-    const { updateCells } = useDataStore();
-    const { addVariables } = useVariableStore();
-
     const processZScoreData = useCallback(async (zScoreData: ZScoreData | null): Promise<number> => {
         if (!zScoreData) return 0;
 
@@ -73,16 +70,16 @@ export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => 
 
         // Atomically create the new variables and insert their data in one operation.
         if (newVariableDefinitions.length > 0) {
-            await addVariables(newVariableDefinitions, updatesForNewVars);
+            await useVariableStore.getState().addVariables(newVariableDefinitions, updatesForNewVars);
         }
 
         // Update cells for any Z-score variables that already existed.
         if (updatesForExistingVars.length > 0) {
-            await updateCells(updatesForExistingVars);
+            await useDataStore.getState().updateCells(updatesForExistingVars);
         }
 
         return newVariableDefinitions.length;
-    }, [updateCells, addVariables, setErrorMsg]);
+    }, [setErrorMsg]);
 
     return { processZScoreData };
 }; 
