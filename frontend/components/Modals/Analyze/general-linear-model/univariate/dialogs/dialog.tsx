@@ -1,14 +1,20 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 import {
     UnivariateDialogProps,
     UnivariateMainType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {useModal} from "@/hooks/useModal";
-import {toast} from "sonner";
+import { useModal } from "@/hooks/useModal";
+import { toast } from "sonner";
 
 export const UnivariateDialog = ({
     isMainOpen,
@@ -44,14 +50,24 @@ export const UnivariateDialog = ({
     const listStateSetters: Record<
         string,
         React.Dispatch<React.SetStateAction<Variable[]>>
-    > = {
-        available: setAvailableVars,
-        DepVar: setDepVar,
-        FixFactor: setFixFactor,
-        RandFactor: setRandFactor,
-        Covar: setCovar,
-        WlsWeight: setWlsWeight,
-    };
+    > = useMemo(
+        () => ({
+            available: setAvailableVars,
+            DepVar: setDepVar,
+            FixFactor: setFixFactor,
+            RandFactor: setRandFactor,
+            Covar: setCovar,
+            WlsWeight: setWlsWeight,
+        }),
+        [
+            setAvailableVars,
+            setDepVar,
+            setFixFactor,
+            setRandFactor,
+            setCovar,
+            setWlsWeight,
+        ]
+    );
 
     useEffect(() => {
         setMainState({ ...data });
@@ -125,6 +141,44 @@ export const UnivariateDialog = ({
         }));
     }, [depVar, fixFactor, randFactor, covar, wlsWeight]);
 
+    const targetListsConfig: TargetListConfig[] = useMemo(
+        () => [
+            {
+                id: "DepVar",
+                title: "Dependent Variable:",
+                variables: depVar,
+                height: "auto",
+                maxItems: 1,
+            },
+            {
+                id: "FixFactor",
+                title: "Fixed Factor(s):",
+                variables: fixFactor,
+                height: "100px",
+            },
+            {
+                id: "RandFactor",
+                title: "Random Factor(s):",
+                variables: randFactor,
+                height: "100px",
+            },
+            {
+                id: "Covar",
+                title: "Covariate(s):",
+                variables: covar,
+                height: "100px",
+            },
+            {
+                id: "WlsWeight",
+                title: "WLS Weight:",
+                variables: wlsWeight,
+                height: "auto",
+                maxItems: 1,
+            },
+        ],
+        [depVar, fixFactor, randFactor, covar, wlsWeight]
+    );
+
     const handleMoveVariable = useCallback(
         (variable: Variable, fromListId: string, toListId: string) => {
             const fromSetter = listStateSetters[fromListId];
@@ -142,7 +196,7 @@ export const UnivariateDialog = ({
             if (toSetter) {
                 if (toListConfig?.maxItems === 1) {
                     toSetter((prev) => {
-                        if (prev.length > 0 && listStateSetters.available) {
+                        if (prev.length > 0) {
                             const existingVar = prev[0];
                             setAvailableVars((avail) => [
                                 ...avail,
@@ -156,7 +210,7 @@ export const UnivariateDialog = ({
                 }
             }
         },
-        [depVar, fixFactor, randFactor, covar, wlsWeight]
+        [listStateSetters, targetListsConfig, setAvailableVars]
     );
 
     const handleReorderVariable = useCallback(
@@ -166,43 +220,8 @@ export const UnivariateDialog = ({
                 setter(newVariables);
             }
         },
-        []
+        [listStateSetters]
     );
-
-    const targetListsConfig: TargetListConfig[] = [
-        {
-            id: "DepVar",
-            title: "Dependent Variable:",
-            variables: depVar,
-            height: "auto",
-            maxItems: 1,
-        },
-        {
-            id: "FixFactor",
-            title: "Fixed Factor(s):",
-            variables: fixFactor,
-            height: "100px",
-        },
-        {
-            id: "RandFactor",
-            title: "Random Factor(s):",
-            variables: randFactor,
-            height: "100px",
-        },
-        {
-            id: "Covar",
-            title: "Covariate(s):",
-            variables: covar,
-            height: "100px",
-        },
-        {
-            id: "WlsWeight",
-            title: "WLS Weight:",
-            variables: wlsWeight,
-            height: "auto",
-            maxItems: 1,
-        },
-    ];
 
     const handleContinue = () => {
         if (depVar.length === 0) {

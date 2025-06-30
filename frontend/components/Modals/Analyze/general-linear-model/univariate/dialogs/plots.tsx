@@ -1,19 +1,25 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariatePlotsProps,
     UnivariatePlotsType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {Badge} from "@/components/ui/badge";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
-import {toast} from "sonner";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Badge } from "@/components/ui/badge";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
+import { toast } from "sonner";
 
 export const UnivariatePlots = ({
     isPlotsOpen,
@@ -41,12 +47,20 @@ export const UnivariatePlots = ({
     const listStateSetters: Record<
         string,
         React.Dispatch<React.SetStateAction<Variable[]>>
-    > = {
-        available: setAvailableVars,
-        HorizontalAxis: setHorizontalAxisVars,
-        SeparateLines: setSeparateLinesVars,
-        SeparatePlots: setSeparatePlotsVars,
-    };
+    > = useMemo(
+        () => ({
+            available: setAvailableVars,
+            HorizontalAxis: setHorizontalAxisVars,
+            SeparateLines: setSeparateLinesVars,
+            SeparatePlots: setSeparatePlotsVars,
+        }),
+        [
+            setAvailableVars,
+            setHorizontalAxisVars,
+            setSeparateLinesVars,
+            setSeparatePlotsVars,
+        ]
+    );
 
     useEffect(() => {
         if (isPlotsOpen) {
@@ -132,6 +146,33 @@ export const UnivariatePlots = ({
         }));
     };
 
+    const targetListsConfig: TargetListConfig[] = useMemo(
+        () => [
+            {
+                id: "HorizontalAxis",
+                title: "Horizontal Axis:",
+                variables: horizontalAxisVars,
+                height: "auto",
+                maxItems: 1,
+            },
+            {
+                id: "SeparateLines",
+                title: "Separate Lines:",
+                variables: separateLinesVars,
+                height: "auto",
+                maxItems: 1,
+            },
+            {
+                id: "SeparatePlots",
+                title: "Separate Plots:",
+                variables: separatePlotsVars,
+                height: "auto",
+                maxItems: 1,
+            },
+        ],
+        [horizontalAxisVars, separateLinesVars, separatePlotsVars]
+    );
+
     const handleMoveVariable = useCallback(
         (variable: Variable, fromListId: string, toListId: string) => {
             const fromSetter = listStateSetters[fromListId];
@@ -159,7 +200,7 @@ export const UnivariatePlots = ({
                 }
             }
         },
-        []
+        [listStateSetters, targetListsConfig, setAvailableVars]
     );
 
     const handleReorderVariable = useCallback(
@@ -169,7 +210,7 @@ export const UnivariatePlots = ({
                 setter(newVariables);
             }
         },
-        []
+        [listStateSetters]
     );
 
     const handlePlotClick = (plot: string) => {
@@ -283,30 +324,6 @@ export const UnivariatePlots = ({
         });
         setIsPlotsOpen(false);
     };
-
-    const targetListsConfig: TargetListConfig[] = [
-        {
-            id: "HorizontalAxis",
-            title: "Horizontal Axis:",
-            variables: horizontalAxisVars,
-            height: "auto",
-            maxItems: 1,
-        },
-        {
-            id: "SeparateLines",
-            title: "Separate Lines:",
-            variables: separateLinesVars,
-            height: "auto",
-            maxItems: 1,
-        },
-        {
-            id: "SeparatePlots",
-            title: "Separate Plots:",
-            variables: separatePlotsVars,
-            height: "auto",
-            maxItems: 1,
-        },
-    ];
 
     if (!isPlotsOpen) return null;
 

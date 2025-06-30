@@ -1,18 +1,24 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     UnivariateBootstrapProps,
     UnivariateBootstrapType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {toast} from "sonner";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { toast } from "sonner";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 
 export const UnivariateBootstrap = ({
     isBootstrapOpen,
@@ -34,10 +40,13 @@ export const UnivariateBootstrap = ({
     const listStateSetters: Record<
         string,
         React.Dispatch<React.SetStateAction<Variable[]>>
-    > = {
-        available: setAvailableVars,
-        StrataVars: setStrataVars,
-    };
+    > = useMemo(
+        () => ({
+            available: setAvailableVars,
+            StrataVars: setStrataVars,
+        }),
+        [setAvailableVars, setStrataVars]
+    );
 
     useEffect(() => {
         if (isBootstrapOpen) {
@@ -124,7 +133,7 @@ export const UnivariateBootstrap = ({
                 toSetter((prev) => [...prev, variable]);
             }
         },
-        [strataVars]
+        [listStateSetters]
     );
 
     const handleReorderVariable = useCallback(
@@ -134,17 +143,20 @@ export const UnivariateBootstrap = ({
                 setter(newVariables);
             }
         },
-        []
+        [listStateSetters]
     );
 
-    const targetListsConfig: TargetListConfig[] = [
-        {
-            id: "StrataVars",
-            title: "Strata Variables:",
-            variables: strataVars,
-            height: "150px",
-        },
-    ];
+    const targetListsConfig: TargetListConfig[] = useMemo(
+        () => [
+            {
+                id: "StrataVars",
+                title: "Strata Variables:",
+                variables: strataVars,
+                height: "150px",
+            },
+        ],
+        [strataVars]
+    );
 
     const handleContinue = () => {
         if (bootstrapState.PerformBootStrapping) {

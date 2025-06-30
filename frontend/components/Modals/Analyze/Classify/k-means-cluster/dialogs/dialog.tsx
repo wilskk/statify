@@ -1,20 +1,31 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
-import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import {
     KMeansClusterDialogProps,
     KMeansClusterMainType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
-import {Checkbox} from "@/components/ui/checkbox";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
-import {useModal} from "@/hooks/useModal";
-import {toast} from "sonner";
-import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
-import type {Variable} from "@/types/Variable";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useModal } from "@/hooks/useModal";
+import { toast } from "sonner";
+import VariableListManager, {
+    TargetListConfig,
+} from "@/components/Common/VariableListManager";
+import type { Variable } from "@/types/Variable";
 
 export const KMeansClusterDialog = ({
     isMainOpen,
@@ -44,11 +55,14 @@ export const KMeansClusterDialog = ({
     const listStateSetters: Record<
         string,
         React.Dispatch<React.SetStateAction<Variable[]>>
-    > = {
-        available: setAvailableVars,
-        TargetVar: setTargetVars,
-        CaseTarget: setCaseVars,
-    };
+    > = useMemo(
+        () => ({
+            available: setAvailableVars,
+            TargetVar: setTargetVars,
+            CaseTarget: setCaseVars,
+        }),
+        [setAvailableVars, setTargetVars, setCaseVars]
+    );
 
     useEffect(() => {
         setMainState({ ...data });
@@ -109,6 +123,25 @@ export const KMeansClusterDialog = ({
         }));
     };
 
+    const targetListsConfig: TargetListConfig[] = useMemo(
+        () => [
+            {
+                id: "TargetVar",
+                title: "Variables:",
+                variables: targetVars,
+                height: "225px",
+            },
+            {
+                id: "CaseTarget",
+                title: "Label Cases by:",
+                variables: caseVars,
+                height: "auto",
+                maxItems: 1,
+            },
+        ],
+        [targetVars, caseVars]
+    );
+
     const handleMoveVariable = useCallback(
         (variable: Variable, fromListId: string, toListId: string) => {
             const fromSetter = listStateSetters[fromListId];
@@ -126,7 +159,7 @@ export const KMeansClusterDialog = ({
             if (toSetter) {
                 if (toListConfig?.maxItems === 1) {
                     toSetter((prev) => {
-                        if (prev.length > 0 && listStateSetters.available) {
+                        if (prev.length > 0) {
                             const existingVar = prev[0];
                             setAvailableVars((avail) => [
                                 ...avail,
@@ -140,7 +173,7 @@ export const KMeansClusterDialog = ({
                 }
             }
         },
-        [targetVars, caseVars]
+        [listStateSetters, targetListsConfig, setAvailableVars]
     );
 
     const handleReorderVariable = useCallback(
@@ -150,24 +183,8 @@ export const KMeansClusterDialog = ({
                 setter(newVariables);
             }
         },
-        []
+        [listStateSetters]
     );
-
-    const targetListsConfig: TargetListConfig[] = [
-        {
-            id: "TargetVar",
-            title: "Variables:",
-            variables: targetVars,
-            height: "225px",
-        },
-        {
-            id: "CaseTarget",
-            title: "Label Cases by:",
-            variables: caseVars,
-            height: "auto",
-            maxItems: 1,
-        },
-    ];
 
     const handleMethodGrp = (value: string) => {
         setMainState((prevState) => ({
