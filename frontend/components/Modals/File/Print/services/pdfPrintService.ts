@@ -102,18 +102,15 @@ export function addVariableView(
     newY += SPACE_AFTER_TITLE;
     doc.setFontSize(TEXT_FONT_SIZE);
 
-    const variableData = variablesToPrint.map((variable, idx) => [
-        idx + 1,
-        variable.name,
-        variable.type,
+    const variableData = variablesToPrint.map((variable) => [
+        variable.name || "-",
+        variable.type || "-",
         variable.label || "-",
         variable.measure || "unknown",
-        variable.width || "-",
-        variable.columnIndex + 1
     ]);
 
     autoTable(doc, {
-        head: [["No", "Name", "Type", "Label", "Measure", "Width", "Column Index"]],
+        head: [["Name", "Type", "Label", "Measure"]],
         body: variableData,
         startY: newY,
         theme: "grid",
@@ -154,7 +151,14 @@ export function addResultsView(
     doc.text("Output Viewer (Results)", PAGE_MARGIN, newY);
     newY += SPACE_AFTER_TITLE;
 
-    for (const log of logs) {
+    for (let index = 0; index < logs.length; index++) {
+        const log = logs[index];
+        if (index > 0) {
+            newY += 3;
+            doc.line(PAGE_MARGIN, newY, doc.internal.pageSize.getWidth() - PAGE_MARGIN, newY);
+            newY += 7;
+        }
+
         if (newY > Y_THRESHOLD_RESULTS_LOG_ID) { 
             doc.addPage(); 
             newY = PAGE_TOP_MARGIN; 
@@ -171,7 +175,9 @@ export function addResultsView(
             doc.addPage();
             newY = PAGE_TOP_MARGIN;
         }
+        doc.setFont(doc.getFont().fontName, 'italic');
         doc.text(log.log, PAGE_MARGIN, newY, { maxWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2) });
+        doc.setFont(doc.getFont().fontName, 'normal');
         newY += (logTextLines.length * 3.5) + SPACE_AFTER_LOG_TEXT;
 
         if (log.analytics?.length) {
@@ -224,7 +230,22 @@ export function addResultsView(
                                 tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
                                 didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
                             });
-                            newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
+                            newY = (doc as any).lastAutoTable.finalY + 4; // Small space after table
+
+                            // Add statistic description if available, now placed AFTER the table
+                            if (stat.description) {
+                                doc.setFontSize(TEXT_FONT_SIZE);
+                                doc.setFont(doc.getFont().fontName, 'italic');
+                                const descriptionLines = doc.splitTextToSize(stat.description, doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2));
+                                if (newY + (descriptionLines.length * 3.5) > Y_THRESHOLD_GENERAL) {
+                                    doc.addPage();
+                                    newY = PAGE_TOP_MARGIN;
+                                }
+                                doc.text(descriptionLines, PAGE_MARGIN, newY);
+                                doc.setFont(doc.getFont().fontName, 'normal');
+                                newY += (descriptionLines.length * 3.5);
+                            }
+                            newY += SPACE_AFTER_TABLE; // Final space after the entire statistic block
                         }
                     }
                 }

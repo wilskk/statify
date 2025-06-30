@@ -10,13 +10,11 @@ import { DEFAULT_FILENAME } from "../utils/constants";
 
 export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
     const { toast } = useToast();
-    const { data } = useDataStore();
-    const { variables } = useVariableStore();
-    const { meta } = useMetaStore();
+    const initialMetaName = useMetaStore.getState().meta?.name;
     const [isExporting, startExportTransition] = useTransition();
 
     const [exportOptions, setExportOptions] = useState<ExportExcelLogicState>(() => ({
-        filename: meta?.name || DEFAULT_FILENAME,
+        filename: initialMetaName || DEFAULT_FILENAME,
         format: "xlsx",
         includeHeaders: true,
         includeVariableProperties: true,
@@ -35,17 +33,26 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
     };
 
     const handleExport = async (): Promise<void> => {
-        if (!data.length || !variables.length) {
-            toast({
-                title: "No data to export",
-                description: "There is no data available to export to Excel.",
-                variant: "destructive"
-            });
-            return;
-        }
-
         startExportTransition(async () => {
             try {
+                // Fetch the latest persisted data, variables, and meta before exporting
+                await useVariableStore.getState().loadVariables();
+                await useDataStore.getState().loadData();
+                await useMetaStore.getState().loadMeta(); // Assuming loadMeta exists and fetches
+
+                const freshData = useDataStore.getState().data;
+                const freshVariables = useVariableStore.getState().variables;
+                const freshMeta = useMetaStore.getState().meta;
+
+                if (!freshData.length || !freshVariables.length) {
+                    toast({
+                        title: "No data to export",
+                        description: "There is no data available to export to Excel.",
+                        variant: "destructive"
+                    });
+                    return;
+                }
+
                 // Map options to the format expected by the utility function
                 const utilOptions: ExcelUtilOptions = {
                     includeHeaders: exportOptions.includeHeaders,
@@ -56,7 +63,7 @@ export const useExportExcelLogic = ({ onClose }: UseExportExcelLogicProps) => {
                 };
 
                 // Generate workbook from data
-                const workbook = generateExcelWorkbook(data, variables, meta, utilOptions);
+                const workbook = generateExcelWorkbook(freshData, freshVariables, freshMeta, utilOptions);
 
                 // Generate safe filename
                 const filename = `${exportOptions.filename || DEFAULT_FILENAME}.${exportOptions.format}`;
