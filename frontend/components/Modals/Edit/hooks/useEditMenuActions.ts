@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useTableRefStore } from '@/stores/useTableRefStore';
+import { useDataStore } from '@/stores/useDataStore';
 import Handsontable from 'handsontable';
 
 type ValidAlterAction =
@@ -157,14 +158,11 @@ export const useEditMenuActions = () => {
                         return;
                     }
 
-                    // Get starting column index
                     const selectedColCoords = hotInstance.getSelectedLast();
                     const startColumnIndex = selectedColCoords ? selectedColCoords[1] : 0;
-
-                    // Use the first row of data (assuming it contains variable names)
+                    
                     const variableNames = clipboardData.flatMap(row => row.filter(name => name.trim()));
-
-                    // Create variable objects (skip empty names)
+                    
                     const variablesToAdd = variableNames.map((name, idx) => ({
                         name,
                         columnIndex: startColumnIndex + idx
@@ -175,9 +173,8 @@ export const useEditMenuActions = () => {
                         return;
                     }
 
-                    // Add variables
-                    const { addMultipleVariables } = useVariableStore.getState();
-                    await addMultipleVariables(variablesToAdd);
+                    const { addVariables } = useVariableStore.getState();
+                    await addVariables(variablesToAdd, []);
                 } catch (error) {
                     console.error("Error pasting variables:", error);
                 }
@@ -187,43 +184,36 @@ export const useEditMenuActions = () => {
                 try {
                     const clipboardData = await getClipboardData();
                     if (!clipboardData || clipboardData.length < 2) {
-                        console.warn("Clipboard must contain headers and data rows");
+                        console.warn("Clipboard must contain headers and at least one data row");
                         return;
                     }
 
-                    // Get the selected cell coordinates
                     const selectedCoords = hotInstance.getSelectedLast();
                     const startRow = selectedCoords ? selectedCoords[0] : 0;
                     const startCol = selectedCoords ? selectedCoords[1] : 0;
-
-                    // First row contains variable names (filter out empty names)
+                    
                     const variableNames = clipboardData[0].filter(name => name.trim());
-
                     if (variableNames.length === 0) {
-                        console.warn("No valid variable names found in clipboard");
+                        console.warn("No valid variable names found in the header row of the clipboard");
                         return;
                     }
 
-                    // Create variable objects
                     const variablesToAdd = variableNames.map((name, idx) => ({
                         name,
                         columnIndex: startCol + idx
                     }));
 
-                    // Add variables
-                    const { addMultipleVariables } = useVariableStore.getState();
-                    await addMultipleVariables(variablesToAdd);
-
-                    // Prepare data for pasting (skip the header row)
                     const dataRows = clipboardData.slice(1);
-
-                    // Use populateFromArray to add the data
-                    // Only include columns with variable names
-                    const trimmedDataRows = dataRows.map(row =>
-                        row.slice(0, variableNames.length)
+                    const updates = dataRows.flatMap((row, rIdx) =>
+                        row.slice(0, variableNames.length).map((cell, cIdx) => ({
+                            row: startRow + rIdx,
+                            col: startCol + cIdx,
+                            value: cell,
+                        }))
                     );
 
-                    hotInstance.populateFromArray(startRow, startCol, trimmedDataRows);
+                    const { addVariables } = useVariableStore.getState();
+                    await addVariables(variablesToAdd, updates);
                 } catch (error) {
                     console.error("Error pasting with variable names:", error);
                 }
@@ -239,18 +229,15 @@ export const useEditMenuActions = () => {
                 break;
 
             case "InsertVariable":
-                const selectedColCoords = hotInstance.getSelectedLast();
-                const insertColIndex = selectedColCoords ? selectedColCoords[3] + 1 : hotInstance.countCols();
-                alterGrid('insert_col_start', insertColIndex, 1);
+                const selectedCol = hotInstance.getSelectedLast();
+                const insertColIndex = selectedCol ? selectedCol[3] + 1 : hotInstance.countCols();
+                useVariableStore.getState().addVariable({ columnIndex: insertColIndex });
                 break;
 
             case "InsertCases":
-                const selectedRowCoords = hotInstance.getSelectedLast();
-                if (selectedRowCoords) {
-                    alterGrid('insert_row_below', selectedRowCoords[2], 1);
-                } else {
-                    alterGrid('insert_row_below');
-                }
+                const selectedRow = hotInstance.getSelectedLast();
+                const insertRowIndex = selectedRow ? selectedRow[2] + 1 : undefined;
+                useDataStore.getState().addRow(insertRowIndex);
                 break;
 
             default:
