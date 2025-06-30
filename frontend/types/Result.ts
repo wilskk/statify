@@ -18,7 +18,7 @@ export interface Statistic {
     id?: number;
     analyticId?: number;
     title: string;
-    output_data: string | Table;
+    output_data: string | any;
     components: any;
     description: string;
 };

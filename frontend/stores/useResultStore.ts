@@ -33,6 +33,9 @@ export interface ResultState {
     deleteStatistic: (statisticId: number) => Promise<void>;
 
     clearAll: () => Promise<void>;
+    
+    latestLogId: number | null;
+    setLatestLogId: (id: number | null) => void;
 }
 
 export const useResultStore = create<ResultState>()(
@@ -41,6 +44,11 @@ export const useResultStore = create<ResultState>()(
             logs: [],
             isLoading: false,
             error: null,
+            
+            latestLogId: null,
+            setLatestLogId: (id: number | null) => {
+                set({ latestLogId: id });
+            },
 
             loadResults: async () => {
                 set((draft) => {
@@ -81,12 +89,13 @@ export const useResultStore = create<ResultState>()(
                     const id = await resultService.addResultLog({
                         log: log.log
                     });
-                    
+
                     // Update state after successful API call
                     set((state) => {
                         state.logs.push({ ...log, id, analytics: [] });
+                        state.latestLogId = id; // Set latestLogId as a signal
                     });
-                    
+
                     return id;
                 } catch (error) {
                     console.error("Failed to add log:", error);
@@ -289,6 +298,7 @@ export const useResultStore = create<ResultState>()(
                     // Update state after successful API call
                     set((state) => {
                         state.logs = [];
+                        state.latestLogId = null;
                     });
                 } catch (error) {
                     console.error("Failed to clear all data:", error);

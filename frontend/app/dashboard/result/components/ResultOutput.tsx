@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTableRenderer from "@/components/Output/Table/data-table";
 import { Card } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
@@ -12,18 +12,27 @@ const TiptapEditor = dynamic(() => import('@/components/Output/Editor/TiptapEdit
 import { Edit } from "lucide-react";
 
 const ResultOutput: React.FC = () => {
-
-
-  const testData = {
-    "tables": [
-      {
-      }
-    ]
-  };
   const { logs, updateStatistic } = useResultStore();
   const [editingDescriptionId, setEditingDescriptionId] = useState<number | null>(null);
   const [descriptionValues, setDescriptionValues] = useState<Record<number, string>>({});
   const [saveStatus, setSaveStatus] = useState<Record<number, string>>({});
+
+  // Effect to scroll to a specific log when the page loads with a hash
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    // Use a timeout to ensure the element is rendered before scrolling
+    const timer = setTimeout(() => {
+      const id = hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer); // Cleanup the timeout
+  }, [logs]); // Rerunning when logs change ensures we can scroll to new content
 
   const handleDescriptionChange = (statId: number, value: string) => {
     // Bersihkan tag HTML kosong sebelum disimpan
@@ -77,8 +86,8 @@ const ResultOutput: React.FC = () => {
       ) : (
         <div className="space-y-10">
           {logs.map((log) => (
-            <div key={log.id} className="space-y-6">
-              <div id="log" className="text-sm font-medium text-muted-foreground px-1">
+            <div key={log.id} id={`log-${log.id}`} className="space-y-6 scroll-mt-20">
+              <div className="text-sm font-medium text-muted-foreground px-1">
                 Log {log.id}: {log.log}
               </div>
               {log.analytics?.map((analytic) => (

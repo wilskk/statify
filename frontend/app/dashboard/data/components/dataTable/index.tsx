@@ -14,7 +14,7 @@ registerAllModules();
 
 export default function Index() {
     const hotTableRef = useRef<any>(null);
-    const { viewMode } = useTableRefStore();
+    const { viewMode, setDataTableRef } = useTableRefStore();
     
     const {
         colHeaders,
@@ -57,6 +57,12 @@ export default function Index() {
             TH.classList.add('grayed-col-header', 'visual-spare-header');
         }
     }, [actualNumCols]);
+
+    useEffect(() => {
+        if (hotTableRef.current) {
+            setDataTableRef(hotTableRef);
+        }
+    }, [setDataTableRef]);
 
     useEffect(() => {
         const hotInstance = hotTableRef.current?.hotInstance;
