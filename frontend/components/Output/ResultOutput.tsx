@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import DataTableRenderer from "./Table/data-table";
 import { Card } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
 import { useResultStore } from "@/stores/useResultStore";
@@ -10,6 +9,7 @@ const TiptapEditor = dynamic(() => import('@/components/Output/Editor/TiptapEdit
   loading: () => <div className="border rounded-md p-2 min-h-[120px] bg-background w-full" />
 });
 import { Edit } from "lucide-react";
+import DataTableRenderer from "./table/data-table";
 
 const ResultOutput: React.FC = () => {
 
