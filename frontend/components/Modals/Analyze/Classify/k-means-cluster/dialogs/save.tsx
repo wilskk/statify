@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     KMeansClusterSaveProps,
     KMeansClusterSaveType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { HelpCircle } from "lucide-react";
+import {Checkbox} from "@/components/ui/checkbox";
+import {CheckedState} from "@radix-ui/react-checkbox";
 
 export const KMeansClusterSave = ({
     isSaveOpen,

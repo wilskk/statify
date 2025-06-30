@@ -1,5 +1,5 @@
-import { formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Table} from "@/types/Table";
 
 // Define an interface for the setting object
 interface SystemSetting {

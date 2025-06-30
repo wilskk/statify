@@ -6,7 +6,10 @@ import {CheckedState} from "@radix-ui/react-checkbox";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
 import {Label} from "@/components/ui/label";
 import {Separator} from "@/components/ui/separator";
-import {DiscriminantStatisticsProps, DiscriminantStatisticsType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
+import {
+    DiscriminantStatisticsProps,
+    DiscriminantStatisticsType
+} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
 
 export const DiscriminantStatistics = ({isStatisticsOpen, setIsStatisticsOpen, updateFormData, data}: DiscriminantStatisticsProps) => {
     const [statisticsState, setStatisticsState] = useState<DiscriminantStatisticsType>({ ...data });

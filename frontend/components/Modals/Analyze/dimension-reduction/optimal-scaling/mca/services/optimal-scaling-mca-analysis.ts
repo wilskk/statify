@@ -1,5 +1,8 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { OptScaMCAAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca-worker";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    OptScaMCAAnalysisType
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca-worker";
+
 // import init, { MultipleCorrespondenceAnalysis } from "@/wasm/pkg/wasm";
 
 export async function analyzeOptScaMCA({

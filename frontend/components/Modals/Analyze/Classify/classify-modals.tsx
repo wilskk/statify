@@ -1,15 +1,7 @@
 "use client";
 
 import React from "react";
-import { ModalType } from "@/hooks/useModal";
-import { TwoStepClusterContainer } from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/two-step-cluster-main";
-import { KMeansClusterContainer } from "@/components/Modals/Analyze/Classify/k-means-cluster/dialogs/k-means-cluster-main";
-import { HierClusContainer } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/hierarchical-cluster-main";
-import { TreeContainer } from "@/components/Modals/Analyze/Classify/tree/dialogs/tree-main";
-import { DiscriminantContainer } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/discriminant-main";
-import { KNNContainer } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/nearest-neighbor-main";
-import { RocCurveContainer } from "@/components/Modals/Analyze/Classify/roc-curve/dialogs/roc-curve-main";
-import { RocAnalysisContainer } from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/roc-analysis-main";
+import {ModalType} from "@/hooks/useModal";
 
 export const modalStyles = {
     dialogContent: "bg-white p-0 shadow-[0px_4px_12px_rgba(0,0,0,0.08)]",

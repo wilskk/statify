@@ -1,21 +1,21 @@
 // roc-analysis-main.tsx
-import { useState, useEffect, useMemo } from "react";
-import { RocAnalysisDialog } from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/dialog";
+import {useEffect, useMemo, useState} from "react";
+import {RocAnalysisDialog} from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/dialog";
 import {
     RocAnalysisContainerProps,
     RocAnalysisMainType,
     RocAnalysisType,
 } from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis";
-import { RocAnalysisDefault } from "@/components/Modals/Analyze/Classify/roc-analysis/constants/roc-analysis-default";
-import { RocAnalysisOptions } from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/options";
-import { RocAnalysisDisplay } from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/display";
-import { RocAnalysisDefineGroups } from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/define-groups";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeRocAnalysis } from "@/components/Modals/Analyze/Classify/roc-analysis/services/roc-analysis-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {RocAnalysisDefault} from "@/components/Modals/Analyze/Classify/roc-analysis/constants/roc-analysis-default";
+import {RocAnalysisOptions} from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/options";
+import {RocAnalysisDisplay} from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/display";
+import {RocAnalysisDefineGroups} from "@/components/Modals/Analyze/Classify/roc-analysis/dialogs/define-groups";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {analyzeRocAnalysis} from "@/components/Modals/Analyze/Classify/roc-analysis/services/roc-analysis-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const RocAnalysisContainer = ({
     onClose,

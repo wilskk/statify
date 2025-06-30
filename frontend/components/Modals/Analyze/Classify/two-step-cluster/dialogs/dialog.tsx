@@ -1,30 +1,18 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Separator} from "@/components/ui/separator";
 import {
     TwoStepClusterDialogProps,
     TwoStepClusterMainType,
 } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluster";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useModal } from "@/hooks/useModal";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {useModal} from "@/hooks/useModal";
 
 export const TwoStepClusterDialog = ({
     isMainOpen,

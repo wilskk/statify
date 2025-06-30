@@ -1,20 +1,14 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     KNNOptionsProps,
     KNNOptionsType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 
 export const KNNOptions = ({
     isOptionsOpen,

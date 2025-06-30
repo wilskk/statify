@@ -1,7 +1,7 @@
 // nearest-neighbor-analysis-output.ts
-import { KNNFinalResultType } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
-import { Table } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
+import {KNNFinalResultType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
+import {Table} from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultNearestNeighbor({
     formattedResult,

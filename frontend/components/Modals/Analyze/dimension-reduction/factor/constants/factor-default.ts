@@ -1,12 +1,12 @@
 import {
-    FactorType,
     FactorDescriptivesType,
     FactorExtractionType,
     FactorMainType,
+    FactorOptionsType,
     FactorRotationType,
     FactorScoresType,
+    FactorType,
     FactorValueType,
-    FactorOptionsType,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
 
 export const FactorMainDefault: FactorMainType = {

@@ -1,5 +1,4 @@
- 
-import { VarianceCompsType } from "./variance-components";
+import {VarianceCompsType} from "./variance-components";
 
 export type VarianceCompsAnalysisType = {
     configData: VarianceCompsType;

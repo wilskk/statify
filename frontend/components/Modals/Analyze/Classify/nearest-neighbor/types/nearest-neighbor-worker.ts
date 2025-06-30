@@ -1,6 +1,5 @@
- 
-import { KNNType } from "./nearest-neighbor";
-import { ResultJson } from "@/types/Table";
+import {KNNType} from "./nearest-neighbor";
+import {ResultJson} from "@/types/Table";
 
 export type KNNAnalysisType = {
     configData: KNNType;

@@ -1,31 +1,57 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {
+    DialogHandlers,
     OptScaCatpcaContainerProps,
-    OptScaCatpcaMainType,
-    OptScaCatpcaType,
     OptScaCatpcaDefineRangeScaleType,
     OptScaCatpcaDefineScaleType,
-    DialogHandlers,
+    OptScaCatpcaMainType,
+    OptScaCatpcaType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca";
-import { OptScaCatpcaDefault } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/constants/optimal-scaling-catpca-default";
-import { OptScaCatpcaDialog } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/dialog";
-import { OptScaCatpcaDefineRangeScale } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/define-range-scale";
-import { OptScaCatpcaLoadingPlots } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/loading-plots";
-import { OptScaCatpcaDefineScale } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/define-scale";
-import { OptScaCatpcaDiscretize } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/discretize";
-import { OptScaCatpcaMissing } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/missing";
-import { OptScaCatpcaOptions } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/options";
-import { OptScaCatpcaOutput } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/output";
-import { OptScaCatpcaSave } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/save";
-import { OptScaCatpcaBootstrap } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/bootstrap";
-import { OptScaCatpcaObjectPlots } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/object-plots";
-import { OptScaCatpcaCategoryPlots } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/category-plots";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeOptScaCatpca } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/services/optimal-scaling-catpca-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    OptScaCatpcaDefault
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/constants/optimal-scaling-catpca-default";
+import {
+    OptScaCatpcaDialog
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/dialog";
+import {
+    OptScaCatpcaDefineRangeScale
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/define-range-scale";
+import {
+    OptScaCatpcaLoadingPlots
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/loading-plots";
+import {
+    OptScaCatpcaDefineScale
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/define-scale";
+import {
+    OptScaCatpcaDiscretize
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/discretize";
+import {
+    OptScaCatpcaMissing
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/missing";
+import {
+    OptScaCatpcaOptions
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/options";
+import {
+    OptScaCatpcaOutput
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/output";
+import {OptScaCatpcaSave} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/save";
+import {
+    OptScaCatpcaBootstrap
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/bootstrap";
+import {
+    OptScaCatpcaObjectPlots
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/object-plots";
+import {
+    OptScaCatpcaCategoryPlots
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/dialogs/category-plots";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeOptScaCatpca
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/services/optimal-scaling-catpca-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const OptScaCatpcaContainer = ({
     onClose,

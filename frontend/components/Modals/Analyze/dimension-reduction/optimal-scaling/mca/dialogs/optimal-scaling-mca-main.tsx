@@ -1,27 +1,39 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {
+    DialogHandlers,
     OptScaMCAContainerProps,
+    OptScaMCADefineVariableType,
     OptScaMCAMainType,
     OptScaMCAType,
-    OptScaMCADefineVariableType,
-    DialogHandlers,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca";
-import { OptScaMCADefault } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/constants/optimal-scaling-mca-default";
-import { OptScaMCADialog } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/dialog";
-import { OptScaMCADefineVariable } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/define-variable";
-import { OptScaMCAVariablePlots } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/variable-plots";
-import { OptScaMCADiscretize } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/discretize";
-import { OptScaMCAMissing } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/missing";
-import { OptScaMCAOptions } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/options";
-import { OptScaMCAOutput } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/output";
-import { OptScaMCASave } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/save";
-import { OptScaMCAObjectPlots } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/object-plots";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeOptScaMCA } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/services/optimal-scaling-mca-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    OptScaMCADefault
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/constants/optimal-scaling-mca-default";
+import {OptScaMCADialog} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/dialog";
+import {
+    OptScaMCADefineVariable
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/define-variable";
+import {
+    OptScaMCAVariablePlots
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/variable-plots";
+import {
+    OptScaMCADiscretize
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/discretize";
+import {OptScaMCAMissing} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/missing";
+import {OptScaMCAOptions} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/options";
+import {OptScaMCAOutput} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/output";
+import {OptScaMCASave} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/save";
+import {
+    OptScaMCAObjectPlots
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/dialogs/object-plots";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeOptScaMCA
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/services/optimal-scaling-mca-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const OptScaMCAContainer = ({ onClose }: OptScaMCAContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

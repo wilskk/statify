@@ -1,20 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, {useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     UnivariateOptionsProps,
     UnivariateOptionsType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { toast } from "sonner";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Input} from "@/components/ui/input";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {toast} from "sonner";
 
 export const UnivariateOptions = ({
     isOptionsOpen,

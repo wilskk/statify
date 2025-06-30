@@ -1,9 +1,11 @@
-import { KMeansClusterFinalResultType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
-import { Table } from "@/types/Table";
-import { Variable } from "@/types/Variable";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
+import {
+    KMeansClusterFinalResultType
+} from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
+import {Table} from "@/types/Table";
+import {Variable} from "@/types/Variable";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultKMeans({
     formattedResult,

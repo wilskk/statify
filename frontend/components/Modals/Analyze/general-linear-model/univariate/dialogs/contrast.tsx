@@ -1,24 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, {useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     UnivariateContrastProps,
     UnivariateContrastType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { CONTRASTMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+    CONTRASTMETHOD
+} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
 
 export const UnivariateContrast = ({
     isContrastOpen,

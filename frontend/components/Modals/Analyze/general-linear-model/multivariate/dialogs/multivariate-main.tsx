@@ -1,25 +1,29 @@
-import { useState, useEffect, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     MultivariateContainerProps,
     MultivariateMainType,
     MultivariateType,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";
-import { MultivariateDefault } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-default";
-import { MultivariateDialog } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/dialog";
-import { MultivariateModel } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/model";
-import { MultivariateContrast } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/contrast";
-import { MultivariatePlots } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/plots";
-import { MultivariatePostHoc } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/posthoc";
-import { MultivariateEMMeans } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/emmeans";
-import { MultivariateSave } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/save";
-import { MultivariateOptions } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/options";
-import { MultivariateBootstrap } from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/bootstrap";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeMultivariate } from "@/components/Modals/Analyze/general-linear-model/multivariate/services/multivariate-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    MultivariateDefault
+} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-default";
+import {MultivariateDialog} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/dialog";
+import {MultivariateModel} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/model";
+import {MultivariateContrast} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/contrast";
+import {MultivariatePlots} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/plots";
+import {MultivariatePostHoc} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/posthoc";
+import {MultivariateEMMeans} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/emmeans";
+import {MultivariateSave} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/save";
+import {MultivariateOptions} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/options";
+import {MultivariateBootstrap} from "@/components/Modals/Analyze/general-linear-model/multivariate/dialogs/bootstrap";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeMultivariate
+} from "@/components/Modals/Analyze/general-linear-model/multivariate/services/multivariate-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const MultivariateContainer = ({
     onClose,

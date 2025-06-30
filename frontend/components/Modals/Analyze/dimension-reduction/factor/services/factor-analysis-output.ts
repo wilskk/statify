@@ -1,7 +1,7 @@
 // factor-analysis-output.ts
-import { FactorFinalResultType } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
-import { Table } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
+import {FactorFinalResultType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
+import {Table} from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultFactorAnalysis({
     formattedResult,

@@ -1,8 +1,13 @@
 import {
-    DiscriminantBootstrapType, DiscriminantClassifyType,
+    DiscriminantBootstrapType,
+    DiscriminantClassifyType,
     DiscriminantDefineRangeType,
-    DiscriminantMainType, DiscriminantMethodType, DiscriminantSaveType,
-    DiscriminantSetValueType, DiscriminantStatisticsType, DiscriminantType
+    DiscriminantMainType,
+    DiscriminantMethodType,
+    DiscriminantSaveType,
+    DiscriminantSetValueType,
+    DiscriminantStatisticsType,
+    DiscriminantType
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
 
 export const DiscriminantMainDefault : DiscriminantMainType = {

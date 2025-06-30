@@ -1,10 +1,9 @@
 import {
-    RepeatedMeasureDefineFactor,
     RepeatedMeasure,
     RepeatedMeasureDefineData,
+    RepeatedMeasureDefineFactor,
     RepeatedMeasureDefineType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measure-define";
-import React from "react";
 
 export const RepeatedMeasureDefineFactorDefault: RepeatedMeasureDefineFactor = {
     name: null,

@@ -1,6 +1,6 @@
 // factor-analysis-formatter.ts
-import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table, Row } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Table} from "@/types/Table";
 
 export function transformFactorAnalysisResult(data: any): ResultJson {
     const resultJson: ResultJson = {

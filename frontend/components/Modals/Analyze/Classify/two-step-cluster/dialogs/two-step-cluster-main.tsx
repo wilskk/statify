@@ -1,19 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     TwoStepClusterContainerProps,
     TwoStepClusterMainType,
     TwoStepClusterType,
 } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluster";
-import { TwoStepClusterDefault } from "@/components/Modals/Analyze/Classify/two-step-cluster/constants/two-step-cluster-default";
-import { TwoStepClusterDialog } from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/dialog";
-import { TwoStepClusterOptions } from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/options";
-import { TwoStepClusterOutput } from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/output";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeTwoStepCluster } from "@/components/Modals/Analyze/Classify/two-step-cluster/services/two-step-cluster-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    TwoStepClusterDefault
+} from "@/components/Modals/Analyze/Classify/two-step-cluster/constants/two-step-cluster-default";
+import {TwoStepClusterDialog} from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/dialog";
+import {TwoStepClusterOptions} from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/options";
+import {TwoStepClusterOutput} from "@/components/Modals/Analyze/Classify/two-step-cluster/dialogs/output";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeTwoStepCluster
+} from "@/components/Modals/Analyze/Classify/two-step-cluster/services/two-step-cluster-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const TwoStepClusterContainer = ({
     onClose,

@@ -1,7 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { TwoStepClusterAnalysisType } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluste-worker";
-import { transformClusteringResult } from "./two-step-cluster-analysis-formatter";
-import { resultTwoStepCluster } from "./two-step-cluster-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    TwoStepClusterAnalysisType
+} from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluste-worker";
 
 export async function analyzeTwoStepCluster({
     configData,

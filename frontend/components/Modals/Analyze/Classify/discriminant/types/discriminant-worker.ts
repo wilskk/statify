@@ -1,5 +1,5 @@
-import { DiscriminantType } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
-import { ResultJson } from "@/types/Table";
+import {DiscriminantType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
+import {ResultJson} from "@/types/Table";
 
 export type DiscriminantAnalysisType = {
     configData: DiscriminantType;

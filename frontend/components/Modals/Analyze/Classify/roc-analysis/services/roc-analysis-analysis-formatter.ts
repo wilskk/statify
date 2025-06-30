@@ -1,6 +1,6 @@
 // roc-analysis-formatter.ts
-import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table } from "@/types/Table";
+import {ensureEnoughHeaders, formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Table} from "@/types/Table";
 
 export function transformROCAnalysisResult(data: any): ResultJson {
     const resultJson: ResultJson = {

@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     KMeansClusterIterateProps,
     KMeansClusterIterateType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Checkbox } from "@/components/ui/checkbox";
-import { HelpCircle } from "lucide-react";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Checkbox} from "@/components/ui/checkbox";
 
 export const KMeansClusterIterate = ({
     isIterateOpen,

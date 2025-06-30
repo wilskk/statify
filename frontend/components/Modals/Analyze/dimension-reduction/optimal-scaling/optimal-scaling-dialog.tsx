@@ -1,26 +1,15 @@
-import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
-import { useModal, ModalType } from "@/hooks/useModal";
+import {Button} from "@/components/ui/button";
+import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Label} from "@/components/ui/label";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Separator} from "@/components/ui/separator";
+import {ModalType, useModal} from "@/hooks/useModal";
 import {
     OptScaDefineMainType,
     OptScaDefineProps,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/types/optimal-scaling-define";
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 
 export const OptScaInitial = ({
     isDefineOpen,

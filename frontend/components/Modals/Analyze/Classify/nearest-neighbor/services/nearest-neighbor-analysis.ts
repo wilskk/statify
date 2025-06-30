@@ -1,7 +1,5 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { KNNAnalysisType } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
-import { transformNearestNeighborResult } from "./nearest-neighbor-analysis-formatter";
-import { resultNearestNeighbor } from "./nearest-neighbor-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {KNNAnalysisType} from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor-worker";
 
 export async function analyzeKNN({
     configData,

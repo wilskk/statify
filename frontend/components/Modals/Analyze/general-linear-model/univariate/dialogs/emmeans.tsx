@@ -1,25 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import React, {useCallback, useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     UnivariateEMMeansProps,
     UnivariateEMMeansType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { CIADJUSTMENTMETHOD } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import VariableListManager, {
-    TargetListConfig,
-} from "@/components/Common/VariableListManager";
-import type { Variable } from "@/types/Variable";
+    CIADJUSTMENTMETHOD
+} from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
+import type {Variable} from "@/types/Variable";
 
 export const UnivariateEMMeans = ({
     isEMMeansOpen,

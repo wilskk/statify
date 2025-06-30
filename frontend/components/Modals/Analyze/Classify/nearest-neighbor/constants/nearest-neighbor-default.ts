@@ -1,12 +1,12 @@
 import {
     KNNFeaturesType,
+    KNNMainType,
     KNNNeighborsType,
     KNNOptionsType,
     KNNOutputType,
     KNNPartitionType,
     KNNSaveType,
     KNNType,
-    KNNMainType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
 
 export const KNNMainDefault: KNNMainType = {

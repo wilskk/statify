@@ -1,5 +1,5 @@
-import { RocCurveType } from "./roc-curve";
-import { ResultJson } from "@/types/Table";
+import {RocCurveType} from "./roc-curve";
+import {ResultJson} from "@/types/Table";
 
 export type RocCurveAnalysisType = {
     configData: RocCurveType;

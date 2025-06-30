@@ -1,20 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     KMeansClusterOptionsProps,
     KMeansClusterOptionsType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { HelpCircle } from "lucide-react";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 
 export const KMeansClusterOptions = ({
     isOptionsOpen,

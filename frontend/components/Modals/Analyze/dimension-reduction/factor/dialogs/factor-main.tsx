@@ -1,23 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
-import { FactorDialog } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/dialog";
+import {useEffect, useMemo, useState} from "react";
+import {FactorDialog} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/dialog";
 import {
     FactorContainerProps,
     FactorMainType,
     FactorType,
 } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor";
-import { FactorDefault } from "@/components/Modals/Analyze/dimension-reduction/factor/constants/factor-default";
-import { FactorValue } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/value";
-import { FactorScores } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/scores";
-import { FactorRotation } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/rotation";
-import { FactorExtraction } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/extraction";
-import { FactorDescriptives } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/descriptives";
-import { FactorOptions } from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeFactor } from "@/components/Modals/Analyze/dimension-reduction/factor/services/factor-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {FactorDefault} from "@/components/Modals/Analyze/dimension-reduction/factor/constants/factor-default";
+import {FactorValue} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/value";
+import {FactorScores} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/scores";
+import {FactorRotation} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/rotation";
+import {FactorExtraction} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/extraction";
+import {FactorDescriptives} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/descriptives";
+import {FactorOptions} from "@/components/Modals/Analyze/dimension-reduction/factor/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {analyzeFactor} from "@/components/Modals/Analyze/dimension-reduction/factor/services/factor-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const FactorContainer = ({ onClose }: FactorContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

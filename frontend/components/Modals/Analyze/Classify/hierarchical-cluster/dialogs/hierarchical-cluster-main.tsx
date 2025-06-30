@@ -1,21 +1,25 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { HierClusDialog } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/dialog";
+import React, {useEffect, useMemo, useState} from "react";
+import {HierClusDialog} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/dialog";
 import {
     HierClusContainerProps,
     HierClusMainType,
     HierClusType,
 } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster";
-import { HierClusDefault } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/constants/hierarchical-cluster-default";
-import { HierClusStatistics } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/statistics";
-import { HierClusPlots } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/plots";
-import { HierClusSave } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/save";
-import { HierClusMethod } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/method";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeHierClus } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/services/hierarchical-cluster-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    HierClusDefault
+} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/constants/hierarchical-cluster-default";
+import {HierClusStatistics} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/statistics";
+import {HierClusPlots} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/plots";
+import {HierClusSave} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/save";
+import {HierClusMethod} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/dialogs/method";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeHierClus
+} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/services/hierarchical-cluster-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const HierClusContainer = ({ onClose }: HierClusContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

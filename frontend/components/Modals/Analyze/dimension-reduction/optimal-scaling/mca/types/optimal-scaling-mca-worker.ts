@@ -1,5 +1,4 @@
- 
-import { OptScaMCAType } from "./optimal-scaling-mca";
+import {OptScaMCAType} from "./optimal-scaling-mca";
 
 export type OptScaMCAAnalysisType = {
     configData: OptScaMCAType;

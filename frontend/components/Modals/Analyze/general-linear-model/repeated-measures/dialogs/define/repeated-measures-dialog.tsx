@@ -1,32 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {ScrollArea} from "@/components/ui/scroll-area";
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    RepeatedMeasureDefineDialogProps,
-    RepeatedMeasureDefineData,
-    RepeatedMeasureDefineFactor,
     FactorLevelCombination,
     RepeatedMeasure,
+    RepeatedMeasureDefineData,
+    RepeatedMeasureDefineDialogProps,
+    RepeatedMeasureDefineFactor,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measure-define";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { ModalType, useModal } from "@/hooks/useModal";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {useModal} from "@/hooks/useModal";
+import {Badge} from "@/components/ui/badge";
+import {toast} from "@/hooks/use-toast";
 
 export const RepeatedMeasureDefineDialog = ({
     isDefineOpen,

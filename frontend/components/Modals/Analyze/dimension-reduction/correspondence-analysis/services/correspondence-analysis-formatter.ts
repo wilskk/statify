@@ -1,6 +1,6 @@
 // correspondence-analysis-formatter.ts
-import { ensureEnoughHeaders, formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table, Row } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Row, Table} from "@/types/Table";
 
 export function transformCorrespondenceResult(
     data: any,

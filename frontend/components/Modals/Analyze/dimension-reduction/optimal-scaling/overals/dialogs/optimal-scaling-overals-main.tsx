@@ -1,23 +1,35 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import { OptScaOveralsDefineRange } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/define-range";
-import { OptScaOveralsDefineRangeScale } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/define-range-scale";
-import { OptScaOveralsDialog } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/dialog";
-import { OptScaOveralsOptions } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { OptScaOveralsDefault } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/constants/optimal-scaling-overals-default";
-import { useModal } from "@/hooks/useModal";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {
+    OptScaOveralsDefineRange
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/define-range";
+import {
+    OptScaOveralsDefineRangeScale
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/define-range-scale";
+import {
+    OptScaOveralsDialog
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/dialog";
+import {
+    OptScaOveralsOptions
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {
+    OptScaOveralsDefault
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/constants/optimal-scaling-overals-default";
+import {useModal} from "@/hooks/useModal";
+import {
+    DialogHandlers,
     OptScaOveralsContainerProps,
+    OptScaOveralsDefineRangeScaleType,
+    OptScaOveralsDefineRangeType,
     OptScaOveralsMainType,
     OptScaOveralsType,
-    OptScaOveralsDefineRangeType,
-    OptScaOveralsDefineRangeScaleType,
-    DialogHandlers,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/types/optimal-scaling-overals";
-import { analyzeOptScaOverals } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/services/optimal-scaling-overals-analysis";
-import { useDataStore } from "@/stores/useDataStore";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    analyzeOptScaOverals
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/services/optimal-scaling-overals-analysis";
+import {useDataStore} from "@/stores/useDataStore";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const OptScaOveralsContainer = ({
     onClose,

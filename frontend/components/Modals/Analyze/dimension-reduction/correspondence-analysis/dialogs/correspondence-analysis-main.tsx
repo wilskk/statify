@@ -1,23 +1,39 @@
-import { useEffect, useState, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     CorrespondenceContainerProps,
     CorrespondenceMainType,
     CorrespondenceType,
 } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis";
-import { CorrespondenceDefault } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/constants/correspondence-analysis-default";
-import { CorrespondenceDialog } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/dialog";
-import { CorrespondenceDefineRangeRow } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/define-range-row";
-import { CorrespondenceDefineRangeColumn } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/define-range-column";
-import { CorrespondencePlots } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/plots";
-import { CorrespondenceModel } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/model";
-import { CorrespondenceStatistics } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/statistics";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeCorrespondence } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/services/correspondence-analysis-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
-import { useMetaStore } from "@/stores/useMetaStore";
+import {
+    CorrespondenceDefault
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/constants/correspondence-analysis-default";
+import {
+    CorrespondenceDialog
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/dialog";
+import {
+    CorrespondenceDefineRangeRow
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/define-range-row";
+import {
+    CorrespondenceDefineRangeColumn
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/define-range-column";
+import {
+    CorrespondencePlots
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/plots";
+import {
+    CorrespondenceModel
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/model";
+import {
+    CorrespondenceStatistics
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/dialogs/statistics";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeCorrespondence
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/services/correspondence-analysis-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
+import {useMetaStore} from "@/stores/useMetaStore";
 
 export const CorrespondenceContainer = ({
     onClose,

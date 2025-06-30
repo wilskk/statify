@@ -1,45 +1,22 @@
-import React, { useEffect, useState, useCallback } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useCallback, useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     UnivariatePostHocProps,
     UnivariatePostHocType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
-    BUILDTERMMETHOD,
     DUNNETMETHOD,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Badge } from "@/components/ui/badge";
-import VariableListManager, {
-    TargetListConfig,
-} from "@/components/Common/VariableListManager";
-import type { Variable } from "@/types/Variable";
-import { toast } from "sonner";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
+import type {Variable} from "@/types/Variable";
+import {toast} from "sonner";
 
 export const UnivariatePostHoc = ({
     isPostHocOpen,

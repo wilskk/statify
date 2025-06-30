@@ -1,24 +1,38 @@
-import { useState, useEffect, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     RepeatedMeasuresContainerProps,
     RepeatedMeasuresMainType,
     RepeatedMeasuresType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
-import { RepeatedMeasuresDefault } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/constants/repeated-measures-default";
-import { RepeatedMeasuresDialog } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/dialog";
-import { RepeatedMeasuresModel } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/model";
-import { RepeatedMeasuresContrast } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/contrast";
-import { RepeatedMeasuresPlots } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/plots";
-import { RepeatedMeasuresPostHoc } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/posthoc";
-import { RepeatedMeasuresEMMeans } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/emmeans";
-import { RepeatedMeasuresSave } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/save";
-import { RepeatedMeasuresOptions } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeRepeatedMeasures } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/services/repeated-measures-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    RepeatedMeasuresDefault
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/constants/repeated-measures-default";
+import {
+    RepeatedMeasuresDialog
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/dialog";
+import {RepeatedMeasuresModel} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/model";
+import {
+    RepeatedMeasuresContrast
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/contrast";
+import {RepeatedMeasuresPlots} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/plots";
+import {
+    RepeatedMeasuresPostHoc
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/posthoc";
+import {
+    RepeatedMeasuresEMMeans
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/emmeans";
+import {RepeatedMeasuresSave} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/save";
+import {
+    RepeatedMeasuresOptions
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeRepeatedMeasures
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/services/repeated-measures-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const RepeatedMeasuresContainer = ({
     onClose,

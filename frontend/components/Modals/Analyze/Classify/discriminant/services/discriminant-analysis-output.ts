@@ -1,7 +1,7 @@
 // discriminant-analysis-output.ts
-import { DiscriminantFinalResultType } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
-import { Table } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
+import {DiscriminantFinalResultType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+import {Table} from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultDiscriminant({
     formattedResult,

@@ -1,24 +1,24 @@
-import { useState, useEffect, useMemo } from "react";
-import { KNNDialog } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
+import {useEffect, useMemo, useState} from "react";
+import {KNNDialog} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/dialog";
 import {
     KNNContainerProps,
     KNNMainType,
     KNNType,
 } from "@/components/Modals/Analyze/Classify/nearest-neighbor/types/nearest-neighbor";
-import { KNNDefault } from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
-import { KNNNeighbors } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/neighbors";
-import { KNNFeatures } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/features";
-import { KNNPartition } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/partition";
-import { KNNSave } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/save";
-import { KNNOutput } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/output";
-import { KNNOptions } from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { useResultStore } from "@/stores/useResultStore";
-import { analyzeKNN } from "@/components/Modals/Analyze/Classify/nearest-neighbor/services/nearest-neighbor-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {KNNDefault} from "@/components/Modals/Analyze/Classify/nearest-neighbor/constants/nearest-neighbor-default";
+import {KNNNeighbors} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/neighbors";
+import {KNNFeatures} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/features";
+import {KNNPartition} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/partition";
+import {KNNSave} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/save";
+import {KNNOutput} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/output";
+import {KNNOptions} from "@/components/Modals/Analyze/Classify/nearest-neighbor/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {useResultStore} from "@/stores/useResultStore";
+import {analyzeKNN} from "@/components/Modals/Analyze/Classify/nearest-neighbor/services/nearest-neighbor-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const KNNContainer = ({ onClose }: KNNContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

@@ -1,7 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { HierClusAnalysisType } from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster-worker";
-import { resultHierarchicalCluster } from "./hierarchical-cluster-analysis-output";
-import { transformHierClusResult } from "./hierarchical-cluster-analysis-formatter";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    HierClusAnalysisType
+} from "@/components/Modals/Analyze/Classify/hierarchical-cluster/types/hierarchical-cluster-worker";
 
 export async function analyzeHierClus({
     configData,

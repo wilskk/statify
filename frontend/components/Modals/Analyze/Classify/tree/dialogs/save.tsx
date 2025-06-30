@@ -1,23 +1,13 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { TreeSaveProps, TreeSaveType } from "@/components/Modals/Analyze/Classify/tree/types/tree";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Input } from "@/components/ui/input";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
+import {TreeSaveProps, TreeSaveType} from "@/components/Modals/Analyze/Classify/tree/types/tree";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Label} from "@/components/ui/label";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Input} from "@/components/ui/input";
 
 export const TreeSave = ({
     isSaveOpen,

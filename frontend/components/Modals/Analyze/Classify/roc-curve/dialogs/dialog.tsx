@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import {
     Dialog,
     DialogClose,
@@ -8,24 +8,17 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
-import {
-    RocCurveDialogProps,
-    RocCurveMainType,
-} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useModal } from "@/hooks/useModal";
+import {Button} from "@/components/ui/button";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Separator} from "@/components/ui/separator";
+import {RocCurveDialogProps, RocCurveMainType,} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {useModal} from "@/hooks/useModal";
 
 export const RocCurveDialog = ({
     isMainOpen,

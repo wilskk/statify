@@ -1,5 +1,5 @@
-import { formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table, Row } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Row, Table} from "@/types/Table";
 
 export function transformUnivariateResult(data: any): ResultJson {
     const resultJson: ResultJson = {

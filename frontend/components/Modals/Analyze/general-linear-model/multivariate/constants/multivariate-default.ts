@@ -1,5 +1,4 @@
 import {
-    MultivariateType,
     MultivariateBootstrapType,
     MultivariateContrastType,
     MultivariateEMMeansType,
@@ -9,6 +8,7 @@ import {
     MultivariatePlotsType,
     MultivariatePostHocType,
     MultivariateSaveType,
+    MultivariateType,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";
 
 export const MultivariateMainDefault: MultivariateMainType = {

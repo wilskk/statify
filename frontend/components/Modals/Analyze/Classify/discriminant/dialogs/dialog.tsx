@@ -1,28 +1,17 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Separator} from "@/components/ui/separator";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
 import {
     DiscriminantDialogProps,
     DiscriminantMainType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useModal } from "@/hooks/useModal";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {useModal} from "@/hooks/useModal";
 
 export const DiscriminantDialog = ({
     isMainOpen,

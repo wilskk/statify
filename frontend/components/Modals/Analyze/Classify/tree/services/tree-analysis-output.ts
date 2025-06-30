@@ -1,6 +1,5 @@
-import { TreeFinalResultType } from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
-import { useResultStore } from "@/stores/useResultStore";
-import { Table } from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
+import {Table} from "@/types/Table";
 
 export async function resultTree(formattedResult: any) {
     try {

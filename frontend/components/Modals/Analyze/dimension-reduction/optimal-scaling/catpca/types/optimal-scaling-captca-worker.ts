@@ -1,5 +1,4 @@
- 
-import { OptScaCatpcaType } from "./optimal-scaling-captca";
+import {OptScaCatpcaType} from "./optimal-scaling-captca";
 
 export type OptScaCatpcaAnalysisType = {
     configData: OptScaCatpcaType;

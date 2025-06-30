@@ -1,7 +1,5 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { RocAnalysisAnalysisType } from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
-import { transformROCAnalysisResult } from "./roc-analysis-analysis-formatter";
-import { resultROCAnalysis } from "./roc-analysis-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {RocAnalysisAnalysisType} from "@/components/Modals/Analyze/Classify/roc-analysis/types/roc-analysis-worker";
 
 export async function analyzeRocAnalysis({
     configData,

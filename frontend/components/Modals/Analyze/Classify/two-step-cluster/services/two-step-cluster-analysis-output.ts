@@ -1,7 +1,9 @@
 // two-step-cluster-analysis-output.ts
-import { TwoStepClusterFinalResultType } from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluste-worker";
-import { Table } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
+import {
+    TwoStepClusterFinalResultType
+} from "@/components/Modals/Analyze/Classify/two-step-cluster/types/two-step-cluste-worker";
+import {Table} from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
 
 export async function resultTwoStepCluster({
     formattedResult,

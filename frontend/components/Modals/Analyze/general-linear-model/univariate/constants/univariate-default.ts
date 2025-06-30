@@ -1,5 +1,4 @@
 import {
-    UnivariateType,
     UnivariateBootstrapType,
     UnivariateContrastType,
     UnivariateEMMeansType,
@@ -9,6 +8,7 @@ import {
     UnivariatePlotsType,
     UnivariatePostHocType,
     UnivariateSaveType,
+    UnivariateType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
 
 export const UnivariateMainDefault: UnivariateMainType = {

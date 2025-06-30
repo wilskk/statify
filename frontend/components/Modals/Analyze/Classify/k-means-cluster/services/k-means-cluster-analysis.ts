@@ -1,10 +1,10 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { KMeansClusterAnalysisType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
-import { transformKMeansResult } from "./k-means-cluster-analysis-formatter";
-import { resultKMeans } from "./k-means-cluster-analysis-output";
-import init, {
-    KMeansClusterAnalysis,
-} from "@/components/Modals/Analyze/Classify/k-means-cluster/rust/pkg/wasm";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    KMeansClusterAnalysisType
+} from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
+import {transformKMeansResult} from "./k-means-cluster-analysis-formatter";
+import {resultKMeans} from "./k-means-cluster-analysis-output";
+import init, {KMeansClusterAnalysis,} from "@/components/Modals/Analyze/Classify/k-means-cluster/rust/pkg/wasm";
 
 export async function analyzeKMeansCluster({
     configData,

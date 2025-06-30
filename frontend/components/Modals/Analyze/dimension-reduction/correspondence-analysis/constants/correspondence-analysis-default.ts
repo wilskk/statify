@@ -1,11 +1,11 @@
 import {
-    CorrespondenceType,
     CorrespondenceDefineRangeColumnType,
     CorrespondenceDefineRangeRowType,
     CorrespondenceMainType,
     CorrespondenceModelType,
     CorrespondencePlotsType,
     CorrespondenceStatisticsType,
+    CorrespondenceType,
 } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis";
 
 export const CorrespondenceMainDefault: CorrespondenceMainType = {

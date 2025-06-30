@@ -1,24 +1,24 @@
-import { useState, useEffect, useMemo } from "react";
-import { DiscriminantDialog } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/dialog";
-import { DiscriminantDefineRange } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/define-range";
-import { DiscriminantSetValue } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/set-value";
-import { DiscriminantStatistics } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/statistics";
-import { DiscriminantMethod } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/method";
-import { DiscriminantClassify } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/classify";
-import { DiscriminantSave } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/save";
-import { DiscriminantBootstrap } from "@/components/Modals/Analyze/Classify/discriminant/dialogs/bootstrap";
+import {useEffect, useMemo, useState} from "react";
+import {DiscriminantDialog} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/dialog";
+import {DiscriminantDefineRange} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/define-range";
+import {DiscriminantSetValue} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/set-value";
+import {DiscriminantStatistics} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/statistics";
+import {DiscriminantMethod} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/method";
+import {DiscriminantClassify} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/classify";
+import {DiscriminantSave} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/save";
+import {DiscriminantBootstrap} from "@/components/Modals/Analyze/Classify/discriminant/dialogs/bootstrap";
 import {
     DiscriminantContainerProps,
     DiscriminantMainType,
     DiscriminantType,
 } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant";
-import { DiscriminantDefault } from "@/components/Modals/Analyze/Classify/discriminant/constants/discriminant-default";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeDiscriminant } from "@/components/Modals/Analyze/Classify/discriminant/services/discriminant-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {DiscriminantDefault} from "@/components/Modals/Analyze/Classify/discriminant/constants/discriminant-default";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {analyzeDiscriminant} from "@/components/Modals/Analyze/Classify/discriminant/services/discriminant-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const DiscriminantContainer = ({
     onClose,

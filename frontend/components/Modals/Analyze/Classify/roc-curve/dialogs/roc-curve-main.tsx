@@ -1,18 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     RocCurveContainerProps,
     RocCurveMainType,
     RocCurveType,
 } from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve";
-import { RocCurveDefault } from "@/components/Modals/Analyze/Classify/roc-curve/constants/roc-curve-default";
-import { RocCurveDialog } from "@/components/Modals/Analyze/Classify/roc-curve/dialogs/dialog";
-import { RocCurveOptions } from "@/components/Modals/Analyze/Classify/roc-curve/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeRocCurve } from "@/components/Modals/Analyze/Classify/roc-curve/services/roc-curve-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {RocCurveDefault} from "@/components/Modals/Analyze/Classify/roc-curve/constants/roc-curve-default";
+import {RocCurveDialog} from "@/components/Modals/Analyze/Classify/roc-curve/dialogs/dialog";
+import {RocCurveOptions} from "@/components/Modals/Analyze/Classify/roc-curve/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {analyzeRocCurve} from "@/components/Modals/Analyze/Classify/roc-curve/services/roc-curve-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const RocCurveContainer = ({ onClose }: RocCurveContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

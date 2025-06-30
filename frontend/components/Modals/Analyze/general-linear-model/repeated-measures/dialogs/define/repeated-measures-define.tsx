@@ -1,14 +1,16 @@
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { RepeatedMeasureDefineDefault } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/constants/repeated-measures-define-default";
-import { useModal } from "@/hooks/useModal";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
 import {
-    RepeatedMeasuresDefineContainerProps,
-    RepeatedMeasureDefineType,
+    RepeatedMeasureDefineDefault
+} from "@/components/Modals/Analyze/general-linear-model/repeated-measures/constants/repeated-measures-define-default";
+import {useModal} from "@/hooks/useModal";
+import {
     RepeatedMeasureDefineData,
+    RepeatedMeasureDefineType,
+    RepeatedMeasuresDefineContainerProps,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measure-define";
-import { useEffect, useState } from "react";
-import { RepeatedMeasureDefineDialog } from "./repeated-measures-dialog";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {useEffect, useState} from "react";
+import {RepeatedMeasureDefineDialog} from "./repeated-measures-dialog";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const RepeatedMeasuresDefineContainer = ({
     onClose,

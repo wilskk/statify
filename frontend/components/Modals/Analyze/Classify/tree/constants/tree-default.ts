@@ -1,5 +1,4 @@
 import {
-    TreeType,
     TreeCategoriesType,
     TreeCriteriaCHAIDType,
     TreeCriteriaGrowthType,
@@ -11,6 +10,7 @@ import {
     TreeOutputStatsType,
     TreeOutputTreeType,
     TreeSaveType,
+    TreeType,
     TreeValidationType,
 } from "@/components/Modals/Analyze/Classify/tree/types/tree";
 

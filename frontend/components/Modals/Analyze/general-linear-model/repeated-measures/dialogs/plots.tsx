@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     RepeatedMeasuresPlotsProps,
     RepeatedMeasuresPlotsType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Badge } from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Checkbox} from "@/components/ui/checkbox";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Badge} from "@/components/ui/badge";
 
 export const RepeatedMeasuresPlots = ({
     isPlotsOpen,

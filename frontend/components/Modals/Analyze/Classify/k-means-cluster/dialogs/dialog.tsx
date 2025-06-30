@@ -1,35 +1,20 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
+import React, {useCallback, useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
 import {
     KMeansClusterDialogProps,
     KMeansClusterMainType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useModal } from "@/hooks/useModal";
-import { toast } from "sonner";
-import VariableListManager, {
-    TargetListConfig,
-} from "@/components/Common/VariableListManager";
-import type { Variable } from "@/types/Variable";
-import { HelpCircle } from "lucide-react";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Checkbox} from "@/components/ui/checkbox";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
+import {useModal} from "@/hooks/useModal";
+import {toast} from "sonner";
+import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
+import type {Variable} from "@/types/Variable";
 
 export const KMeansClusterDialog = ({
     isMainOpen,

@@ -1,5 +1,5 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { TreeAnalysisType } from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {TreeAnalysisType} from "@/components/Modals/Analyze/Classify/tree/types/tree-worker";
 
 export async function analyzeTree({
     configData,

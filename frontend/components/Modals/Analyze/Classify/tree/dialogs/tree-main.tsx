@@ -1,23 +1,19 @@
-import { useState, useEffect, useMemo } from "react";
-import {
-    TreeContainerProps,
-    TreeMainType,
-    TreeType,
-} from "@/components/Modals/Analyze/Classify/tree/types/tree";
-import { TreeDefault } from "@/components/Modals/Analyze/Classify/tree/constants/tree-default";
-import { TreeDialog } from "@/components/Modals/Analyze/Classify/tree/dialogs/dialog";
-import { TreeCategories } from "@/components/Modals/Analyze/Classify/tree/dialogs/categories";
-import { TreeSave } from "@/components/Modals/Analyze/Classify/tree/dialogs/save";
-import { TreeOutput } from "@/components/Modals/Analyze/Classify/tree/dialogs/output";
-import { TreeValidation } from "@/components/Modals/Analyze/Classify/tree/dialogs/validation";
-import { TreeCriteria } from "@/components/Modals/Analyze/Classify/tree/dialogs/criteria";
-import { TreeOptions } from "@/components/Modals/Analyze/Classify/tree/dialogs/options";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeTree } from "@/components/Modals/Analyze/Classify/tree/services/tree-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {useEffect, useMemo, useState} from "react";
+import {TreeContainerProps, TreeMainType, TreeType,} from "@/components/Modals/Analyze/Classify/tree/types/tree";
+import {TreeDefault} from "@/components/Modals/Analyze/Classify/tree/constants/tree-default";
+import {TreeDialog} from "@/components/Modals/Analyze/Classify/tree/dialogs/dialog";
+import {TreeCategories} from "@/components/Modals/Analyze/Classify/tree/dialogs/categories";
+import {TreeSave} from "@/components/Modals/Analyze/Classify/tree/dialogs/save";
+import {TreeOutput} from "@/components/Modals/Analyze/Classify/tree/dialogs/output";
+import {TreeValidation} from "@/components/Modals/Analyze/Classify/tree/dialogs/validation";
+import {TreeCriteria} from "@/components/Modals/Analyze/Classify/tree/dialogs/criteria";
+import {TreeOptions} from "@/components/Modals/Analyze/Classify/tree/dialogs/options";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {analyzeTree} from "@/components/Modals/Analyze/Classify/tree/services/tree-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const TreeContainer = ({ onClose }: TreeContainerProps) => {
     const variables = useVariableStore((state) => state.variables);

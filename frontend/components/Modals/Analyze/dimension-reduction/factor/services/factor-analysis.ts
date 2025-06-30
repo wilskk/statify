@@ -1,7 +1,5 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { FactorAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
-import { transformFactorAnalysisResult } from "./factor-analysis-formatter";
-import { resultFactorAnalysis } from "./factor-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {FactorAnalysisType} from "@/components/Modals/Analyze/dimension-reduction/factor/types/factor-worker";
 
 export async function analyzeFactor({
     configData,

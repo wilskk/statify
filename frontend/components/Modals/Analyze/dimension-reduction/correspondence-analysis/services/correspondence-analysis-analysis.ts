@@ -1,7 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { CorrespondenceAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
-import { transformCorrespondenceResult } from "./correspondence-analysis-formatter";
-import { resultCorrespondence } from "./correspondence-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    CorrespondenceAnalysisType
+} from "@/components/Modals/Analyze/dimension-reduction/correspondence-analysis/types/correspondence-analysis-worker";
 
 export async function analyzeCorrespondence({
     configData,

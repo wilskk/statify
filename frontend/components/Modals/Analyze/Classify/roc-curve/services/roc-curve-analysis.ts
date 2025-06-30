@@ -1,7 +1,5 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { RocCurveAnalysisType } from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
-import { transformROCCurveResult } from "./roc-curve-analysis-formatter";
-import { resultROCCurve } from "./roc-curve-analysis-output";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {RocCurveAnalysisType} from "@/components/Modals/Analyze/Classify/roc-curve/types/roc-curve-worker";
 
 export async function analyzeRocCurve({
     configData,

@@ -1,6 +1,6 @@
 // hierarchical-clustering-formatter.ts
-import { formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table, Row } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Table} from "@/types/Table";
 
 export function transformHierClusResult(data: any): ResultJson {
     const resultJson: ResultJson = {

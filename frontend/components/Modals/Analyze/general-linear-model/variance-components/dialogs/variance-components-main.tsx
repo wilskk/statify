@@ -1,20 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import {useEffect, useMemo, useState} from "react";
 import {
     VarianceCompsContainerProps,
     VarianceCompsMainType,
     VarianceCompsType,
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components";
-import { VarianceCompsDefault } from "@/components/Modals/Analyze/general-linear-model/variance-components/constants/variance-components-default";
-import { VarianceCompsDialog } from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/dialog";
-import { VarianceCompsModel } from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/model";
-import { VarianceCompsOptions } from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/options";
-import { VarianceCompsSave } from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/save";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useModal } from "@/hooks/useModal";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
-import { analyzeVarianceComps } from "@/components/Modals/Analyze/general-linear-model/variance-components/services/variance-components-analysis";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+import {
+    VarianceCompsDefault
+} from "@/components/Modals/Analyze/general-linear-model/variance-components/constants/variance-components-default";
+import {VarianceCompsDialog} from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/dialog";
+import {VarianceCompsModel} from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/model";
+import {
+    VarianceCompsOptions
+} from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/options";
+import {VarianceCompsSave} from "@/components/Modals/Analyze/general-linear-model/variance-components/dialogs/save";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {useModal} from "@/hooks/useModal";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
+import {
+    analyzeVarianceComps
+} from "@/components/Modals/Analyze/general-linear-model/variance-components/services/variance-components-analysis";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const VarianceCompsContainer = ({
     onClose,

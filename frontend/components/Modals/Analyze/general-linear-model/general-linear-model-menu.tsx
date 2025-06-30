@@ -8,7 +8,7 @@ import {
     MenubarSubContent,
     MenubarSubTrigger,
 } from "@/components/ui/menubar";
-import { ModalType, useModal } from "@/hooks/useModal";
+import {ModalType, useModal} from "@/hooks/useModal";
 
 const GeneralLinearModelMenu: React.FC = () => {
     const { openModal } = useModal();

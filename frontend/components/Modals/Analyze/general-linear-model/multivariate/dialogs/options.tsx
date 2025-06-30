@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     MultivariateOptionsProps,
     MultivariateOptionsType,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/types/multivariate";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Input } from "@/components/ui/input";
+import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Input} from "@/components/ui/input";
 
 export const MultivariateOptions = ({
     isOptionsOpen,

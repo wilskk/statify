@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import {
     Dialog,
     DialogClose,
@@ -8,22 +8,17 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Separator } from "@/components/ui/separator";
+import {Button} from "@/components/ui/button";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Separator} from "@/components/ui/separator";
 import {
     VarianceCompsDialogProps,
     VarianceCompsMainType,
 } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useModal } from "@/hooks/useModal";
+import {Label} from "@/components/ui/label";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {useModal} from "@/hooks/useModal";
 
 export const VarianceCompsDialog = ({
     isMainOpen,

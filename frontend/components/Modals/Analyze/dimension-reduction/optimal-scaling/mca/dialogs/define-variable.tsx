@@ -1,19 +1,13 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     OptScaMCADefineVariableProps,
     OptScaMCADefineVariableType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
 
 export const OptScaMCADefineVariable = ({
     isDefineVariableOpen,

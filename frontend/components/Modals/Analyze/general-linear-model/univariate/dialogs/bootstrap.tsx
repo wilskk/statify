@@ -1,26 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import React, {useCallback, useEffect, useState} from "react";
+import {Button} from "@/components/ui/button";
 import {
     UnivariateBootstrapProps,
     UnivariateBootstrapType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import VariableListManager, {
-    TargetListConfig,
-} from "@/components/Common/VariableListManager";
-import type { Variable } from "@/types/Variable";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {toast} from "sonner";
+import VariableListManager, {TargetListConfig,} from "@/components/Common/VariableListManager";
+import type {Variable} from "@/types/Variable";
 
 export const UnivariateBootstrap = ({
     isBootstrapOpen,

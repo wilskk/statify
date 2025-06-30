@@ -1,5 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { OptScaOveralsAnalysisType } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/types/optimal-scaling-overals-worker";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    OptScaOveralsAnalysisType
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/overals/types/optimal-scaling-overals-worker";
 
 // Helper function to extract just the variable name from a string like "age (Ordinal 1 10) (Ordinal 1 5)"
 function extractVariableName(variableStr: string) {

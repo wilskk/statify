@@ -1,6 +1,6 @@
 // discriminant-analysis-formatter.ts
-import { formatDisplayNumber } from "@/hooks/useFormatter";
-import { ResultJson, Table } from "@/types/Table";
+import {formatDisplayNumber} from "@/hooks/useFormatter";
+import {ResultJson, Table} from "@/types/Table";
 
 export function transformDiscriminantResult(data: any): ResultJson {
     const resultJson: ResultJson = {

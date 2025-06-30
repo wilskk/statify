@@ -1,32 +1,21 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     OptScaMCADiscretizeProps,
     OptScaMCADiscretizeType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/mca/types/optimal-scaling-mca";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { DISCRETIZEMETHOD } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-sca-method";
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+    DISCRETIZEMETHOD
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-sca-method";
+import {ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Badge} from "@/components/ui/badge";
+import {ScrollArea} from "@/components/ui/scroll-area";
 
 export const OptScaMCADiscretize = ({
     isDiscretizeOpen,

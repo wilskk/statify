@@ -1,6 +1,5 @@
-import { Analytic, Log, Statistic } from "@/types/Result";
-import { FactorType } from "./factor";
-import { ResultJson } from "@/types/Table";
+import {FactorType} from "./factor";
+import {ResultJson} from "@/types/Table";
 
 export type FactorAnalysisType = {
     configData: FactorType;

@@ -1,48 +1,23 @@
-import React, { useEffect, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import React, {useEffect, useState} from "react";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
 import {
     RepeatedMeasuresModelProps,
     RepeatedMeasuresModelType,
 } from "@/components/Modals/Analyze/general-linear-model/repeated-measures/types/repeated-measures";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Label} from "@/components/ui/label";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 import {
     BUILDTERMMETHOD,
     SUMSQUARESMETHOD,
 } from "@/components/Modals/Analyze/general-linear-model/multivariate/constants/multivariate-method";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { Badge } from "@/components/ui/badge";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {Badge} from "@/components/ui/badge";
 
 export const RepeatedMeasuresModel = ({
     isModelOpen,

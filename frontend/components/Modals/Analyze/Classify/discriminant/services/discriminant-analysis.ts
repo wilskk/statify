@@ -1,8 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { DiscriminantAnalysisType } from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {DiscriminantAnalysisType} from "@/components/Modals/Analyze/Classify/discriminant/types/discriminant-worker";
+
 // import init, { DiscriminantAnalysis } from "@/wasm/pkg/wasm";
-import { resultDiscriminant } from "@/components/Modals/Analyze/Classify/discriminant/services/discriminant-analysis-output";
-import { transformDiscriminantResult } from "./discriminant-analysis-formatter";
 
 export async function analyzeDiscriminant({
     configData,

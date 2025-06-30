@@ -1,40 +1,22 @@
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-    ResizableHandle,
-    ResizablePanel,
-    ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import {Button} from "@/components/ui/button";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {RadioGroup, RadioGroupItem} from "@/components/ui/radio-group";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup,} from "@/components/ui/resizable";
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import {Separator} from "@/components/ui/separator";
 import {
     CONFIGURATIONMETHOD,
-    DISCRETIZEMETHOD,
     NORMALIZATIONMETHOD,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-sca-method";
 import {
     OptScaCatpcaOptionsProps,
     OptScaCatpcaOptionsType,
 } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/catpca/types/optimal-scaling-captca";
-import { CheckedState } from "@radix-ui/react-checkbox";
-import { useEffect, useState } from "react";
+import {CheckedState} from "@radix-ui/react-checkbox";
+import {useEffect, useState} from "react";
 
 export const OptScaCatpcaOptions = ({
     isOptionsOpen,

@@ -1,6 +1,6 @@
 import {
-    KMeansClusterMainType,
     KMeansClusterIterateType,
+    KMeansClusterMainType,
     KMeansClusterOptionsType,
     KMeansClusterSaveType,
     KMeansClusterType,

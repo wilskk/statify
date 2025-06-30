@@ -1,10 +1,12 @@
-import { UnivariateFinalResultType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import { Table, ResultJson, ColumnHeader } from "@/types/Table";
-import { useResultStore } from "@/stores/useResultStore";
-import { UnivariateType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import { Variable } from "@/types/Variable";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useDataStore } from "@/stores/useDataStore";
+import {
+    UnivariateFinalResultType
+} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+import {ColumnHeader, Table} from "@/types/Table";
+import {useResultStore} from "@/stores/useResultStore";
+import {UnivariateType} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
+import {Variable} from "@/types/Variable";
+import {useVariableStore} from "@/stores/useVariableStore";
+import {useDataStore} from "@/stores/useDataStore";
 
 export async function resultUnivariateAnalysis({
     formattedResult,

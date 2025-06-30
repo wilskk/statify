@@ -1,5 +1,7 @@
-import { getSlicedData, getVarDefs } from "@/hooks/useVariable";
-import { VarianceCompsAnalysisType } from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components-worker";
+import {getSlicedData, getVarDefs} from "@/hooks/useVariable";
+import {
+    VarianceCompsAnalysisType
+} from "@/components/Modals/Analyze/general-linear-model/variance-components/types/variance-components-worker";
 
 export async function analyzeVarianceComps({
     configData,
