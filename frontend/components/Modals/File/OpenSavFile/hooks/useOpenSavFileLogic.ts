@@ -18,8 +18,7 @@ export const useOpenSavFileLogic = ({
     const [error, setError] = useState<string | null>(null);
 
     const { isMobile, isPortrait } = useMobile();
-    const { setVariables, resetVariables } = useVariableStore();
-    const { setData, resetData } = useDataStore();
+    const { overwriteAll } = useVariableStore();
     const { setMeta: setProjectMeta } = useMetaStore();
 
     const handleFileChange = useCallback((selectedFile: File | null) => {
@@ -52,17 +51,13 @@ export const useOpenSavFileLogic = ({
         setError(null);
 
         try {
-            await resetData();
-            await resetVariables();
-
             const formData = new FormData();
             formData.append("file", file);
             
             const result = await processSavFile(formData);
             const { variables, dataMatrix, metaHeader } = processSavApiResponse(result);
 
-            await setVariables(variables);
-            await setData(dataMatrix);
+            await overwriteAll(variables, dataMatrix);
 
             await setProjectMeta({
                 name: file.name,

@@ -32,6 +32,39 @@ export const getDefaultSpareColumnConfig = (): Handsontable.ColumnSettings => ({
     readOnly: false, // Allow typing
 });
 
+/**
+ * Creates a custom Handsontable validator for columns with value labels.
+ * This validator provides a hybrid behavior:
+ * - It allows any valid numeric input.
+ * - It allows any defined label (case-insensitive).
+ * - It rejects any other string, preventing random text input.
+ * @param variable The variable configuration containing the value labels.
+ * @returns A Handsontable validator function.
+ */
+const createHybridAutocompleteValidator = (variable: Variable) => {
+    return function(value: any, callback: (isValid: boolean) => void) {
+        // Allow empty values.
+        if (value === null || value === undefined || value === '') {
+            return callback(true);
+        }
+
+        const sValue = String(value).trim();
+
+        // 1. Check if it matches a label (case-insensitive).
+        if (variable.values?.some(v => v.label.toLowerCase() === sValue.toLowerCase())) {
+            return callback(true);
+        }
+
+        // 2. Check if it's a valid numeric input.
+        if (sValue !== '' && !isNaN(Number(sValue))) {
+            return callback(true);
+        }
+        
+        // If it's neither a known label nor a number, it's invalid.
+        callback(false);
+    };
+};
+
 export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numeric' | 'label' = 'numeric'): Handsontable.ColumnSettings => {
     if (!variable || !variable.type) {
         return { 
@@ -43,60 +76,71 @@ export const getColumnConfig = (variable: Variable | undefined, viewMode: 'numer
     const type = variable.type;
     let config: Handsontable.ColumnSettings = {};
 
-    switch (type) {
-        case 'NUMERIC':
-            config.type = 'numeric';
-            config.renderer = nullSafeRenderer(numericRenderer);
-            config.numericFormat = {
-                pattern: `0.${'0'.repeat(variable.decimals ?? 0)}`,
-                culture: 'en-US',
-            };
-            config.allowInvalid = false;
-            config.validator = (value: any, callback: (valid: boolean) => void) => {
-                const valid = value === '' || value === null ||
-                    (typeof value === 'number' && !isNaN(value)) ||
-                    (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value)));
-                callback(valid);
-            };
-            break;
-        case 'DOT':
-            config.numericFormat = { pattern: '0.[00]' };
-            break;
-        case 'DATE':
-            config.type = 'date';
-            config.dateFormat = 'DD-MM-YYYY';
-            config.correctFormat = true;
-            break;
-        case 'STRING':
-        default:
-            config.type = 'text';
-            config.renderer = nullSafeRenderer((
-                hotInstance: any,
-                td: HTMLTableCellElement,
-                row: number,
-                col: number,
-                prop: number | string,
-                value: any,
-                cellProperties: any
-            ) => {
-                let displayValue: any = value;
+    // Custom renderer to handle viewMode for value labels
+    const valueLabelRenderer = (baseRenderer: Function) => nullSafeRenderer((
+        hotInstance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: number | string,
+        value: any,
+        cellProperties: any
+    ) => {
+        let displayValue: any = value;
+        if (viewMode === 'label' && variable.values && variable.values.length > 0) {
+            // Use '==' for loose comparison to match string from table with number from store (e.g., '1' == 1)
+            const foundLabel = variable.values.find(v => v.value == value);
+            if (foundLabel) {
+                displayValue = foundLabel.label;
+            }
+        }
+        baseRenderer(hotInstance, td, row, col, prop, displayValue, cellProperties);
+    });
 
-                if (viewMode === 'label' && variable.values && variable.values.length > 0) {
-                    const foundLabel = variable.values.find(v => v.value === value);
-                    if (foundLabel) {
-                        displayValue = foundLabel.label;
-                    }
-                }
-
-                if (typeof value === 'string' && variable.width !== undefined && value.length > variable.width) {
-                    displayValue = value.substring(0, variable.width);
-                }
-                textRenderer(hotInstance, td, row, col, prop, displayValue, cellProperties);
-            });
-            break;
+    if (viewMode === 'label' && variable.values && variable.values.length > 0) {
+        config.type = 'autocomplete';
+        config.source = variable.values.map(v => v.label);
+        config.strict = false; // Let our custom validator handle logic
+        config.allowInvalid = false; // DISALLOW invalid values completely
+        config.validator = createHybridAutocompleteValidator(variable);
+        config.renderer = valueLabelRenderer(textRenderer);
+    } else {
+        switch (type) {
+            case 'NUMERIC':
+                config.type = 'numeric';
+                config.renderer = valueLabelRenderer(numericRenderer);
+                config.numericFormat = {
+                    pattern: `0.${'0'.repeat(variable.decimals ?? 0)}`,
+                    culture: 'en-US',
+                };
+                config.allowInvalid = false;
+                config.validator = (value: any, callback: (valid: boolean) => void) => {
+                    const valid = value === '' || value === null ||
+                        (typeof value === 'number' && !isNaN(value)) ||
+                        (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value)));
+                    callback(valid);
+                };
+                break;
+            case 'DOT':
+                config.numericFormat = { pattern: '0.[00]' };
+                break;
+            case 'DATE':
+                config.type = 'date';
+                config.dateFormat = 'DD-MM-YYYY';
+                config.correctFormat = true;
+                break;
+            case 'STRING':
+            default:
+                config.type = 'text';
+                config.renderer = valueLabelRenderer(textRenderer);
+                break;
+        }
     }
 
     config.width = variable.columns ?? DEFAULT_COLUMN_WIDTH;
+    if (variable.align) {
+        config.className = `ht${variable.align.charAt(0).toUpperCase() + variable.align.slice(1)}`;
+    }
 
     return config;
 };

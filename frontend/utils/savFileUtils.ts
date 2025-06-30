@@ -131,7 +131,7 @@ export const processSavApiResponse = (apiResponse: any) => {
             label: varInfo.label || "",
             values: values,
             missing: missingValueSpec,
-            columns: varInfo.writeFormat?.width ? (varInfo.writeFormat.width * 8) : 8,
+            columns: (varInfo.writeFormat?.width || varInfo.printFormat?.width || 8) * 8,
             align: isString ? "left" : "right",
             measure: varInfo.measurementLevel?.toLowerCase() || "unknown",
             role: "input"

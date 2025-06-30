@@ -23,8 +23,7 @@ export const useImportCsvProcessor = () => {
         setIsProcessing(true);
         
         try {
-            // Reset existing data and variables using the service
-            await importCsvDataService.resetStores();
+            // Reset is no longer needed here, overwriteAll handles it.
             
             // Parse CSV off main thread
             const result: ProcessedCsvData = await parseCsvWithWorker(fileContent, options);

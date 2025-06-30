@@ -11,7 +11,7 @@ import {
 
 export const useImportClipboardProcessor = () => {
     const { setData } = useDataStore();
-    const { overwriteVariables } = useVariableStore();
+    const { overwriteAll } = useVariableStore();
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
     const processClipboardData = useCallback(async (
@@ -105,11 +105,7 @@ export const useImportClipboardProcessor = () => {
                 newVariables.push(newVar);
             }
             
-            // Bulk set data
-            setData(dataRows);
-
-            // Bulk set variables
-            overwriteVariables(newVariables);
+            await overwriteAll(newVariables, dataRows);
 
             return { headers, data: dataRows };
             
@@ -119,7 +115,7 @@ export const useImportClipboardProcessor = () => {
         } finally {
             setIsProcessing(false);
         }
-    }, [setData, overwriteVariables]);
+    }, [overwriteAll]);
 
     return {
         isProcessing,

@@ -122,14 +122,22 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
                          const columnIdx = col as number;
                          let valueToSave = newValue;
  
-                         // If in label view, convert the edited label back to its underlying value
                          if (viewMode === 'label') {
                              const variable = variableMap.get(columnIdx);
-                             if (variable?.values?.length) {
-                                 const match = variable.values.find(v => v.label === newValue);
-                                 if (match) {
-                                     valueToSave = match.value;
+                             if (variable?.values?.length && newValue !== null && newValue !== undefined) {
+                                 const sNewValue = String(newValue).trim();
+                                 
+                                 // Attempt to match a label first (case-insensitive)
+                                 const labelMatch = variable.values.find(v => v.label.toLowerCase() === sNewValue.toLowerCase());
+                                 
+                                 if (labelMatch) {
+                                     valueToSave = labelMatch.value;
+                                 } else if (!isNaN(Number(sNewValue)) && sNewValue !== '') {
+                                     // If not a label, but a number, ensure it's saved as a number
+                                     valueToSave = Number(sNewValue);
                                  }
+                                 // If it is neither, the validator should have caught it.
+                                 // We leave the value as is (e.g. for empty strings).
                              }
                          }
                          return { row, col: columnIdx, value: valueToSave };

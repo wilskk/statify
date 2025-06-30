@@ -12,7 +12,7 @@ export const useExampleDatasetLogic = ({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const { overwriteVariables, resetVariables } = useVariableStore();
+    const { overwriteAll } = useVariableStore();
     const { setData, resetData } = useDataStore();
     const { setMeta: setProjectMeta } = useMetaStore();
     
@@ -22,13 +22,11 @@ export const useExampleDatasetLogic = ({
         
         try {
             await resetData();
-            await resetVariables();
 
             const result = await processSavFileFromUrl(filePath);
             const { variables, dataMatrix, metaHeader } = processSavApiResponse(result);
             
-            await overwriteVariables(variables);
-            await setData(dataMatrix);
+            await overwriteAll(variables, dataMatrix);
             
             await setProjectMeta({
                 name: filePath.split('/').pop() || 'Example Dataset',

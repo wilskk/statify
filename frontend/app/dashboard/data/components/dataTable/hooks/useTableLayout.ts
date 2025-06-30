@@ -66,8 +66,7 @@ export const useTableLayout = () => {
     const columns = useMemo(() => {
         return Array.from({ length: displayNumCols }, (_, colIndex) => {
             const variable = variables.find(v => v.columnIndex === colIndex);
-            const finalVar = variable ?? createDefaultVariable(colIndex);
-            return getColumnConfig(finalVar, viewMode);
+            return getColumnConfig(variable, viewMode);
         });
     }, [variables, displayNumCols, viewMode]);
 
