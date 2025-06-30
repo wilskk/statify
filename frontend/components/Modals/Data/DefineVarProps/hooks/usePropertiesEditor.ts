@@ -7,6 +7,8 @@ import {
     suggestMeasurementLevel,
     saveVariableProperties 
 } from '../services/variablePropertiesService';
+import { useDataStore } from '@/stores/useDataStore';
+import { useVariableStore } from '@/stores/useVariableStore';
 
 interface UsePropertiesEditorProps {
     initialVariables: Variable[];
@@ -24,6 +26,9 @@ export const usePropertiesEditor = ({
     onClose,
 }: UsePropertiesEditorProps) => {
     // Ensure initialVariables always have tempId and values/missing are arrays
+    const { data: storeData } = useDataStore();
+    const { updateMultipleFields } = useVariableStore();
+
     const prepareInitialVariables = (vars: Variable[]): Variable[] => {
         return vars.map(v => ({
             ...v,
@@ -65,7 +70,7 @@ export const usePropertiesEditor = ({
 
     // Effect to update gridData when currentVariable changes
     useEffect(() => {
-        if (!currentVariable || !currentVariable.tempId) {
+        if (!currentVariable || !currentVariable.tempId || !currentVariable.type) {
             setGridData([]);
             setUnlabeledValuesCount(0);
             return;
@@ -78,14 +83,14 @@ export const usePropertiesEditor = ({
             const valueLabels = (variableGridData[currentVarTempId]
                 .filter((row: any[]) => row[4] !== '' && row[5] !== '') || [] )
                 .map((row: any[]) => ({
-                    variableName: currentVariable.name,
+                    variableId: currentVariable.columnIndex,
                     value: isNaN(Number(row[4])) ? row[4] : Number(row[4]),
                     label: row[5]
                 }));
-            const uniqueValues = getUniqueValuesWithCounts(currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
+            const uniqueValues = getUniqueValuesWithCounts(storeData, currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
             setUnlabeledValuesCount(calculateUnlabeledValues(uniqueValues, valueLabels));
         } else {
-            const uniqueValuesData = getUniqueValuesWithCounts(currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
+            const uniqueValuesData = getUniqueValuesWithCounts(storeData, currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
             const valueLabelsMap = new Map(
                 (currentVariable.values || []).map(vl => [String(vl.value), vl.label])
             );
@@ -103,7 +108,7 @@ export const usePropertiesEditor = ({
             setVariableGridData(prev => ({ ...prev, [currentVarTempId]: newGridData }));
             setUnlabeledValuesCount(calculateUnlabeledValues(uniqueValuesData, currentVariable.values || []));
         }
-    }, [currentVariable, calculateUnlabeledValues, variableGridData, caseLimit, valueLimit]);
+    }, [currentVariable, calculateUnlabeledValues, variableGridData, caseLimit, valueLimit, storeData]);
 
     // Function to save the current variable's state to modifiedVariables list
     const saveCurrentVariableToModifiedList = useCallback(() => {
@@ -112,7 +117,7 @@ export const usePropertiesEditor = ({
         const valueLabels: ValueLabel[] = gridData
             .filter(row => row[4] !== '' && row[5] !== '')
             .map(row => ({
-                variableName: currentVariable.name,
+                variableId: currentVariable.columnIndex,
                 value: isNaN(Number(row[4])) ? row[4] : Number(row[4]),
                 label: row[5]
             }));
@@ -166,7 +171,7 @@ export const usePropertiesEditor = ({
     }, [currentVariable]);
 
     const handleGridDataChange = useCallback((changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
-        if (source === 'loadData' || !changes || !currentVariable || !currentVariable.tempId) {
+        if (source === 'loadData' || !changes || !currentVariable || !currentVariable.tempId || !currentVariable.type) {
             return;
         }
 
@@ -189,17 +194,17 @@ export const usePropertiesEditor = ({
         const currentLabels = updatedGridData
             .filter(row => row[4] !== '' && row[5] !== '')
             .map(row => ({
-                variableName: currentVariable.name,
+                variableId: currentVariable.columnIndex,
                 value: isNaN(Number(row[4])) ? row[4] : Number(row[4]),
                 label: row[5]
             }));
-        const uniqueValues = getUniqueValuesWithCounts(currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
+        const uniqueValues = getUniqueValuesWithCounts(storeData, currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
         setUnlabeledValuesCount(calculateUnlabeledValues(uniqueValues, currentLabels));
         
-    }, [currentVariable, gridData, caseLimit, valueLimit, calculateUnlabeledValues]);
+    }, [currentVariable, gridData, caseLimit, valueLimit, calculateUnlabeledValues, storeData]);
     
     const handleAutoLabel = useCallback(() => {
-        if (!currentVariable || !currentVariable.tempId) return;
+        if (!currentVariable || !currentVariable.tempId || !currentVariable.type) return;
         const newGridData = gridData.map(row => {
             if (row[4] && !row[5]) { 
                 return [ row[0], true, row[2], row[3], row[4], row[4] ];
@@ -211,18 +216,18 @@ export const usePropertiesEditor = ({
 
         const currentLabels = newGridData
             .filter(row => row[4] !== '' && row[5] !== '')
-            .map(row => ({ variableName: currentVariable.name, value: row[4], label: row[5] as string }));
-        const uniqueValues = getUniqueValuesWithCounts(currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
+            .map(row => ({ variableId: currentVariable.columnIndex, value: row[4], label: row[5] as string }));
+        const uniqueValues = getUniqueValuesWithCounts(storeData, currentVariable.columnIndex, currentVariable.type, caseLimit, valueLimit);
         setUnlabeledValuesCount(calculateUnlabeledValues(uniqueValues, currentLabels));
-    }, [gridData, currentVariable, caseLimit, valueLimit, calculateUnlabeledValues]);
+    }, [gridData, currentVariable, caseLimit, valueLimit, calculateUnlabeledValues, storeData]);
 
     const handleSuggestMeasurement = useCallback(() => {
         if (!currentVariable) return;
-        const suggestion = suggestMeasurementLevel(currentVariable, caseLimit);
+        const suggestion = suggestMeasurementLevel(storeData, currentVariable, caseLimit);
         setSuggestedMeasure(suggestion.level);
         setMeasurementExplanation(suggestion.explanation);
         setSuggestDialogOpen(true);
-    }, [currentVariable, caseLimit]);
+    }, [currentVariable, caseLimit, storeData]);
 
     const handleAcceptSuggestion = useCallback(() => {
         if (currentVariable && suggestedMeasure) {
@@ -234,7 +239,7 @@ export const usePropertiesEditor = ({
     const handleSave = useCallback(async () => {
         const finalModifiedVariables = saveCurrentVariableToModifiedList();
         try {
-            await saveVariableProperties(finalModifiedVariables, originalVariables);
+            await saveVariableProperties(finalModifiedVariables, originalVariables, updateMultipleFields);
             if (onSave) onSave(finalModifiedVariables);
             onClose();
         } catch (error) {
@@ -242,7 +247,7 @@ export const usePropertiesEditor = ({
             setErrorMessage("Failed to save variable changes.");
             setErrorDialogOpen(true);
         }
-    }, [saveCurrentVariableToModifiedList, originalVariables, onSave, onClose]);
+    }, [saveCurrentVariableToModifiedList, originalVariables, onSave, onClose, updateMultipleFields]);
 
     useEffect(() => {
         if (selectedVariableIndex !== null && modifiedVariables[selectedVariableIndex]) {

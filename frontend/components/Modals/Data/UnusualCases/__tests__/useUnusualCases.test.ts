@@ -34,21 +34,26 @@ const mockVariables: Variable[] = [
 ];
 
 describe('useUnusualCases Hook', () => {
+    const mockAddVariables = jest.fn();
+    const mockOnClose = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockedUseVariableStore.mockReturnValue({ variables: mockVariables });
+        mockedUseVariableStore.mockReturnValue({ 
+            variables: mockVariables,
+            addVariables: mockAddVariables,
+        });
     });
 
     it('should initialize with variables from the store', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         expect(result.current.availableVariables.map(v => v.name)).toEqual(['VarA', 'VarB', 'VarC']);
         expect(result.current.analysisVariables).toEqual([]);
         expect(result.current.caseIdentifierVariable).toBeNull();
     });
 
     it('should move a variable to analysis variables', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         const varToMove = result.current.availableVariables[0];
 
         act(() => {
@@ -60,7 +65,7 @@ describe('useUnusualCases Hook', () => {
     });
 
     it('should move a variable to be the case identifier', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         const varToMove = result.current.availableVariables[1];
 
         act(() => {
@@ -72,7 +77,7 @@ describe('useUnusualCases Hook', () => {
     });
     
     it('should replace an existing case identifier variable', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
 
         act(() => result.current.moveToCaseIdentifierVariable(result.current.availableVariables[1]));
         expect(result.current.caseIdentifierVariable?.name).toBe('VarB');
@@ -85,7 +90,7 @@ describe('useUnusualCases Hook', () => {
     });
 
     it('should move a variable from analysis back to available', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         act(() => result.current.moveToAnalysisVariables(result.current.availableVariables[0]));
         
         const varToMoveBack = result.current.analysisVariables[0];
@@ -98,7 +103,7 @@ describe('useUnusualCases Hook', () => {
     });
 
     it('should move the case identifier back to available', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         act(() => result.current.moveToCaseIdentifierVariable(result.current.availableVariables[1]));
 
         const varToMoveBack = result.current.caseIdentifierVariable!;
@@ -110,8 +115,43 @@ describe('useUnusualCases Hook', () => {
         expect(result.current.availableVariables.map(v => v.name)).toEqual(['VarA', 'VarB', 'VarC']);
     });
 
+    it('should call addVariables and close on confirm when save is enabled', async () => {
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
+
+        // Conditions to pass validation and trigger save
+        act(() => {
+            result.current.moveToAnalysisVariables(result.current.availableVariables[0]);
+            result.current.setSaveAnomalyIndex(true);
+        });
+
+        await act(async () => {
+            await result.current.handleConfirm();
+        });
+
+        expect(mockAddVariables).toHaveBeenCalledTimes(1);
+        expect(mockAddVariables).toHaveBeenCalledWith(
+            expect.arrayContaining([
+                expect.objectContaining({ name: 'AnomalyIndex' })
+            ]),
+            []
+        );
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should set an error if handleConfirm is called with no analysis variables', async () => {
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
+        
+        await act(async () => {
+            await result.current.handleConfirm();
+        });
+
+        expect(result.current.errorMsg).toBe("Please select at least one analysis variable.");
+        expect(mockAddVariables).not.toHaveBeenCalled();
+        expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
     it('should reset all state to default values', () => {
-        const { result } = renderHook(() => useUnusualCases());
+        const { result } = renderHook(() => useUnusualCases({ onClose: mockOnClose }));
         
         // Change some state
         act(() => {

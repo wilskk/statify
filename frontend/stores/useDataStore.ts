@@ -44,7 +44,7 @@ export interface DataStoreState {
     deleteRow: (index: number) => Promise<void>;
     deleteRows: (indices: number[]) => Promise<void>;
 
-    sortData: (columnIndex: number, direction: 'asc' | 'desc') => Promise<void>;
+    sortData: (configs: { columnIndex: number; direction: 'asc' | 'desc' }[]) => Promise<void>;
 
     getVariableData: (variable: Variable) => Promise<{ variable: Variable, data: (string | number | null)[] }>;
     validateVariableData: (columnIndex: number, type: string, width: number) => Promise<{
@@ -319,26 +319,42 @@ export const useDataStore = create<DataStoreState>()(
                     await performStructuralUpdate(newData, 'deleteRows');
                 },
 
-                sortData: async (columnIndex, direction) => {
+                sortData: async (configs) => {
+                    if (!configs || configs.length === 0) return;
+
                     const oldData = [...get().data];
                     if (oldData.length === 0) return;
                     
                     const rowsToSort = [...oldData];
                     rowsToSort.sort((rowA, rowB) => {
-                        const valueA = columnIndex < (rowA?.length ?? 0) ? rowA[columnIndex] : "";
-                        const valueB = columnIndex < (rowB?.length ?? 0) ? rowB[columnIndex] : "";
-                        const isANumeric = typeof valueA === 'number' || (typeof valueA === 'string' && valueA !== "" && !isNaN(Number(valueA)));
-                        const isBNumeric = typeof valueB === 'number' || (typeof valueB === 'string' && valueB !== "" && !isNaN(Number(valueB)));
-                        if (isANumeric && isBNumeric) {
-                            const numA = typeof valueA === 'number' ? valueA : Number(valueA); 
-                            const numB = typeof valueB === 'number' ? valueB : Number(valueB);
-                            return direction === 'asc' ? numA - numB : numB - numA;
+                        for (const config of configs) {
+                            const { columnIndex, direction } = config;
+                            const valueA = columnIndex < (rowA?.length ?? 0) ? rowA[columnIndex] : "";
+                            const valueB = columnIndex < (rowB?.length ?? 0) ? rowB[columnIndex] : "";
+                            
+                            const isANumeric = typeof valueA === 'number' || (typeof valueA === 'string' && valueA !== "" && !isNaN(Number(valueA)));
+                            const isBNumeric = typeof valueB === 'number' || (typeof valueB === 'string' && valueB !== "" && !isNaN(Number(valueB)));
+
+                            let comparison = 0;
+                            if (isANumeric && isBNumeric) {
+                                const numA = typeof valueA === 'number' ? valueA : Number(valueA); 
+                                const numB = typeof valueB === 'number' ? valueB : Number(valueB);
+                                comparison = numA - numB;
+                            } else if (isANumeric && !isBNumeric) {
+                                comparison = -1;
+                            } else if (!isANumeric && isBNumeric) {
+                                comparison = 1;
+                            } else {
+                                const strA = String(valueA ?? '').toLowerCase(); 
+                                const strB = String(valueB ?? '').toLowerCase();
+                                comparison = strA.localeCompare(strB);
+                            }
+
+                            if (comparison !== 0) {
+                                return direction === 'asc' ? comparison : -comparison;
+                            }
                         }
-                        if (isANumeric && !isBNumeric) return direction === 'asc' ? -1 : 1;
-                        if (!isANumeric && isBNumeric) return direction === 'asc' ? 1 : -1;
-                        const strA = String(valueA ?? '').toLowerCase(); 
-                        const strB = String(valueB ?? '').toLowerCase();
-                        return direction === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                        return 0; // Return 0 if all sort criteria are equal
                     });
 
                     await performStructuralUpdate(rowsToSort, 'sortData');

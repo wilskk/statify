@@ -143,7 +143,7 @@ describe('useSortCases Hook', () => {
         expect(result.current.defaultSortOrder).toBe('asc');
     });
 
-    it('calls sortData in reverse order for multi-level sort on handleOk', async () => {
+    it('calls sortData with the correct configuration array on handleOk', async () => {
         const { result } = renderHook(() => useSortCases({ onClose: mockOnClose }));
         const var1 = result.current.availableVariables.find(v => v.name === 'Gender')!;
         const var2 = result.current.availableVariables.find(v => v.name === 'Age')!;
@@ -160,9 +160,13 @@ describe('useSortCases Hook', () => {
             await result.current.handleOk();
         });
 
-        expect(mockSortData).toHaveBeenCalledTimes(2);
-        expect(mockSortData).toHaveBeenNthCalledWith(1, var2.columnIndex, 'desc');
-        expect(mockSortData).toHaveBeenNthCalledWith(2, var1.columnIndex, 'asc');
+        const expectedConfigs = [
+            { columnIndex: var1.columnIndex, direction: 'asc' },
+            { columnIndex: var2.columnIndex, direction: 'desc' },
+        ];
+
+        expect(mockSortData).toHaveBeenCalledTimes(1);
+        expect(mockSortData).toHaveBeenCalledWith(expectedConfigs);
         expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 

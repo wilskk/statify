@@ -41,13 +41,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     containerType = "dialog" 
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>("variables");
-    const hookProps = useUnusualCases();
-
-    const handleConfirm = async () => {
-        // Placeholder for future logic
-        console.log("State to be sent to worker/service:", { ...hookProps });
-        onClose();
-    };
+    const hookProps = useUnusualCases({ onClose });
 
     const tabControl = useMemo((): TabControlProps => ({
         setActiveTab: (newTab) => setActiveTab(newTab as TabType),
@@ -108,7 +102,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                     <div>
                         <Button variant="outline" className="mr-2" onClick={hookProps.handleReset}>Reset</Button>
                         <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                        <Button onClick={handleConfirm}>OK</Button>
+                        <Button onClick={hookProps.handleConfirm}>OK</Button>
                     </div>
                 </DialogFooter>
             </div>

@@ -14,6 +14,8 @@ import VariableListManager, { TargetListConfig } from "@/components/Common/Varia
 import { WeightCasesModalProps, WeightCasesUIProps } from "./types";
 import { useWeightCases } from "./hooks/useWeightCases";
 import { WeightCasesUI } from "./WeightCasesUI";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useMetaStore } from "@/stores/useMetaStore";
 
 // interface WeightCasesModalProps { // MOVED TO TYPES.TS
 //     onClose: () => void;
@@ -110,7 +112,19 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({
     onClose,
     containerType = "dialog"
 }) => {
-    const hookProps = useWeightCases({ onClose });
+    const { variables } = useVariableStore();
+    const { meta, setMeta } = useMetaStore();
+
+    const handleSaveMeta = (newWeight: string) => {
+        setMeta({ weight: newWeight });
+    };
+
+    const hookProps = useWeightCases({ 
+        onClose,
+        initialVariables: variables,
+        initialWeight: meta.weight || "",
+        onSave: handleSaveMeta,
+    });
 
     if (containerType === "sidebar") {
         return (

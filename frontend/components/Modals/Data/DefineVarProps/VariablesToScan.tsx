@@ -16,9 +16,11 @@ import { AlertCircle, HelpCircle, InfoIcon } from "lucide-react";
 import VariableListManager from '@/components/Common/VariableListManager';
 import { VariablesToScanProps } from "./types";
 import { useVariablesToScan } from "./hooks/useVariablesToScan";
+import { useVariableStore } from "@/stores/useVariableStore";
 
 // Main content component that's agnostic of container type
 const VariablesToScanContent: FC<VariablesToScanProps> = ({ onClose, onContinue, containerType = "dialog" }) => {
+    const { variables: storeVariables } = useVariableStore();
     const {
         availableVariables,
         managerHighlightedVariable,
@@ -38,7 +40,7 @@ const VariablesToScanContent: FC<VariablesToScanProps> = ({ onClose, onContinue,
         targetListsConfig,
         handleMoveVariable,
         handleReorderVariable,
-    } = useVariablesToScan({ onContinue });
+    } = useVariablesToScan({ onContinue, initialAvailableVariables: storeVariables });
 
     return (
         <>

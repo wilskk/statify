@@ -27,13 +27,13 @@ const mockData = [[25, 'M'], [35, 'F']];
 
 describe('useSelectCases Hook', () => {
     const mockCloseModal = jest.fn();
-    const mockAddVariable = jest.fn();
+    const mockAddVariables = jest.fn();
     const mockUpdateCells = jest.fn();
     const mockSetFilter = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockedUseVariableStore.mockReturnValue({ variables: mockVariables, addVariable: mockAddVariable });
+        mockedUseVariableStore.mockReturnValue({ variables: mockVariables, addVariables: mockAddVariables });
         mockedUseDataStore.mockReturnValue({ data: mockData, updateCells: mockUpdateCells });
         mockedUseModalStore.mockReturnValue({ closeModal: mockCloseModal });
         mockedUseMetaStore.mockReturnValue({ setFilter: mockSetFilter });
@@ -94,7 +94,7 @@ describe('useSelectCases Hook', () => {
 
     describe('handleConfirm', () => {
         it('successfully applies a condition filter and creates a new filter variable', async () => {
-            mockedUseVariableStore.mockReturnValue({ variables: mockVariables, addVariable: mockAddVariable, updateVariable: jest.fn() });
+            mockedUseVariableStore.mockReturnValue({ variables: mockVariables, addVariables: mockAddVariables, updateVariable: jest.fn() });
             
             const { result } = renderHook(() => useSelectCases());
             
@@ -108,9 +108,43 @@ describe('useSelectCases Hook', () => {
             });
 
             expect(mockedSelectors.selectByCondition).toHaveBeenCalledWith(mockData, mockVariables, 'age > 25');
-            expect(mockAddVariable).toHaveBeenCalledTimes(1);
-            expect(mockAddVariable).toHaveBeenCalledWith(expect.objectContaining({ name: 'filter_$' }));
+            expect(mockAddVariables).toHaveBeenCalledTimes(1);
+            
+            const [newVars, updates] = mockAddVariables.mock.calls[0];
+            expect(newVars).toHaveLength(1);
+            expect(newVars[0]).toMatchObject({ name: 'filter_$' });
+            expect(updates).toBeInstanceOf(Array);
+            expect(updates.length).toBe(mockData.length);
+
+            expect(mockUpdateCells).not.toHaveBeenCalled();
+            expect(mockSetFilter).toHaveBeenCalledWith('filter_$');
+            expect(mockCloseModal).toHaveBeenCalledTimes(1);
+        });
+
+        it('successfully applies a condition filter and updates an existing filter variable', async () => {
+            const existingFilterVar = { name: 'filter_$', columnIndex: 2, type: 'NUMERIC', measure: 'nominal', role: 'input', label: 'Filter', values: [], missing: null, decimals: 0, width: 8, columns: 12, align: 'left' };
+            const varsWithFilter = [...mockVariables, existingFilterVar];
+            mockedUseVariableStore.mockReturnValue({ variables: varsWithFilter, addVariables: mockAddVariables, updateVariable: jest.fn() });
+            
+            const { result } = renderHook(() => useSelectCases());
+            
+            act(() => {
+                result.current.setSelectOption('condition');
+                result.current.handleIfConditionContinue('age > 25');
+            });
+
+            await act(async () => {
+                await result.current.handleConfirm();
+            });
+
+            expect(mockedSelectors.selectByCondition).toHaveBeenCalledWith(mockData, varsWithFilter, 'age > 25');
+            expect(mockAddVariables).not.toHaveBeenCalled();
             expect(mockUpdateCells).toHaveBeenCalledTimes(1);
+            
+            const [updates] = mockUpdateCells.mock.calls[0];
+            expect(updates).toBeInstanceOf(Array);
+            expect(updates.length).toBe(mockData.length);
+
             expect(mockSetFilter).toHaveBeenCalledWith('filter_$');
             expect(mockCloseModal).toHaveBeenCalledTimes(1);
         });

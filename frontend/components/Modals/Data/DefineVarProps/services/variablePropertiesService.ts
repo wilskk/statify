@@ -1,4 +1,4 @@
-import { Variable, ValueLabel, MissingValuesSpec } from "@/types/Variable";
+import { Variable, MissingValuesSpec } from "@/types/Variable";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 
@@ -29,12 +29,12 @@ const isMissingValueForSuggestion = (
  * Gets unique values and their counts from the dataset for a specific variable.
  */
 export const getUniqueValuesWithCounts = (
+    data: any[][],
     columnIndex: number,
     variableType: string,
     caseLimit: string,
     valueLimit: string
 ): { value: string; count: number }[] => {
-    const data = useDataStore.getState().data;
     if (!data || data.length === 0) return [];
     
     const casesToScan = parseInt(caseLimit, 10) || data.length;
@@ -63,10 +63,10 @@ export const getUniqueValuesWithCounts = (
  * Analyzes a variable's data and suggests an appropriate measurement level.
  */
 export const suggestMeasurementLevel = (
+    data: any[][],
     variable: Variable,
     caseLimit: string
 ): { level: string; explanation: string } => {
-    const data = useDataStore.getState().data;
     if (!data || data.length === 0) {
         return { level: "nominal", explanation: "Not enough data to suggest." };
     }
@@ -106,10 +106,9 @@ export const suggestMeasurementLevel = (
  */
 export const saveVariableProperties = async (
     modifiedVariables: Variable[],
-    originalVariables: Variable[]
+    originalVariables: Variable[],
+    updateMultipleFields: (identifier: number | string, changes: Partial<Variable>) => Promise<void>
 ): Promise<void> => {
-    const { updateMultipleFields } = useVariableStore.getState();
-
     const updatesToApply = modifiedVariables.filter(modVar => {
         const origVar = originalVariables.find(ov => ov.tempId === modVar.tempId);
         return origVar && JSON.stringify(origVar) !== JSON.stringify(modVar);
@@ -118,6 +117,6 @@ export const saveVariableProperties = async (
     for (const modifiedVariable of updatesToApply) {
         const { tempId, values, missing, name, label, type, width, decimals, role, measure, ...rest } = modifiedVariable;
         const updatePayload: Partial<Variable> = { values, missing, name, label, type, width, decimals, role, measure };
-        await updateMultipleFields(modifiedVariable.columnIndex, updatePayload as Variable);
+        await updateMultipleFields(modifiedVariable.columnIndex, updatePayload);
     }
 }; 

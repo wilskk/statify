@@ -14,8 +14,7 @@ const mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
 const mockedUseDataStore = useDataStore as unknown as jest.Mock;
 const mockedTransposeService = jest.spyOn(TransposeService, 'transposeDataService');
 
-const mockOverwriteVariables = jest.fn();
-const mockSetData = jest.fn();
+const mockOverwriteAll = jest.fn();
 const mockOnClose = jest.fn();
 
 const mockVariables: Variable[] = [
@@ -32,11 +31,10 @@ describe('useTranspose Hook', () => {
     jest.clearAllMocks();
     mockedUseVariableStore.mockReturnValue({
       variables: mockVariables,
-      overwriteVariables: mockOverwriteVariables,
+      overwriteAll: mockOverwriteAll,
     });
     mockedUseDataStore.mockReturnValue({
       data: mockData,
-      setData: mockSetData,
     });
     mockedTransposeService.mockReturnValue({
       transposedData: 'transposed data' as any,
@@ -115,9 +113,9 @@ describe('useTranspose Hook', () => {
       await result.current.handleOk();
     });
 
-    expect(mockedTransposeService).toHaveBeenCalledWith(mockData, [varToSelect], varForName);
-    expect(mockSetData).toHaveBeenCalledWith('transposed data');
-    expect(mockOverwriteVariables).toHaveBeenCalledWith('transposed variables');
+    const sanitizedData = mockData.map(row => row.map(cell => cell ?? ""));
+    expect(mockedTransposeService).toHaveBeenCalledWith(sanitizedData, [varToSelect], varForName);
+    expect(mockOverwriteAll).toHaveBeenCalledWith('transposed variables', 'transposed data');
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 

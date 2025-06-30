@@ -13,7 +13,7 @@ const mockUseVariableStore = useVariableStore as unknown as jest.Mock;
 const mockUseDataStore = useDataStore as unknown as jest.Mock;
 const mockUseModalStore = useModalStore as unknown as jest.Mock;
 
-const mockAddVariable = jest.fn();
+const mockAddVariables = jest.fn();
 const mockUpdateCells = jest.fn();
 const mockSetStatisticProgress = jest.fn();
 
@@ -47,7 +47,7 @@ describe('useAggregateData', () => {
 
         const variableStoreState = {
             variables: sampleVariables,
-            addVariable: mockAddVariable,
+            addVariables: mockAddVariables,
         };
         mockUseVariableStore.mockReturnValue(variableStoreState);
         (useVariableStore as any).getState = () => variableStoreState;
@@ -119,6 +119,7 @@ describe('useAggregateData', () => {
         expect(aggVar.baseVarName).toBe('Salary');
         expect(aggVar.function).toBe('MEAN'); // Default for numeric
         expect(aggVar.name).toBe('Salary_mean');
+        expect(aggVar.displayName).toContain("AvgSalary 'Average Salary'");
     });
 
     it('should apply a new function to an aggregated variable', () => {
@@ -176,6 +177,24 @@ describe('useAggregateData', () => {
         expect(result.current.errorDialogOpen).toBe(true);
     });
 
+    it('should show error for empty N_BREAK name when addNumberOfCases is true', async () => {
+        const { result } = renderHook(() => useAggregateData());
+        const closeModal = jest.fn();
+
+        act(() => {
+            result.current.setAddNumberOfCases(true);
+            result.current.setBreakName(' ');
+        });
+
+        await act(async () => {
+            await result.current.handleConfirm(closeModal);
+        });
+
+        expect(result.current.errorMessage).toBe("The name for the 'Number of cases' variable cannot be empty.");
+        expect(result.current.errorDialogOpen).toBe(true);
+        expect(mockAddVariables).not.toHaveBeenCalled();
+    });
+
     it('should reset all state', () => {
         const { result } = renderHook(() => useAggregateData());
         act(() => {
@@ -208,24 +227,26 @@ describe('useAggregateData', () => {
         });
 
         expect(mockSetStatisticProgress).toHaveBeenCalledWith(true);
-        expect(mockAddVariable).toHaveBeenCalledTimes(1);
-        expect(mockAddVariable).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockAddVariables).toHaveBeenCalledTimes(1);
+        const [newVars, updates] = mockAddVariables.mock.calls[0];
+        
+        // Validate new variable
+        expect(newVars).toHaveLength(1);
+        expect(newVars[0]).toMatchObject({
             name: 'Salary_mean',
             type: 'NUMERIC',
-        }));
+        });
 
-        expect(mockUpdateCells).toHaveBeenCalledTimes(1);
-        const updateCalls = mockUpdateCells.mock.calls[0][0];
-        expect(updateCalls).toHaveLength(sampleData.length);
-
+        // Validate cell updates
+        expect(updates).toHaveLength(sampleData.length);
         const maleAvg = (50000 + 55000 + 52000) / 3;
         const femaleAvg = (60000 + 65000) / 2;
 
-        expect(updateCalls).toContainEqual({ row: 0, col: 3, value: maleAvg });
-        expect(updateCalls).toContainEqual({ row: 1, col: 3, value: femaleAvg });
-        expect(updateCalls).toContainEqual({ row: 2, col: 3, value: maleAvg });
-        expect(updateCalls).toContainEqual({ row: 3, col: 3, value: femaleAvg });
-        expect(updateCalls).toContainEqual({ row: 4, col: 3, value: maleAvg });
+        expect(updates).toContainEqual({ row: 0, col: 4, value: maleAvg });
+        expect(updates).toContainEqual({ row: 1, col: 4, value: femaleAvg });
+        expect(updates).toContainEqual({ row: 2, col: 4, value: maleAvg });
+        expect(updates).toContainEqual({ row: 3, col: 4, value: femaleAvg });
+        expect(updates).toContainEqual({ row: 4, col: 4, value: maleAvg });
 
         expect(mockSetStatisticProgress).toHaveBeenCalledWith(false);
         expect(closeModal).toHaveBeenCalledTimes(1);
@@ -245,21 +266,23 @@ describe('useAggregateData', () => {
             await result.current.handleConfirm(closeModal);
         });
 
-        expect(mockAddVariable).toHaveBeenCalledTimes(1);
-        expect(mockAddVariable).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockAddVariables).toHaveBeenCalledTimes(1);
+        const [newVars, updates] = mockAddVariables.mock.calls[0];
+
+        // Check the new variable for number of cases
+        expect(newVars).toHaveLength(1);
+        expect(newVars[0]).toMatchObject({
             name: 'N_Gender',
             type: 'NUMERIC',
             label: 'Number of cases in break group'
-        }));
+        });
 
-        expect(mockUpdateCells).toHaveBeenCalledTimes(1);
-        const updateCalls = mockUpdateCells.mock.calls[0][0];
-        expect(updateCalls).toHaveLength(sampleData.length);
-
-        expect(updateCalls).toContainEqual({ row: 0, col: 4, value: 3 });
-        expect(updateCalls).toContainEqual({ row: 1, col: 4, value: 2 });
-        expect(updateCalls).toContainEqual({ row: 2, col: 4, value: 3 });
-        expect(updateCalls).toContainEqual({ row: 3, col: 4, value: 2 });
-        expect(updateCalls).toContainEqual({ row: 4, col: 4, value: 3 });
+        // Check the cell updates for the new variable
+        expect(updates).toHaveLength(sampleData.length);
+        expect(updates).toContainEqual({ row: 0, col: 4, value: 3 });
+        expect(updates).toContainEqual({ row: 1, col: 4, value: 2 });
+        expect(updates).toContainEqual({ row: 2, col: 4, value: 3 });
+        expect(updates).toContainEqual({ row: 3, col: 4, value: 2 });
+        expect(updates).toContainEqual({ row: 4, col: 4, value: 3 });
     });
 }); 

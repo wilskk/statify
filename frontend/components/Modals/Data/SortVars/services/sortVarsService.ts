@@ -20,7 +20,7 @@ export function sortDataColumns(
     // Create a map from the original column index to the new column index.
     const columnMapping = new Map<number, number>();
     sortedVariables.forEach((newVar, newIndex) => {
-        const originalVar = originalVariables.find(oldVar => oldVar.id === newVar.id);
+        const originalVar = originalVariables.find(oldVar => oldVar.tempId === newVar.tempId);
         if (originalVar) {
             columnMapping.set(originalVar.columnIndex, newIndex);
         }

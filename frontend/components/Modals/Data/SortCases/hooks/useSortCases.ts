@@ -103,10 +103,11 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
             return;
         }
         try {
-            const reversedConfigs = [...sortByConfigs].reverse();
-            for (const config of reversedConfigs) {
-                await sortData(config.variable.columnIndex, config.direction);
-            }
+            const configsToApply = sortByConfigs.map(config => ({
+                columnIndex: config.variable.columnIndex,
+                direction: config.direction,
+            }));
+            await sortData(configsToApply);
             onClose();
         } catch (error) {
             console.error("Error during sort operation:", error);

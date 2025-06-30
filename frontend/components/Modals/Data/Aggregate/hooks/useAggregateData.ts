@@ -366,6 +366,7 @@ export const useAggregateData = () => {
 
     const handleConfirm = useCallback(async (closeModal: () => void) => {
         const variableStore = useVariableStore.getState();
+        const dataStore = useDataStore.getState();
         setStatisticProgress(true);
 
         // Validation for number of cases variable
@@ -387,7 +388,7 @@ export const useAggregateData = () => {
             }
         }
 
-        const groups: Record<string, { rowIndex: number; row: (string | number)[] }[]> = {};
+        const groups: Record<string, { rowIndex: number; row: (string | number | null)[] }[]> = {};
         data.forEach((row, rowIndex) => {
             const key = breakVariables
                 .map((bv: { columnIndex: number }) => row[bv.columnIndex])
@@ -398,17 +399,18 @@ export const useAggregateData = () => {
             groups[key].push({ rowIndex, row });
         });
 
-        let totalVarCount = variables.length;
+        const newVariables: Partial<Variable>[] = [];
         const bulkUpdates: { row: number; col: number; value: string | number }[] = [];
+        let newVarIndex = variables.length;
 
         for (const aggVar of aggregatedVariables) {
-            const aggregatedDataForVar: (string | number | null)[] = new Array(data.length).fill(null);
+            const currentVarIndex = newVarIndex;
             const calcFunction = aggVar.calculationFunction || aggVar.function;
 
             for (const groupKey in groups) {
                 const groupRows = groups[groupKey];
                 const values = groupRows.map(
-                    (item: { rowIndex: number; row: (string | number)[] }) =>
+                    (item: { rowIndex: number; row: (string | number | null)[] }) =>
                         item.row[aggVar.baseVarColumnIndex]
                 );
 
@@ -422,78 +424,92 @@ export const useAggregateData = () => {
                     }
                 );
 
-                groupRows.forEach((item: { rowIndex: number; row: (string | number)[] }) => {
-                    aggregatedDataForVar[item.rowIndex] = aggregatedValue;
+                groupRows.forEach((item: { rowIndex: number; row: (string | number | null)[] }) => {
                     bulkUpdates.push({
                         row: item.rowIndex,
-                        col: totalVarCount,
+                        col: currentVarIndex,
                         value: aggregatedValue ?? ""
                     });
                 });
             }
 
+            const aggregatedDataForVar = bulkUpdates
+                .filter(update => update.col === currentVarIndex)
+                .map(update => update.value);
+
             const nonEmptyData = aggregatedDataForVar.filter((d) => d !== null && d !== "");
             const allNumeric = nonEmptyData.every(
                 (d) => typeof d === "number" || (!isNaN(Number(d)) && d !== "")
             );
-            let computedType = allNumeric ? "NUMERIC" : "STRING";
-            const type = computedType as "NUMERIC" | "STRING";
+            
+            const type: VariableType = allNumeric ? "NUMERIC" : "STRING";
             let width = 8;
-            let decimals = 2;
-            if (!allNumeric) {
+            if (type === "STRING") {
                 const maxWidth = nonEmptyData.reduce((max: number, d: string | number | null): number => {
                     const strVal = String(d);
                     return Math.max(max, strVal.length);
                 }, 0);
-                width = maxWidth || width;
+                width = Math.max(width, maxWidth);
             }
-
-            const newVariable = {
-                columnIndex: totalVarCount,
+            
+            const newVariable: Partial<Variable> = {
+                columnIndex: currentVarIndex,
                 name: aggVar.name,
                 type,
                 width,
-                decimals,
+                decimals: type === 'NUMERIC' ? 2 : 0,
                 label: aggVar.label || "",
+                measure: aggVar.measure,
+                role: 'input'
             };
-            await variableStore.addVariable(newVariable as any); // type assertion to satisfy addVariable
-            totalVarCount++;
+            newVariables.push(newVariable);
+            newVarIndex++;
         }
 
         // Add number of cases variable if requested
         if (addNumberOfCases) {
-            const numberOfCasesData: (number | null)[] = new Array(data.length).fill(null);
-
+            const currentVarIndex = newVarIndex;
             for (const groupKey in groups) {
                 const groupRows = groups[groupKey];
-                // The unweighted number of cases is simply the length of the group
                 const count = groupRows.length;
 
                 groupRows.forEach((item) => {
-                    numberOfCasesData[item.rowIndex] = count;
                     bulkUpdates.push({
                         row: item.rowIndex,
-                        col: totalVarCount,
+                        col: currentVarIndex,
                         value: count
                     });
                 });
             }
 
-            const newVariable = {
-                columnIndex: totalVarCount,
+            const newVariable: Partial<Variable> = {
+                columnIndex: currentVarIndex,
                 name: breakName,
-                type: "NUMERIC" as VariableType,
+                type: "NUMERIC",
                 width: 8,
                 decimals: 0,
                 label: `Number of cases in break group`,
+                measure: 'scale',
+                role: 'input'
             };
-            await variableStore.addVariable(newVariable as any);
-            totalVarCount++;
+            newVariables.push(newVariable);
+            newVarIndex++;
         }
 
-        await updateCells(bulkUpdates);
-        setStatisticProgress(false);
-        closeModal();
+        try {
+            if (newVariables.length > 0) {
+                await variableStore.addVariables(newVariables, bulkUpdates);
+            } else if (bulkUpdates.length > 0) {
+                await dataStore.updateCells(bulkUpdates);
+            }
+        } catch (error) {
+            console.error("Error during batch update:", error);
+            setErrorMessage(error instanceof Error ? error.message : String(error));
+            setErrorDialogOpen(true);
+        } finally {
+            setStatisticProgress(false);
+            closeModal();
+        }
     }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, updateCells, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
 
     return {

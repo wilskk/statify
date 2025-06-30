@@ -201,19 +201,19 @@ export const useRestructure = (): UseRestructureReturn => {
                 selectedVariables: selectedVariables.map(v => ({
                     name: v.name,
                     columnIndex: v.columnIndex,
-                    type: v.type,
+                    type: v.type ?? 'STRING',
                     measure: v.measure
                 })),
                 indexVariables: indexVariables.map(v => ({
                     name: v.name,
                     columnIndex: v.columnIndex,
-                    type: v.type,
+                    type: v.type ?? 'STRING',
                     measure: v.measure
                 })),
                 identifierVariables: identifierVariables.map(v => ({
                     name: v.name,
                     columnIndex: v.columnIndex,
-                    type: v.type,
+                    type: v.type ?? 'STRING',
                     measure: v.measure
                 })),
                 options: {
@@ -224,8 +224,7 @@ export const useRestructure = (): UseRestructureReturn => {
             };
 
             const { data: newData, variables: newVars } = restructureData(data, variables, config);
-            useDataStore.getState().setData(newData);
-            useVariableStore.getState().overwriteVariables(newVars);
+            await useVariableStore.getState().overwriteAll(newVars, newData);
             onClose();
         } catch (error) {
             console.error("Error during data restructuring:", error);

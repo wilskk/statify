@@ -11,18 +11,18 @@ jest.mock('@/stores/useDataStore');
 jest.mock('../services/sortVarsService');
 
 // Mock implementations
-const mockedUseVariableStore = useVariableStore as jest.Mock;
-const mockedUseDataStore = useDataStore as jest.Mock;
+const mockedUseVariableStore = useVariableStore as unknown as jest.Mock;
+const mockedUseDataStore = useDataStore as unknown as jest.Mock;
 const mockedSortDataColumns = sortDataColumns as jest.Mock;
 
-const mockOverwriteVariables = jest.fn();
+const mockOverwriteAll = jest.fn();
 const mockSetData = jest.fn();
 const mockOnClose = jest.fn();
 
 const mockVariables: Variable[] = [
-  { id: 1, name: 'C-var', columnIndex: 0, type: 'NUMERIC', width: 8, decimals: 2, label: '', values: [], missing: null, columns: 8, align: 'right', measure: 'scale', role: 'input' },
-  { id: 2, name: 'A-var', columnIndex: 1, type: 'STRING', width: 10, decimals: 0, label: '', values: [], missing: null, columns: 10, align: 'left', measure: 'nominal', role: 'input' },
-  { id: 3, name: 'B-var', columnIndex: 2, type: 'NUMERIC', width: 8, decimals: 2, label: '', values: [], missing: null, columns: 8, align: 'right', measure: 'scale', role: 'input' },
+  { tempId: 't1', name: 'C-var', columnIndex: 0, type: 'NUMERIC', width: 8, decimals: 2, label: '', values: [], missing: null, columns: 8, align: 'right', measure: 'scale', role: 'input' },
+  { tempId: 't2', name: 'A-var', columnIndex: 1, type: 'STRING', width: 10, decimals: 0, label: '', values: [], missing: null, columns: 10, align: 'left', measure: 'nominal', role: 'input' },
+  { tempId: 't3', name: 'B-var', columnIndex: 2, type: 'NUMERIC', width: 8, decimals: 2, label: '', values: [], missing: null, columns: 8, align: 'right', measure: 'scale', role: 'input' },
 ];
 
 const mockData = [
@@ -36,7 +36,7 @@ describe('useSortVariables', () => {
     
     mockedUseVariableStore.mockReturnValue({
       variables: mockVariables,
-      overwriteVariables: mockOverwriteVariables,
+      overwriteAll: mockOverwriteAll,
     });
 
     mockedUseDataStore.mockReturnValue({
@@ -61,8 +61,8 @@ describe('useSortVariables', () => {
       await result.current.handleOk();
     });
 
-    expect(mockOverwriteVariables).toHaveBeenCalledTimes(1);
-    const sortedVars = mockOverwriteVariables.mock.calls[0][0];
+    expect(mockOverwriteAll).toHaveBeenCalledTimes(1);
+    const [sortedVars, sortedData] = mockOverwriteAll.mock.calls[0];
     
     // Check if variables are sorted correctly by name: A-var, B-var, C-var
     expect(sortedVars[0].name).toBe('A-var');
@@ -75,20 +75,20 @@ describe('useSortVariables', () => {
     expect(sortedVars[2].columnIndex).toBe(2);
 
     expect(mockedSortDataColumns).toHaveBeenCalledWith(mockData, mockVariables, sortedVars);
-    expect(mockSetData).toHaveBeenCalledWith('sorted data');
+    expect(sortedData).toBe('sorted data');
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
   
   it('should handle sorting with null values correctly', async () => {
     const varsWithNull: Variable[] = [
-        { ...mockVariables[0], label: 'Z Label' },
-        { ...mockVariables[1], label: undefined }, // null/undefined value
-        { ...mockVariables[2], label: 'A Label' },
+        { ...mockVariables[0], label: 'Z Label', tempId: 't1' },
+        { ...mockVariables[1], label: undefined, tempId: 't2' }, // null/undefined value
+        { ...mockVariables[2], label: 'A Label', tempId: 't3' },
     ];
     
     mockedUseVariableStore.mockReturnValue({
       variables: varsWithNull,
-      overwriteVariables: mockOverwriteVariables,
+      overwriteAll: mockOverwriteAll,
     });
     
     const { result } = renderHook(() => useSortVariables({ onClose: mockOnClose }));
@@ -102,7 +102,7 @@ describe('useSortVariables', () => {
       await result.current.handleOk();
     });
     
-    const sortedVars = mockOverwriteVariables.mock.calls[0][0];
+    const [sortedVars] = mockOverwriteAll.mock.calls[0];
 
     // Null/undefined labels should come first
     expect(sortedVars[0].label).toBeUndefined();
@@ -118,7 +118,7 @@ describe('useSortVariables', () => {
     });
 
     expect(global.alert).toHaveBeenCalledWith('Please select a column to sort by.');
-    expect(mockOverwriteVariables).not.toHaveBeenCalled();
+    expect(mockOverwriteAll).not.toHaveBeenCalled();
     expect(mockSetData).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
