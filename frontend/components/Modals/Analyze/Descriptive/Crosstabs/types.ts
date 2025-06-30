@@ -51,6 +51,14 @@ export interface CrosstabsAnalysisParams {
 }
 
 export interface CrosstabsWorkerResult {
-    summary: { valid: number; missing: number };
-    // ... existing code ...
+    summary: {
+        valid: number;
+        missing: number;
+        rowCategories: (string | number)[];
+        colCategories: (string | number)[];
+        rowTotals: number[];
+        colTotals: number[];
+        totalCases: number;
+    };
+    contingencyTable: number[][];
 } 

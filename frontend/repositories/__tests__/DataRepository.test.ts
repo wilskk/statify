@@ -2,6 +2,8 @@ import { DataRepository } from '../DataRepository';
 import db from '@/lib/db';
 import { DataRow } from '@/types/Data';
 
+const mockModify = jest.fn();
+
 // Mock the db module
 jest.mock('@/lib/db', () => {
   const mockDb = {
@@ -12,6 +14,11 @@ jest.mock('@/lib/db', () => {
       update: jest.fn(),
       add: jest.fn(),
       bulkAdd: jest.fn(),
+      where: jest.fn(),
+      bulkDelete: jest.fn(),
+      toCollection: jest.fn(() => ({
+        modify: mockModify,
+      })),
     },
     transaction: jest.fn(),
   };
@@ -35,6 +42,7 @@ describe('DataRepository', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockModify.mockClear();
     // Re-mock the transaction implementation before each test to allow for specific overrides
     (mockedDb.transaction as jest.Mock).mockImplementation((mode, tables, callback) => {
         return callback();
@@ -62,8 +70,8 @@ describe('DataRepository', () => {
       const mockError = new Error('DB clear failed');
       (mockedDb.dataRows.clear as jest.Mock).mockRejectedValue(mockError);
       
-      await expect(repository.clearAllData()).rejects.toThrow(mockError);
-      expect(console.error).toHaveBeenCalledWith('Failed to reset data:', mockError);
+      await expect(repository.clearAllData()).rejects.toThrow("Failed to reset data");
+      expect(console.error).toHaveBeenCalledWith('Failed to reset data', expect.any(Object));
     });
   });
 
@@ -95,8 +103,8 @@ describe('DataRepository', () => {
       const mockError = new Error('DB read failed');
       (mockedDb.dataRows.toArray as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(repository.getAllRows()).rejects.toThrow(mockError);
-      expect(console.error).toHaveBeenCalledWith('Failed to load data:', mockError);
+      await expect(repository.getAllRows()).rejects.toThrow("Failed to load data");
+      expect(console.error).toHaveBeenCalledWith('Failed to load data', expect.any(Object));
     });
   });
 
@@ -123,8 +131,8 @@ describe('DataRepository', () => {
     it('should throw an error if the operation fails', async () => {
         const mockError = new Error('DB get failed');
         (mockedDb.dataRows.get as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.updateRow(rowIndex, rowData)).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith(`Failed to update row ${rowIndex}:`, mockError);
+        await expect(repository.updateRow(rowIndex, rowData)).rejects.toThrow(`Failed to update row ${rowIndex}`);
+        expect(console.error).toHaveBeenCalledWith(`Failed to update row ${rowIndex}`, expect.any(Object));
       });
   });
 
@@ -151,8 +159,8 @@ describe('DataRepository', () => {
       const mockError = new Error('Transaction failed');
       (mockedDb.transaction as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(repository.replaceAllData(newData)).rejects.toThrow(mockError);
-      expect(console.error).toHaveBeenCalledWith('Failed to replace all data:', mockError);
+      await expect(repository.replaceAllData(newData)).rejects.toThrow("Failed to replace all data");
+      expect(console.error).toHaveBeenCalledWith('Failed to replace all data', expect.any(Object));
     });
   });
 
@@ -183,8 +191,8 @@ describe('DataRepository', () => {
       const mockError = new Error('DB check failed');
       (mockedDb.dataRows.get as jest.Mock).mockRejectedValue(mockError);
       
-      await expect(repository.ensureRowExists(1, 3)).rejects.toThrow(mockError);
-      expect(console.error).toHaveBeenCalledWith('Failed to ensure row 1 exists:', mockError);
+      await expect(repository.ensureRowExists(1, 3)).rejects.toThrow("Failed to ensure row 1 exists");
+      expect(console.error).toHaveBeenCalledWith('Failed to ensure row 1 exists', expect.any(Object));
     });
   });
 
@@ -263,8 +271,156 @@ describe('DataRepository', () => {
         return Promise.reject(mockError);
       });
 
-      await expect(repository.updateBulkCells([], [])).rejects.toThrow(mockError);
-      expect(console.error).toHaveBeenCalledWith('Failed to update bulk cells:', mockError);
+      await expect(repository.updateBulkCells([], [])).rejects.toThrow("Failed to update bulk cells");
+      expect(console.error).toHaveBeenCalledWith('Failed to update bulk cells', expect.any(Object));
+    });
+  });
+
+  describe('Row Manipulation', () => {
+    describe('deleteRow', () => {
+      it('should delete a row and shift subsequent rows up', async () => {
+        const rowIndexToDelete = 1;
+        const rowsToShift = [
+          { id: 2, data: ['row', '3'] },
+          { id: 3, data: ['row', '4'] },
+        ];
+        
+        // Mock the specific sequence of db calls for this test
+        (mockedDb.dataRows.where as jest.Mock).mockImplementation((query) => {
+          if (query.id === rowIndexToDelete) {
+            return { delete: jest.fn().mockResolvedValue(1) };
+          }
+          if (query === 'id') {
+            return {
+              above: jest.fn().mockReturnValue({
+                toArray: jest.fn().mockResolvedValue(rowsToShift),
+              }),
+            };
+          }
+          return {};
+        });
+        (mockedDb.dataRows.bulkDelete as jest.Mock).mockResolvedValue(1);
+        (mockedDb.dataRows.bulkAdd as jest.Mock).mockResolvedValue(1);
+
+        await repository.deleteRow(rowIndexToDelete);
+
+        // 1. Transaction is opened
+        expect(mockedDb.transaction).toHaveBeenCalled();
+        // 2. The target row is deleted
+        expect(mockedDb.dataRows.where).toHaveBeenCalledWith({ id: rowIndexToDelete });
+        // 3. Subsequent rows are fetched
+        expect(mockedDb.dataRows.where).toHaveBeenCalledWith('id');
+        // 4. Old subsequent rows are deleted
+        const idsToDelete = rowsToShift.map(r => r.id);
+        expect(mockedDb.dataRows.bulkDelete).toHaveBeenCalledWith(idsToDelete);
+        // 5. Shifted rows are added back
+        const shiftedRows = [
+            { id: 1, data: ['row', '3'] },
+            { id: 2, data: ['row', '4'] },
+        ];
+        expect(mockedDb.dataRows.bulkAdd).toHaveBeenCalledWith(shiftedRows);
+      });
+
+      it('should throw an error if the transaction fails', async () => {
+        const mockError = new Error('Transaction failed');
+        (mockedDb.transaction as jest.Mock).mockImplementationOnce(() => Promise.reject(mockError));
+        await expect(repository.deleteRow(1)).rejects.toThrow('Failed to delete row at 1');
+      });
+    });
+
+    describe('insertRow', () => {
+      it('should insert a row and shift subsequent rows down', async () => {
+        const rowIndexToInsert = 1;
+        const newRowData = ['new', 'row'];
+        const rowsToShift = [
+          { id: 1, data: ['old', 'row1'] },
+          { id: 2, data: ['old', 'row2'] },
+        ];
+
+        (mockedDb.dataRows.where as jest.Mock).mockReturnValue({
+          aboveOrEqual: jest.fn().mockReturnValue({
+            toArray: jest.fn().mockResolvedValue(rowsToShift),
+          }),
+        });
+
+        (mockedDb.dataRows.bulkDelete as jest.Mock).mockResolvedValue(undefined);
+        (mockedDb.dataRows.bulkAdd as jest.Mock).mockResolvedValue(undefined);
+        (mockedDb.dataRows.add as jest.Mock).mockResolvedValue(undefined);
+
+        await repository.insertRow(rowIndexToInsert, newRowData);
+
+        expect(mockedDb.transaction).toHaveBeenCalledWith('rw', mockedDb.dataRows, expect.any(Function));
+        
+        // 1. Get rows to shift
+        const whereMock = mockedDb.dataRows.where('id');
+        expect(whereMock.aboveOrEqual).toHaveBeenCalledWith(rowIndexToInsert);
+
+        // 2. Bulk deletes old rows
+        const idsToDelete = rowsToShift.map(r => r.id);
+        expect(mockedDb.dataRows.bulkDelete).toHaveBeenCalledWith(idsToDelete);
+
+        // 3. Bulk adds shifted rows
+        const shiftedRows = [
+            { id: 2, data: ['old', 'row1'] },
+            { id: 3, data: ['old', 'row2'] },
+        ];
+        expect(mockedDb.dataRows.bulkAdd).toHaveBeenCalledWith(shiftedRows);
+        
+        // 4. Adds the new row
+        expect(mockedDb.dataRows.add).toHaveBeenCalledWith({ id: rowIndexToInsert, data: newRowData });
+      });
+
+      it('should throw an error if the transaction fails', async () => {
+        const mockError = new Error('Transaction failed');
+        (mockedDb.transaction as jest.Mock).mockImplementationOnce(() => Promise.reject(mockError));
+        await expect(repository.insertRow(1, ['new'])).rejects.toThrow('Failed to insert row at 1');
+      });
+    });
+  });
+
+  describe('Column Manipulation', () => {
+    it('should delete a column from all rows', async () => {
+        const columnIndexToDelete = 1;
+
+        mockModify.mockResolvedValue(undefined);
+
+        await repository.deleteColumn(columnIndexToDelete);
+
+        expect(mockedDb.dataRows.toCollection).toHaveBeenCalledTimes(1);
+        expect(mockModify).toHaveBeenCalledTimes(1);
+
+        // Optional: verify the logic of the callback passed to modify
+        const modifyCallback = mockModify.mock.calls[0][0];
+        const testRow = { data: ['a', 'b', 'c'] };
+        modifyCallback(testRow);
+        expect(testRow.data).toEqual(['a', 'c']);
+    });
+
+    it('should insert a column with a default value into all rows', async () => {
+        const columnIndexToInsert = 1;
+        const defaultValue = 'new_val';
+        
+        mockModify.mockResolvedValue(undefined);
+
+        await repository.insertColumn(columnIndexToInsert, defaultValue);
+
+        expect(mockedDb.dataRows.toCollection).toHaveBeenCalledTimes(1);
+        expect(mockModify).toHaveBeenCalledTimes(1);
+        
+        // Optional: verify the logic of the callback passed to modify
+        const modifyCallback = mockModify.mock.calls[0][0];
+        const testRow = { data: ['a', 'b'] };
+        modifyCallback(testRow);
+        expect(testRow.data).toEqual(['a', 'new_val', 'b']);
+    });
+
+    it('should not fail when inserting a column into an empty dataset', async () => {
+        mockModify.mockResolvedValue(undefined);
+        
+        await repository.insertColumn(0);
+        
+        expect(mockedDb.dataRows.toCollection).toHaveBeenCalledTimes(1);
+        expect(mockModify).toHaveBeenCalledTimes(1);
     });
   });
 });

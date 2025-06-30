@@ -87,6 +87,13 @@ export enum ModalType {
   Explore = "Explore",
   Frequencies = "Frequencies",
   Crosstabs = "Crosstabs",
+
+  // Example dataset
+  ExampleDataset = "ExampleDataset",
+
+  // Edit menu
+  GoToCase = "GoToCase",
+  GoToVariable = "GoToVariable",
 }
 
 /**
@@ -227,6 +234,13 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.Explore]: ModalCategory.Analyze,
   [ModalType.Frequencies]: ModalCategory.Analyze,
   [ModalType.Crosstabs]: ModalCategory.Analyze,
+
+  // Example dataset
+  [ModalType.ExampleDataset]: ModalCategory.Data,
+
+  // Edit menu
+  [ModalType.GoToCase]: ModalCategory.Edit,
+  [ModalType.GoToVariable]: ModalCategory.Edit,
 };
 
 /**
@@ -352,6 +366,12 @@ export function getModalTitle(type: ModalType): string {
       return "New Custom Attribute";
     case ModalType.SelectCases:
       return "Select Cases";
+    case ModalType.ExampleDataset:
+      return "Example Dataset";
+    case ModalType.GoToCase:
+      return "Go To Case";
+    case ModalType.GoToVariable:
+      return "Go To Variable";
     default:
       return rawTitle.trim();
   }

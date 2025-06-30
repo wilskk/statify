@@ -6,10 +6,7 @@ import {
 	FAQ,
 	Feedback,
 	HelpContent,
-	Frequencies,
-	DescriptiveAnalysis,
-	Explore,
-	Crosstabs,
+	StatisticsGuide,
 	type SectionItem,
 } from "@/app/help/components";
 
@@ -32,6 +29,24 @@ export default function HelpPage() {
 			key: "getting-started",
 			label: "Panduan Memulai",
 			content: <GettingStarted />
+		},
+		{
+			key: 'statistics-guide',
+			label: 'Panduan Statistik',
+			content: <StatisticsGuide />,
+			children: [
+				{
+					key: 'descriptive-stats',
+					label: 'Statistik Deskriptif',
+					parentKey: 'statistics-guide',
+					children: [
+						{ key: 'frequencies', label: 'Frequencies', parentKey: 'descriptive-stats', childContent: 'frequencies' },
+						{ key: 'descriptives', label: 'Descriptives', parentKey: 'descriptive-stats', childContent: 'descriptives' },
+						{ key: 'explore', label: 'Explore', parentKey: 'descriptive-stats', childContent: 'explore' },
+						{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'descriptive-stats', childContent: 'crosstabs' },
+					]
+				}
+			]
 		},
 		{
 			key: "faq",

@@ -12,6 +12,7 @@ import { TourPopup } from "@/components/Common/TourComponents";
 
 import { useTourGuide, TabControlProps } from './hooks/useTourGuide';
 import { useUnusualCases } from "./hooks/useUnusualCases";
+import { baseTourSteps } from './tourConfig';
 import { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps, OutputTabProps, SaveTabProps, MissingValuesTabProps } from "./types";
 
 import VariablesTab from "./VariablesTab";
@@ -49,14 +50,14 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     };
 
     const tabControl = useMemo((): TabControlProps => ({
-        setActiveTab,
+        setActiveTab: (newTab) => setActiveTab(newTab as TabType),
         currentActiveTab: activeTab,
     }), [activeTab]);
 
     const { 
         tourActive, currentStep, tourSteps, currentTargetElement, 
         startTour, nextStep, prevStep, endTour 
-    } = useTourGuide(containerType, tabControl);
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
 
     const variablesTabProps: VariablesTabProps = { ...hookProps, getVariableIcon, getDisplayName, tourActive, currentStep, tourSteps };
     const optionsTabProps: OptionsTabProps = { ...hookProps, tourActive, currentStep, tourSteps };

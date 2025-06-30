@@ -357,7 +357,7 @@ export const formatMEstimatorsTable = (results: ExploreAggregatedResults, params
                     huber: m.huber?.toFixed(4),
                     tukey: m.tukey?.toFixed(4),
                     hampel: m.hampel?.toFixed(4),
-                    andrews: m.andrew?.toFixed(4),
+                    andrews: m.andrews?.toFixed(4),
                 };
             }).filter(Boolean);
 
@@ -376,7 +376,7 @@ export const formatMEstimatorsTable = (results: ExploreAggregatedResults, params
                     huber: m.huber?.toFixed(4),
                     tukey: m.tukey?.toFixed(4),
                     hampel: m.hampel?.toFixed(4),
-                    andrews: m.andrew?.toFixed(4),
+                    andrews: m.andrews?.toFixed(4),
                 });
             }
         }

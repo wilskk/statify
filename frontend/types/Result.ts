@@ -1,3 +1,5 @@
+import { Table } from './Table';
+
 export type Log = {
     id?: number;
     log: string;
@@ -6,7 +8,7 @@ export type Log = {
 
 export interface Analytic {
     id?: number;
-    log_id?: number;
+    logId?: number;
     title: string;
     note?: string;
     statistics?: Statistic[];
@@ -14,9 +16,9 @@ export interface Analytic {
 
 export interface Statistic {
     id?: number;
-    analytic_id?: number;
+    analyticId?: number;
     title: string;
-    output_data: string;
-    components: string;
+    output_data: string | Table;
+    components: any;
     description: string;
 };

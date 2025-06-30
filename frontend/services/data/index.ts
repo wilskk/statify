@@ -1,13 +1,11 @@
 import dataService from './DataService';
 import variableService from './VariableService';
-import resultService from './ResultService';
-import metaService from './MetaService';
+import sheetService from './SheetService';
 
 export {
   dataService,
   variableService,
-  resultService,
-  metaService
+  sheetService
 };
 
 // Export classes for extension if needed

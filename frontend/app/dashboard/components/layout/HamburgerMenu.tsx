@@ -179,7 +179,7 @@ const HamburgerMenu: React.FC = () => {
                                     <DrawerMenuItem disabled>Count Values within Cases...</DrawerMenuItem>
                                     <DrawerMenuItem disabled>Shift Values...</DrawerMenuItem>
                                     <DrawerMenuSeparator />
-                                    <DrawerMenuItem disabled>Recode into Same Variables...</DrawerMenuItem>
+                                    <DrawerMenuItem onClick={() => openModal(ModalType.RecodeSameVariables)}>Recode into Same Variables...</DrawerMenuItem>
                                     <DrawerMenuItem disabled>Recode into Different Variables...</DrawerMenuItem>
                                     <DrawerMenuItem disabled>Automatic Recode...</DrawerMenuItem>
                                     <DrawerMenuItem disabled>Create Dummy Variables...</DrawerMenuItem>

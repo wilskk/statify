@@ -9,11 +9,11 @@ export type KNNAnalysisType = {
     addLog: (log: Omit<Log, "id" | "analytics">) => Promise<number>;
     addAnalytic: (
         logId: number,
-        analytic: Omit<Analytic, "id" | "log_id" | "statistics">
+        analytic: Omit<Analytic, "id" | "logId" | "statistics">
     ) => Promise<number>;
     addStatistic: (
         analyticId: number,
-        statistic: Omit<Statistic, "id" | "analytic_id">
+        statistic: Omit<Statistic, "id" | "analyticId">
     ) => Promise<number>;
 };
 
@@ -21,11 +21,11 @@ export type KNNFinalResultType = {
     addLog: (log: Omit<Log, "id" | "analytics">) => Promise<number>;
     addAnalytic: (
         logId: number,
-        analytic: Omit<Analytic, "id" | "log_id" | "statistics">
+        analytic: Omit<Analytic, "id" | "logId" | "statistics">
     ) => Promise<number>;
     addStatistic: (
         analyticId: number,
-        statistic: Omit<Statistic, "id" | "analytic_id">
+        statistic: Omit<Statistic, "id" | "analyticId">
     ) => Promise<number>;
 
     formattedResult: ResultJson;

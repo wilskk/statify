@@ -74,12 +74,14 @@ describe('useFrequenciesAnalysis', () => {
             runPromise = result.current.runAnalysis();
         });
 
-        expect(result.current.isCalculating).toBe(true);
+        expect(result.current.isLoading).toBe(true);
         expect(mockPostMessage).toHaveBeenCalledTimes(1);
         expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
-            variables: mockVariables,
-            data: mockAnalysisData,
-            weights: mockWeights,
+            variableData: [{
+                variable: mockVariables[0],
+                data: mockAnalysisData.map(row => row[0])
+            }],
+            weightVariableData: mockWeights,
         }));
 
         const mockWorkerResult = {
@@ -103,7 +105,7 @@ describe('useFrequenciesAnalysis', () => {
         expect(mockAddChart).not.toHaveBeenCalled();
         expect(mockTerminate).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(result.current.errorMsg).toBeNull();
     });
 
@@ -160,7 +162,7 @@ describe('useFrequenciesAnalysis', () => {
         });
 
         expect(result.current.errorMsg).toBe('Frequency calculation failed');
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(mockOnClose).not.toHaveBeenCalled();
     });
 
@@ -181,7 +183,7 @@ describe('useFrequenciesAnalysis', () => {
         });
 
         expect(result.current.errorMsg).toContain('An unexpected error occurred in the Frequencies worker: Worker died');
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(mockTerminate).toHaveBeenCalled();
     });
 }); 

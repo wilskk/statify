@@ -16,7 +16,6 @@ Modal ini terdiri dari satu langkah sederhana:
     -   **`index.tsx`**: **Orchestrator**. Merender komponen UI `OpenSavFileStep` dan menghubungkannya dengan `useOpenSavFileLogic`. Bertanggung jawab juga untuk mengelola fitur tur.
     -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang relevan.
     -   **`README.md`**: (File ini) Dokumentasi fitur.
-    -   **`openSavFileUtils.ts`**: Berisi fungsi utilitas murni (`pure function`), seperti `mapSPSSTypeToInterface`, untuk membantu proses pemetaan data dari format SPSS ke format internal aplikasi.
 
 -   **`hooks/`**
     -   **`useOpenSavFileLogic.ts`**: **Jantung Logika**. Hook ini mengelola seluruh alur kerja:
@@ -28,8 +27,6 @@ Modal ini terdiri dari satu langkah sederhana:
 
 -   **`services/`**
     -   **`services.ts`**: Bertindak sebagai lapisan abstraksi untuk panggilan API. Fungsi `processSavFile` di sini membungkus panggilan API sesungguhnya yang mengirimkan file ke backend.
-
--   **`openSavFileUtils.ts`**: Berisi fungsi utilitas murni (`pure function`), seperti `mapSPSSTypeToInterface`, untuk membantu proses pemetaan data dari format SPSS ke format internal aplikasi.
 
 ## 3. Alur Kerja (Workflow)
 
@@ -43,8 +40,8 @@ Modal ini terdiri dari satu langkah sederhana:
 4.  **Pemrosesan di Backend**: Server menerima file `.sav`, mem-parsing-nya, dan mengembalikan data terstruktur dalam format JSON.
 5.  **Pemetaan Data di Frontend**:
     -   `useOpenSavFileLogic` menerima respons JSON.
-    -   Hook ini memetakan `sysvars` (system variables) menjadi `Variable[]`, `valueLabels` menjadi `ValueLabel[]`, dan `rows` menjadi matriks data 2D.
-    -   Fungsi dari `openSavFileUtils.ts` dan `spssDateConverter` digunakan selama proses pemetaan.
+    -   Hook ini memanggil fungsi utilitas terpusat (`processSavApiResponse` dari `@/utils/savFileUtils.ts`) untuk memetakan `sysvars` (system variables) menjadi `Variable[]`, `valueLabels` menjadi `ValueLabel[]`, dan `rows` menjadi matriks data 2D.
+    -   Fungsi dari `@/utils/savFileUtils.ts` dan `spssDateConverter` digunakan selama proses pemetaan.
 6.  **Pembaruan Store**: Data dan variabel yang telah ditransformasi dimuat ke dalam *store* Zustand.
 7.  **Selesai**: Modal ditutup setelah data berhasil dimuat.
 
@@ -106,4 +103,3 @@ const MyDataApplication = () => {
 -   `types.ts`: Defines all TypeScript interfaces related to the component and its hook.
 -   `hooks/`: Contains `useOpenSavFileLogic.ts`.
 -   `services/`: May contain services for actual `.sav` file parsing if this logic is complex and separated (e.g., interacting with a backend or a WebAssembly SPSS reader).
--   `openSavFileUtils.ts`: May contain utility functions, for example, for specific client-side file checks or transformations if not part of the main hook/service. 

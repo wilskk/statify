@@ -7,34 +7,36 @@ jest.mock('@/lib/db', () => ({
   __esModule: true,
   default: {
     logs: {
-      get: jest.fn(),
-      update: jest.fn(),
-      add: jest.fn(),
+      put: jest.fn(),
       delete: jest.fn(),
       clear: jest.fn(),
     },
     analytics: {
       where: jest.fn().mockReturnThis(),
       equals: jest.fn().mockReturnThis(),
-      toArray: jest.fn(),
       delete: jest.fn(),
-      update: jest.fn(),
-      add: jest.fn(),
+      put: jest.fn(),
       clear: jest.fn(),
     },
     statistics: {
       where: jest.fn().mockReturnThis(),
       equals: jest.fn().mockReturnThis(),
       delete: jest.fn(),
-      update: jest.fn(),
-      add: jest.fn(),
+      put: jest.fn(),
       clear: jest.fn(),
       get: jest.fn(),
     },
     // Mock custom transaction methods
-    transaction: jest.fn().mockImplementation((mode, tables, callback) => callback()),
+    transaction: jest.fn().mockImplementation((...args) => {
+        const callback = args[args.length - 1];
+        if (typeof callback === 'function') {
+            return callback();
+        }
+        return Promise.resolve();
+    }),
     getAllLogsWithRelations: jest.fn(),
     getLogWithRelations: jest.fn(),
+    deleteLogAndRelations: jest.fn(),
   },
 }));
 
@@ -82,132 +84,80 @@ describe('ResultRepository', () => {
   describe('deleteAnalytic', () => {
     const analyticId = 456;
 
-    it('should delete associated statistics and then the analytic itself', async () => {
-      // Mock the chainable calls for statistics deletion
+    it('should delete statistics and the analytic within a transaction', async () => {
       const statisticsDeleteMock = jest.fn().mockResolvedValue(undefined);
       (mockedDb.statistics.where as jest.Mock).mockReturnValue({
         equals: jest.fn().mockReturnValue({
           delete: statisticsDeleteMock,
         }),
       });
-
       (mockedDb.analytics.delete as jest.Mock).mockResolvedValue(undefined);
 
       await repository.deleteAnalytic(analyticId);
 
+      // Verify it runs in a transaction
+      expect(mockedDb.transaction).toHaveBeenCalledWith('rw', mockedDb.analytics, mockedDb.statistics, expect.any(Function));
+
       // Verify that we first query and delete the statistics
-      expect(mockedDb.statistics.where).toHaveBeenCalledWith('analytic_id');
-      expect(mockedDb.statistics.where('analytic_id').equals).toHaveBeenCalledWith(analyticId);
+      expect(mockedDb.statistics.where).toHaveBeenCalledWith('analyticId');
+      expect(mockedDb.statistics.where('analyticId').equals).toHaveBeenCalledWith(analyticId);
       expect(statisticsDeleteMock).toHaveBeenCalledTimes(1);
 
       // Verify that we then delete the analytic
       expect(mockedDb.analytics.delete).toHaveBeenCalledWith(analyticId);
-      
-      // Verify the order of operations
-      const statsDeleteOrder = (statisticsDeleteMock as jest.Mock).mock.invocationCallOrder[0];
-      const analyticDeleteOrder = (mockedDb.analytics.delete as jest.Mock).mock.invocationCallOrder[0];
-      expect(statsDeleteOrder).toBeLessThan(analyticDeleteOrder);
     });
 
-    it('should throw an error if deleting statistics fails', async () => {
-      const mockError = new Error('Failed to delete statistics');
-      (mockedDb.statistics.where as jest.Mock).mockReturnValue({
-        equals: jest.fn().mockReturnValue({
-          delete: jest.fn().mockRejectedValue(mockError),
-        }),
-      });
-
+    it('should throw an error if the transaction fails', async () => {
+      const mockError = new Error('Transaction failed');
+      (mockedDb.transaction as jest.Mock).mockImplementationOnce(() => Promise.reject(mockError));
+    
       await expect(repository.deleteAnalytic(analyticId)).rejects.toThrow(mockError);
       expect(console.error).toHaveBeenCalledWith(`Failed to delete analytic with ID ${analyticId}:`, mockError);
-      expect(mockedDb.analytics.delete).not.toHaveBeenCalled(); // The analytic itself should not be deleted
     });
   });
 
   describe('deleteLog', () => {
     const logId = 789;
-    const mockAnalytics: Analytic[] = [
-        { id: 1, log_id: logId, title: 'Analytic 1', statistics: [] },
-        { id: 2, log_id: logId, title: 'Analytic 2', statistics: [] },
-    ];
 
-    it('should delete statistics, analytics, and then the log in correct order', async () => {
-        // Mock the chainable calls
-        const analyticsToArrayMock = jest.fn().mockResolvedValue(mockAnalytics);
-        const analyticsDeleteMock = jest.fn().mockResolvedValue(undefined);
-        const statisticsDeleteMock = jest.fn().mockResolvedValue(undefined);
-        (mockedDb.analytics.where as jest.Mock).mockReturnValue({
-            equals: jest.fn().mockReturnValue({
-                toArray: analyticsToArrayMock,
-                delete: analyticsDeleteMock,
-            }),
-        });
-        (mockedDb.statistics.where as jest.Mock).mockReturnValue({
-            equals: jest.fn().mockReturnValue({
-                delete: statisticsDeleteMock,
-            }),
-        });
-        (mockedDb.logs.delete as jest.Mock).mockResolvedValue(undefined);
+    it('should call db.deleteLogAndRelations with the correct id', async () => {
+      (mockedDb.deleteLogAndRelations as jest.Mock).mockResolvedValue(undefined);
 
-        await repository.deleteLog(logId);
+      await repository.deleteLog(logId);
 
-        // 1. Fetched analytics for the log
-        expect(analyticsToArrayMock).toHaveBeenCalledTimes(1);
+      expect(mockedDb.deleteLogAndRelations).toHaveBeenCalledWith(logId);
+      expect(mockedDb.deleteLogAndRelations).toHaveBeenCalledTimes(1);
+    });
 
-        // 2. Deleted statistics for each analytic
-        expect(mockedDb.statistics.where).toHaveBeenCalledWith('analytic_id');
-        expect(mockedDb.statistics.where('analytic_id').equals).toHaveBeenCalledWith(mockAnalytics[0].id);
-        expect(mockedDb.statistics.where('analytic_id').equals).toHaveBeenCalledWith(mockAnalytics[1].id);
-        expect(statisticsDeleteMock).toHaveBeenCalledTimes(2);
+    it('should throw an error if the deletion fails', async () => {
+      const mockError = new Error('DB delete failed');
+      (mockedDb.deleteLogAndRelations as jest.Mock).mockRejectedValue(mockError);
 
-        // 3. Deleted analytics for the log
-        expect(analyticsDeleteMock).toHaveBeenCalledTimes(1);
-
-        // 4. Deleted the log itself
-        expect(mockedDb.logs.delete).toHaveBeenCalledWith(logId);
-
-        // Verify order
-        const statsDeleteOrder = (statisticsDeleteMock as jest.Mock).mock.invocationCallOrder[0];
-        const analyticsDeleteOrder = (analyticsDeleteMock as jest.Mock).mock.invocationCallOrder[0];
-        const logDeleteOrder = (mockedDb.logs.delete as jest.Mock).mock.invocationCallOrder[0];
-
-        expect(statsDeleteOrder).toBeLessThan(analyticsDeleteOrder);
-        expect(analyticsDeleteOrder).toBeLessThan(logDeleteOrder);
+      await expect(repository.deleteLog(logId)).rejects.toThrow(mockError);
+      expect(console.error).toHaveBeenCalledWith(`Failed to delete log with ID ${logId}:`, mockError);
     });
   });
 
   describe('saveStatistic', () => {
     const mockStatistic: Statistic = {
-      analytic_id: 1,
+      analyticId: 1,
       title: 'Test Statistic',
       output_data: JSON.stringify({ some: 'data' }),
       components: JSON.stringify([]),
       description: 'A test'
     };
 
-    it('should add a new statistic if no id is provided', async () => {
-      (mockedDb.statistics.add as jest.Mock).mockResolvedValue(999); // New ID
+    it('should save a statistic using put', async () => {
+      (mockedDb.statistics.put as jest.Mock).mockResolvedValue(999);
       const result = await repository.saveStatistic(mockStatistic);
 
       expect(result).toBe(999);
-      expect(mockedDb.statistics.add).toHaveBeenCalledWith(mockStatistic);
-      expect(mockedDb.statistics.update).not.toHaveBeenCalled();
-    });
-
-    it('should update an existing statistic if an id is provided', async () => {
-      const statisticWithId = { ...mockStatistic, id: 123 };
-      (mockedDb.statistics.update as jest.Mock).mockResolvedValue(123);
-      
-      const result = await repository.saveStatistic(statisticWithId);
-
-      expect(result).toBe(123);
-      const { id, ...updateData } = statisticWithId;
-      expect(mockedDb.statistics.update).toHaveBeenCalledWith(id, updateData);
-      expect(mockedDb.statistics.add).not.toHaveBeenCalled();
+      expect(mockedDb.statistics.put).toHaveBeenCalledWith(mockStatistic);
+      expect(mockedDb.statistics.put).toHaveBeenCalledTimes(1);
     });
 
     it('should throw an error if save fails', async () => {
-        const mockError = new Error('DB add failed');
-        (mockedDb.statistics.add as jest.Mock).mockRejectedValue(mockError);
+        const mockError = new Error('DB put failed');
+        (mockedDb.statistics.put as jest.Mock).mockRejectedValue(mockError);
 
         await expect(repository.saveStatistic(mockStatistic)).rejects.toThrow(mockError);
         expect(console.error).toHaveBeenCalledWith('Failed to save statistic:', mockError);
@@ -247,6 +197,114 @@ describe('ResultRepository', () => {
 
         await expect(repository.clearResults()).rejects.toThrow(mockError);
         expect(console.error).toHaveBeenCalledWith('Failed to clear results:', mockError);
+    });
+  });
+
+  describe('getAllLogs', () => {
+    it('should return all logs from db.getAllLogsWithRelations', async () => {
+      const mockLogs: Log[] = [{ id: 1, log: 'Log 1', analytics: [] }];
+      (mockedDb.getAllLogsWithRelations as jest.Mock).mockResolvedValue(mockLogs);
+
+      const result = await repository.getAllLogs();
+
+      expect(result).toEqual(mockLogs);
+      expect(mockedDb.getAllLogsWithRelations).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw an error if db call fails', async () => {
+      const mockError = new Error('DB failed');
+      (mockedDb.getAllLogsWithRelations as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(repository.getAllLogs()).rejects.toThrow(mockError);
+    });
+  });
+
+  describe('getLog', () => {
+    const logId = 1;
+    it('should return a single log from db.getLogWithRelations', async () => {
+      const mockLog: Log = { id: logId, log: 'Log 1', analytics: [] };
+      (mockedDb.getLogWithRelations as jest.Mock).mockResolvedValue(mockLog);
+
+      const result = await repository.getLog(logId);
+
+      expect(result).toEqual(mockLog);
+      expect(mockedDb.getLogWithRelations).toHaveBeenCalledWith(logId);
+    });
+
+    it('should throw an error if db call fails', async () => {
+      const mockError = new Error('DB failed');
+      (mockedDb.getLogWithRelations as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(repository.getLog(logId)).rejects.toThrow(mockError);
+    });
+  });
+
+  describe('getStatistic', () => {
+    const statisticId = 1;
+    it('should return a single statistic from db.statistics.get', async () => {
+        const mockStatistic: Statistic = { id: statisticId, analyticId: 1, title: 'Stat 1', output_data: '{}', components: '[]', description: '' };
+        (mockedDb.statistics.get as jest.Mock).mockResolvedValue(mockStatistic);
+
+        const result = await repository.getStatistic(statisticId);
+
+        expect(result).toEqual(mockStatistic);
+        expect(mockedDb.statistics.get).toHaveBeenCalledWith(statisticId);
+    });
+
+    it('should throw an error if db call fails', async () => {
+        const mockError = new Error('DB failed');
+        (mockedDb.statistics.get as jest.Mock).mockRejectedValue(mockError);
+
+        await expect(repository.getStatistic(statisticId)).rejects.toThrow(mockError);
+    });
+  });
+
+  describe('saveLog', () => {
+    it('should save a log using put', async () => {
+      const mockLog: Log = { id: 1, log: 'Test Log', analytics: [] };
+      (mockedDb.logs.put as jest.Mock).mockResolvedValue(1);
+
+      const result = await repository.saveLog(mockLog);
+
+      expect(result).toBe(1);
+      // The repository method extracts only relevant properties
+      expect(mockedDb.logs.put).toHaveBeenCalledWith({ log: mockLog.log, id: mockLog.id });
+    });
+
+    it('should throw an error if save fails', async () => {
+      const mockLog: Log = { id: 1, log: 'Test Log', analytics: [] };
+      const mockError = new Error('DB put failed');
+      (mockedDb.logs.put as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(repository.saveLog(mockLog)).rejects.toThrow(mockError);
+      expect(console.error).toHaveBeenCalledWith('Failed to save log:', mockError);
+    });
+  });
+
+  describe('saveAnalytic', () => {
+    const mockAnalytic: Analytic = { 
+      logId: 1, 
+      title: 'Test Analytic', 
+      statistics: [] 
+    };
+
+    it('should save an analytic without its relations', async () => {
+      (mockedDb.analytics.put as jest.Mock).mockResolvedValue(2);
+
+      const result = await repository.saveAnalytic(mockAnalytic);
+
+      expect(result).toBe(2);
+      // Verify that the `statistics` relation is stripped before saving
+      const { statistics, ...analyticData } = mockAnalytic;
+      expect(mockedDb.analytics.put).toHaveBeenCalledWith(analyticData);
+    });
+
+    it('should throw an error if save fails', async () => {
+      const mockError = new Error('DB put failed');
+      (mockedDb.analytics.put as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(repository.saveAnalytic(mockAnalytic)).rejects.toThrow(mockError);
+      expect(console.error).toHaveBeenCalledWith('Failed to save analytic:', mockError);
     });
   });
 }); 

@@ -13,6 +13,7 @@ import { AlertCircle, InfoIcon, HelpCircle } from "lucide-react";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { WeightCasesModalProps, WeightCasesUIProps } from "./types";
 import { useWeightCases } from "./hooks/useWeightCases";
+import { WeightCasesUI } from "./WeightCasesUI";
 
 // interface WeightCasesModalProps { // MOVED TO TYPES.TS
 //     onClose: () => void;
@@ -115,7 +116,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <WeightCasesContent {...hookProps} onClose={onClose} containerType={containerType} />
+                    <WeightCasesUI {...hookProps} onClose={onClose} containerType={containerType} />
                 </div>
             </div>
         );
@@ -127,7 +128,7 @@ const WeightCasesModal: React.FC<WeightCasesModalProps> = ({
                 <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
                     <DialogTitle className="text-[22px] font-semibold">Weight Cases</DialogTitle>
                 </DialogHeader>
-                <WeightCasesContent {...hookProps} onClose={onClose} containerType={containerType} />
+                <WeightCasesUI {...hookProps} onClose={onClose} containerType={containerType} />
             </DialogContent>
         </Dialog>
     );

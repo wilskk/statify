@@ -13,6 +13,7 @@
     "install:all": "npm install --workspaces"
   },
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
     "concurrently": "^8.2.2",
@@ -21,5 +22,8 @@
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "uuid": "^11.1.0"
+  }
 }

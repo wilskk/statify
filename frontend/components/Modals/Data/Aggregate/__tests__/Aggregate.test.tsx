@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Aggregate from '..';
 import { useAggregateData } from '../hooks/useAggregateData';
@@ -34,37 +34,55 @@ interface Variable {
     measure: 'scale' | 'nominal' | 'ordinal';
 }
 
+// More detailed mock data
 const sampleAvailableVars: Variable[] = [
-    { columnIndex: 0, name: 'Var1', type: 'NUMERIC', label: '', measure: 'scale' },
+    { columnIndex: 0, name: 'Var1', type: 'NUMERIC', label: 'Variable 1', measure: 'scale' },
     { columnIndex: 1, name: 'Var2', type: 'STRING', label: 'Variable 2', measure: 'nominal' },
 ];
 
+const sampleBreakVars: Variable[] = [
+    { columnIndex: 2, name: 'GroupVar', type: 'STRING', label: 'Group Variable', measure: 'nominal' },
+];
+
+const sampleAggregatedVars = [
+    { aggregateId: 'agg1', name: 'Var1_mean', displayName: 'Var1_mean = MEAN(Var1)', baseVarName: 'Var1' }
+];
+
 describe('Aggregate Component', () => {
+    // Default mock state
+    let mockState: any;
+
     beforeEach(() => {
         jest.clearAllMocks();
-
-        mockedUseAggregateData.mockReturnValue({
-            // State
+        mockState = {
             availableVariables: sampleAvailableVars,
             breakVariables: [],
             aggregatedVariables: [],
             activeTab: 'variables',
             highlightedVariable: null,
+            errorMessage: null,
+            errorDialogOpen: false,
+            functionDialogOpen: false,
+            nameDialogOpen: false,
             addNumberOfCases: false,
             breakName: 'N_BREAK',
-            // State Setters
-            setActiveTab: jest.fn(),
-            setAddNumberOfCases: jest.fn(),
-            setBreakName: jest.fn(),
-            // Handlers
+            getDisplayName: (v: any) => v.label || v.name,
             handleConfirm: mockHandleConfirm,
             handleReset: mockHandleReset,
-            getDisplayName: (v: Variable) => v.label || v.name,
+            setActiveTab: jest.fn(),
             handleVariableSelect: jest.fn(),
             handleAggregatedVariableSelect: jest.fn(),
             handleVariableDoubleClick: jest.fn(),
+            handleAggregatedDoubleClick: jest.fn(),
+            moveFromBreak: jest.fn(),
             moveToBreak: jest.fn(),
-        });
+            moveFromAggregated: jest.fn(),
+            moveToAggregated: jest.fn(),
+            handleFunctionClick: jest.fn(),
+            handleNameLabelClick: jest.fn(),
+            setAddNumberOfCases: jest.fn(),
+        };
+        mockedUseAggregateData.mockReturnValue(mockState);
     });
 
     it('renders the Aggregate modal with title and tabs', () => {
@@ -73,6 +91,29 @@ describe('Aggregate Component', () => {
         expect(screen.getByText('Aggregate Data')).toBeInTheDocument();
         expect(screen.getByText('Variables')).toBeInTheDocument();
         expect(screen.getByText('Options')).toBeInTheDocument();
+    });
+
+    it('renders variables in their correct lists', () => {
+        mockedUseAggregateData.mockReturnValue({
+            ...mockState,
+            breakVariables: sampleBreakVars,
+            aggregatedVariables: sampleAggregatedVars,
+        });
+        render(<Aggregate onClose={mockOnClose} />);
+
+        const availableList = screen.getByTestId('available-variable-list');
+        const breakList = screen.getByTestId('break-variable-list');
+        const aggregatedList = screen.getByTestId('aggregated-variable-list');
+
+        // Check available variables
+        expect(within(availableList).getByText('Variable 1')).toBeInTheDocument();
+        expect(within(availableList).getByText('Variable 2')).toBeInTheDocument();
+        
+        // Check break variables
+        expect(within(breakList).getByText('Group Variable')).toBeInTheDocument();
+        
+        // Check aggregated variables
+        expect(within(aggregatedList).getByText('Var1_mean = MEAN(Var1)')).toBeInTheDocument();
     });
 
     it('calls handleConfirm when OK button is clicked', async () => {
@@ -105,30 +146,42 @@ describe('Aggregate Component', () => {
         expect(mockHandleReset).toHaveBeenCalledTimes(1);
     });
 
-    it('switches tabs when a tab is clicked', async () => {
-        const setActiveTab = jest.fn();
+    it('disables Function and Name & Label buttons when no aggregated var is selected', () => {
+        render(<Aggregate onClose={mockOnClose} />);
+        
+        const functionButton = screen.getByRole('button', { name: /function/i });
+        const nameLabelButton = screen.getByRole('button', { name: /name & label/i });
+
+        expect(functionButton).toBeDisabled();
+        expect(nameLabelButton).toBeDisabled();
+    });
+
+    it('enables Function and Name & Label buttons when an aggregated var is selected', () => {
         mockedUseAggregateData.mockReturnValue({
-            ...mockedUseAggregateData(),
-            activeTab: 'variables',
-            setActiveTab,
+            ...mockState,
+            highlightedVariable: { id: 'agg1', source: 'aggregated' },
         });
 
+        render(<Aggregate onClose={mockOnClose} />);
+
+        const functionButton = screen.getByRole('button', { name: /function/i });
+        const nameLabelButton = screen.getByRole('button', { name: /name & label/i });
+
+        expect(functionButton).toBeEnabled();
+        expect(nameLabelButton).toBeEnabled();
+    });
+
+    it('switches tabs when a tab is clicked', async () => {
         render(<Aggregate onClose={mockOnClose} />);
         const user = userEvent.setup();
 
         const optionsTab = screen.getByText('Options');
         await user.click(optionsTab);
 
-        expect(setActiveTab).toHaveBeenCalledWith('options');
+        expect(mockState.setActiveTab).toHaveBeenCalledWith('options');
     });
 
     it('renders available variables and handles double click', async () => {
-        const handleVariableDoubleClick = jest.fn();
-        mockedUseAggregateData.mockReturnValue({
-          ...mockedUseAggregateData(),
-          handleVariableDoubleClick,
-        });
-    
         render(<Aggregate onClose={mockOnClose} />);
         const user = userEvent.setup();
     
@@ -138,8 +191,8 @@ describe('Aggregate Component', () => {
     
         await user.dblClick(variableItem);
     
-        expect(handleVariableDoubleClick).toHaveBeenCalledTimes(1);
+        expect(mockState.handleVariableDoubleClick).toHaveBeenCalledTimes(1);
         // The second argument is the source list, which is 'available'
-        expect(handleVariableDoubleClick).toHaveBeenCalledWith(1, 'available');
+        expect(mockState.handleVariableDoubleClick).toHaveBeenCalledWith(1, 'available');
       });
 }); 

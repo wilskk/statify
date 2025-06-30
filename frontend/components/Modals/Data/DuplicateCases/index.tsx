@@ -55,7 +55,12 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
         setDisplayFrequencies,
         filterByIndicator,
         setFilterByIndicator,
-    } = useDuplicateCases({ onClose, activeTab, setActiveTab });
+    } = useDuplicateCases({ onClose });
+
+    const handleResetClick = () => {
+        handleReset();
+        setActiveTab("variables");
+    };
 
     const tabControl = useMemo((): TabControlProps => ({
         setActiveTab,
@@ -182,7 +187,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                         <Button
                             variant="outline"
                             className="mr-2"
-                            onClick={handleReset}
+                            onClick={handleResetClick}
                             disabled={isProcessing}
                         >
                             Reset

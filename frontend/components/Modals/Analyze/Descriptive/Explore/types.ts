@@ -4,6 +4,7 @@ import { BaseModalProps } from "@/types/modalTypes";
 import { TourStep } from './hooks/useTourGuide';
 import { UseVariableManagementResult } from './hooks/useVariableManagement';
 import { UseStatisticsSettingsResult } from './hooks/useStatisticsSettings';
+import { UsePlotsSettingsResult } from './hooks/usePlotsSettings';
 
 // Type for highlighted variable
 export type HighlightedVariable = {
@@ -28,6 +29,12 @@ export interface VariablesTabProps extends UseVariableManagementResult, TourProp
 // Props for StatisticsTab component
 export interface StatisticsTabProps extends UseStatisticsSettingsResult, TourProps {
     containerType?: "dialog" | "sidebar";
+}
+
+// Props for PlotsTab component
+export interface PlotsTabProps extends UsePlotsSettingsResult, TourProps {
+    containerType?: "dialog" | "sidebar";
+    factorVariablesCount: number;
 }
 
 // === New types for structured results ===
@@ -60,6 +67,10 @@ export interface ExploreAnalysisParams {
     showMEstimators: boolean;
     showOutliers: boolean;
     showPercentiles: boolean;
+    boxplotType: 'dependents-together' | 'factor-levels-together';
+    showStemAndLeaf: boolean;
+    showHistogram: boolean;
+    showNormalityPlots: boolean;
 }
 
 // Results structure for the explore analysis

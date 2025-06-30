@@ -19,14 +19,14 @@ import { useVariableSelection } from "./hooks/useVariableSelection";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
 import { useDescriptivesAnalysis } from "./hooks/useDescriptivesAnalysis";
 import { BaseModalProps } from "@/types/modalTypes";
-import { useTourGuide } from "./hooks/useTourGuide";
+import { useTourGuide, TabControlProps } from "./hooks/useTourGuide";
 import { TourPopup, ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { AnimatePresence } from "framer-motion";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 import VariablesTab from "./components/VariablesTab";
 import StatisticsTab from "./components/StatisticsTab";
-import { TabControlProps } from "./hooks/useTourGuide";
+import { baseTourSteps, TabType } from './hooks/tourConfig';
 
 // Komponen utama konten Descriptives yang agnostik terhadap container
 const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
@@ -68,8 +68,8 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
 
     // Add tour hook
     const tabControl = useMemo((): TabControlProps => ({
-        setActiveTab: (tab: 'variables' | 'statistics') => {
-            setActiveTab(tab);
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
         },
         currentActiveTab: activeTab
     }), [activeTab]);
@@ -83,7 +83,7 @@ const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dial
         nextStep, 
         prevStep, 
         endTour 
-    } = useTourGuide(containerType, tabControl);
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
 
     const handleReset = useCallback(() => {
         resetVariableSelection();

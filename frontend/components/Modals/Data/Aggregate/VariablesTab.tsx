@@ -346,6 +346,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // Render variable lists with DnD support
     const renderVariableList = (variables: Variable[], source: 'available' | 'break', height: string) => (
         <div
+            data-testid={`${source}-variable-list`}
             className={`border p-2 rounded-md w-full overflow-y-auto overflow-x-hidden transition-colors relative ${
                 isDraggingOver === source
                     ? "border-blue-500 bg-blue-50"
@@ -414,6 +415,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
     // Render aggregated variables list with DnD support
     const renderAggregatedList = (variables: AggregatedVariable[], height: string) => (
         <div
+            data-testid="aggregated-variable-list"
             className={`border p-2 rounded-md w-full overflow-y-auto overflow-x-hidden transition-colors relative ${
                 isDraggingOver === 'aggregated'
                     ? "border-blue-500 bg-blue-50"

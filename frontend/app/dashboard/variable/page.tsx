@@ -4,7 +4,7 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { useTableRefStore } from '@/stores/useTableRefStore';
-import VariableTable from "@/app/dashboard/components/variableTable";
+import VariableTable from "./components/variableTable";
 import { VariableTableSkeleton } from "@/components/ui/Skeletons";
 
 export default function VariablesPage() {

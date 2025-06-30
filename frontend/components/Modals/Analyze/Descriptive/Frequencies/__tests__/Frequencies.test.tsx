@@ -73,7 +73,7 @@ describe('Frequencies Modal', () => {
       resetDisplaySettings: mockResetDisplaySettings,
     });
     mockedUseFrequenciesAnalysis.mockReturnValue({
-      isCalculating,
+      isLoading: isCalculating,
       errorMsg: null,
       runAnalysis: mockRunAnalysis,
       cancelAnalysis: mockCancelAnalysis,

@@ -222,7 +222,7 @@ export const generateVariablesFromData = (
             width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v => String(v ?? "").length), variableName.length)),
             decimals: isNumeric ? Math.min(maxDecimalPlaces, 16) : 0,
             label: '',
-            columns: 64,
+            columns: 72,
             align: isNumeric ? 'right' : 'left',
             measure: isNumeric ? 'scale' : 'nominal',
             role: 'input',

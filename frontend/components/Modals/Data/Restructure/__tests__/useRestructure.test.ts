@@ -22,16 +22,19 @@ describe('useRestructure', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        (useDataStore as unknown as jest.Mock).mockReturnValue({
+        const dataStoreState = {
             data: [[1, 'a'], [2, 'b']],
             setData: mockedSetData,
-        });
+        };
+        (useDataStore as unknown as jest.Mock).mockReturnValue(dataStoreState);
+        (useDataStore as any).getState = () => dataStoreState;
 
-        const store = {
+        const variableStoreState = {
             variables: mockVariables,
             overwriteVariables: mockedOverwriteVariables,
         };
-        (useVariableStore as unknown as jest.Mock).mockReturnValue(store);
+        (useVariableStore as unknown as jest.Mock).mockReturnValue(variableStoreState);
+        (useVariableStore as any).getState = () => variableStoreState;
 
         mockedRestructureData.mockReturnValue({
             data: [[1, 2, 3]],

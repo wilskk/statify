@@ -5,18 +5,36 @@ import { Variable } from '@/types/Variable';
 // Mock the entire module from where variableService is imported
 jest.mock('@/services/data', () => ({
     variableService: {
-        getAllVariables: jest.fn(),
-        clearAllVariables: jest.fn(),
-        saveAllVariables: jest.fn(),
-        updateVariable: jest.fn(),
-        addVariable: jest.fn(),
-        deleteVariable: jest.fn(),
-        importVariables: jest.fn(),
-        saveVariable: jest.fn(),
+        getAllVariables: jest.fn().mockResolvedValue([]),
+        clearAllVariables: jest.fn().mockResolvedValue(undefined),
+        importVariables: jest.fn().mockResolvedValue(undefined),
+        saveVariable: jest.fn().mockResolvedValue(undefined),
+    },
+    sheetService: {
+        insertColumn: jest.fn().mockResolvedValue(undefined),
+        deleteColumn: jest.fn().mockResolvedValue(undefined),
+        addMultipleColumns: jest.fn().mockResolvedValue(undefined),
+        deleteMultipleColumns: jest.fn().mockResolvedValue(undefined),
+        sortSheetByVariable: jest.fn().mockResolvedValue(undefined),
+        replaceAll: jest.fn().mockResolvedValue(undefined),
     },
     dataService: jest.fn(),
     resultService: jest.fn(),
     metaService: jest.fn(),
+}));
+
+jest.mock('@/stores/useDataStore', () => ({
+    useDataStore: {
+        getState: jest.fn(() => ({
+            checkAndSave: jest.fn().mockResolvedValue(undefined),
+            loadData: jest.fn().mockResolvedValue(undefined),
+            validateVariableData: jest.fn().mockResolvedValue({ isValid: true, issues: [] }),
+        })),
+    },
+}));
+
+jest.mock('../../app/dashboard/variable/components/variableTable/utils', () => ({
+    transformVariablesToTableData: jest.fn(() => []),
 }));
 
 // Helper to create a mock variable
@@ -30,7 +48,7 @@ const createMockVariable = (columnIndex: number, name: string): Variable => ({
     label: '',
     values: [],
     missing: null,
-    columns: 64,
+    columns: 72,
     align: 'right',
     measure: 'scale',
     role: 'input',
@@ -76,11 +94,19 @@ describe('useVariableStore', () => {
 
     it('should add a new variable to the end of the list', async () => {
         const { result } = renderHook(() => useVariableStore());
+        const { variableService, sheetService } = require('@/services/data');
+        const initialVar = createMockVariable(0, 'VarA');
         
-        // Setup initial state with one variable
         act(() => {
-            result.current.setVariables([createMockVariable(0, 'VarA')]);
+            result.current.setVariables([initialVar]);
         });
+
+        const db: Variable[] = [initialVar];
+        sheetService.insertColumn.mockImplementation((v: Variable) => {
+            db.push(v);
+            return Promise.resolve(undefined);
+        });
+        variableService.getAllVariables.mockImplementation(() => Promise.resolve(db));
 
         await act(async () => {
             // Using a partial here as the store completes it

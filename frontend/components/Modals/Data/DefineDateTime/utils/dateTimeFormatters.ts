@@ -163,55 +163,60 @@ export const formatDateString = (
     timeComponents: TimeComponent[]
 ): string => {
     const componentNames = timeComponents.map((c) => c.name.toLowerCase());
-    const parts: string[] = [];
+    const dateParts: string[] = [];
+    const timeParts: string[] = [];
+
+    // --- Date Parts ---
+    let yearPart = "";
+    if (componentNames.includes("year")) {
+        yearPart = String(values["year"]);
+        if (componentNames.includes("month")) {
+            yearPart += `-${String(values["month"]).padStart(2, "0")}`;
+        }
+        // Quarter is usually exclusive of month
+        else if (componentNames.includes("quarter")) {
+            yearPart += `-Q${values["quarter"]}`;
+        }
+    }
+    if (yearPart) {
+        dateParts.push(yearPart);
+    }
+
+    if (componentNames.includes("week")) {
+        dateParts.push(`W${values["week"]}`);
+    }
 
     if (componentNames.includes("day") || componentNames.includes("work day")) {
         const dayValue = values["day"] || values["work day"];
-        parts.push(dayValue.toString());
-    } else if (componentNames.includes("week")) {
-        parts.push(values["week"].toString());
-    } else if (componentNames.includes("year")) {
-        parts.push(values["year"].toString());
-
-        if (componentNames.includes("quarter")) {
-            parts[parts.length - 1] += `-Q${values["quarter"]}`;
-        }
-
-        if (componentNames.includes("month")) {
-            parts[parts.length - 1] += `-${values["month"].toString().padStart(2, "0")}`;
-        }
+        dateParts.push(String(dayValue));
     }
 
-    const timeParts: string[] = [];
-
+    // --- Time Parts ---
     if (componentNames.includes("hour") || componentNames.includes("work hour")) {
         const hourValue = values["hour"] !== undefined ? values["hour"] : values["work hour"];
         if (hourValue !== undefined) {
-            timeParts.push(hourValue.toString());
+            timeParts.push(String(hourValue).padStart(2, "0"));
         }
     }
 
     if (componentNames.includes("minute") && values["minute"] !== undefined) {
-        timeParts.push(values["minute"].toString().padStart(2, "0"));
+        timeParts.push(String(values["minute"]).padStart(2, "0"));
     }
 
     if (componentNames.includes("second") && values["second"] !== undefined) {
-        timeParts.push(values["second"].toString().padStart(2, "0"));
+        timeParts.push(String(values["second"]).padStart(2, "0"));
     }
 
+    // --- Combination ---
+    const finalParts = [];
+    if (dateParts.length > 0) {
+        finalParts.push(dateParts.join(" "));
+    }
     if (timeParts.length > 0) {
-        if (timeParts.length === 2) {
-            parts.push(`${timeParts[0]}:${timeParts[1]}`);
-        }
-        else if (timeParts.length === 3) {
-            parts.push(`${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`);
-        }
-        else {
-            parts.push(timeParts[0]);
-        }
+        finalParts.push(timeParts.join(":"));
     }
 
-    return parts.join("  ");
+    return finalParts.join(" ");
 };
 
 export const formatCurrentDates = (

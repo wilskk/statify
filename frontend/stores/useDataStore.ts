@@ -29,7 +29,7 @@ export interface DataStoreState {
     lastSyncedAtSync: Date | null;
     syncError: string | null;
 
-    loadData: () => Promise<void>;
+    loadData: (pendingUpdates?: CellUpdate[]) => Promise<void>;
     resetData: () => Promise<void>;
 
     setData: (newData: DataRow[]) => void;
@@ -41,27 +41,22 @@ export interface DataStoreState {
     addRow: (index?: number) => Promise<void>;
     addRows: (indices: number[]) => Promise<void>;
 
-    addColumn: (index?: number) => Promise<void>;
-    addColumns: (indices: number[]) => Promise<void>;
-
     deleteRow: (index: number) => Promise<void>;
     deleteRows: (indices: number[]) => Promise<void>;
 
-    deleteColumn: (index: number) => Promise<void>;
-    deleteColumns: (indices: number[]) => Promise<void>;
-
     sortData: (columnIndex: number, direction: 'asc' | 'desc') => Promise<void>;
 
-    getVariableData: (variable: Variable) => Promise<{ variable: Variable, data: (string | number)[] }>;
+    getVariableData: (variable: Variable) => Promise<{ variable: Variable, data: (string | number | null)[] }>;
     validateVariableData: (columnIndex: number, type: string, width: number) => Promise<{
         isValid: boolean;
         issues: Array<{ row: number; message: string }>
     }>;
 
     ensureColumns: (targetColIndex: number) => Promise<void>;
+    checkAndSave: () => Promise<void>;
 }
 
-const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'addColumn' | 'addColumns' | 'deleteRow' | 'deleteRows' | 'deleteColumn' | 'deleteColumns' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns'> = {
+const initialState: Omit<DataStoreState, 'loadData' | 'resetData' | 'updateCell' | 'updateCells' | 'setData' | 'saveData' | 'addRow' | 'addRows' | 'deleteRow' | 'deleteRows' | 'sortData' | 'getVariableData' | 'validateVariableData' | 'ensureColumns' | 'checkAndSave'> = {
     data: [],
     isLoading: false,
     error: null,
@@ -87,30 +82,21 @@ const _ensureMatrixDimensionsInternal = (state: WritableDraft<DataStoreState>, m
     }
 
     if (targetRows > currentRows) {
-        const rowsToAdd = targetRows - currentRows;
-
-        for (let i = 0; i < rowsToAdd; i++) {
+        for (let i = currentRows; i < targetRows; i++) {
             state.data.push(Array(targetCols).fill(""));
         }
         structureChanged = true;
     }
 
-    let columnWidthChanged = false;
-    const finalRowCount = state.data.length;
-    for (let i = 0; i < finalRowCount; i++) {
-        const currentRowWidth = state.data[i]?.length || 0;
-        if (!state.data[i] || currentRowWidth < targetCols) {
-            const existingRowContent = state.data[i] || [];
-            const colsToAdd = targetCols - currentRowWidth;
-            if (colsToAdd > 0) {
-                 state.data[i] = [...existingRowContent, ...Array(colsToAdd).fill("")];
-                 columnWidthChanged = true;
+    if (targetCols > initialCols) {
+        for (let i = 0; i < state.data.length; i++) {
+            const currentRowWidth = state.data[i]?.length || 0;
+            if (currentRowWidth < targetCols) {
+                const colsToAdd = targetCols - currentRowWidth;
+                state.data[i].push(...Array(colsToAdd).fill(""));
+                structureChanged = true;
             }
         }
-    }
-
-    if (columnWidthChanged) {
-        structureChanged = true;
     }
 
     if (structureChanged) {
@@ -125,15 +111,34 @@ export const useDataStore = create<DataStoreState>()(
         immer((set, get) => ({
             ...initialState,
 
-            loadData: async () => {
+            loadData: async (pendingUpdates?: CellUpdate[]) => {
+                await get().checkAndSave();
                 set((state) => { state.isLoading = true; state.error = null; });
                 try {
                     const { data } = await dataService.loadAllData();
                     set((state) => { 
-                        state.data = data; 
+                        state.data = data;
+                        let updatesApplied = false;
+                        
+                        if (pendingUpdates && pendingUpdates.length > 0) {
+                            let maxRow = -1, maxCol = -1;
+                            pendingUpdates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
+                            
+                            _ensureMatrixDimensionsInternal(state, maxRow, maxCol);
+                            
+                            pendingUpdates.forEach(({ row, col, value }) => {
+                                state.data[row][col] = value;
+                            });
+
+                            // Add the temporary updates to the main pending queue
+                            state.pendingUpdates.push(...pendingUpdates);
+                            updatesApplied = true;
+                        }
+
                         state.lastUpdated = new Date(); 
                         state.isLoading = false;
-                        state.hasUnsavedChanges = false; 
+                        // If we applied updates, the state now has unsaved changes.
+                        state.hasUnsavedChanges = updatesApplied;
                     });
                 } catch (error: any) {
                     console.error("Failed to load data:", error);
@@ -160,50 +165,41 @@ export const useDataStore = create<DataStoreState>()(
             },
 
             updateCell: async (row, col, value) => {
-                return await get().updateCells([{ row, col, value }]);
+                return get().updateCells([{ row, col, value }]);
             },
 
             updateCells: async (updates) => {
                 if (!updates || updates.length === 0) return;
 
                 const oldData = get().data;
-
-                let maxRow = -1; let maxCol = -1;
+                let maxRow = -1, maxCol = -1;
                 updates.forEach(({ row, col }) => { if (row > maxRow) maxRow = row; if (col > maxCol) maxCol = col; });
 
-                const validUpdatesForPotentialChange = updates.filter(({ row, col, value }) => {
+                const validUpdates = updates.filter(({ row, col, value }) => {
                     const currentValue = oldData[row]?.[col];
                     const isNewCell = !(row < oldData.length && col < (oldData[row]?.length ?? 0));
-                    const isMeaningfulNewValue = value !== "" && value !== null && value !== undefined;
-                    const needsUpdate = (currentValue !== value) || (isNewCell && isMeaningfulNewValue);
-                    return needsUpdate;
+                    return (currentValue !== value) || (isNewCell && (value !== "" && value !== null && value !== undefined));
                 });
 
-                if (validUpdatesForPotentialChange.length === 0) return;
+                if (validUpdates.length === 0) return;
 
-                let dataChangedInState = false;
-                let structureActuallyChanged = false;
+                let dataChanged = false;
+                let structureChanged = false;
 
                 set((state) => {
                     const minCols = state.data.length > 0 ? state.data[0]?.length ?? 0 : 0;
-                    structureActuallyChanged = _ensureMatrixDimensionsInternal(state, maxRow, maxCol, minCols);
-
+                    structureChanged = _ensureMatrixDimensionsInternal(state, maxRow, maxCol, minCols);
                     updates.forEach(({ row, col, value }) => {
-                        if (row < state.data.length && col < (state.data[row]?.length ?? 0)) {
-                            if(state.data[row][col] !== value) {
-                                state.data[row][col] = value;
-                                dataChangedInState = true;
-                            }
-                        } else {
-                            console.error(`[updateCells] Skipping update (out of bounds!): Cell (${row}, ${col}) STILL not accessible after ensure. State R=${state.data.length}, State C[${row}]=${state.data[row]?.length}`);
+                        if (state.data[row][col] !== value) {
+                            state.data[row][col] = value;
+                            dataChanged = true;
                         }
                     });
 
-                    if(dataChangedInState || structureActuallyChanged) {
+                    if (dataChanged || structureChanged) {
                         state.lastUpdated = new Date();
                         state.hasUnsavedChanges = true;
-                        // track deltas for sync
-                        state.pendingUpdates.push(...validUpdatesForPotentialChange);
+                        state.pendingUpdates.push(...validUpdates);
                     }
                 });
             },
@@ -217,23 +213,17 @@ export const useDataStore = create<DataStoreState>()(
                 });
             },
 
-            saveData: async (rowsToSave?: DataRow[]) => {
-                // mark syncing
+            saveData: async (rowsToSave) => {
                 set((state) => { state.syncStatus = 'syncing'; state.syncError = null; });
-                // decide full replace vs delta
-                if (rowsToSave) {
-                    await dataService.replaceAllData(rowsToSave);
-                } else if (get().pendingUpdates.length > 0) {
-                    await dataService.applyBulkUpdates(get().pendingUpdates);
-                } else {
-                    // nothing to sync
-                    set((state) => {
-                        state.syncStatus = 'idle';
-                    });
-                    return;
-                }
                 try {
-                    // clear pending and update meta
+                    if (rowsToSave) {
+                        await dataService.replaceAllData(rowsToSave);
+                    } else if (get().pendingUpdates.length > 0) {
+                        await dataService.applyBulkUpdates(get().pendingUpdates);
+                    } else {
+                        set((state) => { state.syncStatus = 'idle'; });
+                        return;
+                    }
                     set((state) => {
                         state.error = null;
                         state.lastUpdated = new Date();
@@ -253,14 +243,14 @@ export const useDataStore = create<DataStoreState>()(
                 }
             },
 
-            addRow: async (index?) => {
-                return await get().addRows(index !== undefined ? [index] : [get().data.length]);
+            addRow: async (index) => {
+                return get().addRows(index !== undefined ? [index] : [get().data.length]);
             },
 
-            addRows: async (indices: number[]) => {
+            addRows: async (indices) => {
                 if (!indices || indices.length === 0) return;
                 
-                const sortedIndices = [...indices].sort((a, b) => b - a);
+                const sorted = [...indices].sort((a, b) => b - a);
                 const oldData = get().data;
                 
                 set((state) => {
@@ -268,7 +258,7 @@ export const useDataStore = create<DataStoreState>()(
                     const newRow = Array(colCount).fill("");
                     const updatedData = [...state.data];
                     
-                    for (const index of sortedIndices) {
+                    for (const index of sorted) {
                         const rowIndex = index !== undefined ? index : updatedData.length;
                         updatedData.splice(rowIndex, 0, [...newRow]);
                     }
@@ -279,39 +269,15 @@ export const useDataStore = create<DataStoreState>()(
                 });
             },
 
-            addColumn: async (index?) => {
-                const colIndex = index !== undefined ? index : (get().data.length > 0 ? (get().data[0]?.length ?? 0) : 0);
-                return await get().addColumns([colIndex]);
+            deleteRow: async (index) => {
+                return get().deleteRows([index]);
             },
 
-            addColumns: async (indices: number[]) => {
-                if (!indices || indices.length === 0) return;
-                
-                const sortedIndices = [...indices].sort((a, b) => b - a);
-                
-                set((state) => {
-                    state.data = state.data.map(row => {
-                        const newRow = [...row];
-                        for (const colIndex of sortedIndices) {
-                            const columnIndex = colIndex !== undefined ? colIndex : newRow.length;
-                            newRow.splice(columnIndex, 0, "");
-                        }
-                        return newRow;
-                    });
-                    
-                    state.lastUpdated = new Date();
-                    state.hasUnsavedChanges = true;
-                });
-            },
-
-            deleteRow: async (index: number) => {
-                return await get().deleteRows([index]);
-            },
-
-            deleteRows: async (indices: number[]) => {
+            deleteRows: async (indices) => {
                 if (!indices || indices.length === 0) return;
                 
                 const oldData = get().data;
+                const indicesSet = new Set(indices);
                 
                 for (const index of indices) {
                     if (index < 0 || index >= oldData.length) {
@@ -325,66 +291,14 @@ export const useDataStore = create<DataStoreState>()(
                     }
                 }
                 
-                const sortedIndices = [...indices].sort((a, b) => b - a);
-                
                 set((state) => {
-                    const updatedData = [...state.data];
-                    
-                    for (const index of sortedIndices) {
-                        updatedData.splice(index, 1);
-                    }
-                    
-                    state.data = updatedData;
+                    state.data = state.data.filter((_, index) => !indicesSet.has(index));
                     state.lastUpdated = new Date();
                     state.hasUnsavedChanges = true;
                 });
             },
 
-            deleteColumn: async (index: number) => {
-                return await get().deleteColumns([index]);
-            },
-
-            deleteColumns: async (indices: number[]) => {
-                if (!indices || indices.length === 0) return;
-                
-                const oldData = get().data;
-                
-                if (oldData.length === 0) return;
-                const colCount = oldData[0]?.length ?? 0;
-                
-                for (const index of indices) {
-                    if (index < 0 || index >= colCount) {
-                        set(state => { 
-                            state.error = { 
-                                message: `Invalid column index ${index} for deletion`,
-                                source: "deleteColumns" 
-                            }; 
-                        });
-                        return;
-                    }
-                }
-                
-                const sortedIndices = [...indices].sort((a, b) => b - a);
-                
-                set((state) => {
-                    state.data = state.data.map(row => {
-                        if (!row) return row;
-                        
-                        const newRow = [...row];
-                        for (const index of sortedIndices) {
-                            if (index < newRow.length) {
-                                newRow.splice(index, 1);
-                            }
-                        }
-                        return newRow;
-                    });
-                    
-                    state.lastUpdated = new Date();
-                    state.hasUnsavedChanges = true;
-                });
-            },
-
-            sortData: async (columnIndex: number, direction: 'asc' | 'desc') => {
+            sortData: async (columnIndex, direction) => {
                 const oldData = get().data;
                 if (oldData.length === 0) return;
                 
@@ -412,7 +326,7 @@ export const useDataStore = create<DataStoreState>()(
                 });
             },
 
-            getVariableData: async (variable: Variable) => {
+            getVariableData: async (variable) => {
                 if (get().data.length === 0 && !get().isLoading) { await get().loadData(); }
                 const currentData = get().data;
                 const { columnIndex } = variable;
@@ -423,34 +337,42 @@ export const useDataStore = create<DataStoreState>()(
                     return { variable, data: columnData };
                 } catch (error) {
                     console.error(`Failed to get variable data via service, using local: ${error}`);
-                    const columnData = currentData.map(row => (row && columnIndex < row.length) ? row[columnIndex] : "" );
+                    const columnData = currentData.map(row => (row && columnIndex < row.length) ? row[columnIndex] : null );
                     return { variable, data: columnData };
                 }
             },
 
-            validateVariableData: async (columnIndex: number, type: string, width: number) => {
+            validateVariableData: async (columnIndex, type, width) => {
                 const currentData = get().data;
                 const issues: Array<{ row: number; message: string }> = [];
                 const updates: CellUpdate[] = [];
                 let isValid = true;
                 if (currentData.length === 0 || columnIndex < 0) return { isValid: true, issues: [] };
                 for (let row = 0; row < currentData.length; row++) {
-                    if (!currentData[row] || columnIndex >= currentData[row].length) continue;
-                    const value = currentData[row][columnIndex]; const originalValue = value; let correctedValue: string | number | undefined = undefined; let issueMessage: string | null = null;
+                    const value = currentData[row]?.[columnIndex];
+                    let correctedValue: string | number | undefined = undefined;
+                    let issueMessage: string | null = null;
                     if (value === "" || value === null || value === undefined) continue;
 
-                    if (type.startsWith("NUMERIC") || ["COMMA", "DOT", "SCIENTIFIC"].includes(type)) { const numValue = Number(value); if (isNaN(numValue)) { issueMessage = `R${row + 1}C${columnIndex + 1}: "${value}" invalid number.`; isValid = false; correctedValue = ""; } else { const valueStr = String(value); if (valueStr.length > width) { issueMessage = `R${row + 1}C${columnIndex + 1}: Number "${value}" exceeds width (${valueStr.length}>${width}).`; isValid = false; correctedValue = ""; } } }
-                    else if (type === "STRING") { const strValue = String(value); if (strValue.length > width) { issueMessage = `R${row + 1}C${columnIndex + 1}: String "${strValue}" exceeds width (${strValue.length}>${width}).`; isValid = false; correctedValue = strValue.substring(0, width); } }
-                    else if (["DATE", "ADATE", "EDATE", "SDATE", "JDATE"].includes(type)) { const dateStr = String(value); const isValidDate = !isNaN(Date.parse(dateStr)); if (!isValidDate) { issueMessage = `R${row + 1}C${columnIndex + 1}: Value "${dateStr}" invalid date.`; isValid = false; correctedValue = ""; } }
+                    if (type.startsWith("NUMERIC") || ["COMMA", "DOT", "SCIENTIFIC"].includes(type)) {
+                        const numValue = Number(value);
+                        if (isNaN(numValue)) { issueMessage = `R${row + 1}C${columnIndex + 1}: "${value}" invalid number.`; isValid = false; correctedValue = ""; }
+                        else if (String(value).length > width) { issueMessage = `R${row + 1}C${columnIndex + 1}: Number "${value}" exceeds width.`; isValid = false; correctedValue = ""; }
+                    } else if (type === "STRING") {
+                        const strValue = String(value);
+                        if (strValue.length > width) { issueMessage = `R${row + 1}C${columnIndex + 1}: String "${strValue}" exceeds width.`; isValid = false; correctedValue = strValue.substring(0, width); }
+                    } else if (["DATE", "ADATE", "EDATE", "SDATE", "JDATE"].includes(type)) {
+                        if (isNaN(Date.parse(String(value)))) { issueMessage = `R${row + 1}C${columnIndex + 1}: Value "${value}" invalid date.`; isValid = false; correctedValue = ""; }
+                    }
 
                     if (issueMessage) issues.push({ row, message: issueMessage });
-                    if (correctedValue !== undefined && correctedValue !== originalValue) updates.push({ row, col: columnIndex, value: correctedValue });
+                    if (correctedValue !== undefined && correctedValue !== value) updates.push({ row, col: columnIndex, value: correctedValue });
                 }
                 if (updates.length > 0) await get().updateCells(updates);
                 return { isValid, issues };
             },
 
-            ensureColumns: async (targetColIndex: number) => {
+            ensureColumns: async (targetColIndex) => {
                 const currentMaxCol = get().data.length > 0 ? (get().data[0]?.length ?? 0) - 1 : -1;
 
                 if (targetColIndex > currentMaxCol) {
@@ -458,6 +380,17 @@ export const useDataStore = create<DataStoreState>()(
                         const maxRowIndex = state.data.length > 0 ? state.data.length - 1 : 0;
                         _ensureMatrixDimensionsInternal(state, maxRowIndex, targetColIndex);
                     });
+                }
+            },
+
+            checkAndSave: async () => {
+                if (get().hasUnsavedChanges) {
+                    try {
+                        await get().saveData();
+                    } catch (error) {
+                        console.error("Auto-save before load failed:", error);
+                        throw new Error("Failed to save pending changes. Please check for errors and try again.");
+                    }
                 }
             },
         }))

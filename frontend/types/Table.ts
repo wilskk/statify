@@ -17,6 +17,6 @@ interface ColumnHeader {
 
 export interface Row {
     rowHeader: (string | null)[];
-    [key: string]: any;
+    [key: string]: string | number | null | undefined | Row[] | (string | null)[];
     children?: Row[];
 }

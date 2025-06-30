@@ -66,8 +66,9 @@ export const useFileMenuActions = () => {
 
                 const filteredVariables = variablesStore.filter(
                     variable =>
-                        String(variable.name).trim() !== "" ||
-                        (variable.label && String(variable.label).trim() !== "")
+                        (String(variable.name).trim() !== "" ||
+                        (variable.label && String(variable.label).trim() !== "")) &&
+                        typeof variable.type === 'string' // Ensure type is defined
                 );
 
                 const sanitizeVariableName = (name: string) => {
@@ -98,12 +99,12 @@ export const useFileMenuActions = () => {
                     return {
                         name,
                         label: variable.label || "",
-                        type: variable.type,
+                        type: variable.type!, // We filtered for string types, so this is safe
                         width: variable.width,
                         decimal: variable.decimals,
                         alignment: variable.align.toLowerCase(),
                         measure: variable.measure.toLowerCase(),
-columns: variable.columns,
+                        columns: variable.columns,
                         valueLabels
                     };
                 });
@@ -114,12 +115,7 @@ columns: variable.columns,
                         if (variable.columnIndex !== undefined && variable.columnIndex < actualColCount) {
                             const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
                             const cellValue = row[variable.columnIndex];
-                            // Convert DATE from 'dd/mm/yyyy' to 'dd-mm-yyyy' for SPSS
-                            if (variable.type === 'DATE' && typeof cellValue === 'string') {
-                                record[name] = cellValue.replace(/\//g, '-');
-                            } else {
-                                record[name] = cellValue;
-                            }
+                            record[name] = cellValue;
                         }
                     });
                     return record;

@@ -5,14 +5,13 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { Variable } from "@/types/Variable";
 import { TabType } from "../types";
+import { processDuplicates, generateStatistics } from "../services/duplicateCasesService";
 
 interface UseDuplicateCasesProps {
     onClose: () => void;
-    activeTab: TabType;
-    setActiveTab: (tab: TabType) => void;
 }
 
-export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDuplicateCasesProps) => {
+export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
     const { closeModal } = useModalStore();
     const { variables: storeVariables, addVariable } = useVariableStore(); // Renamed variables to storeVariables to avoid conflict
     const { data, updateCells, setData } = useDataStore();
@@ -82,40 +81,6 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         }
     }, []);
 
-    const processWithWorker = async () => {
-        return new Promise((resolve, reject) => {
-            try {
-                const worker = new Worker('/workers/duplicateCases.worker.js');
-                worker.onmessage = async (e) => {
-                    if (e.data.success) {
-                        resolve(e.data);
-                    } else {
-                        reject(new Error(e.data.error || 'Worker processing failed'));
-                    }
-                    worker.terminate();
-                };
-                worker.onerror = (error) => {
-                    reject(new Error(error.message || 'Worker error'));
-                    worker.terminate();
-                };
-                worker.postMessage({
-                    data,
-                    matchingVariables,
-                    sortingVariables,
-                    sortOrder,
-                    primaryCaseIndicator,
-                    primaryName,
-                    sequentialCount,
-                    sequentialName,
-                    moveMatchingToTop,
-                    displayFrequencies
-                });
-            } catch (error) {
-                reject(error);
-            }
-        });
-    };
-
     const createIndicatorVariables = async (result: any) => {
         const primaryVarIndex = data[0]?.length || 0;
         await addVariable({
@@ -125,11 +90,7 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
             width: 1,
             decimals: 0,
             label: `Primary case indicator (1=primary, 0=duplicate)`,
-            values: [
-                { variableName: primaryName, value: 0, label: "Duplicate case" },
-                { variableName: primaryName, value: 1, label: "Primary case" }
-            ],
-            columns: 64,
+            columns: 72,
             align: "right",
             measure: "nominal",
             role: "input"
@@ -146,7 +107,7 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
                 width: 2,
                 decimals: 0,
                 label: `Sequential count of matching cases`,
-                columns: 64,
+                columns: 72,
                 align: "right",
                 measure: "ordinal",
                 role: "input"
@@ -189,7 +150,6 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         setSequentialName("MatchSequence");
         setMoveMatchingToTop(true);
         setDisplayFrequencies(true);
-        setActiveTab("variables"); // Reset to variable tab
         setErrorMessage(null);
         setErrorDialogOpen(false);
     };
@@ -202,8 +162,13 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         }
         setIsProcessing(true);
         try {
-            const workerResult: any = await processWithWorker();
-            const { result, statistics } = workerResult;
+            const result = processDuplicates({
+                data,
+                matchingVariables,
+                sortingVariables,
+                sortOrder,
+                primaryCaseIndicator,
+            });
 
             // Step 1: Reorder data if requested. This should happen before adding new columns.
             if (moveMatchingToTop && result.reorderedData) {
@@ -226,8 +191,17 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
             }
 
             // Step 4: Display frequencies in the output log if requested.
-            if (displayFrequencies && statistics) { 
-                await createOutputLog(statistics);
+            if (displayFrequencies) { 
+                const statistics = generateStatistics({
+                    primaryValues: result.primaryValues,
+                    sequenceValues: result.sequenceValues,
+                    primaryName,
+                    sequentialCount,
+                    sequentialName
+                });
+                if (statistics.length > 0) {
+                    await createOutputLog(statistics);
+                }
             }
 
             onClose();
@@ -247,7 +221,6 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         matchingVariables, 
         sortingVariables, 
         highlightedVariable, setHighlightedVariable,
-        activeTab, setActiveTab,
         sortOrder, setSortOrder,
         primaryCaseIndicator, setPrimaryCaseIndicator,
         primaryName, setPrimaryName,
@@ -262,6 +235,6 @@ export const useDuplicateCases = ({ onClose, activeTab, setActiveTab }: UseDupli
         handleReorderVariable,
         handleReset,
         handleConfirm,
-        // No need to expose: prepareVariablesWithTempId, processWithWorker, createIndicatorVariables, createOutputLog as they are internal
+        // No need to expose: prepareVariablesWithTempId, processDuplicates, generateStatistics, createIndicatorVariables, createOutputLog as they are internal
     };
 }; 

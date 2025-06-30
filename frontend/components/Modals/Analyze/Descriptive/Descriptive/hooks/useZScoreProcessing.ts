@@ -13,16 +13,20 @@ interface ZScoreProcessingParams {
  * pemrosesan dan penyimpanan data Z-score yang diterima dari worker.
  */
 export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => {
-    const { updateCells, ensureColumns } = useDataStore();
-    const { addMultipleVariables } = useVariableStore();
+    const { updateCells } = useDataStore();
+    const { addVariables } = useVariableStore();
 
     const processZScoreData = useCallback(async (zScoreData: ZScoreData | null): Promise<number> => {
         if (!zScoreData) return 0;
 
-        const newVariables: Partial<Variable>[] = [];
-        const bulkCellUpdates: CellUpdate[] = [];
+        const newVariableDefinitions: Partial<Variable>[] = [];
+        const updatesForNewVars: CellUpdate[] = [];
+        const updatesForExistingVars: CellUpdate[] = [];
         const currentVariables = useVariableStore.getState().variables;
-        let nextColumnIndex = currentVariables.length;
+        const variableMap = new Map(currentVariables.map(v => [v.name, v]));
+        let nextColumnIndex = currentVariables.length > 0
+            ? Math.max(...currentVariables.map(v => v.columnIndex)) + 1
+            : 0;
 
         for (const varName in zScoreData) {
             const zData = zScoreData[varName];
@@ -38,44 +42,47 @@ export const useZScoreProcessing = ({ setErrorMsg }: ZScoreProcessingParams) => 
             if (!zData.scores || !zData.variableInfo) continue;
 
             const newVarName = zData.variableInfo.name;
-            const existingVar = currentVariables.find(v => v.name === newVarName);
+            const existingVar = variableMap.get(newVarName);
 
             if (existingVar) {
+                // The Z-score variable already exists. Stage its cell updates.
                 zData.scores.forEach((zScore, rowIndex) => {
                     if (zScore !== "" && zScore !== null && zScore !== undefined) {
-                        bulkCellUpdates.push({ row: rowIndex, col: existingVar.columnIndex, value: zScore });
+                        updatesForExistingVars.push({ row: rowIndex, col: existingVar.columnIndex, value: zScore as string | number });
                     }
                 });
             } else {
+                // This is a new Z-score variable. Stage its definition and cell updates.
                 const variableInfo: Partial<Variable> = {
                     ...zData.variableInfo,
                     columnIndex: nextColumnIndex,
                     align: "right",
                     role: "input",
-                    columns: 64,
+                    columns: 72,
                 };
-                newVariables.push(variableInfo);
-                await ensureColumns(nextColumnIndex);
+                newVariableDefinitions.push(variableInfo);
 
                 zData.scores.forEach((zScore, rowIndex) => {
                     if (zScore !== "" && zScore !== null && zScore !== undefined) {
-                        bulkCellUpdates.push({ row: rowIndex, col: nextColumnIndex, value: zScore });
+                        updatesForNewVars.push({ row: rowIndex, col: nextColumnIndex, value: zScore as string | number });
                     }
                 });
                 nextColumnIndex++;
             }
         }
 
-        if (newVariables.length > 0) {
-            await addMultipleVariables(newVariables);
+        // Atomically create the new variables and insert their data in one operation.
+        if (newVariableDefinitions.length > 0) {
+            await addVariables(newVariableDefinitions, updatesForNewVars);
         }
 
-        if (bulkCellUpdates.length > 0) {
-            await updateCells(bulkCellUpdates);
+        // Update cells for any Z-score variables that already existed.
+        if (updatesForExistingVars.length > 0) {
+            await updateCells(updatesForExistingVars);
         }
 
-        return newVariables.length;
-    }, [ensureColumns, updateCells, addMultipleVariables, setErrorMsg]);
+        return newVariableDefinitions.length;
+    }, [updateCells, addVariables, setErrorMsg]);
 
     return { processZScoreData };
 }; 

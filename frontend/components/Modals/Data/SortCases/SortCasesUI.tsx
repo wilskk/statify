@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,8 @@ import {
     BarChartHorizontal, 
     ChevronUp, 
     ChevronDown, 
-    HelpCircle 
+    HelpCircle,
+    AlertTriangle,
 } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
@@ -31,6 +33,7 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
     setDefaultSortOrder,
     highlightedVariable, 
     setHighlightedVariable,
+    error,
     getSortByVariables,
     handleMoveVariable,
     handleReorderVariable,
@@ -143,6 +146,12 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
                 </DialogHeader>
             )}
             <div className="p-6 overflow-y-auto flex-grow">
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
                 <div className="grid grid-cols-1 gap-6">
                     <VariableListManager
                         availableVariables={availableVariables}

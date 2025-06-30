@@ -89,6 +89,7 @@ export const suggestMeasurementLevel = (
     const allIntegers = allNumeric && columnValues.every(v => Number.isInteger(Number(String(v).trim())));
 
     if (!allNumeric) return { level: "nominal", explanation: "Contains non-numeric values." };
+    if (uniqueCount <= 2) return { level: "nominal", explanation: `Only ${uniqueCount} unique values, suggests binary/nominal.` };
     if (uniqueCount <= 10 && allIntegers) return { level: "ordinal", explanation: `Few unique integers (${uniqueCount}), suggests ordered categories.` };
     
     const labeledValuesCount = (variable.values || []).length;
@@ -96,8 +97,6 @@ export const suggestMeasurementLevel = (
         const percentLabeled = (labeledValuesCount / uniqueCount) * 100;
         if (percentLabeled > 50 && uniqueCount <= 20) return { level: "nominal", explanation: `Many values labeled (${percentLabeled.toFixed(0)}%), suggests nominal.` };
     }
-    
-    if (uniqueCount <= 2) return { level: "nominal", explanation: `Only ${uniqueCount} unique values, suggests binary/nominal.` };
     
     return { level: "scale", explanation: "Numeric with diverse values, suggests scale." };
 };

@@ -2,103 +2,19 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { TourStep as BaseTourStep, HorizontalPosition } from '@/types/tourTypes';
 
 // Constants
-const TABS = {
-  VARIABLES: 'variables' as const,
-  STATISTICS: 'statistics' as const,
-};
-
 const TIMEOUT_DELAY = 200;
 
-export type TabType = typeof TABS.VARIABLES | typeof TABS.STATISTICS;
-
-// Extended TourStep with required tab property
+// This TourStep type is now generic, using 'string' for tab identifiers.
 export type TourStep = BaseTourStep & {
-  requiredTab?: TabType;
+  requiredTab?: string;
   forceChangeTab?: boolean;
 };
 
-// Tab control interface
+// This interface is now generic for any tab-based component.
 export interface TabControlProps {
-  setActiveTab: (tab: TabType) => void;
-  currentActiveTab: TabType;
+  setActiveTab: (tab: string) => void;
+  currentActiveTab: string;
 }
-
-// Define tour steps for Descriptive component
-const baseTourSteps: TourStep[] = [
-  {
-    title: "Variables Selection",
-    content: "Drag variables from the available list to analyze descriptive statistics. Only numeric and date variables are shown.",
-    targetId: "descriptive-available-variables",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📊",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Selected Variables",
-    content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-    targetId: "descriptive-selected-variables",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: 'left',
-    icon: "📋",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Save Standardized Values",
-    content: "Enable this option to create new variables containing standardized values (Z-scores).",
-    targetId: "save-standardized-section",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "💾",
-    requiredTab: TABS.VARIABLES
-  },
-  {
-    title: "Statistics Tab",
-    content: "Click on this tab to configure which statistics to display and their order.",
-    targetId: "descriptive-statistics-tab-trigger",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📈",
-    requiredTab: TABS.VARIABLES,
-    forceChangeTab: true
-  },
-  {
-    title: "Central Tendency",
-    content: "Calculate measures like mean, median, and sum to understand the central values of your data.",
-    targetId: "descriptive-central-tendency",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "🎯",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Dispersion",
-    content: "Analyze data spread with standard deviation, variance, range, minimum and maximum values.",
-    targetId: "descriptive-dispersion",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📊",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Distribution",
-    content: "Examine distribution characteristics with skewness and kurtosis measures.",
-    targetId: "descriptive-distribution",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "📉",
-    requiredTab: TABS.STATISTICS
-  },
-  {
-    title: "Display Order",
-    content: "Choose how to order variables in the results table - by variable list, alphabetically, or by mean values.",
-    targetId: "display-order-section",
-    defaultPosition: 'bottom',
-    defaultHorizontalPosition: null,
-    icon: "🔢",
-    requiredTab: TABS.STATISTICS
-  },
-];
 
 export interface UseTourGuideResult {
   tourActive: boolean;
@@ -112,139 +28,125 @@ export interface UseTourGuideResult {
 }
 
 export const useTourGuide = (
+  initialSteps: TourStep[], // The hook now accepts the steps as a parameter.
   containerType: "dialog" | "sidebar" = "dialog",
   tabControl?: TabControlProps
 ): UseTourGuideResult => {
   const [tourActive, setTourActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetElements, setTargetElements] = useState<Record<string, HTMLElement | null>>({});
-
-  const lastTabRef = useRef<TabType | null>(null);
+  
+  const lastTabRef = useRef<string | null>(null);
   const timeoutRef = useRef<number | undefined>(undefined);
-
-  // Adjust tour steps based on container type
-  const tourSteps = useMemo(() => baseTourSteps.map(step => ({
+  
+  const tourSteps = useMemo(() => initialSteps.map(step => ({
     ...step,
-    horizontalPosition: containerType === "sidebar"
-      ? "left" as HorizontalPosition
+    horizontalPosition: containerType === "sidebar" 
+      ? "left" as HorizontalPosition 
       : step.defaultHorizontalPosition as HorizontalPosition | null,
     position: containerType === "sidebar" ? undefined : step.defaultPosition,
-  })), [containerType]);
-
+  })), [initialSteps, containerType]);
 
   const findTargetElement = useCallback((stepId: string): HTMLElement | null => {
-    try {
-      return document.getElementById(stepId);
-    } catch (error) {
-      console.error(`Error finding element with ID ${stepId}:`, error);
-      return null;
-    }
+    return document.getElementById(stepId);
   }, []);
 
-  const clearTimeout = useCallback(() => {
+  const clearTimeoutCallback = useCallback(() => {
     if (timeoutRef.current !== undefined) {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = undefined;
     }
   }, []);
-  
+
   const refreshTargetElements = useCallback(() => {
     if (!tourActive) return;
-    try {
-      const elements: Record<string, HTMLElement | null> = {};
-      tourSteps.forEach(step => {
-        elements[step.targetId] = findTargetElement(step.targetId);
-      });
-      setTargetElements(elements);
-    } catch (error) {
-      console.error("Error refreshing target elements:", error);
-    }
+    const elements: Record<string, HTMLElement | null> = {};
+    tourSteps.forEach(step => {
+      elements[step.targetId] = findTargetElement(step.targetId);
+    });
+    setTargetElements(elements);
   }, [tourActive, tourSteps, findTargetElement]);
 
-  const getRequiredTabForStep = useCallback((stepIndex: number): TabType | undefined => {
+  const getRequiredTabForStep = useCallback((stepIndex: number): string | undefined => {
     const step = tourSteps[stepIndex];
     return step?.requiredTab;
   }, [tourSteps]);
 
-  const switchTabIfNeeded = useCallback((requiredTab?: TabType) => {
+  const switchTabIfNeeded = useCallback((requiredTab?: string) => {
     if (!tabControl || !requiredTab || tabControl.currentActiveTab === requiredTab) {
       return;
     }
     tabControl.setActiveTab(requiredTab);
     lastTabRef.current = requiredTab;
-    clearTimeout();
+    clearTimeoutCallback();
     timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);
-  }, [tabControl, refreshTargetElements, clearTimeout]);
-
-  useEffect(() => {
-    return () => {
-        clearTimeout();
-    }
-  }, [clearTimeout]);
+  }, [tabControl, refreshTargetElements, clearTimeoutCallback]);
 
   useEffect(() => {
     if (tourActive) {
-      clearTimeout();
-      timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);
+      refreshTargetElements();
+      const requiredTab = getRequiredTabForStep(currentStep);
+      switchTabIfNeeded(requiredTab);
     }
-  }, [tourActive, refreshTargetElements, clearTimeout]);
+  }, [currentStep, tourActive, getRequiredTabForStep, switchTabIfNeeded, refreshTargetElements]);
+
+  const handleResize = useCallback(() => {
+    if (tourActive) {
+      refreshTargetElements();
+    }
+  }, [tourActive, refreshTargetElements]);
 
   useEffect(() => {
-    if (!tourActive || !tabControl) return;
-
-    const step = tourSteps[currentStep];
-    const requiredTab = getRequiredTabForStep(currentStep);
-
-    if (requiredTab && step?.forceChangeTab) {
-        const nextStepIndex = currentStep + 1;
-        if (nextStepIndex < tourSteps.length) {
-            const nextStepRequiredTab = getRequiredTabForStep(nextStepIndex);
-            if (nextStepRequiredTab && nextStepRequiredTab !== requiredTab) {
-                switchTabIfNeeded(nextStepRequiredTab);
-            }
-        }
-    } else if (requiredTab) {
-        switchTabIfNeeded(requiredTab);
-    }
-  }, [currentStep, tourActive, tabControl, tourSteps, getRequiredTabForStep, switchTabIfNeeded]);
-
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      clearTimeoutCallback();
+    };
+  }, [handleResize, clearTimeoutCallback]);
 
   const startTour = useCallback(() => {
     setCurrentStep(0);
     setTourActive(true);
-    if (tabControl) {
-      const firstStepTab = getRequiredTabForStep(0);
-      if (firstStepTab) {
-        tabControl.setActiveTab(firstStepTab);
-        lastTabRef.current = firstStepTab;
-      }
+    const requiredTab = getRequiredTabForStep(0);
+    if (tabControl && tabControl.currentActiveTab !== requiredTab) {
+        switchTabIfNeeded(requiredTab);
     }
-  }, [tabControl, getRequiredTabForStep]);
-
-  const nextStep = useCallback(() => {
-    if (currentStep < tourSteps.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
-  }, [currentStep, tourSteps.length]);
-
-  const prevStep = useCallback(() => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  }, [currentStep]);
+  }, [getRequiredTabForStep, tabControl, switchTabIfNeeded]);
 
   const endTour = useCallback(() => {
     setTourActive(false);
-  }, []);
+    setCurrentStep(0);
+    clearTimeoutCallback();
+  }, [clearTimeoutCallback]);
+
+  const nextStep = useCallback(() => {
+    const nextStepIndex = currentStep + 1;
+    if (nextStepIndex < tourSteps.length) {
+      const step = tourSteps[currentStep];
+      if (step.forceChangeTab) {
+        const nextStep = tourSteps[nextStepIndex];
+        switchTabIfNeeded(nextStep.requiredTab);
+      }
+      setCurrentStep(nextStepIndex);
+    } else {
+      endTour();
+    }
+  }, [currentStep, tourSteps, switchTabIfNeeded, endTour]);
+
+  const prevStep = useCallback(() => {
+    const prevStepIndex = currentStep - 1;
+    if (prevStepIndex >= 0) {
+      const requiredTab = getRequiredTabForStep(prevStepIndex);
+      switchTabIfNeeded(requiredTab);
+      setCurrentStep(prevStepIndex);
+    }
+  }, [currentStep, getRequiredTabForStep, switchTabIfNeeded]);
 
   const currentTargetElement = useMemo(() => {
-    if (!tourActive || tourSteps.length === 0 || currentStep >= tourSteps.length) {
-      return null;
-    }
+    if (!tourActive) return null;
     const currentStepData = tourSteps[currentStep];
-    return currentStepData ? targetElements[currentStepData.targetId] || null : null;
+    return targetElements[currentStepData.targetId] ?? null;
   }, [tourActive, tourSteps, currentStep, targetElements]);
-
 
   return {
     tourActive,

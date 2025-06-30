@@ -226,13 +226,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
             // Add log first and get the ID
             const logId = await addLog({ log: logMsg });
 
-            // Add analytic with log_id
+            // Add analytic with logId
             const analyticId = await addAnalytic(logId, {
               title: "Chart Builder",
               note: "",
             });
 
-            // Add statistic with analytic_id
+            // Add statistic with analyticId
             await addStatistic(analyticId, {
               title: chartType,
               output_data: chartJSON,

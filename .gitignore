@@ -1,67 +1,70 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
-frontend/node_modules
-backend/node_modules
-/.pnp
-.pnp.js
-
-# idea
-.idea
-
-# vscode
-.vscode
-
-# testing
-/coverage
-
-# next.js
-/.next/
-frontend/.next/
-/out/
-
-# production
-/build
-
-# misc
+# =============================================================================
+# GENERAL
+# =============================================================================
+# OS-generated files
 .DS_Store
 *.pem
 
-# debug
+# Log files
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# Local environment variables
 .env*.local
 .env.development
 .env.production
 .env
 
-# vercel
+# =============================================================================
+# DEPENDENCIES & BUILD ARTIFACTS
+# =============================================================================
+# Dependency directories
+**/node_modules
+/.pnp
+.pnp.js
+
+# Build output
+**/build
+**/dist
+/out/
+
+# Test results
+/coverage
+
+# =============================================================================
+# FRAMEWORK & TOOLING
+# =============================================================================
+# Next.js & SWC
+/.next/
+/.swc/
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-# next-env.d.ts (Keep if not moved to frontend)
-
-# wasm
+# Wasm
 **/wasm/target
 **/wasm/Cargo.lock
 
-# wasm-test
-/wasm-test/node_modules
-/wasm-test/.next
-/wasm-test
+# IDE & Editor
+.idea
+.vscode
 
-# package-lock.json (Keep if maybe used elsewhere, or remove if definitely unused)
-
-# dist
-/dist
-backend/dist
-/_test/
-
-# node_modules
-_tes/
+# =============================================================================
+# PROJECT-SPECIFIC
+# =============================================================================
+# Documentation folder
 /_skripsi penulisan
+
+# Test directories that might be temporary
+/_test/
+/wasm-test/
+/frontend/.next
+/frontend/docs
+/frontend/docs
+/frontend/docs

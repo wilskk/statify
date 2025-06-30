@@ -253,10 +253,10 @@ const OpenSavFileStep: React.FC<OpenSavFileStepProps> = ({
                 <FolderOpen size={18} className="mr-2.5 flex-shrink-0 text-primary" />
                 <div className="flex-grow overflow-hidden">
                     <h3 className="font-semibold text-lg text-popover-foreground">
-                        Select .sav File
+                        Open SAV File
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        Select an SPSS statistics file (.sav) to load into the application.
+                        Open an SPSS statistics file (.sav) to load it into the application.
                     </p>
                 </div>
             </div>

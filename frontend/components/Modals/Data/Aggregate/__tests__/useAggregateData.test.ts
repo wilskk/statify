@@ -9,9 +9,9 @@ jest.mock('@/stores/useVariableStore');
 jest.mock('@/stores/useDataStore');
 jest.mock('@/stores/useModalStore');
 
-const mockUseVariableStore = useVariableStore as jest.Mock;
-const mockUseDataStore = useDataStore as jest.Mock;
-const mockUseModalStore = useModalStore as jest.Mock;
+const mockUseVariableStore = useVariableStore as unknown as jest.Mock;
+const mockUseDataStore = useDataStore as unknown as jest.Mock;
+const mockUseModalStore = useModalStore as unknown as jest.Mock;
 
 const mockAddVariable = jest.fn();
 const mockUpdateCells = jest.fn();
@@ -30,28 +30,27 @@ const sampleVariables: Variable[] = [
     { columnIndex: 0, name: 'Gender', type: 'STRING', label: 'Gender', measure: 'nominal' },
     { columnIndex: 1, name: 'Region', type: 'STRING', label: 'Region', measure: 'nominal' },
     { columnIndex: 2, name: 'Salary', type: 'NUMERIC', label: 'Salary', measure: 'scale' },
+    { columnIndex: 3, name: 'Age', type: 'NUMERIC', label: 'Age', measure: 'scale' },
 ];
 
 const sampleData = [
-    ['Male', 'North', 50000],
-    ['Female', 'North', 60000],
-    ['Male', 'South', 55000],
-    ['Female', 'South', 65000],
-    ['Male', 'North', 52000],
+    ['Male', 'North', 50000, 34],
+    ['Female', 'North', 60000, 29],
+    ['Male', 'South', 55000, 45],
+    ['Female', 'South', 65000, 39],
+    ['Male', 'North', 52000, 27],
 ];
 
 describe('useAggregateData', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        mockUseVariableStore.mockReturnValue({
+        const variableStoreState = {
             variables: sampleVariables,
             addVariable: mockAddVariable,
-            getState: () => ({
-                addVariable: mockAddVariable,
-                variables: sampleVariables,
-            }),
-        });
+        };
+        mockUseVariableStore.mockReturnValue(variableStoreState);
+        (useVariableStore as any).getState = () => variableStoreState;
 
         mockUseDataStore.mockReturnValue({
             data: sampleData,
@@ -70,9 +69,10 @@ describe('useAggregateData', () => {
         expect(result.current.aggregatedVariables).toEqual([]);
     });
 
-    it('should move a variable to break variables', () => {
+    it('should move a variable to break variables and back', () => {
         const { result } = renderHook(() => useAggregateData());
 
+        // Move to break
         act(() => {
             result.current.moveToBreak(sampleVariables[0] as any);
         });
@@ -80,6 +80,31 @@ describe('useAggregateData', () => {
         expect(result.current.breakVariables).toHaveLength(1);
         expect(result.current.breakVariables[0].name).toBe('Gender');
         expect(result.current.availableVariables).toHaveLength(sampleVariables.length - 1);
+
+        // Move from break
+        act(() => {
+            result.current.moveFromBreak(result.current.breakVariables[0] as any);
+        });
+
+        expect(result.current.breakVariables).toHaveLength(0);
+        expect(result.current.availableVariables).toHaveLength(sampleVariables.length);
+    });
+
+    it('should move a variable to aggregated variables and back', () => {
+        const { result } = renderHook(() => useAggregateData());
+
+        // Move to aggregated
+        act(() => {
+            result.current.moveToAggregated(sampleVariables[2] as any);
+        });
+        expect(result.current.aggregatedVariables).toHaveLength(1);
+
+        // Move from aggregated
+        act(() => {
+            result.current.moveFromAggregated(result.current.aggregatedVariables[0]);
+        });
+        expect(result.current.aggregatedVariables).toHaveLength(0);
+        expect(result.current.availableVariables).toHaveLength(sampleVariables.length); // Should not change available vars
     });
 
     it('should move a variable to aggregated variables with default function', () => {
@@ -94,6 +119,79 @@ describe('useAggregateData', () => {
         expect(aggVar.baseVarName).toBe('Salary');
         expect(aggVar.function).toBe('MEAN'); // Default for numeric
         expect(aggVar.name).toBe('Salary_mean');
+    });
+
+    it('should apply a new function to an aggregated variable', () => {
+        const { result } = renderHook(() => useAggregateData());
+        act(() => {
+            result.current.moveToAggregated(sampleVariables[2] as any);
+        });
+
+        act(() => {
+            result.current.setCurrentEditingVariable(result.current.aggregatedVariables[0]);
+            result.current.setSelectedFunction('SUM');
+            result.current.setFunctionCategory('summary');
+            result.current.applyFunction();
+        });
+
+        const updatedVar = result.current.aggregatedVariables[0];
+        expect(updatedVar.function).toBe('SUM');
+        expect(updatedVar.name).toBe('Salary_sum');
+        expect(updatedVar.displayName).toContain("SUM(Salary)");
+    });
+
+    it('should apply a new name and label', () => {
+        const { result } = renderHook(() => useAggregateData());
+        act(() => {
+            result.current.moveToAggregated(sampleVariables[2] as any);
+        });
+
+        act(() => {
+            result.current.setCurrentEditingVariable(result.current.aggregatedVariables[0]);
+            result.current.setNewVariableName('AvgSalary');
+            result.current.setNewVariableLabel('Average Salary');
+            result.current.applyNameLabel();
+        });
+
+        const updatedVar = result.current.aggregatedVariables[0];
+        expect(updatedVar.name).toBe('AvgSalary');
+        expect(updatedVar.label).toBe('Average Salary');
+        expect(updatedVar.displayName).toContain("AvgSalary 'Average Salary'");
+    });
+
+    it('should show error when applying a duplicate name', () => {
+        const { result } = renderHook(() => useAggregateData());
+        act(() => {
+            result.current.moveToAggregated(sampleVariables[2] as any); // Creates Salary_mean
+            result.current.moveToAggregated(sampleVariables[3] as any); // Creates Age_mean
+        });
+
+        act(() => {
+            result.current.setCurrentEditingVariable(result.current.aggregatedVariables[1]); // Editing Age_mean
+            result.current.setNewVariableName('Salary_mean'); // Try to use existing name
+            result.current.applyNameLabel();
+        });
+
+        expect(result.current.errorMessage).toBe("A variable with this name already exists.");
+        expect(result.current.errorDialogOpen).toBe(true);
+    });
+
+    it('should reset all state', () => {
+        const { result } = renderHook(() => useAggregateData());
+        act(() => {
+            result.current.moveToBreak(sampleVariables[0] as any);
+            result.current.moveToAggregated(sampleVariables[2] as any);
+            result.current.setAddNumberOfCases(true);
+        });
+
+        act(() => {
+            result.current.handleReset();
+        });
+
+        expect(result.current.breakVariables).toEqual([]);
+        expect(result.current.aggregatedVariables).toEqual([]);
+        expect(result.current.availableVariables).toEqual(sampleVariables);
+        expect(result.current.addNumberOfCases).toBe(false);
     });
 
     it('should handle confirming aggregation', async () => {
@@ -129,12 +227,11 @@ describe('useAggregateData', () => {
         expect(updateCalls).toContainEqual({ row: 3, col: 3, value: femaleAvg });
         expect(updateCalls).toContainEqual({ row: 4, col: 3, value: maleAvg });
 
-
         expect(mockSetStatisticProgress).toHaveBeenCalledWith(false);
         expect(closeModal).toHaveBeenCalledTimes(1);
     });
 
-     it('should add a number of cases variable when requested', async () => {
+    it('should add a number of cases variable when requested', async () => {
         const { result } = renderHook(() => useAggregateData());
         const closeModal = jest.fn();
 
@@ -159,10 +256,10 @@ describe('useAggregateData', () => {
         const updateCalls = mockUpdateCells.mock.calls[0][0];
         expect(updateCalls).toHaveLength(sampleData.length);
 
-        expect(updateCalls).toContainEqual({ row: 0, col: 3, value: 3 });
-        expect(updateCalls).toContainEqual({ row: 1, col: 3, value: 2 });
-        expect(updateCalls).toContainEqual({ row: 2, col: 3, value: 3 });
-        expect(updateCalls).toContainEqual({ row: 3, col: 3, value: 2 });
-        expect(updateCalls).toContainEqual({ row: 4, col: 3, value: 3 });
+        expect(updateCalls).toContainEqual({ row: 0, col: 4, value: 3 });
+        expect(updateCalls).toContainEqual({ row: 1, col: 4, value: 2 });
+        expect(updateCalls).toContainEqual({ row: 2, col: 4, value: 3 });
+        expect(updateCalls).toContainEqual({ row: 3, col: 4, value: 2 });
+        expect(updateCalls).toContainEqual({ row: 4, col: 4, value: 3 });
     });
 }); 

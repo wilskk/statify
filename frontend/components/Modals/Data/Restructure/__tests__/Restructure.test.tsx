@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RestructureDataWizard from '../index';
 import { useRestructure, UseRestructureReturn, RestructureMethod } from '../hooks/useRestructure';
@@ -8,7 +8,7 @@ jest.mock('../hooks/useRestructure');
 
 const mockedUseRestructure = useRestructure as jest.Mock;
 
-const mockHookValues: UseRestructureReturn = {
+const getMockHookValues = (overrides: Partial<UseRestructureReturn> = {}): UseRestructureReturn => ({
     currentStep: 1,
     activeTab: 'type',
     method: RestructureMethod.VariablesToCases,
@@ -33,66 +33,97 @@ const mockHookValues: UseRestructureReturn = {
     handleFinish: jest.fn(),
     handleMoveVariable: jest.fn(),
     handleReorderVariable: jest.fn(),
-    validateCurrentStep: jest.fn(),
-    prepareVariablesWithTempId: jest.fn(),
-};
+    validateCurrentStep: jest.fn().mockReturnValue([]),
+    prepareVariablesWithTempId: jest.fn(vars => vars.map(v => ({...v, tempId: v.columnIndex.toString()}))),
+    ...overrides,
+});
 
-describe('RestructureDataWizard', () => {
+describe('RestructureDataWizard UI', () => {
     beforeEach(() => {
-        // Reset mocks before each test
         jest.clearAllMocks();
-        // Provide a default mock implementation
-        mockedUseRestructure.mockReturnValue(mockHookValues);
     });
 
-    it('should render the first step and allow method selection', async () => {
+    it('should render step 1 with disabled tabs and correct default selection', () => {
+        mockedUseRestructure.mockReturnValue(getMockHookValues());
         render(<RestructureDataWizard onClose={jest.fn()} />);
 
-        expect(screen.getByText('Select Restructure Method')).toBeInTheDocument();
+        expect(screen.getByText(/Select Restructure Method/i)).toBeInTheDocument();
         
-        // Check if the default method is selected
+        // Check tabs state
+        expect(screen.getByRole('tab', { name: 'Method' })).not.toBeDisabled();
+        expect(screen.getByRole('tab', { name: 'Variables' })).toBeDisabled();
+        expect(screen.getByRole('tab', { name: 'Options' })).toBeDisabled();
+        
+        // Check default radio button
         const variablesToCasesRadio = screen.getByText('Variables to Cases').parentElement?.parentElement?.querySelector('input[type="radio"]');
         expect(variablesToCasesRadio).toBeChecked();
-
-        // Simulate user clicking on another method
-        const casesToVariablesOption = screen.getByText('Cases to Variables');
-        await userEvent.click(casesToVariablesOption);
-        
-        // Verify that the setMethod function was called
-        expect(mockHookValues.setMethod).toHaveBeenCalledWith(RestructureMethod.CasesToVariables);
     });
 
-    it('should call handleNext when the "Next" button is clicked', async () => {
-        render(<RestructureDataWizard onClose={jest.fn()} />);
+    it('should show correct variable lists on step 2 for "Variables to Cases"', async () => {
+        const mockHandleNext = jest.fn().mockImplementation(() => {
+            const currentMock = mockedUseRestructure.mock.results[0].value;
+            mockedUseRestructure.mockReturnValue({
+                ...currentMock,
+                currentStep: 2,
+                activeTab: 'variables',
+            });
+            rerender(<RestructureDataWizard onClose={jest.fn()} />);
+        });
+        mockedUseRestructure.mockReturnValue(getMockHookValues({ handleNext: mockHandleNext }));
+
+        const { rerender } = render(<RestructureDataWizard onClose={jest.fn()} />);
         
         const nextButton = screen.getByRole('button', { name: /next/i });
         await userEvent.click(nextButton);
 
-        expect(mockHookValues.handleNext).toHaveBeenCalledTimes(1);
+        expect(mockHandleNext).toHaveBeenCalled();
+        expect(screen.getByText('Variables to Restructure')).toBeInTheDocument();
+        expect(screen.getByText(/Index Variables/)).toBeInTheDocument();
+        expect(screen.queryByText(/Identifier Variables/)).not.toBeInTheDocument();
     });
-    
-    it('should show "Finish" button on the last step and call handleFinish', async () => {
-        // Mock the hook to be on the last step
-        mockedUseRestructure.mockReturnValue({
-            ...mockHookValues,
+
+    it('should show correct variable lists on step 2 for "Cases to Variables"', async () => {
+        const mockHandleNext = jest.fn().mockImplementation(() => {
+            const currentMock = mockedUseRestructure.mock.results[0].value;
+            mockedUseRestructure.mockReturnValue({
+                ...currentMock,
+                method: RestructureMethod.CasesToVariables,
+                currentStep: 2,
+                activeTab: 'variables',
+            });
+            rerender(<RestructureDataWizard onClose={jest.fn()} />);
+        });
+        mockedUseRestructure.mockReturnValue(getMockHookValues({ 
+            method: RestructureMethod.CasesToVariables,
+            handleNext: mockHandleNext 
+        }));
+
+        const { rerender } = render(<RestructureDataWizard onClose={jest.fn()} />);
+        await userEvent.click(screen.getByRole('button', { name: /next/i }));
+
+        expect(mockHandleNext).toHaveBeenCalled();
+        expect(screen.getByText('Variables to Restructure')).toBeInTheDocument();
+        expect(screen.getByText(/Identifier Variables/)).toBeInTheDocument();
+        expect(screen.queryByText(/Index Variables/)).not.toBeInTheDocument();
+    });
+
+    it('should show correct options on step 3 for "Variables to Cases"', async () => {
+         mockedUseRestructure.mockReturnValue(getMockHookValues({
             currentStep: 3,
             activeTab: 'options',
-        });
-
+            method: RestructureMethod.VariablesToCases,
+        }));
         render(<RestructureDataWizard onClose={jest.fn()} />);
-        
-        const finishButton = screen.getByRole('button', { name: /finish/i });
-        expect(finishButton).toBeInTheDocument();
-        
-        await userEvent.click(finishButton);
-        expect(mockHookValues.handleFinish).toHaveBeenCalledTimes(1);
+
+        expect(screen.getByLabelText(/Create count variable/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Create index variable/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Drop empty variables/i)).not.toBeInTheDocument();
     });
 
     it('should display validation errors when they exist', () => {
-        mockedUseRestructure.mockReturnValue({
-            ...mockHookValues,
+        mockedUseRestructure.mockReturnValue(getMockHookValues({
             validationErrors: ['This is a test error.'],
-        });
+        }));
 
         render(<RestructureDataWizard onClose={jest.fn()} />);
         

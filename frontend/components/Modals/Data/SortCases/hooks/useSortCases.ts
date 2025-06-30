@@ -10,7 +10,7 @@ interface UseSortCasesProps {
 
 export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     const { sortData } = useDataStore();
-    const { variables: storeVariables } = useVariableStore(); // Renamed variables to storeVariables
+    const { variables: storeVariables } = useVariableStore();
 
     const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
         return vars.map(v => ({
@@ -23,8 +23,7 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     const [sortByConfigs, setSortByConfigs] = useState<SortVariableConfig[]>([]);
     const [defaultSortOrder, setDefaultSortOrder] = useState<"asc" | "desc">("asc");
     const [highlightedVariable, setHighlightedVariable] = useState<{ id: string; source: string } | null>(null);
-    // saveSortedData, fileName, createIndex states are not used in the current SortCasesContent logic, so they are omitted for now.
-    // If they become used, they can be added back.
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const sortByVarColIndexes = sortByConfigs.map(config => config.variable.columnIndex);
@@ -37,6 +36,7 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     }, [sortByConfigs]);
 
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
+        setError(null);
         if (fromListId === 'available' && toListId === 'sortBy') {
             const newConfig: SortVariableConfig = { variable, direction: defaultSortOrder };
             setSortByConfigs(prev => {
@@ -45,15 +45,14 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
                 else newConfigs.push(newConfig);
                 return newConfigs;
             });
-            // setAvailableVariables(prev => prev.filter(v => v.tempId !== variable.tempId)); // This will be handled by useEffect
         } else if (fromListId === 'sortBy' && toListId === 'available') {
             setSortByConfigs(prev => prev.filter(c => c.variable.tempId !== variable.tempId));
-            // setAvailableVariables(prev => [...prev, variable].sort((a,b) => a.columnIndex - b.columnIndex)); // This will be handled by useEffect
         }
         setHighlightedVariable(null);
     }, [defaultSortOrder]);
 
     const handleReorderVariable = useCallback((listId: string, reorderedVariables: Variable[]) => {
+        setError(null);
         if (listId === 'sortBy') {
             setSortByConfigs(prevConfigs => 
                 reorderedVariables.map(variable => {
@@ -67,6 +66,7 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     }, [defaultSortOrder]);
 
     const changeSortDirection = (tempId: string, direction: 'asc' | 'desc') => {
+        setError(null);
         setSortByConfigs(prev =>
             prev.map(config =>
                 config.variable.tempId === tempId ? { ...config, direction } : config
@@ -75,6 +75,7 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     };
 
     const moveVariableUp = (tempId: string) => {
+        setError(null);
         setSortByConfigs(prev => {
             const index = prev.findIndex(c => c.variable.tempId === tempId);
             if (index <= 0) return prev;
@@ -85,6 +86,7 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     };
 
     const moveVariableDown = (tempId: string) => {
+        setError(null);
         setSortByConfigs(prev => {
             const index = prev.findIndex(c => c.variable.tempId === tempId);
             if (index === -1 || index >= prev.length - 1) return prev;
@@ -95,32 +97,27 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
     };
 
     const performSort = async () => {
+        setError(null);
         if (sortByConfigs.length === 0) {
-            // Consider using a state for error messages to display in UI instead of alert
-            alert("Please select at least one variable to sort by");
+            setError("Please select at least one variable to sort by");
             return;
         }
         try {
-            // Sorting logic iterates through sortByConfigs, applying sortData for each.
-            // This implies sortData modifies the store's data array in place, or returns a new sorted array.
-            // If sortData is not synchronous or doesn't immediately reflect in `data` from useDataStore,
-            // this loop might not behave as expected for multi-level sorts without awaiting or handling chained sorting.
-            // For now, assuming sortData correctly handles this or the data array is updated before the next iteration.
-            for (const config of sortByConfigs) {
+            const reversedConfigs = [...sortByConfigs].reverse();
+            for (const config of reversedConfigs) {
                 await sortData(config.variable.columnIndex, config.direction);
             }
             onClose();
         } catch (error) {
             console.error("Error during sort operation:", error);
-            // Consider using a state for error messages
-            alert("An error occurred while sorting the data");
+            setError("An error occurred while sorting the data");
         }
     };
 
     const handleOk = () => performSort();
 
     const handleReset = () => {
-        // availableVariables will be repopulated by useEffect due to sortByConfigs change
+        setError(null);
         setSortByConfigs([]);
         setDefaultSortOrder("asc");
         setHighlightedVariable(null);
@@ -128,10 +125,14 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
 
     return {
         availableVariables,
-        sortByConfigs, setSortByConfigs, // Expose setSortByConfigs if needed by component, e.g., for advanced direct manipulation not covered by handlers
-        defaultSortOrder, setDefaultSortOrder,
-        highlightedVariable, setHighlightedVariable,
-        getSortByVariables, // This is a derived state, could be calculated in component or here
+        sortByConfigs, 
+        setSortByConfigs,
+        defaultSortOrder, 
+        setDefaultSortOrder,
+        highlightedVariable, 
+        setHighlightedVariable,
+        error,
+        getSortByVariables,
         handleMoveVariable,
         handleReorderVariable,
         changeSortDirection,
@@ -139,7 +140,5 @@ export const useSortCases = ({ onClose }: UseSortCasesProps) => {
         moveVariableDown,
         handleOk,
         handleReset,
-        // prepareVariablesWithTempId is internal, not needed by component
-        // performSort is internal, exposed via handleOk
     };
 }; 

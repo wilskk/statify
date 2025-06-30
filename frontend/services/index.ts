@@ -8,4 +8,18 @@ export * from './api';
 // export * from './worker';
 
 // Export analyze services (if any are exported)
-// export * from './analyze'; 
+// export * from './analyze';
+
+import { dataService } from "./data";
+import { metaService } from "./data";
+import { variableService } from "./data";
+import * as savService from "./api/savService";
+import { sheetService } from "./SheetService";
+
+export {
+    dataService,
+    metaService,
+    variableService,
+    savService,
+    sheetService,
+}; 

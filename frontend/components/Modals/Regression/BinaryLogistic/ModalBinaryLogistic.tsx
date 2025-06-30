@@ -166,7 +166,7 @@ const ModalBinaryLogistic: React.FC<ModalBinaryLogisticProps> = ({ onClose }) =>
       // 2. Tambahkan Analytic dengan judul "Binary Logistic Regression"
       const analytic = {
         title: "Binary Logistic Regression",
-        log_id: logId,
+        logId: logId,
         note: "",
       };
       const analyticId = await addAnalytic(logId, analytic);

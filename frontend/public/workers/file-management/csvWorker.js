@@ -51,7 +51,7 @@ self.onmessage = (e) => {
         width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v=>v.length), variableName.length)),
         decimals: isNumeric ? Math.min(potentialDecimals,16) : 0,
         label: '',
-        columns: 64,
+        columns: 72,
         align: isNumeric ? 'right':'left',
         measure: isNumeric ? 'scale':'nominal',
         role: 'input',

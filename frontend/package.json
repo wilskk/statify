@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --logHeapUsage",
-    "test:watch": "jest --watch --logHeapUsage"
+    "test:watch": "jest --watch --logHeapUsage",
+    "test:failed": "jest --onlyFailures",
+    "test:bail": "jest --bail"
   },
   "dependencies": {
     "@codious/sav-reader-writer": "^1.1.4",

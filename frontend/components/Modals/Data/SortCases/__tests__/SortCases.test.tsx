@@ -23,8 +23,8 @@ jest.mock('@/components/Common/VariableListManager', () => ({
 }));
 
 const mockVariables: Variable[] = [
-    { tempId: '1', name: 'VAR1', label: 'Variable 1', type: 'NUMERIC', measure: 'scale', columnIndex: 0, width: 8, decimals: 0, values: [], missing: {}, align: 'left', role: 'input', columns: 8 },
-    { tempId: '2', name: 'VAR2', label: 'Variable 2', type: 'STRING', measure: 'nominal', columnIndex: 1, width: 8, decimals: 0, values: [], missing: {}, align: 'left', role: 'input', columns: 8  },
+    { tempId: '1', name: 'VAR1', label: 'Variable 1', type: 'NUMERIC', measure: 'scale', columnIndex: 0, width: 8, decimals: 0, values: [], missing: null, align: 'left', role: 'input', columns: 8 },
+    { tempId: '2', name: 'VAR2', label: 'Variable 2', type: 'STRING', measure: 'nominal', columnIndex: 1, width: 8, decimals: 0, values: [], missing: null, align: 'left', role: 'input', columns: 8  },
 ];
 
 const mockSortByConfigs: SortVariableConfig[] = [
@@ -49,6 +49,7 @@ describe('SortCasesUI', () => {
         setDefaultSortOrder: jest.fn(),
         highlightedVariable: null,
         setHighlightedVariable: jest.fn(),
+        error: null,
         getSortByVariables: () => [],
         handleMoveVariable: mockHandleMoveVariable,
         handleReorderVariable: jest.fn(),
@@ -72,6 +73,11 @@ describe('SortCasesUI', () => {
         expect(screen.getByText('Sort Cases')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /OK/i })).toBeInTheDocument();
         expect(screen.getByTestId('variable-list-manager')).toBeInTheDocument();
+    });
+
+    it('displays an error message when provided', () => {
+        renderComponent({ error: 'This is a test error' });
+        expect(screen.getByText('This is a test error')).toBeInTheDocument();
     });
 
     it('calls handleOk, handleReset, and onClose when buttons are clicked', async () => {
@@ -99,16 +105,14 @@ describe('SortCasesUI', () => {
     it('shows sort controls when a variable in the "Sort By" list is highlighted', () => {
         renderComponent({
             sortByConfigs: mockSortByConfigs,
-            getSortByVariables: () => [mockVariables[0]], // Return the variable for the list
+            getSortByVariables: () => [mockVariables[0]],
             highlightedVariable: { id: '1', source: 'sortBy' },
         });
 
-        // The footer with sort controls should now be visible
         expect(screen.getByText('Sort Order:')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /move up/i })).toBeInTheDocument();
-        // The 'Ascending' checkbox corresponding to the highlighted variable should be checked
-        const ascendingCheckbox = screen.getByLabelText('Ascending') as HTMLInputElement;
-        expect(ascendingCheckbox.checked).toBe(true);
+        const ascendingCheckbox = screen.getByRole('checkbox', { name: /ascending/i });
+        expect(ascendingCheckbox).toBeChecked();
     });
     
     it('calls changeSortDirection when a sort direction checkbox is clicked', async () => {
@@ -119,7 +123,7 @@ describe('SortCasesUI', () => {
             highlightedVariable: { id: '1', source: 'sortBy' },
         });
 
-        const descendingCheckbox = screen.getByLabelText('Descending');
+        const descendingCheckbox = screen.getByRole('checkbox', { name: /descending/i });
         await user.click(descendingCheckbox);
         
         expect(mockChangeSortDirection).toHaveBeenCalledWith('1', 'desc');
@@ -133,7 +137,7 @@ describe('SortCasesUI', () => {
                 { variable: mockVariables[0], direction: 'asc' },
             ],
             getSortByVariables: () => [mockVariables[1], mockVariables[0]],
-            highlightedVariable: { id: '1', source: 'sortBy' }, // Highlight VAR1
+            highlightedVariable: { id: '1', source: 'sortBy' },
         });
         
         const moveUpButton = screen.getByRole('button', { name: /move up/i });

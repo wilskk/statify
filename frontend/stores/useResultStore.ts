@@ -24,12 +24,12 @@ export interface ResultState {
     updateLog: (id: number, logData: Partial<Omit<Log, "id" | "analytics">>) => Promise<void>;
     deleteLog: (logId: number) => Promise<void>;
 
-    addAnalytic: (logId: number, analytic: Omit<Analytic, "id" | "log_id" | "statistics">) => Promise<number>;
-    updateAnalytic: (analyticId: number, analyticData: Partial<Omit<Analytic, "id" | "log_id" | "statistics">>) => Promise<void>;
+    addAnalytic: (logId: number, analytic: Omit<Analytic, "id" | "logId" | "statistics">) => Promise<number>;
+    updateAnalytic: (analyticId: number, analyticData: Partial<Omit<Analytic, "id" | "logId" | "statistics">>) => Promise<void>;
     deleteAnalytic: (analyticId: number) => Promise<void>;
 
-    addStatistic: (analyticId: number, statistic: Omit<Statistic, "id" | "analytic_id">) => Promise<number>;
-    updateStatistic: (statisticId: number, statisticData: Partial<Omit<Statistic, "id" | "analytic_id">>) => Promise<void>;
+    addStatistic: (analyticId: number, statistic: Omit<Statistic, "id" | "analyticId">) => Promise<number>;
+    updateStatistic: (statisticId: number, statisticData: Partial<Omit<Statistic, "id" | "analyticId">>) => Promise<void>;
     deleteStatistic: (statisticId: number) => Promise<void>;
 
     clearAll: () => Promise<void>;
@@ -128,7 +128,7 @@ export const useResultStore = create<ResultState>()(
                 try {
                     const analytic: Analytic = {
                         ...analyticData,
-                        log_id: logId,
+                        logId: logId,
                     };
 
                     const analyticId = await resultService.addAnalytic(logId, analytic);
@@ -200,7 +200,7 @@ export const useResultStore = create<ResultState>()(
                 try {
                     const statistic: Statistic = {
                         ...statisticData,
-                        analytic_id: analyticId
+                        analyticId: analyticId
                     };
 
                     const statisticId = await resultService.addStatistic(analyticId, statistic);

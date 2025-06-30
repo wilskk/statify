@@ -14,6 +14,7 @@ import { TourCard } from "@/components/ui/TourCard";
 import { dashboardTours } from "@/constants/tours";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load ModalManager untuk performa yang lebih baik
 const ModalManager = lazy(() => import("@/components/Modals/ModalManager"));
@@ -194,6 +195,7 @@ export default function DashboardLayout({
                         <Footer />
                     </footer>
                 </div>
+                <Toaster />
             </Onborda>
         </OnbordaProvider>
     );
