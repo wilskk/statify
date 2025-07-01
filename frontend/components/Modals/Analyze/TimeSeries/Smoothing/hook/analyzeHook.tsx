@@ -51,9 +51,8 @@ export function useAnalyzeHook(
     const prepareData = () => {
         // Ambil variabel data yang dipilih user (biasanya 1 variabel)
         const dataVarDef = storeVariables[0];
-        if (!dataVarDef) {
-            throw new Error("Selected variable not found");
-        }
+        if (!dataVarDef) throw new Error("Selected variable not found");
+        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric");
 
         const dataValues = data.map((row: any) => {
             const val = row[dataVarDef.columnIndex];

@@ -26,6 +26,7 @@ export function useAnalyzeHook(
     const prepareData = () => {
         const dataVarDef = storeVariables[0];
         if (!dataVarDef) throw new Error("Selected variable not found");
+        if (dataVarDef.type !== "NUMERIC") throw new Error("Selected variable is not numeric");
 
         let maxIndex = -1;
         data.forEach((row: any, idx: number) => {
