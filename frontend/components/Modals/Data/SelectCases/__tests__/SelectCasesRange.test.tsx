@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import SelectCasesRange from '../dialogs/SelectCasesRange';
+import { Dialog } from '@/components/ui/dialog';
 
 describe('SelectCasesRange Dialog', () => {
     const onContinue = jest.fn();
@@ -13,7 +14,11 @@ describe('SelectCasesRange Dialog', () => {
     });
 
     it('renders correctly', () => {
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         expect(screen.getByText('Select Cases: Range')).toBeInTheDocument();
         expect(screen.getByLabelText('First Case:')).toBeInTheDocument();
         expect(screen.getByLabelText('Last Case:')).toBeInTheDocument();
@@ -21,7 +26,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('allows typing in the input fields', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         
         const firstCaseInput = screen.getByLabelText('First Case:');
         const lastCaseInput = screen.getByLabelText('Last Case:');
@@ -35,7 +44,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('calls onContinue with the correct range data', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         
         const firstCaseInput = screen.getByLabelText('First Case:');
         const lastCaseInput = screen.getByLabelText('Last Case:');
@@ -53,7 +66,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('calls onContinue with only first case if last case is empty', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         
         const firstCaseInput = screen.getByLabelText('First Case:');
         await user.type(firstCaseInput, '10');
@@ -65,7 +82,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('shows validation error if first case is greater than last case', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         
         const firstCaseInput = screen.getByLabelText('First Case:');
         const lastCaseInput = screen.getByLabelText('Last Case:');
@@ -81,7 +102,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('shows validation error for non-positive case numbers', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         
         const firstCaseInput = screen.getByLabelText('First Case:');
         const lastCaseInput = screen.getByLabelText('Last Case:');
@@ -97,7 +122,11 @@ describe('SelectCasesRange Dialog', () => {
 
     it('calls onClose when Cancel is clicked', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRange onClose={onClose} onContinue={onContinue} />);
+        render(
+            <Dialog open onOpenChange={() => {}}>
+                <SelectCasesRange onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
         const cancelButton = screen.getByRole('button', { name: 'Cancel' });
         await user.click(cancelButton);
         expect(onClose).toHaveBeenCalledTimes(1);

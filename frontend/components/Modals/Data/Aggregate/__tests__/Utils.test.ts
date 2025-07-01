@@ -4,7 +4,7 @@ import {
     mapUIFunctionToCalculationFunction,
     getFunctionDisplay,
     calculateAggregateValue,
-} from '../Utils';
+} from '../aggregateUtils';
 
 describe('Aggregate Utils', () => {
 

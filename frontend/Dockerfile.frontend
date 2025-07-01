@@ -51,9 +51,6 @@ COPY tailwind.config.ts ./
 COPY --from=builder /app/frontend/.next ./.next
 COPY --from=builder /app/frontend/public ./public
 COPY --from=builder /app/frontend/.env.production ./.env.production
-# Ensure WASM files are copied if they exist
-RUN mkdir -p ./wasm
-COPY --from=builder /app/frontend/wasm/ ./wasm/
 
 EXPOSE 3001
 

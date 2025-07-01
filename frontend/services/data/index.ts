@@ -1,9 +1,11 @@
 import dataService from './DataService';
 import variableService from './VariableService';
 import sheetService from './SheetService';
+import metaService from './MetaService';
 
 export {
   dataService,
+  metaService,
   variableService,
   sheetService
 };

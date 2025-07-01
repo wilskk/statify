@@ -63,74 +63,79 @@ export function evaluateCondition(expression: string, row: any[], variables: Var
  * @returns Processed expression with function calls replaced by their results
  */
 function processFunctions(expression: string, row: any[], variables: Variable[]): string {
+  // Helper to call processFunction with row & variables context
+  const pf = (
+    expr: string,
+    fnName: string,
+    evaluator: (args: any[]) => any
+  ) => processFunction(expr, fnName, evaluator, row, variables);
+
   let result = expression;
-  
-  // Process different function types
-  
+
   // Math functions
-  result = processFunction(result, "ABS", (args) => Math.abs(parseFloat(args[0])));
-  result = processFunction(result, "SQRT", (args) => {
-    const value = parseFloat(args[0]);
+  result = pf(result, "ABS", (args) => Math.abs(parseFloat(args[0] as any)));
+  result = pf(result, "SQRT", (args) => {
+    const value = parseFloat(args[0] as any);
     if (value < 0) throw new Error("Cannot take square root of negative number");
     return Math.sqrt(value);
   });
-  result = processFunction(result, "ROUND", (args) => Math.round(parseFloat(args[0])));
-  result = processFunction(result, "FLOOR", (args) => Math.floor(parseFloat(args[0])));
-  result = processFunction(result, "CEIL", (args) => Math.ceil(parseFloat(args[0])));
-  result = processFunction(result, "INT", (args) => Math.floor(parseFloat(args[0])));
-  result = processFunction(result, "MAX", (args) => {
+  result = pf(result, "ROUND", (args) => Math.round(parseFloat(args[0] as any)));
+  result = pf(result, "FLOOR", (args) => Math.floor(parseFloat(args[0] as any)));
+  result = pf(result, "CEIL", (args) => Math.ceil(parseFloat(args[0] as any)));
+  result = pf(result, "INT", (args) => Math.floor(parseFloat(args[0] as any)));
+  result = pf(result, "MAX", (args) => {
     if (args.length === 0) throw new Error("MAX function requires at least one argument");
-    return Math.max(...args.map(a => parseFloat(a)));
+    return Math.max(...(args as any[]).map(a => parseFloat(a)));
   });
-  result = processFunction(result, "MIN", (args) => {
+  result = pf(result, "MIN", (args) => {
     if (args.length === 0) throw new Error("MIN function requires at least one argument");
-    return Math.min(...args.map(a => parseFloat(a)));
+    return Math.min(...(args as any[]).map(a => parseFloat(a)));
   });
-  result = processFunction(result, "SUM", (args) => {
+  result = pf(result, "SUM", (args) => {
     if (args.length === 0) throw new Error("SUM function requires at least one argument");
-    return args.reduce((sum, val) => sum + parseFloat(val), 0);
+    return (args as any[]).reduce((sum, val) => sum + parseFloat(val), 0);
   });
-  result = processFunction(result, "POW", (args) => {
+  result = pf(result, "POW", (args) => {
     if (args.length !== 2) throw new Error("POW function requires exactly two arguments");
-    return Math.pow(parseFloat(args[0]), parseFloat(args[1]));
+    return Math.pow(parseFloat(args[0] as any), parseFloat(args[1] as any));
   });
-  result = processFunction(result, "EXP", (args) => Math.exp(parseFloat(args[0])));
-  result = processFunction(result, "LOG", (args) => {
-    const value = parseFloat(args[0]);
+  result = pf(result, "EXP", (args) => Math.exp(parseFloat(args[0] as any)));
+  result = pf(result, "LOG", (args) => {
+    const value = parseFloat(args[0] as any);
     if (value <= 0) throw new Error("Cannot take logarithm of non-positive number");
     return Math.log(value);
   });
-  result = processFunction(result, "LOG10", (args) => {
-    const value = parseFloat(args[0]);
+  result = pf(result, "LOG10", (args) => {
+    const value = parseFloat(args[0] as any);
     if (value <= 0) throw new Error("Cannot take logarithm of non-positive number");
     return Math.log10(value);
   });
   
   // Statistical functions
-  result = processFunction(result, "MEAN", (args) => {
+  result = pf(result, "MEAN", (args) => {
     if (args.length === 0) throw new Error("MEAN function requires at least one argument");
-    const numbers = args.map(a => parseFloat(a));
+    const numbers = (args as any[]).map(a => parseFloat(a));
     return numbers.reduce((sum, val) => sum + val, 0) / numbers.length;
   });
   
-  result = processFunction(result, "MEDIAN", (args) => {
+  result = pf(result, "MEDIAN", (args) => {
     if (args.length === 0) throw new Error("MEDIAN function requires at least one argument");
-    const numbers = args.map(a => parseFloat(a)).sort((a, b) => a - b);
+    const numbers = (args as any[]).map(a => parseFloat(a)).sort((a: number, b: number) => a - b);
     const mid = Math.floor(numbers.length / 2);
     return numbers.length % 2 === 0 ? (numbers[mid - 1] + numbers[mid]) / 2 : numbers[mid];
   });
   
-  result = processFunction(result, "SD", (args) => {
+  result = pf(result, "SD", (args) => {
     if (args.length <= 1) throw new Error("SD function requires at least two arguments");
-    const numbers = args.map(a => parseFloat(a));
+    const numbers = (args as any[]).map(a => parseFloat(a));
     const mean = numbers.reduce((sum, val) => sum + val, 0) / numbers.length;
     const squareDiffs = numbers.map(val => Math.pow(val - mean, 2));
     return Math.sqrt(squareDiffs.reduce((sum, val) => sum + val, 0) / (numbers.length - 1));
   });
   
-  result = processFunction(result, "MISSING", (args) => {
+  result = pf(result, "MISSING", (args) => {
     if (args.length === 0) throw new Error("MISSING function requires one argument");
-    const varName = args[0].replace(/['"]/g, '');
+    const varName = String(args[0]).replace(/['"]/g, '');
     const variable = variables.find(v => v.name === varName);
     if (!variable) return false;
     
@@ -138,11 +143,11 @@ function processFunctions(expression: string, row: any[], variables: Variable[])
     return value === null || value === undefined || value === '';
   });
   
-  result = processFunction(result, "NMISS", (args) => {
+  result = pf(result, "NMISS", (args) => {
     let count = 0;
     for (const arg of args) {
       // Check if the arg is a variable name
-      const varName = arg.replace(/['"]/g, '');
+      const varName = String(arg).replace(/['"]/g, '');
       const variable = variables.find(v => v.name === varName);
       if (variable) {
         const value = row[variable.columnIndex];
@@ -154,35 +159,35 @@ function processFunctions(expression: string, row: any[], variables: Variable[])
     return count;
   });
   
-  result = processFunction(result, "COUNT", (args) => {
+  result = pf(result, "COUNT", (args) => {
     return args.length;
   });
   
   // Text functions
-  result = processFunction(result, "CONCAT", (args) => args.join(''));
-  result = processFunction(result, "LENGTH", (args) => args[0].toString().length);
-  result = processFunction(result, "LOWER", (args) => args[0].toString().toLowerCase());
-  result = processFunction(result, "UPPER", (args) => args[0].toString().toUpperCase());
-  result = processFunction(result, "TRIM", (args) => args[0].toString().trim());
-  result = processFunction(result, "SUBSTR", (args) => {
+  result = pf(result, "CONCAT", (args) => (args as any[]).join(''));
+  result = pf(result, "LENGTH", (args) => String(args[0]).length);
+  result = pf(result, "LOWER", (args) => String(args[0]).toLowerCase());
+  result = pf(result, "UPPER", (args) => String(args[0]).toUpperCase());
+  result = pf(result, "TRIM", (args) => String(args[0]).trim());
+  result = pf(result, "SUBSTR", (args) => {
     if (args.length < 2) throw new Error("SUBSTR function requires at least two arguments");
-    const str = args[0].toString();
-    const start = parseInt(args[1]);
-    const len = args.length > 2 ? parseInt(args[2]) : str.length - start;
+    const str = String(args[0]);
+    const start = parseInt(String(args[1]));
+    const len = args.length > 2 ? parseInt(String(args[2])) : str.length - start;
     return str.substr(start, len);
   });
-  result = processFunction(result, "REPLACE", (args) => {
+  result = pf(result, "REPLACE", (args) => {
     if (args.length !== 3) throw new Error("REPLACE function requires three arguments");
-    const str = args[0].toString();
-    const search = args[1].toString();
-    const replacement = args[2].toString();
+    const str = String(args[0]);
+    const search = String(args[1]);
+    const replacement = String(args[2]);
     return str.replace(new RegExp(search, 'g'), replacement);
   });
   
   // Conditional functions
-  result = processFunction(result, "IF", (args) => {
+  result = pf(result, "IF", (args) => {
     if (args.length !== 3) throw new Error("IF function requires three arguments");
-    const condition = args[0].toLowerCase();
+    const condition = String(args[0]).toLowerCase();
     const trueVal = args[1];
     const falseVal = args[2];
     return (condition === 'true' || condition === '1' || parseFloat(condition) !== 0) ? trueVal : falseVal;
@@ -196,22 +201,48 @@ function processFunctions(expression: string, row: any[], variables: Variable[])
  * @param expression Expression containing the function
  * @param funcName Name of the function to process
  * @param evaluator Function to evaluate the arguments
+ * @param row Data row
+ * @param variables Array of variables
  * @returns Processed expression with function call replaced by its result
  */
-function processFunction(expression: string, funcName: string, evaluator: (args: string[]) => any): string {
+function processFunction(expression: string, funcName: string, evaluator: (args: any[]) => any, row: any[], variables: Variable[]): string {
   const regex = new RegExp(`${funcName}\\(([^()]*)\\)`, 'gi');
   return expression.replace(regex, (_, argsStr) => {
-    const args = parseArgs(argsStr);
-    let result;
+    const rawArgs = parseArgs(argsStr);
+
+    // Resolve arguments: convert variable names to their values, strip quotes, parse numbers
+    const resolvedArgs = rawArgs.map((a) => {
+      const trimmed = a.trim();
+
+      // Quoted string literal
+      if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+        return trimmed.slice(1, -1);
+      }
+
+      // Variable name
+      const variable = variables.find(v => v.name === trimmed);
+      if (variable) {
+        return row[variable.columnIndex];
+      }
+
+      // Numeric literal
+      const num = Number(trimmed);
+      if (!isNaN(num)) return num;
+
+      // Fallback string
+      return trimmed;
+    });
+
+    let computed;
     if (mathFuncs[funcName]) {
-      const nums = args.map(Number);
-      result = (mathFuncs as any)[funcName](...nums);
+      computed = (mathFuncs as any)[funcName](...(resolvedArgs as any[]).map(Number));
     } else if (stringFuncs[funcName]) {
-      result = (stringFuncs as any)[funcName](args[0]);
+      computed = (stringFuncs as any)[funcName](String(resolvedArgs[0]));
     } else {
-      result = evaluator(args);
+      computed = evaluator(resolvedArgs);
     }
-    return typeof result === 'string' ? `'${result}'` : String(result);
+
+    return typeof computed === 'string' ? `'${computed}'` : String(computed);
   });
 }
 

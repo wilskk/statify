@@ -18,3 +18,8 @@ frontend/.next
 
 # Env
 .env*
+
+# Tests
+**/__tests__/
+**/*.test.*
+**/*.spec.*

@@ -52,8 +52,8 @@ export const useTableLayout = () => {
             const variable = variables.find(v => v.columnIndex === colIndex);
             if (variable) {
                 const icon = getVariableIcon(variable);
-                const iconHtml = renderToStaticMarkup(icon);
-                return `<div class="col-header-container">${iconHtml}<span class="colHeader">${variable.name}</span></div>`;
+                const view = renderToStaticMarkup(icon);
+                return `<div class="col-header-container">${view}<span class="colHeader">${variable.name}</span></div>`;
             }
             if (colIndex < targetVisualDataCols) {
                 return `var`; // Header for uninitialized but allocated columns

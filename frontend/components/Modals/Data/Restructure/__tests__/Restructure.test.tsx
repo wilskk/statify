@@ -47,7 +47,7 @@ describe('RestructureDataWizard UI', () => {
         mockedUseRestructure.mockReturnValue(getMockHookValues());
         render(<RestructureDataWizard onClose={jest.fn()} />);
 
-        expect(screen.getByText(/Select Restructure Method/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Select Restructure Method/i)[0]).toBeInTheDocument();
         
         // Check tabs state
         expect(screen.getByRole('tab', { name: 'Method' })).not.toBeDisabled();

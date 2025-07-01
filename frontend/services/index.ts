@@ -14,7 +14,7 @@ import { dataService } from "./data";
 import { metaService } from "./data";
 import { variableService } from "./data";
 import * as savService from "./api/savService";
-import { sheetService } from "./SheetService";
+import { sheetService } from "./data";
 
 export {
     dataService,

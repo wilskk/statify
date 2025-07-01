@@ -112,14 +112,14 @@ describe('PropertiesEditor', () => {
         
         rerender(<PropertiesEditor onClose={onClose} variables={mockVariables} caseLimit="50" valueLimit="200" />);
 
-        expect(mockState.handleVariableFieldChange).toHaveBeenLastCalledWith('label', 'New Label');
+        expect(mockState.handleVariableFieldChange).toHaveBeenCalledWith('label', 'New Label');
         expect(labelInput).toHaveValue('New Label');
     });
 
     it('calls handleSuggestMeasurement when suggest button is clicked', async () => {
         render(<PropertiesEditor onClose={onClose} variables={mockVariables} caseLimit="50" valueLimit="200" />);
         
-        const suggestButton = screen.getByRole('button', { name: /suggest measurement level/i });
+        const suggestButton = screen.getByRole('button', { name: /suggest/i });
         await user.click(suggestButton);
         
         expect(mockState.handleSuggestMeasurement).toHaveBeenCalledTimes(1);

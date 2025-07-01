@@ -10,10 +10,9 @@ export interface Meta {
 
 // TODO: Replace MetaStoreError with the more robust RepositoryError class from ./RepositoryError.ts
 // This provides better stack traces and a consistent error handling mechanism across the app.
-/*
+
 export type MetaStoreError = {
     message: string;
     source: string;
     originalError?: any;
 }; 
-*/ 
