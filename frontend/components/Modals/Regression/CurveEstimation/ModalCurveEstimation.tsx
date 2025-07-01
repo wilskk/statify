@@ -1,8 +1,6 @@
 // components/Modals/CurveEstimation/ModalCurveEstimation.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter
@@ -27,11 +25,14 @@ import ModelsTab from './ModelsTab';
 
 Chart.register(...registerables);
 
-interface ModalCurveEstimationProps {
+// Updated to match OpenSavFile pattern
+export interface ModalCurveEstimationProps {
   onClose: () => void;
+  containerType?: string;
 }
 
-const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) => {
+// Using named export like OpenSavFile
+export const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose, containerType }) => {
   // State variables dari desain baru
   const [activeTab, setActiveTab] = useState("variables");
   const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -306,131 +307,132 @@ const ModalCurveEstimation: React.FC<ModalCurveEstimationProps> = ({ onClose }) 
   // ========================================================================
 
 
-  // Render function (JSX) dari desain baru
+  // Render function (JSX) modified to work with ModalRenderer
   return (
-      <Dialog open={true} onOpenChange={(open) => !open && handleClose()}> {/* Ensure Dialog closes */}
-        <DialogContent className="max-w-[700px] p-0 bg-white border border-[#E6E6E6] shadow-md rounded-md flex flex-col max-h-[85vh]">
-          <DialogHeader className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
-            <DialogTitle className="text-[22px] font-semibold">Curve Estimation</DialogTitle>
-          </DialogHeader>
+    <div className="flex flex-col h-full max-h-[85vh] overflow-hidden">
+      {/* Header section */}
+      <div className="px-6 py-4 border-b border-[#E6E6E6] flex-shrink-0">
+        <h3 className="text-[22px] font-semibold">Curve Estimation</h3>
+      </div>
 
-          {errorMessage && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
-                {errorMessage}
-              </div>
-          )}
+      {/* Error message section */}
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 mx-6 mt-2 rounded">
+          {errorMessage}
+        </div>
+      )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
-            <div className="border-b border-[#E6E6E6] flex-shrink-0">
-              <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
-                <TabsTrigger
-                    value="variables"
-                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                >
-                  Variables
-                </TabsTrigger>
-                <TabsTrigger
-                    value="models"
-                    className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
-                >
-                  Models
-                </TabsTrigger>
-              </TabsList>
-            </div>
+      {/* Main content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow overflow-hidden">
+        <div className="border-b border-[#E6E6E6] flex-shrink-0">
+          <TabsList className="bg-[#F7F7F7] rounded-none h-9 p-0">
+            <TabsTrigger
+              value="variables"
+              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+            >
+              Variables
+            </TabsTrigger>
+            <TabsTrigger
+              value="models"
+              className={`px-4 h-8 rounded-none text-sm ${activeTab === 'models' ? 'bg-white border-t border-l border-r border-[#E6E6E6]' : ''}`}
+            >
+              Models
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-            {/* Variables Tab Content */}
-            <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden"> {/* Added data-state for potential performance */}
-              <VariablesTab
-                  availableVariables={availableVariables}
-                  highlightedVariable={highlightedVariable}
-                  setHighlightedVariable={setHighlightedVariable}
-                  selectedDependentVariable={selectedDependentVariable}
-                  selectedIndependentVariables={selectedIndependentVariables}
-                  selectedCaseLabels={selectedCaseLabels}
-                  handleDependentDoubleClick={handleDependentDoubleClick}
-                  handleIndependentDoubleClick={handleIndependentDoubleClick}
-                  handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
-                  moveToDependent={moveToDependent}
-                  moveToIndependent={moveToIndependent}
-                  moveToCaseLabels={moveToCaseLabels}
-                  removeDependent={removeDependent}
-                  removeIndependent={removeIndependent}
-                  removeCaseLabels={removeCaseLabels}
-                  isProcessing={isProcessing}
-              />
-            </TabsContent>
+        {/* Variables Tab Content */}
+        <TabsContent value="variables" className="overflow-y-auto flex-grow p-6 data-[state=inactive]:hidden">
+          <VariablesTab
+            availableVariables={availableVariables}
+            highlightedVariable={highlightedVariable}
+            setHighlightedVariable={setHighlightedVariable}
+            selectedDependentVariable={selectedDependentVariable}
+            selectedIndependentVariables={selectedIndependentVariables}
+            selectedCaseLabels={selectedCaseLabels}
+            handleDependentDoubleClick={handleDependentDoubleClick}
+            handleIndependentDoubleClick={handleIndependentDoubleClick}
+            handleCaseLabelsDoubleClick={handleCaseLabelsDoubleClick}
+            moveToDependent={moveToDependent}
+            moveToIndependent={moveToIndependent}
+            moveToCaseLabels={moveToCaseLabels}
+            removeDependent={removeDependent}
+            removeIndependent={removeIndependent}
+            removeCaseLabels={removeCaseLabels}
+            isProcessing={isProcessing}
+          />
+        </TabsContent>
 
-            {/* Models Tab Content */}
-            <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden"> {/* Added data-state */}
-              <ModelsTab
-                  selectedModels={selectedModels}
-                  handleModelChange={handleModelChange}
-                  includeConstant={includeConstant}
-                  setIncludeConstant={setIncludeConstant}
-                  plotModels={plotModels}
-                  setPlotModels={setPlotModels}
-                  displayANOVA={displayANOVA}
-                  setDisplayANOVA={setDisplayANOVA}
-                  upperBound={upperBound}
-                  setUpperBound={setUpperBound}
-                  isProcessing={isProcessing}
-              />
-            </TabsContent>
-          </Tabs>
+        {/* Models Tab Content */}
+        <TabsContent value="models" className="overflow-y-auto flex-grow data-[state=inactive]:hidden">
+          <ModelsTab
+            selectedModels={selectedModels}
+            handleModelChange={handleModelChange}
+            includeConstant={includeConstant}
+            setIncludeConstant={setIncludeConstant}
+            plotModels={plotModels}
+            setPlotModels={setPlotModels}
+            displayANOVA={displayANOVA}
+            setDisplayANOVA={setDisplayANOVA}
+            upperBound={upperBound}
+            setUpperBound={setUpperBound}
+            isProcessing={isProcessing}
+          />
+        </TabsContent>
+      </Tabs>
 
-          <DialogFooter className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
-            <div className="flex justify-end space-x-3">
-              <Button
-                  className="bg-black text-white hover:bg-[#444444] h-8 px-4"
-                  onClick={handleRunRegression} // Memanggil fungsi lama yang sudah di-paste
-                  disabled={isProcessing}
-              >
-                {isProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                ) : (
-                    "OK"
-                )}
-              </Button>
-              <Button
-                  variant="outline"
-                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                  disabled={isProcessing}
-                  // onClick={() => { /* Logika Paste jika ada */ }}
-              >
-                Paste
-              </Button>
-              <Button
-                  variant="outline"
-                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                  onClick={handleReset}
-                  disabled={isProcessing}
-              >
-                Reset
-              </Button>
-              <Button
-                  variant="outline"
-                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                  onClick={handleClose}
-                  disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                  variant="outline"
-                  className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
-                  disabled={isProcessing}
-                  // onClick={() => { /* Logika Help jika ada */ }}
-              >
-                Help
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Footer section */}
+      <div className="px-6 py-4 border-t border-[#E6E6E6] bg-[#F7F7F7] flex-shrink-0">
+        <div className="flex justify-end space-x-3">
+          <Button
+            className="bg-black text-white hover:bg-[#444444] h-8 px-4"
+            onClick={handleRunRegression}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "OK"
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+            disabled={isProcessing}
+          >
+            Paste
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+            onClick={handleReset}
+            disabled={isProcessing}
+          >
+            Reset
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+            onClick={handleClose}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888] h-8 px-4"
+            disabled={isProcessing}
+          >
+            Help
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 
+// Add default export to match OpenSavFile pattern
 export default ModalCurveEstimation;

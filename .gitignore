@@ -50,6 +50,12 @@ yarn-error.log*
 # Wasm
 **/wasm/target
 **/wasm/Cargo.lock
+# typescript
+*.tsbuildinfo
+# next-env.d.ts (Keep if not moved to frontend)
+# wasm
+**/target/*
+**/Cargo.lock
 
 # IDE & Editor
 .idea
@@ -66,5 +72,14 @@ yarn-error.log*
 /wasm-test/
 /frontend/.next
 /frontend/docs
-/frontend/docs
-/frontend/docs
+
+# dist
+/dist
+
+# tests
+backend/dist
+/_test/
+
+# node_modules
+_tes/
+/_skripsi penulisan

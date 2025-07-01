@@ -1,5 +1,8 @@
+import { Chart } from "./Chart";
+
 export interface ResultJson {
     tables: Table[];
+    charts?: Chart[];
 }
 
 export interface Table {
@@ -9,7 +12,7 @@ export interface Table {
     rows: Row[];
 }
 
-interface ColumnHeader {
+export interface ColumnHeader {
     header: string;
     key?: string;
     children?: ColumnHeader[];

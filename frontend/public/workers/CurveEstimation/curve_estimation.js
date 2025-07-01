@@ -1,5 +1,17 @@
-// curve_estimation.js
-// This worker performs curve estimation calculations
+
+const MODEL_ORDER = [
+  "Linear",
+  "Logarithmic",
+  "Inverse",
+  "Quadratic",
+  "Cubic",
+  "Compound",
+  "Power",
+  "S",
+  "Growth",
+  "Exponential",
+  "Logistic"
+];
 
 // Function to calculate mean
 const mean = (arr) => {
@@ -219,20 +231,23 @@ const tryLogistic = (X, Y, upperBound) => {
   }
 
   try {
-    // Transform data for linearization: ln(c/y - 1) = ln(a) + (-b)*x
+    // Transform data for linearization: ln(1/y - 1/u) = ln(b0) + t*ln(b1)
+    // (u is 'c' in this code, b0 is b0_logistic, b1 is b1_logistic)
     const transformedY = [];
     const filteredX = [];
 
     for (let i = 0; i < validData.length; i++) {
-      const term = c / validData[i].y - 1;
-      if (term > 0) {
+      const y_val = validData[i].y;
+      // Term for transformation: (1/y - 1/c)
+      const term = (1 / y_val) - (1 / c);
+      if (term > 0) { // Ensure argument of log is positive
         transformedY.push(Math.log(term));
         filteredX.push(validData[i].x);
       }
     }
 
     if (transformedY.length < 3) {
-      console.log("Too few points after transformation");
+      console.log("Too few points after transformation for the new logistic model.");
       return {
         b0: 0,
         b1: 0,
@@ -250,7 +265,7 @@ const tryLogistic = (X, Y, upperBound) => {
     const linReg = linearRegression(filteredX, transformedY);
 
     if (!linReg) {
-      console.log("Linear regression failed on transformed data");
+      console.log("Linear regression failed on transformed data for the new logistic model.");
       return {
         b0: 0,
         b1: 0,
@@ -264,29 +279,51 @@ const tryLogistic = (X, Y, upperBound) => {
       };
     }
 
-    // Convert linear parameters to logistic parameters
-    const a = Math.exp(linReg.b0);
-    const b = -linReg.b1;  // Note the negative sign
+    // Convert linear parameters to logistic parameters for y = 1/(1/c + b0 * (b1^x))
+    // linReg.b0 (intercept of linearized model) is ln(b0_logistic)
+    // linReg.b1 (slope of linearized model) is ln(b1_logistic)
+    const b0_logistic = Math.exp(linReg.b0);
+    const b1_logistic = Math.exp(linReg.b1);
 
-    // Calculate predictions with the logistic function
-    const yPred = validData.map(d => c / (1 + a * Math.exp(-b * d.x)));
+    // Calculate predictions with the new logistic function
+    // y_pred = 1 / (1/c + b0_logistic * (b1_logistic^x))
+    const yPred = validData.map(d => {
+      const denominator = (1 / c) + b0_logistic * Math.pow(b1_logistic, d.x);
+      // Denominator should be positive if b0_logistic, b1_logistic, and c are positive.
+      // Math.pow(positive, real) is positive.
+      if (denominator === 0 || !isFinite(denominator)) { // Safeguard
+        // If denominator is problematic, it might indicate an issue with fit or extreme values.
+        // Returning c (upper bound) or d.y (actual y) could be options.
+        // Let's return a value that would likely lead to poor R^2 if this path is taken unexpectedly.
+        // For now, if this rare case happens, using c might be less disruptive than NaN.
+        return c;
+      }
+      return 1 / denominator;
+    });
 
     // Calculate R-squared
     const yActual = validData.map(d => d.y);
     const yMean = mean(yActual);
     const ssRes = yActual.reduce((sum, y, i) => sum + Math.pow(y - yPred[i], 2), 0);
     const ssTot = yActual.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
-    const r2 = 1 - (ssRes / ssTot);
+    
+    let r2 = 0;
+    if (ssTot > 0) { // Avoid division by zero if all yActual values are the same
+        r2 = 1 - (ssRes / ssTot);
+    } else if (ssRes === 0) { // All yActual are same, and all yPred are same as yActual
+        r2 = 1;
+    }
+    // If ssTot is 0 and ssRes is not 0, r2 remains 0 (perfect fit not achieved on constant data).
 
     return {
-      b0: a,          // Constant (a parameter)
-      b1: b,          // Slope (b parameter)
-      c: c,           // Upper bound
-      r2: r2,         // Coefficient of determination
-      f: linReg.f,    // F statistic
-      df1: linReg.df1,
-      df2: linReg.df2,
-      sig: linReg.sig,
+      b0: b0_logistic,  // This is b0 from the pseudocode model y = 1/(1/u + b0 * (b1^t))
+      b1: b1_logistic,  // This is b1 from the pseudocode model
+      c: c,             // Upper bound (u)
+      r2: r2,           // Coefficient of determination for the non-linear model
+      f: linReg.f,      // F statistic from the linearized regression
+      df1: linReg.df1,  // df1 from the linearized regression
+      df2: linReg.df2,  // df2 from the linearized regression
+      sig: linReg.sig,  // Significance from the linearized regression
       isEstimated: false
     };
   } catch (error) {
@@ -368,7 +405,18 @@ const fCDF = (f, df1, df2) => {
 };
 
 const generateRegressionSummary = (models, X, Y, options = {}) => {
-  const rows = models.map(model => {
+  // Sort the models based on the defined MODEL_ORDER
+  const sortedModels = models.sort((a, b) => {
+    const indexA = MODEL_ORDER.indexOf(a);
+    const indexB = MODEL_ORDER.indexOf(b);
+    // Handle cases where a model might not be in MODEL_ORDER (though it should be)
+    if (indexA === -1 && indexB === -1) return 0; // Keep original order if both unknown
+    if (indexA === -1) return 1; // Put unknown models at the end
+    if (indexB === -1) return -1; // Put unknown models at the end
+    return indexA - indexB;
+  });
+
+  const rows = sortedModels.map(model => {
     let result = {};
     switch (model) {
       case 'Linear':

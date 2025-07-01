@@ -1,8 +1,8 @@
-// public/workers/Regression/coefficients.js
+// coefficients.js
 
 self.onmessage = function(e) {
   try {
-    const { independentVarNames, dependentData, independentData } = e.data;
+    const { dependentData, independentData, independentVariableInfos } = e.data;
 
     console.log("Coefficients Worker received data:", e.data);
 
@@ -10,29 +10,42 @@ self.onmessage = function(e) {
       throw new Error("Missing required data: dependentData or independentData");
     }
 
-    if (!independentVarNames || !Array.isArray(independentVarNames)) {
-      throw new Error("Missing or invalid independentVarNames");
+    if (!independentVariableInfos || !Array.isArray(independentVariableInfos)) {
+      throw new Error("Missing or invalid independentVariableInfos");
     }
 
     // Calculate regression coefficients directly from raw data
-    const coefficients = calculateCoefficients(dependentData, independentData, independentVarNames);
+    const coefficients = calculateCoefficients(dependentData, independentData, independentVariableInfos);
 
-    // Format coefficients for the table
-    const coefficientsData = coefficients.map((coef, idx) => {
-      return {
-        rowHeader: [idx === 0 ? "1" : null],
-        children: [
-          {
-            rowHeader: [null, idx === 0 ? "(Constant)" : independentVarNames[idx - 1]],
-            "B": parseFloat(coef.coefficient.toFixed(3)),
-            "stdError": parseFloat(coef.stdError.toFixed(3)),
-            "Beta": coef.standardizedCoefficient !== null ? parseFloat(coef.standardizedCoefficient.toFixed(3)) : "",
-            "t": parseFloat(coef.tValue.toFixed(3)),
-            "Sig.": parseFloat(coef.pValue.toFixed(3))
-          }
-        ]
-      };
+    // NEW CODE: Format coefficients using a different structure that shows VAR00002, VAR00003, etc.
+    // Create a children array first with properly labeled rows
+    const children = [];
+    
+    coefficients.forEach((coef, idx) => {
+      let rowLabel;
+      if (idx === 0) {
+        rowLabel = "(Constant)";
+      } else {
+        // Use label from provided variable info, fallback to name
+        const varInfo = independentVariableInfos[idx - 1];
+        rowLabel = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
+      }
+      
+      children.push({
+        rowHeader: [null, rowLabel],
+        "B": parseFloat(coef.coefficient.toFixed(3)),
+        "stdError": parseFloat(coef.stdError.toFixed(3)),
+        "Beta": coef.standardizedCoefficient !== null ? parseFloat(coef.standardizedCoefficient.toFixed(3)) : "",
+        "t": parseFloat(coef.tValue.toFixed(3)),
+        "Sig.": parseFloat(coef.pValue.toFixed(3))
+      });
     });
+
+    // Then create the main row that contains all children
+    const coefficientsData = [{
+      rowHeader: ["1"],
+      children: children
+    }];
 
     const coefficientsTable = {
       tables: [
@@ -76,7 +89,7 @@ self.onmessage = function(e) {
 };
 
 // Calculate regression coefficients from raw data
-function calculateCoefficients(dependent, independents, varNames) {
+function calculateCoefficients(dependent, independents, varInfos) {
   const n = dependent.length;
   const p = independents.length;
 
@@ -175,7 +188,8 @@ function calculateCoefficients(dependent, independents, varNames) {
     }];
 
     // Add a coefficient for each independent variable
-    for (let i = 0; i < varNames.length; i++) {
+    for (let i = 0; i < varInfos.length; i++) {
+      // Potentially use varInfos[i].label or .name here for more descriptive placeholders if needed
       coefficients.push({
         coefficient: 0,
         stdError: 0,
@@ -189,19 +203,19 @@ function calculateCoefficients(dependent, independents, varNames) {
   }
 }
 
+// The rest of the helper functions remain unchanged
 // --------------------
 // Functions for t-distribution p-value calculation
 // --------------------
 
 // tCDF: Cumulative distribution function for the t-distribution.
-// Menggunakan relasi: CDF_t(t; v) = 1 - 0.5 * I_{v/(t^2+v)}(v/2, 1/2)
 function tCDF(t, df) {
   if (t === 0) return 0.5;
   const x = df / (t * t + df);
   return 1 - 0.5 * incbeta(x, df / 2, 0.5);
 }
 
-// incbeta: Regularized incomplete beta function menggunakan algoritma Lanczos
+// incbeta: Regularized incomplete beta function
 function incbeta(x, a, b) {
   if (x < 0 || x > 1) throw new Error("x out of bounds in incbeta");
   if (x === 0) return 0;
@@ -219,7 +233,7 @@ function incbeta(x, a, b) {
   return result;
 }
 
-// logGamma: Log dari fungsi gamma menggunakan algoritma Lanczos standar
+// logGamma function
 function logGamma(z) {
   const p = [
     676.5203681218851,
@@ -245,7 +259,7 @@ function logGamma(z) {
   }
 }
 
-// betacf: Continued fraction untuk incomplete beta function
+// betacf function
 function betacf(a, b, x) {
   const MAXIT = 100;
   const EPS = 3e-7;
