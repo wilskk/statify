@@ -1,11 +1,9 @@
-import {
-    KMeansClusterFinalResultType
-} from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
-import {Table} from "@/types/Table";
-import {Variable} from "@/types/Variable";
-import {useVariableStore} from "@/stores/useVariableStore";
-import {useDataStore} from "@/stores/useDataStore";
-import {useResultStore} from "@/stores/useResultStore";
+import { KMeansClusterFinalResultType } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster-worker";
+import { Table } from "@/types/Table";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { useResultStore } from "@/stores/useResultStore";
 
 export async function resultKMeans({
     formattedResult,
@@ -170,6 +168,24 @@ export async function resultKMeans({
                     description: `Number of Cases in each Cluster`,
                     output_data: numberOfCases,
                     components: `Number of Cases in each Cluster`,
+                });
+            }
+
+            /*
+             * ❗ Error Table Result ❗
+             * */
+            const errorTable = findTable("error_table");
+            if (errorTable) {
+                const errorTableId = await addAnalytic(logId, {
+                    title: "Errors and Warnings",
+                    note: "",
+                });
+
+                await addStatistic(errorTableId, {
+                    title: "Errors and Warnings",
+                    description: "Errors and warnings from the analysis.",
+                    output_data: errorTable,
+                    components: "Errors and Warnings",
                 });
             }
 

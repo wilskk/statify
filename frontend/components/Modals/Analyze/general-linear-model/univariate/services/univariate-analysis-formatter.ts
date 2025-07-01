@@ -1,7 +1,10 @@
-import {formatDisplayNumber} from "@/hooks/useFormatter";
-import {ResultJson, Row, Table} from "@/types/Table";
+import { formatDisplayNumber } from "@/hooks/useFormatter";
+import { ResultJson, Row, Table } from "@/types/Table";
 
-export function transformUnivariateResult(data: any): ResultJson {
+export function transformUnivariateResult(
+    data: any,
+    errors: string[] = []
+): ResultJson {
     const resultJson: ResultJson = {
         tables: [],
     };
@@ -2084,6 +2087,59 @@ export function transformUnivariateResult(data: any): ResultJson {
                 }
             }
         );
+    }
+
+    if (errors && errors.length > 0) {
+        if (errors.length === 1 && errors[0] === "No errors occurred.") {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors and Warnings",
+                columnHeaders: [{ header: "Message", key: "message" }],
+                rows: [
+                    {
+                        rowHeader: [],
+                        message: "No errors occurred.",
+                    },
+                ],
+            };
+            resultJson.tables.push(table);
+        } else {
+            const table: Table = {
+                key: "error_table",
+                title: "Errors and Warnings",
+                columnHeaders: [
+                    { header: "Context", key: "context" },
+                    { header: "Message", key: "message" },
+                ],
+                rows: [],
+            };
+
+            let currentContext = "";
+            let isFirstRowForContext = true;
+
+            const errorLines =
+                errors[0] === "Error Summary:" ? errors.slice(1) : errors;
+
+            errorLines.forEach((line: string) => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith("Context: ")) {
+                    currentContext = trimmedLine
+                        .replace("Context: ", "")
+                        .trim();
+                    isFirstRowForContext = true;
+                } else if (trimmedLine) {
+                    const message = trimmedLine.replace(/^\d+\.\s*/, "");
+                    table.rows.push({
+                        rowHeader: [],
+                        context: isFirstRowForContext ? currentContext : "",
+                        message: message,
+                    });
+                    isFirstRowForContext = false;
+                }
+            });
+
+            resultJson.tables.push(table);
+        }
     }
 
     return resultJson;

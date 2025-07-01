@@ -1,29 +1,25 @@
-import {useEffect, useMemo, useState} from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     UnivariateContainerProps,
     UnivariateMainType,
     UnivariateType,
 } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {
-    UnivariateDefault
-} from "@/components/Modals/Analyze/general-linear-model/univariate/constants/univariate-default";
-import {UnivariateDialog} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/dialog";
-import {UnivariateModel} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/model";
-import {UnivariateContrast} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/contrast";
-import {UnivariatePlots} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/plots";
-import {UnivariatePostHoc} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/posthoc";
-import {UnivariateEMMeans} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/emmeans";
-import {UnivariateSave} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/save";
-import {UnivariateOptions} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/options";
-import {UnivariateBootstrap} from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/bootstrap";
-import {useModal} from "@/hooks/useModal";
-import {useVariableStore} from "@/stores/useVariableStore";
-import {useDataStore} from "@/stores/useDataStore";
-import {
-    analyzeUnivariate
-} from "@/components/Modals/Analyze/general-linear-model/univariate/services/univariate-analysis";
-import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
-import {toast} from "sonner";
+import { UnivariateDefault } from "@/components/Modals/Analyze/general-linear-model/univariate/constants/univariate-default";
+import { UnivariateDialog } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/dialog";
+import { UnivariateModel } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/model";
+import { UnivariateContrast } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/contrast";
+import { UnivariatePlots } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/plots";
+import { UnivariatePostHoc } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/posthoc";
+import { UnivariateEMMeans } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/emmeans";
+import { UnivariateSave } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/save";
+import { UnivariateOptions } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/options";
+import { UnivariateBootstrap } from "@/components/Modals/Analyze/general-linear-model/univariate/dialogs/bootstrap";
+import { useModal } from "@/hooks/useModal";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
+import { analyzeUnivariate } from "@/components/Modals/Analyze/general-linear-model/univariate/services/univariate-analysis";
+import { clearFormData, getFormData, saveFormData } from "@/hooks/useIndexedDB";
+import { toast } from "sonner";
 
 export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
     const variables = useVariableStore((state) => state.variables);
@@ -212,8 +208,8 @@ export const UnivariateContainer = ({ onClose }: UnivariateContainerProps) => {
 
     const resetFormData = async () => {
         try {
-            await clearFormData("Univariate");
             setFormData({ ...UnivariateDefault });
+            await clearFormData("Univariate");
         } catch (error) {
             toast.error("Failed to clear form data:", error ?? "");
         }

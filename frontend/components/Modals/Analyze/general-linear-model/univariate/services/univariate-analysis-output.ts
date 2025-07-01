@@ -1,12 +1,10 @@
-import {
-    UnivariateFinalResultType
-} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
-import {ColumnHeader, Table} from "@/types/Table";
-import {useResultStore} from "@/stores/useResultStore";
-import {UnivariateType} from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
-import {Variable} from "@/types/Variable";
-import {useVariableStore} from "@/stores/useVariableStore";
-import {useDataStore} from "@/stores/useDataStore";
+import { UnivariateFinalResultType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate-worker";
+import { ColumnHeader, Table } from "@/types/Table";
+import { useResultStore } from "@/stores/useResultStore";
+import { UnivariateType } from "@/components/Modals/Analyze/general-linear-model/univariate/types/univariate";
+import { Variable } from "@/types/Variable";
+import { useVariableStore } from "@/stores/useVariableStore";
+import { useDataStore } from "@/stores/useDataStore";
 
 export async function resultUnivariateAnalysis({
     formattedResult,
@@ -476,6 +474,24 @@ export async function resultUnivariateAnalysis({
                     description: plotName,
                     output_data: plotData,
                     components: plotName,
+                });
+            }
+
+            /*
+             * ❗ Error Table Result ❗
+             * */
+            const errorTable = findTable("error_table");
+            if (errorTable) {
+                const errorTableId = await addAnalytic(logId, {
+                    title: "Errors and Warnings",
+                    note: "",
+                });
+
+                await addStatistic(errorTableId, {
+                    title: "Errors and Warnings",
+                    description: "Errors and warnings from the analysis.",
+                    output_data: errorTable,
+                    components: "Errors and Warnings",
                 });
             }
 
