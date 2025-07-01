@@ -13,6 +13,7 @@ import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
 
 interface SmoothingProps {
     onClose: () => void;
@@ -32,7 +33,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null); // Store previous data reference
     const [activeTab, setActiveTab] = useState("variables");
     const [saveAsVariable, setSaveAsVariable] = useState(false);
 
@@ -72,6 +73,18 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
             try {
                 const savedData = await getFormData("Smoothing", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
+
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
 
                 if (savedData?.saveAsVariable) {
                     setSaveAsVariable(savedData.saveAsVariable);
@@ -125,6 +138,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
                 const stateToSave = {
                     ...variableToSave,
                     saveAsVariable,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Smoothing", stateToSave, "variables");
             } catch (error) {
@@ -133,7 +147,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {

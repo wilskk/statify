@@ -13,6 +13,7 @@ import VariablesTab from "./VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
 
 interface BoxJenkinsModelProps {
     onClose: () => void;
@@ -32,7 +33,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
     const [saveAsVariable, setSaveAsVariable] = useState(false);
 
@@ -75,6 +76,18 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 const savedData = await getFormData("BoxJenkinsModel", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
+
                 if (savedData?.saveAsVariable) {
                     setSaveAsVariable(savedData.saveAsVariable);
                 }
@@ -127,6 +140,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
                 const stateToSave = {
                     ...variableToSave,
                     saveAsVariable,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("BoxJenkinsModel", stateToSave, "variables");
             } catch (error) {
@@ -135,7 +149,7 @@ const BoxJenkinsModel: FC<BoxJenkinsModelProps> = ({ onClose, containerType }) =
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, saveAsVariable, isLoaded]);
+    }, [availableVariables, selectedVariables, saveAsVariable, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {

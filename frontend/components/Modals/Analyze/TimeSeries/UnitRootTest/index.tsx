@@ -11,6 +11,7 @@ import { useOptionHook } from "./hook/optionHook";
 import VariablesTab from "./VariablesTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
 
 interface UnitRootTestProps {
     onClose: () => void;
@@ -30,7 +31,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
 
     const {
@@ -59,10 +60,6 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
     );
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
-    
-    // useEffect(() => {
-    //         setAvailableVariables(variables.filter(v => v.name !== ""));
-    // }, [variables]);
 
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
@@ -71,6 +68,18 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
                 const savedData = await getFormData("UnitRootTest", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
                 
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
+
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
                     const validAvailableVars = savedData.availableVariables.filter((savedVar: Variable) =>
@@ -112,9 +121,13 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                };
+                const stateToSave = {
+                    ...variableToSave,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("UnitRootTest", stateToSave, "variables");
             } catch (error) {
@@ -123,7 +136,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {

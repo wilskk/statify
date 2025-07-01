@@ -13,6 +13,7 @@ import VariablesTab from "./VariablesTab";
 import TimeTab from "../TimeSeriesTimeTab";
 import OptionTab from "./OptionTab";
 import { getFormData, saveFormData, clearFormData } from "@/hooks/useIndexedDB";
+import { DataRow } from "@/types/Data";
 
 interface AutocorrelationProps {
     onClose: () => void;
@@ -31,8 +32,8 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [selectedVariables, setSelectedVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{columnIndex: number, source: 'available' | 'selected'} | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
+    const [prevDataRef, setPrevDataRef] = useState<DataRow[] | null>(null);
+    const [errorMsg, setErrorMsg] = useState<String | null>(null);
     const [activeTab, setActiveTab] = useState("variables");
 
     const {
@@ -67,12 +68,28 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
     const combinedError = errorMsg || analysisError;
     const [isLoaded, setIsLoaded] = useState(false);
 
+    console.log("Current data", data);
+    console.log("Previous data", prevDataRef);
+
+    
     // Load saved state from IndexedDB on component mount
     useEffect(() => {
         const loadSavedState = async () => {
             try {
                 const savedData = await getFormData("Autocorrelation", "variables");
                 const filteredVariables = variables.filter(v => v.name !== "");
+
+                if (savedData && savedData.prevDataRef) {
+                    // If previous data reference exists, check if it matches current data
+                    setPrevDataRef(savedData.prevDataRef);
+                    if (JSON.stringify(savedData.prevDataRef) !== JSON.stringify(data)) {
+                        // Clear saved state if previous data doesn't match current
+                        await clearFormData("Autocorrelation");
+                        setAvailableVariables(filteredVariables);
+                        setSelectedVariables([]);
+                        return;
+                    }
+                }
                 
                 if (savedData && savedData.availableVariables && savedData.selectedVariables) {
                     // Validate that saved variables still exist in current variable store
@@ -115,9 +132,13 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         
         const saveState = async () => {
             try {
-                const stateToSave: VariableState = {
+                const variableToSave: VariableState = {
                     availableVariables,
-                    selectedVariables
+                    selectedVariables,
+                };
+                const stateToSave = {
+                    ...variableToSave,
+                    prevDataRef: data, // Save current data as previous reference
                 };
                 await saveFormData("Autocorrelation", stateToSave, "variables");
             } catch (error) {
@@ -126,7 +147,7 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         };
 
         saveState();
-    }, [availableVariables, selectedVariables, isLoaded]);
+    }, [availableVariables, selectedVariables, data, isLoaded]);
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
