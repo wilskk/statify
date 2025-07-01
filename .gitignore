@@ -47,8 +47,8 @@ yarn-error.log*
 # next-env.d.ts (Keep if not moved to frontend)
 
 # wasm
-**/wasm/target
-**/wasm/Cargo.lock
+**/target/*
+**/Cargo.lock
 
 # wasm-test
 /wasm-test/node_modules
