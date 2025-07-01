@@ -1,4 +1,4 @@
-import { processDuplicates, generateStatistics } from '../duplicateCasesService';
+import { processDuplicates, generateStatistics } from '../services/duplicateCasesService';
 
 const sampleData = [
     ["ID", "Name", "Age", "City"],

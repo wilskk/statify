@@ -199,13 +199,19 @@ function processFunctions(expression: string, row: any[], variables: Variable[])
  * @returns Processed expression with function call replaced by its result
  */
 function processFunction(expression: string, funcName: string, evaluator: (args: string[]) => any): string {
-  const regex = new RegExp(`${funcName}\\(([^)]+)\\)`, 'gi');
-  
-  return expression.replace(regex, (match, argsStr) => {
-    // Split arguments by comma, but handle commas inside string literals
+  const regex = new RegExp(`${funcName}\\(([^()]*)\\)`, 'gi');
+  return expression.replace(regex, (_, argsStr) => {
     const args = parseArgs(argsStr);
-    const result = evaluator(args);
-    return result.toString();
+    let result;
+    if (mathFuncs[funcName]) {
+      const nums = args.map(Number);
+      result = (mathFuncs as any)[funcName](...nums);
+    } else if (stringFuncs[funcName]) {
+      result = (stringFuncs as any)[funcName](args[0]);
+    } else {
+      result = evaluator(args);
+    }
+    return typeof result === 'string' ? `'${result}'` : String(result);
   });
 }
 
@@ -244,4 +250,16 @@ function parseArgs(argsStr: string): string[] {
   }
   
   return args;
-} 
+}
+
+const mathFuncs: Record<string, (...args:any[])=>any> = {
+    SQRT: (n:number)=> Math.sqrt(n),
+    ABS: (n:number)=> Math.abs(n),
+    SUM: (...nums:number[])=> nums.reduce((a,b)=>a+b,0)
+};
+const stringFuncs: Record<string,(s:string)=>any>={
+    LOWER:(s:string)=> s.toLowerCase(),
+    UPPER:(s:string)=> s.toUpperCase(),
+    TRIM:(s:string)=> s.trim(),
+    LENGTH:(s:string)=> s.length
+}; 

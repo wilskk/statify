@@ -1,10 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import debounce from 'lodash/debounce';
 import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable } from '@/types/Variable';
 import { toast } from '@/hooks/use-toast';
-import { useMemo } from 'react';
 import Handsontable from 'handsontable';
 
 /** Handle creation of new variables when data is pasted into spare columns */
@@ -68,7 +67,7 @@ export const useTableUpdates = (viewMode: 'numeric' | 'label') => {
     const updateMultipleFields = useVariableStore(state => state.updateMultipleFields);
 
     // Debounced version of updateCells for performance
-    const debouncedUpdateCells = useCallback(debounce(updateCells, 200), [updateCells]);
+    const debouncedUpdateCells = useMemo(() => debounce(updateCells, 200), [updateCells]);
 
     const handleBeforeChange = useCallback(
         (changes: (Handsontable.CellChange | null)[] | null, source: string): void | boolean => {

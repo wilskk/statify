@@ -1,19 +1,51 @@
 # Fitur: Transpose Data
 
-Dokumen ini menjelaskan fungsionalitas dan arsitektur dari fitur "Transpose Data", yang memungkinkan pengguna untuk menukar baris dan kolom dalam dataset mereka.
+Dokumen ini menjelaskan fungsionalitas fitur "Transpose", sebuah alat yang kuat untuk merestrukturisasi dataset dengan menukar baris dan kolom.
 
-## Ringkasan Fungsionalitas
+## 1. Gambaran Umum
 
-Fitur Transpose mengubah orientasi dataset, mengubah variabel menjadi kasus dan sebaliknya.
+Fungsi utama dari fitur "Transpose" adalah mengubah orientasi dataset: variabel (kolom) menjadi kasus (baris), dan sebaliknya. Ini sangat berguna untuk mengubah data dari format "lebar" (banyak kolom, sedikit baris) ke format "panjang" (sedikit kolom, banyak baris).
 
--   **Seleksi Variabel**: Pengguna memilih variabel mana dari dataset yang akan diubah menjadi baris dalam dataset baru.
--   **Variabel Penamaan (Opsional)**: Pengguna dapat memilih satu variabel yang nilainya akan digunakan sebagai nama untuk variabel (kolom) baru yang terbentuk setelah transposisi.
-    -   Jika tidak ada variabel penamaan yang dipilih, nama default (`Var1`, `Var2`, dst.) akan dibuat.
--   **Variabel ID Otomatis**: Sebuah variabel baru bernama `case_lbl` akan otomatis dibuat untuk menyimpan nama-nama variabel asli yang ditransposisi, berfungsi sebagai pengidentifikasi untuk baris-baris baru.
+## 2. Komponen Antarmuka & Fungsionalitas
 
-## Arsitektur & Pola Desain
+-   **Daftar Variabel (Available Variables)**: Menampilkan semua variabel yang tersedia dalam dataset saat ini.
+-   **Variabel yang Akan Ditransposisi (Variable(s))**: Daftar ini menampung variabel-variabel yang telah Anda pilih untuk diubah menjadi baris dalam dataset yang baru.
+-   **Variabel Penamaan (Name Variable)**: Kolom ini bersifat opsional. Anda dapat memindahkan **satu** variabel ke sini. Nilai dari setiap baris pada variabel ini akan digunakan sebagai nama untuk variabel (kolom) baru yang akan dibuat.
 
-Fitur ini mengikuti panduan arsitektur utama untuk komponen modal, dengan pemisahan yang jelas antara logika, UI, dan layanan.
+## 3. Variabel Baru yang Dihasilkan
+
+-   **`case_lbl`**: Variabel ini dibuat secara otomatis. Kolom ini akan berisi nama-nama dari variabel asli yang Anda pilih untuk ditransposisi. Ini berfungsi sebagai pengidentifikasi untuk setiap baris baru.
+-   **Variabel Kasus Baru**: Variabel-variabel baru (kolom) akan dibuat, satu untuk setiap kasus (baris) dalam data asli.
+    -   Jika **Variabel Penamaan** tidak disediakan, nama-nama kolom baru akan menjadi `Var1`, `Var2`, `Var3`, dan seterusnya.
+    -   Jika **Variabel Penamaan** disediakan, nama-nama kolom baru akan diambil dari nilai-nilai pada variabel tersebut. Nama yang tidak valid (misalnya, dimulai dengan angka atau berisi spasi) akan secara otomatis diperbaiki.
+
+## 4. Contoh Penggunaan
+
+### Skenario 1: Transposisi Sederhana (Wide to Long)
+- **Kondisi**: Anda memiliki data penjualan per kuartal dengan kolom `Q1`, `Q2`, `Q3`, `Q4`. Anda ingin setiap kuartal menjadi baris.
+1.  Pindahkan variabel `Q1`, `Q2`, `Q3`, dan `Q4` ke dalam daftar "Variable(s)".
+2.  Biarkan "Name Variable" kosong.
+3.  Klik **OK**.
+> **Hasil**: Dataset baru akan memiliki 4 baris (satu untuk setiap kuartal). Kolom `case_lbl` akan berisi 'Q1', 'Q2', 'Q3', 'Q4'. Kolom-kolom lainnya akan menjadi `Var1`, `Var2`, ..., mewakili setiap responden/kasus asli.
+
+### Skenario 2: Menggunakan Nilai sebagai Nama Kolom
+- **Kondisi**: Anda memiliki data tahunan dengan kolom `ID_Produk`, `Tahun_2020`, `Tahun_2021`, `Tahun_2022`. Anda ingin setiap tahun menjadi baris dan menggunakan `ID_Produk` sebagai nama kolom baru.
+1.  Pindahkan `Tahun_2020`, `Tahun_2021`, `Tahun_2022` ke daftar "Variable(s)".
+2.  Pindahkan `ID_Produk` ke daftar "Name Variable".
+3.  Klik **OK**.
+> **Hasil**: Dataset baru akan memiliki 3 baris. Kolom-kolomnya akan dinamai berdasarkan nilai-nilai unik dari `ID_Produk`.
+
+## 5. Rencana Pengembangan (Belum Diimplementasikan)
+-   **Pratinjau Hasil**: Menampilkan pratinjau mini dari data yang akan ditransposisi sebelum pengguna mengklik OK.
+-   **Opsi Baris Pertama sebagai Header**: Menambahkan opsi untuk menggunakan nilai dari baris pertama data sebagai nama untuk variabel baru.
+-   **Agregasi Otomatis**: Jika ada duplikasi dalam variabel penamaan, berikan opsi untuk mengagregasi data (misalnya, rata-rata, jumlah) daripada hanya membuat nama unik.
+-   **Peringatan Kinerja**: Memberikan peringatan kepada pengguna jika transposisi dataset yang sangat besar mungkin memakan waktu lama.
+
+## 6. Detail Implementasi
+Fitur ini memisahkan logika dari antarmuka pengguna.
+-   **`hooks/useTranspose.ts`**: Mengelola state UI (variabel yang dipilih, dll.) dan memicu proses transposisi.
+-   **`services/transposeService.ts`**: Berisi fungsi murni `transposeDataService` yang melakukan logika inti transposisi data. Fungsi ini mengambil data dan konfigurasi, lalu mengembalikan data dan variabel baru yang sudah ditransposisi.
+-   **`TransposeUI.tsx`**: Komponen presentasi yang menampilkan daftar dan tombol, menerima semua data dan fungsi dari *hook*.
 
 ```
 /Transpose
@@ -72,7 +104,7 @@ To use first row values as variable names:
 1. Select the variables to transpose
 2. Enable "Create Variable Names from First Row of Data"
 3. Click OK to process
-4. The resulting dataset will use the first row values as variable names, and that row will be excluded from the data
+4. The resulting dataset will use the first row values as column names, and that row will be excluded from the data
 
 ## Notes
 

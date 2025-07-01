@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { Dialog } from '@/components/ui/dialog';
 import SelectCasesRandomSample from '../dialogs/SelectCasesRandomSample';
 
 describe('SelectCasesRandomSample Dialog', () => {
@@ -12,8 +13,16 @@ describe('SelectCasesRandomSample Dialog', () => {
         jest.clearAllMocks();
     });
 
+    function renderWithDialog() {
+        return render(
+            <Dialog open={true}>
+                <SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />
+            </Dialog>
+        );
+    }
+
     it('renders correctly with "approximate" selected by default', () => {
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         expect(screen.getByText('Select Cases: Random Sample')).toBeInTheDocument();
         expect(screen.getByLabelText('Approximately')).toBeChecked();
         expect(screen.getByLabelText('Exactly')).not.toBeChecked();
@@ -21,7 +30,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('allows changing selection to "exact"', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         const exactlyRadio = screen.getByLabelText('Exactly');
         await user.click(exactlyRadio);
@@ -32,7 +41,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('enables/disables inputs based on radio selection', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         const percentageInput = screen.getByLabelText('% of all cases');
         const exactCountInput = screen.getByLabelText(/cases from the first/);
@@ -48,7 +57,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('calls onContinue with correct approximate data', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         const percentageInput = screen.getByLabelText('% of all cases');
         await user.type(percentageInput, '20');
@@ -63,7 +72,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('calls onContinue with correct exact data', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         await user.click(screen.getByLabelText('Exactly'));
         
@@ -85,7 +94,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('shows validation error for invalid percentage', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         const percentageInput = screen.getByLabelText('% of all cases');
         await user.type(percentageInput, '101');
@@ -97,7 +106,7 @@ describe('SelectCasesRandomSample Dialog', () => {
 
     it('shows validation error for invalid exact count', async () => {
         const user = userEvent.setup();
-        render(<SelectCasesRandomSample onClose={onClose} onContinue={onContinue} />);
+        renderWithDialog();
         
         await user.click(screen.getByLabelText('Exactly'));
         await user.click(screen.getByRole('button', { name: 'Continue' }));

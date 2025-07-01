@@ -19,6 +19,17 @@ jest.mock('../dialog/MissingValuesDialog', () => ({
   MissingValuesDialog: () => <div data-testid="missing-values-dialog-mock" />,
 }));
 
+// We conditionally render the dialogs, so we have to mock them as if they are always there for some tests.
+const renderDialogs = (useLogicResult: any) => {
+    return (
+        <>
+            {useLogicResult.showTypeDialog && <div data-testid="variable-type-dialog-mock" />}
+            {useLogicResult.showValuesDialog && <div data-testid="value-labels-dialog-mock" />}
+            {useLogicResult.showMissingDialog && <div data-testid="missing-values-dialog-mock" />}
+        </>
+    )
+}
+
 const mockHotTable = jest.fn();
 // Mock HotTable from Handsontable
 jest.mock('@handsontable/react-wrapper', () => {
@@ -66,41 +77,44 @@ describe('VariableTable Component', () => {
     });
   });
 
-  it('should render the HotTable and dialogs without crashing', () => {
-    const { getByTestId } = render(<VariableTable />);
+  it('should render the HotTable without crashing', () => {
+    const { getByTestId, queryByTestId } = render(<VariableTable />);
     expect(getByTestId('hottable-mock')).toBeInTheDocument();
-    expect(getByTestId('variable-type-dialog-mock')).toBeInTheDocument();
-    expect(getByTestId('value-labels-dialog-mock')).toBeInTheDocument();
-    expect(getByTestId('missing-values-dialog-mock')).toBeInTheDocument();
+    // Dialogs should not be visible by default
+    expect(queryByTestId('variable-type-dialog-mock')).not.toBeInTheDocument();
+    expect(queryByTestId('value-labels-dialog-mock')).not.toBeInTheDocument();
+    expect(queryByTestId('missing-values-dialog-mock')).not.toBeInTheDocument();
   });
 
   it('should show the correct dialog when its state is true', () => {
     const { useVariableTableLogic } = require('../hooks/useVariableTableLogic');
-    const { rerender } = render(<VariableTable />);
-
+    
     // Test for VariableTypeDialog
-    useVariableTableLogic.mockReturnValueOnce({
+    const logicResultType = {
       ...useVariableTableLogic(),
       showTypeDialog: true,
-    });
-    rerender(<VariableTable />);
-    // You can't directly test props on the mock, but you can confirm the logic is triggered
-    // For a real test, you would check for something visible in the dialog's mock
-    // For this example, we assume the dialog becomes visible.
+    };
+    useVariableTableLogic.mockReturnValue(logicResultType);
+    const { getByTestId, rerender } = render(<VariableTable />);
+    expect(getByTestId('variable-type-dialog-mock')).toBeInTheDocument();
 
     // Test for ValueLabelsDialog
-    useVariableTableLogic.mockReturnValueOnce({
+    const logicResultValues = {
       ...useVariableTableLogic(),
       showValuesDialog: true,
-    });
+    };
+    useVariableTableLogic.mockReturnValue(logicResultValues);
     rerender(<VariableTable />);
+    expect(getByTestId('value-labels-dialog-mock')).toBeInTheDocument();
 
     // Test for MissingValuesDialog
-    useVariableTableLogic.mockReturnValueOnce({
+    const logicResultMissing = {
       ...useVariableTableLogic(),
       showMissingDialog: true,
-    });
+    };
+    useVariableTableLogic.mockReturnValue(logicResultMissing);
     rerender(<VariableTable />);
+    expect(getByTestId('missing-values-dialog-mock')).toBeInTheDocument();
   });
 
   it('should call handleContextMenu when a context menu action is triggered', () => {
@@ -143,6 +157,6 @@ describe('VariableTable Component', () => {
 
     // Assert that our handler was called correctly
     expect(handleContextMenuMock).toHaveBeenCalledTimes(1);
-    expect(handleContextMenuMock).toHaveBeenCalledWith(key, selection);
+    expect(handleContextMenuMock).toHaveBeenCalledWith(key);
   });
 }); 

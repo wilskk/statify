@@ -144,7 +144,7 @@ export function formatDescriptiveTableOld(
         headerText = headerText.substring(0, 47) + '...';
     }
     const row: TableRow = { rowHeader: [headerText] };
-    const isDateType = spssDateTypes.has(variable.type);
+    const isDateType = variable.type ? spssDateTypes.has(variable.type) : false;
     const decimals = variable.decimals;
 
     // Fungsi helper untuk memformat nilai

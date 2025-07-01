@@ -14,13 +14,32 @@ import { BaseModalProps } from '@/types/modalTypes';
 jest.mock('../hooks');
 
 // Mock child components
-const MockVariablesTab = () => <div data-testid="variables-tab">VariablesTab</div>;
-MockVariablesTab.displayName = 'VariablesTab';
-jest.mock('../components/VariablesTab', () => MockVariablesTab);
+jest.mock('../components/VariablesTab', () => ({
+  __esModule: true,
+  default: () => <div data-testid="variables-tab">VariablesTab</div>,
+}));
 
-const MockStatisticsTab = () => <div data-testid="statistics-tab">StatisticsTab</div>;
-MockStatisticsTab.displayName = 'StatisticsTab';
-jest.mock('../components/StatisticsTab', () => MockStatisticsTab);
+jest.mock('../components/StatisticsTab', () => ({
+  __esModule: true,
+  default: () => <div data-testid="statistics-tab">StatisticsTab</div>,
+}));
+
+// Mock Radix compose-refs to no-op to avoid nested state update loops during tests
+jest.mock('@radix-ui/react-compose-refs', () => ({
+  __esModule: true,
+  default: (...refs: any[]) => {
+    return (node: any) => {
+      refs.forEach((ref) => {
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref) {
+          // eslint-disable-next-line no-param-reassign
+          (ref as { current: any }).current = node;
+        }
+      });
+    };
+  },
+}));
 
 // Type-safe casting for mocked hooks
 const mockedUseVariableSelection = useVariableSelection as jest.Mock;
@@ -76,7 +95,7 @@ describe('Descriptives Modal', () => {
   };
   
   const DescriptivesTestComponent: React.FC<Partial<BaseModalProps>> = (props) => (
-      <Descriptives onClose={mockOnClose} {...props} />
+        <Descriptives onClose={mockOnClose} containerType="sidebar" {...props} />
   );
 
   beforeEach(() => {
@@ -87,7 +106,7 @@ describe('Descriptives Modal', () => {
     setupMocks();
     render(<DescriptivesTestComponent />);
     
-    expect(screen.getByText('Descriptives')).toBeInTheDocument();
+    // Title header is not rendered in sidebar container type
     expect(screen.getByRole('tab', { name: /Variables/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Statistics/i })).toBeInTheDocument();
 

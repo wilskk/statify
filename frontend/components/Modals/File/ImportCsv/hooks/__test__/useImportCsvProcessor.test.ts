@@ -6,14 +6,12 @@ import { CSVProcessingOptions } from '../../types';
 // Mock the entire services module
 jest.mock('../../services/services', () => ({
   importCsvDataService: {
-    resetStores: jest.fn(),
     populateStores: jest.fn(),
   },
   parseCsvWithWorker: jest.fn(),
 }));
 
 // Typecast the mocked functions for better type safety in tests
-const mockResetStores = importCsvDataService.resetStores as jest.Mock;
 const mockPopulateStores = importCsvDataService.populateStores as jest.Mock;
 const mockParseCsvWithWorker = parseCsvWithWorker as jest.Mock;
 
@@ -34,7 +32,6 @@ describe('useImportCsvProcessor', () => {
   it('should orchestrate the CSV processing flow successfully', async () => {
     mockParseCsvWithWorker.mockResolvedValue(mockProcessedData);
     mockPopulateStores.mockResolvedValue(undefined);
-    mockResetStores.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useImportCsvProcessor());
 
@@ -55,7 +52,6 @@ describe('useImportCsvProcessor', () => {
     });
 
     // Assertions for the flow
-    expect(mockResetStores).toHaveBeenCalledTimes(1);
     expect(mockParseCsvWithWorker).toHaveBeenCalledWith(fileContent, options);
     expect(mockPopulateStores).toHaveBeenCalledWith(mockProcessedData);
 
@@ -74,7 +70,6 @@ describe('useImportCsvProcessor', () => {
     });
 
     expect(result.current.isProcessing).toBe(false);
-    expect(mockResetStores).toHaveBeenCalledTimes(1);
     expect(mockPopulateStores).not.toHaveBeenCalled();
   });
 
@@ -90,7 +85,6 @@ describe('useImportCsvProcessor', () => {
     });
 
     expect(result.current.isProcessing).toBe(false);
-    expect(mockResetStores).toHaveBeenCalledTimes(1);
     expect(mockParseCsvWithWorker).toHaveBeenCalledWith(fileContent, options);
   });
 });

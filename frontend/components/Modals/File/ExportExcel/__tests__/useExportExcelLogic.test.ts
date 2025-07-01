@@ -35,10 +35,21 @@ describe('useExportExcelLogic', () => {
     jest.clearAllMocks();
     mockedUseToast.mockReturnValue({ toast: mockedToast });
 
-    // Default store mocks
-    mockedUseDataStore.mockReturnValue({ data: [{ '0': 'a', '1': 1 }] });
-    mockedUseVariableStore.mockReturnValue({ variables: [{ name: 'var1', columnIndex: 0 }, { name: 'var2', columnIndex: 1 }] });
-    mockedUseMetaStore.mockReturnValue({ meta: { name: 'test-project' } });
+    // Correctly mock Zustand stores
+    (useDataStore as any).getState = jest.fn().mockReturnValue({
+      data: [{ '0': 'a', '1': 1 }],
+      loadData: jest.fn().mockResolvedValue(undefined),
+    });
+
+    (useVariableStore as any).getState = jest.fn().mockReturnValue({
+      variables: [{ name: 'var1', columnIndex: 0 }, { name: 'var2', columnIndex: 1 }],
+      loadVariables: jest.fn().mockResolvedValue(undefined),
+    });
+
+    (useMetaStore as any).getState = jest.fn().mockReturnValue({
+      meta: { name: 'test-project' },
+      loadMeta: jest.fn().mockResolvedValue(undefined),
+    });
   });
 
   it('should initialize with filename from metaStore', () => {
@@ -47,7 +58,10 @@ describe('useExportExcelLogic', () => {
   });
 
   it('should initialize with default filename if meta name is not available', () => {
-    mockedUseMetaStore.mockReturnValue({ meta: { name: '' } });
+    (useMetaStore as any).getState = jest.fn().mockReturnValue({
+        meta: { name: '' },
+        loadMeta: jest.fn().mockResolvedValue(undefined)
+    });
     const { result } = renderHook(() => useExportExcelLogic({ onClose: mockOnClose }));
     expect(result.current.exportOptions.filename).toBe(DEFAULT_FILENAME);
   });
@@ -74,7 +88,10 @@ describe('useExportExcelLogic', () => {
   });
   
   it('should not export and show toast if data is empty', async () => {
-    mockedUseDataStore.mockReturnValue({ data: [] });
+    (useDataStore as any).getState = jest.fn().mockReturnValue({
+        data: [],
+        loadData: jest.fn().mockResolvedValue(undefined)
+    });
     const { result } = renderHook(() => useExportExcelLogic({ onClose: mockOnClose }));
 
     await act(async () => {

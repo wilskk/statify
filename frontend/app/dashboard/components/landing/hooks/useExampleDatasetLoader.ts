@@ -12,7 +12,7 @@ export const useExampleDatasetLoader = (onClose: () => void) => {
     const router = useRouter();
     const { setData, resetData } = useDataStore();
     const { setMeta: setProjectMeta, resetMeta: resetProjectMeta } = useMetaStore();
-    const { overwriteVariables, resetVariables, setVariables } = useVariableStore();
+    const { overwriteAll, resetVariables, setVariables } = useVariableStore();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -98,11 +98,11 @@ export const useExampleDatasetLoader = (onClose: () => void) => {
             }
             await resetProjectMeta();
             await setProjectMeta({ name: fileName, location: fileName, created: new Date() });
-            await setData(parsedData);
-
+            
             if (fileExtension === 'sav') {
-                await overwriteVariables(variables);
+                await overwriteAll(variables, parsedData);
             } else {
+                await setData(parsedData);
                 await setVariables(variables);
             }
 

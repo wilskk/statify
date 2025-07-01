@@ -1,35 +1,16 @@
 # `useEditMenuActions` Hook
 
-## Overview
+## 1. Overview
 
 The `useEditMenuActions` hook is a centralized handler for all edit-related actions performed on the main data grid (a Handsontable instance). It provides a single function, `handleAction`, which takes an `EditMenuActionType` and executes the corresponding logic.
 
-This hook is designed to abstract the complexities of interacting with the Handsontable instance and our application's state management (Zustand stores), ensuring that all edits are handled consistently and reliably.
+This hook is designed to abstract the complexities of interacting with the Handsontable instance and our application's state management (Zustand stores), ensuring that all edits are handled consistently and reliably. It consolidates all edit actions (e.g., cut, copy, paste, insert row/column) into a single, manageable location and ensures that actions modifying the grid's structure are correctly propagated through our state management stores.
 
-## Purpose
+## 2. Architecture and Data Flow
 
--   **Centralized Logic:** Consolidates all edit actions (e.g., cut, copy, paste, insert row/column) into a single, manageable location.
--   **State Synchronization:** Ensures that actions that modify the grid's structure (like adding rows or columns) are correctly propagated through our state management stores (`useDataStore`, `useVariableStore`), preventing state inconsistencies.
--   **Abstraction:** Simplifies UI components by hiding the implementation details of Handsontable plugins and state management calls.
+The hook serves as a crucial intermediary between UI components (like the main "Edit" menu) and the underlying data layer, which consists of the Handsontable grid and Zustand state stores.
 
-## Actions Handled
-
-The `handleAction` function accepts the following `EditMenuActionType` values:
-
--   `Undo`
--   `Redo`
--   `Cut`
--   `Copy`
--   `CopyWithVariableNames`
--   `CopyWithVariableLabels`
--   `Paste`
--   `PasteVariables`
--   `PasteWithVariableNames`
--   `Clear`
--   `InsertVariable`
--   `InsertCases`
-
-## Dependencies
+### Dependencies
 
 This hook is tightly coupled with the following Zustand stores:
 
@@ -37,7 +18,48 @@ This hook is tightly coupled with the following Zustand stores:
 -   `useVariableStore`: To manage variable (column) metadata, including adding new variables.
 -   `useDataStore`: To manage the grid's data, including adding new cases (rows).
 
-## Usage Example
+### Data Flow Diagram
+
+The diagram below illustrates how the hook processes different categories of actions.
+
+```mermaid
+graph TD
+    subgraph "UI Layer"
+        A["EditMenu Component"] -- "User clicks 'Copy'" --> B["handleAction('Copy')"];
+        A -- "User clicks 'Insert Variable'" --> C["handleAction('InsertVariable')"];
+        A -- "User clicks 'Paste with Headers'" --> D["handleAction('PasteWithVariableNames')"];
+    end
+
+    subgraph "Hook: useEditMenuActions"
+        B --> E{"handleAction"};
+        C --> E;
+        D --> E;
+        E -- "gets instance" --> F[("useTableRefStore")];
+        F --> G["Handsontable Instance"];
+        
+        subgraph "Standard Action"
+            E -- "e.g. Copy, Cut..." --> H["Calls Handsontable Plugins<br/>e.g., copyPaste.copy()"];
+            G --> H;
+        end
+
+        subgraph "Structural Change"
+            E -- "e.g. Insert Variable..." --> I["Calls Zustand Store Actions<br/>e.g., useVariableStore.addVariable()"];
+            I --> J[("useVariableStore / useDataStore")];
+        end
+
+        subgraph "Advanced Action"
+            E -- "e.g. Paste with Headers..." --> K["Reads/Writes to<br/>Clipboard API"];
+            E -- "gets metadata from" ---> J;
+        end
+    end
+    
+    subgraph "State & Grid"
+        J -- "updates" --> L["Global App State"];
+        L -- "triggers re-render of" --> G;
+    end
+```
+
+## 3. Usage Example
 
 The hook is intended to be used within components that trigger edit actions, such as a dropdown menu in the application's navbar.
 
@@ -71,7 +93,24 @@ const EditMenu = () => {
 export default EditMenu;
 ```
 
-## Detailed Action Explanations
+## 4. Actions Handled
+
+The `handleAction` function accepts the following `EditMenuActionType` values:
+
+-   `Undo`
+-   `Redo`
+-   `Cut`
+-   `Copy`
+-   `CopyWithVariableNames`
+-   `CopyWithVariableLabels`
+-   `Paste`
+-   `PasteVariables`
+-   `PasteWithVariableNames`
+-   `Clear`
+-   `InsertVariable`
+-   `InsertCases`
+
+## 5. Detailed Action Explanations
 
 ### Standard Actions
 

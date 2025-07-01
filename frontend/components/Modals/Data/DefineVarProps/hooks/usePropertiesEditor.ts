@@ -265,6 +265,7 @@ export const usePropertiesEditor = ({
         selectedVariableIndex,
         currentVariable,
         gridData,
+        setGridData,
         showTypeDropdown, setShowTypeDropdown,
         showRoleDropdown, setShowRoleDropdown,
         showMeasureDropdown, setShowMeasureDropdown,

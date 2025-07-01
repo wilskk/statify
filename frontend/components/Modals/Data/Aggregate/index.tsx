@@ -359,6 +359,8 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
         applyNameLabel,
         handleReset,
         handleConfirm,
+        addNumberOfCases,
+        setAddNumberOfCases,
     } = useAggregateData();
 
     // Tour state
@@ -482,6 +484,8 @@ const AggregateContent: FC<AggregateDataProps> = ({ onClose, containerType = "di
                         highlightedVariable={highlightedVariable}
                         breakName={breakName}
                         setBreakName={setBreakName}
+                        addNumberOfCases={addNumberOfCases}
+                        setAddNumberOfCases={setAddNumberOfCases}
                         handleVariableSelect={handleVariableSelect}
                         handleVariableDoubleClick={handleVariableDoubleClick}
                         handleAggregatedVariableSelect={handleAggregatedVariableSelect}

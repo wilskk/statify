@@ -12,12 +12,11 @@ jest.mock('../importClipboard.utils', () => ({
   excelStyleTextToColumns: jest.fn(),
 }));
 
-const mockedSetData = jest.fn();
-const mockedOverwriteVariables = jest.fn();
+const mockOverwriteAll = jest.fn();
 const mockedExcelStyleParser = utils.excelStyleTextToColumns as jest.Mock;
 
-(useDataStore as unknown as jest.Mock).mockReturnValue({ setData: mockedSetData });
-(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteVariables: mockedOverwriteVariables });
+(useDataStore as unknown as jest.Mock).mockReturnValue({ });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: mockOverwriteAll });
 
 
 describe('useImportClipboardProcessor', () => {
@@ -40,15 +39,15 @@ describe('useImportClipboardProcessor', () => {
       detectDataTypes: true,
     });
 
-    expect(mockedSetData).toHaveBeenCalledWith([['1', 'Alice'], ['2', 'Bob']]);
-    expect(mockedOverwriteVariables).toHaveBeenCalledTimes(1);
+    const [variables, data] = mockOverwriteAll.mock.calls[0];
+    expect(data).toEqual([['1', 'Alice'], ['2', 'Bob']]);
+    expect(mockOverwriteAll).toHaveBeenCalledTimes(1);
     
-    const createdVariables = mockedOverwriteVariables.mock.calls[0][0];
-    expect(createdVariables.length).toBe(2);
-    expect(createdVariables[0].name).toBe('ID');
-    expect(createdVariables[0].type).toBe('NUMERIC');
-    expect(createdVariables[1].name).toBe('Name');
-    expect(createdVariables[1].type).toBe('STRING');
+    expect(variables.length).toBe(2);
+    expect(variables[0].name).toBe('ID');
+    expect(variables[0].type).toBe('NUMERIC');
+    expect(variables[1].name).toBe('Name');
+    expect(variables[1].type).toBe('STRING');
   });
 
   it('should process data without header row correctly', async () => {
@@ -64,12 +63,12 @@ describe('useImportClipboardProcessor', () => {
       detectDataTypes: true,
     });
 
-    expect(mockedSetData).toHaveBeenCalledWith(dataOnly);
+    const [variables, data] = mockOverwriteAll.mock.calls[0];
+    expect(data).toEqual(dataOnly);
     
-    const createdVariables = mockedOverwriteVariables.mock.calls[0][0];
-    expect(createdVariables.length).toBe(2);
-    expect(createdVariables[0].name).toBe('VAR001');
-    expect(createdVariables[1].name).toBe('VAR002');
+    expect(variables.length).toBe(2);
+    expect(variables[0].name).toBe('VAR001');
+    expect(variables[1].name).toBe('VAR002');
   });
 
   it('should throw an error if no text is provided', async () => {
@@ -100,9 +99,9 @@ describe('useImportClipboardProcessor', () => {
     });
 
     expect(mockedExcelStyleParser).not.toHaveBeenCalled();
-    expect(mockedSetData).toHaveBeenCalledWith([['data', 'here']]);
-    const createdVariables = mockedOverwriteVariables.mock.calls[0][0];
-    expect(createdVariables[0].name).toBe('pre');
-    expect(createdVariables[1].name).toBe('processed');
+    const [variables, data] = mockOverwriteAll.mock.calls[0];
+    expect(data).toEqual([['data', 'here']]);
+    expect(variables[0].name).toBe('pre');
+    expect(variables[1].name).toBe('processed');
   });
 }); 

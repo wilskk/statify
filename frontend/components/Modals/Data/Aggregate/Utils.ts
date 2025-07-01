@@ -107,10 +107,15 @@ export const getFunctionDisplay = (functionName: string, varName: string,
             return `${functionName}(${varName}, ${percentageValue || "value"})`;
         case "PIN":
         case "FIN":
-            return `${functionName}(${varName}, ${percentageLow || "low"}, ${percentageHigh || "high"})`;
+            // Support both call patterns: low/high passed via percentageLow/High OR percentageValue/percentageLow
+            const lowVal = percentageLow || percentageValue || "low";
+            const highVal = percentageHigh || (percentageLow ? percentageLow : "high");
+            return `${functionName}(${varName}, ${lowVal}, ${highVal})`;
         case "POUT":
         case "FOUT":
-            return `${functionName}(${varName}, ${percentageLow || "low"}, ${percentageHigh || "high"})`;
+            const lowValOut = percentageLow || percentageValue || "low";
+            const highValOut = percentageHigh || (percentageLow ? percentageLow : "high");
+            return `${functionName}(${varName}, ${lowValOut}, ${highValOut})`;
         default:
             return `${functionName}(${varName})`;
     }

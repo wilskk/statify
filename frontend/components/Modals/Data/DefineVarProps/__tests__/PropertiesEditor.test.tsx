@@ -6,10 +6,16 @@ import { usePropertiesEditor } from '../hooks/usePropertiesEditor';
 import { Variable } from '@/types/Variable';
 
 jest.mock('../hooks/usePropertiesEditor');
-jest.mock('@handsontable/react-wrapper', () => ({
-    __esModule: true,
-    HotTable: React.forwardRef((props, ref) => <div ref={ref as React.RefObject<HTMLDivElement>}>Mocked HotTable</div>)
-}));
+jest.mock('@handsontable/react-wrapper', () => {
+    const MockHotTable = React.forwardRef<HTMLDivElement>((props, ref) => (
+        <div ref={ref}>Mocked HotTable</div>
+    ));
+    MockHotTable.displayName = 'MockHotTable';
+    return {
+        __esModule: true,
+        HotTable: MockHotTable,
+    };
+});
 
 const mockedUsePropertiesEditor = usePropertiesEditor as jest.Mock;
 
@@ -28,7 +34,7 @@ describe('PropertiesEditor', () => {
         currentVar: Variable | null = mockVariables[0],
         activeTab: string = 'properties'
     ) => {
-        let state = {
+        const state: any = {
             modifiedVariables: [...mockVariables.map(v => ({...v}))], // Deep copy to prevent mutation across tests
             selectedVariableIndex: currentVar ? mockVariables.findIndex(v => v.tempId === currentVar.tempId) : null,
             currentVariable: currentVar ? { ...currentVar } : null,

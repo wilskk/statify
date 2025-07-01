@@ -510,7 +510,7 @@ export const useAggregateData = () => {
             setStatisticProgress(false);
             closeModal();
         }
-    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, updateCells, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
+    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
 
     return {
         availableVariables, setAvailableVariables,

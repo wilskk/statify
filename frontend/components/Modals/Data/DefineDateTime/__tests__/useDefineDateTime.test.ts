@@ -67,7 +67,7 @@ describe('useDefineDateTime Hook', () => {
             await result.current.handleOk();
         });
 
-        expect(mockSetMeta).toHaveBeenCalledWith(expect.stringContaining('Year(1900)'));
+        expect(mockSetMeta).toHaveBeenCalledWith({ dates: expect.stringContaining('Year(1900)') });
         expect(mockedPrepareDateVariables).toHaveBeenCalledTimes(1);
         expect(mockAddVariables).toHaveBeenCalledWith(
             [{ name: 'YEAR_', columnIndex: 0 }],

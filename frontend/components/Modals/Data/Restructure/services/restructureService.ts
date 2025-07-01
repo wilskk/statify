@@ -93,7 +93,7 @@ function wideToLong(
       0
     );
     origStubVars.forEach(v => {
-      const newRow: (string | number)[] = [];
+      const newRow: DataRow = [];
       origIdxVars.forEach(iv => newRow.push(row[iv.columnIndex]));
       newRow.push(row[v.columnIndex]);
       if (createIndex) newRow.push(v.name);
@@ -125,7 +125,7 @@ function longToWide(
   );
   const groupCols = groupVars.map(v => v.columnIndex);
 
-  const map = new Map<string, { keyValues: any[]; values: Map<any, any> }>();
+  const map = new Map<string, { keyValues: DataRow; values: Map<any, any> }>();
   data.forEach(row => {
     const keyValues = groupCols.map(ci => row[ci]);
     const key = JSON.stringify(keyValues);
@@ -133,7 +133,7 @@ function longToWide(
     map.get(key)!.values.set(row[origIdVar.columnIndex], row[origStubVar.columnIndex]);
   });
 
-  const uniqueIds = Array.from(new Set(data.map(r => r[origIdVar.columnIndex])));
+  const uniqueIds = Array.from(new Set(data.map(r => r[origIdVar.columnIndex]))).sort((a,b)=> (a as any) - (b as any));
 
   const newVars: Variable[] = [];
   groupVars.forEach(v => newVars.push({ ...v, columnIndex: newVars.length }));
@@ -141,7 +141,7 @@ function longToWide(
 
   const newData: DataRow[] = [];
   map.forEach(({ keyValues, values }) => {
-    const row: (string | number)[] = [...keyValues];
+    const row: DataRow = [...keyValues];
     uniqueIds.forEach(uid => row.push(values.has(uid) ? values.get(uid)! : ""));
     newData.push(row);
   });
@@ -149,7 +149,8 @@ function longToWide(
   if (dropEmpty) {
     const dropIndices: number[] = [];
     for (let i = groupVars.length; i < newVars.length; i++) {
-      if (newData.every(r => r[i] === "")) dropIndices.push(i);
+      const hasMissing = newData.some(r => r[i] === "" || r[i] === null || r[i] === undefined);
+      if (hasMissing) dropIndices.push(i);
     }
     dropIndices.sort((a, b) => b - a).forEach(i => {
       newVars.splice(i, 1);
@@ -172,7 +173,7 @@ function transposeAll(
   const cols = rows > 0 ? data[0].length : 0;
   const newData: DataRow[] = [];
   for (let c = 0; c < cols; c++) {
-    const row: (string | number)[] = [];
+    const row: DataRow = [];
     for (let r = 0; r < rows; r++) {
       row.push(data[r][c]);
     }

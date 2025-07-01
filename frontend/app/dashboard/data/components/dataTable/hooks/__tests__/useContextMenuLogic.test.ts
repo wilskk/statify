@@ -27,18 +27,26 @@ describe('useContextMenuLogic', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Mock store implementations
-        (useDataStore as unknown as jest.Mock).mockReturnValue({
+        // Use `getState` mock for actions
+        (useDataStore as any).getState = jest.fn().mockReturnValue({
             addRow: mockAddRow,
             deleteRows: mockDeleteRows,
             updateCells: mockUpdateCells,
-            data: [['a', 'b'], ['c', 'd']],
+        });
+        // Mock the hook selector for `isLoading`
+        (useDataStore as unknown as jest.Mock).mockImplementation((selector) => {
+            const state = { isLoading: false, data: [['a', 'b'], ['c', 'd']] };
+            return selector(state);
         });
 
-        (useVariableStore as unknown as jest.Mock).mockReturnValue({
+        (useVariableStore as any).getState = jest.fn().mockReturnValue({
             addVariable: mockAddVariable,
             deleteVariables: mockDeleteVariables,
             updateMultipleVariables: mockUpdateMultipleVariables,
+        });
+        (useVariableStore as unknown as jest.Mock).mockImplementation((selector) => {
+            const state = { isLoading: false };
+            return selector(state);
         });
         
         // Mock Handsontable selection
@@ -107,6 +115,27 @@ describe('useContextMenuLogic', () => {
             contextMenu.items.remove_col.callback();
         });
         expect(mockDeleteVariables).toHaveBeenCalledWith([1, 2, 3]);
+    });
+
+    it('should call updateCells to clear contents over a selected range', async () => {
+        const { result } = renderHook(() => useContextMenuLogic(defaultProps));
+        const contextMenu = result.current.contextMenuConfig as any;
+        
+        mockHotTableRef.current.hotInstance.getSelectedRangeLast.mockReturnValue({
+            from: { row: 1, col: 1 },
+            to: { row: 2, col: 2 },
+        });
+
+        await act(async () => {
+            contextMenu.items.clear_contents.callback();
+        });
+
+        expect(mockUpdateCells).toHaveBeenCalledWith([
+            { row: 1, col: 1, value: "" },
+            { row: 1, col: 2, value: "" },
+            { row: 2, col: 1, value: "" },
+            { row: 2, col: 2, value: "" },
+        ]);
     });
 
     it('should call updateMultipleVariables for alignment', async () => {

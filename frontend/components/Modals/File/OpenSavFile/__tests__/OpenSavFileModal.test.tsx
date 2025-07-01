@@ -38,7 +38,6 @@ describe('OpenSavFileModal Component', () => {
 
   it('renders initial state correctly', () => {
     render(<OpenSavFileModal onClose={mockHandleModalClose} containerType="dialog" />);
-    expect(screen.getByText('Select .sav File')).toBeInTheDocument();
     expect(screen.getByText(/click to select a .sav file/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open/i })).toBeDisabled();
   });

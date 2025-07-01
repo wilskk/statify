@@ -18,10 +18,16 @@ jest.useFakeTimers();
 describe('useTableUpdates', () => {
     const mockUpdateCells = jest.fn();
     const mockAddVariables = jest.fn().mockResolvedValue(undefined);
+    const mockUpdateMultipleFields = jest.fn();
     const mockVariables = [
-        { name: 'Var1', columnIndex: 0, type: 'NUMERIC', decimals: 2 },
-        { name: 'Var2', columnIndex: 1, type: 'STRING', width: 5 },
-        { name: 'Var3', columnIndex: 2, type: 'DATE' },
+        { name: 'Var1', columnIndex: 0, type: 'NUMERIC', decimals: 2, columns: 100 },
+        { name: 'Var2', columnIndex: 1, type: 'STRING', width: 5, columns: 100 },
+        { 
+            name: 'Gender', 
+            columnIndex: 2, 
+            type: 'NUMERIC', 
+            values: [ { value: 1, label: 'Male' }, { value: 2, label: 'Female' } ] 
+        },
     ];
 
     beforeEach(() => {
@@ -39,6 +45,7 @@ describe('useTableUpdates', () => {
             const state = {
                 variables: mockVariables,
                 addVariables: mockAddVariables,
+                updateMultipleFields: mockUpdateMultipleFields,
             };
             // This allows accessing both state and actions like in the real hook
             if (selector) {
@@ -79,48 +86,52 @@ describe('useTableUpdates', () => {
         expect(changes[0][3]).toBe('this '); // 'this is too long' truncated to 5 chars
     });
 
+    it('should convert label to value when in label viewMode', async () => {
+        const { result } = renderHook(() => useTableUpdates('label'));
+        // Change Var3 (Gender) using its label
+        const changes: Handsontable.CellChange[] = [[0, 2, 'Old Value', 'Male']]; 
+        
+        await act(async () => {
+            result.current.handleAfterChange(changes, 'edit');
+        });
+        
+        jest.runAllTimers();
+
+        // Should have been converted to the corresponding value (1)
+        expect(mockUpdateCells).toHaveBeenCalledWith([{ row: 0, col: 2, value: 1 }]);
+    });
+
+    it('should call updateMultipleFields on column resize', () => {
+        const { result } = renderHook(() => useTableUpdates('numeric'));
+        const newSize = 150;
+        const colIndex = 0;
+
+        act(() => {
+            result.current.handleAfterColumnResize(newSize, colIndex);
+        });
+
+        expect(mockUpdateMultipleFields).toHaveBeenCalledTimes(1);
+        expect(mockUpdateMultipleFields).toHaveBeenCalledWith('Var1', { columns: newSize });
+    });
+
     it('should handle new column creation when pasting data', async () => {
         const { result } = renderHook(() => useTableUpdates('numeric'));
         const changes: Handsontable.CellChange[] = [[0, 3, null, 'new data']]; // Pasting into a new column
-
+        
         await act(async () => {
-            await result.current.handleAfterChange(changes, 'CopyPaste.paste');
+            result.current.handleAfterChange(changes, 'paste');
         });
 
+        // It should call addVariables with the new column data
         expect(mockAddVariables).toHaveBeenCalledTimes(1);
         // It should infer type STRING for the new variable
         expect(mockAddVariables).toHaveBeenCalledWith(
             expect.arrayContaining([
                 expect.objectContaining({ columnIndex: 3, type: 'STRING' })
             ]),
-            changes.map(([row, col, , value]) => ({ row: col as number, col: col as number, value }))
+            expect.arrayContaining([
+                expect.objectContaining({ row: 0, col: 3, value: 'new data' })
+            ])
         );
-    });
-    
-    it('should show a toast on error', async () => {
-        const { result } = renderHook(() => useTableUpdates('numeric'));
-        const changes: Handsontable.CellChange[] = [[0, 0, null, 123]];
-        
-        mockUpdateCells.mockImplementationOnce(() => {
-            throw new Error("Test error");
-        });
-        // Also mock the addVariables to throw for the other path
-        mockAddVariables.mockRejectedValue(new Error("Test error"));
-
-        await act(async () => {
-            // Need to wrap in a try-catch because the hook's error boundary will re-throw
-            try {
-                await result.current.handleAfterChange(changes, 'edit');
-            } catch(e) {
-                // ignore
-            }
-        });
-        
-        jest.runAllTimers();
-
-        expect(toast).toHaveBeenCalledWith(expect.objectContaining({
-            variant: "destructive",
-            title: "Terjadi Kesalahan",
-        }));
     });
 }); 

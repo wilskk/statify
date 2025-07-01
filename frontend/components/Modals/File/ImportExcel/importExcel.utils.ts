@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { Variable } from "@/types/Variable";
-import { ParseSheetOptions, ParsedSheetData, ProcessedImportData } from "../types";
+import { ParseSheetOptions, ParsedSheetData, ProcessedImportData } from "./types";
 
 /**
  * Parses the binary string content of an Excel file into a workbook object.

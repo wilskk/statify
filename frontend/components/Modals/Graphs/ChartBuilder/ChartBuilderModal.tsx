@@ -23,7 +23,7 @@ import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
 import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import ResultOutput from "@/app/dashboard/components/output/ResultOutput";
+import ResultOutput from "@/app/dashboard/result/components/ResultOutput";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import { X } from "lucide-react";
 

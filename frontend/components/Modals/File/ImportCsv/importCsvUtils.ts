@@ -1,5 +1,5 @@
 import { Variable } from "@/types/Variable";
-import { CSVProcessingOptions } from "../types";
+import { CSVProcessingOptions } from "./types";
 
 export class CSVProcessingError extends Error {
     constructor(message: string) {
