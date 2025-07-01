@@ -27,7 +27,6 @@ interface VariablesLinearTabProps {
   handleRemoveFromSelectionVariable: () => void;
   handleRemoveFromCaseLabelsVariable: () => void;
   handleRemoveFromWLSWeightVariable: () => void;
-  setMethod: (method: string) => void;
 }
 
 const VariablesLinearTab: React.FC<VariablesLinearTabProps> = ({
@@ -50,7 +49,6 @@ const VariablesLinearTab: React.FC<VariablesLinearTabProps> = ({
   handleRemoveFromSelectionVariable,
   handleRemoveFromCaseLabelsVariable,
   handleRemoveFromWLSWeightVariable,
-  setMethod,
 }) => {
 
   // Helper function to get display name (label or name)
@@ -198,20 +196,28 @@ const VariablesLinearTab: React.FC<VariablesLinearTabProps> = ({
           </div>
         </div>
 
-        {/* Method Dropdown (Positioned below Independents) */}
+        {/* Method Display (Positioned below Independents) */}
          <div className="ml-[40px]"> {/* Indent to align roughly under the boxes */}
             <label className="font-semibold block mb-2">Method:</label>
-            <Select onValueChange={(value) => setMethod(value)} value={method}>
-            <SelectTrigger className="mt-1 w-full">
-                <SelectValue placeholder="Select a method" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="Enter">Enter</SelectItem>
-                <SelectItem value="Stepwise">Stepwise</SelectItem>
-                <SelectItem value="Forward">Forward</SelectItem>
-                <SelectItem value="Backward">Backward</SelectItem>
-            </SelectContent>
-            </Select>
+            <div className="flex items-center mt-1">
+              <div className="bg-muted/50 text-sm border rounded-md px-3 py-2 flex items-center min-h-[40px] w-full">
+                <span className="font-medium text-foreground">Enter</span>
+                <div className="ml-auto">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <InfoIcon size={14} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[220px]">All selected independent variables will be entered in a single step</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            </div>
          </div>
 
         {/* Selection Variable */}

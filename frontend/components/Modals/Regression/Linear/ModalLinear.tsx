@@ -108,7 +108,8 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
   const [selectedCaseLabelsVariable, setSelectedCaseLabelsVariable] = useState<Variable | null>(null);
   const [selectedWLSWeightVariable, setSelectedWLSWeightVariable] = useState<Variable | null>(null);
   const [highlightedVariable, setHighlightedVariable] = useState<Variable | null>(null);
-  const [method, setMethod] = useState<string>('Enter');
+  // Method is now fixed to "Enter"
+  const method = "Enter";
 
   // State untuk parameter dari tab lain
   const [statsParams, setStatsParams] = useState<StatisticsParams>(defaultStatsParams);
@@ -312,7 +313,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
     setSelectedCaseLabelsVariable(null);
     setSelectedWLSWeightVariable(null);
     setHighlightedVariable(null);
-    setMethod('Enter');
 
     // Reset parameters for other tabs to defaults
     setStatsParams(defaultStatsParams);
@@ -1290,7 +1290,6 @@ const ModalLinear: React.FC<ModalLinearProps> = ({ onClose, containerType = "dia
               handleRemoveFromSelectionVariable={handleRemoveFromSelectionVariable}
               handleRemoveFromCaseLabelsVariable={handleRemoveFromCaseLabelsVariable}
               handleRemoveFromWLSWeightVariable={handleRemoveFromWLSWeightVariable}
-              setMethod={setMethod}
             />
           </TabsContent>
 
