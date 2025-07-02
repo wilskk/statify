@@ -169,15 +169,10 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
     logs.forEach((log) => {
         if (!log.analytics || log.analytics.length === 0) {
             return;
-        };
+        }
 
-        const logItem: SidebarItem = {
-            id: log.id,
-            title: `Log ${log.id}`,
-            type: 'log',
-            items: []
-        };
-
+        // Iterate through each analytic within the log and push it directly
+        // to the sidebar data, effectively removing the "Log" hierarchy level.
         log.analytics.forEach((analytic) => {
             if (!analytic.statistics || analytic.statistics.length === 0) return;
 
@@ -196,7 +191,7 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
                 return acc;
             }, {});
 
-            Object.keys(componentsMap).forEach((component, componentIndex) => {
+            Object.keys(componentsMap).forEach((component) => {
                 const stats = componentsMap[component];
                 if (stats.length > 1) {
                     const componentItem: SidebarItem = {
@@ -223,13 +218,9 @@ function buildSidebarData(logs: Log[]): SidebarItem[] {
             });
 
             if (analyticItem.items!.length > 0) {
-                logItem.items!.push(analyticItem);
+                sidebarItems.push(analyticItem);
             }
         });
-
-        if (logItem.items!.length > 0) {
-            sidebarItems.push(logItem);
-        }
     });
 
     return sidebarItems;

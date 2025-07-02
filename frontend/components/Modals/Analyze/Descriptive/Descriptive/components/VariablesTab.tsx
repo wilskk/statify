@@ -8,7 +8,6 @@ import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { TourStep } from "../hooks/useTourGuide";
-import { InfoIcon } from "lucide-react";
 
 export interface VariablesTabProps {
     availableVariables: Variable[];
@@ -136,10 +135,6 @@ const VariablesTab: FC<VariablesTabProps> = ({
 
     const renderExtraInfo = () => (
         <>
-            <div className="text-xs text-muted-foreground flex items-center p-1.5 rounded bg-accent border border-border mt-2">
-                <InfoIcon size={14} className="mr-1.5 flex-shrink-0 text-muted-foreground" />
-                <span>Drag or double-click to move variables.</span>
-            </div>
             <div className="flex items-center mt-2 p-1.5">
                 <Checkbox
                     id="allowUnknown"

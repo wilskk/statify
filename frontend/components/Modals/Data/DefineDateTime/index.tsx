@@ -6,7 +6,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -37,11 +36,9 @@ const DefineDateTimeContent: FC<DefineDateTimeProps> = ({ onClose }) => {
                 <div className="flex-grow p-6 overflow-y-auto">
                     <div className="flex items-center gap-2 py-2 mb-4 bg-accent p-3 rounded border border-border">
                         <Info size={14} className="text-accent-foreground h-4 w-4 flex-shrink-0" />
-                        <DialogDescription asChild>
-                            <p className="text-accent-foreground text-xs">
-                                Define date and time formats for your variables. Variables with successfully defined formats will be moved to the &apos;Dated&apos; list.
-                            </p>
-                        </DialogDescription>
+                        <p className="text-accent-foreground text-xs">
+                            Define date and time formats for your variables. Variables with successfully defined formats will be moved to the &apos;Dated&apos; list.
+                        </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4 h-full"> {/* Grid takes full height of scrollable parent */}
                         {/* Left Column */}

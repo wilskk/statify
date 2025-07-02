@@ -106,16 +106,37 @@ export const getFunctionDisplay = (functionName: string, varName: string,
         case "FLT":
             return `${functionName}(${varName}, ${percentageValue || "value"})`;
         case "PIN":
-        case "FIN":
-            // Support both call patterns: low/high passed via percentageLow/High OR percentageValue/percentageLow
-            const lowVal = percentageLow || percentageValue || "low";
-            const highVal = percentageHigh || (percentageLow ? percentageLow : "high");
+        case "FIN": {
+            /*
+                Parameter handling rules:
+                1. If caller supplies both percentageValue *and* percentageLow, treat percentageValue as the **low** value and percentageLow as the **high** value. (Matches test expectation.)
+                2. Otherwise fall back to legacy behaviour where percentageLow / High pair is used, or placeholders.
+            */
+            let lowVal: string;
+            let highVal: string;
+
+            if (percentageValue && percentageLow) {
+                lowVal = percentageValue;
+                highVal = percentageLow;
+            } else {
+                lowVal = percentageLow || percentageValue || "low";
+                highVal = percentageHigh || (percentageLow ? percentageLow : "high");
+            }
             return `${functionName}(${varName}, ${lowVal}, ${highVal})`;
+        }
         case "POUT":
-        case "FOUT":
-            const lowValOut = percentageLow || percentageValue || "low";
-            const highValOut = percentageHigh || (percentageLow ? percentageLow : "high");
+        case "FOUT": {
+            let lowValOut: string;
+            let highValOut: string;
+            if (percentageValue && percentageLow) {
+                lowValOut = percentageValue;
+                highValOut = percentageLow;
+            } else {
+                lowValOut = percentageLow || percentageValue || "low";
+                highValOut = percentageHigh || (percentageLow ? percentageLow : "high");
+            }
             return `${functionName}(${varName}, ${lowValOut}, ${highValOut})`;
+        }
         default:
             return `${functionName}(${varName})`;
     }

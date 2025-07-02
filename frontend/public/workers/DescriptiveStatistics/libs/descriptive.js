@@ -8,7 +8,7 @@
  * Mendukung data berbobot dan menangani missing values secara internal.
  */
 /* global importScripts, isNumeric, checkIsMissing */
-importScripts('./libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 
 class DescriptiveCalculator {
     /**

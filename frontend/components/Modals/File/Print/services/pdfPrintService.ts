@@ -26,6 +26,44 @@ const Y_THRESHOLD_RESULTS_ANALYTIC_TITLE = 260;
 const Y_THRESHOLD_RESULTS_TABLE_TITLE = 250;
 const Y_THRESHOLD_RESULTS_LOG_ID = 270;
 
+// Utility to convert HTML (e.g., rich-text from Tiptap) to plain text for PDF output
+// We rely on DOM APIs which are available in the browser (Print runs client-side)
+function htmlToPlainText(html: string): string {
+  if (typeof window === "undefined") return html;
+  const div = document.createElement("div");
+  div.innerHTML = html;
+
+  // Process ordered lists
+  Array.from(div.querySelectorAll("ol")).forEach((ol) => {
+    Array.from(ol.querySelectorAll("li")).forEach((li, idx) => {
+      li.insertAdjacentText("afterbegin", `  ${idx + 1}. `);
+    });
+    ol.insertAdjacentText("afterend", "\n");
+  });
+
+  // Process unordered lists
+  Array.from(div.querySelectorAll("ul")).forEach((ul) => {
+    Array.from(ul.querySelectorAll("li")).forEach((li) => {
+      li.insertAdjacentText("afterbegin", "  • ");
+    });
+    ul.insertAdjacentText("afterend", "\n");
+  });
+
+  // Replace <br> with newline tokens
+  Array.from(div.querySelectorAll("br")).forEach((br) => {
+    br.replaceWith("\n");
+  });
+
+  // Add newline after paragraphs and list items to preserve spacing
+  Array.from(div.querySelectorAll("p, li")).forEach((el) => {
+    el.insertAdjacentText("afterend", "\n");
+  });
+
+  const text = div.textContent || div.innerText || "";
+  // Collapse multiple newlines to max 2
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export function addDataGridView(
     doc: jsPDF,
     currentY: number,
@@ -234,16 +272,16 @@ export function addResultsView(
 
                             // Add statistic description if available, now placed AFTER the table
                             if (stat.description) {
-                                doc.setFontSize(TEXT_FONT_SIZE);
-                                doc.setFont(doc.getFont().fontName, 'italic');
-                                const descriptionLines = doc.splitTextToSize(stat.description, doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2));
+                                const plainDescription = htmlToPlainText(stat.description);
+                                const descriptionLines = doc.splitTextToSize(plainDescription, doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2));
                                 if (newY + (descriptionLines.length * 3.5) > Y_THRESHOLD_GENERAL) {
                                     doc.addPage();
                                     newY = PAGE_TOP_MARGIN;
                                 }
-                                doc.text(descriptionLines, PAGE_MARGIN, newY);
+                                const lineHeightFactor = 1.3;
+                                doc.text(descriptionLines, PAGE_MARGIN, newY, { lineHeightFactor, maxWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2) });
                                 doc.setFont(doc.getFont().fontName, 'normal');
-                                newY += (descriptionLines.length * 3.5);
+                                newY += (descriptionLines.length * TEXT_FONT_SIZE * lineHeightFactor) / 2; // approximate line height
                             }
                             newY += SPACE_AFTER_TABLE; // Final space after the entire statistic block
                         }

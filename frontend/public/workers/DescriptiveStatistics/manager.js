@@ -10,12 +10,13 @@
  * tanpa mengubah logika perutean pesan utama.
  */
 
-// Muat semua pustaka kalkulator dan utilitas
-importScripts('./libs/utils.js');
-importScripts('./libs/descriptive.js');
-importScripts('./libs/frequency.js');
-importScripts('./libs/examine.js');
-importScripts('./libs/crosstabs.js');
+// Use absolute paths (relative to the site root) so the worker can resolve
+// the dependencies correctly after Next.js/webpack bundles the worker file.
+importScripts('/workers/DescriptiveStatistics/libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/descriptive.js');
+importScripts('/workers/DescriptiveStatistics/libs/frequency.js');
+importScripts('/workers/DescriptiveStatistics/libs/examine.js');
+importScripts('/workers/DescriptiveStatistics/libs/crosstabs.js');
 
 /**
  * Peta (Map) untuk mengasosiasikan tipe analisis dengan kelas kalkulatornya.
@@ -29,121 +30,90 @@ const CALCULATOR_MAP = new Map([
     ['crosstabs', self.CrosstabsCalculator],
 ]);
 
-/**
- * Menangani pesan masuk dari main thread.
- * @param {MessageEvent} event - Event pesan yang diterima.
- */
+// Unified message handler to support both legacy single-variable requests
+// and the batched `variableData` format used by the Frequencies modal.
 onmessage = (event) => {
-    const { analysisType, variable, data, weights, options } = event.data;
+    const {
+        analysisType,
+        variable,
+        data,
+        weights,
+        options,
+        variableData,          // Batched data (array)
+        weightVariableData,    // Optional weights array for batched mode
+    } = event.data;
 
-    // --- Start of Debugging ---
-    console.log(`[Worker] Received analysis request: ${analysisType}`);
-    console.log('[Worker] Received variable:', JSON.parse(JSON.stringify(variable)));
-    console.log('[Worker] Received data (first 5 rows):', data ? data.slice(0, 5) : 'No data');
-    console.log('[Worker] Received options:', JSON.parse(JSON.stringify(options || {})));
-    // --- End of Debugging ---
+    // ---------------------------------------------------------------
+    // 1. Batched Frequencies Mode (used by the React Frequencies modal)
+    // ---------------------------------------------------------------
+    if (Array.isArray(variableData)) {
+        try {
+            const combinedResults = {
+                statistics: {},
+                frequencyTables: {},
+            };
 
+            const freqOptions = options || {};
+
+            for (const item of variableData) {
+                const { variable: varDef, data: varData } = item;
+
+                const calculator = new self.FrequencyCalculator({
+                    variable: varDef,
+                    data: varData,
+                    weights: weightVariableData || null,
+                    options: freqOptions,
+                });
+
+                const { stats, frequencyTable } = calculator.getStatistics();
+
+                if (stats) {
+                    combinedResults.statistics[varDef.name] = stats;
+                }
+                if (frequencyTable) {
+                    combinedResults.frequencyTables[varDef.name] = frequencyTable;
+                }
+            }
+
+            postMessage({ success: true, results: combinedResults });
+
+        } catch (err) {
+            console.error('[Worker] Error in batched frequencies mode:', err);
+            postMessage({ success: false, error: err.message || String(err) });
+        }
+        return; // Early exit — batched mode handled.
+    }
+
+    // ---------------------------------------------------------------
+    // 2. Legacy Single-Variable Mode (descriptives, examine, etc.)
+    // ---------------------------------------------------------------
     try {
         const CalculatorClass = CALCULATOR_MAP.get(analysisType);
         if (!CalculatorClass) {
             throw new Error(`Tipe analisis tidak valid: ${analysisType}`);
         }
 
-        // Ekstrak argumen dan buat instance kalkulator.
-        // Memastikan semua argumen diteruskan secara eksplisit.
         const calculator = new CalculatorClass({ variable, data, weights, options });
-        
         const results = calculator.getStatistics();
-        
+
         postMessage({
             status: 'success',
-            variableName: analysisType === 'crosstabs' 
-                ? `${variable.row.name} * ${variable.col.name}` 
-                : variable.name,
-            results: results,
+            variableName:
+                analysisType === 'crosstabs' && variable
+                    ? `${variable.row?.name} * ${variable.col?.name}`
+                    : variable?.name,
+            results,
         });
-
     } catch (error) {
-        const varName = analysisType === 'crosstabs' && variable
-            ? `${variable.row?.name} * ${variable.col?.name}`
-            : variable?.name;
-            
+        const varName =
+            analysisType === 'crosstabs' && variable
+                ? `${variable.row?.name} * ${variable.col?.name}`
+                : variable?.name;
+
         console.error(`Error dalam worker untuk variabel ${varName}:`, error);
-        postMessage({
-            status: 'error',
-            variableName: varName || 'unknown',
-            error: error.message,
-        });
+        postMessage({ status: 'error', variableName: varName || 'unknown', error: error.message });
     }
 };
 
-// The `process` function is called by the main thread to perform the descriptive statistics calculations.
-process: (vars) => {
-    variables = vars;
-
-    // --- Start of Debugging for invalid cases ---
-    console.log('--- [Worker] Debugging Invalid Cases ---');
-    console.log(
-        '[Worker] Received data for processing (first 5 rows):',
-        data.slice(0, 5)
-    );
-    console.log('[Worker] Received variables for processing:', vars);
-
-    const numericVars = vars.filter((v) => v.type === 'numeric');
-
-    data.forEach((row, rowIndex) => {
-        numericVars.forEach((variable) => {
-            const value = row[variable.name];
-            let reason = '';
-
-            if (value === null || value === undefined || value === '') {
-                reason = 'is null, undefined, or an empty string.';
-            } else if (isNaN(Number(value))) {
-                reason = 'cannot be converted to a number.';
-            } else {
-                const numValue = Number(value);
-                if (
-                    variable.missing === 'discrete' &&
-                    variable.missingValues?.includes(numValue)
-                ) {
-                    reason = 'is a user-defined discrete missing value.';
-                } else if (
-                    variable.missing === 'range' &&
-                    Array.isArray(variable.missingValues) &&
-                    variable.missingValues.length === 2 &&
-                    variable.missingValues[0] !== null &&
-                    variable.missingValues[1] !== null
-                ) {
-                    if (
-                        numValue >= variable.missingValues[0] &&
-                        numValue <= variable.missingValues[1]
-                    ) {
-                        reason = 'is within the user-defined missing value range.';
-                    }
-                }
-            }
-
-            if (reason) {
-                console.log(
-                    `[Worker - Row ${
-                        rowIndex + 1
-                    }, Var "${variable.name}"]: Value '${value}' is considered invalid. Reason: ${reason}`
-                );
-            }
-        });
-    });
-    console.log('--- [Worker] End of Debugging ---');
-    // --- End of Debugging ---
-
-    const { processedData, caseSummary } = processDescriptive(data, variables);
-    caseProcessingSummary = getCaseProcessingSummary(caseSummary, data.length);
-    descriptives = getDescriptives(processedData, variables);
-
-    return {
-        status: 'success',
-        variableName: analysisType === 'crosstabs' 
-            ? `${variable.row.name} * ${variable.col.name}` 
-            : variable.name,
-        results: results,
-    };
-} 
+// (Debug helper block removed – legacy, unused)
+// ... existing code ... 

@@ -32,9 +32,8 @@ import { baseTourSteps, TabType } from './hooks/tourConfig';
 // Komponen utama konten Descriptives yang agnostik terhadap container
 const DescriptiveContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "statistics">("variables");
-    const { isLoading: isVariablesLoading, error: variablesError } = useVariableStore(
-        (state) => ({ isLoading: state.isLoading, error: state.error })
-    );
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
     
     const {
         availableVariables,

@@ -60,6 +60,22 @@ const SelectCasesContent: FC<{
         isProcessing
     } = useSelectCases();
 
+    // Side-effect: listen to custom events for sidebar footer buttons
+    React.useEffect(() => {
+        const handleOk = () => {
+            if (!isProcessing) handleConfirm();
+        };
+        const handleResetEvent = () => {
+            if (!isProcessing) handleReset();
+        };
+        document.addEventListener('selectCasesOk', handleOk);
+        document.addEventListener('selectCasesReset', handleResetEvent);
+        return () => {
+            document.removeEventListener('selectCasesOk', handleOk);
+            document.removeEventListener('selectCasesReset', handleResetEvent);
+        };
+    }, [isProcessing, handleConfirm, handleReset]);
+
     const handleHelp = () => {
         console.log("Help requested");
     };
@@ -343,12 +359,29 @@ const SelectCases: FC<{
     onClose: () => void;
     containerType?: "dialog" | "sidebar";
 }> = ({ onClose, containerType = "dialog" }) => {
-    // If sidebar mode, use a div container
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
-                <div className="flex-grow flex flex-col overflow-hidden">
+                <div className="flex-grow overflow-auto">
                     <SelectCasesContent onClose={onClose} containerType={containerType} />
+                </div>
+                {/* Footer for sidebar */}
+                <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary shrink-0">
+                    <div className="flex items-center text-muted-foreground">
+                        <HelpCircle size={18} className="mr-1" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" className="mr-2"
+                            onClick={() => document.dispatchEvent(new CustomEvent('selectCasesReset'))}>
+                            Reset
+                        </Button>
+                        <Button variant="outline" className="mr-2" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button onClick={() => document.dispatchEvent(new CustomEvent('selectCasesOk'))}>
+                            OK
+                        </Button>
+                    </div>
                 </div>
             </div>
         );

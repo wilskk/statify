@@ -1,4 +1,6 @@
 import { Variable } from "@/types/Variable";
+import { formatFrequencyTable } from "@/components/Modals/Analyze/Descriptive/Frequencies/utils/formatters";
+import type { FrequencyTable } from "@/components/Modals/Analyze/Descriptive/Frequencies/types";
 
 interface ProcessDuplicatesArgs {
     data: any[][];
@@ -99,15 +101,7 @@ export interface Statistic {
     title: string;
     description: string;
     component: string;
-    output_data: {
-        rows: {
-            label: string;
-            value: string;
-            count: number;
-            percent: string;
-        }[];
-        headers: string[];
-    };
+    output_data: any;
 }
 
 interface GenerateStatisticsArgs {
@@ -132,18 +126,24 @@ export function generateStatistics({
     const primaryCount = primaryValues.filter(v => v === 1).length;
     const duplicateCount = primaryValues.length - primaryCount;
 
+    const primaryFreqTable: FrequencyTable = {
+        title: primaryName,
+        rows: [
+            { label: "Duplicate case", frequency: duplicateCount, percent: duplicateCount / primaryValues.length * 100, validPercent: duplicateCount / primaryValues.length * 100, cumulativePercent: duplicateCount / primaryValues.length * 100 },
+            { label: "Primary case", frequency: primaryCount, percent: primaryCount / primaryValues.length * 100, validPercent: primaryCount / primaryValues.length * 100, cumulativePercent: 100 },
+        ],
+        summary: {
+            valid: primaryValues.length,
+            missing: 0,
+            total: primaryValues.length
+        }
+    };
+
     statistics.push({
         title: `Frequency Table: ${primaryName}`,
         description: "Frequency distribution of primary and duplicate cases",
-        component: "FrequencyTable",
-        output_data: {
-            rows: [
-                { label: "Duplicate case", value: "0", count: duplicateCount, percent: (duplicateCount / primaryValues.length * 100).toFixed(1) },
-                { label: "Primary case", value: "1", count: primaryCount, percent: (primaryCount / primaryValues.length * 100).toFixed(1) },
-                { label: "Total", value: "", count: primaryValues.length, percent: "100.0" }      
-            ],
-            headers: ["Category", "Value", "Count", "Percent"]
-        }
+        component: "table",
+        output_data: formatFrequencyTable(primaryFreqTable)
     });
 
     if (sequentialCount) {
@@ -152,34 +152,39 @@ export function generateStatistics({
             sequenceCounts[val] = (sequenceCounts[val] || 0) + 1;
         });
 
-        const sequenceRows = Object.keys(sequenceCounts)
+        const sequenceRows: { label: string; frequency: number; percent: number; cumulativePercent: number; validPercent: number }[] = [];
+        let cumulative = 0;
+        Object.keys(sequenceCounts)
             .map(Number)
             .sort((a, b) => a - b)
-            .map(key => {
+            .forEach(key => {
                 const count = sequenceCounts[key];
-                return {
+                const percent = count / sequenceValues.length * 100;
+                cumulative += percent;
+                sequenceRows.push({
                     label: key === 0 ? "Non-matching case" : `Sequence ${key}`,
-                    value: String(key),
-                    count: count,
-                    percent: (count / sequenceValues.length * 100).toFixed(1)
-                };
+                    frequency: count,
+                    percent,
+                    validPercent: percent,
+                    cumulativePercent: cumulative
+                });
             });
 
-        sequenceRows.push({
-            label: "Total",
-            value: "",
-            count: sequenceValues.length,
-            percent: "100.0"
-        });
+        const sequenceFreqTable: FrequencyTable = {
+            title: sequentialName,
+            rows: sequenceRows,
+            summary: {
+                valid: sequenceValues.length,
+                missing: 0,
+                total: sequenceValues.length
+            }
+        };
 
         statistics.push({
             title: `Frequency Table: ${sequentialName}`,
             description: "Frequency distribution of case sequence numbers",
-            component: "FrequencyTable",
-            output_data: {
-                rows: sequenceRows,
-                headers: ["Sequence", "Value", "Count", "Percent"]
-            }
+            component: "table",
+            output_data: formatFrequencyTable(sequenceFreqTable)
         });
     }
 

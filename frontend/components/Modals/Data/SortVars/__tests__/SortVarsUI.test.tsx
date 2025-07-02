@@ -92,7 +92,6 @@ describe('SortVarsUI', () => {
   it('highlights the selected column', () => {
     renderComponent({ selectedColumn: 'Type' });
     const typeColumn = screen.getByText('Type');
-    // Check for a class that indicates selection
-    expect(typeColumn).toHaveClass('bg-muted');
+    expect(typeColumn).toHaveClass('bg-primary/10');
   });
 }); 

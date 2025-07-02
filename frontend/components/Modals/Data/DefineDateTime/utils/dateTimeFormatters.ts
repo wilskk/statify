@@ -234,5 +234,5 @@ export const formatCurrentDates = (
 };
 
 export const getMaxRow = (data: any[]): number => {
-    return data.length > 0 ? data.length - 1 : 0;
+    return data.length;
 }; 

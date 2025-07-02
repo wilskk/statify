@@ -62,14 +62,12 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                 if (statsResults.length > 0) {
                     const statsTableObject = formatStatisticsTable(statsResults);
                     if (statsTableObject && statsTableObject.tables) {
-                        for (const table of statsTableObject.tables) {
-                            await addStatistic(analyticId, {
-                                title: table.title || 'Descriptive Statistics',
-                                output_data: JSON.stringify(table),
-                                components: 'table',
-                                description: ''
-                            });
-                        }
+                        await addStatistic(analyticId, {
+                            title: statsTableObject.tables[0]?.title || 'Statistics',
+                            output_data: JSON.stringify(statsTableObject),
+                            components: 'table',
+                            description: ''
+                        });
                     }
                 }
             }
@@ -78,14 +76,12 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                     const freqTableData = results.frequencyTables[varName];
                     const freqTableObject = formatFrequencyTable(freqTableData);
                     if (freqTableObject && freqTableObject.tables) {
-                        for (const table of freqTableObject.tables) {
-                            await addStatistic(analyticId, {
-                                title: table.title || 'Frequency Table',
-                                output_data: JSON.stringify(table),
-                                components: 'table',
-                                description: ''
-                            });
-                        }
+                        await addStatistic(analyticId, {
+                            title: freqTableObject.tables[0]?.title || 'Frequency Table',
+                            output_data: JSON.stringify(freqTableObject),
+                            components: 'table',
+                            description: ''
+                        });
                     }
                 }
             }

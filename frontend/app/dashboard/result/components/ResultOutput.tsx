@@ -35,12 +35,12 @@ const ResultOutput: React.FC = () => {
   }, [logs]); // Rerunning when logs change ensures we can scroll to new content
 
   const handleDescriptionChange = (statId: number, value: string) => {
-    // Bersihkan tag HTML kosong sebelum disimpan
-    const cleanValue = value.replace(/<p><\/p>|<p><br><\/p>|<p>\s*<\/p>/g, '');
+    // Hanya hapus spasi kosong berlebih di awal/akhir, biarkan paragraf kosong untuk jeda baris
+    const trimmed = value.trim();
     
     setDescriptionValues(prev => ({
       ...prev,
-      [statId]: cleanValue
+      [statId]: trimmed
     }));
   };
 

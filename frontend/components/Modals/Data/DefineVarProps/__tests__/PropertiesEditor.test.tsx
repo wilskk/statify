@@ -104,16 +104,35 @@ describe('PropertiesEditor', () => {
     });
 
     it('calls handleVariableFieldChange when label is edited', async () => {
+        // Setup a special mock for this test that will update the input value
+        const originalHandleVariableFieldChange = mockState.handleVariableFieldChange;
+        mockState.handleVariableFieldChange = jest.fn((field, value) => {
+            // Call the original implementation
+            originalHandleVariableFieldChange(field, value);
+            
+            // Update the current variable's label in the mock state
+            if (field === 'label' && mockState.currentVariable) {
+                mockState.currentVariable.label = value;
+            }
+        });
+        
         const { rerender } = render(<PropertiesEditor onClose={onClose} variables={mockVariables} caseLimit="50" valueLimit="200" />);
         
         const labelInput = screen.getByDisplayValue('Variable 1');
         await user.clear(labelInput);
         await user.type(labelInput, 'New Label');
         
+        // Re-render to reflect the state changes
         rerender(<PropertiesEditor onClose={onClose} variables={mockVariables} caseLimit="50" valueLimit="200" />);
-
-        expect(mockState.handleVariableFieldChange).toHaveBeenCalledWith('label', 'New Label');
-        expect(labelInput).toHaveValue('New Label');
+        
+        // Check that handleVariableFieldChange was called with 'label' parameter
+        expect(mockState.handleVariableFieldChange).toHaveBeenCalled();
+        expect(mockState.handleVariableFieldChange.mock.calls.some(
+            (call: any[]) => call[0] === 'label' && call[1] === 'New Label'
+        )).toBe(true);
+        
+        // Now the label should be updated in the UI
+        expect(screen.getByDisplayValue('New Label')).toBeInTheDocument();
     });
 
     it('calls handleSuggestMeasurement when suggest button is clicked', async () => {

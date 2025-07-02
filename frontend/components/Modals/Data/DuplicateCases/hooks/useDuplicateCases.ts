@@ -130,8 +130,8 @@ export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
         for (const stat of statistics) {
             await addStatistic(analyticId, {
                 title: stat.title,
-                output_data: stat.output_data,
-                components: stat.component, // Assuming 'component' is the correct field name
+                output_data: typeof stat.output_data === 'string' ? stat.output_data : JSON.stringify(stat.output_data),
+                components: stat.component,
                 description: stat.description
             });
         }
@@ -162,8 +162,15 @@ export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
         }
         setIsProcessing(true);
         try {
+            // Clone the array first to avoid mutating the read-only store state
+            const headerRow = [...useVariableStore.getState().variables]
+                .sort((a, b) => a.columnIndex - b.columnIndex)
+                .map(v => v.name);
+
+            const datasetForService = [headerRow, ...data];
+
             const result = processDuplicates({
-                data,
+                data: datasetForService,
                 matchingVariables,
                 sortingVariables,
                 sortOrder,
@@ -172,7 +179,9 @@ export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
 
             // Step 1: Reorder data if requested. This should happen before adding new columns.
             if (moveMatchingToTop && result.reorderedData) {
-                await setData(result.reorderedData);
+                // Remove header row before saving back to the datastore
+                const reorderedWithoutHeader = result.reorderedData.slice(1);
+                await setData(reorderedWithoutHeader);
             }
             
             // Step 2: Create new indicator variables and populate their values into the dataset.
@@ -185,7 +194,7 @@ export const useDuplicateCases = ({ onClose }: UseDuplicateCasesProps) => {
                 const primaryVar = useVariableStore.getState().variables.find(v => v.name === primaryName);
                 // Ensure primaryVar is found and its columnIndex is valid for the current data shape
                 if (primaryVar && currentData.length > 0 && primaryVar.columnIndex < currentData[0].length) {
-                    const filteredData = currentData.filter(row => row[primaryVar.columnIndex] === 1);
+                    const filteredData = currentData.filter((row, idx) => idx === 0 || row[primaryVar.columnIndex] === 1);
                     await setData(filteredData);
                 }
             }
