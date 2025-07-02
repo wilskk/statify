@@ -9,6 +9,9 @@ ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NODE_ENV=development
 
+# Install system packages required to compile native dependencies (e.g., canvas)
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev pixman-dev libpng-dev
+
 # Copy frontend package.json dan install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
@@ -35,6 +38,9 @@ ENV NODE_ENV=production
 # Pass env variables to runtime
 ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+
+# Install runtime & build dependencies needed for native modules during install
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev pixman-dev libpng-dev
 
 # Copy package files
 COPY package.json package-lock.json* ./
