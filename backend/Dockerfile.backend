@@ -7,11 +7,11 @@ ARG NEXT_PUBLIC_FRONTEND_URL
 
 # Set environment variables from build arguments
 ENV NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 
 # Copy backend package.json dan install dependencies
-COPY package.json ./
-RUN NODE_ENV=development npm install --include=dev
+COPY package*.json ./
+RUN npm ci
 
 # Copy source code backend
 COPY tsconfig.json ./
@@ -38,15 +38,22 @@ ENV NODE_ENV=production
 # Copy package.json untuk production
 COPY package.json ./
 
-# Install ONLY production dependencies
-RUN npm install --only=prod
+# Copy build artifacts dan node_modules dari builder stage
+COPY --from=builder /app/backend/node_modules ./node_modules
+RUN npm prune --production
 
-# Copy build artifacts dari builder stage
+# Copy application dist dan env
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/.env ./.env
 
 # Create temp directory
 RUN mkdir -p ./temp
+
+# Healthcheck for container
+HEALTHCHECK CMD wget -qO- http://localhost:5000/ || exit 1
+
+# Run as non-root user for security
+USER node
 
 EXPOSE 5000
 
