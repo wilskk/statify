@@ -15,10 +15,12 @@ const TiptapEditor = dynamic(
   }
 );
 import { Edit } from "lucide-react";
-import TextRenderer from "./text/text-renderer";
+import TextRenderer from "@/components/Output/text/text-renderer";
 
 const ResultOutput: React.FC = () => {
   const { logs, updateStatistic } = useResultStore();
+  console.log("ResultOutput rendering with logs:", logs);
+
   const [editingDescriptionId, setEditingDescriptionId] = useState<
     number | null
   >(null);
@@ -26,6 +28,19 @@ const ResultOutput: React.FC = () => {
     Record<number, string>
   >({});
   const [saveStatus, setSaveStatus] = useState<Record<number, string>>({});
+
+  // Effect to load results when component mounts
+  useEffect(() => {
+    const loadResults = async () => {
+      try {
+        await useResultStore.getState().loadResults();
+        console.log("Results loaded successfully");
+      } catch (error) {
+        console.error("Failed to load results:", error);
+      }
+    };
+    loadResults();
+  }, []);
 
   // Effect to scroll to a specific log when the page loads with a hash
   useEffect(() => {
@@ -141,11 +156,25 @@ const ResultOutput: React.FC = () => {
                               }`}
                             >
                               {(() => {
-                                const parsedData =
-                                  typeof stat.output_data === "string"
-                                    ? JSON.parse(stat.output_data)
-                                    : stat.output_data;
-                                console.log("ParsedData", parsedData);
+                                let parsedData;
+                                try {
+                                  parsedData =
+                                    typeof stat.output_data === "string"
+                                      ? JSON.parse(stat.output_data)
+                                      : stat.output_data;
+                                  console.log("ParsedData", parsedData);
+                                } catch (error) {
+                                  console.error(
+                                    "Failed to parse output_data:",
+                                    error
+                                  );
+                                  return (
+                                    <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
+                                      Data tidak valid: Format JSON tidak sesuai
+                                    </div>
+                                  );
+                                }
+
                                 if (parsedData.tables) {
                                   return (
                                     <div className="overflow-x-auto pb-2">
@@ -167,7 +196,7 @@ const ResultOutput: React.FC = () => {
                                 } else {
                                   return (
                                     <div className="text-sm text-destructive p-2 bg-destructive/10 rounded-md">
-                                      Data tidak valid
+                                      Data tidak valid: Format tidak dikenali
                                     </div>
                                   );
                                 }

@@ -247,7 +247,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
   const evaluateValueWithRules = (
     value: string | number,
     rules: RecodeRule[]
-  ): string | number | null => {
+  ): string | number => {
     if (value === "") {
       return value;
     }
@@ -277,7 +277,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
               rule.oldValue,
               ")"
             );
-            return rule.newValue;
+            return rule.newValue ?? "";
           }
           if (isNumericType && isValidNumber && numericValue == rule.oldValue) {
             console.log(
@@ -289,7 +289,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
               rule.oldValue,
               ")"
             );
-            return rule.newValue;
+            return rule.newValue ?? "";
           }
           break;
 
@@ -302,7 +302,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
               numericValue >= min &&
               numericValue <= max
             ) {
-              return rule.newValue;
+              return rule.newValue ?? "";
             }
           }
           break;
@@ -311,7 +311,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
           if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
             const [, max] = rule.oldValue;
             if (max !== null && numericValue <= max) {
-              return rule.newValue;
+              return rule.newValue ?? "";
             }
           }
           break;
@@ -320,20 +320,20 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
           if (isNumericType && isValidNumber && Array.isArray(rule.oldValue)) {
             const [min] = rule.oldValue;
             if (min !== null && numericValue >= min) {
-              return rule.newValue;
+              return rule.newValue ?? "";
             }
           }
           break;
 
         case "systemMissing":
           if (isSystemMissing) {
-            return rule.newValue;
+            return rule.newValue ?? "";
           }
           break;
 
         case "systemOrUserMissing":
           if (isSystemMissing) {
-            return rule.newValue;
+            return rule.newValue ?? "";
           }
           break;
 
@@ -344,7 +344,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
 
     const elseRule = rules.find((r) => r.oldValueType === "else");
     if (elseRule) {
-      return elseRule.newValue;
+      return elseRule.newValue ?? "";
     }
 
     return value;
@@ -376,6 +376,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
 
       // Step 1: Add all variables first (sama seperti ComputeVariable)
       const newVariablesToAdd: Partial<Variable>[] = [];
+      const initialUpdates: CellUpdate[] = [];
       for (const mapping of recodeMappings) {
         const newVariable: Partial<Variable> = {
           name: mapping.targetName,
@@ -402,7 +403,7 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
 
       // Add variables first - ini akan membuat kolom tersedia
       if (newVariablesToAdd.length > 0) {
-        await variableStore.addMultipleVariables(newVariablesToAdd);
+        await variableStore.addVariables(newVariablesToAdd, initialUpdates);
       }
 
       // Step 2: Prepare cell updates (sama seperti ComputeVariable)
@@ -417,8 +418,10 @@ const Index: FC<RecodeDifferentVariablesModalProps> = ({
 
         // Apply recode rules to create new data
         const newData = data.map((value) => {
-          const recodedValue = evaluateValueWithRules(value, recodeRules);
-          return recodedValue === null ? "" : recodedValue;
+          // Handle null values before passing to evaluateValueWithRules
+          const safeValue = value === null ? "" : value;
+          const recodedValue = evaluateValueWithRules(safeValue, recodeRules);
+          return recodedValue === "" ? "" : String(recodedValue);
         });
 
         // Add to bulk updates
