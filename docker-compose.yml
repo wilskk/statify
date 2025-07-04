@@ -22,8 +22,7 @@ services:
       interval: 30s
       timeout: 10s
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
   backend:
     build:

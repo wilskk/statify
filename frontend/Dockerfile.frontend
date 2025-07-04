@@ -13,8 +13,8 @@ ENV NODE_ENV=development
 RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev pixman-dev libpng-dev
 
 # Copy frontend package.json dan install dependencies
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json* ./
+RUN npm install
 
 # Copy frontend code
 COPY ./ ./
@@ -43,9 +43,11 @@ ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 # (Add if runtime errors) For now keep minimal lib dependencies (cairo, pango etc.)
 RUN apk add --no-cache cairo pango libjpeg-turbo giflib pixman libpng
 
-# Copy production-ready node_modules from builder and prune dev deps
-COPY --from=builder /app/frontend/node_modules ./node_modules
-RUN npm prune --production
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install ALL dependencies untuk memastikan CSS plugins tersedia
+RUN NODE_ENV=development npm install --include=dev
 
 # Copy next.config.js dan other necessary files
 COPY next.config.js ./
