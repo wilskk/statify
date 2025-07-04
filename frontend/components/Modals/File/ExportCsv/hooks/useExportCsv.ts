@@ -18,8 +18,7 @@ const initialState = {
 export const useExportCsv = (options?: UseExportCsvOptions) => {
     const { closeModal } = useModal();
     const { toast } = useToast();
-    const { data } = useDataStore();
-    const { variables } = useVariableStore();
+    const data = useDataStore((state) => state.data);
     const [isExporting, startExportTransition] = useTransition();
 
     const [exportOptions, setExportOptions] = useState<Omit<CsvExportOptions, 'delimiter'> & { filename: string, delimiter: string, encoding: string }>(() => ({
@@ -41,7 +40,7 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
     };
 
     const handleExport = async () => {
-        if (!data) {
+        if (!data || data.length === 0) {
             toast({
                 title: "Export Failed",
                 description: "No data available to export.",
@@ -60,6 +59,22 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
 
         startExportTransition(async () => {
             try {
+                // Fetch the latest persisted data and variables before exporting
+                await useVariableStore.getState().loadVariables();
+                await useDataStore.getState().loadData();
+                
+                const freshData = useDataStore.getState().data;
+                const freshVariables = useVariableStore.getState().variables;
+
+                if (!freshData || freshData.length === 0) {
+                    toast({
+                        title: "Export Failed",
+                        description: "No data to export after syncing with server.",
+                        variant: "destructive",
+                    });
+                    return;
+                }
+
                 const csvOptions: CsvExportOptions = {
                     delimiter: exportOptions.delimiter === '\\t' ? '\t' : exportOptions.delimiter,
                     includeHeaders: exportOptions.includeHeaders,
@@ -67,7 +82,7 @@ export const useExportCsv = (options?: UseExportCsvOptions) => {
                     quoteStrings: exportOptions.quoteStrings,
                 };
 
-                const csvContent = generateCsvContent(data, variables, csvOptions);
+                const csvContent = generateCsvContent(freshData, freshVariables, csvOptions);
 
                 const blob = new Blob([csvContent], {
                     type: `text/csv;charset=${exportOptions.encoding}`

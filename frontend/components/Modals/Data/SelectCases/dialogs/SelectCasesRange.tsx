@@ -108,8 +108,9 @@ const SelectCasesRange: FC<SelectCasesRangeProps> = ({
 
                     <div className="space-y-3 pl-1">
                         <div className="flex items-center gap-2">
-                            <Label className="text-xs min-w-16">First Case:</Label>
+                            <Label htmlFor="first-case" className="text-xs min-w-16">First Case:</Label>
                             <Input
+                                id="first-case"
                                 className="w-24 h-7 text-xs"
                                 value={firstCase}
                                 onChange={(e) => setFirstCase(e.target.value)}
@@ -119,8 +120,9 @@ const SelectCasesRange: FC<SelectCasesRangeProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Label className="text-xs min-w-16">Last Case:</Label>
+                            <Label htmlFor="last-case" className="text-xs min-w-16">Last Case:</Label>
                             <Input
+                                id="last-case"
                                 className="w-24 h-7 text-xs"
                                 value={lastCase}
                                 onChange={(e) => setLastCase(e.target.value)}

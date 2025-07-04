@@ -1,0 +1,21 @@
+{
+  "name": "Rust-Wasm",
+  "type": "module",
+  "description": "Project Rust-Wasm Statify.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://git.stis.ac.id/"
+  },
+  "files": [
+    "Rust_Wasm_bg.wasm",
+    "Rust_Wasm.js",
+    "Rust_Wasm.d.ts"
+  ],
+  "main": "Rust_Wasm.js",
+  "types": "Rust_Wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

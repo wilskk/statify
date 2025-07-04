@@ -90,7 +90,7 @@ interface ChartData {
   error?: number;
   x?: number;
   y?: number;
-  color?: string | number;
+  color?: string | number | null;
   group?: string;
   [key: string]: any;
 }

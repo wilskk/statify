@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { useDataStore } from '@/stores/useDataStore';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { useResultStore } from '@/stores/useResultStore';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
 import { CrosstabsAnalysisParams } from '../types';
 import { formatCaseProcessingSummary, formatCrosstabulationTable } from '../utils/formatters';
 import type { Variable } from '@/types/Variable';
@@ -10,7 +10,7 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
     const [isCalculating, setIsCalculating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    const { data } = useDataStore();
+    const { data, weights } = useAnalysisData();
     const { variables } = useVariableStore();
     const { addLog, addAnalytic, addStatistic } = useResultStore();
 
@@ -148,11 +148,11 @@ export const useCrosstabsAnalysis = (params: CrosstabsAnalysisParams, onClose: (
                 analysisType: 'crosstabs',
                 variable: { row: rowVariable, col: colVariable },
                 data: analysisData,
-                weights: null,
+                weights: weights,
                 options,
             });
         });
-    }, [params, data, variables, addLog, addAnalytic, addStatistic, onClose, error]);
+    }, [params, data, weights, variables, addLog, addAnalytic, addStatistic, onClose, error]);
 
     return { runAnalysis, isCalculating, error };
 };

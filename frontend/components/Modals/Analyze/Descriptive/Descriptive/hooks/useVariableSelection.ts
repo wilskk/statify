@@ -15,6 +15,10 @@ export const useVariableSelection = ({
   const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariableInfo | null>(null);
 
   useEffect(() => {
+    useVariableStore.getState().loadVariables();
+  }, []);
+
+  useEffect(() => {
     const globalVarsWithTempId = variables.map(v => ({
       ...v,
       tempId: v.tempId || `temp_id_${v.columnIndex}`

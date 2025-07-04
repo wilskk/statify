@@ -51,7 +51,16 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
         handleReorderVariable,
         handleReset,
         handleConfirm,
-    } = useDuplicateCases({ onClose, activeTab, setActiveTab });
+        displayFrequencies,
+        setDisplayFrequencies,
+        filterByIndicator,
+        setFilterByIndicator,
+    } = useDuplicateCases({ onClose });
+
+    const handleResetClick = () => {
+        handleReset();
+        setActiveTab("variables");
+    };
 
     const tabControl = useMemo((): TabControlProps => ({
         setActiveTab,
@@ -111,20 +120,24 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
     };
 
     const optionsTabProps: OptionsTabProps = {
-        primaryCaseIndicator: primaryCaseIndicator === "first",
-        setPrimaryCaseIndicator: (value: boolean) => setPrimaryCaseIndicator(value ? "first" : "last"),
-        primaryName,
-        setPrimaryName,
-        sequentialCount,
-        setSequentialCount,
-        sequentialName,
-        setSequentialName,
-        moveMatchingToTop,
-        setMoveMatchingToTop,
-        containerType,
-        tourActive,
-        currentStep,
-        tourSteps
+        primaryCaseIndicator: primaryCaseIndicator,
+        setPrimaryCaseIndicator: setPrimaryCaseIndicator,
+        primaryName: primaryName,
+        setPrimaryName: setPrimaryName,
+        sequentialCount: sequentialCount,
+        setSequentialCount: setSequentialCount,
+        sequentialName: sequentialName,
+        setSequentialName: setSequentialName,
+        moveMatchingToTop: moveMatchingToTop,
+        setMoveMatchingToTop: setMoveMatchingToTop,
+        displayFrequencies: displayFrequencies,
+        setDisplayFrequencies: setDisplayFrequencies,
+        filterByIndicator: filterByIndicator,
+        setFilterByIndicator: setFilterByIndicator,
+        containerType: containerType,
+        tourActive: tourActive,
+        currentStep: currentStep,
+        tourSteps: tourSteps
     };
 
     return (
@@ -174,7 +187,7 @@ const DuplicateCasesContent: FC<DuplicateCasesProps> = ({ onClose, containerType
                         <Button
                             variant="outline"
                             className="mr-2"
-                            onClick={handleReset}
+                            onClick={handleResetClick}
                             disabled={isProcessing}
                         >
                             Reset

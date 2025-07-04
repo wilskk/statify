@@ -12,6 +12,115 @@ interface FormidableFile {
     [key: string]: any;
 }
 
+/**
+ * Transforms a single variable object from the client-side request
+ * into the format required by the 'sav-writer' library.
+ * @param variable The variable object from the request body.
+ * @returns A transformed variable object.
+ */
+const transformVariable = (variable: any) => {
+    let type: number;
+    if (variable.type === "STRING") {
+        type = VariableType.String;
+    } else if (["DATE", "ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH"].includes(variable.type)) {
+        type = VariableType.Date;
+    } else if (["DATETIME", "TIME", "DTIME"].includes(variable.type)) {
+        type = VariableType.DateTime;
+    } else {
+        type = VariableType.Numeric;
+    }
+
+    let alignment: number;
+    switch (variable.alignment?.toLowerCase()) {
+        case "left":
+            alignment = VariableAlignment.Left;
+            break;
+        case "center":
+        case "centre":
+            alignment = VariableAlignment.Centre;
+            break;
+        default:
+            alignment = VariableAlignment.Right;
+    }
+
+    let measure: number;
+    switch (variable.measure?.toLowerCase()) {
+        case "nominal":
+            measure = VariableMeasure.Nominal;
+            break;
+        case "ordinal":
+            measure = VariableMeasure.Ordinal;
+            break;
+        default:
+            measure = VariableMeasure.Continuous;
+    }
+
+    const valueLabels = Array.isArray(variable.valueLabels) ?
+        variable.valueLabels.map((vl: any) => {
+            let value: string | number;
+            const label = vl.label === null || vl.label === undefined ? "" : String(vl.label);
+
+            if (type === VariableType.String) {
+                value = vl.value === null || vl.value === undefined ? "" : String(vl.value);
+            } else {
+                const numValue = Number(vl.value);
+                value = isNaN(numValue) ? 0 : numValue;
+            }
+            return { value, label };
+        }) : [];
+
+    return {
+        name: String(variable.name),
+        label: String(variable.label || ""),
+        type,
+        width: Number(variable.width),
+        decimal: Number(variable.decimal || 0),
+        alignment,
+        measure,
+        columns: Math.max(1, Math.floor(Number(variable.columns || 8) / 20)),
+        valueLabels
+    };
+};
+
+/**
+ * Transforms a single data record (row) based on the definitions
+ * of the transformed variables. It handles type coercion for dates and numbers.
+ * @param record A single row of data.
+ * @param transformedVariables The array of fully transformed variable definitions.
+ * @returns A processed data record.
+ */
+const transformRecord = (record: any, transformedVariables: any[]) => {
+    const result: Record<string, any> = {};
+
+    for (const varName of Object.keys(record)) {
+        const variable = transformedVariables.find((v: any) => v.name === varName);
+        if (!variable) continue;
+
+        const rawValue = record[varName];
+
+        if (rawValue === null || rawValue === undefined || rawValue === "") {
+            result[varName] = null;
+            continue;
+        }
+
+        if (variable.type === VariableType.String) {
+            result[varName] = String(rawValue || '');
+        } else if (variable.type === VariableType.Date) {
+            if (typeof rawValue === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(rawValue)) {
+                const [day, month, year] = rawValue.split('-').map(Number);
+                const dateObject = new Date(Date.UTC(year, month - 1, day));
+                result[varName] = !isNaN(dateObject.getTime()) ? dateObject : null;
+            } else {
+                result[varName] = null;
+            }
+        } else { // Numeric types
+            const numValue = Number(rawValue);
+            result[varName] = !isNaN(numValue) ? numValue : null;
+        }
+    }
+    return result;
+};
+
 export const uploadSavFile = (req: Request, res: Response) => {
     const form = formidable({ multiples: false });
 
@@ -73,19 +182,14 @@ export const createSavFile = (req: Request, res: Response) => {
     try {
         const filteredVariables = variables.filter((variable: any) => {
             if (variable.type === "DATE") {
-                if (variable.width !== 10) {
-                    console.warn(`Variabel ${variable.name} dengan tipe DATE diabaikan: width harus 10 (format: dd/mm/yyyy).`);
-                    return false;
-                }
-                return true;
-            } else if (variable.type === "DATETIME") {
-                if (variable.width !== 20) {
-                    console.warn(`Variabel ${variable.name} dengan tipe DATETIME diabaikan: width harus 20 (format: yy-mm-dd hh:mm:ss).`);
-                    return false;
-                }
-                return true;
-            } else if (["ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH", "TIME", "DTIME"].includes(variable.type)) {
-                console.warn(`Variabel ${variable.name} dengan tipe ${variable.type} diabaikan: format tidak didukung. Hanya DATE dan DATETIME yang didukung.`);
+                return variable.width === 10;
+            }
+            if (variable.type === "DATETIME") {
+                return variable.width === 20;
+            }
+            // Filter out unsupported date/time formats
+            if (["ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH", "TIME", "DTIME"].includes(variable.type)) {
+                console.warn(`Variabel ${variable.name} dengan tipe ${variable.type} diabaikan: format tidak didukung.`);
                 return false;
             }
             return true;
@@ -98,118 +202,9 @@ export const createSavFile = (req: Request, res: Response) => {
             return;
         }
 
-        const transformedVariables = filteredVariables.map((variable: any) => {
-            let type: number;
-            if (variable.type === "STRING") {
-                type = VariableType.String;
-            } else if (["DATE", "ADATE", "EDATE", "SDATE", "JDATE", "QYR", "MOYR", "WKYR", "WKDAY", "MONTH"].includes(variable.type)) {
-                type = VariableType.Date;
-            } else if (["DATETIME", "TIME", "DTIME"].includes(variable.type)) {
-                type = VariableType.DateTime;
-            } else {
-                type = VariableType.Numeric;
-            }
-
-            let alignment: number;
-            switch (variable.alignment.toLowerCase()) {
-                case "left":
-                    alignment = VariableAlignment.Left;
-                    break;
-                case "center":
-                case "centre":
-                    alignment = VariableAlignment.Centre;
-                    break;
-                default:
-                    alignment = VariableAlignment.Right;
-            }
-
-            let measure: number;
-            switch (variable.measure.toLowerCase()) {
-                case "nominal":
-                    measure = VariableMeasure.Nominal;
-                    break;
-                case "ordinal":
-                    measure = VariableMeasure.Ordinal;
-                    break;
-                default:
-                    measure = VariableMeasure.Continuous;
-            }
-
-            const valueLabels = Array.isArray(variable.valueLabels) ?
-                variable.valueLabels.map((vl: any) => {
-                    let value: string | number;
-                    let label: string;
-
-                    if (vl.label === null || vl.label === undefined) {
-                        label = "";
-                    } else {
-                        label = String(vl.label);
-                    }
-
-                    if (type === VariableType.String) {
-                        value = vl.value === null || vl.value === undefined ?
-                            "" : String(vl.value);
-                    } else {
-                        if (vl.value === null || vl.value === undefined) {
-                            value = 0;
-                        } else {
-                            const numValue = Number(vl.value);
-                            value = isNaN(numValue) ? 0 : numValue;
-                        }
-                    }
-
-                    return { value, label };
-                }) : [];
-
-            return {
-                name: String(variable.name),
-                label: String(variable.label || ""),
-                type,
-                width: Number(variable.width),
-                decimal: Number(variable.decimal || 0),
-                alignment,
-                measure,
-                columns: Math.max(1, Math.floor(Number(variable.columns || 8) / 20)),
-                valueLabels
-            };
-        });
-
-        const transformedData = data.map((record: any) => {
-            const result: Record<string, any> = {};
-
-            for (const varName of Object.keys(record)) {
-                const variable = transformedVariables.find((v: any) => v.name === varName);
-                if (!variable) continue;
-
-                const rawValue = record[varName];
-
-                if (rawValue === null || rawValue === undefined || rawValue === "") {
-                    result[varName] = null;
-                    continue;
-                }
-
-                if (variable.type === VariableType.String) {
-                    result[varName] = String(rawValue || '');
-                } else if (variable.type === VariableType.Date) {
-                    // Pass raw date string 'DD-MM-YYYY' directly to sav-writer
-                    if (typeof rawValue === 'string') {
-                        result[varName] = rawValue;
-                    } else {
-                        result[varName] = null;
-                    }
-                } else {
-                    // For numeric types
-                    const numValue = Number(rawValue);
-                    if (!isNaN(numValue)) {
-                        result[varName] = numValue;
-                    } else {
-                        result[varName] = null;
-                    }
-                }
-            }
-
-            return result;
-        });
+        // Use the new helper functions
+        const transformedVariables = filteredVariables.map(transformVariable);
+        const transformedData = data.map((record: any) => transformRecord(record, transformedVariables));
 
         const outputDir = path.join(__dirname, '../../temp');
         if (!fs.existsSync(outputDir)) {

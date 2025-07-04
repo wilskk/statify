@@ -28,6 +28,10 @@ export enum ModalType {
   // Edit modals - Operasi pencarian dan navigasi
   FindAndReplace = "FindAndReplace",
   GoTo = "GoTo",
+  Find = "Find",
+  Replace = "Replace",
+  GoToCase = "GoToCase",
+  GoToVariable = "GoToVariable",
 
   // Data modals - Operasi manipulasi dan pengaturan data
   DefineVarProps = "DefineVarProps",
@@ -47,6 +51,9 @@ export enum ModalType {
   MultipleResponse = "MultipleResponse",
   NewCustomAttr = "NewCustomAttr",
   SelectCases = "SelectCases",
+  DefineValidationRules = "DefineValidationRules",
+  Validate = "Validate",
+  ExampleDataset = "ExampleDataset",
 
   // Transform modals - Transformasi variabel dan data
   ComputeVariable = "ComputeVariable",
@@ -91,6 +98,31 @@ export enum ModalType {
   Ratio = "Ratio",
   PPPlots = "PPPlots",
   QQPlots = "QQPlots",
+
+  // General Linear Model modals
+  ModalUnivariate = "ModalUnivariate",
+  ModalMultivariate = "ModalMultivariate",
+  ModalRepeatedMeasures = "ModalRepeatedMeasures",
+  ModalVarianceComponents = "ModalVarianceComponents",
+
+  // Classify modals
+  ModalTwoStepCluster = "ModalTwoStepCluster",
+  ModalKMeansCluster = "ModalKMeansCluster",
+  ModalHierarchicalCluster = "ModalHierarchicalCluster",
+  ModalClusterSilhouettes = "ModalClusterSilhouettes",
+  ModalTree = "ModalTree",
+  ModalDiscriminant = "ModalDiscriminant",
+  ModalNearestNeighbor = "ModalNearestNeighbor",
+  ModalROCCurve = "ModalROCCurve",
+  ModalROCAnalysis = "ModalROCAnalysis",
+
+  // Dimension Reduction modals
+  ModalFactor = "ModalFactor",
+  ModalCorrespondenceAnalysis = "ModalCorrespondenceAnalysis",
+  ModalDROptimalScaling = "ModalDROptimalScaling",
+  ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
+  ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
+  ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
 }
 
 /**
@@ -172,6 +204,10 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   // Edit modals
   [ModalType.FindAndReplace]: ModalCategory.Edit,
   [ModalType.GoTo]: ModalCategory.Edit,
+  [ModalType.Find]: ModalCategory.Edit,
+  [ModalType.Replace]: ModalCategory.Edit,
+  [ModalType.GoToCase]: ModalCategory.Edit,
+  [ModalType.GoToVariable]: ModalCategory.Edit,
 
   // Data modals
   [ModalType.DefineVarProps]: ModalCategory.Data,
@@ -191,6 +227,9 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.MultipleResponse]: ModalCategory.Data,
   [ModalType.NewCustomAttr]: ModalCategory.Data,
   [ModalType.SelectCases]: ModalCategory.Data,
+  [ModalType.DefineValidationRules]: ModalCategory.Data,
+  [ModalType.Validate]: ModalCategory.Data,
+  [ModalType.ExampleDataset]: ModalCategory.Data,
 
   // Transform modals
   [ModalType.ComputeVariable]: ModalCategory.Transform,
@@ -235,6 +274,31 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
   [ModalType.Ratio]: ModalCategory.Analyze,
   [ModalType.PPPlots]: ModalCategory.Analyze,
   [ModalType.QQPlots]: ModalCategory.Analyze,
+
+  // General Linear Model modals
+  [ModalType.ModalUnivariate]: ModalCategory.Analyze,
+  [ModalType.ModalMultivariate]: ModalCategory.Analyze,
+  [ModalType.ModalRepeatedMeasures]: ModalCategory.Analyze,
+  [ModalType.ModalVarianceComponents]: ModalCategory.Analyze,
+
+  // Classify modals
+  [ModalType.ModalTwoStepCluster]: ModalCategory.Analyze,
+  [ModalType.ModalKMeansCluster]: ModalCategory.Analyze,
+  [ModalType.ModalHierarchicalCluster]: ModalCategory.Analyze,
+  [ModalType.ModalClusterSilhouettes]: ModalCategory.Analyze,
+  [ModalType.ModalTree]: ModalCategory.Analyze,
+  [ModalType.ModalDiscriminant]: ModalCategory.Analyze,
+  [ModalType.ModalNearestNeighbor]: ModalCategory.Analyze,
+  [ModalType.ModalROCCurve]: ModalCategory.Analyze,
+  [ModalType.ModalROCAnalysis]: ModalCategory.Analyze,
+
+  // Dimension Reduction modals
+  [ModalType.ModalFactor]: ModalCategory.Analyze,
+  [ModalType.ModalCorrespondenceAnalysis]: ModalCategory.Analyze,
+  [ModalType.ModalDROptimalScaling]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
+  [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
 };
 
 /**
@@ -363,6 +427,12 @@ export function getModalTitle(type: ModalType): string {
       return "New Custom Attribute";
     case ModalType.SelectCases:
       return "Select Cases";
+    case ModalType.ExampleDataset:
+      return "Example Dataset";
+    case ModalType.GoToCase:
+      return "Go To Case";
+    case ModalType.GoToVariable:
+      return "Go To Variable";
     case ModalType.RecodeDifferentVariables:
       return "Recode into Different Variables";
     default:

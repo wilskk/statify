@@ -31,8 +31,8 @@ export interface VariableTabProps extends TourTabProps {
 }
 
 export interface OptionsTabProps extends TourTabProps {
-    primaryCaseIndicator: boolean;
-    setPrimaryCaseIndicator: (value: boolean) => void;
+    primaryCaseIndicator: 'first' | 'last';
+    setPrimaryCaseIndicator: (value: 'first' | 'last') => void;
     primaryName: string;
     setPrimaryName: (value: string) => void;
     sequentialCount: boolean;
@@ -41,5 +41,9 @@ export interface OptionsTabProps extends TourTabProps {
     setSequentialName: (value: string) => void;
     moveMatchingToTop: boolean;
     setMoveMatchingToTop: (value: boolean) => void;
+    displayFrequencies: boolean;
+    setDisplayFrequencies: (value: boolean) => void;
+    filterByIndicator: boolean;
+    setFilterByIndicator: (value: boolean) => void;
     containerType: "dialog" | "sidebar";
 } 

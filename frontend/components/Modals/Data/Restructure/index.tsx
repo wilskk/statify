@@ -2,7 +2,7 @@
 
 import React from "react";
 import { BaseModalProps } from "@/types/modalTypes";
-import { useRestructure } from "./useRestructure";
+import { useRestructure } from "./hooks/useRestructure";
 import { RestructureUI } from "./RestructureUI";
 
 // Content component separated from container logic

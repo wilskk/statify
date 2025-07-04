@@ -1,110 +1,80 @@
-# ImportClipboardModal Component
+# Fitur: Impor dari Clipboard
 
-## Overview
+Dokumen ini menjelaskan fungsionalitas fitur "Impor dari Clipboard", yang memungkinkan pengguna untuk memasukkan data ke dalam aplikasi dengan menyalin dan menempelkan teks tabular.
 
-The `ImportClipboardModal` component enables users to import tabular data into the application by pasting it directly from their clipboard. It functions similarly to Excel's "Text to Columns" feature, providing a two-step process: pasting the data and then configuring how it should be parsed and imported.
+## 1. Gambaran Umum
 
-## Features
+Fitur ini dirancang untuk memfasilitasi impor data yang cepat tanpa memerlukan file fisik. Prosesnya dibagi menjadi dua tahap utama yang intuitif, mirip dengan fungsi "Text to Columns" di Excel, untuk memastikan data diurai dengan benar.
 
--   **Paste Data**: Allows users to paste text directly into a designated area. The component can also attempt to read from the clipboard API automatically.
--   **Configure Parsing Options**: After pasting, users can specify how the text data should be interpreted:
-    -   **Delimiter**: Choose the character that separates values (e.g., Tab, Comma, Semicolon, Space, or a custom delimiter).
-    -   **First Row as Headers**: Option to treat the first row of the pasted data as column headers/variable names.
-    -   **Trim Whitespace**: Automatically remove leading/trailing whitespace from data cells.
-    -   **Skip Empty Rows**: Option to ignore rows that are entirely empty.
-    -   **Detect Data Types**: Attempt to automatically infer the data type (e.g., number, string, date) for each column.
--   **Data Preview**: (Handled within `ImportClipboardConfigurationStep`) Provides an interactive preview (typically using a table component like Handsontable) of how the data will look based on the selected parsing options.
--   **Import Data**: Finalizes the import process, transforming the pasted text into structured data and variables for use within the application.
+1.  **Tahap Tempel (Paste Step)**: Pengguna menempelkan data mentah ke dalam sebuah area teks.
+2.  **Tahap Konfigurasi (Configuration Step)**: Pengguna mendefinisikan bagaimana data tersebut harus diinterpretasikan, dengan pratinjau langsung dari hasil parsing.
 
-## Workflow Stages
+## 2. Komponen Antarmuka & Fungsionalitas
 
-The import process is divided into two main stages, handled by distinct sub-components:
+### a. Tahap 1: Tempel Data
+-   **Tombol "Paste from Clipboard"**: Menggunakan Clipboard API peramban untuk secara otomatis menempelkan teks, yang mungkin memerlukan izin dari pengguna.
+-   **Area Teks Manual**: Area utama di mana pengguna dapat secara manual menempelkan data (misalnya, dengan `Ctrl+V`).
+-   **Tombol Continue**: Membawa pengguna ke tahap konfigurasi setelah data ditempelkan. Tombol ini hanya aktif jika ada teks di area tersebut.
+-   **Tur Fitur**: Tombol bantuan untuk memandu pengguna melalui langkah-langkah di tahap ini.
 
-1.  **Paste Data (`ImportClipboardPasteStep.tsx`)**
-    -   The initial step where the user pastes their data or it's read from the clipboard.
-    -   Handles loading states and any errors during the paste or initial read process.
-    -   User proceeds to the configuration step once text is provided.
+### b. Tahap 2: Konfigurasi Impor
+-   **Opsi Delimiter**: Pilihan untuk menentukan karakter pemisah data (Tab, Koma, Titik Koma, Spasi, atau karakter kustom).
+-   **Opsi Text Qualifier**: Memungkinkan pengguna memilih karakter (kutip ganda atau tunggal) yang digunakan untuk membungkus nilai teks, terutama yang mengandung delimiter.
+-   **Opsi Tambahan**:
+    -   `First row as headers`: Menginterpretasikan baris pertama sebagai nama variabel.
+    -   `Trim whitespace`: Menghapus spasi di awal dan akhir dari setiap nilai.
+    -   `Skip empty rows`: Mengabaikan baris yang tidak berisi data.
+-   **Pratinjau Data**: Sebuah tabel interaktif (menggunakan `Handsontable`) yang menampilkan bagaimana data akan terlihat setelah diimpor dengan pengaturan yang sedang aktif. Pratinjau ini diperbarui secara *real-time* saat opsi diubah.
+-   **Tombol Import**: Tombol final untuk memproses dan memuat data ke dalam aplikasi.
 
-2.  **Configure Import (`ImportClipboardConfigurationStep.tsx`)**
-    -   This step allows the user to define parsing options (delimiter, headers, etc.).
-    -   Displays a preview of the data based on the current settings.
-    -   Handles the final import action, which processes the data according to the configuration and integrates it into the application's data stores.
+## 3. Alur Kerja & Logika
 
-## Component Props
+1.  **Tempel Teks**: Pengguna menempelkan teks ke dalam `ImportClipboardPasteStep`. State `pastedText` di dalam `useImportClipboardLogic` diperbarui.
+2.  **Lanjut ke Konfigurasi**: Pengguna menekan "Continue". `useImportClipboardLogic` mengubah state `stage` menjadi `configure`.
+3.  **Tampilkan Pratinjau**: `ImportClipboardConfigurationStep` dirender. Komponen ini segera memanggil utilitas `excelStyleTextToColumns` untuk menghasilkan pratinjau data berdasarkan teks yang ada dan opsi default.
+4.  **Penyesuaian Interaktif**: Saat pengguna mengubah opsi (misalnya, mengubah delimiter dari Tab ke Koma), pratinjau data akan diperbarui secara otomatis dengan memanggil kembali `excelStyleTextToColumns`.
+5.  **Finalisasi Impor**: Pengguna menekan "Import". Fungsi `processClipboardData` dari `useImportClipboardProcessor` dipanggil.
+6.  **Pembaruan State Aplikasi**: Hook prosesor ini membuat struktur variabel dan data yang benar, lalu memanggil `overwriteAll` untuk memperbarui `useVariableStore` dan `useDataStore` dengan data baru.
+7.  **Selesai**: Modal ditutup secara otomatis setelah impor berhasil.
 
-The `ImportClipboardModal` component, as defined in `index.tsx`, accepts the following props:
+## 4. Rencana Pengembangan di Masa Depan
 
--   `onClose: () => void`: A mandatory function that is called when the import modal is to be closed (e.g., by clicking a "Close" or "Cancel" button, or after successful import).
--   `containerType?: "dialog" | "sidebar"`: (Optional) Specifies the type of container in which the component is rendered (e.g., as a full dialog or within a sidebar). This can affect styling or layout.
+-   **Dukungan Data Lebar Tetap (Fixed-Width)**: Menambahkan mode di mana pengguna dapat menentukan pemisahan kolom berdasarkan posisi karakter, bukan delimiter.
+-   **Deteksi Tipe Data Lanjutan**: Kemampuan untuk mengubah tipe data (Numerik, String, Tanggal) untuk setiap kolom langsung dari pratinjau.
+-   **Deteksi Otomatis Format Tanggal**: Mengidentifikasi format tanggal yang umum (misalnya, `dd/mm/yyyy` vs. `mm/dd/yyyy`) secara otomatis.
+-   **Simpan Preset Konfigurasi**: Memungkinkan pengguna untuk menyimpan dan memuat kembali pengaturan impor yang sering digunakan.
 
-## Usage
+## 5. Struktur Direktori & Tanggung Jawab
 
-The `ImportClipboardModal` is typically rendered as part of a modal system.
+-   **`/` (Root)**
+    -   **`index.tsx`**: **Orchestrator**. Merakit dan menampilkan langkah yang sesuai (`PasteStep` atau `ConfigurationStep`) berdasarkan state yang dikelola oleh `useImportClipboardLogic`.
+    -   **`types.ts`**: Mendefinisikan semua tipe dan *interface* TypeScript yang relevan untuk fitur ini.
+    -   **`README.md`**: (File ini) Dokumentasi fitur.
 
-```tsx
-import ImportClipboardModal from "./ImportClipboardModal"; // Or specific path to index.tsx
+-   **`components/`**
+    -   **`ImportClipboardPasteStep.tsx`**: Komponen UI untuk tahap pertama. Bertanggung jawab untuk menangani input teks dari pengguna, baik melalui *paste* manual maupun tombol.
+    -   **`ImportClipboardConfigurationStep.tsx`**: Komponen UI untuk tahap kedua. Menampilkan opsi konfigurasi *parsing* dan pratinjau data menggunakan `Handsontable`.
 
-// Example:
-const MyPageWithImport = () => {
-    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+-   **`hooks/`**
+    -   **`useImportClipboardLogic.ts`**: Mengelola *state* utama modal, seperti tahap saat ini (`paste` atau `configure`), teks yang ditempel, dan navigasi antar-langkah.
+    -   **`useImportClipboardProcessor.ts`**: Berisi logika untuk memproses, mengubah, dan mengimpor data. Hook ini dipanggil oleh `ConfigurationStep` untuk finalisasi.
 
-    const handleOpenImportModal = () => setIsImportModalOpen(true);
-    const handleCloseImportModal = () => {
-        setIsImportModalOpen(false);
-        // Additional logic after modal closes, e.g., refresh data
-    };
+-   **`services/`**
+    -   **`services.ts`**: Abstraksi untuk interaksi dengan Browser API, khususnya `navigator.clipboard.readText()` untuk mengakses clipboard secara aman.
 
-    return (
-        <>
-            <Button onClick={handleOpenImportModal}>Import from Clipboard</Button>
-            {isImportModalOpen && (
-                <ImportClipboardModal
-                    onClose={handleCloseImportModal}
-                    containerType="dialog"
-                />
-            )}
-        </>
-    );
-};
-```
+-   **`utils/`**
+    -   **`utils.ts`**: Berisi fungsi utilitas inti, termasuk fungsi `excelStyleTextToColumns` yang merupakan jantung dari logika *parsing* teks menjadi struktur kolom dan baris.
 
-## Architecture & Structure
+## 6. Properti Komponen (`ImportClipboardProps`)
 
-The module is organized as follows:
+-   `onClose: () => void`: **(Wajib)** Fungsi *callback* yang dipanggil untuk menutup modal.
+-   `containerType?: "dialog" | "sidebar"`: **(Opsional)** Menentukan konteks render untuk penyesuaian tata letak.
 
-```
-ImportClipboard/
-├── components/
-│   ├── ImportClipboardPasteStep.tsx      # UI and logic for the data pasting step
-│   └── ImportClipboardConfigurationStep.tsx # UI and logic for data configuration and preview
-├── hooks/
-│   ├── useImportClipboardLogic.ts        # Manages overall modal state, navigation between steps, initial paste handling
-│   └── useImportClipboardProcessor.ts    # Handles advanced parsing, data transformation, and final import (likely used by ConfigurationStep)
-├── services/
-│   └── services.ts                     # For external interactions, e.g., Clipboard API access
-├── utils/
-│   └── utils.ts                        # Core parsing utilities, data type detection, etc.
-├── index.tsx                             # Main modal container component, orchestrates steps
-├── README.md                             # This documentation file
-└── types.ts                              # TypeScript interfaces for props, state, and options
-```
+## 7. Ketergantungan Utama (Dependencies)
 
-## Internal Logic Highlights
-
--   **State Management**: The `useImportClipboardLogic` hook manages the current stage (`paste` or `configure`), pasted text, loading states, and errors.
--   **Parsing Core**: The actual text-to-columns parsing is primarily handled by utility functions within `utils/utils.ts` (e.g., a function like `excelStyleTextToColumns` as described in previous documentation). This logic supports various delimiters, text qualifiers (implicitly, by handling quoted strings), and options like trimming whitespace and skipping empty rows.
--   **Data Processing**: The `useImportClipboardProcessor` hook (likely utilized by `ImportClipboardConfigurationStep`) orchestrates the use of these parsing utilities based on user configuration, generates a preview, and handles the final creation of variables and data to be loaded into application stores.
--   **Clipboard Interaction**: `services/services.ts` encapsulates the browser's Clipboard API (`navigator.clipboard.readText()`) for fetching pasted content, including permission handling.
--   **Error Handling**: Errors from clipboard operations, parsing, or data processing are caught and displayed to the user, typically within the relevant step.
-
-## Dependencies
-
-Key dependencies include:
-
--   React
--   Internal hooks: `useImportClipboardLogic`, `useImportClipboardProcessor`
--   Internal components: `ImportClipboardPasteStep`, `ImportClipboardConfigurationStep`
--   Internal services: for clipboard access
--   Internal utilities: for parsing and data manipulation
--   Potentially UI component libraries (e.g., `@/components/ui/*`) used within the step components.
--   Potentially a table library (e.g., Handsontable) for the data preview in `ImportClipboardConfigurationStep`. 
+-   **Internal**:
+    -   Zustand Stores (`useDataStore`, `useVariableStore`).
+    -   Komponen UI dari `@/components/ui/*`.
+-   **Eksternal**:
+    -   `handsontable/react-wrapper`: Untuk menampilkan pratinjau data interaktif.
+    -   `framer-motion`: Untuk animasi transisi dan *highlighting* pada fitur *tour*.

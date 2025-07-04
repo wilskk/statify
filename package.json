@@ -9,15 +9,20 @@
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "build": "npm run build --workspaces --if-present",
-    "install:all": "npm install --workspaces",
-    "test": "jest"
+    "test": "npm test --workspaces",
+    "install:all": "npm install --workspaces"
   },
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
     "concurrently": "^8.2.2",
     "eslint-plugin-jest-dom": "^5.5.0",
     "eslint-plugin-testing-library": "^7.5.3",
+    "jest": "^30.0.2",
+    "ts-jest": "^29.4.0",
+    "jest-environment-jsdom": "^30.0.2",
+    "@testing-library/jest-dom": "^6.6.3",
     "typescript": "^5.0.0"
   },
   "workspaces": [
