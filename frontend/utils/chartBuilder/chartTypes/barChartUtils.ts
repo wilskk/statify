@@ -8,9 +8,21 @@ import {
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import { ChartTitleOptions, addChartTitle } from "./chartUtils";
-import { getMajorTicks } from "../chartUtils";
+import {
+  getMajorTicks,
+  createStandardSVG,
+  addAxisLabels,
+  addLegend,
+  calculateLegendPosition,
+} from "../chartUtils";
 import { filterDataByAxisRange } from "../dataFilter";
-import { generateAxisTicks } from "./chartUtils";
+import {
+  generateAxisTicks,
+  formatAxisNumber,
+  truncateText,
+  addStandardAxes,
+} from "./chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 
 // Definisikan interface untuk data chart
 interface ChartData {
@@ -81,15 +93,23 @@ export const createVerticalBarChart2 = (
 
   const needRotateX = maxXLabelWidth > width / processedData.length;
 
-  // Margin
-  const xLabelLength = axisLabels?.x ? axisLabels.x.length : 0;
-  const yLabelLength = axisLabels?.y ? axisLabels.y.length : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis
-    ? Math.max(maxYLabelWidth + (axisLabels?.y ? 60 : 20), 60, yLabelLength * 7)
-    : 0;
-  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
-  const marginRight = useAxis ? 30 : 0;
+  // Use responsive margin utility with categories for automatic rotation detection
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxYLabelWidth,
+    categories: processedData.map((d) => d.displayLabel),
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
 
   // Y scale
   let yMin = 0;
@@ -116,17 +136,23 @@ export const createVerticalBarChart2 = (
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Add title if provided
+  // Add title if provided with margin-aware positioning
   if (titleOptions) {
     console.log("Adding title with options:", titleOptions);
-    addChartTitle(svg, titleOptions);
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
   svg
@@ -145,66 +171,36 @@ export const createVerticalBarChart2 = (
     );
 
   if (useAxis) {
-    const xAxis = svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call((g) =>
-        g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))")
-      )
-      .call((g) =>
-        g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
-      );
+    // Use standardized axis functions with automatic formatting and rotation
+    const categories = processedData.map((d) => d.displayLabel);
 
-    // Update tick labels to show original category names
-    xAxis.selectAll("text").text((d) => {
-      const dataPoint = processedData.find((item) => item.uniqueId === d);
-      return dataPoint ? dataPoint.displayLabel : d;
+    const axisConfig = addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      yMin,
+      yMax,
+      chartType: "vertical",
+      xAxisOptions: {
+        tickFormat: (d: any) => {
+          const dataPoint = processedData.find((item) => item.uniqueId === d);
+          return dataPoint ? truncateText(dataPoint.displayLabel, 12) : d;
+        },
+        maxLabelLength: 12,
+      },
+      yAxisOptions: {
+        customFormat: formatAxisNumber,
+        showGridLines: true,
+      },
     });
-
-    if (needRotateX) {
-      xAxis
-        .selectAll("text")
-        .attr("transform", "rotate(-45)")
-        .style("text-anchor", "end");
-    }
-
-    // Add X axis label if provided
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", (width + marginLeft - marginRight) / 2)
-        .attr("y", height - marginBottom + 35) // posisi lebih ke atas agar tidak keluar SVG
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.x);
-    }
-
-    // Vertical Bar Chart axis Y
-    const yAxis = d3.axisLeft(y).tickFormat(d3.format(".2s"));
-    if (majorIncrement && majorIncrement > 0) {
-      const ticks = generateAxisTicks(yMin, yMax, majorIncrement);
-      if (ticks) yAxis.tickValues(ticks);
-    }
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(yAxis)
-      .call((g) => g.select(".domain").remove());
-
-    // Add Y axis label if provided
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -(height + marginTop - marginBottom) / 2)
-        .attr("y", marginLeft - 50)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.y);
-    }
   }
 
   return svg.node();
@@ -260,25 +256,33 @@ export const createHorizontalBarChart = (
     d3.max(processedData.map((d) => ctx.measureText(d.displayLabel).width)) ??
     0;
 
-  // Margin definitions (move up here)
+  // Responsive margin for horizontal bar chart
   const xScaleTemp = d3
     .scaleLinear()
     .domain([0, d3.max(processedData, (d) => d.value) ?? 0]);
   const xTicks = xScaleTemp.ticks(5).map((d) => d.toFixed(0) + "%");
   const maxTickWidth = d3.max(xTicks.map((t) => ctx.measureText(t).width)) ?? 0;
 
-  const marginLeft = useAxis ? maxCategoryWidth + (axisLabels?.y ? 60 : 25) : 0;
-  const marginRight = useAxis ? maxTickWidth + 30 : 0;
-  const marginTop = useAxis
-    ? titleOptions
-      ? titleOptions.subtitle
-        ? 100
-        : 60
-      : 25
-    : titleOptions
-    ? 40
-    : 0;
-  const marginBottom = useAxis ? 8 : 0; // Lebih kecil dari sebelumnya
+  // Use responsive margin utility for horizontal chart
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    maxLabelWidth: maxCategoryWidth,
+    maxTickWidth,
+    isHorizontalChart: true,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
+
+  // Use responsive margins directly - no need to override
 
   // X scale
   let xMin = 0;
@@ -308,12 +312,14 @@ export const createHorizontalBarChart = (
 
   const format = x.tickFormat(20, "%");
 
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
   // Add title if provided
   if (titleOptions) {
@@ -336,55 +342,35 @@ export const createHorizontalBarChart = (
     .attr("width", (d) => x(d.value) - x(xMin))
     .attr("height", y.bandwidth());
 
-  // Axis
+  // Axis with standardized functions
   if (useAxis) {
-    // Horizontal Bar Chart axis X
-    const xAxis = d3.axisTop(x);
-    if (majorIncrement && majorIncrement > 0) {
-      xAxis.tickValues(getMajorTicks(xMin, xMax, majorIncrement));
-    }
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${marginTop})`)
-      .call(xAxis)
-      .call((g) => g.select(".domain").remove());
+    // Use standardized axis functions for horizontal chart
+    const categories = processedData.map((d) => d.displayLabel);
 
-    // Horizontal Bar Chart axis Y (categorical) - use unique IDs for positioning, but display original names as labels
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(
-        d3.axisLeft(y).tickFormat((d) => {
-          const dataPoint = processedData.find((item) => item.uniqueId === d);
-          return dataPoint ? dataPoint.displayLabel : d;
-        })
-      )
-      .call((g) => g.select(".domain").remove());
-
-    // Add X axis label if provided
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", width / 2)
-        .attr("y", marginTop - 30) // <- label x axis di atas sumbu X
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.x);
-    }
-
-    // Add Y axis label if provided
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -(height / 2))
-        .attr("y", marginLeft - 40)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.y);
-    }
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      xMin,
+      xMax,
+      chartType: "horizontal",
+      data: processedData, // Pass processed data for display label lookup
+      xAxisOptions: {
+        axisPosition: "top",
+        customFormat: formatAxisNumber,
+      },
+      yAxisOptions: {
+        maxLabelLength: 6, // Longer labels for horizontal chart categories
+      },
+    });
   }
 
   return svg.node();
@@ -430,11 +416,22 @@ export const createVerticalStackedBarChart = (
 
   console.log("Creating stacked bar plot with valid data:", validData);
 
-  // Definisi margin
-  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Use responsive margin utility for stacked chart with legend
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    hasLegend: true,
+    legendPosition: "bottom",
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -500,21 +497,22 @@ export const createVerticalStackedBarChart = (
     .range(chartColors || colorScheme);
 
   // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Add title if provided
+  // Add title if provided with margin-aware positioning
   if (titleOptions) {
-    addChartTitle(svg, titleOptions);
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
   svg
@@ -574,65 +572,36 @@ export const createVerticalStackedBarChart = (
       .call(yAxis)
       .call((g) => g.select(".domain").remove());
 
-    // Menambahkan label sumbu X
-    svg
-      .append("text")
-      .attr("x", (width - marginLeft - marginRight) / 2 + marginLeft)
-      .attr("y", height - marginBottom + 40)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text(axisLabels?.x || "Category");
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      axisLabels,
+      chartType: "vertical",
+    });
 
-    // Menambahkan label sumbu Y
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(marginTop + (height - marginBottom - marginTop) / 2))
-      .attr("y", 16)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text(axisLabels?.y || "Value");
+    // Add standardized legend using utility function
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft,
+      marginRight,
+      marginBottom,
+      marginTop,
+      legendPosition: "bottom",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan legenda secara horizontal di bawah chart
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 60})`
-      );
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      maxItemsPerRow: legendPosition.maxItemsPerRow,
     });
   }
 
@@ -687,17 +656,23 @@ export const createHorizontalStackedBarChart = (
     return null;
   }
 
-  // Definisi margin
-  const marginTop = useAxis
-    ? titleOptions
-      ? 110
-      : 30
-    : titleOptions
-    ? 100
-    : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Use responsive margin utility for horizontal stacked chart with legend
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    hasLegend: true,
+    legendPosition: "bottom",
+    isHorizontalChart: true,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -743,10 +718,12 @@ export const createHorizontalStackedBarChart = (
     .nice()
     .range([marginLeft, width - marginRight]);
 
+  // Adjust Y scale to leave more space for title/subtitle at top
+  const chartTop = marginTop + 20; // Add extra space below title
   const y = d3
     .scaleBand<string>()
     .domain(categories)
-    .range([marginTop, height - marginBottom])
+    .range([chartTop, height - marginBottom])
     .padding(0.1);
 
   // Skala warna dengan d3.schemeBlues
@@ -765,17 +742,22 @@ export const createHorizontalStackedBarChart = (
     .range(chartColors || colorScheme)
     .unknown("#ccc");
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Add title if provided
+  // Add title if provided with margin-aware positioning
   if (titleOptions) {
-    addChartTitle(svg, titleOptions);
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
   // Append grup untuk setiap series
@@ -799,94 +781,51 @@ export const createHorizontalStackedBarChart = (
     .append("title")
     .text((d) => `${d.data.category}, ${d.key}: ${d[1] - d[0]}`);
 
-  // Menambahkan sumbu dan legend jika `useAxis` true
+  // Add axis using standardized functions
   if (useAxis) {
-    // Sumbu X dengan majorIncrement support
-    const xAxis = d3.axisTop(x);
-    if (
-      majorIncrement &&
-      typeof xMin === "number" &&
-      typeof xMax === "number" &&
-      !isNaN(majorIncrement) &&
-      !isNaN(xMin) &&
-      !isNaN(xMax)
-    ) {
-      const ticks = generateAxisTicks(xMin, xMax, majorIncrement);
-      if (ticks) xAxis.tickValues(ticks);
-    }
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${marginTop})`)
-      .call(xAxis)
-      .call((g) => g.selectAll(".domain").remove());
+    const categories = Array.from(new Set(validData.map((d) => d.category)));
 
-    // Sumbu Y
-    svg
-      .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y).tickSizeOuter(0))
-      .call((g) => g.selectAll(".domain").remove());
+    addStandardAxes(svg, {
+      xScale: x,
+      yScale: y,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      categories,
+      axisLabels,
+      majorIncrement,
+      xMin,
+      xMax,
+      chartType: "horizontal",
+      xAxisOptions: {
+        axisPosition: "bottom", // Different from simple horizontal - stacked goes on bottom
+        customFormat: formatAxisNumber,
+      },
+      yAxisOptions: {
+        maxLabelLength: 15,
+      },
+    });
 
-    // Menambahkan label sumbu X
-    svg
-      .append("text")
-      .attr("x", (width - marginLeft - marginRight) / 2 + marginLeft)
-      .attr("y", marginTop - 30)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text(axisLabels?.x || "Category");
+    // Add standardized legend using utility function
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft,
+      marginRight,
+      marginBottom,
+      marginTop,
+      legendPosition: "bottom",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan label sumbu Y
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(marginTop + (height - marginBottom - marginTop) / 2))
-      .attr("y", marginLeft - 40)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text(axisLabels?.y || "Value");
-
-    // Menambahkan legenda
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 30})`
-      );
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      maxItemsPerRow: legendPosition.maxItemsPerRow,
     });
   }
 
@@ -941,11 +880,23 @@ export const createClusteredBarChart = (
     return null;
   }
 
-  // Definisi margin
-  const marginTop = useAxis ? (titleOptions ? 100 : 20) : titleOptions ? 80 : 0;
-  const marginRight = useAxis ? 20 : 0;
-  const marginBottom = useAxis ? 100 : 0;
-  const marginLeft = useAxis ? 50 : 0;
+  // Use responsive margin utility for clustered chart with legend
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+    hasLegend: true,
+    legendPosition: "bottom",
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
 
   // Kategori utama dan subkategori
   const categories = Array.from(new Set(validData.map((d) => d.category)));
@@ -1011,17 +962,23 @@ export const createClusteredBarChart = (
     .range(chartColors || colorScheme)
     .unknown("#ccc");
 
-  // Membuat elemen SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("viewBox", [0, 0, width, height])
-    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+  // Create standard SVG using utility function
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
-  // Add title if provided
+  // Add title if provided with margin-aware positioning
   if (titleOptions) {
-    addChartTitle(svg, titleOptions);
+    addChartTitle(svg, {
+      ...titleOptions,
+      marginTop,
+      useResponsivePositioning: true,
+    });
   }
 
   // Append grup untuk setiap kategori
@@ -1092,67 +1049,36 @@ export const createClusteredBarChart = (
         g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
       );
 
-    // Menambahkan label sumbu X
-    svg
-      .append("text")
-      .attr("x", (width - marginLeft - marginRight) / 2 + marginLeft)
-      .attr("y", height - marginBottom + 30)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "12px")
-      .text(axisLabels?.x || "Category");
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      axisLabels,
+      chartType: "vertical",
+    });
 
-    // Menambahkan label sumbu Y
-    svg
-      .append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -(marginTop + (height - marginBottom - marginTop) / 2))
-      .attr("y", 16)
-      .attr("text-anchor", "middle")
-      .attr("fill", "hsl(var(--foreground))")
-      .style("font-size", "14px")
-      .text(axisLabels?.y || "Value");
+    // Add standardized legend using utility function
+    const legendPosition = calculateLegendPosition({
+      width,
+      height,
+      marginLeft,
+      marginRight,
+      marginBottom,
+      marginTop,
+      legendPosition: "bottom",
+      itemCount: subcategories.length,
+    });
 
-    // Menambahkan legenda secara horizontal di bawah chart dengan label di samping swatches
-    const legendGroup = svg
-      .append("g")
-      .attr("font-family", "sans-serif")
-      .attr("font-size", 10)
-      .attr("text-anchor", "start")
-      .attr(
-        "transform",
-        `translate(${marginLeft}, ${height - marginBottom + 50})`
-      );
-
-    const legendItemWidth = 19;
-    const legendItemHeight = 19;
-    const labelOffset = 5;
-    const legendSpacingX = 130;
-    const legendSpacingY = 25;
-    const legendMaxWidth = width - marginLeft - marginRight;
-    const itemsPerRow = Math.floor(legendMaxWidth / legendSpacingX);
-
-    subcategories.forEach((subcategory, index) => {
-      const row = Math.floor(index / itemsPerRow);
-      const col = index % itemsPerRow;
-      const xOffset = col * legendSpacingX;
-      const yOffset = row * legendSpacingY;
-
-      // Menambahkan swatch
-      legendGroup
-        .append("rect")
-        .attr("x", xOffset)
-        .attr("y", yOffset)
-        .attr("width", legendItemWidth)
-        .attr("height", legendItemHeight)
-        .attr("fill", color(subcategory));
-
-      // Menambahkan label teks
-      legendGroup
-        .append("text")
-        .attr("x", xOffset + legendItemWidth + labelOffset)
-        .attr("y", yOffset + legendItemHeight / 2)
-        .attr("dy", "0.35em")
-        .text(subcategory);
+    addLegend({
+      svg,
+      colorScale: color,
+      position: legendPosition,
+      maxItemsPerRow: legendPosition.maxItemsPerRow,
     });
   }
 
@@ -1560,11 +1486,8 @@ export const createClusteredErrorBarChart = (
     // Y-Axis
     const yAxis = d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(2));
     if (majorIncrement && majorIncrement > 0) {
-      const ticks = [];
-      for (let v = yMin; v <= yMax; v += majorIncrement) {
-        ticks.push(v);
-      }
-      yAxis.tickValues(ticks);
+      const ticks = generateAxisTicks(yMin, yMax, majorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
     }
     svg
       .append("g")
@@ -2554,22 +2477,50 @@ export const createBarAndLineChart2 = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  barMode: "grouped" | "stacked" = "grouped"
+  barMode: "grouped" | "stacked" = "grouped",
+  titleOptions?: any,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  const marginTop = useAxis ? 30 : 0;
+  // Filter data
+  const filteredData = data.filter(
+    (d) =>
+      d.bars != null &&
+      d.lines != null &&
+      d.category != " " &&
+      Object.values(d.bars).every((v) => v != null && !isNaN(v)) &&
+      Object.values(d.lines).every((v) => v != null && !isNaN(v))
+  );
+
+  // Margin dinamis berdasarkan title dan axis labels
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
   const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 40 : 0;
+  const marginBottom = useAxis ? (axisLabels?.x ? 60 : 30) : 0;
+  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 0;
 
-  const barKeys = Object.keys(data[0].bars);
-  const lineKeys = Object.keys(data[0].lines);
+  const barKeys = Object.keys(filteredData[0]?.bars || {});
+  const lineKeys = Object.keys(filteredData[0]?.lines || {});
 
-  const allBarValues = data.flatMap((d) => Object.values(d.bars));
-  const allLineValues = data.flatMap((d) => Object.values(d.lines));
+  const allBarValues = filteredData.flatMap((d) => Object.values(d.bars));
+  const allLineValues = filteredData.flatMap((d) => Object.values(d.lines));
 
   let stackedBarSums: number[] = [];
   if (barMode === "stacked") {
-    stackedBarSums = data.map((d) => d3.sum(Object.values(d.bars)));
+    stackedBarSums = filteredData.map((d) => d3.sum(Object.values(d.bars)));
   }
 
   const allValues =
@@ -2577,36 +2528,71 @@ export const createBarAndLineChart2 = (
       ? [...stackedBarSums, ...allLineValues]
       : [...allBarValues, ...allLineValues];
 
-  const minY = Math.min(0, ...allValues);
-  const maxY = Math.max(...allValues);
+  // Y scale dengan axis scale options
+  let yMin = Math.min(0, ...allValues);
+  let yMax = Math.max(...allValues);
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
 
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
+    .domain(filteredData.map((d) => d.category))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
   const y = d3
     .scaleLinear()
-    .domain([minY, maxY])
+    .domain([yMin, yMax])
+    .nice()
     .range([height - marginBottom, marginTop]);
 
   const svg = d3
     .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto;");
+
+  // Add title if provided
+  if (titleOptions) {
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", 20)
+      .attr("text-anchor", "middle")
+      .style("font-size", `${titleOptions.titleFontSize || 16}px`)
+      .style("font-weight", "bold")
+      .style("fill", titleOptions.titleColor || "hsl(var(--foreground))")
+      .text(titleOptions.title || "");
+
+    if (titleOptions.subtitle) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", 40)
+        .attr("text-anchor", "middle")
+        .style("font-size", `${titleOptions.subtitleFontSize || 12}px`)
+        .style(
+          "fill",
+          titleOptions.subtitleColor || "hsl(var(--muted-foreground))"
+        )
+        .text(titleOptions.subtitle);
+    }
+  }
 
   const colorBar = d3
     .scaleOrdinal<string>()
     .domain(barKeys)
-    .range(d3.schemeCategory10);
+    .range(
+      chartColors && chartColors.length > 0 ? chartColors : d3.schemeCategory10
+    );
 
   if (barMode === "grouped") {
     const x1 = d3
@@ -2618,16 +2604,16 @@ export const createBarAndLineChart2 = (
     svg
       .append("g")
       .selectAll("g")
-      .data(data)
+      .data(filteredData)
       .join("g")
       .attr("transform", (d) => `translate(${x(d.category)},0)`)
       .selectAll("rect")
       .data((d) => barKeys.map((key) => ({ key, value: d.bars[key] })))
       .join("rect")
       .attr("x", (d) => x1(d.key)!)
-      .attr("y", (d) => (d.value >= 0 ? y(d.value) : y(0)))
+      .attr("y", (d) => (d.value >= yMin ? y(d.value) : y(yMin)))
       .attr("width", x1.bandwidth())
-      .attr("height", (d) => Math.abs(y(d.value) - y(0)))
+      .attr("height", (d) => Math.abs(y(d.value) - y(yMin)))
       .attr("fill", (d) => colorBar(d.key)!)
       .attr("opacity", 0.7);
   } else {
@@ -2636,7 +2622,7 @@ export const createBarAndLineChart2 = (
       .keys(barKeys)
       .value((d, key) => d.bars[key]);
 
-    const series = stack(data);
+    const series = stack(filteredData);
 
     svg
       .append("g")
@@ -2651,14 +2637,17 @@ export const createBarAndLineChart2 = (
       .attr("x", (d) => x(d.data.category)!)
       .attr("y", (d) => y(Math.max(d[0], d[1])))
       .attr("height", (d) => Math.abs(y(d[0]) - y(d[1])))
-
       .attr("width", x.bandwidth());
   }
 
   const colorLine = d3
     .scaleOrdinal<string>()
     .domain(lineKeys)
-    .range(d3.schemeTableau10);
+    .range(
+      chartColors && chartColors.length > barKeys.length
+        ? chartColors.slice(barKeys.length) // Use colors after bar colors
+        : d3.schemeTableau10
+    );
 
   lineKeys.forEach((key) => {
     const line = d3
@@ -2669,7 +2658,7 @@ export const createBarAndLineChart2 = (
     // Path Line
     svg
       .append("path")
-      .datum(data)
+      .datum(filteredData)
       .attr("fill", "none")
       .attr("stroke", colorLine(key)!)
       .attr("stroke-width", 3)
@@ -2680,7 +2669,7 @@ export const createBarAndLineChart2 = (
     // Dots di titik Line
     svg
       .selectAll(`.dot-${key}`)
-      .data(data)
+      .data(filteredData)
       .join("circle")
       .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
       .attr("cy", (d) => y(d.lines[key]))
@@ -2695,7 +2684,7 @@ export const createBarAndLineChart2 = (
 
     svg
       .append("g")
-      .attr("transform", `translate(0, ${y(0)})`)
+      .attr("transform", `translate(0, ${y(yMin)})`)
       .call(
         d3
           .axisBottom(x)
@@ -2713,16 +2702,30 @@ export const createBarAndLineChart2 = (
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
       .call(d3.axisLeft(y).tickFormat((v) => (+v).toFixed(2)));
-    // .call((g) => g.select(".domain").remove());
 
-    // const y2Axis = svg
-    //   .append("g")
-    //   .attr("transform", `translate(${width - marginRight}, 0)`)
-    //   .call(d3.axisRight(y).tickFormat((v) => (+v).toFixed(2)))
-    //   .call((g) => g.select(".domain").remove());
+    // Add axis labels if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 5)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "var(--foreground)")
+        .text(axisLabels.x);
+    }
 
-    // y2Axis.selectAll(".tick text").attr("fill", "red");
-    // y2Axis.select(".domain").attr("stroke", "red");
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "var(--foreground)")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();
@@ -2732,15 +2735,44 @@ export const createStemAndLeafPlot = (
   data: Array<{ stem: string; leaves: number[] }>,
   width: number,
   height: number,
-  useaxis: boolean = true
+  useaxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  const margin = useaxis
-    ? { top: 40, right: 40, bottom: 50, left: 40 }
-    : { top: 20, right: 20, bottom: 20, left: 20 };
+  // Dynamic margin calculation based on title and axis labels
+  let marginTop = useaxis ? 40 : 20;
+  let marginLeft = useaxis ? 40 : 20;
+  let marginBottom = useaxis ? 50 : 20;
+  let marginRight = useaxis ? 40 : 20;
 
-  const titleFontSize = useaxis
-    ? Math.max(16, Math.min(24, width / 20))
-    : Math.max(12, Math.min(16, width / 30));
+  // Adjust margins for title and subtitle
+  if (titleOptions) {
+    marginTop += titleOptions.subtitle ? 60 : 40;
+  }
+
+  // Note: Stem & Leaf Plot doesn't use traditional axis labels, so no additional margin needed
+
+  const margin = {
+    top: marginTop,
+    right: marginRight,
+    bottom: marginBottom,
+    left: marginLeft,
+  };
 
   const bodyFontSize = useaxis
     ? Math.max(12, Math.min(18, width / 30))
@@ -2762,27 +2794,30 @@ export const createStemAndLeafPlot = (
       `max-width: 100%; height: auto; font-family: 'Courier New', monospace;`
     );
 
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
   // Urutkan stem secara numerik
   const sortedData = data
     .slice()
     .sort((a, b) => Number(a.stem) - Number(b.stem));
 
-  if (useaxis) {
-    svg
-      .append("text")
-      .attr("x", width / 2)
-      .attr("y", titleFontSize)
-      .attr("text-anchor", "middle")
-      .style("font-size", `${titleFontSize}px`)
-      .style("font-weight", "bold")
-      .text("Stem and Leaf Plot");
-
-    y += titleFontSize + 10;
-  }
-
   const rowGroup = svg
     .append("g")
     .attr("transform", `translate(${startX}, ${y})`);
+
+  // Use custom colors if provided
+  const stemColor =
+    chartColors && chartColors.length > 0
+      ? chartColors[0]
+      : "hsl(var(--primary))";
+
+  const leafBackgroundColor =
+    chartColors && chartColors.length > 1
+      ? chartColors[1]
+      : "hsl(var(--muted))";
 
   sortedData.forEach((row, i) => {
     const leaves = row.leaves.slice().sort((a, b) => a - b);
@@ -2799,14 +2834,16 @@ export const createStemAndLeafPlot = (
       .attr("y", 0)
       .attr("width", 50)
       .attr("height", lineHeight - 4)
-      .attr("fill", "#5c2d91")
-      .attr("rx", 4);
+      .attr("fill", stemColor)
+      .attr("rx", 4)
+      .attr("stroke", "hsl(var(--border))")
+      .attr("stroke-width", 1);
 
     group
       .append("text")
       .attr("x", 25)
       .attr("y", (lineHeight - 4) / 2)
-      .attr("fill", "white")
+      .attr("fill", "hsl(var(--primary-foreground))")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .style("font-size", `${bodyFontSize}px`)
@@ -2820,8 +2857,10 @@ export const createStemAndLeafPlot = (
       .attr("y", 0)
       .attr("width", width - margin.left - margin.right - 60)
       .attr("height", lineHeight - 4)
-      .attr("fill", "#f0f0f0")
-      .attr("rx", 4);
+      .attr("fill", leafBackgroundColor)
+      .attr("rx", 4)
+      .attr("stroke", "hsl(var(--border))")
+      .attr("stroke-width", 1);
 
     group
       .append("text")
@@ -2829,10 +2868,11 @@ export const createStemAndLeafPlot = (
       .attr("y", (lineHeight - 4) / 2)
       .attr("dominant-baseline", "middle")
       .style("font-size", `${bodyFontSize}px`)
-      .style("fill", "#333")
+      .style("fill", "hsl(var(--foreground))")
       .text(leafText);
   });
 
+  // Add key text if needed
   if (useaxis && sortedData.length > 0 && sortedData[0].leaves.length > 0) {
     const firstStem = sortedData[0].stem;
     const firstLeaf = sortedData[0].leaves[0];
@@ -2845,9 +2885,11 @@ export const createStemAndLeafPlot = (
       .attr("text-anchor", "middle")
       .style("font-size", `${keyFontSize}px`)
       .style("font-style", "italic")
-      .style("fill", "#555")
+      .style("fill", "hsl(var(--muted-foreground))")
       .text(defaultKeyText);
   }
+
+  // Note: Stem & Leaf Plot doesn't use traditional axis labels like other charts
 
   return svg.node();
 };
@@ -2856,12 +2898,50 @@ export const createViolinPlot = (
   data: { category: string; value: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true // parameter tambahan
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  // Margin dinamis tergantung axis
-  const margin = useAxis
-    ? { top: 20, right: 30, bottom: 40, left: 50 }
-    : { top: 0, right: 0, bottom: 0, left: 0 };
+  // Dynamic margin calculation based on title and axis labels
+  let marginTop = useAxis ? 20 : 0;
+  let marginLeft = useAxis ? 50 : 0;
+  let marginBottom = useAxis ? 40 : 0;
+  let marginRight = useAxis ? 30 : 0;
+
+  // Adjust margins for title and subtitle
+  if (titleOptions) {
+    marginTop += titleOptions.subtitle ? 60 : 40;
+  }
+
+  // Adjust margins for axis labels
+  if (axisLabels?.x && useAxis) {
+    marginBottom += 25;
+  }
+  if (axisLabels?.y && useAxis) {
+    marginLeft += 25;
+  }
+
+  const margin = {
+    top: marginTop,
+    right: marginRight,
+    bottom: marginBottom,
+    left: marginLeft,
+  };
 
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
@@ -2872,6 +2952,11 @@ export const createViolinPlot = (
     .attr("height", height)
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("style", "max-width: 100%; height: auto;");
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
 
   const chartArea = svg
     .append("g")
@@ -2885,12 +2970,23 @@ export const createViolinPlot = (
     .range([0, innerWidth])
     .padding(0.05);
 
+  // Y scale with axis scale options
+  let yMin = d3.min(data, (d) => d.value) ?? 0;
+  let yMax = d3.max(data, (d) => d.value) ?? 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([
-      d3.min(data, (d) => d.value) ?? 0,
-      d3.max(data, (d) => d.value) ?? 0,
-    ])
+    .domain([yMin, yMax])
     .nice()
     .range([innerHeight, 0]);
 
@@ -2915,33 +3011,102 @@ export const createViolinPlot = (
     .range([0, x.bandwidth()])
     .domain([-maxNum, maxNum]);
 
+  // Color scale for categories
+  const colorScale = d3
+    .scaleOrdinal<string>()
+    .domain(categories)
+    .range(
+      chartColors && chartColors.length > 0
+        ? chartColors
+        : [
+            "#69b3a2",
+            "#404080",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728",
+            "#9467bd",
+            "#8c564b",
+          ]
+    );
+
   chartArea
     .selectAll("myViolin")
     .data(sumstat)
     .enter()
     .append("g")
     .attr("transform", (d) => `translate(${x(d.category)},0)`)
-    .append("path")
-    .datum((d) => d.bins)
-    .style("fill", "#69b3a2")
-    .style("stroke", "none")
-    .attr(
-      "d",
-      d3
-        .area<d3.Bin<number, number>>()
-        .x0((d) => xNum(-d.length))
-        .x1((d) => xNum(d.length))
-        .y((d) => y(d.x0 ?? 0))
-        .curve(d3.curveCatmullRom)
-    );
+    .each(function (d) {
+      d3.select(this)
+        .append("path")
+        .datum(d.bins)
+        .style("fill", colorScale(d.category))
+        .style("stroke", "hsl(var(--border))")
+        .style("stroke-width", 1)
+        .style("opacity", 0.8)
+        .attr(
+          "d",
+          d3
+            .area<d3.Bin<number, number>>()
+            .x0((d) => xNum(-d.length))
+            .x1((d) => xNum(d.length))
+            .y((d) => y(d.x0 ?? 0))
+            .curve(d3.curveCatmullRom)
+        );
+    });
 
   if (useAxis) {
+    // X axis
     chartArea
       .append("g")
       .attr("transform", `translate(0, ${innerHeight})`)
-      .call(d3.axisBottom(x));
+      .call(d3.axisBottom(x))
+      .call((g) =>
+        g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))")
+      )
+      .call((g) =>
+        g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
+      );
 
-    chartArea.append("g").call(d3.axisLeft(y));
+    // Y axis with major increment support
+    const yAxis = d3.axisLeft(y);
+    if (majorIncrement && majorIncrement > 0) {
+      const ticks = generateAxisTicks(yMin, yMax, majorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
+    chartArea
+      .append("g")
+      .call(yAxis)
+      .call((g) =>
+        g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))")
+      )
+      .call((g) =>
+        g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
+      );
+
+    // Add X axis label if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.x);
+    }
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();
@@ -2951,16 +3116,55 @@ export const createDensityChart = (
   data: number[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   // Filter data yang valid (bukan NaN)
   const filteredData = data.filter((d) => !isNaN(d));
 
   console.log("di density", filteredData);
 
-  const margin = useAxis
-    ? { top: 20, right: 30, bottom: 40, left: 50 }
-    : { top: 0, right: 0, bottom: 0, left: 0 };
+  // Dynamic margin calculation based on title and axis labels
+  let marginTop = useAxis ? 20 : 0;
+  let marginLeft = useAxis ? 50 : 0;
+  let marginBottom = useAxis ? 40 : 0;
+  let marginRight = useAxis ? 30 : 0;
+
+  // Adjust margins for title and subtitle
+  if (titleOptions) {
+    marginTop += titleOptions.subtitle ? 60 : 40;
+  }
+
+  // Adjust margins for axis labels
+  if (axisLabels?.x && useAxis) {
+    marginBottom += 25;
+  }
+  if (axisLabels?.y && useAxis) {
+    marginLeft += 25;
+  }
+
+  const margin = {
+    top: marginTop,
+    right: marginRight,
+    bottom: marginBottom,
+    left: marginLeft,
+  };
 
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
@@ -2972,25 +3176,52 @@ export const createDensityChart = (
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("style", "max-width: 100%; height: auto;");
 
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
   const chartArea = svg
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // X scale (value range)
-  const x = d3
-    .scaleLinear()
-    .domain(d3.extent(filteredData) as [number, number])
-    .nice()
-    .range([0, innerWidth]);
+  // X scale (value range) with axis scale options
+  let xMin = d3.min(filteredData) ?? 0;
+  let xMax = d3.max(filteredData) ?? 0;
+  let xMajorIncrement = axisScaleOptions?.x?.majorIncrement
+    ? Number(axisScaleOptions.x.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
+  const x = d3.scaleLinear().domain([xMin, xMax]).nice().range([0, innerWidth]);
 
   // Kernel Density Estimation
   const kde = kernelDensityEstimator(kernelEpanechnikov(7), x.ticks(40));
   const density = kde(filteredData);
 
-  // Y scale (density value)
+  // Y scale (density value) with axis scale options
+  let yMin = 0;
+  let yMax = d3.max(density, (d) => d[1]) ?? 0;
+  let yMajorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(density, (d) => d[1]) ?? 0])
+    .domain([yMin, yMax])
     .nice()
     .range([innerHeight, 0]);
 
@@ -3002,24 +3233,79 @@ export const createDensityChart = (
     .y0(innerHeight)
     .y1((d) => y(d[1]));
 
+  // Use custom color if provided, otherwise use default
+  const fillColor =
+    chartColors && chartColors.length > 0 ? chartColors[0] : "#69b3a2";
+
   chartArea
     .append("path")
     .datum(density as [number, number][])
-    .attr("fill", "#69b3a2")
+    .attr("fill", fillColor)
     .attr("opacity", 0.8)
-    .attr("stroke", "#000")
+    .attr("stroke", "hsl(var(--border))")
     .attr("stroke-width", 1)
     .attr("stroke-linejoin", "round")
     .attr("d", area(density as [number, number][])!);
 
   // Add axes if needed
   if (useAxis) {
+    // X axis with major increment support
+    const xAxis = d3.axisBottom(x);
+    if (xMajorIncrement && xMajorIncrement > 0) {
+      const ticks = generateAxisTicks(xMin, xMax, xMajorIncrement);
+      if (ticks) xAxis.tickValues(ticks);
+    }
     chartArea
       .append("g")
       .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x));
+      .call(xAxis)
+      .call((g) =>
+        g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))")
+      )
+      .call((g) =>
+        g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
+      );
 
-    chartArea.append("g").call(d3.axisLeft(y));
+    // Y axis with major increment support
+    const yAxis = d3.axisLeft(y);
+    if (yMajorIncrement && yMajorIncrement > 0) {
+      const ticks = generateAxisTicks(yMin, yMax, yMajorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
+    chartArea
+      .append("g")
+      .call(yAxis)
+      .call((g) =>
+        g.selectAll(".domain, .tick line").attr("stroke", "hsl(var(--border))")
+      )
+      .call((g) =>
+        g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
+      );
+
+    // Add X axis label if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.x);
+    }
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();

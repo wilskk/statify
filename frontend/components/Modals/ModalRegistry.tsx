@@ -141,9 +141,8 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
   // Time series modals - from dedicated registry
   ...TIME_SERIES_MODAL_COMPONENTS,
 
-  // Transform modals - lazy loaded
-  // [ModalType.ComputeVariable]: withSuspense(ComputeVariableModal as any) as React.ComponentType<BaseModalProps>,
-  // [ModalType.RecodeSameVariables]: withSuspense(RecodeSameVariablesModal as any) as React.ComponentType<BaseModalProps>,
+  // Transform modals - from dedicated registry
+  ...TRANSFORM_MODAL_COMPONENTS,
 
   // Regression modals - lazy loaded
   [ModalType.ModalLinear]: withSuspense(

@@ -4,6 +4,8 @@ import {
   ChartTitleOptions,
   generateAxisTicks,
 } from "./chartUtils";
+import { createStandardSVG, addAxisLabels } from "../chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 
 interface ChartData {
   category: string;
@@ -160,18 +162,26 @@ export const createAreaChart = (
     displayLabel: d.category,
   }));
 
-  // Hitung margin secara dinamis
+  // Calculate max values for Y scale and X axis rotation logic
   const maxYValue = d3.max(processedData, (d) => d.value) ?? 0;
   const maxCategoryLength =
     d3.max(processedData, (d) => d.displayLabel.length) ?? 0;
 
-  const marginTop = useAxis ? 60 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginLeft = useAxis
-    ? String(Math.ceil(maxYValue)).length * 17 + 10
-    : 0;
-  const marginBottom =
-    useAxis && (maxCategoryLength > 10 || processedData.length > 10) ? 20 : 10;
+  // Use responsive margin utility
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+  });
+
+  const {
+    top: marginTop,
+    bottom: marginBottom,
+    left: marginLeft,
+    right: marginRight,
+  } = margin;
 
   // Skala X dan Y
   // X pakai uniqueId
@@ -205,18 +215,15 @@ export const createAreaChart = (
     .y0(y(yMin))
     .y1((d) => y(d.value));
 
-  // SVG
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto; overflow: visible;");
+  // SVG using standard utility with custom viewBox
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop,
+    marginRight,
+    marginBottom,
+    marginLeft,
+  });
 
   // Tambahkan judul dan subtitle jika ada
   if (titleOptions) {
@@ -277,30 +284,18 @@ export const createAreaChart = (
           .attr("stroke-opacity", 0.1)
       );
 
-    // Add X axis label if provided
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", (width + marginLeft + marginRight) / 2)
-        .attr("y", height + marginTop + marginBottom - 10)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.x);
-    }
-
-    // Add Y axis label if provided
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -(height + marginTop + marginBottom) / 2)
-        .attr("y", 18)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.y);
-    }
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop,
+      marginBottom,
+      marginLeft,
+      marginRight,
+      axisLabels,
+      chartType: "default",
+    });
   }
 
   return svg.node();

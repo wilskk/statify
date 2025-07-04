@@ -1,5 +1,9 @@
 import * as d3 from "d3";
-import { ChartTitleOptions } from "./chartUtils";
+import {
+  ChartTitleOptions,
+  generateAxisTicks,
+  addChartTitle,
+} from "./chartUtils";
 
 export interface AxisLabels {
   x?: string;
@@ -88,7 +92,6 @@ export const createBoxplot = (
 
   // Add title if provided
   if (titleOptions) {
-    const addChartTitle = require("./chartUtils").addChartTitle;
     addChartTitle(svg, titleOptions);
   }
 
@@ -301,7 +304,6 @@ export const createClusteredBoxplot = (
 
   // Add title if provided
   if (titleOptions) {
-    const addChartTitle = require("./chartUtils").addChartTitle;
     addChartTitle(svg, titleOptions);
   }
 
@@ -465,7 +467,24 @@ export const create1DBoxplot = (
   data: { value: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   console.log("Creating 1D box plot with data:", data);
 
@@ -490,9 +509,23 @@ export const create1DBoxplot = (
   const validY = validData
     .map((d) => d.value)
     .filter((d) => d !== null && d !== undefined && !Number.isNaN(d));
+
+  // Axis scale options
+  let yMin = d3.min(validY) || 0;
+  let yMax = d3.max(validY) || 0;
+  let majorIncrement = axisScaleOptions?.y?.majorIncrement
+    ? Number(axisScaleOptions.y.majorIncrement)
+    : undefined;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([d3.min(validY) || 0, d3.max(validY) || 0])
+    .domain([yMin, yMax])
     .nice()
     .range([height - marginBottom, marginTop]);
 
@@ -503,6 +536,11 @@ export const create1DBoxplot = (
     .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+
+  // Tambahkan judul dan subjudul jika ada
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
 
   // Menghitung quartiles, median, whiskers untuk boxplot
   const sorted = validData.map((d) => d.value).sort(d3.ascending);
@@ -535,7 +573,12 @@ export const create1DBoxplot = (
     .attr("y", y(q3))
     .attr("width", width / 2)
     .attr("height", y(q1) - y(q3))
-    .attr("fill", "#ddd");
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "#ddd"
+    );
 
   // Median (garis horisontal)
   svg
@@ -563,11 +606,29 @@ export const create1DBoxplot = (
   // Menambahkan sumbu Y jika diperlukan
   if (useAxis) {
     // Menambahkan sumbu Y (vertical axis)
+    const yAxis = d3.axisLeft(y).tickFormat(d3.format(".2s"));
+    if (majorIncrement && majorIncrement > 0) {
+      const ticks = generateAxisTicks(yMin, yMax, majorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).ticks(5))
+      .call(yAxis)
       .call((g) => g.select(".domain").remove());
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -(height + marginTop - marginBottom) / 2)
+        .attr("y", marginLeft - 50)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "14px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();

@@ -18,7 +18,7 @@ import {
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useResultStore } from "@/stores/useResultStore";
 import { useDataStore } from "@/stores/useDataStore"; // Import useDataStore
-import ChartPreview from "./ChartPreview";
+import ChartPreview, { ChartPreviewRef } from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
 import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
@@ -64,6 +64,9 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
   const [highVariables, setHighVariables] = useState<string[]>([]);
   const [closeVariables, setCloseVariables] = useState<string[]>([]);
 
+  // Add ref to access ChartPreview
+  const chartPreviewRef = useRef<ChartPreviewRef>(null);
+
   // Add new state variables for chart customization
   const [chartTitle, setChartTitle] = useState<string>("");
   const [chartSubtitle, setChartSubtitle] = useState<string>("");
@@ -86,6 +89,15 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     origin: "",
   });
 
+  // Add state for Y2 axis (dual axis charts)
+  const [y2AxisOptions, setY2AxisOptions] = useState({
+    label: "",
+    min: "",
+    max: "",
+    majorIncrement: "",
+    origin: "",
+  });
+
   // Add state for chart colors
   const [chartColors, setChartColors] = useState<string[]>([
     "#1f77b4",
@@ -99,6 +111,11 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     "#bcbd22",
     "#17becf",
   ]);
+
+  // Add state for statistic selection (for Summary Point Plot)
+  const [selectedStatistic, setSelectedStatistic] = useState<
+    "mean" | "median" | "mode" | "min" | "max"
+  >("mean");
 
   const [isCalculating, setIsCalculating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -116,6 +133,11 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
 
   const config = chartConfigOptions[chartType];
 
+  // Helper function to check if config has dual Y axis
+  const hasDualYAxis = (axis: any): axis is { x: any; y1: any; y2: any } => {
+    return "y1" in axis && "y2" in axis;
+  };
+
   const settingList = [
     {
       key: "title",
@@ -130,17 +152,41 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       show: config.subtitle,
     },
     {
+      key: "statistic",
+      label: "Statistic",
+      icon: <GearIcon className="w-4 h-4 mr-2" />,
+      show: config.statistic || false,
+    },
+    {
       key: "x-axis",
       label: "X-Axis",
       icon: <BarChartIcon className="w-4 h-4 mr-2" />,
       show: !isAxisConfigAllFalse(config.axis.x),
     },
-    {
-      key: "y-axis",
-      label: "Y-Axis",
-      icon: <BarChartIcon className="w-4 h-4 mr-2 rotate-90" />,
-      show: !isAxisConfigAllFalse(config.axis.y),
-    },
+    // Conditional Y axis settings based on whether chart has dual Y axis
+    ...(hasDualYAxis(config.axis)
+      ? [
+          {
+            key: "y1-axis",
+            label: "Y1-Axis",
+            icon: <BarChartIcon className="w-4 h-4 mr-2 rotate-90" />,
+            show: !isAxisConfigAllFalse(config.axis.y1),
+          },
+          {
+            key: "y2-axis",
+            label: "Y2-Axis",
+            icon: <BarChartIcon className="w-4 h-4 mr-2 rotate-90" />,
+            show: !isAxisConfigAllFalse(config.axis.y2),
+          },
+        ]
+      : [
+          {
+            key: "y-axis",
+            label: "Y-Axis",
+            icon: <BarChartIcon className="w-4 h-4 mr-2 rotate-90" />,
+            show: !isAxisConfigAllFalse((config.axis as any).y),
+          },
+        ]),
   ].filter((item) => item.show);
   const [selectedSetting, setSelectedSetting] = useState<string>("title");
 
@@ -435,8 +481,16 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
       majorIncrement: "",
       origin: "",
     });
+    setY2AxisOptions({
+      label: "",
+      min: "",
+      max: "",
+      majorIncrement: "",
+      origin: "",
+    });
     setChartTitle("");
     setChartSubtitle("");
+    setSelectedStatistic("mean");
   };
 
   const handleGenerateChart = async () => {
@@ -458,115 +512,45 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
     setErrorMsg(null);
 
     try {
-      // Inisialisasi worker
-      const worker = new Worker("/workers/ChartBuilder/DefaultChartPrep.js");
+      // Get the pre-generated JSON from ChartPreview using ref
+      const chartJSON = chartPreviewRef.current?.getGeneratedChartJSON();
 
-      const workerData = {
-        chartType,
-        chartVariables: {
-          y: sideVariables,
-          x: bottomVariables,
-          z: bottom2Variables,
-          groupBy: colorVariables,
-          low: lowVariables,
-          high: highVariables,
-          close: closeVariables,
-          y2: side2Variables,
-        },
-        chartMetadata: {
-          note: "Mengecualikan nilai missing",
-          title: chartTitle?.trim() ? chartTitle : null,
-          subtitle: chartSubtitle?.trim() ? chartSubtitle : null,
-        },
-        chartConfig: {
-          width: 800,
-          height: 600,
-          chartColor: chartColors,
-          useAxis: true,
-          useLegend: true,
-          axisLabels: {
-            x: xAxisOptions.label?.trim()
-              ? xAxisOptions.label
-              : bottomVariables[0] || "Category",
-            y: yAxisOptions.label?.trim()
-              ? yAxisOptions.label
-              : sideVariables[0] || "Value",
-          },
-          axisScaleOptions: {
-            x: {
-              min: xAxisOptions.min,
-              max: xAxisOptions.max,
-              majorIncrement: xAxisOptions.majorIncrement,
-              origin: xAxisOptions.origin,
-            },
-            y: {
-              min: yAxisOptions.min,
-              max: yAxisOptions.max,
-              majorIncrement: yAxisOptions.majorIncrement,
-              origin: yAxisOptions.origin,
-            },
-          },
-        },
-        data,
-        variables,
-      };
-      console.log("workerData", workerData);
-
-      worker.postMessage(workerData);
-
-      worker.onmessage = async (event) => {
-        const { success, chartJSON, error } = event.data;
-
-        if (success) {
-          try {
-            // 1. Tambahkan Log
-            const logMsg = `GENERATE CHART TYPE ${chartType} WITH VARIABLES Y: ${sideVariables.join(
-              ", "
-            )} X: ${bottomVariables.join(", ")}`;
-
-            // Add log first and get the ID
-            const logId = await addLog({ log: logMsg });
-
-            // Add analytic with log_id
-            const analyticId = await addAnalytic(logId, {
-              title: "Chart Builder",
-              note: "",
-            });
-
-            // Add statistic with analytic_id
-            await addStatistic(analyticId, {
-              title: chartType,
-              output_data: chartJSON,
-              components: chartType,
-              description: "",
-            });
-
-            setIsCalculating(false);
-            onClose(); // Tutup modal
-            setShowResult(true);
-          } catch (err) {
-            console.error("Error during post-chart actions:", err);
-            setErrorMsg("Terjadi kesalahan saat menyimpan hasil.");
-            setIsCalculating(false);
-          }
-        } else {
-          setErrorMsg(error || "Worker gagal menghasilkan chart.");
-          setIsCalculating(false);
-        }
-        worker.terminate();
-      };
-
-      worker.onerror = (error) => {
-        console.error("Worker error:", error);
+      if (!chartJSON) {
         setErrorMsg(
-          "Terjadi kesalahan pada worker. Periksa konsol untuk detail."
+          "Chart JSON tidak tersedia. Pastikan data dan variabel sudah dipilih."
         );
         setIsCalculating(false);
-        worker.terminate();
-      };
+        return;
+      }
+
+      // 1. Tambahkan Log
+      const logMsg = `GENERATE CHART TYPE ${chartType} WITH VARIABLES Y: ${sideVariables.join(
+        ", "
+      )} X: ${bottomVariables.join(", ")}`;
+
+      // Add log first and get the ID
+      const logId = await addLog({ log: logMsg });
+
+      // Add analytic with log_id
+      const analyticId = await addAnalytic(logId, {
+        title: "Chart Builder",
+        note: "",
+      });
+
+      // Add statistic with analytic_id using the pre-generated JSON
+      await addStatistic(analyticId, {
+        title: chartType,
+        output_data: chartJSON,
+        components: chartType,
+        description: "",
+      });
+
+      setIsCalculating(false);
+      onClose(); // Tutup modal
+      setShowResult(true);
     } catch (error) {
       console.error("Error during chart generation:", error);
-      setErrorMsg("Gagal memulai proses pembuatan chart.");
+      setErrorMsg("Terjadi kesalahan saat menyimpan hasil.");
       setIsCalculating(false);
     }
   };
@@ -665,8 +649,8 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         <div
           className={
             showCustomizationPanel
-              ? "col-span-3"
-              : "col-span-4" + " space-y-6 pr-6 border-r-2 border-gray-100"
+              ? "col-span-3 space-y-6 pr-6 border-r-2 border-gray-100"
+              : "col-span-4 space-y-6 pr-6 border-r-2 border-gray-100"
           }
         >
           <VariableSelection
@@ -720,14 +704,14 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
         <div
           className={
             showCustomizationPanel
-              ? "col-span-6"
-              : "col-span-8" + " flex justify-center items-center"
+              ? "col-span-6 flex justify-center items-center"
+              : "col-span-8 flex justify-center items-center"
           }
         >
           <ChartPreview
             chartType={chartType}
-            width={600}
-            height={400}
+            width={480}
+            height={270}
             useaxis={true}
             sideVariables={sideVariables}
             side2Variables={side2Variables}
@@ -753,6 +737,8 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             chartSubtitle={chartSubtitle}
             xAxisLabel={xAxisOptions.label}
             yAxisLabel={yAxisOptions.label}
+            yLeftAxisLabel={yAxisOptions.label}
+            yRightAxisLabel={y2AxisOptions.label}
             xAxisMin={xAxisOptions.min}
             xAxisMax={xAxisOptions.max}
             xAxisMajorIncrement={xAxisOptions.majorIncrement}
@@ -761,7 +747,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
             yAxisMax={yAxisOptions.max}
             yAxisMajorIncrement={yAxisOptions.majorIncrement}
             yAxisOrigin={yAxisOptions.origin}
+            yRightAxisMin={y2AxisOptions.min}
+            yRightAxisMax={y2AxisOptions.max}
+            yRightAxisMajorIncrement={y2AxisOptions.majorIncrement}
+            yRightAxisOrigin={y2AxisOptions.origin}
             chartColors={chartColors}
+            selectedStatistic={selectedStatistic}
+            ref={chartPreviewRef}
           />
         </div>
 
@@ -913,6 +905,39 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
                         )} */}
                       </div>
                     )}
+                  {selectedSetting === "statistic" &&
+                    chartConfigOptions[chartType].statistic && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="selectedStatistic">
+                            Statistical Function
+                          </Label>
+                          <Select
+                            value={selectedStatistic}
+                            onValueChange={(value: any) =>
+                              setSelectedStatistic(value)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select statistic" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mean">
+                                Mean (Average)
+                              </SelectItem>
+                              <SelectItem value="median">Median</SelectItem>
+                              <SelectItem value="mode">Mode</SelectItem>
+                              <SelectItem value="min">Minimum</SelectItem>
+                              <SelectItem value="max">Maximum</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Choose which statistical measure to display for each
+                            category
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   {selectedSetting === "x-axis" && (
                     <div className="space-y-2">
                       {chartConfigOptions[chartType].axis.x.label && (
@@ -1009,102 +1034,300 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose }) => {
                       )}
                     </div>
                   )}
-                  {selectedSetting === "y-axis" && (
-                    <div className="space-y-2">
-                      {chartConfigOptions[chartType].axis.y.label && (
-                        <>
-                          <Label htmlFor="yAxisLabel">Label</Label>
-                          <input
-                            id="yAxisLabel"
-                            type="text"
-                            className="w-full p-2 border rounded-md"
-                            value={yAxisOptions.label}
-                            onChange={(e) =>
-                              setYAxisOptions({
-                                ...yAxisOptions,
-                                label: e.target.value,
-                              })
-                            }
-                            placeholder="Enter Y-axis label"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.y.min && (
-                        <>
-                          <Label htmlFor="yAxisMin">Minimum</Label>
-                          <input
-                            id="yAxisMin"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={yAxisOptions.min}
-                            onChange={(e) =>
-                              setYAxisOptions({
-                                ...yAxisOptions,
-                                min: e.target.value,
-                              })
-                            }
-                            placeholder="Min value"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.y.max && (
-                        <>
-                          <Label htmlFor="yAxisMax">Maximum</Label>
-                          <input
-                            id="yAxisMax"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={yAxisOptions.max}
-                            onChange={(e) =>
-                              setYAxisOptions({
-                                ...yAxisOptions,
-                                max: e.target.value,
-                              })
-                            }
-                            placeholder="Max value"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.y.majorIncrement && (
-                        <>
-                          <Label htmlFor="yAxisMajorIncrement">
-                            Major Increment
-                          </Label>
-                          <input
-                            id="yAxisMajorIncrement"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={yAxisOptions.majorIncrement}
-                            onChange={(e) =>
-                              setYAxisOptions({
-                                ...yAxisOptions,
-                                majorIncrement: e.target.value,
-                              })
-                            }
-                            placeholder="Major increment"
-                          />
-                        </>
-                      )}
-                      {chartConfigOptions[chartType].axis.y.origin && (
-                        <>
-                          <Label htmlFor="yAxisOrigin">Origin</Label>
-                          <input
-                            id="yAxisOrigin"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            value={yAxisOptions.origin}
-                            onChange={(e) =>
-                              setYAxisOptions({
-                                ...yAxisOptions,
-                                origin: e.target.value,
-                              })
-                            }
-                            placeholder="Origin value"
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
+                  {selectedSetting === "y-axis" &&
+                    !hasDualYAxis(config.axis) && (
+                      <div className="space-y-2">
+                        {(chartConfigOptions[chartType].axis as any).y
+                          .label && (
+                          <>
+                            <Label htmlFor="yAxisLabel">Label</Label>
+                            <input
+                              id="yAxisLabel"
+                              type="text"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.label}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  label: e.target.value,
+                                })
+                              }
+                              placeholder="Enter Y-axis label"
+                            />
+                          </>
+                        )}
+                        {(chartConfigOptions[chartType].axis as any).y.min && (
+                          <>
+                            <Label htmlFor="yAxisMin">Minimum</Label>
+                            <input
+                              id="yAxisMin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.min}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  min: e.target.value,
+                                })
+                              }
+                              placeholder="Min value"
+                            />
+                          </>
+                        )}
+                        {(chartConfigOptions[chartType].axis as any).y.max && (
+                          <>
+                            <Label htmlFor="yAxisMax">Maximum</Label>
+                            <input
+                              id="yAxisMax"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.max}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  max: e.target.value,
+                                })
+                              }
+                              placeholder="Max value"
+                            />
+                          </>
+                        )}
+                        {(chartConfigOptions[chartType].axis as any).y
+                          .majorIncrement && (
+                          <>
+                            <Label htmlFor="yAxisMajorIncrement">
+                              Major Increment
+                            </Label>
+                            <input
+                              id="yAxisMajorIncrement"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.majorIncrement}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  majorIncrement: e.target.value,
+                                })
+                              }
+                              placeholder="Major increment"
+                            />
+                          </>
+                        )}
+                        {(chartConfigOptions[chartType].axis as any).y
+                          .origin && (
+                          <>
+                            <Label htmlFor="yAxisOrigin">Origin</Label>
+                            <input
+                              id="yAxisOrigin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.origin}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  origin: e.target.value,
+                                })
+                              }
+                              placeholder="Origin value"
+                            />
+                          </>
+                        )}
+                      </div>
+                    )}
+                  {selectedSetting === "y1-axis" &&
+                    hasDualYAxis(config.axis) && (
+                      <div className="space-y-2">
+                        {config.axis.y1.label && (
+                          <>
+                            <Label htmlFor="y1AxisLabel">Y1-Axis Label</Label>
+                            <input
+                              id="y1AxisLabel"
+                              type="text"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.label}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  label: e.target.value,
+                                })
+                              }
+                              placeholder="Enter Y1-axis label"
+                            />
+                          </>
+                        )}
+                        {config.axis.y1.min && (
+                          <>
+                            <Label htmlFor="y1AxisMin">Minimum</Label>
+                            <input
+                              id="y1AxisMin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.min}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  min: e.target.value,
+                                })
+                              }
+                              placeholder="Min value"
+                            />
+                          </>
+                        )}
+                        {config.axis.y1.max && (
+                          <>
+                            <Label htmlFor="y1AxisMax">Maximum</Label>
+                            <input
+                              id="y1AxisMax"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.max}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  max: e.target.value,
+                                })
+                              }
+                              placeholder="Max value"
+                            />
+                          </>
+                        )}
+                        {config.axis.y1.majorIncrement && (
+                          <>
+                            <Label htmlFor="y1AxisMajorIncrement">
+                              Major Increment
+                            </Label>
+                            <input
+                              id="y1AxisMajorIncrement"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.majorIncrement}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  majorIncrement: e.target.value,
+                                })
+                              }
+                              placeholder="Major increment"
+                            />
+                          </>
+                        )}
+                        {config.axis.y1.origin && (
+                          <>
+                            <Label htmlFor="y1AxisOrigin">Origin</Label>
+                            <input
+                              id="y1AxisOrigin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={yAxisOptions.origin}
+                              onChange={(e) =>
+                                setYAxisOptions({
+                                  ...yAxisOptions,
+                                  origin: e.target.value,
+                                })
+                              }
+                              placeholder="Origin value"
+                            />
+                          </>
+                        )}
+                      </div>
+                    )}
+                  {selectedSetting === "y2-axis" &&
+                    hasDualYAxis(config.axis) && (
+                      <div className="space-y-2">
+                        {config.axis.y2.label && (
+                          <>
+                            <Label htmlFor="y2AxisLabel">Y2-Axis Label</Label>
+                            <input
+                              id="y2AxisLabel"
+                              type="text"
+                              className="w-full p-2 border rounded-md"
+                              value={y2AxisOptions.label}
+                              onChange={(e) =>
+                                setY2AxisOptions({
+                                  ...y2AxisOptions,
+                                  label: e.target.value,
+                                })
+                              }
+                              placeholder="Enter Y2-axis label"
+                            />
+                          </>
+                        )}
+                        {config.axis.y2.min && (
+                          <>
+                            <Label htmlFor="y2AxisMin">Minimum</Label>
+                            <input
+                              id="y2AxisMin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={y2AxisOptions.min}
+                              onChange={(e) =>
+                                setY2AxisOptions({
+                                  ...y2AxisOptions,
+                                  min: e.target.value,
+                                })
+                              }
+                              placeholder="Min value"
+                            />
+                          </>
+                        )}
+                        {config.axis.y2.max && (
+                          <>
+                            <Label htmlFor="y2AxisMax">Maximum</Label>
+                            <input
+                              id="y2AxisMax"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={y2AxisOptions.max}
+                              onChange={(e) =>
+                                setY2AxisOptions({
+                                  ...y2AxisOptions,
+                                  max: e.target.value,
+                                })
+                              }
+                              placeholder="Max value"
+                            />
+                          </>
+                        )}
+                        {config.axis.y2.majorIncrement && (
+                          <>
+                            <Label htmlFor="y2AxisMajorIncrement">
+                              Major Increment
+                            </Label>
+                            <input
+                              id="y2AxisMajorIncrement"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={y2AxisOptions.majorIncrement}
+                              onChange={(e) =>
+                                setY2AxisOptions({
+                                  ...y2AxisOptions,
+                                  majorIncrement: e.target.value,
+                                })
+                              }
+                              placeholder="Major increment"
+                            />
+                          </>
+                        )}
+                        {config.axis.y2.origin && (
+                          <>
+                            <Label htmlFor="y2AxisOrigin">Origin</Label>
+                            <input
+                              id="y2AxisOrigin"
+                              type="number"
+                              className="w-full p-2 border rounded-md"
+                              value={y2AxisOptions.origin}
+                              onChange={(e) =>
+                                setY2AxisOptions({
+                                  ...y2AxisOptions,
+                                  origin: e.target.value,
+                                })
+                              }
+                              placeholder="Origin value"
+                            />
+                          </>
+                        )}
+                      </div>
+                    )}
                 </div>
               </TabsContent>
 

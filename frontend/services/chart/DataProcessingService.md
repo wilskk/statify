@@ -10,6 +10,356 @@
 Raw Data (CSV/SPSS) → DataProcessingService → Processed Data → ChartService → Chart JSON
 ```
 
+## Interface
+
+### DataProcessingInput
+
+```typescript
+interface DataProcessingInput {
+  // Required
+  chartType: string;
+  rawData: any[][]; // Raw data dari CSV/SPSS
+  variables: Array<{ name: string; type?: string }>; // Variable definitions
+
+  // Chart variables mapping
+  chartVariables: {
+    x?: string[]; // X-axis variables
+    y?: string[]; // Y-axis variables
+    z?: string[]; // Z-axis variables (3D)
+    groupBy?: string[]; // Grouping variables
+    low?: string[]; // Low values (range charts)
+    high?: string[]; // High values (range charts)
+    close?: string[]; // Close values (financial charts)
+    y2?: string[]; // Secondary Y-axis
+  };
+
+  // Data processing options
+  processingOptions?: {
+    aggregation?: "sum" | "count" | "average" | "none";
+    filterEmpty?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    limit?: number;
+  };
+}
+```
+
+## Chart Variables Requirements
+
+Setiap chart type membutuhkan chart variables yang berbeda. Berikut adalah panduan lengkap:
+
+### Required vs Optional Inputs
+
+#### **Input Wajib (Required)**
+
+- `chartType`: Jenis chart yang akan dibuat
+- `rawData`: Data mentah dalam format array 2D
+- `variables`: Definisi variabel/kolom dalam dataset
+- `chartVariables`: Mapping variabel ke posisi chart (minimal sesuai requirement chart type)
+
+#### **Input Opsional (Optional)**
+
+- `processingOptions`: Opsi pemrosesan data
+- `chartVariables` tambahan: Variabel yang tidak wajib untuk chart type tertentu
+
+### Required Chart Variables by Chart Type
+
+#### **Simple Charts (1D)**
+
+| Chart Type               | Required Variables | Optional Variables | Description                                          |
+| ------------------------ | ------------------ | ------------------ | ---------------------------------------------------- |
+| **Vertical Bar Chart**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                      |
+| **Horizontal Bar Chart** | `x`, `y`           | -                  | X-axis: nilai, Y-axis: kategori                      |
+| **Line Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range                        |
+| **Area Chart**           | `x`, `y`           | -                  | X-axis: domain, Y-axis: range (filled)               |
+| **Pie Chart**            | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai                      |
+| **Boxplot**              | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution)       |
+| **Error Bar Chart**      | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai dengan error         |
+| **Dot Plot**             | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (individual points)  |
+| **Frequency Polygon**    | `x`, `y`           | -                  | X-axis: interval, Y-axis: frekuensi                  |
+| **Summary Point Plot**   | `x`, `y`           | -                  | X-axis: kategori, Y-axis: summary statistic          |
+| **Violin Plot**          | `x`, `y`           | -                  | X-axis: kategori, Y-axis: nilai (distribution shape) |
+
+**Input Wajib:**
+
+- `chartType`: Salah satu dari chart type di atas
+- `rawData`: Array 2D dengan minimal 2 kolom (x dan y)
+- `variables`: Array dengan minimal 2 variabel (sesuai x dan y)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+
+#### **Scatter Charts (2D)**
+
+| Chart Type                     | Required Variables | Optional Variables | Description                            |
+| ------------------------------ | ------------------ | ------------------ | -------------------------------------- |
+| **Scatter Plot**               | `x`, `y`           | -                  | X-axis: variabel 1, Y-axis: variabel 2 |
+| **Scatter Plot With Fit Line** | `x`, `y`           | -                  | Scatter plot dengan trend line         |
+
+**Input Wajib:**
+
+- `chartType`: "Scatter Plot" atau "Scatter Plot With Fit Line"
+- `rawData`: Array 2D dengan minimal 2 kolom (x dan y)
+- `variables`: Array dengan minimal 2 variabel (sesuai x dan y)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+
+#### **Stacked/Grouped Charts**
+
+| Chart Type                       | Required Variables | Optional Variables | Description                                           |
+| -------------------------------- | ------------------ | ------------------ | ----------------------------------------------------- |
+| **Vertical Stacked Bar Chart**   | `x`, `y`           | `groupBy`          | X-axis: kategori, Y-axis: nilai, Group: subkategori   |
+| **Horizontal Stacked Bar Chart** | `x`, `y`           | `groupBy`          | X-axis: nilai, Y-axis: kategori, Group: subkategori   |
+| **Clustered Bar Chart**          | `x`, `y`           | `groupBy`          | X-axis: kategori, Y-axis: nilai, Group: cluster       |
+| **Multiple Line Chart**          | `x`, `y`           | `groupBy`          | X-axis: domain, Y-axis: range, Group: series          |
+| **Stacked Area Chart**           | `x`, `y`           | `groupBy`          | X-axis: domain, Y-axis: range, Group: series (filled) |
+| **Population Pyramid**           | `x`, `y`           | `groupBy`          | X-axis: kategori, Y-axis: nilai, Group: gender/group  |
+
+**Input Wajib:**
+
+- `chartType`: Salah satu dari chart type di atas
+- `rawData`: Array 2D dengan minimal 3 kolom (x, y, dan groupBy jika digunakan)
+- `variables`: Array dengan minimal 2-3 variabel (sesuai x, y, dan groupBy)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+- `chartVariables.groupBy`: Array dengan 1 variabel untuk grouping (opsional tapi direkomendasikan)
+
+#### **3D Charts**
+
+| Chart Type                 | Required Variables | Optional Variables | Description                                                |
+| -------------------------- | ------------------ | ------------------ | ---------------------------------------------------------- |
+| **3D Bar Chart**           | `x`, `y`, `z`      | -                  | X-axis: kategori 1, Y-axis: nilai, Z-axis: kategori 2      |
+| **3D Bar Chart2**          | `x`, `y`, `z`      | -                  | Variasi 3D Bar Chart                                       |
+| **3D Scatter Plot**        | `x`, `y`, `z`      | -                  | X-axis: variabel 1, Y-axis: variabel 2, Z-axis: variabel 3 |
+| **Clustered 3D Bar Chart** | `x`, `y`, `z`      | `groupBy`          | 3D Bar dengan clustering                                   |
+| **Stacked 3D Bar Chart**   | `x`, `y`, `z`      | `groupBy`          | 3D Bar dengan stacking                                     |
+
+**Input Wajib:**
+
+- `chartType`: Salah satu dari chart type di atas
+- `rawData`: Array 2D dengan minimal 3 kolom (x, y, z)
+- `variables`: Array dengan minimal 3 variabel (sesuai x, y, z)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+- `chartVariables.z`: Array dengan 1 variabel untuk Z-axis
+
+#### **Grouped Charts**
+
+| Chart Type               | Required Variables  | Optional Variables | Description                  |
+| ------------------------ | ------------------- | ------------------ | ---------------------------- |
+| **Grouped Scatter Plot** | `x`, `y`, `groupBy` | -                  | Scatter plot dengan grouping |
+| **Drop Line Chart**      | `x`, `y`, `groupBy` | -                  | Line chart dengan drop lines |
+
+**Input Wajib:**
+
+- `chartType`: "Grouped Scatter Plot" atau "Drop Line Chart"
+- `rawData`: Array 2D dengan minimal 3 kolom (x, y, groupBy)
+- `variables`: Array dengan minimal 3 variabel (sesuai x, y, groupBy)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+- `chartVariables.groupBy`: Array dengan 1 variabel untuk grouping
+
+#### **Range Charts**
+
+| Chart Type               | Required Variables            | Optional Variables | Description                                                |
+| ------------------------ | ----------------------------- | ------------------ | ---------------------------------------------------------- |
+| **Simple Range Bar**     | `x`, `low`, `high`            | `close`            | X-axis: kategori, Low: nilai minimum, High: nilai maksimum |
+| **High-Low-Close Chart** | `x`, `low`, `high`, `close`   | -                  | Financial chart dengan OHLC                                |
+| **Clustered Range Bar**  | `x`, `low`, `high`, `groupBy` | `close`            | Range bar dengan clustering                                |
+
+**Input Wajib:**
+
+- `chartType`: Salah satu dari chart type di atas
+- `rawData`: Array 2D dengan minimal 3-4 kolom (x, low, high, close jika diperlukan)
+- `variables`: Array dengan minimal 3-4 variabel (sesuai x, low, high, close)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.low`: Array dengan 1 variabel untuk nilai minimum
+- `chartVariables.high`: Array dengan 1 variabel untuk nilai maksimum
+- `chartVariables.close`: Array dengan 1 variabel untuk nilai penutupan (wajib untuk High-Low-Close)
+
+#### **Special Charts**
+
+| Chart Type                    | Required Variables       | Optional Variables | Description                                    |
+| ----------------------------- | ------------------------ | ------------------ | ---------------------------------------------- |
+| **Difference Area**           | `x`, `low`, `high`       | -                  | X-axis: kategori, Low: nilai 1, High: nilai 2  |
+| **Vertical Bar & Line Chart** | `x`, `y`, `y2`           | -                  | X-axis: kategori, Y: bar value, Y2: line value |
+| **Dual Axes Scatter Plot**    | `x`, `y`, `y2`           | -                  | X-axis: variabel, Y: axis 1, Y2: axis 2        |
+| **Grouped 3D Scatter Plot**   | `x`, `y`, `z`, `groupBy` | -                  | 3D scatter dengan grouping                     |
+| **Histogram**                 | `y`                      | -                  | Y-axis: nilai (binning di visualisasi)         |
+| **Density Chart**             | `y`                      | -                  | Y-axis: nilai (density estimation)             |
+| **Stacked Histogram**         | `x`, `groupBy`           | -                  | X-axis: nilai, Group: kategori                 |
+| **Clustered Error Bar Chart** | `x`, `y`, `groupBy`      | -                  | X-axis: kategori, Y: nilai, Group: subkategori |
+| **Scatter Plot Matrix**       | `x` (multiple)           | -                  | Multiple variables untuk matrix                |
+| **Clustered Boxplot**         | `x`, `y`, `groupBy`      | -                  | X-axis: kategori, Y: nilai, Group: subkategori |
+| **1-D Boxplot**               | `y`                      | -                  | Y-axis: nilai (distribution)                   |
+| **Stem And Leaf Plot**        | `y`                      | -                  | Y-axis: nilai (stem-leaf display)              |
+
+**Input Wajib untuk Special Charts:**
+
+**Histogram & Density Chart:**
+
+- `chartType`: "Histogram" atau "Density Chart"
+- `rawData`: Array 2D dengan minimal 1 kolom (y)
+- `variables`: Array dengan minimal 1 variabel (sesuai y)
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis
+
+**Dual Axes Charts:**
+
+- `chartType`: "Vertical Bar & Line Chart" atau "Dual Axes Scatter Plot"
+- `rawData`: Array 2D dengan minimal 3 kolom (x, y, y2)
+- `variables`: Array dengan minimal 3 variabel (sesuai x, y, y2)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.y`: Array dengan 1 variabel untuk Y-axis pertama
+- `chartVariables.y2`: Array dengan 1 variabel untuk Y-axis kedua
+
+**Range Charts:**
+
+- `chartType`: "Difference Area"
+- `rawData`: Array 2D dengan minimal 3 kolom (x, low, high)
+- `variables`: Array dengan minimal 3 variabel (sesuai x, low, high)
+- `chartVariables.x`: Array dengan 1 variabel untuk X-axis
+- `chartVariables.low`: Array dengan 1 variabel untuk nilai 1
+- `chartVariables.high`: Array dengan 1 variabel untuk nilai 2
+
+**Scatter Plot Matrix:**
+
+- `chartType`: "Scatter Plot Matrix"
+- `rawData`: Array 2D dengan minimal 2 kolom (multiple variables)
+- `variables`: Array dengan minimal 2 variabel
+- `chartVariables.x`: Array dengan multiple variabel untuk matrix
+
+### Minimum Data Requirements
+
+#### **Data Structure Requirements**
+
+```typescript
+// Minimum untuk Simple Charts
+const minData = [
+  ["Category A", 10], // Minimal 1 baris
+  ["Category B", 20], // Minimal 2 baris untuk perbandingan
+];
+
+// Minimum untuk Stacked Charts
+const minStackedData = [
+  ["Category A", "Group 1", 10],
+  ["Category A", "Group 2", 15],
+  ["Category B", "Group 1", 20],
+  ["Category B", "Group 2", 25],
+];
+
+// Minimum untuk 3D Charts
+const min3DData = [
+  ["Category A", 10, "Dimension 1"],
+  ["Category B", 20, "Dimension 2"],
+];
+
+// Minimum untuk Range Charts
+const minRangeData = [
+  ["Date 1", 5, 15], // low, high
+  ["Date 2", 8, 18], // low, high
+];
+```
+
+#### **Variable Definition Requirements**
+
+```typescript
+// Minimum untuk Simple Charts
+const minVariables = [
+  { name: "category", type: "string" },
+  { name: "value", type: "number" },
+];
+
+// Minimum untuk Stacked Charts
+const minStackedVariables = [
+  { name: "category", type: "string" },
+  { name: "group", type: "string" },
+  { name: "value", type: "number" },
+];
+
+// Minimum untuk 3D Charts
+const min3DVariables = [
+  { name: "category", type: "string" },
+  { name: "value", type: "number" },
+  { name: "dimension", type: "string" },
+];
+```
+
+### Validation Checklist
+
+Sebelum menggunakan DataProcessingService, pastikan:
+
+#### **✅ Data Validation**
+
+- [ ] `rawData` tidak kosong dan berbentuk array 2D
+- [ ] `rawData` memiliki minimal 1 baris data
+- [ ] Semua baris memiliki jumlah kolom yang sama
+- [ ] Data sesuai dengan tipe variabel yang didefinisikan
+
+#### **✅ Variables Validation**
+
+- [ ] `variables` array tidak kosong
+- [ ] Nama variabel unik dan tidak duplikat
+- [ ] Tipe data sesuai (string untuk kategori, number untuk nilai)
+- [ ] Jumlah variabel sesuai dengan jumlah kolom di `rawData`
+
+#### **✅ Chart Variables Validation**
+
+- [ ] `chartVariables` sesuai dengan requirement chart type
+- [ ] Variabel yang direferensikan ada dalam `variables` array
+- [ ] Required variables terisi (tidak undefined/null)
+- [ ] Array length konsisten (semua array sama panjang)
+
+#### **✅ Chart Type Validation**
+
+- [ ] `chartType` adalah string yang valid
+- [ ] Chart type didukung oleh service
+- [ ] Chart type sesuai dengan chart variables yang diberikan
+
+### Error Prevention Tips
+
+#### **❌ Common Mistakes**
+
+```typescript
+// ❌ Salah: rawData kosong
+const rawData = [];
+
+// ❌ Salah: variables tidak sesuai dengan rawData
+const rawData = [
+  ["A", 10],
+  ["B", 20],
+];
+const variables = [{ name: "category" }]; // Kurang 1 variabel
+
+// ❌ Salah: chartVariables tidak sesuai chart type
+const chartVariables = {
+  x: ["category"],
+  // y missing untuk Vertical Bar Chart
+};
+
+// ❌ Salah: variabel tidak ditemukan
+const chartVariables = {
+  x: ["nonexistent"],
+  y: ["value"],
+};
+```
+
+#### **✅ Correct Usage**
+
+```typescript
+// ✅ Benar: Data lengkap dan sesuai
+const rawData = [
+  ["A", 10],
+  ["B", 20],
+];
+const variables = [
+  { name: "category", type: "string" },
+  { name: "value", type: "number" },
+];
+const chartVariables = {
+  x: ["category"],
+  y: ["value"],
+};
+```
+
 ## Aggregation Configuration System
 
 `DataProcessingService` menggunakan sistem konfigurasi untuk memastikan aggregation yang digunakan sesuai dengan kebutuhan chart type:
@@ -61,40 +411,6 @@ const result = DataProcessingService.processDataForChart({
   aggregation: "sum", // Akan diubah ke "none" otomatis
   // ...
 });
-```
-
-## Interface
-
-### DataProcessingInput
-
-```typescript
-interface DataProcessingInput {
-  // Required
-  chartType: string;
-  rawData: any[][]; // Raw data dari CSV/SPSS
-  variables: Array<{ name: string; type?: string }>; // Variable definitions
-
-  // Chart variables mapping
-  chartVariables: {
-    x?: string[]; // X-axis variables
-    y?: string[]; // Y-axis variables
-    z?: string[]; // Z-axis variables (3D)
-    groupBy?: string[]; // Grouping variables
-    low?: string[]; // Low values (range charts)
-    high?: string[]; // High values (range charts)
-    close?: string[]; // Close values (financial charts)
-    y2?: string[]; // Secondary Y-axis
-  };
-
-  // Data processing options
-  processingOptions?: {
-    aggregation?: "sum" | "count" | "average" | "none";
-    filterEmpty?: boolean;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    limit?: number;
-  };
-}
 ```
 
 ## Methods
@@ -273,8 +589,7 @@ Method utama yang memproses raw data berdasarkan chart type dan mengembalikan pr
 ### Example 1: Simple Bar Chart
 
 ```typescript
-import { DataProcessingService } from "./Da
-taProcessingService";
+import { DataProcessingService } from "./DataProcessingService";
 
 const rawData = [
   ["A", 30],
@@ -420,64 +735,135 @@ const processedData = DataProcessingService.processDataForChart({
 
 ## Processing Options
 
-### aggregation
-
-- `'sum'`: Menjumlahkan nilai untuk kategori yang sama
-- `'count'`: Menghitung jumlah data untuk kategori yang sama
-- `'average'`: Menghitung rata-rata untuk kategori yang sama
-- `'none'`: **Tidak melakukan aggregation** - data diproses satu per satu (data mentah/individual)
-
-**Catatan tentang `none`:**
-
-- Tersedia untuk **semua chart type** sebagai opsi dasar
-- Untuk chart yang tidak memerlukan aggregation (scatter, boxplot, dll), `none` adalah pilihan yang tepat
-- Untuk chart yang mendukung aggregation, `none` memberikan data mentah tanpa grouping
-- **Penting**: Ketika menggunakan `none`, chart harus menampilkan **semua data point** termasuk yang category-nya sama (bisa dengan stacked, grouped, atau jitter)
-- Memberikan konsistensi API di seluruh service
-
-### **Behavior "none" Aggregation:**
-
-**Charts dengan Full Aggregation Support:**
-
-- `none` = Tampilkan semua data point apa adanya
-- Jika ada category sama → chart harus handle dengan stacked/grouped/jitter
-- User bisa melihat distribusi data yang sebenarnya
-
-**Charts dengan Data Individual:**
-
-- `none` = Data mentah tanpa modifikasi
-- Setiap data point ditampilkan sesuai posisinya
-
-**Contoh:**
+### **🔧 Available Options**
 
 ```typescript
-const data = [
-  { category: "A", value: 10 },
-  { category: "A", value: 15 }, // Category sama
-  { category: "B", value: 20 },
-];
-
-// aggregation: "sum" → [{ category: "A", value: 25 }, { category: "B", value: 20 }]
-// aggregation: "none" → [{ category: "A", value: 10 }, { category: "A", value: 15 }, { category: "B", value: 20 }]
+interface ProcessingOptions {
+  aggregation?: "sum" | "count" | "average" | "none";
+  filterEmpty?: boolean;
+  sortBy?: string | undefined; // Set to undefined to disable sorting
+  sortOrder?: "asc" | "desc";
+  limit?: number;
+}
 ```
 
-### filterEmpty
+### **📊 Sorting Options**
 
-- `true`: Filter data yang kosong/null/undefined
-- `false`: Include semua data termasuk yang kosong
+#### **Enable Sorting**
 
-### sortBy
+```typescript
+const processingOptions = {
+  sortBy: "category", // Sort by category field
+  sortOrder: "asc", // Ascending order
+};
+```
 
-- Nama variable untuk sorting
+#### **Disable Sorting**
 
-### sortOrder
+```typescript
+const processingOptions = {
+  sortBy: undefined, // No sorting applied
+  sortOrder: "asc", // Ignored when sortBy is undefined
+};
+```
 
-- `'asc'`: Ascending order
-- `'desc'`: Descending order
+#### **Sort by Different Fields**
 
-### limit
+```typescript
+const processingOptions = {
+  sortBy: "value", // Sort by value field
+  sortOrder: "desc", // Descending order
+};
+```
 
-- Jumlah maksimum data yang akan diproses
+#### **✅ Sorting Support**
+
+**Fully Implemented** di semua chart types:
+
+- **Bar Charts**: Sort by `category`, `value`
+- **Line Charts**: Sort by `category`, `value`
+- **Scatter Plots**: Sort by `x`, `y`
+- **Pie Charts**: Sort by `category`, `value`
+- **Stacked Charts**: Sort by `category`, `subcategory`, `value`
+- **3D Charts**: Sort by `x`, `y`, `z`
+- **Range Charts**: Sort by `category`, `low`, `high`, `close`
+- **All Other Charts**: Sort by any available field
+
+#### **🔧 Sorting Implementation**
+
+```typescript
+// Helper method untuk apply sorting
+private static applySorting<T extends Record<string, any>>(
+  data: T[],
+  sortBy?: string,
+  sortOrder: "asc" | "desc" = "asc"
+): T[] {
+  if (!sortBy || data.length === 0) {
+    return data; // Return original data if no sorting
+  }
+
+  return [...data].sort((a, b) => {
+    const aValue = a[sortBy];
+    const bValue = b[sortBy];
+
+    // Handle numbers
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
+    }
+
+    // Handle strings
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortOrder === "asc" ? comparison : -comparison;
+    }
+
+    // Handle mixed types
+    const aStr = String(aValue || "");
+    const bStr = String(bValue || "");
+    const comparison = aStr.localeCompare(bStr);
+    return sortOrder === "asc" ? comparison : -comparison;
+  });
+}
+```
+
+### **🎯 Chart-Specific Aggregation Support**
+
+| Chart Type        | Supported Aggregations            | Notes         |
+| ----------------- | --------------------------------- | ------------- |
+| **Bar Charts**    | `sum`, `count`, `average`, `none` | Full support  |
+| **Line Charts**   | `sum`, `count`, `average`, `none` | Full support  |
+| **Scatter Plots** | `none`                            | Raw data only |
+| **Pie Charts**    | `sum`, `count`, `average`, `none` | Full support  |
+| **Candlestick**   | `none`                            | Raw data only |
+| **Range Charts**  | `none`                            | Raw data only |
+
+### **💡 Usage Examples**
+
+```typescript
+// Example 1: No sorting, no aggregation (raw data)
+const processingOptions = {
+  aggregation: "none",
+  filterEmpty: true,
+  sortBy: undefined, // Disable sorting
+  sortOrder: "asc",
+};
+
+// Example 2: Sort by category, sum aggregation
+const processingOptions = {
+  aggregation: "sum",
+  filterEmpty: true,
+  sortBy: "category", // Sort by category
+  sortOrder: "asc",
+};
+
+// Example 3: Sort by value, count aggregation
+const processingOptions = {
+  aggregation: "count",
+  filterEmpty: true,
+  sortBy: "value", // Sort by value
+  sortOrder: "desc", // Descending order
+};
+```
 
 ## Error Handling
 

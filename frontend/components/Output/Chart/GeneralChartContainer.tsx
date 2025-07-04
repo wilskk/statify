@@ -1,7 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { chartUtils } from "@/utils/chartBuilder/chartTypes/chartUtils";
 import { Button } from "@/components/ui/button";
-import { Download, Copy, Check, Image, FileType, View } from "lucide-react";
+import {
+  Download,
+  Copy,
+  Check,
+  Image as LucideImage,
+  FileType,
+  View,
+} from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 // Define type untuk data chart
@@ -12,6 +19,8 @@ interface ChartData {
     width: number;
     height: number;
     useAxis?: boolean;
+    useLegend?: boolean;
+    statistic?: "mean" | "median" | "mode" | "min" | "max"; // Add statistic option
     axisLabels: {
       x: string;
       y: string;
@@ -87,136 +96,152 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
   // Parse data jika berbentuk string
   const parsedData = typeof data === "string" ? JSON.parse(data) : data;
 
-  const handleCopyChart = async (
-    chartId: string,
-    format: "svg" | "png" = "svg"
-  ) => {
-    const chartElement = document.getElementById(chartId);
-    if (!chartElement) return;
+  // const convertSvgToPng = async (svgElement: SVGElement): Promise<Blob> => {
+  //   return new Promise((resolve, reject) => {
+  //     const canvas = document.createElement("canvas");
+  //     const ctx = canvas.getContext("2d");
+  //     const img = document.createElement("img");
 
-    const svgElement = chartElement.querySelector("svg");
-    if (!svgElement) return;
+  //     img.onload = () => {
+  //       canvas.width = img.width * 2; // 2x for better quality
+  //       canvas.height = img.height * 2;
 
-    try {
-      if (format === "svg") {
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        await navigator.clipboard.writeText(svgData);
-      } else {
-        // Convert SVG to PNG
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const img: HTMLImageElement = document.createElement("img");
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], {
-          type: "image/svg+xml;charset=utf-8",
-        });
-        const url = URL.createObjectURL(svgBlob);
+  //       if (ctx) {
+  //         ctx.fillStyle = "#fff";
+  //         ctx.fillRect(0, 0, canvas.width, canvas.height);
+  //         ctx.scale(2, 2); // Scale up for better quality
+  //         ctx.drawImage(img, 0, 0);
+  //         ctx.scale(0.5, 0.5); // Reset scale
 
-        await new Promise((resolve, reject) => {
-          img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            if (ctx) {
-              ctx.fillStyle = "#fff";
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
-              ctx.drawImage(img, 0, 0);
-            }
-            canvas.toBlob((blob) => {
-              if (blob) {
-                navigator.clipboard
-                  .write([
-                    new ClipboardItem({
-                      "image/png": blob,
-                    }),
-                  ])
-                  .then(resolve)
-                  .catch(reject);
-              } else {
-                reject(new Error("Failed to create blob"));
-              }
-            }, "image/png");
-          };
-          img.onerror = reject;
-          img.src = url;
-        });
-      }
+  //         canvas.toBlob(
+  //           (blob) => {
+  //             if (blob) {
+  //               resolve(blob);
+  //             } else {
+  //               reject(new Error("PNG conversion failed"));
+  //             }
+  //           },
+  //           "image/png",
+  //           1.0
+  //         );
+  //       } else {
+  //         reject(new Error("Canvas context not available"));
+  //       }
+  //     };
 
-      setCopied((prev) => ({
-        ...prev,
-        [chartId]: {
-          ...prev[chartId],
-          [format]: true,
-        },
-      }));
-      setTimeout(() => {
-        setCopied((prev) => ({
-          ...prev,
-          [chartId]: {
-            ...prev[chartId],
-            [format]: false,
-          },
-        }));
-      }, 500);
-    } catch (err) {
-      // Error saat copy chart, tidak perlu aksi toast
-    }
-  };
+  //     img.onerror = () => reject(new Error("Image loading failed"));
 
-  const handleDownloadChart = async (
-    chartId: string,
-    format: "svg" | "png"
-  ) => {
-    const chartElement = document.getElementById(chartId);
-    if (!chartElement) return;
+  //     const svgData = new XMLSerializer().serializeToString(svgElement);
+  //     const svgBlob = new Blob([svgData], {
+  //       type: "image/svg+xml;charset=utf-8",
+  //     });
+  //     img.src = URL.createObjectURL(svgBlob);
+  //   });
+  // };
 
-    const svgElement = chartElement.querySelector("svg");
-    if (!svgElement) return;
+  // const handleCopyChart = async (
+  //   chartId: string,
+  //   format: "svg" | "png" = "svg"
+  // ) => {
+  //   const chartElement = document.getElementById(chartId);
+  //   if (!chartElement) return;
 
-    try {
-      if (format === "svg") {
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const blob = new Blob([svgData], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${chartId}.svg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const img: HTMLImageElement = document.createElement("img");
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], {
-          type: "image/svg+xml;charset=utf-8",
-        });
-        const url = URL.createObjectURL(svgBlob);
+  //   const svgElement = chartElement.querySelector("svg");
+  //   if (!svgElement) return;
 
-        img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          if (ctx) {
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-          }
-          const pngUrl = canvas.toDataURL("image/png");
-          const link = document.createElement("a");
-          link.href = pngUrl;
-          link.download = `${chartId}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        };
-        img.src = url;
-      }
-    } catch (err) {
-      // Error saat download chart, tidak perlu aksi toast
-    }
-  };
+  //   try {
+  //     if (format === "svg") {
+  //       const svgData = new XMLSerializer().serializeToString(svgElement);
+  //       await navigator.clipboard.writeText(svgData);
+  //     } else {
+  //       try {
+  //         const pngBlob = await convertSvgToPng(svgElement);
+  //         await navigator.clipboard.write([
+  //           new ClipboardItem({
+  //             "image/png": pngBlob,
+  //           }),
+  //         ]);
+  //       } catch (clipboardErr) {
+  //         console.warn("PNG copy not supported, falling back to SVG");
+  //         const svgData = new XMLSerializer().serializeToString(svgElement);
+  //         await navigator.clipboard.writeText(svgData);
+  //       }
+  //     }
+
+  //     setCopied((prev) => ({
+  //       ...prev,
+  //       [chartId]: {
+  //         ...prev[chartId],
+  //         [format]: true,
+  //       },
+  //     }));
+
+  //     setTimeout(() => {
+  //       setCopied((prev) => ({
+  //         ...prev,
+  //         [chartId]: {
+  //           ...prev[chartId],
+  //           [format]: false,
+  //         },
+  //       }));
+  //     }, 500);
+  //   } catch (err) {
+  //     console.warn("Copy failed:", err);
+  //   }
+  // };
+
+  // const handleDownloadChart = async (
+  //   chartId: string,
+  //   format: "svg" | "png"
+  // ) => {
+  //   const chartElement = document.getElementById(chartId);
+  //   if (!chartElement) return;
+
+  //   const svgElement = chartElement.querySelector("svg");
+  //   if (!svgElement) return;
+
+  //   try {
+  //     if (format === "svg") {
+  //       const svgData = new XMLSerializer().serializeToString(svgElement);
+  //       const blob = new Blob([svgData], { type: "image/svg+xml" });
+  //       const url = URL.createObjectURL(blob);
+  //       const link = document.createElement("a");
+  //       link.href = url;
+  //       link.download = `${chartId}.svg`;
+  //       document.body.appendChild(link);
+  //       link.click();
+  //       document.body.removeChild(link);
+  //       URL.revokeObjectURL(url);
+  //     } else {
+  //       try {
+  //         const pngBlob = await convertSvgToPng(svgElement);
+  //         const url = URL.createObjectURL(pngBlob);
+  //         const link = document.createElement("a");
+  //         link.href = url;
+  //         link.download = `${chartId}.png`;
+  //         document.body.appendChild(link);
+  //         link.click();
+  //         document.body.removeChild(link);
+  //         URL.revokeObjectURL(url);
+  //       } catch (conversionErr) {
+  //         console.warn("PNG conversion failed, falling back to SVG");
+  //         // Fallback to SVG
+  //         const svgData = new XMLSerializer().serializeToString(svgElement);
+  //         const blob = new Blob([svgData], { type: "image/svg+xml" });
+  //         const url = URL.createObjectURL(blob);
+  //         const link = document.createElement("a");
+  //         link.href = url;
+  //         link.download = `${chartId}.svg`;
+  //         document.body.appendChild(link);
+  //         link.click();
+  //         document.body.removeChild(link);
+  //         URL.revokeObjectURL(url);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.warn("Download failed:", err);
+  //   }
+  // };
 
   useEffect(() => {
     console.log("data di kontainer", parsedData);
@@ -627,7 +652,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "1-D Boxplot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Simple Range Bar":
@@ -635,7 +669,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Simple Range Bar",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Clustered Range Bar":
@@ -643,7 +686,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "ClusteredRange Bar",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "High-Low-Close Chart":
@@ -651,7 +703,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "High-Low-Close Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Difference Area":
@@ -659,7 +720,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Difference Area",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Drop Line Chart":
@@ -667,7 +737,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Drop Line Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Summary Point Plot":
@@ -675,7 +754,22 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                (chartConfig?.statistic as
+                  | "mean"
+                  | "median"
+                  | "mode"
+                  | "min"
+                  | "max") || "mean", // Use statistic from config
+                {
+                  title: chartMetadata?.title || "Summary Point Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Vertical Bar & Line Chart":
@@ -683,7 +777,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Vertical Bar & Line Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Vertical Bar & Line Chart2":
@@ -699,7 +802,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Dual Axes Scatter Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "3D Bar Chart2":
@@ -742,7 +854,16 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Density Chart",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Violin Plot":
@@ -750,15 +871,33 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
                 chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Vioin Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             case "Stem And Leaf Plot":
               chartNode = chartUtils.createStemAndLeafPlot(
-                chartDataPoints as unknown as { [stem: string]: number[] },
+                chartDataPoints,
                 width,
                 height,
-                useAxis
+                useAxis,
+                {
+                  title: chartMetadata?.title || "Stem And Leaf Plot",
+                  subtitle: chartMetadata?.subtitle,
+                  titleFontSize: chartMetadata?.titleFontSize || 16,
+                  subtitleFontSize: chartMetadata?.subtitleFontSize || 12,
+                },
+                chartConfig?.axisLabels,
+                chartConfig?.axisScaleOptions,
+                chartConfig?.chartColor
               );
               break;
             default:
@@ -784,7 +923,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
       {chartNodes.map(({ id, chartNode, chartType, width, height }, idx) => (
         <div
           key={id}
-          className="relative group mb-8"
+          className="relative group mb-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
           style={{ minHeight: 400 }}
           onMouseEnter={() => {
             if (actionTimers.current[id])
@@ -801,7 +940,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
         >
           <div
             className={
-              "flex justify-end gap-2 mb-2 transition-opacity chart-actions " +
+              "absolute top-2 right-2 flex gap-2 z-10 transition-opacity chart-actions " +
               (actionsHidden[id]
                 ? "opacity-0"
                 : "opacity-0 group-hover:opacity-100 pointer-events-auto")
@@ -823,7 +962,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              onClick={() => handleCopyChart(id, "svg")}
+              // onClick={() => handleCopyChart(id, "svg")}
               title="Copy as SVG"
             >
               {copied[id]?.svg ? (
@@ -840,7 +979,7 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               } ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              onClick={() => handleCopyChart(id, "png")}
+              // onClick={() => handleCopyChart(id, "png")}
               title="Copy as PNG"
             >
               {copied[id]?.png ? (
@@ -848,14 +987,14 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               ) : (
                 <Copy className="w-4 h-4 inline-block mr-1" />
               )}
-              <Image className="w-4 h-4 inline-block mr-1" />
+              <LucideImage className="w-4 h-4 inline-block mr-1" />
               <span className="text-xs">PNG</span>
             </button>
             <button
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              onClick={() => handleDownloadChart(id, "svg")}
+              // onClick={() => handleDownloadChart(id, "svg")}
               title="Download as SVG"
             >
               <Download className="w-4 h-4 inline-block mr-1" />
@@ -866,11 +1005,11 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               className={`p-2 bg-white rounded-md shadow-sm hover:bg-gray-100 ${
                 actionsHidden[id] ? "pointer-events-none cursor-default" : ""
               }`}
-              onClick={() => handleDownloadChart(id, "png")}
+              // onClick={() => handleDownloadChart(id, "png")}
               title="Download as PNG"
             >
               <Download className="w-4 h-4 inline-block mr-1" />
-              <Image className="w-4 h-4 inline-block mr-1" />
+              <LucideImage className="w-4 h-4 inline-block mr-1" />
               <span className="text-xs">PNG</span>
             </button>
             {/* <button
@@ -890,17 +1029,29 @@ const GeneralChartContainer: React.FC<GeneralChartContainerProps> = ({
               <View className="w-4 h-4" />
             </button> */}
           </div>
+          {/* Chart type indicator */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span className="text-sm font-medium text-gray-700">
+                {chartType} Output
+              </span>
+            </div>
+          </div>
+
           <div className="w-full h-full flex items-center justify-center">
             <div
               id={id}
+              className="border border-gray-200 rounded-lg p-4 shadow-inner"
               style={{
-                width: width,
-                height: height,
+                width: width + 32, // Add padding space
+                height: height + 32, // Add padding space
               }}
             >
               {/* Render chartNode as HTML */}
               {chartNode && (
                 <div
+                  className="w-full h-full flex items-center justify-center"
                   ref={(el) => {
                     if (el && chartNode) {
                       el.innerHTML = "";

@@ -32,17 +32,18 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "F", value: 90 },
       ];
       const data2 = [
-        { category: "2023-01-01", value: 10 },
-        { category: "2023-01-02", value: 30 },
-        { category: "2023-01-03", value: 55 },
-        { category: "2023-01-04", value: 60 },
-        { category: "2023-01-05", value: 70 },
-        { category: "2023-01-06", value: 90 },
-        { category: "2023-01-07", value: 55 },
-        { category: "2023-01-08", value: 30 },
-        { category: "2023-01-09", value: 50 },
-        { category: "2023-01-10", value: 20 },
-        { category: "2023-01-11", value: 25 },
+        { category: "Jan", value: 10 },
+        { category: "Feb", value: 30 },
+        { category: "Mar", value: 55 },
+        { category: "Apr", value: 60 },
+        { category: "Mei", value: 70 },
+        { category: "Jun", value: 90 },
+        { category: "Jul", value: 55 },
+        { category: "Agu", value: 30 },
+        { category: "Sep", value: 50 },
+        { category: "Okt", value: 20 },
+        { category: "Nov", value: 25 },
+        { category: "Des", value: 25 },
       ];
       const data3 = [5, 8, 9, 7, 3, 6, 3, 7, 3, 2, 9, 1, 4, 2, 5];
       const data4 = [
@@ -205,12 +206,12 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         { category: "C", subcategory: "A3", value: 49, error: 9 },
       ];
       const data16 = [
-        { A: 15, B: 50, C: 20, category: "Group 1" },
-        { A: 20, B: 200, C: 30, category: "Group 1" },
-        { A: 60, B: 100, C: 70, category: "Group 2" },
-        { A: 200, B: 325, C: 180, category: "Group 2" },
-        { A: 80, B: 150, C: 60, category: "Group 3" },
-        { A: 130, B: 275, C: 110, category: "Group 3" },
+        { A: 15, B: 50, C: 20 },
+        { A: 20, B: 200, C: 30 },
+        { A: 60, B: 100, C: 70 },
+        { A: 200, B: 325, C: 180 },
+        { A: 80, B: 150, C: 60 },
+        { A: 130, B: 275, C: 110 },
       ];
       const data17 = [
         { value: 10, category: "A" },
@@ -728,7 +729,7 @@ const ChartSelection: React.FC<ChartSelectionProps> = ({
         }
       } else if (chartType === "1-D Boxplot") {
         const chartNode = chartUtils.create1DBoxplot(
-          data5,
+          data1,
           width,
           height,
           useaxis

@@ -53,6 +53,32 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Function to parse round parameters
+  const parseRoundDecimals = (expression: string): number | null => {
+    const roundRegex = /round\s*\(\s*[^,]+,\s*(\d+)\s*\)/i;
+    const match = expression.match(roundRegex);
+    return match ? parseInt(match[1]) : null;
+  };
+
+  // Function to check if expression contains log1p
+  const hasLog1p = (expression: string): boolean => {
+    return /log1p\s*\(/i.test(expression);
+  };
+
+  // Function to preprocess expression
+  function preprocessExpression(expression: string): string {
+    return expression.replace(/~\s*([a-zA-Z_][a-zA-Z0-9_]*)/g, "not($1)");
+  }
+
+  // Function to clean data
+  function cleanData(rawData: any[][]) {
+    return rawData.filter(
+      (row) =>
+        Array.isArray(row) &&
+        row.some((cell) => cell !== null && cell !== undefined && cell !== "")
+    );
+  }
+
   const handleAddToExpression = (value: string) => {
     setNumericExpression((prev) => prev + value);
   };
@@ -72,7 +98,99 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
     const variableNames = variables.map((v) => v.name);
     const regex = /[a-zA-Z_][a-zA-Z0-9_]*/g;
     const exprVariables = numericExpression.match(regex) || [];
-    const allowedFunctions = ["mean", "stddev", "abs", "sqrt", "not"];
+
+    // Extended list of allowed functions
+    const allowedFunctions = [
+      // Basic arithmetic and mathematical
+      "min",
+      "max",
+      "mean",
+      "stddev",
+      "abs",
+      "sqrt",
+      "not",
+      "median",
+      "mode",
+      "mod",
+      "std",
+      "cbrt",
+      "exp",
+      "cube",
+      "log",
+      "ln",
+      "log10",
+      "log2",
+      "log1p",
+      "square",
+      "divide",
+      "add",
+      "subtract",
+      "pow",
+      "round",
+      "fix",
+      "multiply",
+      "factorial",
+      "combinations",
+      "permutations",
+      "gamma",
+      "erf",
+      "nthRoot",
+      "sign",
+
+      // Trigonometric functions
+      "sin",
+      "cos",
+      "tan",
+      "arcos",
+      "arsin",
+      "artan",
+      "atan",
+      "sinh",
+      "cosh",
+      "tanh",
+      "sec",
+      "csc",
+      "cot",
+
+      // Statistical functions
+      "corr",
+      "trunc",
+      "sum",
+      "uncorrected",
+      "biased",
+      "var_p",
+      "var_s",
+      "std_p",
+      "std_s",
+      "cov",
+      "colmean",
+      "colsum",
+      "colmedian",
+      "colmin",
+      "colmax",
+      "colvar_p",
+      "colvar_s",
+      "colstd_p",
+      "colstd_s",
+      "prod",
+      "quantileSeq",
+      "mad",
+
+      // Matrix operations
+      "transpose",
+      "det",
+      "inv",
+      "trace",
+      "diag",
+      "dot",
+      "cross",
+
+      // Special and utility functions
+      "random_uniform",
+      "gcd",
+      "lcm",
+    ];
+
     const missingVars = exprVariables.filter(
       (varName) =>
         varName && // Pastikan varName tidak null atau undefined
@@ -94,8 +212,13 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
       // Inisialisasi worker
       const worker = new Worker("/workers/ComputeVariable/ComputeVariable.js");
 
+      const cleanedData = cleanData(data);
+
+      // Parse round decimals if present
+      const roundDecimals = parseRoundDecimals(numericExpression);
+
       worker.postMessage({
-        data,
+        data: cleanedData,
         variables,
         numericExpression,
         variableType,
@@ -130,7 +253,14 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
               name: targetVariable,
               type: variableType,
               width: 8,
-              decimals: variableType === "NUMERIC" ? 2 : 0,
+              decimals:
+                roundDecimals !== null
+                  ? roundDecimals
+                  : hasLog1p(numericExpression)
+                  ? 5
+                  : variableType === "NUMERIC"
+                  ? 2
+                  : 0,
               label: variableLabel,
               values: [],
               missing: null,
@@ -213,6 +343,12 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
   // Content of the compute variable modal
   const ModalContent = () => (
     <>
+      {errorMsg && (
+        <div className="col-span-12 text-red-600 font-medium mb-4">
+          {errorMsg}
+        </div>
+      )}
+
       <div className="grid grid-cols-12 gap-4 py-4">
         {/* Target Variable Input */}
         <div className="col-span-12 flex items-center space-x-2">
@@ -420,7 +556,7 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
             </Button>
             <Button
               variant="outline"
-              onClick={() => handleAddToExpression("not")}
+              onClick={() => handleAddToExpression("not(")}
             >
               ~
             </Button>
@@ -447,9 +583,11 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
               <SelectValue placeholder="Select Function Group" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Math">Math</SelectItem>
+              <SelectItem value="Arithmetic">Arithmetic</SelectItem>
               <SelectItem value="Statistical">Statistical</SelectItem>
-              {/* Add more function groups as needed */}
+              <SelectItem value="Trigonometry">Trigonometry</SelectItem>
+              <SelectItem value="Matrix">Matrix</SelectItem>
+              <SelectItem value="Special">Special</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -461,22 +599,103 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
             </SelectTrigger>
             <SelectContent>
               {/* Based on selected function group, list functions */}
-              {functionGroup === "Math" && (
+              {functionGroup === "Arithmetic" && (
                 <>
-                  <SelectItem value="ABS">ABS(number)</SelectItem>
-                  <SelectItem value="SQRT">SQRT(number)</SelectItem>
-                  {/* Add more math functions */}
+                  <SelectItem value="abs(">abs(var)</SelectItem>
+                  <SelectItem value="sqrt(">sqrt(var)</SelectItem>
+                  <SelectItem value="cbrt(">cbrt(var)</SelectItem>
+                  <SelectItem value="exp(">exp(var)</SelectItem>
+                  <SelectItem value="ln(">ln(var)</SelectItem>
+                  <SelectItem value="log(">log(var, basis)</SelectItem>
+                  <SelectItem value="log2(">log2(var)</SelectItem>
+                  <SelectItem value="log10(">log10(var)</SelectItem>
+                  <SelectItem value="log1p(">log1p(var)</SelectItem>
+                  <SelectItem value="square(">square(var)</SelectItem>
+                  <SelectItem value="cube(">cube(var)</SelectItem>
+                  <SelectItem value="mod(">mod(x,y)</SelectItem>
+                  <SelectItem value="round(">round(var, number)</SelectItem>
+                  <SelectItem value="divide(">divide(var, var)</SelectItem>
+                  <SelectItem value="subtract(">subtract(var, var)</SelectItem>
+                  <SelectItem value="add(">add(var, var)</SelectItem>
+                  <SelectItem value="pow(">pow(var, var)</SelectItem>
+                  <SelectItem value="fix(">fix(var)</SelectItem>
+                  <SelectItem value="multiply(">multiply(var)</SelectItem>
+                  <SelectItem value="gcd(">gcd(var, var)</SelectItem>
+                  <SelectItem value="lcm(">lcm(var, var)</SelectItem>
+                  <SelectItem value="nthRoot(">nthRoot(var, n)</SelectItem>
+                  <SelectItem value="sign(">sign(var)</SelectItem>
                 </>
               )}
               {functionGroup === "Statistical" && (
                 <>
-                  <SelectItem value="MEAN">
-                    MEAN(number1, number2, ...)
+                  <SelectItem value="mean(">mean(var)</SelectItem>
+                  <SelectItem value="median(">median(var)</SelectItem>
+                  <SelectItem value="mode(">mode(var)</SelectItem>
+                  <SelectItem value="std_p(">std_p(var, var)</SelectItem>
+                  <SelectItem value="std_s(">std_s(var, var)</SelectItem>
+                  <SelectItem value="var_p(">var_p(var, var)</SelectItem>
+                  <SelectItem value="var_s(">var_s(var, var)</SelectItem>
+                  <SelectItem value="mad(">mad(var)</SelectItem>
+                  <SelectItem value="min(">min(var, var)</SelectItem>
+                  <SelectItem value="max(">max(var, var)</SelectItem>
+                  <SelectItem value="sum(">sum(var, var)</SelectItem>
+                  <SelectItem value="colmean(">colmean(var)</SelectItem>
+                  <SelectItem value="colmedian(">colmedian(var)</SelectItem>
+                  <SelectItem value="colmin(">colmin(var, var)</SelectItem>
+                  <SelectItem value="colmax(">colmax(var, var)</SelectItem>
+                  <SelectItem value="colsum(">colsum(var, var)</SelectItem>
+                  <SelectItem value="colstd_p(">colstd_p(var, var)</SelectItem>
+                  <SelectItem value="colstd_s(">colstd_s(var, var)</SelectItem>
+                  <SelectItem value="colvar_p(">colvar_p(var, var)</SelectItem>
+                  <SelectItem value="colvar_s(">colvar_s(var, var)</SelectItem>
+                  <SelectItem value="prod(">prod(var)</SelectItem>
+                  <SelectItem value="quantileSeq(">
+                    quantileSeq(var, prob)
                   </SelectItem>
-                  <SelectItem value="STDDEV">
-                    STDDEV(number1, number2, ...)
+                  <SelectItem value="corr(">corr(var1, var2)</SelectItem>
+                </>
+              )}
+              {functionGroup === "Trigonometry" && (
+                <>
+                  <SelectItem value="sin(">sin(rad)</SelectItem>
+                  <SelectItem value="cos(">cos(rad)</SelectItem>
+                  <SelectItem value="tan(">tan(rad)</SelectItem>
+                  <SelectItem value="arsin(">arsin(x)</SelectItem>
+                  <SelectItem value="artan(">artan(x)</SelectItem>
+                  <SelectItem value="arcos(">arcos(x)</SelectItem>
+                  <SelectItem value="atan(">atan(var)</SelectItem>
+                  <SelectItem value="sinh(">sinh(var)</SelectItem>
+                  <SelectItem value="cosh(">cosh(var)</SelectItem>
+                  <SelectItem value="tanh(">tanh(var)</SelectItem>
+                  <SelectItem value="sec(">sec(var)</SelectItem>
+                  <SelectItem value="csc(">csc(var)</SelectItem>
+                  <SelectItem value="cot(">cot(var)</SelectItem>
+                </>
+              )}
+              {functionGroup === "Matrix" && (
+                <>
+                  <SelectItem value="det(">det(matrix)</SelectItem>
+                  <SelectItem value="inv(">inv(matrix)</SelectItem>
+                  <SelectItem value="transpose(">transpose(matrix)</SelectItem>
+                  <SelectItem value="trace(">trace(matrix)</SelectItem>
+                  <SelectItem value="diag(">diag(matrix)</SelectItem>
+                  <SelectItem value="dot(">dot(vector1, vector2)</SelectItem>
+                  <SelectItem value="cross(">
+                    cross(vector1, vector2)
                   </SelectItem>
-                  {/* Add more statistical functions */}
+                </>
+              )}
+              {functionGroup === "Special" && (
+                <>
+                  <SelectItem value="erf(">erf(var)</SelectItem>
+                  <SelectItem value="gamma(">gamma(var)</SelectItem>
+                  <SelectItem value="factorial(">factorial(var)</SelectItem>
+                  <SelectItem value="combinations(">
+                    combinations(n,k)
+                  </SelectItem>
+                  <SelectItem value="permutations(">
+                    permutations(n,k)
+                  </SelectItem>
                 </>
               )}
             </SelectContent>

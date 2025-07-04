@@ -1,3 +1,9 @@
+// Interface untuk output data processing
+interface DataProcessingOutput {
+  data: any[];
+  axisInfo: Record<string, string>;
+}
+
 // Interface untuk input data processing
 interface DataProcessingInput {
   // Required
@@ -183,9 +189,9 @@ interface OneDBoxplotData {
 export class DataProcessingService {
   /**
    * Process raw data menjadi struktur yang dibutuhkan chart
-   * Return: processed data array yang siap untuk ChartService.createChartJSON()
+   * Return: {data: processed data array, axisInfo: axis information}
    */
-  static processDataForChart(input: DataProcessingInput): any[] {
+  static processDataForChart(input: DataProcessingInput): DataProcessingOutput {
     const {
       chartType,
       rawData,
@@ -194,164 +200,399 @@ export class DataProcessingService {
       processingOptions = {},
     } = input;
 
-    // Validate input
-    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
-      throw new Error("rawData is required and must be a non-empty array");
+    console.log("🔍 DataProcessingService - Input received:", {
+      chartType,
+      rawDataLength: rawData?.length,
+      variablesLength: variables?.length,
+      chartVariables,
+      processingOptions,
+    });
+
+    // Validate basic input
+    if (!rawData || rawData.length === 0) {
+      console.warn("⚠️ No raw data provided");
+      return { data: [], axisInfo: {} };
     }
 
-    if (!variables || !Array.isArray(variables) || variables.length === 0) {
-      throw new Error("variables is required and must be a non-empty array");
+    if (!variables || variables.length === 0) {
+      console.warn("⚠️ No variables defined");
+      return { data: [], axisInfo: {} };
     }
 
-    // Validate aggregation support for chart type
-    this.validateAggregationSupport(chartType, processingOptions.aggregation);
+    // Validate and set default aggregation
+    const {
+      aggregation = "none",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+      limit,
+    } = processingOptions;
 
-    // Map variable indices
-    const indices = this.mapVariableIndices(variables, chartVariables);
+    // Validate aggregation support
+    this.validateAggregationSupport(chartType, aggregation);
 
-    // Process berdasarkan chart type
+    try {
+      // Map variable names ke indices
+      const variableIndices = this.mapVariableIndices(
+        variables,
+        chartVariables
+      );
+      console.log("📊 Variable indices mapped:", variableIndices);
+
+      let processedData: any[] = [];
+
+      // Process berdasarkan chart type
+      switch (chartType) {
+        case "Vertical Bar Chart":
+        case "Horizontal Bar Chart":
+        case "Line Chart":
+        case "Area Chart":
+        case "Pie Chart":
+        case "Error Bar Chart":
+        case "Frequency Polygon":
+        case "Summary Point Plot":
+        case "Violin Plot":
+        case "Dot Plot":
+          processedData = this.processSimpleChartData(
+            rawData,
+            variableIndices,
+            { aggregation, filterEmpty },
+            chartType
+          );
+          break;
+
+        case "Scatter Plot":
+        case "Scatter Plot With Fit Line":
+          processedData = this.processScatterData(rawData, variableIndices, {
+            filterEmpty,
+          });
+          break;
+
+        case "Vertical Stacked Bar Chart":
+        case "Horizontal Stacked Bar Chart":
+        case "Clustered Bar Chart":
+        case "Multiple Line Chart":
+        case "Stacked Area Chart":
+        case "Population Pyramid":
+          processedData = this.processStackedChartData(
+            rawData,
+            variableIndices,
+            { aggregation, filterEmpty }
+          );
+          break;
+
+        case "3D Bar Chart":
+        case "3D Bar Chart2":
+        case "3D Scatter Plot":
+        case "Clustered 3D Bar Chart":
+        case "Stacked 3D Bar Chart":
+          processedData = this.process3DChartData(rawData, variableIndices, {
+            aggregation,
+            filterEmpty,
+          });
+          break;
+
+        case "Grouped Scatter Plot":
+        case "Drop Line Chart":
+          processedData = this.processGroupedScatterData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        case "Simple Range Bar":
+        case "High-Low-Close Chart":
+          processedData = this.processRangeChartData(rawData, variableIndices, {
+            filterEmpty,
+          });
+          break;
+
+        case "Clustered Range Bar":
+          processedData = this.processClusteredRangeData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        case "Difference Area":
+          processedData = this.processDifferenceAreaData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        case "Vertical Bar & Line Chart":
+          processedData = this.processBarLineData(rawData, variableIndices, {
+            filterEmpty,
+          });
+          break;
+
+        case "Dual Axes Scatter Plot":
+          processedData = this.processDualAxesData(rawData, variableIndices, {
+            filterEmpty,
+          });
+          break;
+
+        case "Grouped 3D Scatter Plot":
+          processedData = this.processGrouped3DScatterData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        case "Histogram":
+        case "Density Chart":
+          processedData = this.processHistogramData(rawData, variableIndices, {
+            aggregation,
+            filterEmpty,
+          });
+          break;
+
+        case "Stacked Histogram":
+          processedData = this.processStackedHistogramData(
+            rawData,
+            variableIndices,
+            { aggregation, filterEmpty }
+          );
+          break;
+
+        case "Clustered Error Bar Chart":
+          processedData = this.processClusteredErrorBarData(
+            rawData,
+            variableIndices,
+            { aggregation, filterEmpty }
+          );
+          break;
+
+        case "Scatter Plot Matrix":
+          processedData = this.processScatterMatrixData(
+            rawData,
+            variableIndices,
+            { filterEmpty },
+            variables
+          );
+          break;
+
+        case "Clustered Boxplot":
+          processedData = this.processClusteredBoxplotData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        case "1-D Boxplot":
+        case "Boxplot":
+          processedData = this.process1DBoxplotData(rawData, variableIndices, {
+            filterEmpty,
+          });
+          break;
+
+        case "Stem And Leaf Plot":
+          processedData = this.processStemAndLeafData(
+            rawData,
+            variableIndices,
+            { filterEmpty }
+          );
+          break;
+
+        default:
+          console.warn(`⚠️ Unsupported chart type: ${chartType}`);
+          return { data: [], axisInfo: {} };
+      }
+
+      // Apply sorting jika diminta
+      if (sortBy && processedData.length > 0) {
+        processedData = this.applySorting(processedData, sortBy, sortOrder);
+      }
+
+      // Apply limit jika diminta
+      if (limit && limit > 0) {
+        processedData = processedData.slice(0, limit);
+      }
+
+      // Generate axisInfo based on chart type and variables
+      const axisInfo = this.generateAxisInfo(
+        chartType,
+        chartVariables,
+        variables
+      );
+
+      console.log("✅ Data processing completed:", {
+        originalLength: rawData.length,
+        processedLength: processedData.length,
+        sampleData: processedData.slice(0, 3),
+        axisInfo,
+      });
+
+      return { data: processedData, axisInfo };
+    } catch (error) {
+      console.error("❌ Error processing data:", error);
+      return { data: [], axisInfo: {} };
+    }
+  }
+
+  /**
+   * Generate axisInfo based on chart type and variables
+   */
+  static generateAxisInfo(
+    chartType: string,
+    chartVariables: any,
+    variables?: Array<{ name: string; type?: string }>
+  ): Record<string, string> {
+    const getVariableName = (varArray: string[], index: number = 0): string => {
+      return varArray && varArray[index] ? varArray[index] : "";
+    };
+
     switch (chartType) {
-      //OK
       case "Vertical Bar Chart":
       case "Horizontal Bar Chart":
       case "Line Chart":
       case "Area Chart":
       case "Pie Chart":
-      case "Boxplot":
       case "Error Bar Chart":
-      case "Dot Plot":
       case "Frequency Polygon":
       case "Summary Point Plot":
       case "Violin Plot":
-        return this.processSimpleChartData(
-          rawData,
-          indices,
-          processingOptions,
-          chartType
-        );
+      case "Dot Plot":
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          value: getVariableName(chartVariables.y, 0),
+        };
 
-      //OK
       case "Scatter Plot":
       case "Scatter Plot With Fit Line":
-        return this.processScatterData(rawData, indices, processingOptions);
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y: getVariableName(chartVariables.y, 0),
+        };
 
-      //OK
       case "Vertical Stacked Bar Chart":
       case "Horizontal Stacked Bar Chart":
       case "Clustered Bar Chart":
       case "Multiple Line Chart":
       case "Stacked Area Chart":
       case "Population Pyramid":
-        return this.processStackedChartData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          subcategory: getVariableName(chartVariables.groupBy, 0),
+          value: getVariableName(chartVariables.y, 0),
+        };
 
-      //Belum di test
       case "3D Bar Chart":
       case "3D Bar Chart2":
       case "3D Scatter Plot":
       case "Clustered 3D Bar Chart":
       case "Stacked 3D Bar Chart":
-        return this.process3DChartData(rawData, indices, processingOptions);
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y: getVariableName(chartVariables.y, 0),
+          z: getVariableName(chartVariables.z, 0),
+        };
 
-      //OK
       case "Grouped Scatter Plot":
       case "Drop Line Chart":
-        return this.processGroupedScatterData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y: getVariableName(chartVariables.y, 0),
+          category: getVariableName(chartVariables.groupBy, 0),
+        };
 
-      //OK
       case "Simple Range Bar":
       case "High-Low-Close Chart":
-        return this.processRangeChartData(rawData, indices, processingOptions);
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          low: getVariableName(chartVariables.low, 0),
+          high: getVariableName(chartVariables.high, 0),
+          close: getVariableName(chartVariables.close, 0),
+        };
 
-      //OK
       case "Clustered Range Bar":
-        return this.processClusteredRangeData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          subcategory: getVariableName(chartVariables.groupBy, 0),
+          low: getVariableName(chartVariables.low, 0),
+          high: getVariableName(chartVariables.high, 0),
+          close: getVariableName(chartVariables.close, 0),
+        };
 
-      //OK
       case "Difference Area":
-        return this.processDifferenceAreaData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          value0: getVariableName(chartVariables.low, 0),
+          value1: getVariableName(chartVariables.high, 0),
+        };
 
-      //OK
       case "Vertical Bar & Line Chart":
-        return this.processBarLineData(rawData, indices, processingOptions);
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          barValue: getVariableName(chartVariables.y, 0),
+          lineValue: getVariableName(chartVariables.y2, 0),
+        };
 
-      //OK
       case "Dual Axes Scatter Plot":
-        return this.processDualAxesData(rawData, indices, processingOptions);
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y1: getVariableName(chartVariables.y, 0),
+          y2: getVariableName(chartVariables.y2, 0),
+        };
 
-      //OK
       case "Grouped 3D Scatter Plot":
-        return this.processGrouped3DScatterData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          x: getVariableName(chartVariables.x, 0),
+          y: getVariableName(chartVariables.y, 0),
+          z: getVariableName(chartVariables.z, 0),
+          category: getVariableName(chartVariables.groupBy, 0),
+        };
 
-      //OK
       case "Histogram":
       case "Density Chart":
-        return this.processHistogramData(rawData, indices, processingOptions);
-      //OK
+        return {
+          value: getVariableName(chartVariables.y, 0),
+        };
+
       case "Stacked Histogram":
-        return this.processStackedHistogramData(
-          rawData,
-          indices,
-          processingOptions
-        );
-      //OK
+        return {
+          value: getVariableName(chartVariables.y, 0),
+          category: getVariableName(chartVariables.groupBy, 0),
+        };
+
       case "Clustered Error Bar Chart":
-        return this.processClusteredErrorBarData(
-          rawData,
-          indices,
-          processingOptions
-        );
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          subcategory: getVariableName(chartVariables.groupBy, 0),
+          value: getVariableName(chartVariables.y, 0),
+        };
 
-      //OK
       case "Scatter Plot Matrix":
-        return this.processScatterMatrixData(
-          rawData,
-          indices,
-          processingOptions,
-          variables
-        );
+        return {
+          variables: chartVariables.y?.join(", "),
+        };
 
-      //OK
       case "Clustered Boxplot":
-        return this.processClusteredBoxplotData(
-          rawData,
-          indices,
-          processingOptions
-        );
-      //OK
-      case "1-D Boxplot":
-        return this.process1DBoxplotData(rawData, indices, processingOptions);
+        return {
+          category: getVariableName(chartVariables.x, 0),
+          subcategory: getVariableName(chartVariables.groupBy, 0),
+          value: getVariableName(chartVariables.y, 0),
+        };
 
-      //OK
+      case "1-D Boxplot":
+      case "Boxplot":
+        return {
+          value: getVariableName(chartVariables.y, 0),
+        };
+
       case "Stem And Leaf Plot":
-        return this.processStemAndLeafData(rawData, indices, processingOptions);
+        return {
+          value: getVariableName(chartVariables.y, 0),
+        };
 
       default:
-        return this.processSimpleChartData(
-          rawData,
-          indices,
-          processingOptions,
-          chartType
-        );
+        return { undefined: "undefined" };
     }
   }
 
@@ -426,13 +667,82 @@ export class DataProcessingService {
     return indices;
   }
 
+  // Helper method to apply sorting
+  private static applySorting<T extends Record<string, any>>(
+    data: T[],
+    sortBy?: string,
+    sortOrder: "asc" | "desc" = "asc"
+  ): T[] {
+    console.log("🔍 applySorting called with:", {
+      sortBy,
+      sortOrder,
+      dataLength: data.length,
+    });
+
+    if (!sortBy || data.length === 0) {
+      console.log(
+        "⚠️ No sorting applied - sortBy:",
+        sortBy,
+        "dataLength:",
+        data.length
+      );
+      return data;
+    }
+
+    // Check if sortBy field exists in data
+    if (data.length > 0 && !(sortBy in data[0])) {
+      console.warn(
+        "⚠️ sortBy field not found:",
+        sortBy,
+        "available fields:",
+        Object.keys(data[0])
+      );
+      return data;
+    }
+
+    // Test with sample data to verify sorting works
+    if (data.length > 0) {
+      console.log("🔍 Sample data before sorting:", data.slice(0, 3));
+      console.log("🔍 Available fields:", Object.keys(data[0]));
+    }
+
+    const result = [...data].sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+
+      // Handle different data types
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
+      }
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        const comparison = aValue.localeCompare(bValue);
+        return sortOrder === "asc" ? comparison : -comparison;
+      }
+
+      // Handle mixed types or undefined values
+      const aStr = String(aValue || "");
+      const bStr = String(bValue || "");
+      const comparison = aStr.localeCompare(bStr);
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    console.log("✅ Sorting completed. First few items:", result.slice(0, 3));
+    return result;
+  }
+
   private static processSimpleChartData(
     rawData: any[][],
     indices: any,
     options: any,
     chartType?: string
   ): SimpleChartData[] {
-    const { aggregation = "none", filterEmpty = true } = options;
+    const {
+      aggregation = "none",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+    } = options;
 
     // Get allowed aggregations for this chart type
     const allowedAggregations = chartType
@@ -441,7 +751,8 @@ export class DataProcessingService {
 
     // If chart only supports "none", force it regardless of input
     if (allowedAggregations.length === 1 && allowedAggregations[0] === "none") {
-      return this.processRawData(rawData, indices, filterEmpty);
+      const result = this.processRawData(rawData, indices, filterEmpty);
+      return this.applySorting(result, sortBy, sortOrder);
     }
 
     // If aggregation is not allowed, use first allowed option
@@ -451,7 +762,8 @@ export class DataProcessingService {
 
     // Handle "none" aggregation - return data as-is without grouping
     if (effectiveAggregation === "none") {
-      return this.processRawData(rawData, indices, filterEmpty);
+      const result = this.processRawData(rawData, indices, filterEmpty);
+      return this.applySorting(result, sortBy, sortOrder);
     }
 
     const frequencyMap: {
@@ -465,14 +777,15 @@ export class DataProcessingService {
       }
 
       if (!isNaN(yValue)) {
+        const categoryKey = String(xKey); // Convert to string
         if (effectiveAggregation === "sum") {
-          acc[xKey] = ((acc[xKey] as number) || 0) + yValue;
+          acc[categoryKey] = ((acc[categoryKey] as number) || 0) + yValue;
         } else if (effectiveAggregation === "count") {
-          acc[xKey] = ((acc[xKey] as number) || 0) + 1;
+          acc[categoryKey] = ((acc[categoryKey] as number) || 0) + 1;
         } else if (effectiveAggregation === "average") {
-          if (!acc[xKey]) acc[xKey] = { sum: 0, count: 0 };
-          (acc[xKey] as { sum: number; count: number }).sum += yValue;
-          (acc[xKey] as { sum: number; count: number }).count += 1;
+          if (!acc[categoryKey]) acc[categoryKey] = { sum: 0, count: 0 };
+          (acc[categoryKey] as { sum: number; count: number }).sum += yValue;
+          (acc[categoryKey] as { sum: number; count: number }).count += 1;
         }
       }
 
@@ -480,7 +793,7 @@ export class DataProcessingService {
     }, {} as { [key: string]: number | { sum: number; count: number } });
 
     // Convert to array format
-    return Object.keys(frequencyMap).map((key) => {
+    const result = Object.keys(frequencyMap).map((key) => {
       const value =
         effectiveAggregation === "average"
           ? (frequencyMap[key] as { sum: number; count: number }).sum /
@@ -488,10 +801,13 @@ export class DataProcessingService {
           : (frequencyMap[key] as number);
 
       return {
-        category: key,
+        category: String(key), // Convert to string
         value: value,
       };
     });
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static processRawData(
@@ -512,7 +828,7 @@ export class DataProcessingService {
         }
 
         return {
-          category: xKey,
+          category: String(xKey), // Convert to string
           value: yValue,
         };
       })
@@ -524,9 +840,9 @@ export class DataProcessingService {
     indices: any,
     options: any
   ): ScatterData[] {
-    const { filterEmpty = true } = options;
+    const { filterEmpty = true, sortBy, sortOrder = "asc" } = options;
 
-    return rawData
+    const result = rawData
       .map((row) => {
         const xValue = parseFloat(row[indices.x[0]]);
         const yValue = parseFloat(row[indices.y[0]]);
@@ -541,6 +857,9 @@ export class DataProcessingService {
         };
       })
       .filter((item): item is ScatterData => item !== null);
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static processStackedChartData(
@@ -548,7 +867,12 @@ export class DataProcessingService {
     indices: any,
     options: any
   ): StackedChartData[] {
-    const { aggregation = "sum", filterEmpty = true } = options;
+    const {
+      aggregation = "sum",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+    } = options;
 
     const frequencyMap: {
       [key: string]: Array<{ subcategory: string; value: number }>;
@@ -560,8 +884,9 @@ export class DataProcessingService {
       indices.y.forEach((yIndex: number, i: number) => {
         const yValue = parseFloat(row[yIndex]);
         if (!isNaN(yValue)) {
-          if (!acc[xKey]) acc[xKey] = [];
-          acc[xKey].push({
+          const categoryKey = String(xKey); // Convert to string
+          if (!acc[categoryKey]) acc[categoryKey] = [];
+          acc[categoryKey].push({
             subcategory: indices.yVariableNames[i],
             value: yValue,
           });
@@ -571,15 +896,18 @@ export class DataProcessingService {
     }, {} as { [key: string]: Array<{ subcategory: string; value: number }> });
 
     // Output persis seperti DefaultChartPrep.js
-    return Object.keys(frequencyMap)
+    const result = Object.keys(frequencyMap)
       .map((key) =>
         frequencyMap[key].map((entry) => ({
-          category: key,
+          category: String(key), // Convert to string
           subcategory: entry.subcategory,
           value: entry.value,
         }))
       )
       .flat();
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static process3DChartData(
@@ -587,7 +915,12 @@ export class DataProcessingService {
     indices: any,
     options: any
   ): ThreeDData[] {
-    const { aggregation = "sum", filterEmpty = true } = options;
+    const {
+      aggregation = "sum",
+      filterEmpty = true,
+      sortBy,
+      sortOrder = "asc",
+    } = options;
 
     const reducedData: { [key: string]: ThreeDData } = rawData.reduce(
       (acc, row) => {
@@ -613,7 +946,10 @@ export class DataProcessingService {
       {} as { [key: string]: ThreeDData }
     );
 
-    return Object.values(reducedData);
+    const result = Object.values(reducedData);
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static processGroupedScatterData(
@@ -621,9 +957,9 @@ export class DataProcessingService {
     indices: any,
     options: any
   ): GroupedScatterData[] {
-    const { filterEmpty = true } = options;
+    const { filterEmpty = true, sortBy, sortOrder = "asc" } = options;
 
-    return rawData
+    const result = rawData
       .map((row) => {
         const group = row[indices.groupBy[0]];
         const xValue = parseFloat(row[indices.x[0]]);
@@ -634,12 +970,15 @@ export class DataProcessingService {
         }
 
         return {
-          category: group,
+          category: String(group), // Convert to string
           x: xValue,
           y: yValue,
         };
       })
       .filter((item): item is GroupedScatterData => item !== null);
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static processRangeChartData(
@@ -647,9 +986,9 @@ export class DataProcessingService {
     indices: any,
     options: any
   ): RangeChartData[] {
-    const { filterEmpty = true } = options;
+    const { filterEmpty = true, sortBy, sortOrder = "asc" } = options;
 
-    return rawData
+    const result = rawData
       .map((row) => {
         const category = row[indices.x[0]];
         const lowValue = parseFloat(row[indices.low[0]]);
@@ -664,13 +1003,16 @@ export class DataProcessingService {
         }
 
         return {
-          category: category,
+          category: String(category), // Convert to string
           low: lowValue,
           high: highValue,
           close: closeValue,
         };
       })
       .filter((item): item is RangeChartData => item !== null);
+
+    // Apply sorting
+    return this.applySorting(result, sortBy, sortOrder);
   }
 
   private static processClusteredRangeData(
@@ -696,8 +1038,8 @@ export class DataProcessingService {
         }
 
         return {
-          category: category,
-          subcategory: subcategory,
+          category: String(category), // Convert to string
+          subcategory: String(subcategory), // Convert to string
           low: lowValue,
           high: highValue,
           close: closeValue,
@@ -724,7 +1066,7 @@ export class DataProcessingService {
         }
 
         return {
-          category: category,
+          category: String(category), // Convert to string
           value0: value0,
           value1: value1,
         };
@@ -754,7 +1096,8 @@ export class DataProcessingService {
       }
 
       if (!isNaN(barValue) && !isNaN(lineValue)) {
-        acc[category] = {
+        const categoryKey = String(category); // Convert to string
+        acc[categoryKey] = {
           barValue: barValue,
           lineValue: lineValue,
         };
@@ -764,7 +1107,7 @@ export class DataProcessingService {
     }, {} as { [key: string]: { barValue: number; lineValue: number } });
 
     return Object.keys(frequencyMap).map((key) => ({
-      category: key,
+      category: String(key), // Convert to string
       barValue: frequencyMap[key].barValue,
       lineValue: frequencyMap[key].lineValue,
     }));
@@ -817,7 +1160,12 @@ export class DataProcessingService {
           return null;
         }
 
-        return { x, y, z, category };
+        return {
+          x,
+          y,
+          z,
+          category: String(category), // Convert to string
+        };
       })
       .filter((item): item is Grouped3DScatterData => item !== null);
   }
@@ -887,8 +1235,8 @@ export class DataProcessingService {
         const error = 2;
 
         return {
-          category: category,
-          subcategory: subcategory,
+          category: String(category),
+          subcategory: String(subcategory),
           value: value,
           error: error,
         };
@@ -939,7 +1287,7 @@ export class DataProcessingService {
         }
 
         return {
-          category: category,
+          category: String(category),
           subcategory: String(subcategory),
           value: value,
         };

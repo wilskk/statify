@@ -4,6 +4,7 @@ export { default as chartService } from "./ChartService";
 
 // Export data processing service
 export { DataProcessingService } from "./DataProcessingService";
+export { PartialDataProcessingService } from "./PartialDataProcessingService";
 
 // Export data processing worker service
 export {

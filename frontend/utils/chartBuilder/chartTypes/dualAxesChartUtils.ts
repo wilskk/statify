@@ -1,63 +1,126 @@
 import * as d3 from "d3";
+import {
+  ChartTitleOptions,
+  addChartTitle,
+  generateAxisTicks,
+} from "./chartUtils";
 
 export const createBarAndLineChart = (
   data: { category: string; barValue: number; lineValue: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y1?: string; y2?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y1?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y2?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   console.log("Creating combined chart with data:", data);
 
-  // Margin
-  const marginTop = useAxis ? 30 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? 30 : 0;
-  const marginLeft = useAxis ? 30 : 0;
+  // Filter data
+  const filteredData = data.filter(
+    (d) =>
+      d.barValue != null &&
+      d.lineValue != null &&
+      !isNaN(d.barValue) &&
+      !isNaN(d.lineValue) &&
+      d.category != " "
+  );
+
+  // Margin dinamis berdasarkan title dan axis labels
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
+  const marginRight = useAxis ? (axisLabels?.y2 ? 60 : 30) : 0;
+  const marginBottom = useAxis ? (axisLabels?.x ? 60 : 30) : 0;
+  const marginLeft = useAxis ? (axisLabels?.y1 ? 60 : 30) : 0;
 
   // Definisi X axis
   const x = d3
     .scaleBand()
-    .domain(data.map((d) => d.category))
+    .domain(filteredData.map((d) => d.category))
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
-  // Definisi Y axis
+  // Definisi Y1 axis (untuk Bar) dengan axis scale options
+  let y1Min = 0;
+  let y1Max = Math.max(d3.max(filteredData, (d) => d.barValue) as number);
+  if (axisScaleOptions?.y1) {
+    if (axisScaleOptions.y1.min !== undefined && axisScaleOptions.y1.min !== "")
+      y1Min = Number(axisScaleOptions.y1.min);
+    if (axisScaleOptions.y1.max !== undefined && axisScaleOptions.y1.max !== "")
+      y1Max = Number(axisScaleOptions.y1.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([0, Math.max(d3.max(data, (d) => d.barValue) as number)])
+    .domain([y1Min, y1Max])
+    .nice()
     .range([height - marginBottom, marginTop]);
 
-  // Definisi Y axis
+  // Definisi Y2 axis (untuk Line) - independent domain
+  let y2Min = 0;
+  let y2Max = Math.max(d3.max(filteredData, (d) => d.lineValue) as number);
+  if (axisScaleOptions?.y2) {
+    if (axisScaleOptions.y2.min !== undefined && axisScaleOptions.y2.min !== "")
+      y2Min = Number(axisScaleOptions.y2.min);
+    if (axisScaleOptions.y2.max !== undefined && axisScaleOptions.y2.max !== "")
+      y2Max = Number(axisScaleOptions.y2.max);
+  }
+
   const y2 = d3
     .scaleLinear()
-    .domain([0, Math.max(d3.max(data, (d) => d.lineValue) as number)])
+    .domain([y2Min, y2Max])
+    .nice()
     .range([height - marginBottom, marginTop]);
 
   // Membuat SVG element
   const svg = d3
     .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto;");
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
 
   // Bar chart
   svg
     .append("g")
-    .attr("fill", "steelblue")
+    .attr("fill", (d, i) =>
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "steelblue"
+    )
     .selectAll("rect")
-    .data(data)
+    .data(filteredData)
     .join("rect")
     .attr("x", (d: { category: string }) => x(d.category) || 0)
     .attr("y", (d: { barValue: number }) => y(d.barValue))
     .attr(
       "height",
-      (d: { barValue: number }) => (y(0) as number) - (y(d.barValue) as number)
+      (d: { barValue: number }) =>
+        (y(y1Min) as number) - (y(d.barValue) as number)
     )
     .attr("width", x.bandwidth());
 
@@ -69,10 +132,33 @@ export const createBarAndLineChart = (
 
   svg
     .append("path")
+    .datum(filteredData)
     .attr("fill", "none")
-    .attr("stroke", "red")
+    .attr(
+      "stroke",
+      Array.isArray(chartColors) && chartColors.length > 1
+        ? chartColors[1]
+        : "red"
+    )
     .attr("stroke-width", 1.5)
-    .attr("d", line(data));
+    .attr("d", line);
+
+  // Points for the line
+  svg
+    .selectAll(".dot")
+    .data(filteredData)
+    .enter()
+    .append("circle")
+    .attr("class", "dot")
+    .attr("cx", (d) => x(d.category)! + x.bandwidth() / 2)
+    .attr("cy", (d) => y2(d.lineValue)!)
+    .attr("r", 3)
+    .attr(
+      "fill",
+      Array.isArray(chartColors) && chartColors.length > 1
+        ? chartColors[1]
+        : "red"
+    );
 
   // Menambahkan axis
   if (useAxis) {
@@ -82,41 +168,96 @@ export const createBarAndLineChart = (
       .attr("transform", `translate(0, ${height - marginBottom})`)
       .call(d3.axisBottom(x).tickSizeOuter(0));
 
-    // Y-Axis
+    // Y-Axis (Left - untuk Bar) with major increment support
+    const y1Axis = d3.axisLeft(y).tickFormat((v) => (+v * 1).toFixed(0));
+    const y1MajorIncrement = axisScaleOptions?.y1?.majorIncrement
+      ? Number(axisScaleOptions.y1.majorIncrement)
+      : undefined;
+    if (y1MajorIncrement && y1MajorIncrement > 0) {
+      const ticks = generateAxisTicks(y1Min, y1Max, y1MajorIncrement);
+      if (ticks) y1Axis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft}, 0)`)
-      .call(d3.axisLeft(y).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove())
-      .call((g: any) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Bar Value")
-      );
+      .call(y1Axis)
+      .call((g: any) => g.select(".domain").remove());
 
-    // Y2-Axis
-    const y2Axis = svg
+    // Y2-Axis (Right - untuk Line) with major increment support
+    const y2Axis = d3.axisRight(y2).tickFormat((v) => (+v * 1).toFixed(0));
+    const y2MajorIncrement = axisScaleOptions?.y2?.majorIncrement
+      ? Number(axisScaleOptions.y2.majorIncrement)
+      : undefined;
+    if (y2MajorIncrement && y2MajorIncrement > 0) {
+      const ticks = generateAxisTicks(y2Min, y2Max, y2MajorIncrement);
+      if (ticks) y2Axis.tickValues(ticks);
+    }
+    const y2AxisGroup = svg
       .append("g")
       .attr("transform", `translate(${width - marginRight}, 0)`)
-      .call(d3.axisRight(y2).tickFormat((y) => (+y * 1).toFixed(0)))
-      .call((g: any) => g.select(".domain").remove())
-      .call((g: any) =>
-        g
-          .append("text")
-          .attr("x", marginRight)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Line Value")
+      .call(y2Axis)
+      .call((g: any) => g.select(".domain").remove());
+
+    // Custom Y2 axis color
+    y2AxisGroup
+      .selectAll(".tick text")
+      .attr(
+        "fill",
+        Array.isArray(chartColors) && chartColors.length > 1
+          ? chartColors[1]
+          : "red"
+      );
+    y2AxisGroup
+      .select(".domain")
+      .attr(
+        "stroke",
+        Array.isArray(chartColors) && chartColors.length > 1
+          ? chartColors[1]
+          : "red"
       );
 
-    // Custom Y2 axis
-    y2Axis.selectAll(".tick text").attr("fill", "red");
-    y2Axis.select(".domain").attr("stroke", "red");
+    // Add axis labels if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 5)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "var(--foreground)")
+        .text(axisLabels.x);
+    }
+
+    // Left Y axis label (for Bar)
+    if (axisLabels?.y1) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "var(--foreground)")
+        .text(axisLabels.y1);
+    }
+
+    // Right Y axis label (for Line)
+    if (axisLabels?.y2) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", width - 15)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style(
+          "fill",
+          Array.isArray(chartColors) && chartColors.length > 1
+            ? chartColors[1]
+            : "red"
+        )
+        .text(axisLabels.y2);
+    }
   }
 
   return svg.node();
@@ -126,22 +267,44 @@ export const createDualAxesScatterPlot = (
   data: { x: number; y1: number; y2: number }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y1?: string; y2?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y1?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y2?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
-  // const validData = data.filter(
-  //   (d) =>
-  //     d.x !== null &&
-  //     d.y1 !== null &&
-  //     d.y2 !== null &&
-  //     d.x !== undefined &&
-  //     d.y1 !== undefined &&
-  //     d.y2 !== undefined &&
-  //     !isNaN(d.x) &&
-  //     !isNaN(d.y1) &&
-  //     !isNaN(d.y2)
-  // );
+  const validData = data.filter(
+    (d) =>
+      d.x !== null &&
+      d.y1 !== null &&
+      d.y2 !== null &&
+      d.x !== undefined &&
+      d.y1 !== undefined &&
+      d.y2 !== undefined &&
+      !isNaN(d.x) &&
+      !isNaN(d.y1) &&
+      !isNaN(d.y2)
+  );
 
-  const validData = data;
   console.log("Creating dual axis scatter plot with valid data:", validData);
 
   if (validData.length === 0) {
@@ -149,37 +312,72 @@ export const createDualAxesScatterPlot = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
-  const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 40 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  // Margin dinamis berdasarkan title dan axis labels
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 0;
+  const marginRight = useAxis ? (axisLabels?.y2 ? 60 : 30) : 0;
+  const marginBottom = useAxis ? (axisLabels?.x ? 60 : 30) : 0;
+  const marginLeft = useAxis ? (axisLabels?.y1 ? 60 : 30) : 0;
 
-  // Skala untuk sumbu X
+  // Skala untuk sumbu X dengan axis scale options
+  let xMin = d3.min(validData, (d) => d.x) as number;
+  let xMax = d3.max(validData, (d) => d.x) as number;
+  if (axisScaleOptions?.x) {
+    if (axisScaleOptions.x.min !== undefined && axisScaleOptions.x.min !== "")
+      xMin = Number(axisScaleOptions.x.min);
+    if (axisScaleOptions.x.max !== undefined && axisScaleOptions.x.max !== "")
+      xMax = Number(axisScaleOptions.x.max);
+  }
+
   const x = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.x) as [number, number])
+    .domain([xMin, xMax])
     .nice()
     .range([marginLeft, width - marginRight]);
 
-  // Skala untuk sumbu Y pertama
+  // Skala untuk sumbu Y1 dengan axis scale options
+  let y1Min = d3.min(validData, (d) => d.y1) as number;
+  let y1Max = d3.max(validData, (d) => d.y1) as number;
+  if (axisScaleOptions?.y1) {
+    if (axisScaleOptions.y1.min !== undefined && axisScaleOptions.y1.min !== "")
+      y1Min = Number(axisScaleOptions.y1.min);
+    if (axisScaleOptions.y1.max !== undefined && axisScaleOptions.y1.max !== "")
+      y1Max = Number(axisScaleOptions.y1.max);
+  }
+
   const y1 = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.y1) as [number, number])
+    .domain([y1Min, y1Max])
     .nice()
     .range([height - marginBottom, marginTop]);
 
-  // Skala untuk sumbu Y kedua
+  // Skala untuk sumbu Y2 dengan axis scale options
+  let y2Min = d3.min(validData, (d) => d.y2) as number;
+  let y2Max = d3.max(validData, (d) => d.y2) as number;
+  if (axisScaleOptions?.y2) {
+    if (axisScaleOptions.y2.min !== undefined && axisScaleOptions.y2.min !== "")
+      y2Min = Number(axisScaleOptions.y2.min);
+    if (axisScaleOptions.y2.max !== undefined && axisScaleOptions.y2.max !== "")
+      y2Max = Number(axisScaleOptions.y2.max);
+  }
+
   const y2 = d3
     .scaleLinear()
-    .domain(d3.extent(validData, (d) => d.y2) as [number, number])
+    .domain([y2Min, y2Max])
     .nice()
     .range([height - marginBottom, marginTop]);
 
   // Membuat SVG
   const svg = d3
     .create("svg")
+    .attr("width", width)
+    .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
 
   if (useAxis) {
     // Menambahkan gridline untuk sumbu X
@@ -219,10 +417,15 @@ export const createDualAxesScatterPlot = (
       );
   }
 
-  // Menambahkan titik untuk sumbu Y pertama
+  // Menambahkan titik untuk sumbu Y1
   svg
     .append("g")
-    .attr("stroke", "blue")
+    .attr(
+      "stroke",
+      Array.isArray(chartColors) && chartColors.length > 0
+        ? chartColors[0]
+        : "blue"
+    )
     .attr("stroke-width", 1.5)
     .attr("fill", "none")
     .selectAll("circle")
@@ -251,10 +454,15 @@ export const createDualAxesScatterPlot = (
       );
   }
 
-  // Menambahkan titik untuk sumbu Y kedua (Lulusan SMA)
+  // Menambahkan titik untuk sumbu Y2
   svg
     .append("g")
-    .attr("stroke", "red")
+    .attr(
+      "stroke",
+      Array.isArray(chartColors) && chartColors.length > 1
+        ? chartColors[1]
+        : "red"
+    )
     .attr("stroke-width", 1.5)
     .attr("fill", "none")
     .selectAll("circle")
@@ -265,55 +473,118 @@ export const createDualAxesScatterPlot = (
     .attr("r", 3);
 
   if (useAxis) {
-    // Menambahkan sumbu X
+    // Menambahkan sumbu X with major increment support
+    const xAxis = d3.axisBottom(x).ticks(width / 80);
+    const xMajorIncrement = axisScaleOptions?.x?.majorIncrement
+      ? Number(axisScaleOptions.x.majorIncrement)
+      : undefined;
+    if (xMajorIncrement && xMajorIncrement > 0) {
+      const ticks = generateAxisTicks(xMin, xMax, xMajorIncrement);
+      if (ticks) xAxis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(0,${height - marginBottom})`)
-      .call(d3.axisBottom(x).ticks(width / 80))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ X Axis")
-      );
+      .call(xAxis)
+      .call((g) => g.select(".domain").remove());
 
-    // Menambahkan sumbu Y pertama
+    // X-axis label
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 10)
+        .attr("fill", "currentColor")
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text(axisLabels.x);
+    }
+
+    // Menambahkan sumbu Y1 (kiri) with major increment support
+    const y1Axis = d3.axisLeft(y1);
+    const y1MajorIncrement = axisScaleOptions?.y1?.majorIncrement
+      ? Number(axisScaleOptions.y1.majorIncrement)
+      : undefined;
+    if (y1MajorIncrement && y1MajorIncrement > 0) {
+      const ticks = generateAxisTicks(y1Min, y1Max, y1MajorIncrement);
+      if (ticks) y1Axis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y1))
+      .call(y1Axis)
       .call((g) => g.select(".domain").remove())
-      .call((g) => g.selectAll(".tick text").attr("fill", "blue"))
       .call((g) =>
         g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Y1 Axis")
+          .selectAll(".tick text")
+          .attr(
+            "fill",
+            Array.isArray(chartColors) && chartColors.length > 0
+              ? chartColors[0]
+              : "blue"
+          )
       );
 
-    // Menambahkan sumbu Y kedua
+    // Y1-axis label
+    if (axisLabels?.y1) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -(height / 2))
+        .attr("y", 20)
+        .attr(
+          "fill",
+          Array.isArray(chartColors) && chartColors.length > 0
+            ? chartColors[0]
+            : "blue"
+        )
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text(axisLabels.y1);
+    }
+
+    // Menambahkan sumbu Y2 (kanan) with major increment support
+    const y2Axis = d3.axisRight(y2);
+    const y2MajorIncrement = axisScaleOptions?.y2?.majorIncrement
+      ? Number(axisScaleOptions.y2.majorIncrement)
+      : undefined;
+    if (y2MajorIncrement && y2MajorIncrement > 0) {
+      const ticks = generateAxisTicks(y2Min, y2Max, y2MajorIncrement);
+      if (ticks) y2Axis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${width - marginRight},0)`)
-      .call(d3.axisRight(y2))
+      .call(y2Axis)
       .call((g) => g.select(".domain").remove())
-      .call((g) => g.selectAll(".tick text").attr("fill", "red"))
       .call((g) =>
         g
-          .append("text")
-          .attr("x", marginRight)
-          .attr("y", 10)
-          .attr("fill", "red")
-          .attr("text-anchor", "end")
-          .text("↑ Y2 Axis ")
+          .selectAll(".tick text")
+          .attr(
+            "fill",
+            Array.isArray(chartColors) && chartColors.length > 1
+              ? chartColors[1]
+              : "red"
+          )
       );
+
+    // Y2-axis label
+    if (axisLabels?.y2) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -(height / 2))
+        .attr("y", width - 10)
+        .attr(
+          "fill",
+          Array.isArray(chartColors) && chartColors.length > 1
+            ? chartColors[1]
+            : "red"
+        )
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .text(axisLabels.y2);
+    }
   }
 
   return svg.node();

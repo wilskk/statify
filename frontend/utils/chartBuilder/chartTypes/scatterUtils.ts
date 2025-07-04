@@ -1164,7 +1164,24 @@ export const createDropLineChart = (
   data: { x: string; y: number; category: string }[],
   width: number,
   height: number,
-  useAxis: boolean = true
+  useAxis: boolean = true,
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   const validData = data.filter(
     (d) =>
@@ -1184,10 +1201,11 @@ export const createDropLineChart = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
+  // Dynamic margins based on title and axis labels
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 10;
   const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 40 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  const marginBottom = useAxis ? (axisLabels?.x ? 60 : 40) : 10;
+  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 10;
 
   const x = d3
     .scaleBand()
@@ -1195,18 +1213,39 @@ export const createDropLineChart = (
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // Apply axis scale options for Y if provided
+  let yMin = 0;
+  let yMax = d3.max(validData, (d) => d.y) as number;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(validData, (d) => d.y) as number])
+    .domain([yMin, yMax])
     .nice()
     .range([height - marginBottom, marginTop]);
 
   const svg = d3
     .create("svg")
+    .attr("width", width)
+    .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
 
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
+  // Create color scale - use chartColors if provided, otherwise default
+  const color =
+    chartColors && chartColors.length > 0
+      ? d3.scaleOrdinal(chartColors)
+      : d3.scaleOrdinal(d3.schemeCategory10);
 
   if (useAxis) {
     svg
@@ -1283,35 +1322,52 @@ export const createDropLineChart = (
     .attr("fill", (d) => color(d.category));
 
   if (useAxis) {
+    // X-Axis (categorical - no major increment needed)
     svg
       .append("g")
       .attr("transform", `translate(0,${height - marginBottom})`)
       .call(d3.axisBottom(x))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Kategori")
-      );
+      .call((g) => g.select(".domain").remove());
 
+    // Add X axis label if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "12px")
+        .text(axisLabels.x);
+    }
+
+    // Y-Axis with major increment support
+    const yAxis = d3.axisLeft(y);
+    const yMajorIncrement = axisScaleOptions?.y?.majorIncrement
+      ? Number(axisScaleOptions.y.majorIncrement)
+      : undefined;
+    if (yMajorIncrement && yMajorIncrement > 0) {
+      const ticks = generateAxisTicks(yMin, yMax, yMajorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Nilai")
-      );
+      .call(yAxis)
+      .call((g) => g.select(".domain").remove());
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "12px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();
@@ -1322,19 +1378,44 @@ export const createSummaryPointPlot = (
   width: number,
   height: number,
   useAxis: boolean = true,
-  statistic: "mean" | "median" | "mode" | "min" | "max" = "mean" // Pilihan statistik
+  statistic: "mean" | "median" | "mode" | "min" | "max" = "mean", // Pilihan statistik
+  titleOptions?: ChartTitleOptions,
+  axisLabels?: { x?: string; y?: string },
+  axisScaleOptions?: {
+    x?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+    y?: {
+      min?: string;
+      max?: string;
+      majorIncrement?: string;
+      origin?: string;
+    };
+  },
+  chartColors?: string[]
 ) => {
   // Mengelompokkan data berdasarkan category dan menghitung statistik per kategori
   const categoryValues = Array.from(
     d3.group(data, (d) => d.category),
-    ([key, value]) => ({
-      category: key,
-      value: calculateStat(value, statistic),
-    })
+    ([key, value]) => {
+      const calculatedValue = calculateStat(value, statistic);
+      console.log(
+        `📊 Category ${key}: ${statistic} = ${calculatedValue} (from values: ${value
+          .map((v) => v.value)
+          .join(", ")})`
+      );
+      return {
+        category: key,
+        value: calculatedValue,
+      };
+    }
   );
 
   console.log(
-    `Creating summary point plot with ${statistic} values:`,
+    `🎯 Creating Summary Point Plot with "${statistic}" statistic:`,
     categoryValues
   );
 
@@ -1343,10 +1424,11 @@ export const createSummaryPointPlot = (
     return null;
   }
 
-  const marginTop = useAxis ? 30 : 10;
+  // Dynamic margins based on title and axis labels
+  const marginTop = useAxis ? (titleOptions ? 80 : 30) : titleOptions ? 60 : 10;
   const marginRight = useAxis ? 30 : 10;
-  const marginBottom = useAxis ? 70 : 10;
-  const marginLeft = useAxis ? 40 : 10;
+  const marginBottom = useAxis ? (axisLabels?.x ? 90 : 70) : 10; // Extra space for statistic label
+  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 10;
 
   // Skala untuk sumbu X (category)
   const x = d3
@@ -1355,21 +1437,39 @@ export const createSummaryPointPlot = (
     .range([marginLeft, width - marginRight])
     .padding(0.1);
 
+  // Apply axis scale options for Y if provided
+  let yMin = 0;
+  let yMax = d3.max(categoryValues, (d) => d.value) as number;
+  if (axisScaleOptions?.y) {
+    if (axisScaleOptions.y.min !== undefined && axisScaleOptions.y.min !== "")
+      yMin = Number(axisScaleOptions.y.min);
+    if (axisScaleOptions.y.max !== undefined && axisScaleOptions.y.max !== "")
+      yMax = Number(axisScaleOptions.y.max);
+  }
+
   // Skala untuk sumbu Y (statistik nilai)
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(categoryValues, (d) => d.value) as number])
+    .domain([yMin, yMax])
     .nice()
     .range([height - marginBottom, marginTop]);
 
   // Membuat SVG
   const svg = d3
     .create("svg")
+    .attr("width", width)
+    .attr("height", height)
     .attr("viewBox", [0, 0, width, height])
     .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
 
-  // Warna titik (default warna abu-abu untuk semua titik)
-  const color = "#4682B4";
+  // Add title if provided
+  if (titleOptions) {
+    addChartTitle(svg, titleOptions);
+  }
+
+  // Custom colors - use chartColors if provided, otherwise default
+  const color =
+    chartColors && chartColors.length > 0 ? chartColors[0] : "#4682B4";
 
   if (useAxis) {
     // Menambahkan gridline untuk sumbu X
@@ -1420,50 +1520,68 @@ export const createSummaryPointPlot = (
     .attr("r", 6)
     .attr("fill", color);
 
-  // Menambahkan teks informasi statistik di bawah grafik
-  svg
-    .append("text")
-    .attr("x", width / 2)
-    .attr("y", height - marginBottom + 40)
-    .attr("text-anchor", "middle")
-    .attr("font-size", "14px")
-    .attr("font-weight", "bold")
-    .text(
-      `Statistik: ${statistic.charAt(0).toUpperCase() + statistic.slice(1)}`
-    );
+  if (useAxis) {
+    // Menambahkan teks informasi statistik di bawah grafik
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", height - (axisLabels?.x ? 15 : 25)) // Adjust based on axis label presence
+      .attr("text-anchor", "middle")
+      .attr("fill", "hsl(var(--foreground))")
+      .style("font-size", "12px")
+      .style("font-weight", "500")
+      .text(
+        `Statistic: ${statistic.charAt(0).toUpperCase() + statistic.slice(1)}`
+      );
+  }
 
   if (useAxis) {
-    // Menambahkan sumbu X
+    // X-Axis (categorical - no major increment needed)
     svg
       .append("g")
       .attr("transform", `translate(0,${height - marginBottom})`)
       .call(d3.axisBottom(x))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", width)
-          .attr("y", marginBottom - 4)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "end")
-          .text("→ Kategori")
-      );
+      .call((g) => g.select(".domain").remove());
 
-    // Menambahkan sumbu Y
+    // Add X axis label if provided
+    if (axisLabels?.x) {
+      svg
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", height - 55) // Above statistic label
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "12px")
+        .text(axisLabels.x);
+    }
+
+    // Y-Axis with major increment support
+    const yAxis = d3.axisLeft(y);
+    const yMajorIncrement = axisScaleOptions?.y?.majorIncrement
+      ? Number(axisScaleOptions.y.majorIncrement)
+      : undefined;
+    if (yMajorIncrement && yMajorIncrement > 0) {
+      const ticks = generateAxisTicks(yMin, yMax, yMajorIncrement);
+      if (ticks) yAxis.tickValues(ticks);
+    }
     svg
       .append("g")
       .attr("transform", `translate(${marginLeft},0)`)
-      .call(d3.axisLeft(y))
-      .call((g) => g.select(".domain").remove())
-      .call((g) =>
-        g
-          .append("text")
-          .attr("x", -marginLeft)
-          .attr("y", 10)
-          .attr("fill", "currentColor")
-          .attr("text-anchor", "start")
-          .text("↑ Nilai")
-      );
+      .call(yAxis)
+      .call((g) => g.select(".domain").remove());
+
+    // Add Y axis label if provided
+    if (axisLabels?.y) {
+      svg
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", 15)
+        .attr("text-anchor", "middle")
+        .attr("fill", "hsl(var(--foreground))")
+        .style("font-size", "12px")
+        .text(axisLabels.y);
+    }
   }
 
   return svg.node();

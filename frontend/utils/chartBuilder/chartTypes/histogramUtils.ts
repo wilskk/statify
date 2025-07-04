@@ -1,5 +1,12 @@
 import * as d3 from "d3";
 import { ChartTitleOptions, addChartTitle } from "./chartUtils";
+import {
+  createStandardSVG,
+  addAxisLabels,
+  AxisLabelOptions,
+  getMajorTicks,
+} from "../chartUtils";
+import { calculateResponsiveMargin } from "../responsiveMarginUtils";
 
 interface ChartData {
   category: string;
@@ -33,18 +40,6 @@ interface AxisScaleOptions {
   };
 }
 
-const getMajorTicks = (
-  min: number,
-  max: number,
-  increment: number
-): number[] => {
-  const ticks: number[] = [];
-  for (let i = min; i <= max; i += increment) {
-    ticks.push(i);
-  }
-  return ticks;
-};
-
 export const createHistogram = (
   data: number[],
   width: number,
@@ -57,11 +52,14 @@ export const createHistogram = (
 ) => {
   console.log("Creating histogram with data:", data);
 
-  // Menentukan margin
-  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? (axisLabels?.x ? 50 : 30) : 0;
-  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 30) : 0;
+  // Calculate responsive margins
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+  });
 
   // Filter data
   const validData = data.filter(
@@ -106,7 +104,7 @@ export const createHistogram = (
   const x = d3
     .scaleLinear()
     .domain([x0Value, x1Value])
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   // Menentukan skala untuk sumbu Y
   let yMin = 0;
@@ -126,20 +124,18 @@ export const createHistogram = (
     .scaleLinear()
     .domain([yMin, yMax])
     .nice()
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
-  // Membuat elemen SVG baru di dalam DOM
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
   // Add title if provided
   if (titleOptions) {
@@ -163,11 +159,12 @@ export const createHistogram = (
     .attr("y", (d) => y(d.length))
     .attr("height", (d) => y(0) - y(d.length));
 
-  // Menambahkan X axis
+  // Add axes
   if (useAxis) {
-    const xAxis = svg
+    // X axis
+    svg
       .append("g")
-      .attr("transform", `translate(0,${height - marginBottom})`)
+      .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(
         d3
           .axisBottom(x)
@@ -181,21 +178,7 @@ export const createHistogram = (
         g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
       );
 
-    // Add X axis label if provided
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", marginLeft + width / 2)
-        .attr("y", marginTop + height + marginBottom - 10)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.x);
-    }
-  }
-
-  // Menambahkan Y axis
-  if (useAxis) {
+    // Y axis
     const yAxis = d3.axisLeft(y).tickFormat(d3.format(".2s"));
     if (majorIncrement && majorIncrement > 0) {
       yAxis.tickValues(getMajorTicks(yMin, yMax, majorIncrement));
@@ -203,7 +186,7 @@ export const createHistogram = (
 
     svg
       .append("g")
-      .attr("transform", `translate(${marginLeft},0)`)
+      .attr("transform", `translate(${margin.left},0)`)
       .call(yAxis)
       .call((g) => g.select(".domain").remove())
       .call((g) =>
@@ -213,24 +196,23 @@ export const createHistogram = (
         g.selectAll("text").attr("fill", "hsl(var(--muted-foreground))")
       );
 
-    // Add Y axis label if provided
-    if (axisLabels?.y) {
-      svg
-        .append("text")
-        .attr("transform", `rotate(-90)`)
-        .attr("x", -(height + marginTop - marginBottom) / 2)
-        .attr("y", marginLeft - 50)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.y);
-    }
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      axisLabels,
+      chartType: "default",
+    });
   }
 
   // Mengembalikan node SVG
   return svg.node();
 };
-
 export const createPopulationPyramid = (
   data: ChartData[],
   width: number,
@@ -491,6 +473,15 @@ export const createFrequencyPolygon = (
     return null;
   }
 
+  // Calculate responsive margins
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+  });
+
   // Buat array kategori X (dengan boundary di luar range data)
   const startKey = "__boundary_start__";
   const endKey = "__boundary_end__";
@@ -507,17 +498,11 @@ export const createFrequencyPolygon = (
     { xKey: endKey, category: "", value: 0 },
   ];
 
-  // Set margins based on whether axes are enabled
-  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? (axisLabels?.x ? 10 : 0) : 0;
-  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 40) : 0;
-
   // Skala X: scalePoint dengan domain boundary + data
   const x = d3
     .scalePoint()
     .domain(xDomain)
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   // Set domain Y dari axisScaleOptions jika ada
   let yMin = 0;
@@ -535,24 +520,22 @@ export const createFrequencyPolygon = (
   const y = d3
     .scaleLinear()
     .domain([yMin, yMax])
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
   // Warna garis/titik
   const mainColor =
     chartColors && chartColors[0] ? chartColors[0] : "steelblue";
 
-  // Create SVG element
-  const svg = d3
-    .create("svg")
-    .attr("width", width + marginLeft + marginRight)
-    .attr("height", height + marginTop + marginBottom)
-    .attr("viewBox", [
-      0,
-      0,
-      width + marginLeft + marginRight,
-      height + marginTop + marginBottom,
-    ])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
   // Tambahkan judul/subjudul jika ada
   if (titleOptions) {
@@ -591,7 +574,7 @@ export const createFrequencyPolygon = (
     // X axis: label kategori asli untuk data, kosong untuk boundary
     svg
       .append("g")
-      .attr("transform", `translate(0, ${height - marginBottom})`)
+      .attr("transform", `translate(0, ${height - margin.bottom})`)
       .call(
         d3
           .axisBottom(x)
@@ -616,34 +599,22 @@ export const createFrequencyPolygon = (
     }
     svg
       .append("g")
-      .attr("transform", `translate(${marginLeft}, 0)`)
+      .attr("transform", `translate(${margin.left}, 0)`)
       .call(yAxis)
       .call((g) => g.select(".domain").remove());
-  }
 
-  // Label sumbu X (selalu di bawah chart, bukan di bawah judul)
-  if (useAxis && axisLabels?.x) {
-    svg
-      .append("text")
-      .attr("x", marginLeft + width / 2)
-      .attr("y", marginTop + height + marginBottom - 20)
-      .attr("text-anchor", "middle")
-      .attr("fill", "hsl(var(--foreground))")
-      .style("font-size", "14px")
-      .text(axisLabels.x);
-  }
-
-  // Label sumbu Y
-  if (useAxis && axisLabels?.y) {
-    svg
-      .append("text")
-      .attr("transform", `rotate(-90)`)
-      .attr("x", -(marginTop + height / 2))
-      .attr("y", 20)
-      .attr("text-anchor", "middle")
-      .attr("fill", "hsl(var(--foreground))")
-      .style("font-size", "14px")
-      .text(axisLabels.y);
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      axisLabels,
+      chartType: "default",
+    });
   }
 
   // Return the SVG node
@@ -661,10 +632,14 @@ export const createStackedHistogram = (
 ) => {
   console.log("Creating stacked histogram with data:", data);
 
-  const marginTop = useAxis ? (titleOptions ? 60 : 30) : titleOptions ? 40 : 0;
-  const marginRight = useAxis ? 30 : 0;
-  const marginBottom = useAxis ? (axisLabels?.x ? 30 : 10) : 0;
-  const marginLeft = useAxis ? (axisLabels?.y ? 60 : 30) : 0;
+  // Calculate responsive margins
+  const margin = calculateResponsiveMargin({
+    width,
+    height,
+    useAxis,
+    titleOptions,
+    axisLabels,
+  });
 
   // Filter data untuk menghilangkan nilai yang tidak valid
   const validData = data.filter(
@@ -704,7 +679,7 @@ export const createStackedHistogram = (
   const x = d3
     .scaleLinear()
     .domain([x0Value, x1Value])
-    .range([marginLeft, width - marginRight]);
+    .range([margin.left, width - margin.right]);
 
   // Skala Y
   const y = d3
@@ -713,7 +688,7 @@ export const createStackedHistogram = (
       0,
       d3.max(stackedData, (d) => d3.sum(categories, (c) => (d as any)[c])) ?? 0,
     ])
-    .range([height - marginBottom, marginTop]);
+    .range([height - margin.bottom, margin.top]);
 
   // Skala warna untuk kategori
   const color = d3
@@ -729,17 +704,16 @@ export const createStackedHistogram = (
   const stack = d3.stack<{ [key: string]: number }>().keys(categories);
   const series = stack(stackedData);
 
-  // Buat elemen SVG
-  const legendHeight = 40;
-  const svgWidth = width + marginLeft + marginRight;
-  const svgHeight = height + marginTop + marginBottom + legendHeight;
-
-  const svg = d3
-    .create("svg")
-    .attr("width", svgWidth)
-    .attr("height", svgHeight)
-    .attr("viewBox", [0, 0, svgWidth, svgHeight])
-    .attr("style", "max-width: 100%; height: auto;");
+  // Create standard SVG
+  const svg = createStandardSVG({
+    width,
+    height,
+    marginTop: margin.top,
+    marginRight: margin.right,
+    marginBottom: margin.bottom,
+    marginLeft: margin.left,
+    includeFont: true,
+  });
 
   // Tambahkan judul & subjudul jika ada
   if (titleOptions) {
@@ -749,7 +723,7 @@ export const createStackedHistogram = (
   // Buat kelompok bar
   const groups = svg
     .append("g")
-    .attr("transform", `translate(${marginLeft},${marginTop})`)
+    .attr("transform", `translate(${margin.left},${margin.top})`)
     .selectAll("g")
     .data(series)
     .join("g")
@@ -765,13 +739,14 @@ export const createStackedHistogram = (
     .attr("y", (d) => y(d[1]))
     .attr("height", (d) => Math.max(0, y(d[0]) - y(d[1])));
 
-  // Tambahkan sumbu X
+  // Add axes
   if (useAxis) {
+    // X axis
     svg
       .append("g")
       .attr(
         "transform",
-        `translate(${marginLeft},${height + marginTop - marginBottom})`
+        `translate(${margin.left},${height + margin.top - margin.bottom})`
       )
       .call(
         d3
@@ -780,51 +755,25 @@ export const createStackedHistogram = (
           .tickSizeOuter(0)
       );
 
-    // Label sumbu X
-    if (axisLabels?.x) {
-      svg
-        .append("text")
-        .attr("x", marginLeft + width / 2)
-        .attr("y", marginTop + height + marginBottom - 10)
-        .attr("text-anchor", "middle")
-        .attr("fill", "hsl(var(--foreground))")
-        .style("font-size", "14px")
-        .text(axisLabels.x);
-    }
-  }
-
-  // Tambahkan sumbu Y
-  if (useAxis) {
+    // Y axis
     svg
       .append("g")
-      .attr("transform", `translate(${marginLeft}, ${marginTop})`)
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
       .call(d3.axisLeft(y).ticks(height / 40))
       .call((g) => g.select(".domain").remove());
-  }
 
-  // Label sumbu X (selalu di bawah chart, bukan di bawah judul)
-  if (useAxis && axisLabels?.x) {
-    svg
-      .append("text")
-      .attr("x", marginLeft + width / 2)
-      .attr("y", marginTop + height + marginBottom - 20)
-      .attr("text-anchor", "middle")
-      .attr("fill", "hsl(var(--foreground))")
-      .style("font-size", "14px")
-      .text(axisLabels.x);
-  }
-
-  // Label sumbu Y
-  if (useAxis && axisLabels?.y) {
-    svg
-      .append("text")
-      .attr("transform", `rotate(-90)`)
-      .attr("x", -(marginTop + height / 2))
-      .attr("y", 20)
-      .attr("text-anchor", "middle")
-      .attr("fill", "hsl(var(--foreground))")
-      .style("font-size", "14px")
-      .text(axisLabels.y);
+    // Add axis labels using utility function
+    addAxisLabels({
+      svg,
+      width,
+      height,
+      marginTop: margin.top,
+      marginRight: margin.right,
+      marginBottom: margin.bottom,
+      marginLeft: margin.left,
+      axisLabels,
+      chartType: "default",
+    });
   }
 
   // Return the SVG node

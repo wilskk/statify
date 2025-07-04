@@ -1,5 +1,25 @@
 import { ChartType } from "@/components/Modals/Graphs/ChartTypes";
 
+export interface AxisConfig {
+  label: boolean;
+  min: boolean;
+  max: boolean;
+  majorIncrement: boolean;
+  origin: boolean;
+  [key: string]: boolean; // Add index signature for compatibility
+}
+
+export interface SingleYAxisConfig {
+  x: AxisConfig;
+  y: AxisConfig;
+}
+
+export interface DualYAxisConfig {
+  x: AxisConfig;
+  y1: AxisConfig;
+  y2: AxisConfig;
+}
+
 export interface ChartConfigOptions {
   title: boolean;
   subtitle: boolean;
@@ -8,22 +28,8 @@ export interface ChartConfigOptions {
   titleFontSize: boolean;
   subtitleFontSize: boolean;
   chartColors: boolean;
-  axis: {
-    x: {
-      label: boolean;
-      min: boolean;
-      max: boolean;
-      majorIncrement: boolean;
-      origin: boolean;
-    };
-    y: {
-      label: boolean;
-      min: boolean;
-      max: boolean;
-      majorIncrement: boolean;
-      origin: boolean;
-    };
-  };
+  axis: SingleYAxisConfig | DualYAxisConfig;
+  statistic?: boolean; // New option for charts that support statistic selection
   // Tambahkan properti lain jika perlu (legend, grid, dsb)
 }
 
@@ -613,10 +619,10 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     chartColors: true,
     axis: {
       x: {
-        label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        label: false,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -639,9 +645,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -664,9 +670,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -689,9 +695,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -739,12 +745,19 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
+        origin: false,
+      },
+      y1: {
+        label: true,
         min: true,
         max: true,
         majorIncrement: true,
         origin: false,
       },
-      y: {
+      y2: {
         label: true,
         min: true,
         max: true,
@@ -769,7 +782,14 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
         majorIncrement: true,
         origin: false,
       },
-      y: {
+      y1: {
+        label: true,
+        min: true,
+        max: true,
+        majorIncrement: true,
+        origin: false,
+      },
+      y2: {
         label: true,
         min: true,
         max: true,
@@ -789,9 +809,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -811,12 +831,13 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     titleFontSize: true,
     subtitleFontSize: true,
     chartColors: true,
+    statistic: true,
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
@@ -853,6 +874,7 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
       },
     },
   },
+
   "Clustered 3D Bar Chart": {
     title: true,
     subtitle: true,
@@ -988,17 +1010,17 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     chartColors: true,
     axis: {
       x: {
-        label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        label: false,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {
-        label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        label: false,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
     },
@@ -1014,9 +1036,9 @@ export const chartConfigOptions: Record<ChartType, ChartConfigOptions> = {
     axis: {
       x: {
         label: true,
-        min: true,
-        max: true,
-        majorIncrement: true,
+        min: false,
+        max: false,
+        majorIncrement: false,
         origin: false,
       },
       y: {

@@ -187,6 +187,46 @@ export default function TestChartService() {
     }
   };
 
+  // Test sorting functionality
+  const testSorting = () => {
+    console.log("🧪 Testing sorting functionality...");
+
+    const sampleData = [
+      { category: "C", value: 30 },
+      { category: "A", value: 10 },
+      { category: "B", value: 20 },
+    ];
+
+    const processingOptions = {
+      aggregation: "none" as const,
+      filterEmpty: true,
+      sortBy: "category",
+      sortOrder: "asc" as const,
+    };
+
+    try {
+      // Test DataProcessingService sorting
+      const processedData = DataProcessingService.processDataForChart({
+        chartType: "Vertical Bar Chart",
+        rawData: [
+          ["C", "30"],
+          ["A", "10"],
+          ["B", "20"],
+        ],
+        variables: [{ name: "Category" }, { name: "Value" }],
+        chartVariables: {
+          x: ["Category"],
+          y: ["Value"],
+        },
+        processingOptions: processingOptions,
+      });
+
+      console.log("✅ Sorting test result:", processedData);
+    } catch (error) {
+      console.error("❌ Sorting test failed:", error);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold mb-6">Chart Service Testing</h1>
@@ -378,6 +418,19 @@ export default function TestChartService() {
           >
             Test Complete Smart Workflow
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Sorting Test */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sorting Test</CardTitle>
+          <CardDescription>
+            Test DataProcessingService sorting functionality
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button onClick={testSorting}>Test Sorting</Button>
         </CardContent>
       </Card>
     </div>
