@@ -8,12 +8,10 @@ import { ChartService } from "./ChartService";
 
 // Contoh 1: Simple Bar Chart
 export function example1_SimpleBarChart() {
-  // Raw data dari CSV/SPSS
   const rawData = [
     ["A", 30],
-    ["B", 80],
-    ["C", 45],
-    ["D", 60],
+    ["B", 20],
+    ["C", 10],
   ];
 
   const variables = [
@@ -21,7 +19,6 @@ export function example1_SimpleBarChart() {
     { name: "value", type: "number" },
   ];
 
-  // Process data
   const processedData = DataProcessingService.processDataForChart({
     chartType: "Vertical Bar Chart",
     rawData: rawData,
@@ -31,7 +28,6 @@ export function example1_SimpleBarChart() {
       y: ["value"],
     },
     processingOptions: {
-      aggregation: "sum",
       filterEmpty: true,
     },
   });
@@ -43,7 +39,7 @@ export function example1_SimpleBarChart() {
   // Generate chart JSON
   const chartJSON = ChartService.createChartJSON({
     chartType: "Vertical Bar Chart",
-    chartData: processedData,
+    chartData: processedData.data,
     chartVariables: {
       x: ["category"],
       y: ["value"],
@@ -83,7 +79,7 @@ export function example2_ScatterPlot() {
   console.log("Example 2 - Scatter Plot:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 3: Stacked Bar Chart
@@ -116,7 +112,7 @@ export function example3_StackedBarChart() {
   console.log("Example 3 - Stacked Bar Chart:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 4: 3D Chart
@@ -147,7 +143,7 @@ export function example4_3DChart() {
   console.log("Example 4 - 3D Chart:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 5: Range Chart
@@ -180,7 +176,7 @@ export function example5_RangeChart() {
   console.log("Example 5 - Range Chart:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 6: Grouped Scatter Plot
@@ -212,7 +208,7 @@ export function example6_GroupedScatterPlot() {
   console.log("Example 6 - Grouped Scatter Plot:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 7: Histogram
@@ -233,7 +229,7 @@ export function example7_Histogram() {
   console.log("Example 7 - Histogram:");
   console.log("Processed data:", processedData);
 
-  return processedData;
+  return processedData.data;
 }
 
 // Contoh 8: Complete Workflow
@@ -274,7 +270,7 @@ export function example8_CompleteWorkflow() {
   // Step 2: Generate chart JSON
   const chartJSON = ChartService.createChartJSON({
     chartType: "Vertical Stacked Bar Chart",
-    chartData: processedData,
+    chartData: processedData.data,
     chartVariables: {
       x: ["product"],
       y: ["quarter"],
@@ -282,6 +278,7 @@ export function example8_CompleteWorkflow() {
     chartMetadata: {
       title: "Product Sales by Quarter",
       subtitle: "Stacked Bar Chart",
+      axisInfo: processedData.axisInfo,
     },
   });
 

@@ -336,9 +336,30 @@ export const RecodeSameVariablesModal: React.FC<
 
   // Helper function to evaluate rules
   const evaluateValueWithRules = (
-    value: string | number,
+    value: string | number | null,
     rules: RecodeRule[]
   ): string | number | null => {
+    // Handle null values
+    if (value === null || value === undefined) {
+      // Check for systemMissing or systemOrUserMissing rules first
+      const missingRule = rules.find(
+        (r) =>
+          r.oldValueType === "systemMissing" ||
+          r.oldValueType === "systemOrUserMissing"
+      );
+      if (missingRule) {
+        return missingRule.newValue;
+      }
+
+      // If no specific rule for missing values, check for else rule
+      const elseRule = rules.find((r) => r.oldValueType === "else");
+      if (elseRule) {
+        return elseRule.newValue;
+      }
+
+      return value;
+    }
+
     // Jika nilai adalah string kosong, kembalikan apa adanya
     if (value === "") {
       return value;

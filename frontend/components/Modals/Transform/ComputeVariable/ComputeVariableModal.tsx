@@ -276,11 +276,15 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({
             const bulkUpdates: CellUpdate[] = [];
             newData.forEach((row, rowIndex) => {
               const newColumnIndex = variables.length;
-              bulkUpdates.push({
-                row: rowIndex,
-                col: newColumnIndex,
-                value: row[newColumnIndex],
-              });
+              const value = row[newColumnIndex];
+              // Only add non-null values to the update
+              if (value !== null) {
+                bulkUpdates.push({
+                  row: rowIndex,
+                  col: newColumnIndex,
+                  value,
+                });
+              }
             });
 
             // Apply all updates in one call

@@ -1,229 +1,134 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChartService } from "../services/chart/ChartService";
 import { DataProcessingService } from "../services/chart/DataProcessingService";
-import { DataProcessingWorkerService } from "../services/chart/DataProcessingWorkerService";
-import { SmartDataProcessingService } from "../services/chart/SmartDataProcessingService";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { ChartService } from "../services/chart/ChartService";
 
 export default function TestChartService() {
-  const [chartJSON, setChartJSON] = useState<any>(null);
-  const [processedData, setProcessedData] = useState<any>(null);
-  const [workerData, setWorkerData] = useState<any>(null);
-  const [smartData, setSmartData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chartServiceOutput, setChartServiceOutput] = useState<any>(null);
+  const [showChartServiceTest, setShowChartServiceTest] = useState(false);
 
-  // Sample data
-  const sampleRawData = [
-    ["Product A", "Q1", 100],
-    ["Product A", "Q2", 150],
-    ["Product B", "Q1", 80],
-    ["Product B", "Q2", 120],
+  // Test data
+  const testData = [
+    ["Name", "Age", "Score"],
+    ["John", "25", "85"],
+    ["Jane", "30", "92"],
+    ["Bob", "28", "78"],
+    ["Alice", "22", "95"],
   ];
 
-  const sampleVariables = [
-    { name: "product", type: "string" },
-    { name: "quarter", type: "string" },
-    { name: "sales", type: "number" },
+  const variables = [
+    { name: "Name", type: "string" },
+    { name: "Age", type: "number" },
+    { name: "Score", type: "number" },
   ];
 
   // Test ChartService
-  const testChartService = () => {
-    const testData = [
-      { category: "A", value: 30 },
-      { category: "B", value: 80 },
-      { category: "C", value: 45 },
-      { category: "D", value: 60 },
-    ];
-
-    const result = ChartService.createChartJSON({
-      chartType: "Vertical Bar Chart",
-      chartData: testData,
-      chartVariables: {
-        x: ["category"],
-        y: ["value"],
-      },
-      chartMetadata: {
-        title: "Test Chart",
-        subtitle: "Sample Data",
-      },
-    });
-
-    setChartJSON(result);
-    console.log("ChartService Result:", result);
-  };
-
-  // Test DataProcessingService
-  const testDataProcessingService = () => {
-    const result = DataProcessingService.processDataForChart({
-      chartType: "Vertical Stacked Bar Chart",
-      rawData: sampleRawData,
-      variables: sampleVariables,
-      chartVariables: {
-        x: ["product"],
-        y: ["quarter"],
-      },
-      processingOptions: {
-        aggregation: "sum",
-        filterEmpty: true,
-      },
-    });
-
-    setProcessedData(result);
-    console.log("DataProcessingService Result:", result);
-  };
-
-  // Test DataProcessingWorkerService
-  const testDataProcessingWorkerService = async () => {
+  const testChartService = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const result = await DataProcessingWorkerService.processData({
-        chartType: "Vertical Stacked Bar Chart",
-        rawData: sampleRawData,
-        variables: sampleVariables,
+      const processedData = await DataProcessingService.processDataForChart({
+        chartType: "Vertical Bar Chart",
+        rawData: testData,
+        variables,
         chartVariables: {
-          x: ["product"],
-          y: ["quarter"],
+          x: ["Name"],
+          y: ["Score"],
         },
         processingOptions: {
-          aggregation: "sum",
+          aggregation: "none",
           filterEmpty: true,
         },
       });
 
-      setWorkerData(result);
-      console.log("DataProcessingWorkerService Result:", result);
+      console.log("Processed Data:", processedData);
+
+      const chartResult = ChartService.createChartJSON({
+        chartType: "Vertical Bar Chart",
+        chartData: processedData.data,
+        chartVariables: {
+          x: ["Name"],
+          y: ["Score"],
+        },
+        chartMetadata: {
+          title: "Test Chart",
+          subtitle: "Score by Name",
+        },
+      });
+
+      console.log("Chart Result:", chartResult);
+      setChartServiceOutput(chartResult);
+      setShowChartServiceTest(true);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
       setError(errorMessage);
-      console.error("Worker Service Error:", error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Test SmartDataProcessingService
-  const testSmartDataProcessingService = async () => {
+  // Test ChartService with large dataset
+  const testChartServiceLarge = async () => {
     setLoading(true);
     setError(null);
-
-    try {
-      const result = await SmartDataProcessingService.processData({
-        chartType: "Vertical Stacked Bar Chart",
-        rawData: sampleRawData,
-        variables: sampleVariables,
-        chartVariables: {
-          x: ["product"],
-          y: ["quarter"],
-        },
-        processingOptions: {
-          aggregation: "sum",
-          filterEmpty: true,
-        },
-      });
-
-      setSmartData(result);
-      console.log("SmartDataProcessingService Result:", result);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      setError(errorMessage);
-      console.error("Smart Service Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Test SmartDataProcessingService dengan data besar (force async)
-  const testSmartDataProcessingServiceLarge = async () => {
-    setLoading(true);
-    setError(null);
-
     try {
       // Generate large dataset
-      const largeData = Array.from({ length: 2000 }, (_, i) => [
-        `Product ${Math.floor(i / 100)}`,
-        `Q${(i % 4) + 1}`,
-        Math.random() * 1000,
-      ]);
+      const largeData = [["X", "Y"]];
+      for (let i = 0; i < 1000; i++) {
+        largeData.push([i.toString(), (Math.random() * 100).toString()]);
+      }
 
-      const result = await SmartDataProcessingService.processData({
-        chartType: "Vertical Stacked Bar Chart",
+      const largeVariables = [
+        { name: "X", type: "number" },
+        { name: "Y", type: "number" },
+      ];
+
+      const processedData = await DataProcessingService.processDataForChart({
+        chartType: "Line Chart",
         rawData: largeData,
-        variables: sampleVariables,
+        variables: largeVariables,
         chartVariables: {
-          x: ["product"],
-          y: ["quarter"],
+          x: ["X"],
+          y: ["Y"],
         },
         processingOptions: {
-          aggregation: "sum",
           filterEmpty: true,
         },
       });
 
-      setSmartData(result);
-      console.log("SmartDataProcessingService Large Data Result:", result);
+      console.log("Large Data Processed:", processedData);
+
+      const chartResult = ChartService.createChartJSON({
+        chartType: "Line Chart",
+        chartData: processedData.data,
+        chartVariables: {
+          x: ["X"],
+          y: ["Y"],
+        },
+        chartMetadata: {
+          title: "Large Dataset Test",
+          subtitle: "Random Values",
+        },
+      });
+
+      console.log("Large Chart Result:", chartResult);
+      setChartServiceOutput(chartResult);
+      setShowChartServiceTest(true);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
       setError(errorMessage);
-      console.error("Smart Service Large Data Error:", error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Test sorting functionality
-  const testSorting = () => {
-    console.log("🧪 Testing sorting functionality...");
-
-    const sampleData = [
-      { category: "C", value: 30 },
-      { category: "A", value: 10 },
-      { category: "B", value: 20 },
-    ];
-
-    const processingOptions = {
-      aggregation: "none" as const,
-      filterEmpty: true,
-      sortBy: "category",
-      sortOrder: "asc" as const,
-    };
-
-    try {
-      // Test DataProcessingService sorting
-      const processedData = DataProcessingService.processDataForChart({
-        chartType: "Vertical Bar Chart",
-        rawData: [
-          ["C", "30"],
-          ["A", "10"],
-          ["B", "20"],
-        ],
-        variables: [{ name: "Category" }, { name: "Value" }],
-        chartVariables: {
-          x: ["Category"],
-          y: ["Value"],
-        },
-        processingOptions: processingOptions,
-      });
-
-      console.log("✅ Sorting test result:", processedData);
-    } catch (error) {
-      console.error("❌ Sorting test failed:", error);
     }
   };
 
@@ -249,188 +154,26 @@ export default function TestChartService() {
       <Card>
         <CardHeader>
           <CardTitle>ChartService Test</CardTitle>
-          <CardDescription>Test ChartService.createChartJSON()</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={testChartService}>Test ChartService</Button>
-          {chartJSON && (
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Result:</h4>
-              <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                {JSON.stringify(chartJSON, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* DataProcessingService Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle>DataProcessingService Test</CardTitle>
-          <CardDescription>
-            Test DataProcessingService.processDataForChart()
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button onClick={testDataProcessingService}>
-            Test DataProcessingService
-          </Button>
-          {processedData && (
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Result:</h4>
-              <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                {JSON.stringify(processedData, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* DataProcessingWorkerService Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle>DataProcessingWorkerService Test</CardTitle>
-          <CardDescription>
-            Test DataProcessingWorkerService.processData()
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button onClick={testDataProcessingWorkerService} disabled={loading}>
-            Test DataProcessingWorkerService
-          </Button>
-          {workerData && (
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Result:</h4>
-              <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                {JSON.stringify(workerData, null, 2)}
-              </pre>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* SmartDataProcessingService Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle>SmartDataProcessingService Test</CardTitle>
-          <CardDescription>
-            Test SmartDataProcessingService - Auto choose best method
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={testSmartDataProcessingService} disabled={loading}>
-              Test Smart Service (Small Data)
-            </Button>
-            <Button
-              onClick={testSmartDataProcessingServiceLarge}
-              disabled={loading}
-            >
-              Test Smart Service (Large Data)
+          <div>
+            <p>Test ChartService with small dataset</p>
+            <Button onClick={testChartService} disabled={loading}>
+              Run Test
             </Button>
           </div>
-          {smartData && (
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Result:</h4>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Badge variant="outline">Method: {smartData.method}</Badge>
-                  <Badge variant="outline">
-                    Time: {smartData.processingTime}ms
-                  </Badge>
-                  <Badge variant="outline">
-                    Size: {smartData.dataSize} rows
-                  </Badge>
-                </div>
-                <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto">
-                  {JSON.stringify(smartData.processedData, null, 2)}
-                </pre>
-              </div>
+          <div>
+            <p>Test ChartService with large dataset</p>
+            <Button onClick={testChartServiceLarge} disabled={loading}>
+              Run Large Test
+            </Button>
+          </div>
+          {showChartServiceTest && (
+            <div>
+              <h3>Chart Service Output:</h3>
+              <pre>{JSON.stringify(chartServiceOutput, null, 2)}</pre>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Complete Workflow Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Complete Workflow Test</CardTitle>
-          <CardDescription>
-            Test SmartDataProcessingService + ChartService integration
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button
-            onClick={async () => {
-              setLoading(true);
-              setError(null);
-
-              try {
-                // Step 1: Process data with smart service
-                const result = await SmartDataProcessingService.processData({
-                  chartType: "Vertical Stacked Bar Chart",
-                  rawData: sampleRawData,
-                  variables: sampleVariables,
-                  chartVariables: {
-                    x: ["product"],
-                    y: ["quarter"],
-                  },
-                  processingOptions: {
-                    aggregation: "sum",
-                    filterEmpty: true,
-                  },
-                });
-
-                // Step 2: Generate chart JSON
-                const chartJSON = ChartService.createChartJSON({
-                  chartType: "Vertical Stacked Bar Chart",
-                  chartData: result.processedData,
-                  chartVariables: {
-                    x: ["product"],
-                    y: ["quarter"],
-                  },
-                  chartMetadata: {
-                    title: "Product Sales by Quarter",
-                    subtitle: "Smart Processing Workflow",
-                  },
-                });
-
-                console.log("Complete Smart Workflow Result:", {
-                  processingResult: result,
-                  chartJSON,
-                });
-                alert(
-                  `Complete smart workflow successful!\nMethod: ${result.method}\nTime: ${result.processingTime}ms\nCheck console for details.`
-                );
-              } catch (error) {
-                const errorMessage =
-                  error instanceof Error
-                    ? error.message
-                    : "Unknown error occurred";
-                setError(errorMessage);
-                console.error("Complete Smart Workflow Error:", error);
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            Test Complete Smart Workflow
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Sorting Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Sorting Test</CardTitle>
-          <CardDescription>
-            Test DataProcessingService sorting functionality
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button onClick={testSorting}>Test Sorting</Button>
         </CardContent>
       </Card>
     </div>

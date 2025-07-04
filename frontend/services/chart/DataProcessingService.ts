@@ -1,11 +1,11 @@
 // Interface untuk output data processing
-interface DataProcessingOutput {
+export interface DataProcessingOutput {
   data: any[];
   axisInfo: Record<string, string>;
 }
 
 // Interface untuk input data processing
-interface DataProcessingInput {
+export interface DataProcessingInput {
   // Required
   chartType: string;
   rawData: any[][]; // Raw data dari CSV/SPSS

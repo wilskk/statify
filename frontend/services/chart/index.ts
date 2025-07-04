@@ -19,14 +19,8 @@ export type {
 export { chartExamples } from "./ChartExamples";
 export { dataProcessingExamples } from "./DataProcessingExamples";
 
-// Chart Services
-export {
-  SmartDataProcessingService,
-  SmartDataProcessingUtils,
-} from "./SmartDataProcessingService";
-
-// Types
+// Export types
 export type {
   DataProcessingInput,
   DataProcessingOutput,
-} from "./SmartDataProcessingService";
+} from "./DataProcessingService";
