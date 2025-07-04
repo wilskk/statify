@@ -1,5 +1,5 @@
-import React, { lazy, Suspense } from 'react';
-import { ModalType, BaseModalProps, ModalCategory } from '@/types/modalTypes';
+import React, { lazy, Suspense } from "react";
+import { ModalType, BaseModalProps, ModalCategory } from "@/types/modalTypes";
 
 // Import modal registries
 import { FILE_MODAL_COMPONENTS, FILE_MODAL_CONTAINER_PREFERENCES } from '@/components/Modals/File/';
@@ -18,8 +18,15 @@ const PlotsLinear = lazy(() => import('@/components/Modals/Regression/Linear/Plo
 const ModalCurveEstimation = lazy(() => import('@/components/Modals/Regression/CurveEstimation/ModalCurveEstimation'));
 
 // Lazy load chart modals
-const SimpleBarModal = lazy(() => import('@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal'));
-const ChartBuilderModal = lazy(() => import('@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal'));
+const SimpleBarModal = lazy(
+    () =>
+        import(
+            "@/components/Modals/Graphs/LegacyDialogs/BarModal/SimpleBarModal"
+        )
+);
+const ChartBuilderModal = lazy(
+    () => import("@/components/Modals/Graphs/ChartBuilder/ChartBuilderModal")
+);
 
 // Lazy load time series modals
 const SmoothingModal = lazy(() => import('@/components/Modals/Analyze/TimeSeries/Smoothing'));
@@ -32,44 +39,48 @@ const BoxJenkinsModelModal = lazy(() => import('@/components/Modals/Analyze/Time
  * Komponen LoadingModal - Ditampilkan selama komponen modal sedang dimuat
  */
 const LoadingModal: React.FC<BaseModalProps> = ({ onClose }) => (
-  <div className="p-6 text-center">
-    <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
-    <p className="text-sm text-muted-foreground">Loading...</p>
-  </div>
+    <div className="p-6 text-center">
+        <div className="animate-pulse mx-auto h-8 w-8 rounded-full bg-primary/20 mb-4" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
 );
 
 /**
  * Tipe registry komponen modal
- * 
+ *
  * Memetakan setiap ModalType ke komponen React yang sesuai
  */
 type ModalComponentRegistry = {
-  [key in ModalType]?: React.ComponentType<BaseModalProps>;
+    [key in ModalType]?: React.ComponentType<BaseModalProps>;
 };
 
 /**
  * withSuspense - HOC untuk membungkus komponen lazy-loaded dengan Suspense
- * 
+ *
  * @param Component - Komponen yang di-lazy load
  * @returns Komponen yang dibungkus dengan Suspense
  */
-function withSuspense(Component: React.ComponentType<BaseModalProps>): React.ComponentType<BaseModalProps> {
-  const WrappedComponent = (props: BaseModalProps) => (
-    <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
-      <Component {...props} />
-    </Suspense>
-  );
-  
-  WrappedComponent.displayName = `withSuspense(${Component.displayName || Component.name || 'Component'})`;
-  return WrappedComponent;
+function withSuspense(
+    Component: React.ComponentType<BaseModalProps>
+): React.ComponentType<BaseModalProps> {
+    const WrappedComponent = (props: BaseModalProps) => (
+        <Suspense fallback={<LoadingModal onClose={props.onClose} />}>
+            <Component {...props} />
+        </Suspense>
+    );
+
+    WrappedComponent.displayName = `withSuspense(${
+        Component.displayName || Component.name || "Component"
+    })`;
+    return WrappedComponent;
 }
 
 /**
  * MODAL_COMPONENTS - Registry utama semua komponen modal
- * 
+ *
  * Ini adalah registry terpusat yang memetakan setiap ModalType ke komponen React spesifik.
  * Ketika menambahkan modal baru, cukup mendaftarkannya disini.
- * 
+ *
  * Note: Menggunakan 'as' type assertion untuk mengatasi perbedaan props
  * karena BaseModalProps sudah memiliki semua props yang diperlukan sebagai optional.
  */
@@ -115,27 +126,29 @@ export const MODAL_COMPONENTS: ModalComponentRegistry = {
 
 /**
  * getModalComponent - Fungsi untuk mendapatkan komponen modal berdasarkan tipe
- * 
+ *
  * @param type - Tipe modal yang diinginkan
  * @returns Komponen React untuk tipe modal tersebut, atau null jika tidak ditemukan
  */
-export function getModalComponent(type: ModalType): React.ComponentType<BaseModalProps> | null {
-  const Component = MODAL_COMPONENTS[type];
-  
-  if (!Component) {
-    console.warn(`No component registered for modal type: ${type}`);
-    return null;
-  }
-  
-  return Component;
+export function getModalComponent(
+    type: ModalType
+): React.ComponentType<BaseModalProps> | null {
+    const Component = MODAL_COMPONENTS[type];
+
+    if (!Component) {
+        console.warn(`No component registered for modal type: ${type}`);
+        return null;
+    }
+
+    return Component;
 }
 
 /**
  * MODAL_CONTAINER_PREFERENCES - Preferensi container untuk modal tertentu
- * 
+ *
  * Beberapa modal mungkin lebih cocok ditampilkan dalam format tertentu.
  * Misalnya, modal kompleks seperti ChartBuilder lebih baik selalu dialog.
- * 
+ *
  */
 export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "sidebar">> = {
   // Data modals - from dedicated preferences
@@ -168,30 +181,30 @@ export const MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog" | "
 
 /**
  * getModalContainerType - Fungsi untuk menentukan jenis container yang sesuai
- * 
+ *
  * @param type - Tipe modal
  * @param fallback - Jenis container default jika tidak ada preferensi
  * @param isMobile - Flag untuk menandakan apakah pengguna menggunakan perangkat mobile
  * @returns Jenis container yang sesuai ("dialog" atau "sidebar")
  */
 export function getModalContainerType(
-  type: ModalType,
-  fallback: "dialog" | "sidebar" = "dialog",
-  isMobile: boolean = false
+    type: ModalType,
+    fallback: "dialog" | "sidebar" = "dialog",
+    isMobile: boolean = false
 ): "dialog" | "sidebar" {
-  // Mobile devices always use dialog
-  if (isMobile) {
-    return "dialog";
-  }
-  
-  // Check for modal-specific preference
-  const preference = MODAL_CONTAINER_PREFERENCES[type];
-  
-  // If no preference is defined, use the fallback
-  if (!preference) {
-    return fallback;
-  }
-  
-  // Return the explicit preference
-  return preference;
-} 
+    // Mobile devices always use dialog
+    if (isMobile) {
+        return "dialog";
+    }
+
+    // Check for modal-specific preference
+    const preference = MODAL_CONTAINER_PREFERENCES[type];
+
+    // If no preference is defined, use the fallback
+    if (!preference) {
+        return fallback;
+    }
+
+    // Return the explicit preference
+    return preference;
+}

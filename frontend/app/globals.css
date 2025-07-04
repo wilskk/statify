@@ -273,3 +273,37 @@ table:not(.data-table-modern table) {
     padding: 8px 12px !important;
   }
 }
+
+/* Customize list styles within tiptap editor */
+.tiptap ul {
+  list-style-type: disc;
+  margin-left: 1.25rem; /* ~20px */
+  padding-left: 0.25rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  margin-left: 1.25rem;
+  padding-left: 0.25rem;
+}
+
+.tiptap li {
+  margin-bottom: 0.25rem;
+}
+
+/* Refined vertical rhythm inside Tiptap editor */
+.tiptap p,
+.tiptap ul,
+.tiptap ol,
+.tiptap blockquote {
+  margin-bottom: 0.5rem; /* consistent paragraph spacing */
+}
+
+.tiptap li {
+  margin-bottom: 0.125rem; /* tighter list items */
+}
+
+/* Remove bottom margin from the last element */
+.tiptap > *:last-child {
+  margin-bottom: 0;
+}

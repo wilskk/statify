@@ -33,9 +33,6 @@ const DescriptivesModal = lazy(() => import('@/components/Modals/Analyze/Descrip
 const ExploreModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Explore'));
 const FrequenciesModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Frequencies'));
 const CrosstabsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Crosstabs'));
-const RatioModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/Ratio'));
-const PPPlotsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/PPPlots'));
-const QQPlotsModal = lazy(() => import('@/components/Modals/Analyze/Descriptive/QQPlots'));
 
 /**
  * DESCRIPTIVE_MODAL_COMPONENTS - Registry for descriptive statistics modal components
@@ -47,9 +44,6 @@ export const DESCRIPTIVE_MODAL_COMPONENTS: Record<string, React.ComponentType<Ba
   [ModalType.Explore]: withSuspense(ExploreModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.Frequencies]: withSuspense(FrequenciesModal as any) as React.ComponentType<BaseModalProps>,
   [ModalType.Crosstabs]: withSuspense(CrosstabsModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.Ratio]: withSuspense(RatioModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.PPPlots]: withSuspense(PPPlotsModal as any) as React.ComponentType<BaseModalProps>,
-  [ModalType.QQPlots]: withSuspense(QQPlotsModal as any) as React.ComponentType<BaseModalProps>,
 };
 
 /**
@@ -80,7 +74,4 @@ export const DESCRIPTIVE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, 
   [ModalType.Explore]: "sidebar",
   [ModalType.Frequencies]: "sidebar",
   [ModalType.Crosstabs]: "sidebar",
-  [ModalType.Ratio]: "sidebar",
-  [ModalType.PPPlots]: "sidebar",
-  [ModalType.QQPlots]: "sidebar",
 }; 

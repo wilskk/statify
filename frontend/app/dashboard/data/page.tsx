@@ -3,7 +3,7 @@
 "use client";
 
 import React, { Suspense, useEffect } from 'react';
-import Index from "@/components/pages/dashboard/dataTable";
+import Index from "./components/dataTable";
 import { DataTableSkeleton } from "@/components/ui/Skeletons";
 import { useTableRefStore } from '@/stores/useTableRefStore';
 

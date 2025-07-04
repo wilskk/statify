@@ -2,8 +2,8 @@
 "use client";
 
 import React, {Suspense} from 'react';
-import Sidebar from '@/components/Output/Sidebar';
-import ResultOutput from "@/components/Output/ResultOutput";
+import Sidebar from './components/Sidebar';
+import ResultOutput from "./components/ResultOutput";
 import { ResultsSkeleton, SidebarSkeleton } from '@/components/ui/Skeletons';
 
 export default function ResultPage() {

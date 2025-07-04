@@ -38,10 +38,12 @@ The feature provides several categories of aggregation functions:
 
 #### Number of Cases
 
-- **Weighted**: Counts the number of non-missing cases in each group
-- **Weighted Missing**: Counts the number of missing cases in each group
-- **Unweighted**: Counts the total number of cases in each group, regardless of missing status
-- **Unweighted Missing**: Alternative count of missing values
+*Note: The terms "Weighted" and "Unweighted" are based on SPSS terminology. Currently, this feature does not support a case weight variable, so all counts are effectively unweighted.*
+
+- **Weighted (N)**: Counts the number of cases in each group where the source variable has a non-missing value.
+- **Weighted Missing (NMISS)**: Counts the number of cases in each group where the source variable has a missing value.
+- **Unweighted (NU)**: Counts the total number of cases in each group.
+- **Unweighted Missing (NUMISS)**: Counts the number of cases in each group where the source variable has a missing value.
 
 #### Percentages, Fractions, Counts
 
@@ -57,8 +59,8 @@ The feature provides several categories of aggregation functions:
 
 #### Options for Very Large Datasets
 
-- **File is already sorted on break variable(s)**: Skip the sorting step when data is already ordered by break variables
-- **Sort file before aggregating**: Sort data by break variables before aggregating (improves performance)
+- **File is already sorted on break variable(s)**: Skip the sorting step when data is already ordered by break variables. *(Note: This option is available in the UI but not yet implemented in the aggregation logic.)*
+- **Sort file before aggregating**: Sort data by break variables before aggregating (improves performance). *(Note: This option is available in the UI but not yet implemented in the aggregation logic.)*
 
 ## Algorithm Details
 
@@ -73,9 +75,9 @@ The aggregation algorithm works as follows:
    - Results are calculated and stored in new variables
 
 3. **Result Generation**:
-   - New variables are created for each aggregated variable with its associated function
-   - Each group is represented as a single case in the output
-   - The break variables and aggregated result variables form the new dataset
+   - New variables are created for each aggregated variable with its associated function.
+   - By default, these new variables are added to the *active dataset*. The aggregated value is then broadcast to all cases belonging to the same break group.
+   - Functionality to create a new dataset containing one case per break group is planned for a future release.
 
 ## Usage Examples
 

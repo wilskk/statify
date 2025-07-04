@@ -1,17 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { useVariableStore } from "@/stores/useVariableStore";
-import { useMetaStore } from "@/stores/useMetaStore";
 import { Variable } from "@/types/Variable";
 
 interface UseWeightCasesProps {
     onClose: () => void;
+    initialVariables: Variable[];
+    initialWeight: string;
+    onSave: (newWeight: string) => void;
 }
 
-export const useWeightCases = ({ onClose }: UseWeightCasesProps) => {
-    const { variables } = useVariableStore();
-    const meta = useMetaStore((state) => state.meta);
-    const setMeta = useMetaStore((state) => state.setMeta);
-
+export const useWeightCases = ({ onClose, initialVariables, initialWeight, onSave }: UseWeightCasesProps) => {
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [frequencyVariables, setFrequencyVariables] = useState<Variable[]>([]);
     const [highlightedVariable, setHighlightedVariable] = useState<{ id: string; source: string } | null>(null);
@@ -21,7 +18,6 @@ export const useWeightCases = ({ onClose }: UseWeightCasesProps) => {
     const weightMethod = frequencyVariables.length > 0 ? "byVariable" : "none";
 
     const ensureUniqueTempId = useCallback((variable: Variable): Variable => {
-        // Ensure tempId is always fresh for list operations if not present or to break React key issues
         return {
             ...variable,
             tempId: `weight_temp_${variable.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -29,15 +25,15 @@ export const useWeightCases = ({ onClose }: UseWeightCasesProps) => {
     }, []);
 
     useEffect(() => {
-        const numericVariables = variables
+        const numericVariables = initialVariables
             .filter(v => v.name !== "" && v.type !== "STRING")
             .map(ensureUniqueTempId);
 
-        if (meta.weight && meta.weight !== "") {
-            const weightVar = numericVariables.find(v => v.name === meta.weight);
+        if (initialWeight && initialWeight !== "") {
+            const weightVar = numericVariables.find(v => v.name === initialWeight);
             if (weightVar) {
-                setFrequencyVariables([ensureUniqueTempId(weightVar)]); // Ensure it has a fresh tempId
-                setAvailableVariables(numericVariables.filter(v => v.name !== meta.weight));
+                setFrequencyVariables([ensureUniqueTempId(weightVar)]);
+                setAvailableVariables(numericVariables.filter(v => v.name !== initialWeight));
             } else {
                 setAvailableVariables(numericVariables);
                 setFrequencyVariables([]);
@@ -46,7 +42,7 @@ export const useWeightCases = ({ onClose }: UseWeightCasesProps) => {
             setAvailableVariables(numericVariables);
             setFrequencyVariables([]);
         }
-    }, [variables, meta.weight, ensureUniqueTempId]);
+    }, [initialVariables, initialWeight, ensureUniqueTempId]);
 
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string) => {
         const variableWithFreshTempId = ensureUniqueTempId(variable);
@@ -88,31 +84,17 @@ export const useWeightCases = ({ onClose }: UseWeightCasesProps) => {
     }, [ensureUniqueTempId]);
 
     const handleSave = () => {
-        if (frequencyVariables.length > 0) {
-            setMeta({ weight: frequencyVariables[0].name });
-        } else {
-            setMeta({ weight: "" });
-        }
+        const newWeight = frequencyVariables.length > 0 ? frequencyVariables[0].name : "";
+        onSave(newWeight);
         onClose();
     };
 
     const handleReset = () => {
-        if (frequencyVariables.length > 0) {
-            const varsToMove = frequencyVariables.map(ensureUniqueTempId);
-            setAvailableVariables(prev => {
-                const nameSet = new Set(varsToMove.map(v => v.name));
-                const filtered = prev.filter(v => !nameSet.has(v.name));
-                return [...filtered, ...varsToMove].sort((a, b) => a.columnIndex - b.columnIndex);
-            });
-            setFrequencyVariables([]);
-        }
-        // Re-initialize availableVariables from scratch based on numeric variables
-        const numericVariables = variables
+        const numericVariables = initialVariables
             .filter(v => v.name !== "" && v.type !== "STRING")
             .map(ensureUniqueTempId);
         setAvailableVariables(numericVariables);
-        setFrequencyVariables([]); // Ensure frequency is cleared
-        setMeta({ weight: "" }); // Also reset meta store's weight
+        setFrequencyVariables([]);
         setHighlightedVariable(null);
         setErrorMessage(null);
         setErrorDialogOpen(false);

@@ -37,7 +37,7 @@ const ErrorDialog: React.FC<ErrorDialogProps> = ({
                 <div className="px-3 py-2 flex-shrink-0">
                     <DialogHeader className="p-0">
                         <DialogTitle className="text-sm font-semibold">
-                            IBM SPSS Statistics 25
+                            Error
                         </DialogTitle>
                     </DialogHeader>
                 </div>

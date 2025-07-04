@@ -90,7 +90,7 @@ export const generateCsvContent = (
     }
 
     data.forEach(row => {
-        const formattedRow = row.map((cell: string | number) => escapeCsvCell(cell, delimiter, quoteStrings));
+        const formattedRow = row.map((cell: string | number | null) => escapeCsvCell(cell, delimiter, quoteStrings));
         lines.push(formattedRow.join(delimiter));
     });
 

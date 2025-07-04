@@ -107,7 +107,7 @@ export const generateDefaultVariables = (numCols: number): Variable[] => {
             label: "",
             values: [],
             missing: null,
-            columns: 64,
+            columns: 72,
             align: "right",
             measure: "unknown",
             role: "input"
