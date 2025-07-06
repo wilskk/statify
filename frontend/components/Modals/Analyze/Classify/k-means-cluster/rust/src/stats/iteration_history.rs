@@ -14,8 +14,6 @@ pub fn generate_iteration_history(
     data: &ProcessedData,
     config: &ClusterConfig
 ) -> Result<IterationHistory, String> {
-    // Ekstrak parameter yang diperlukan dari struct `ClusterConfig`.
-    // Parameter ini mengontrol perilaku algoritma K-Means.
     let num_clusters = config.main.cluster as usize; // Jumlah cluster yang diinginkan.
     let max_iterations = config.iterate.maximum_iterations; // Batas maksimum iterasi.
     let convergence_criterion = config.iterate.convergence_criterion; // Kriteria untuk menganggap algoritma telah konvergen.
@@ -42,7 +40,11 @@ pub fn generate_iteration_history(
 
     for iteration in 1..=max_iterations {
         // Inisialisasi pusat cluster baru dan jumlah anggota untuk setiap cluster.
-        let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+        let mut new_centers = if use_running_means {
+            current_centers.clone()
+        } else {
+            vec![vec![0.0; data.variables.len()]; num_clusters]
+        };
         let mut cluster_counts = vec![0; num_clusters];
 
         // Tahap Penugasan (Assignment Step) dan Pembaruan Pusat Cluster
@@ -55,13 +57,13 @@ pub fn generate_iteration_history(
             if use_running_means {
                 // Metode Rata-rata Berjalan (Running Means):
                 // Pusat cluster diperbarui secara inkremental setelah setiap titik data ditambahkan.
-                // Rumus: new_mean = (old_mean * (n-1) + new_value) / n
-                // Tujuan: Menghindari perhitungan ulang total dan pembagian di akhir,
-                //         bisa lebih efisien untuk data besar.
+                // Rumus: M_n = M_{n-1} + (x_n - M_{n-1}) / n
+                // Tujuan: Memberikan pembaruan yang lebih stabil dan bertahap,
+                //         yang bisa lebih efektif untuk beberapa jenis distribusi data.
                 let count = cluster_counts[closest] as f64;
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] =
-                        (new_centers[closest][j] * (count - 1.0) + val) / count;
+                        new_centers[closest][j] + (val - new_centers[closest][j]) / count;
                 }
             } else {
                 // Metode Rata-rata Batch (Batch Means):
@@ -84,6 +86,14 @@ pub fn generate_iteration_history(
             }
         }
 
+        // Menangani kluster kosong dengan mempertahankan pusat lama mereka
+        // untuk menghindari pergeseran ke titik asal (0,0,...).
+        for i in 0..num_clusters {
+            if cluster_counts[i] == 0 {
+                new_centers[i] = current_centers[i].clone();
+            }
+        }
+
         // Menghitung Perubahan Pusat Cluster
 
         // Mengukur seberapa besar pergeseran pusat cluster dari iterasi sebelumnya.
@@ -92,10 +102,11 @@ pub fn generate_iteration_history(
         let mut max_change: f64 = 0.0;
 
         for i in 0..num_clusters {
-            // Menghitung perubahan absolut maksimum pada salah satu koordinat pusat cluster.
+            // Menghitung jarak Euclidean antara pusat cluster lama dan baru.
             let cluster_change = (0..data.variables.len())
-                .map(|j| (new_centers[i][j] - current_centers[i][j]).abs())
-                .fold(0.0, |max_val, change| (max_val as f64).max(change));
+                .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
+                .sum::<f64>()
+                .sqrt();
 
             changes.push((format!("{}", i + 1), cluster_change));
             max_change = max_change.max(cluster_change);
@@ -111,7 +122,7 @@ pub fn generate_iteration_history(
         if max_change <= min_change_threshold {
             convergence_note = Some(
                 format!(
-                    "Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is {:.3}. The current iteration is {}. The minimum distance between initial centers is {:.3}.",
+                    "Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is {:.15e}. The current iteration is {}. The minimum distance between initial centers is {:.3}.",
                     max_change,
                     iteration,
                     min_center_dist

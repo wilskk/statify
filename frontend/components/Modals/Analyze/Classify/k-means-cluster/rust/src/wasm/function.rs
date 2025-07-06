@@ -14,10 +14,11 @@ pub fn run_analysis(
 ) -> Result<Option<ClusteringResult>, JsValue> {
     web_sys::console::log_1(&"Memulai analisis K-Means Cluster...".into());
     web_sys::console::log_1(&format!("Konfigurasi: {:?}", config).into());
+    web_sys::console::log_1(&format!("Data: {:?}", data).into());
 
-    // Langkah 1: Pra-pemrosesan Data
+    // --- Langkah 1: Pra-pemrosesan Data ---
     // Tahap ini mempersiapkan data mentah agar siap untuk dianalisis. Proses ini dapat
-    // mencakup normalisasi atau standardisasi, tergantung pada konfigurasi yang diberikan.
+    // mencakup penanganan data hilang, tergantung pada konfigurasi yang diberikan.
     logger.add_log("preprocess_data");
     let preprocessed_data = match core::preprocess_data(data, config) {
         Ok(processed) => { processed }
@@ -39,7 +40,6 @@ pub fn run_analysis(
             }
             Err(e) => {
                 error_collector.add_error("initialize_clusters", &e);
-                return Err(string_to_js_error(e));
             }
         };
     }

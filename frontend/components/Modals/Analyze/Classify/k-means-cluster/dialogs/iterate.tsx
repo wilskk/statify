@@ -39,19 +39,20 @@ export const KMeansClusterIterate = ({
 
     const handleContinue = () => {
         if (
-            !iterateState.MaximumIterations ||
-            iterateState.MaximumIterations < 1
+            iterateState.MaximumIterations == null ||
+            iterateState.MaximumIterations < 1 ||
+            iterateState.MaximumIterations > 999
         ) {
-            toast.warning("Maximum iterations must be at least 1.");
+            toast.warning("Maximum iterations must be between 1 and 1000.");
             return;
         }
         if (
-            !iterateState.ConvergenceCriterion ||
-            iterateState.ConvergenceCriterion <= 0 ||
+            iterateState.ConvergenceCriterion == null ||
+            iterateState.ConvergenceCriterion < 0 ||
             iterateState.ConvergenceCriterion > 1
         ) {
             toast.warning(
-                "Convergence criterion must be greater than 0 and less than or equal to 1."
+                "Convergence criterion must be greater or equal than 0 and less than or equal to 1."
             );
             return;
         }
@@ -67,11 +68,13 @@ export const KMeansClusterIterate = ({
         <div className="flex flex-col h-full">
             <div className="flex flex-col items-start gap-2 p-4 flex-grow">
                 <div className="flex flex-row items-center gap-2">
-                    <Label className="w-[300px]">Maximum Iteration: </Label>
+                    <Label className="w-[290px]">Maximum Iteration: </Label>
                     <Input
                         id="MaximumIterations"
                         type="number"
                         value={iterateState.MaximumIterations ?? 0}
+                        min={1}
+                        max={999}
                         onChange={(e) =>
                             handleChange(
                                 "MaximumIterations",
@@ -87,6 +90,8 @@ export const KMeansClusterIterate = ({
                         id="ConvergenceCriterion"
                         type="number"
                         value={iterateState.ConvergenceCriterion ?? 0}
+                        min={0}
+                        max={1}
                         onChange={(e) =>
                             handleChange(
                                 "ConvergenceCriterion",

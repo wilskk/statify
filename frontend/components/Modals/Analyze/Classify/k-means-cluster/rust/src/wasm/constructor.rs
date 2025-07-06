@@ -5,11 +5,7 @@ use crate::models::{
     data::{ AnalysisData, DataRecord, VariableDefinition },
     result::ClusteringResult,
 };
-use crate::utils::{
-    converter::string_to_js_error,
-    error::ErrorCollector,
-    log::FunctionLogger,
-};
+use crate::utils::{ converter::string_to_js_error, error::ErrorCollector, log::FunctionLogger };
 use crate::wasm::function;
 
 #[wasm_bindgen]
@@ -77,6 +73,12 @@ impl KMeansClusterAnalysis {
                 return Err(string_to_js_error(msg));
             }
         };
+
+        if target_data.is_empty() {
+            let msg = "Target data cannot be empty".to_string();
+            error_collector.add_error("constructor.target_data", &msg);
+            return Err(string_to_js_error(msg));
+        }
 
         let config: ClusterConfig = match serde_wasm_bindgen::from_value(config_data.clone()) {
             Ok(data) => data,

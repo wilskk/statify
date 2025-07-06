@@ -34,7 +34,7 @@ pub fn generate_case_count(
         // `valid` adalah jumlah total data point yang berhasil diproses.
         valid: membership.len(),
         // `missing` saat ini di-hardcode ke 0, diasumsikan tidak ada data yang hilang.
-        missing: 0,
+        missing: data.missing_cases,
         // `clusters` berisi peta dari nomor cluster ke jumlah kasusnya.
         clusters: counts,
     })

@@ -77,6 +77,8 @@ pub struct ProcessedData {
     pub data_matrix: Vec<Vec<f64>>,
     pub case_numbers: Vec<i32>,
     pub case_names: Option<Vec<String>>,
+    pub total_cases: usize,
+    pub missing_cases: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
