@@ -6,10 +6,7 @@ import {
 	FAQ,
 	Feedback,
 	HelpContent,
-	Frequencies,
-	DescriptiveAnalysis,
-	Explore,
-	Crosstabs,
+	StatisticsGuide,
 	type SectionItem,
 } from "@/app/help/components";
 
@@ -34,19 +31,19 @@ export default function HelpPage() {
 			content: <GettingStarted />
 		},
 		{
-			key: "statistics-guide",
-			label: "Panduan Statistik",
+			key: 'statistics-guide',
+			label: 'Panduan Statistik',
 			content: <StatisticsGuide />,
 			children: [
 				{
-					key: "descriptive-stats",
-					label: "Statistik Deskriptif",
-					parentKey: "statistics-guide",
+					key: 'descriptive-stats',
+					label: 'Statistik Deskriptif',
+					parentKey: 'statistics-guide',
 					children: [
-						{ key: "frequencies", label: "Frequencies", parentKey: "descriptive-stats", childContent: "frequencies" },
-						{ key: "descriptives", label: "Descriptives", parentKey: "descriptive-stats", childContent: "descriptives" },
-						{ key: "explore", label: "Explore", parentKey: "descriptive-stats", childContent: "explore" },
-						{ key: "crosstabs", label: "Crosstabs", parentKey: "descriptive-stats", childContent: "crosstabs" },
+						{ key: 'frequencies', label: 'Frequencies', parentKey: 'descriptive-stats', childContent: 'frequencies' },
+						{ key: 'descriptives', label: 'Descriptives', parentKey: 'descriptive-stats', childContent: 'descriptives' },
+						{ key: 'explore', label: 'Explore', parentKey: 'descriptive-stats', childContent: 'explore' },
+						{ key: 'crosstabs', label: 'Crosstabs', parentKey: 'descriptive-stats', childContent: 'crosstabs' },
 					]
 				}
 			]
@@ -104,8 +101,8 @@ export default function HelpPage() {
 		const item = findItem(sectionsData, key);
 		if (!item) return;
 
-		// Toggle expansion for any parent item
 		if (item.children && item.children.length > 0) {
+			// It's a parent item, toggle its expansion
 			setExpandedKeys(prev => {
 				const newSet = new Set(prev);
 				if (newSet.has(key)) {
@@ -115,29 +112,30 @@ export default function HelpPage() {
 				}
 				return newSet;
 			});
-		}
-
-		// Determine the top-level parent key
-		let parentKey = item.parentKey;
-		let topLevelKey = item.key;
-		while(parentKey) {
-			const parent = findItem(sectionsData, parentKey);
-			if (parent) {
-				topLevelKey = parent.key;
-				parentKey = parent.parentKey;
-			} else {
-				break;
+			// If it's a top-level item, also select it to show its main content
+			if (!item.parentKey) {
+				setSelected(item.key);
+				setActiveChild(null);
 			}
-		}
-
-		// If it's a leaf item, set it as active. Otherwise, clear active child to show parent's default content.
-		if (!item.children || item.children.length === 0) {
-			setActiveChild(key);
 		} else {
-			setActiveChild(null);
+			// It's a leaf item, set it as active
+			setActiveChild(key);
+
+			// Find the top-level parent and set it as selected
+			let parentKey = item.parentKey;
+			let topLevelKey = item.key; // Default to self if no parent
+			
+			while(parentKey) {
+				const parent = findItem(sectionsData, parentKey);
+				if (parent) {
+					topLevelKey = parent.key;
+					parentKey = parent.parentKey;
+				} else {
+					break; // Should not happen in well-formed data
+				}
+			}
+			setSelected(topLevelKey);
 		}
-		
-		setSelected(topLevelKey);
 	};
 
 	const sectionsToDisplayInSidebar = search ? filteredSectionsResult : sectionsData;

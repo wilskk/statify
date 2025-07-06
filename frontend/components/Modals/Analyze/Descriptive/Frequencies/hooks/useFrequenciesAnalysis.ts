@@ -12,15 +12,14 @@ import {
     DescriptiveStatistics,
     FrequenciesResult
 } from '../types';
-// import { processAndAddCharts } from '../utils/chartProcessor';
-import { formatStatisticsTable, formatFrequencyTable } from '../utils/formatters';
+import { processAndAddCharts, formatStatisticsTable, formatFrequencyTable } from '../utils';
 import { Variable } from '@/types/Variable';
 
 /**
  * Defines the return structure for the useFrequenciesAnalysis hook.
  */
 interface FrequenciesAnalysisResult {
-    isCalculating: boolean;
+    isLoading: boolean;
     errorMsg: string | null;
     runAnalysis: () => Promise<void>;
     cancelAnalysis: () => void;
@@ -40,7 +39,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
     const { addLog, addAnalytic, addStatistic } = useResultStore();
     const { data: allData, weights } = useAnalysisData();
 
-    const [isCalculating, setIsCalculating] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const workerRef = useRef<Worker | null>(null);
     const resultsRef = useRef<FrequenciesResult[]>([]);
@@ -49,7 +48,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
     const handleWorkerMessage = useCallback(async (event: MessageEvent<WorkerResult>, analyticId: number) => {
         workerRef.current?.terminate();
         workerRef.current = null;
-        setIsCalculating(false);
+        setIsLoading(false);
 
         const { success, results, error } = event.data;
 
@@ -63,14 +62,12 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                 if (statsResults.length > 0) {
                     const statsTableObject = formatStatisticsTable(statsResults);
                     if (statsTableObject && statsTableObject.tables) {
-                        for (const table of statsTableObject.tables) {
-                            await addStatistic(analyticId, {
-                                title: table.title || 'Descriptive Statistics',
-                                output_data: JSON.stringify(table),
-                                components: 'table',
-                                description: ''
-                            });
-                        }
+                        await addStatistic(analyticId, {
+                            title: statsTableObject.tables[0]?.title || 'Statistics',
+                            output_data: JSON.stringify(statsTableObject),
+                            components: 'table',
+                            description: ''
+                        });
                     }
                 }
             }
@@ -79,28 +76,23 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
                     const freqTableData = results.frequencyTables[varName];
                     const freqTableObject = formatFrequencyTable(freqTableData);
                     if (freqTableObject && freqTableObject.tables) {
-                        for (const table of freqTableObject.tables) {
-                            await addStatistic(analyticId, {
-                                title: table.title || 'Frequency Table',
-                                output_data: JSON.stringify(table),
-                                components: 'table',
-                                description: ''
-                            });
-                        }
+                        await addStatistic(analyticId, {
+                            title: freqTableObject.tables[0]?.title || 'Frequency Table',
+                            output_data: JSON.stringify(freqTableObject),
+                            components: 'table',
+                            description: ''
+                        });
                     }
                 }
             }
-            /* if(showCharts && chartOptions && results.frequencyTables) {
-                // The useResultStore does not have an `addChart` method.
-                // This logic should be adapted if chart storage is implemented.
-                // For now, we are just processing and logging.
-                console.log("Chart processing would happen here.");
-            } */
+            if (showCharts && chartOptions && results.frequencyTables) {
+                await processAndAddCharts(analyticId, results.frequencyTables, chartOptions);
+            }
             onClose();
         } else {
             setErrorMsg(error || 'An unknown error occurred in the worker.');
         }
-    }, [addStatistic, chartOptions, showCharts, showFrequencyTables, showStatistics, onClose, selectedVariables]);
+    }, [addStatistic, showFrequencyTables, showStatistics, onClose, selectedVariables, showCharts, chartOptions]);
 
     const runAnalysis = useCallback(async () => {
         if (selectedVariables.length === 0) {
@@ -108,7 +100,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
             return;
         }
 
-        setIsCalculating(true);
+        setIsLoading(true);
         setErrorMsg(null);
         
         const logId = await addLog({ log: 'Frequencies' });
@@ -122,7 +114,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         workerRef.current.onerror = (e: ErrorEvent) => {
             console.error("Frequencies worker error:", e);
             setErrorMsg(`An unexpected error occurred in the Frequencies worker: ${e.message}`);
-            setIsCalculating(false);
+            setIsLoading(false);
             if(workerRef.current) {
                 workerRef.current.terminate();
                 workerRef.current = null;
@@ -132,7 +124,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         const workerInput: WorkerInput = {
             variableData: selectedVariables.map(variable => ({
                 variable,
-                data: allData.map(row => row[variable.columnIndex]),
+                data: allData.map(row => row[variable.columnIndex]).filter(item => item !== null && item !== undefined) as (string | number)[],
             })),
             weightVariableData: weights,
             options: {
@@ -144,13 +136,13 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
         };
         workerRef.current.postMessage(workerInput);
 
-    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, showCharts, chartOptions, addLog, addAnalytic, handleWorkerMessage]);
+    }, [selectedVariables, allData, weights, showFrequencyTables, showStatistics, statisticsOptions, chartOptions, addLog, addAnalytic, handleWorkerMessage]);
 
     const cancelAnalysis = useCallback(() => {
         if (workerRef.current) {
             workerRef.current.terminate();
             workerRef.current = null;
-            setIsCalculating(false);
+            setIsLoading(false);
             console.log("Frequencies analysis cancelled.");
         }
     }, []);
@@ -160,7 +152,7 @@ export const useFrequenciesAnalysis = (params: FrequenciesAnalysisParams): Frequ
     }, [cancelAnalysis]);
 
     return {
-        isCalculating,
+        isLoading,
         errorMsg,
         runAnalysis,
         cancelAnalysis,
