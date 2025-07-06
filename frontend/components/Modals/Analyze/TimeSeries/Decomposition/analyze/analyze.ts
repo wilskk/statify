@@ -14,7 +14,7 @@ export async function handleDecomposition(
     startDay: number,
     startMonth: number,
     startYear: number
-): Promise<[string, number[], number[], number[], number[], number[], 
+): Promise<[string, string, number[], number[], number[], number[], number[], 
             string, string, string, string, string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
@@ -359,11 +359,25 @@ export async function handleDecomposition(
             ]
         });
 
-        return [descriptionJSON, centered, seasonalRound, trendRound, irregularRound, 
+        return ["success", descriptionJSON, centered, seasonalRound, trendRound, irregularRound, 
                 forecastingRound, evalJSON, seasonJSON, equationJSON, forecastingGraphicJSON,
                 dataGraphicJSON, trendGraphicJSON, seasonalGraphicJSON, irregularGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],[0],[0],[0],[0],JSON.stringify({ error: errorMessage.message }),"","","","", "", "", ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON, [0],[0],[0],[0],[0],"","","","","", "", "", ""];
     }
 }

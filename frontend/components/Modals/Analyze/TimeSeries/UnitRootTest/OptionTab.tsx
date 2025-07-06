@@ -131,7 +131,7 @@ const OptionTab: FC<OptionTabProps> = ({
                             className="w-[60px]" 
                             placeholder="1" 
                             min="1" 
-                            max="5" 
+                            max="10" 
                             step="1"
                             value={lengthLag}
                             onChange={(e) => handleLengthLag(Number(e.target.value))}

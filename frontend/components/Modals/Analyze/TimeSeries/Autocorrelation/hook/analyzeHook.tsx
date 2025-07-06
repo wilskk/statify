@@ -38,6 +38,12 @@ export function useAnalyzeHook(
         if (getHour() < 0 || getHour() > 23) {
             return "Hour must be between 0 and 23.";
         }
+        if (maximumLag < 10) {
+            return "Maximum lag must be at least 10.";
+        }
+        if (maximumLag > 30) {
+            return "Maximum lag cannot exceed 30.";
+        }
         return null;
     };
 
@@ -75,6 +81,7 @@ export function useAnalyzeHook(
     };
 
     const processResults = async (
+        resultMessage: string,
         descriptionTable: any,
         acfValue: any[],
         acf: any,
@@ -98,40 +105,50 @@ export function useAnalyzeHook(
             note: "",
         });
 
-        await addStatistic(analyticId, {
-            title: "Description Table",
-            output_data: descriptionTable,
-            components: "Description Table",
-            description: "",
-        });
+        if (resultMessage === "error") {
+            await addStatistic(analyticId, {
+                title: "Error",
+                output_data: resultMessage,
+                components: "Error",
+                description: "An error occurred during autocorrelation analysis.",
+            });
+            return;
+        } else {
+            await addStatistic(analyticId, {
+                title: "Description Table",
+                output_data: descriptionTable,
+                components: "Description Table",
+                description: "-",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Autocorrelation Table",
-            output_data: acf,
-            components: "Autocorrelation Table",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Autocorrelation Table",
+                output_data: acf,
+                components: "Autocorrelation Table",
+                description: "Autocorrelation function results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Autocorrelation Graphic",
-            output_data: acfGraphicJSON,
-            components: "Autocorrelation Graphic",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Autocorrelation Graphic",
+                output_data: acfGraphicJSON,
+                components: "Autocorrelation Graphic",
+                description: "Correlogram of the autocorrelation results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Partial Autocorrelation Table",
-            output_data: pacf,
-            components: "Partial Autocorrelation Table",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Partial Autocorrelation Table",
+                output_data: pacf,
+                components: "Partial Autocorrelation Table",
+                description: "Partial autocorrelation function results",
+            });
 
-        await addStatistic(analyticId, {
-            title: "Partial Autocorrelation Graphic",
-            output_data: pacfGraphicJSON,
-            components: "Partial Autocorrelation Graphic",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: "Partial Autocorrelation Graphic",
+                output_data: pacfGraphicJSON,
+                components: "Partial Autocorrelation Graphic",
+                description: "Correlogram of the partial autocorrelation results",
+            });
+        }
     };
 
     const handleAnalyzes = async () => {
@@ -149,6 +166,10 @@ export function useAnalyzeHook(
 
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variables.");
+            }
+
+            if (dataValues.length < 20) {
+                throw new Error("Data length must be at least 20 observations.");
             }
 
             if (seasonally) {

@@ -7,7 +7,7 @@ export async function handleAutocorrelation(
     difference: (string),
     useSeasonal: (boolean),
     seasonal: (number),
-):Promise<[string, number[], string, string, string, string]> {
+):Promise<[string, string, number[], string, string, string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -230,9 +230,23 @@ export async function handleAutocorrelation(
             ]
         });
 
-        return [descriptionJSON,test7,acfJSON ,pacfJSON, acfGraphicJSON, pacfGraphicJSON];
+        return ["success", descriptionJSON, test7, acfJSON, pacfJSON, acfGraphicJSON, pacfGraphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],"" ,JSON.stringify({ error: errorMessage.message }), "", ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON,[0], "", "", "", ""];
     }
 }

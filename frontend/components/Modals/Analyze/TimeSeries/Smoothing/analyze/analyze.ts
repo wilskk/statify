@@ -12,7 +12,7 @@ export async function handleSmoothing(
     startMonth: (number),
     startYear: (number),
     method: string): 
-Promise<[string, number[], string, string]> {
+Promise<[string, string, number[], string, string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data)? data : null;
     
@@ -199,9 +199,24 @@ Promise<[string, number[], string, string]> {
                 },
             ],
         });
-        return [descriptionJSON, smoothingRound, graphicJSON, evalJSON];
+
+        return ["success", descriptionJSON, smoothingRound, graphicJSON, evalJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["",[0],"",JSON.stringify({ error: errorMessage.message })];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON,[0],"",""];
     }
 }

@@ -20,6 +20,7 @@ export function useAnalyzeHook(
     const validateInputs = () => {
         if (!storeVariables.length) return "Please select at least one variable.";
         if (lengthLag < 1) return "Lag length minimum is 1.";
+        if (lengthLag > 10) return "Lag length maximum is 10.";
         return null;
     };
 
@@ -46,6 +47,7 @@ export function useAnalyzeHook(
     };
 
     const processResults = async (
+        resultMessage: string,
         descriptionTable: any,
         df_stat: any,
         coef_stat: any,
@@ -61,33 +63,43 @@ export function useAnalyzeHook(
             note: "",
         });
 
-        await addStatistic(analyticId, {
-            title: `Description Table`,
-            output_data: descriptionTable,
-            components: `Description Table`,
-            description: "",
-        });
+        if (resultMessage === "error") {
+            await addStatistic(analyticId, {
+                title: "Unit Root Test Error",
+                output_data: resultMessage,
+                components: "Unit Root Test Error",
+                description: "An error occurred during the unit root test.",
+            });
+            return;
+        } else {
+            await addStatistic(analyticId, {
+                title: `Description Table`,
+                output_data: descriptionTable,
+                components: `Description Table`,
+                description: "-",
+            });
 
-        await addStatistic(analyticId, {
-            title: `${methodName} Test Statistic`,
-            output_data: df_stat,
-            components: `${methodName} Test Statistic`,
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: `${methodName} Test Statistic`,
+                output_data: df_stat,
+                components: `${methodName} Test Statistic`,
+                description: "Unit root test statistic results",
+            });
 
-        await addStatistic(analyticId, {
-            title: `Coeficient Regression Test`,
-            output_data: coef_stat,
-            components: `Coeficient Regression Test`,
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: `Coeficient Regression Test`,
+                output_data: coef_stat,
+                components: `Coeficient Regression Test`,
+                description: "Coefficients of the regression used in the unit root test",
+            });
 
-        await addStatistic(analyticId, {
-            title: `Selection Criterion`,
-            output_data: sel_crit,
-            components: `Selection Criterion`,
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: `Selection Criterion`,
+                output_data: sel_crit,
+                components: `Selection Criterion`,
+                description: "Selection criterion results",
+            });
+        }
     };
 
     const handleAnalyzes = async () => {
@@ -110,7 +122,7 @@ export function useAnalyzeHook(
                 throw new Error("Data length is less than 20 observations.");
             }
 
-            const [descriptionTable, testing, df_stat, coef_stat, sel_crit, methodName] = await handleUnitRootTest(
+            const [resultMessage, descriptionTable, testing, df_stat, coef_stat, sel_crit, methodName] = await handleUnitRootTest(
                 dataValues,
                 dataVarDef.name,
                 selectedMethod[0],
@@ -130,7 +142,7 @@ export function useAnalyzeHook(
                 methodName,
             });
 
-            await processResults(descriptionTable, df_stat, coef_stat, sel_crit, methodName, dataVarDef);
+            await processResults(resultMessage, descriptionTable, df_stat, coef_stat, sel_crit, methodName, dataVarDef);
 
             setIsCalculating(false);
             onClose();

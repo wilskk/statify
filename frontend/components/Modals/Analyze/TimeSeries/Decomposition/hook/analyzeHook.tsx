@@ -80,6 +80,9 @@ export function useAnalyzeHook(
             if (dataValues.length === 0) {
                 throw new Error("No data available for the selected variables.");
             }
+            if (dataValues.length < 20) {
+                throw new Error("Data length must be at least 20 observations.");
+            }
             // Validate periodicity and data length
             const periodicity = Number(selectedPeriod[0]);
             if (dataValues.length < 4 * periodicity) {
@@ -180,13 +183,13 @@ export function useAnalyzeHook(
     };
     
     const processDecompositionResults = async (
-        results: [any, any[], any[], any[], any[], any[], any, any, any, any, any, any, any, any],
+        results: [any, any, any[], any[], any[], any[], any[], any, any, any, any, any, any, any, any],
         dataVarDef: Variable,
     ) => {
-        const [descriptionTable, testing, seasonal, trend, irrengular, forecasting, evaluation, 
-                seasonIndices, equation, graphicForecasting, graphicData, graphicTrend, graphicSeasonal,
-                graphicIrregular] = results;
-        
+        const [resultMessage, descriptionTable, testing, seasonal, trend, irrengular, forecasting, 
+            evaluation, seasonIndices, equation, graphicForecasting, graphicData, graphicTrend, 
+            graphicSeasonal, graphicIrregular] = results;
+
         // Create log entry
         const logMsg = `DECOMPOSITION: ${dataVarDef.label ? dataVarDef.label + ' Using' : dataVarDef.name + ' Using'} ${selectedDecompositionMethod[1]}.`;
         const logId = await addLog({ log: logMsg });
@@ -197,77 +200,86 @@ export function useAnalyzeHook(
             note: "",
         });
 
-        // Add seasonal indices statistic
-        await addStatistic(analyticId, {
-            title: "Description Table",
-            output_data: descriptionTable,
-            components: "Description Table",
-            description: "",
-        });
-
-        await addStatistic(analyticId, {
-            title: `Graphic ${dataVarDef.name}`,
-            output_data: graphicData,
-            components: `Graphic ${dataVarDef.name}`,
-            description: "",
-        });
-        
-        await addStatistic(analyticId, {
-            title: "Graphic Trend",
-            output_data: graphicTrend,
-            components: "Graphic Trend",
-            description: "",
-        });
-        
-        await addStatistic(analyticId, {
-            title: "Graphic Seasonal",
-            output_data: graphicSeasonal,
-            components: "Graphic Seasonal",
-            description: "",
-        });
-        
-        await addStatistic(analyticId, {
-            title: "Graphic Irregular",
-            output_data: graphicIrregular,
-            components: "Graphic Irregular",
-            description: "",
-        });
-        
-        await addStatistic(analyticId, {
-            title: "Seasonal Indices",
-            output_data: seasonIndices,
-            components: "Seasonal Indices",
-            description: "",
-        });
-
-        // Add equation for multiplicative method
-        if (selectedDecompositionMethod[0] === 'multiplicative') {
+        if (resultMessage === "error") {
             await addStatistic(analyticId, {
-                title: "Equation",
-                output_data: equation,
-                components: "Equation Trend",
-                description: "",
+                title: "Decomposition Error",
+                output_data: resultMessage,
+                components: "Decomposition Error",
+                description: "An error occurred during decomposition analysis.",
             });
-        }
-        
-        await addStatistic(analyticId, {
-            title: "Graphic Forecasting",
-            output_data: graphicForecasting,
-            components: "Graphic Forecasting",
-            description: "",
-        });
+        } else {
+            // Add seasonal indices statistic
+            await addStatistic(analyticId, {
+                title: "Description Table",
+                output_data: descriptionTable,
+                components: "Description Table",
+                description: "-",
+            });
 
-        // Add evaluation statistic
-        await addStatistic(analyticId, {
-            title: "Evalution",
-            output_data: evaluation,
-            components: "Forecasting Evaluation",
-            description: "",
-        });
+            await addStatistic(analyticId, {
+                title: `Graphic ${dataVarDef.name}`,
+                output_data: graphicData,
+                components: `Graphic ${dataVarDef.name}`,
+                description: "Graphic of the original data",
+            });
+            
+            await addStatistic(analyticId, {
+                title: "Graphic Trend",
+                output_data: graphicTrend,
+                components: "Graphic Trend",
+                description: "Graphic Trend Component",
+            });
+            
+            await addStatistic(analyticId, {
+                title: "Graphic Seasonal",
+                output_data: graphicSeasonal,
+                components: "Graphic Seasonal",
+                description: "Graphic Seasonal Component",
+            });
+            
+            await addStatistic(analyticId, {
+                title: "Graphic Irregular",
+                output_data: graphicIrregular,
+                components: "Graphic Irregular",
+                description: "Graphic Irregular Component",
+            });
+            
+            await addStatistic(analyticId, {
+                title: "Seasonal Indices",
+                output_data: seasonIndices,
+                components: "Seasonal Indices",
+                description: "Seasonal Indices for the data",
+            });
 
-        // Save as variables if requested
-        if (saveDecomposition) {
-            await saveDecompositionResults(seasonal, trend, irrengular, forecasting, dataVarDef);
+            // Add equation for multiplicative method
+            if (selectedDecompositionMethod[0] === 'multiplicative') {
+                await addStatistic(analyticId, {
+                    title: "Equation",
+                    output_data: equation,
+                    components: "Equation Trend",
+                    description: "Equation for the trend component",
+                });
+            }
+            
+            await addStatistic(analyticId, {
+                title: "Graphic Forecasting",
+                output_data: graphicForecasting,
+                components: "Graphic Forecasting",
+                description: "Graphic of the forecasting results",
+            });
+
+            // Add evaluation statistic
+            await addStatistic(analyticId, {
+                title: "Evalution",
+                output_data: evaluation,
+                components: "Forecasting Evaluation",
+                description: "Evaluation results for the forecasting",
+            });
+
+            // Save as variables if requested
+            if (saveDecomposition) {
+                await saveDecompositionResults(seasonal, trend, irrengular, forecasting, dataVarDef);
+            }
         }
     };
 

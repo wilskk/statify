@@ -12,7 +12,7 @@ export async function handleBoxJenkinsModel(
     startDay: number,
     startMonth: number,
     startYear: number
-):Promise<[string, number[], string, string, string, number[], string]> {
+):Promise<[string, string, number[], string, string, string, number[], string]> {
     await init(); // Inisialisasi WebAssembly
     const inputData = Array.isArray(data) ? data : null;
     
@@ -226,9 +226,23 @@ export async function handleBoxJenkinsModel(
             forecast = [0];
         }
 
-        return [descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
+        return ["success", descriptionJSON, [...coef, ...se], coefStructJson , selCritStructJson, forecastEvalJson, forecast, graphicJSON];
     } catch (error) {
         let errorMessage = error as Error;
-        return ["", [0], "", "", JSON.stringify({ error: errorMessage.message }), [0], ""];
+        let errorJSON = JSON.stringify({
+            tables: [
+                {
+                    title: `Error Table`,
+                    columnHeaders: [{header:""},{header: 'error'}],
+                    rows: [
+                        {
+                            rowHeader: [`Error Message`],
+                            description: `${errorMessage.message}`,
+                        },
+                    ],
+                }
+            ],
+        });
+        return ["error", errorJSON, [0], "", "", "", [0], ""];
     }
 }
