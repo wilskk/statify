@@ -76,7 +76,7 @@ export function useAnalyzeHook(
                 title: `Description Table`,
                 output_data: descriptionTable,
                 components: `Description Table`,
-                description: "-",
+                description: "Description of the unit root test results",
             });
 
             await addStatistic(analyticId, {

@@ -151,7 +151,7 @@ export function useAnalyzeHook(
                 title: "Description Table",
                 output_data: descriptionTable,
                 components: "Description Table",
-                description: "-",
+                description: "Description of the ARIMA results",
             });
             await addStatistic(analyticId, {
                 title: `Coefficient Test for ARIMA(${arOrder},${diffOrder},${maOrder})`,
