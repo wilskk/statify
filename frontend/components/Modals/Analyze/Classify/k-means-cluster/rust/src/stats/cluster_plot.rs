@@ -64,5 +64,9 @@ pub fn create_cluster_plot(
         cluster: clusters,
         cluster_label: cluster_labels,
         cluster_center: is_center,
+        note: None,
+        interpretation: Some(
+            "This plot visualizes the clusters using the first two variables as axes. Each point represents a case, colored by its assigned cluster. The larger points mark the final cluster centers. This visualization helps to assess the separation and cohesion of the formed clusters.".to_string()
+        ),
     })
 }

@@ -176,6 +176,9 @@ pub fn generate_iteration_history(
     // Mengembalikan riwayat iterasi yang lengkap.
     Ok(IterationHistory {
         iterations,
-        convergence_note,
+        note: convergence_note,
+        interpretation: Some(
+            "This table tracks the movement of cluster centers across iterations. Each row represents an iteration, showing how much each cluster center shifted. The process stops when the changes fall below a convergence threshold or the maximum number of iterations is reached, as detailed in the convergence note.".to_string()
+        ),
     })
 }

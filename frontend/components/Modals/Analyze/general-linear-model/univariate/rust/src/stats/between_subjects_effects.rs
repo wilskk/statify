@@ -24,13 +24,13 @@ pub fn calculate_tests_between_subjects_effects(
 
     // Penanganan kasus khusus: tidak ada data atau parameter
     if design_info.n_samples == 0 {
-        return create_empty_results(&design_info);
+        return create_empty_results(&design_info, config);
     }
     if
         design_info.p_parameters == 0 &&
         config.model.sum_of_square_method != SumOfSquaresMethod::TypeI
     {
-        return create_empty_results(&design_info);
+        return create_empty_results(&design_info, config);
     }
 
     // Membuat matriks cross-product (Z'WZ) untuk perhitungan statistik
@@ -186,25 +186,27 @@ pub fn calculate_tests_between_subjects_effects(
 
     // ===== MENYIAPKAN CATATAN DAN METADATA =====
 
-    let mut notes = if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
-        vec!["Type I SS placeholder due to missing incremental SWEEP.".to_string()]
-    } else {
-        Vec::new()
-    };
-    notes.push(format!("__SIG_LEVEL:{}", config.options.sig_level));
-    notes.push(format!("__SS_METHOD:{:?}", config.model.sum_of_square_method));
+    let mut notes = Vec::new();
+    if config.model.sum_of_square_method == SumOfSquaresMethod::TypeI {
+        notes.push("Type I SS placeholder due to missing incremental SWEEP.".to_string());
+    }
+    notes.push(format!("Computed using alpha = {}", config.options.sig_level));
 
     Ok(TestsBetweenSubjectsEffects {
         source: current_source_map,
         r_squared: current_r_squared,
         adjusted_r_squared: current_adj_r_squared,
-        notes,
+        note: Some(notes.join("\n")),
+        interpretation: Some(
+            "This table tests the hypothesis that each effect (e.g., factor or interaction) in the model is null. A significant F-value (Sig. < .05) suggests that the effect significantly contributes to explaining the variance in the dependent variable. The Partial Eta Squared indicates the proportion of variance uniquely explained by that effect.".to_string()
+        ),
     })
 }
 
 /// Membuat hasil kosong ketika tidak ada data atau parameter
 fn create_empty_results(
-    design_info: &DesignMatrixInfo
+    design_info: &DesignMatrixInfo,
+    config: &UnivariateConfig
 ) -> Result<TestsBetweenSubjectsEffects, String> {
     // Menghitung rata-rata dan total sum of squares untuk kasus kosong
     let y_mean = design_info.y.mean();
@@ -238,7 +240,13 @@ fn create_empty_results(
         source,
         r_squared: 0.0,
         adjusted_r_squared: 0.0,
-        notes: Vec::new(),
+        note: Some(
+            format!(
+                "No data or parameters to analyze for this model. Alpha = {}.",
+                config.options.sig_level
+            )
+        ),
+        interpretation: None,
     })
 }
 

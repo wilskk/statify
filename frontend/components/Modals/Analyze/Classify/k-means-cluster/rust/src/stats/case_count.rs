@@ -37,5 +37,9 @@ pub fn generate_case_count(
         missing: data.missing_cases,
         // `clusters` berisi peta dari nomor cluster ke jumlah kasusnya.
         clusters: counts,
+        note: None,
+        interpretation: Some(
+            "This table shows the number of cases assigned to each cluster. 'Valid' represents the total count of data points processed, while 'Missing' indicates cases that were excluded. The 'Clusters' field details the specific case count for each cluster.".to_string()
+        ),
     })
 }

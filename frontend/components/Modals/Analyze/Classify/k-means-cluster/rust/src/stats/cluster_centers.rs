@@ -122,7 +122,13 @@ pub fn generate_final_cluster_centers(
         centers_map.insert(var.clone(), var_values);
     }
 
-    Ok(FinalClusterCenters { centers: centers_map })
+    Ok(FinalClusterCenters {
+        centers: centers_map,
+        note: None,
+        interpretation: Some(
+            "This table presents the final coordinates for the center of each cluster after the iterative K-Means algorithm has converged. Each row corresponds to a variable, and each column represents a cluster, showing the value of that variable at the cluster's centroid. These centers define the typical profile of a case belonging to each cluster.".to_string()
+        ),
+    })
 }
 
 /// Menghitung matriks jarak antara semua pasangan pusat cluster final.
@@ -160,5 +166,11 @@ pub fn calculate_distances_between_centers(
         }
     }
 
-    Ok(DistancesBetweenCenters { distances })
+    Ok(DistancesBetweenCenters {
+        distances,
+        note: None,
+        interpretation: Some(
+            "This table displays the Euclidean distances between the final cluster centers. Each cell (i, j) in the matrix represents the distance between the center of cluster i and the center of cluster j. Larger values indicate that clusters are more distinct and further apart in the multi-dimensional variable space. The diagonal elements are always zero.".to_string()
+        ),
+    })
 }

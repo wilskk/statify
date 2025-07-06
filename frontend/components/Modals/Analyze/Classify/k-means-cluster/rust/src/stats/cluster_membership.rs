@@ -30,6 +30,10 @@ pub fn generate_cluster_membership(
                 case_name,
                 cluster: (cluster + 1) as i32, // 1-based index
                 distance,
+                note: None,
+                interpretation: Some(
+                    "This indicates which cluster the case belongs to and its Euclidean distance to the cluster's center. A smaller distance implies a better fit of the case to its assigned cluster.".to_string()
+                ),
             }
         })
         .collect();

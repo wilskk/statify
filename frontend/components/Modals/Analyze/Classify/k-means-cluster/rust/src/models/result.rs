@@ -17,6 +17,7 @@ pub struct ClusteringResult {
 pub struct ANOVATable {
     pub clusters: HashMap<String, ANOVACluster>,
     pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -34,17 +35,22 @@ pub struct CaseCountTable {
     pub valid: usize,
     pub missing: usize,
     pub clusters: HashMap<String, usize>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitialClusterCenters {
     pub centers: HashMap<String, Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IterationHistory {
     pub iterations: Vec<IterationStep>,
-    pub convergence_note: Option<String>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,16 +65,22 @@ pub struct ClusterMembership {
     pub case_name: Option<String>,
     pub cluster: i32,
     pub distance: f64,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FinalClusterCenters {
     pub centers: HashMap<String, Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DistancesBetweenCenters {
     pub distances: Vec<Vec<f64>>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -90,4 +102,6 @@ pub struct ClusterPlot {
     pub cluster: Vec<i32>,
     pub cluster_label: Vec<String>,
     pub cluster_center: Vec<bool>,
+    pub note: Option<String>,
+    pub interpretation: Option<String>,
 }
