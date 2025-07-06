@@ -47,10 +47,24 @@ export interface CrosstabsAnalysisParams {
             column: boolean;
             total: boolean;
         },
+        residuals: {
+            unstandardized: boolean;
+            standardized: boolean;
+            adjustedStandardized: boolean;
+        },
+        nonintegerWeights: NonintegerWeightsType;
     }
 }
 
 export interface CrosstabsWorkerResult {
-    summary: { valid: number; missing: number };
-    // ... existing code ...
+    summary: {
+        valid: number;
+        missing: number;
+        rowCategories: (string | number)[];
+        colCategories: (string | number)[];
+        rowTotals: number[];
+        colTotals: number[];
+        totalCases: number;
+    };
+    contingencyTable: number[][];
 } 

@@ -52,7 +52,7 @@ interface ChartData {
   error?: number;
   x?: number;
   y?: number;
-  color?: string | number;
+  color?: string | number | null;
   group?: string;
   [key: string]: any;
 }
@@ -588,7 +588,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
       return data.map((row) => ({
         category: "Unknown", // Karena tidak ada bottomVariable, kategori diisi default
         value: 0, // Tidak ada nilai terkait karena hanya color yang digunakan
-        color: row[colorIndex], // Tambahkan warna
+        color: row[colorIndex] ?? undefined, // Tambahkan warna jika ada
       }));
     }
 
@@ -608,7 +608,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         });
 
         if (colorIndex !== -1) {
-          result.color = row[colorIndex];
+          result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
         }
 
         return result;
@@ -630,7 +630,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         });
 
         if (colorIndex !== -1) {
-          result.color = row[colorIndex];
+          result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
         }
 
         return result;
@@ -652,7 +652,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
         });
 
         if (colorIndex !== -1) {
-          result.color = row[colorIndex];
+          result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
         }
 
         return result;
@@ -682,7 +682,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
         // Jika colorIndex valid, tambahkan warna
         if (colorIndex !== -1) {
-          result.color = row[colorIndex];
+          result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
         }
 
         // Handle low, high, close variables
@@ -726,7 +726,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
 
         // Jika colorIndex valid, tambahkan warna
         if (colorIndex !== -1) {
-          result.color = row[colorIndex];
+          result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
         }
 
         return result;
@@ -750,7 +750,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             };
 
             if (colorIndex !== -1) {
-              result.color = row[colorIndex];
+              result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
             }
 
             // Handle low, high, close variables
@@ -794,7 +794,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
           category: String(row[bottomIndices[0]]), // Menggunakan index bottom pertama
           subcategory: sideVariableName,
           value: parseFloat(String(row[sideIndex] || "0")),
-          ...(colorIndex !== -1 ? { color: row[colorIndex] } : {}),
+          ...(colorIndex !== -1 ? { color: row[colorIndex] ?? undefined } : {}),
         };
         // Handle low, high, close variables
         if (side2Indices[0] !== -1) {
@@ -830,7 +830,7 @@ const ChartPreview: React.FC<ChartPreviewProps> = ({
             };
 
             if (colorIndex !== -1) {
-              result.color = row[colorIndex];
+              result.color = row[colorIndex] ?? undefined; // Tambahkan warna jika ada
             }
 
             // Handle low, high, close variables

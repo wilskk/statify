@@ -35,17 +35,35 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "loading">,
     VariantProps<typeof buttonVariants> {
+  /**
+   * When true, applies loading state styles. The attribute is **not** forwarded
+   * to the underlying DOM element to avoid React warnings.
+   */
+  loading?: boolean
   asChild?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          loading && "cursor-progress opacity-70"
+        )}
         ref={ref}
         {...props}
       />

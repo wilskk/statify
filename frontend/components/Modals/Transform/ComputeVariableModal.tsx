@@ -146,7 +146,7 @@ const ComputeVariableModal: React.FC<ComputeVariableProps> = ({ onClose, contain
               bulkUpdates.push({
                 row: rowIndex,
                 col: newColumnIndex,
-                value: row[newColumnIndex]
+                value: (row[newColumnIndex] ?? "") as string | number
               });
             });
             

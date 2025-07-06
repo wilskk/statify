@@ -1,5 +1,5 @@
 import type { Variable } from "@/types/Variable";
-import { CrosstabsAnalysisParams } from "../types";
+import { CrosstabsAnalysisParams, CrosstabsWorkerResult } from "../types";
 
 // --- Type definitions for Data Table component ---
 interface ColumnHeader {
@@ -21,18 +21,7 @@ export interface FormattedTable {
 }
 
 // --- Type definitions for Crosstabs analysis results ---
-export interface CrosstabsWorkerResult {
-    summary: {
-        valid: number;
-        missing: number;
-        rowCategories: (string | number)[];
-        colCategories: (string | number)[];
-        rowTotals: number[];
-        colTotals: number[];
-        totalCases: number;
-    };
-    contingencyTable: number[][];
-}
+// This is now imported from ../types.ts
 
 /**
  * Formats the Case Processing Summary table for Crosstabs.

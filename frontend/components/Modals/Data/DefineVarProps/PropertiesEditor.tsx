@@ -33,6 +33,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PropertiesEditorProps } from "./types";
 import { usePropertiesEditor } from "./hooks/usePropertiesEditor";
 import { Variable } from "@/types/Variable";
+import { DATE_FORMAT_SPECS, isDateType } from "./constants/dateSpecs";
+import { getFormattedTypeName, formatDropdownText } from "./utils/typeFormatters";
 
 // Register all Handsontable modules
 registerAllModules();
@@ -43,44 +45,6 @@ const MEASURE_OPTIONS = ["scale", "ordinal", "nominal"];
 const TYPE_OPTIONS = [
     "NUMERIC", "COMMA", "DOT", "SCIENTIFIC", "DATE", "DOLLAR",
     "CCA", "CCB", "CCC", "CCD", "CCE", "PERCENT", "STRING", "RESTRICTED_NUMERIC"
-];
-
-// Date format specifications
-const DATE_FORMAT_SPECS = [
-    { format: "dd-mmm-yyyy", type: "DATE", width: 11 },
-    { format: "dd-mmm-yy", type: "DATE", width: 9 },
-    { format: "mm/dd/yyyy", type: "ADATE", width: 10 },
-    { format: "mm/dd/yy", type: "ADATE", width: 8 },
-    { format: "dd.mm.yyyy", type: "EDATE", width: 10 },
-    { format: "dd.mm.yy", type: "EDATE", width: 8 },
-    { format: "yyyy/mm/dd", type: "SDATE", width: 10 },
-    { format: "yy/mm/dd", type: "SDATE", width: 8 },
-    { format: "yydddd", type: "JDATE", width: 5 },
-    { format: "yyyyddd", type: "JDATE", width: 7 },
-    { format: "q Q yyyy", type: "QYR", width: 8 },
-    { format: "q Q yy", type: "QYR", width: 6 },
-    { format: "mmm yyyy", type: "MOYR", width: 8 },
-    { format: "mmm yy", type: "MOYR", width: 6 },
-    { format: "ww WK yyyy", type: "WKYR", width: 10 },
-    { format: "ww WK yy", type: "WKYR", width: 8 },
-    { format: "dd-mmm-yyyy hh:mm", type: "DATETIME", width: 17 },
-    { format: "dd-mmm-yyyy hh:mm:ss", type: "DATETIME", width: 20 },
-    { format: "dd-mmm-yyyy hh:mm:ss.ss", type: "DATETIME", width: 23 },
-    { format: "mm/dd/yyyy hh:mm", type: "DATETIME", width: 16 },
-    { format: "mm/dd/yyyy hh:mm:ss", type: "DATETIME", width: 19 },
-    { format: "yyyy-mm-dd hh:mm:ss.ss", type: "DATETIME", width: 22 },
-    { format: "mm:ss", type: "TIME", width: 5 },
-    { format: "mm:ss.ss", type: "TIME", width: 8 },
-    { format: "hh:mm", type: "TIME", width: 5 },
-    { format: "hh:mm:ss", type: "TIME", width: 8 },
-    { format: "hh:mm:ss.ss", type: "TIME", width: 11 },
-    { format: "ddd hh:mm", type: "DTIME", width: 9 },
-    { format: "ddd hh:mm:ss", type: "DTIME", width: 12 },
-    { format: "ddd hh:mm:ss.ss", type: "DTIME", width: 15 },
-    { format: "Monday, Tuesday, ...", type: "WKDAY", width: 9 },
-    { format: "Mon, Tue, Wed, ...", type: "WKDAY", width: 3 },
-    { format: "January, February, ...", type: "MONTH", width: 9 },
-    { format: "Jan, Feb, Mar, ...", type: "MONTH", width: 3 }
 ];
 
 const getVariableIcon = (variable: Variable | null) => {
@@ -94,30 +58,6 @@ const getVariableIcon = (variable: Variable | null) => {
                 ? <Shapes size={12} className="text-muted-foreground mr-1 flex-shrink-0" />
                 : <Ruler size={12} className="text-muted-foreground mr-1 flex-shrink-0" />;
     }
-};
-
-const getFormattedTypeName = (type: string): string => {
-    switch (type) {
-        case "NUMERIC": return "Numeric";
-        case "COMMA": return "Comma";
-        case "DOT": return "Dot";
-        case "SCIENTIFIC": return "Scientific";
-        case "DATE": return "Date";
-        case "DOLLAR": return "Dollar";
-        case "CCA": return "Currency A";
-        case "CCB": return "Currency B";
-        case "CCC": return "Currency C";
-        case "CCD": return "Currency D";
-        case "CCE": return "Currency E";
-        case "PERCENT": return "Percent";
-        case "STRING": return "String";
-        case "RESTRICTED_NUMERIC": return "Restricted Numeric";
-        default: return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
-    }
-};
-
-const formatDropdownText = (text: string): string => {
-    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
 const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
@@ -148,8 +88,6 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
         handleSuggestMeasurement, 
         handleAcceptSuggestion, 
         handleSave,             
-        isDateType,             
-        DATE_FORMAT_SPECS       
     } = usePropertiesEditor({
         initialVariables,
         caseLimit,
@@ -317,57 +255,64 @@ const PropertiesEditorContent: FC<PropertiesEditorProps> = ({
                                         <div className="col-span-8"><Input value={currentVariable.label || ''} onChange={(e) => handleVariableFieldChange('label', e.target.value)} className="h-5 w-full text-xs" /></div>
                                     </div>
                                     <div className="grid grid-cols-12 items-center gap-x-2">
-                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Measurement Level:</div>
-                                        <div className="col-span-8 flex">
-                                            <div className="relative flex-grow">
-                                                <div className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring" onClick={() => setShowMeasureDropdown(!showMeasureDropdown)} title={formatDropdownText(currentVariable.measure)}>
-                                                    {getVariableIcon(currentVariable)} <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.measure)}</span> <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
-                                                </div>
-                                                {showMeasureDropdown && renderDropdown(MEASURE_OPTIONS, currentVariable.measure, (value) => handleVariableFieldChange('measure', value), () => setShowMeasureDropdown(false))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-12 items-center gap-x-2">
-                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Role:</div>
-                                        <div className="col-span-8">
-                                            <div className="relative w-full">
-                                                <div className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring" onClick={() => setShowRoleDropdown(!showRoleDropdown)} title={formatDropdownText(currentVariable.role)}>
-                                                    <span className="capitalize truncate text-foreground">{formatDropdownText(currentVariable.role)}</span> <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
-                                                </div>
-                                                {showRoleDropdown && renderDropdown(ROLE_OPTIONS, currentVariable.role, (value) => handleVariableFieldChange('role', value), () => setShowRoleDropdown(false))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-12 items-center gap-x-2">
-                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Unlabeled values:</div>
-                                        <div className="col-span-8"><Input value={unlabeledValuesCount} className="w-full h-5 text-xs bg-muted text-muted-foreground border-input" readOnly /></div>
-                                    </div>
-                                    <div className="grid grid-cols-12 items-center gap-x-2">
-                                        <div className="col-span-4"></div>
-                                        <div className="col-span-8"><Button variant="secondary" size="sm" className="text-xs h-5 px-2 whitespace-nowrap" onClick={handleSuggestMeasurement}>Suggest Measurement Level</Button></div>
-                                    </div>
-                                    <div className="grid grid-cols-12 items-center gap-x-2">
                                         <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Type:</div>
-                                        <div className="col-span-8 flex gap-x-1">
-                                            <div className="relative flex-1">
-                                                <div className="flex items-center h-5 text-xs border border-input rounded bg-background px-1 w-full cursor-pointer hover:border-ring" onClick={() => setShowTypeDropdown(!showTypeDropdown)} title={getFormattedTypeName(currentVariable.type)}>
-                                                    <span className="capitalize truncate text-foreground">{getFormattedTypeName(currentVariable.type)}</span> <ChevronDown size={12} className="ml-auto text-muted-foreground flex-shrink-0" />
+                                        <div className="col-span-8 relative">
+                                            <Button variant="outline" className="h-5 w-full text-xs justify-between" onClick={() => setShowTypeDropdown(!showTypeDropdown)}>
+                                                {getFormattedTypeName(currentVariable.type || '')} <ChevronDown className="h-3 w-3" />
+                                            </Button>
+                                            {showTypeDropdown && (
+                                                <div className="absolute top-full left-0 z-50 mt-1 w-full bg-popover border border-border rounded shadow-lg max-h-40 overflow-y-auto">
+                                                    {TYPE_OPTIONS.map((option) => (
+                                                        <div key={option} className="text-xs p-1 hover:bg-accent cursor-pointer text-popover-foreground"
+                                                            onClick={() => {
+                                                                if (isDateType(option)) {
+                                                                    setShowDateFormatDropdown(true);
+                                                                } else {
+                                                                    handleVariableFieldChange('type', option);
+                                                                }
+                                                                setShowTypeDropdown(false);
+                                                            }}>
+                                                            {getFormattedTypeName(option)}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                {showTypeDropdown && renderDropdown(TYPE_OPTIONS, currentVariable.type, (value) => handleVariableFieldChange('type', value), () => setShowTypeDropdown(false))}
-                                            </div>
-                                            <div className="relative flex-1">
-                                                <div className={`flex items-center h-5 text-xs border rounded px-1 w-full ${isDateType(currentVariable.type) ? 'bg-background border-input cursor-pointer hover:border-ring' : 'bg-muted border-input cursor-not-allowed text-muted-foreground/70'}`} onClick={() => isDateType(currentVariable.type) && setShowDateFormatDropdown(!showDateFormatDropdown)} title={isDateType(currentVariable.type) ? "Select date format" : "Format (only available for date types)"}>
-                                                    <span className={`capitalize truncate ${isDateType(currentVariable.type) ? 'text-foreground' : 'text-muted-foreground/70'}`}>Format</span> <ChevronDown size={12} className={`ml-auto flex-shrink-0 ${isDateType(currentVariable.type) ? 'text-muted-foreground' : 'text-muted-foreground/70'}`} />
-                                                </div>
-                                                {showDateFormatDropdown && isDateType(currentVariable.type) && renderDateFormatDropdown(currentVariable, handleVariableFieldChange, setShowDateFormatDropdown)}
-                                            </div>
+                                            )}
+                                            {showDateFormatDropdown && renderDateFormatDropdown(currentVariable, handleVariableFieldChange, setShowDateFormatDropdown)}
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-12 items-center gap-x-2">
                                         <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Width:</div>
-                                        <div className="col-span-3"><Input type="number" value={currentVariable.width} onChange={(e) => handleVariableFieldChange('width', parseInt(e.target.value) || 0)} className="h-5 w-full text-xs" disabled={isDateType(currentVariable.type)} /></div>
-                                        <div className="col-span-2 text-xs font-semibold text-foreground text-right pr-1">Decimals:</div>
-                                        <div className="col-span-3"><Input type="number" value={currentVariable.decimals} onChange={(e) => handleVariableFieldChange('decimals', parseInt(e.target.value) || 0)} className="h-5 w-full text-xs" disabled={isDateType(currentVariable.type)} /></div>
+                                        <div className="col-span-4"><Input type="number" value={currentVariable.width} onChange={(e) => handleVariableFieldChange('width', parseInt(e.target.value, 10))} className="h-5 w-full text-xs" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center gap-x-2">
+                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Decimals:</div>
+                                        <div className="col-span-4"><Input type="number" value={currentVariable.decimals} onChange={(e) => handleVariableFieldChange('decimals', parseInt(e.target.value, 10))} className="h-5 w-full text-xs" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center gap-x-2">
+                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Missing Values:</div>
+                                        <div className="col-span-8"><Button variant="outline" className="h-5 w-full text-xs">Define...</Button></div>
+                                    </div>
+                                    <hr />
+                                    <div className="grid grid-cols-12 items-center gap-x-2">
+                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Role:</div>
+                                        <div className="col-span-8 relative">
+                                            <Button variant="outline" className="h-5 w-full text-xs justify-between" onClick={() => setShowRoleDropdown(!showRoleDropdown)}>
+                                                {formatDropdownText(currentVariable.role)} <ChevronDown className="h-3 w-3" />
+                                            </Button>
+                                            {showRoleDropdown && renderDropdown(ROLE_OPTIONS, currentVariable.role || '', (value) => handleVariableFieldChange('role', value), () => setShowRoleDropdown(false))}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-12 items-center gap-x-2">
+                                        <div className="col-span-4 text-xs font-semibold text-foreground text-right pr-1">Measurement:</div>
+                                        <div className="col-span-6 relative">
+                                            <Button variant="outline" className="h-5 w-full text-xs justify-between" onClick={() => setShowMeasureDropdown(!showMeasureDropdown)}>
+                                                {formatDropdownText(currentVariable.measure)} <ChevronDown className="h-3 w-3" />
+                                            </Button>
+                                            {showMeasureDropdown && renderDropdown(MEASURE_OPTIONS, currentVariable.measure || '', (value) => handleVariableFieldChange('measure', value), () => setShowMeasureDropdown(false))}
+                                        </div>
+                                        <div className="col-span-2">
+                                            <Button variant="outline" size="sm" className="h-5 w-full text-xs" onClick={handleSuggestMeasurement}>Suggest</Button>
+                                        </div>
                                     </div>
                                 </div>
                             </TabsContent>

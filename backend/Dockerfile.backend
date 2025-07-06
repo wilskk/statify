@@ -48,6 +48,12 @@ COPY --from=builder /app/backend/.env ./.env
 # Create temp directory
 RUN mkdir -p ./temp
 
+# Healthcheck for container
+HEALTHCHECK CMD wget -qO- http://localhost:5000/ || exit 1
+
+# Run as non-root user for security
+USER node
+
 EXPOSE 5000
 
 # Run server

@@ -307,9 +307,9 @@ export const PrintOptions: React.FC<PrintOptionsProps> = ({
                     <Button variant="outline" onClick={onCancel} disabled={isGenerating} className="mr-2">Cancel</Button>
                     <Button variant="outline" onClick={onReset} disabled={isGenerating} className="mr-2">Reset</Button>
                     <div id="print-button-wrapper" className="relative inline-block">
-                        <Button onClick={onPrint} disabled={isPrintDisabled} {...(isGenerating ? { loading: true } : {})} className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}>
+                        <Button onClick={onPrint} disabled={isPrintDisabled} className={cn(tourActive && currentStep === 3 && "focus:ring-primary")}>
                             {isGenerating && <Loader2 className="mr-2 animate-spin" size={16} />}
-                            Print
+                            {isGenerating ? "Printing..." : "Print"}
                         </Button>
                         <ActiveElementHighlight active={tourActive && currentStep === 3} />
                     </div>

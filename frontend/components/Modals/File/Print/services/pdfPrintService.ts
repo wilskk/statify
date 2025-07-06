@@ -4,7 +4,7 @@ import { DataRow } from "@/types/Data";
 import { Variable } from "@/types/Variable";
 import { Log } from "@/types/Result";
 // Path to utils is one level up from services directory
-import { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../utils"; 
+import { CellDef, HAlignType, VAlignType, generateAutoTableDataFromString } from "../print.utils"; 
 
 const PAGE_MARGIN = 14;
 const PAGE_TOP_MARGIN = 10;
@@ -25,6 +25,44 @@ const Y_THRESHOLD_RESULTS_LOG_TEXT = 280;
 const Y_THRESHOLD_RESULTS_ANALYTIC_TITLE = 260;
 const Y_THRESHOLD_RESULTS_TABLE_TITLE = 250;
 const Y_THRESHOLD_RESULTS_LOG_ID = 270;
+
+// Utility to convert HTML (e.g., rich-text from Tiptap) to plain text for PDF output
+// We rely on DOM APIs which are available in the browser (Print runs client-side)
+function htmlToPlainText(html: string): string {
+  if (typeof window === "undefined") return html;
+  const div = document.createElement("div");
+  div.innerHTML = html;
+
+  // Process ordered lists
+  Array.from(div.querySelectorAll("ol")).forEach((ol) => {
+    Array.from(ol.querySelectorAll("li")).forEach((li, idx) => {
+      li.insertAdjacentText("afterbegin", `  ${idx + 1}. `);
+    });
+    ol.insertAdjacentText("afterend", "\n");
+  });
+
+  // Process unordered lists
+  Array.from(div.querySelectorAll("ul")).forEach((ul) => {
+    Array.from(ul.querySelectorAll("li")).forEach((li) => {
+      li.insertAdjacentText("afterbegin", "  • ");
+    });
+    ul.insertAdjacentText("afterend", "\n");
+  });
+
+  // Replace <br> with newline tokens
+  Array.from(div.querySelectorAll("br")).forEach((br) => {
+    br.replaceWith("\n");
+  });
+
+  // Add newline after paragraphs and list items to preserve spacing
+  Array.from(div.querySelectorAll("p, li")).forEach((el) => {
+    el.insertAdjacentText("afterend", "\n");
+  });
+
+  const text = div.textContent || div.innerText || "";
+  // Collapse multiple newlines to max 2
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
 
 export function addDataGridView(
     doc: jsPDF,
@@ -102,18 +140,15 @@ export function addVariableView(
     newY += SPACE_AFTER_TITLE;
     doc.setFontSize(TEXT_FONT_SIZE);
 
-    const variableData = variablesToPrint.map((variable, idx) => [
-        idx + 1,
-        variable.name,
-        variable.type,
+    const variableData = variablesToPrint.map((variable) => [
+        variable.name || "-",
+        variable.type || "-",
         variable.label || "-",
         variable.measure || "unknown",
-        variable.width || "-",
-        variable.columnIndex + 1
     ]);
 
     autoTable(doc, {
-        head: [["No", "Name", "Type", "Label", "Measure", "Width", "Column Index"]],
+        head: [["Name", "Type", "Label", "Measure"]],
         body: variableData,
         startY: newY,
         theme: "grid",
@@ -154,7 +189,14 @@ export function addResultsView(
     doc.text("Output Viewer (Results)", PAGE_MARGIN, newY);
     newY += SPACE_AFTER_TITLE;
 
-    for (const log of logs) {
+    for (let index = 0; index < logs.length; index++) {
+        const log = logs[index];
+        if (index > 0) {
+            newY += 3;
+            doc.line(PAGE_MARGIN, newY, doc.internal.pageSize.getWidth() - PAGE_MARGIN, newY);
+            newY += 7;
+        }
+
         if (newY > Y_THRESHOLD_RESULTS_LOG_ID) { 
             doc.addPage(); 
             newY = PAGE_TOP_MARGIN; 
@@ -171,7 +213,9 @@ export function addResultsView(
             doc.addPage();
             newY = PAGE_TOP_MARGIN;
         }
+        doc.setFont(doc.getFont().fontName, 'italic');
         doc.text(log.log, PAGE_MARGIN, newY, { maxWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2) });
+        doc.setFont(doc.getFont().fontName, 'normal');
         newY += (logTextLines.length * 3.5) + SPACE_AFTER_LOG_TEXT;
 
         if (log.analytics?.length) {
@@ -224,7 +268,22 @@ export function addResultsView(
                                 tableWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2),
                                 didDrawPage: (data) => { newY = data.cursor?.y || PAGE_TOP_MARGIN; }
                             });
-                            newY = (doc as any).lastAutoTable.finalY + SPACE_AFTER_TABLE;
+                            newY = (doc as any).lastAutoTable.finalY + 4; // Small space after table
+
+                            // Add statistic description if available, now placed AFTER the table
+                            if (stat.description) {
+                                const plainDescription = htmlToPlainText(stat.description);
+                                const descriptionLines = doc.splitTextToSize(plainDescription, doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2));
+                                if (newY + (descriptionLines.length * 3.5) > Y_THRESHOLD_GENERAL) {
+                                    doc.addPage();
+                                    newY = PAGE_TOP_MARGIN;
+                                }
+                                const lineHeightFactor = 1.3;
+                                doc.text(descriptionLines, PAGE_MARGIN, newY, { lineHeightFactor, maxWidth: doc.internal.pageSize.getWidth() - (PAGE_MARGIN * 2) });
+                                doc.setFont(doc.getFont().fontName, 'normal');
+                                newY += (descriptionLines.length * TEXT_FONT_SIZE * lineHeightFactor) / 2; // approximate line height
+                            }
+                            newY += SPACE_AFTER_TABLE; // Final space after the entire statistic block
                         }
                     }
                 }

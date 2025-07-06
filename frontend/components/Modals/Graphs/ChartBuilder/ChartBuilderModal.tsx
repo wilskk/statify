@@ -23,7 +23,7 @@ import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
 import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import ResultOutput from "@/components/Output/ResultOutput";
+import ResultOutput from "@/app/dashboard/result/components/ResultOutput";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import { X } from "lucide-react";
 
@@ -50,7 +50,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
   const { addStatistic, addLog, addAnalytic } = useResultStore();
   // const { data, loadData } = useDataStore(); // Mengambil data dari store
-  const [showResult, setShowResult] = useState(false);
 
   const variables = useVariableStore.getState().variables;
   const data = useDataStore((state) => state.data);
@@ -227,13 +226,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
             // Add log first and get the ID
             const logId = await addLog({ log: logMsg });
 
-            // Add analytic with log_id
+            // Add analytic with logId
             const analyticId = await addAnalytic(logId, {
               title: "Chart Builder",
               note: "",
             });
 
-            // Add statistic with analytic_id
+            // Add statistic with analyticId
             await addStatistic(analyticId, {
               title: chartType,
               output_data: chartJSON,
@@ -243,7 +242,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
             setIsCalculating(false);
             onClose(); // Tutup modal
-            setShowResult(true);
           } catch (err) {
             console.error("Error during post-chart actions:", err);
             setErrorMsg("Terjadi kesalahan saat menyimpan hasil.");
@@ -338,10 +336,6 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
 
     return true; // Jika semua validasi lolos
   };
-
-  if (showResult) {
-    return <ResultOutput />;
-  }
 
   // Content for both dialog and sidebar rendering
   const ModalContent = () => (

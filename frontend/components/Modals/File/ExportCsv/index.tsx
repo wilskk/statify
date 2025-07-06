@@ -200,6 +200,7 @@ export const ExportCsv: FC<ExportCsvProps> = ({
                                     size="icon" 
                                     onClick={startTour}
                                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                    aria-label="Start feature tour"
                                 >
                                     <HelpCircle className="h-4 w-4" />
                                 </Button>

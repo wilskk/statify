@@ -111,11 +111,23 @@ export const useLinear = () => {
   };
 
   // Fungsi dummy untuk binary logistic regression - menambahkan fungsi yang dieror
-  const calculateBinaryLogisticRegression = (dependentData: Array<string | number>, covariateData: Array<Array<string | number>>) => {
-    // Konversi data menjadi numerik
-    const y = dependentData.map(val => typeof val === 'string' ? parseFloat(val) || 0 : val);
+  const calculateBinaryLogisticRegression = (
+    dependentData: Array<string | number | null>,
+    covariateData: Array<Array<string | number | null>>
+  ) => {
+    // Konversi data menjadi numerik, ubah null/undefined menjadi 0
+    const y = dependentData.map(val => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'string') return parseFloat(val) || 0;
+      return val;
+    });
+
     const X = covariateData.map(covar =>
-        covar.map(val => typeof val === 'string' ? parseFloat(val) || 0 : val)
+      covar.map(val => {
+        if (val === null || val === undefined) return 0;
+        if (typeof val === 'string') return parseFloat(val) || 0;
+        return val;
+      })
     );
 
     // Implementasi dummy untuk hasil yang diperlukan oleh ModalBinaryLogistic

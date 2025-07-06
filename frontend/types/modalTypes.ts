@@ -28,6 +28,10 @@ export enum ModalType {
     // Edit modals - Operasi pencarian dan navigasi
     FindAndReplace = "FindAndReplace",
     GoTo = "GoTo",
+    Find = "Find",
+    Replace = "Replace",
+    GoToCase = "GoToCase",
+    GoToVariable = "GoToVariable",
 
     // Data modals - Operasi manipulasi dan pengaturan data
     DefineVarProps = "DefineVarProps",
@@ -49,6 +53,7 @@ export enum ModalType {
     SelectCases = "SelectCases",
     DefineValidationRules = "DefineValidationRules",
     Validate = "Validate",
+    ExampleDataset = "ExampleDataset",
 
     // Transform modals - Transformasi variabel dan data
     ComputeVariable = "ComputeVariable",
@@ -117,12 +122,6 @@ export enum ModalType {
     ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
     ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
     ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
-
-    // Edit modals - Operasi pencarian dan navigasi
-    Find = "Find",
-    Replace = "Replace",
-    GoToCase = "GoToCase",
-    GoToVariable = "GoToVariable",
 }
 
 /**
@@ -204,6 +203,10 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     // Edit modals
     [ModalType.FindAndReplace]: ModalCategory.Edit,
     [ModalType.GoTo]: ModalCategory.Edit,
+    [ModalType.Find]: ModalCategory.Edit,
+    [ModalType.Replace]: ModalCategory.Edit,
+    [ModalType.GoToCase]: ModalCategory.Edit,
+    [ModalType.GoToVariable]: ModalCategory.Edit,
 
     // Data modals
     [ModalType.DefineVarProps]: ModalCategory.Data,
@@ -225,6 +228,7 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.SelectCases]: ModalCategory.Data,
     [ModalType.DefineValidationRules]: ModalCategory.Data,
     [ModalType.Validate]: ModalCategory.Data,
+    [ModalType.ExampleDataset]: ModalCategory.Data,
 
     // Transform modals
     [ModalType.ComputeVariable]: ModalCategory.Transform,
@@ -293,12 +297,6 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
     [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
     [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
-
-    // Edit modals
-    [ModalType.Find]: ModalCategory.Edit,
-    [ModalType.Replace]: ModalCategory.Edit,
-    [ModalType.GoToCase]: ModalCategory.Edit,
-    [ModalType.GoToVariable]: ModalCategory.Edit,
 };
 
 /**
@@ -427,55 +425,12 @@ export function getModalTitle(type: ModalType): string {
             return "New Custom Attribute";
         case ModalType.SelectCases:
             return "Select Cases";
-        case ModalType.DefineValidationRules:
-            return "Define Validation Rules";
-        case ModalType.Validate:
-            return "Validate Data";
-
-        // General Linear Model titles
-        case ModalType.ModalUnivariate:
-            return "Univariate Analysis";
-        case ModalType.ModalMultivariate:
-            return "Multivariate Analysis";
-        case ModalType.ModalRepeatedMeasures:
-            return "Repeated Measures Analysis";
-        case ModalType.ModalVarianceComponents:
-            return "Variance Components Analysis";
-
-        // Classify titles
-        case ModalType.ModalTwoStepCluster:
-            return "Two-Step Cluster Analysis";
-        case ModalType.ModalKMeansCluster:
-            return "K-Means Cluster Analysis";
-        case ModalType.ModalHierarchicalCluster:
-            return "Hierarchical Cluster Analysis";
-        case ModalType.ModalClusterSilhouettes:
-            return "Cluster Silhouettes Analysis";
-        case ModalType.ModalTree:
-            return "Decision Tree Analysis";
-        case ModalType.ModalDiscriminant:
-            return "Discriminant Analysis";
-        case ModalType.ModalNearestNeighbor:
-            return "Nearest Neighbor Analysis";
-        case ModalType.ModalROCCurve:
-            return "ROC Curve Analysis";
-        case ModalType.ModalROCAnalysis:
-            return "ROC Analysis";
-
-        // Dimension Reduction titles
-        case ModalType.ModalFactor:
-            return "Factor Analysis";
-        case ModalType.ModalCorrespondenceAnalysis:
-            return "Correspondence Analysis";
-        case ModalType.ModalDROptimalScaling:
-            return "Optimal Scaling Analysis";
-        case ModalType.ModalOptimalScalingCATPCA:
-            return "Categorical Principal Components Analysis (CATPCA)";
-        case ModalType.ModalOptimalScalingOVERALS:
-            return "Nonlinear Canonical Correlation Analysis (OVERALS)";
-        case ModalType.ModalOptimalScalingMCA:
-            return "Multiple Correspondence Analysis (MCA)";
-
+        case ModalType.ExampleDataset:
+            return "Example Dataset";
+        case ModalType.GoToCase:
+            return "Go To Case";
+        case ModalType.GoToVariable:
+            return "Go To Variable";
         default:
             return rawTitle.trim();
     }

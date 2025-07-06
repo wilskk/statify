@@ -1,6 +1,6 @@
 import { Variable } from "@/types/Variable";
 import { DataRow } from "@/types/Data";
-import { Meta } from "@/stores/useMetaStore";
+import { Meta } from "@/types/Meta";
 import { ContainerType } from "@/types/ui";
 
 // Options for the core Excel generation utility

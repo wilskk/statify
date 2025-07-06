@@ -4,6 +4,7 @@ import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
 import { useMetaStore } from "@/stores/useMetaStore";
 import { Variable } from "@/types/Variable";
+import { v4 as uuidv4 } from "uuid";
 import { 
   selectByCondition, 
   selectByFilterVariable, 
@@ -18,7 +19,7 @@ import {
  */
 export const useSelectCases = () => {
     const { closeModal } = useModalStore();
-    const { variables, addVariable, updateVariable } = useVariableStore();
+    const { variables, addVariables, updateVariable } = useVariableStore();
     const { data, updateCells } = useDataStore();
     const { meta, setFilter } = useMetaStore();
 
@@ -171,7 +172,7 @@ export const useSelectCases = () => {
                 await updateCells(updates);
             } else {
                 const newVarIndex = variables.length;
-                await addVariable({
+                const newVar: Partial<Variable> = {
                     name: "filter_$",
                     type: "NUMERIC",
                     width: 8,
@@ -180,13 +181,8 @@ export const useSelectCases = () => {
                     measure: "nominal",
                     role: "input",
                     columnIndex: newVarIndex,
-                    values: [
-                        { variableName: "filter_$", value: 0, label: "Not Selected" },
-                        { variableName: "filter_$", value: 1, label: "Selected" }
-                    ],
-                });
-
-                await updateCells(updates);
+                };
+                await addVariables([newVar], updates);
             }
             
             return true;

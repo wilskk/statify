@@ -101,27 +101,10 @@ const FrequenciesContent: FC<BaseModalProps> = ({
 
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'variables' | 'statistics' | 'charts')} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
-                    <TabsList className="bg-muted rounded-none h-9 p-0">
-                        <TabsTrigger
-                            value="variables"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'variables' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Variables
-                        </TabsTrigger>
-                        <TabsTrigger
-                            id="statistics-tab-trigger"
-                            value="statistics"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'statistics' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Statistics
-                        </TabsTrigger>
-                        <TabsTrigger
-                            id="charts-tab-trigger"
-                            value="charts"
-                            className={`px-4 h-8 rounded-none text-sm ${activeTab === 'charts' ? 'bg-card border-t border-l border-r border-border' : ''}`}
-                        >
-                            Charts
-                        </TabsTrigger>
+                    <TabsList>
+                        <TabsTrigger value="variables">Variables</TabsTrigger>
+                        <TabsTrigger id="statistics-tab-trigger" value="statistics">Statistics</TabsTrigger>
+                        <TabsTrigger id="charts-tab-trigger" value="charts">Charts</TabsTrigger>
                     </TabsList>
                 </div>
 
