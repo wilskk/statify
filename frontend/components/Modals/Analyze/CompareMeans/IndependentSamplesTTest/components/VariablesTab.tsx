@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
-import { VariablesTabProps } from "./types";
+import { VariablesTabProps } from "../types";
 
 // Source types remain the same, but used internally by the parent mostly
 type AllSource = 'available' | 'selected' | 'grouping';

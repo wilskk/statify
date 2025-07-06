@@ -1,0 +1,96 @@
+/**
+ * @file /libs/utils.js
+ * @description
+ * Kumpulan fungsi utilitas terpusat yang digunakan oleh berbagai worker Nonparametric Tests.
+ */
+
+/**
+ * Memeriksa apakah sebuah nilai dapat dianggap numerik.
+ * Mendukung angka dan string yang merepresentasikan angka.
+ * @param {*} value - Nilai yang akan diperiksa.
+ * @returns {boolean} True jika numerik, false jika tidak.
+ */
+
+function isNumeric(value) {
+    if (typeof value === 'number' && !isNaN(value)) return true;
+    if (typeof value === 'string' && value.trim() !== '') {
+        return !isNaN(parseFloat(value));
+    }
+    return false;
+}
+
+/**
+ * Memeriksa apakah sebuah nilai dianggap 'missing' berdasarkan definisi variabel.
+ * Mendukung missing diskrit (misal: [99, 98]) dan rentang missing (misal: {min: 90, max: 99}).
+ * @param {*} value - Nilai yang akan diperiksa.
+ * @param {object} definition - Objek definisi missing values dari variabel.
+ * @param {boolean} isNumericType - True jika tipe variabel adalah numerik.
+ * @returns {boolean} True jika nilai dianggap missing.
+ */
+function checkIsMissing(value, definition, isNumericType) {
+    if (value === null || value === undefined || (isNumericType && value === '')) return true;
+    if (!definition) return false;
+
+    if (definition.discrete && Array.isArray(definition.discrete)) {
+        const valueToCompare = isNumericType && typeof value !== 'number' ? parseFloat(value) : value;
+        for (const missingVal of definition.discrete) {
+            const discreteMissingToCompare = isNumericType && typeof missingVal === 'string' ? parseFloat(missingVal) : missingVal;
+            if (valueToCompare === discreteMissingToCompare || String(value) === String(missingVal)) return true;
+        }
+    }
+
+    if (isNumericType && definition.range) {
+        const numValue = typeof value === 'number' ? value : parseFloat(value);
+        if (!isNaN(numValue)) {
+            const min = parseFloat(definition.range.min);
+            const max = parseFloat(definition.range.max);
+            if (!isNaN(min) && !isNaN(max) && numValue >= min && numValue <= max) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Ekstraksi data untuk variabel dari dataset.
+ * @param {Array} data - Array data input.
+ * @param {Object} variable - Definisi variabel.
+ * @param {Object} options - Opsi tambahan seperti treatment for missing values.
+ * @returns {Array} - Array data yang telah difilter.
+ */
+function extractNumericData(data, variable, options = {}) {
+    const result = [];
+    const invalidIndices = [];
+    const isNumericVar = variable.type === 'numeric' || variable.measure === 'scale';
+    
+    for (let i = 0; i < data.length; i++) {
+        const value = data[i];
+        
+        // Skip jika missing value
+        if (checkIsMissing(value, variable.missing, isNumericVar)) {
+            invalidIndices.push(i);
+            continue;
+        }
+        
+        // Konversi ke numerik jika perlu
+        if (isNumericVar) {
+            const numValue = typeof value === 'number' ? value : parseFloat(value);
+            if (isNaN(numValue)) {
+                invalidIndices.push(i);
+                continue;
+            }
+            result.push(numValue);
+        } else {
+            result.push(value);
+        }
+    }
+    
+    return {
+        validData: result,
+        invalidIndices: invalidIndices,
+        totalCount: data.length,
+        validCount: result.length
+    };
+}
+
+// Export functions for ES modules
+export { isNumeric, checkIsMissing, extractNumericData }; 

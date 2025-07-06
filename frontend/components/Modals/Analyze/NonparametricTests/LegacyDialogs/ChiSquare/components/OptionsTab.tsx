@@ -1,6 +1,7 @@
 import React, { FC } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TourStep } from "../types";
 
 interface OptionsTabProps {
     displayStatistics: {
@@ -11,11 +12,17 @@ interface OptionsTabProps {
         descriptive: boolean;
         quartiles: boolean;
     }>>;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
 const OptionsTab: FC<OptionsTabProps> = ({
     displayStatistics,
-    setDisplayStatistics
+    setDisplayStatistics,
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = []
 }) => {
     return (
         <div>

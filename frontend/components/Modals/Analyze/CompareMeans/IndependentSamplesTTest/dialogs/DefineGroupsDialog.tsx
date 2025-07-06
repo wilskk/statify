@@ -19,46 +19,68 @@ interface DefineGroupsDialogProps {
     onOpenChange: (open: boolean) => void;
     
     // Current values
-    tempDefineGroups: DefineGroupsOptions;
-    setTempDefineGroups: (groups: DefineGroupsOptions) => void;
-    tempGroup1: number | null;
-    setTempGroup1: (value: number | null) => void;
-    tempGroup2: number | null;
-    setTempGroup2: (value: number | null) => void;
-    tempCutPointValue: number | null;
-    setTempCutPointValue: (value: number | null) => void;
+    currentValues: {
+        defineGroups: DefineGroupsOptions;
+        group1: number | null;
+        group2: number | null;
+        cutPointValue: number | null;
+    };
     
     // Error handling
     groupRangeError: string | null;
     setGroupRangeError: (error: string | null) => void;
     
     // Submit handler
-    onApply: () => void;
+    onApply: (newValues: {
+        defineGroups: DefineGroupsOptions;
+        group1: number | null;
+        group2: number | null;
+        cutPointValue: number | null;
+    }) => boolean;
 }
 
 const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
     open,
     onOpenChange,
-    tempDefineGroups,
-    setTempDefineGroups,
-    tempGroup1,
-    setTempGroup1,
-    tempGroup2,
-    setTempGroup2,
-    tempCutPointValue,
-    setTempCutPointValue,
+    currentValues,
     groupRangeError,
     setGroupRangeError,
     onApply
 }) => {
+    // Local state for dialog values
+    const [localValues, setLocalValues] = useState({
+        defineGroups: currentValues.defineGroups,
+        group1: currentValues.group1,
+        group2: currentValues.group2,
+        cutPointValue: currentValues.cutPointValue
+    });
+
+    // Update local values when the dialog opens or current values change
+    useEffect(() => {
+        if (open) {
+            setLocalValues({
+                defineGroups: currentValues.defineGroups,
+                group1: currentValues.group1,
+                group2: currentValues.group2,
+                cutPointValue: currentValues.cutPointValue
+            });
+            setGroupRangeError(null);
+        }
+    }, [open, currentValues, setGroupRangeError]);
+    
+    // Helper function to update local values
+    const updateLocalValues = (updates: Partial<typeof localValues>) => {
+        setLocalValues(prev => ({ ...prev, ...updates }));
+    };
+
     // Helper function to determine if we're using specified values
     const isUsingSpecifiedValues = (): boolean => {
-        return tempDefineGroups.useSpecifiedValues;
+        return localValues.defineGroups.useSpecifiedValues;
     };
 
     // Helper function to determine if we're using cut point
     const isUsingCutPoint = (): boolean => {
-        return tempDefineGroups.cutPoint;
+        return localValues.defineGroups.cutPoint;
     };
 
     // Radio group value
@@ -66,10 +88,18 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
         isUsingSpecifiedValues() ? "Use specified values" : "Cut point"
     );
 
-    // Update radio value when tempDefineGroups changes
+    // Update radio value when defineGroups changes
     useEffect(() => {
         setRadioValue(isUsingSpecifiedValues() ? "Use specified values" : "Cut point");
-    }, [tempDefineGroups]);
+    }, [localValues.defineGroups]);
+
+    // Handle apply button click
+    const handleApply = () => {
+        if (onApply(localValues)) {
+            // If apply was successful, close the dialog
+            onOpenChange(false);
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,20 +112,18 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
                     onValueChange={(value: string) => {
                         setRadioValue(value);
                         if (value === "Use specified values") {
-                            setTempDefineGroups({
-                                useSpecifiedValues: true,
-                                cutPoint: false,
-                                group1: tempGroup1,
-                                group2: tempGroup2,
-                                cutPointValue: null
+                            updateLocalValues({
+                                defineGroups: {
+                                    useSpecifiedValues: true,
+                                    cutPoint: false,
+                                }
                             });
                         } else {
-                            setTempDefineGroups({
-                                useSpecifiedValues: false,
-                                cutPoint: true,
-                                group1: null,
-                                group2: null,
-                                cutPointValue: tempCutPointValue
+                            updateLocalValues({
+                                defineGroups: {
+                                    useSpecifiedValues: false,
+                                    cutPoint: true,
+                                }
                             });
                         }
                     }}
@@ -109,15 +137,15 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
                             type="number"
                             step="1"
                             disabled={isUsingCutPoint()}
-                            value={tempGroup1 !== null ? tempGroup1 : ""}
+                            value={localValues.group1 !== null ? localValues.group1 : ""}
                             onChange={(e) => {
                                 const value = e.target.value ? parseFloat(e.target.value) : null;
-                                setTempGroup1(value);
+                                updateLocalValues({ group1: value });
                                 
                                 // Validate for integer
                                 if (value !== null && !Number.isInteger(value)) {
                                     setGroupRangeError("Values must be integers");
-                                } else if (value !== null && tempGroup2 !== null && value >= tempGroup2) {
+                                } else if (value !== null && localValues.group2 !== null && value >= localValues.group2) {
                                     setGroupRangeError("Minimum must be less than maximum");
                                 } else {
                                     setGroupRangeError(null);
@@ -135,15 +163,15 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
                             type="number"
                             step="1"
                             disabled={isUsingCutPoint()}
-                            value={tempGroup2 !== null ? tempGroup2 : ""}
+                            value={localValues.group2 !== null ? localValues.group2 : ""}
                             onChange={(e) => {
                                 const value = e.target.value ? parseFloat(e.target.value) : null;
-                                setTempGroup2(value);
+                                updateLocalValues({ group2: value });
                                 
                                 // Validate for integer
                                 if (value !== null && !Number.isInteger(value)) {
                                     setGroupRangeError("Values must be integers");
-                                } else if (value !== null && tempGroup1 !== null && value <= tempGroup1) {
+                                } else if (value !== null && localValues.group1 !== null && value <= localValues.group1) {
                                     setGroupRangeError("Maximum must be greater than minimum");
                                 } else {
                                     setGroupRangeError(null);
@@ -162,10 +190,10 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
                             type="number"
                             step="1"
                             disabled={isUsingSpecifiedValues()}
-                            value={tempCutPointValue !== null ? tempCutPointValue : ""}
+                            value={localValues.cutPointValue !== null ? localValues.cutPointValue : ""}
                             onChange={(e) => {
                                 const value = e.target.value ? parseFloat(e.target.value) : null;
-                                setTempCutPointValue(value);
+                                updateLocalValues({ cutPointValue: value });
                                 
                                 // Validate for integer
                                 if (value !== null && !Number.isInteger(value)) {
@@ -188,10 +216,10 @@ const DefineGroupsDialog: React.FC<DefineGroupsDialogProps> = ({
                 <DialogFooter>
                     <Button 
                         className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-4"
-                        onClick={onApply}
+                        onClick={handleApply}
                         disabled={
-                            (isUsingSpecifiedValues() && (tempGroup1 === null || tempGroup2 === null || tempGroup1 >= tempGroup2)) ||
-                            (isUsingCutPoint() && tempCutPointValue === null) ||
+                            (isUsingSpecifiedValues() && (localValues.group1 === null || localValues.group2 === null || localValues.group1 >= localValues.group2)) ||
+                            (isUsingCutPoint() && localValues.cutPointValue === null) ||
                             groupRangeError !== null
                         }
                     >

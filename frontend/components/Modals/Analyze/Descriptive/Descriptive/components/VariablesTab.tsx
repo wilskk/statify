@@ -1,10 +1,8 @@
-import React, { FC, useCallback, useState } from "react";
+import React, { FC, useCallback, Dispatch, SetStateAction, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Variable } from "@/types/Variable";
 import { HighlightedVariableInfo } from "../types";
-import { Dispatch, SetStateAction } from "react";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
 import { ActiveElementHighlight } from "@/components/Common/TourComponents";
 import { TourStep } from "../hooks/useTourGuide";

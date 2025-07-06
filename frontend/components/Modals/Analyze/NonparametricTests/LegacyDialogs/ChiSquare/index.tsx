@@ -1,10 +1,12 @@
 "use client";
-import React, { FC, useState, useCallback, useEffect } from "react";
+
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
     DialogContent,
-    DialogFooter,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
 } from "@/components/ui/dialog";
 import {
     Tabs,
@@ -12,26 +14,29 @@ import {
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { useVariableSelection } from "./hooks/useVariableSelection";
-import { useTestSettings } from "./hooks/useTestSettings";
-import { useChiSquareAnalysis } from "./hooks/useChiSquareAnalysis";
-import { useDataFetching } from "./hooks/useDataFetching";
+import { TourPopup } from "@/components/Common/TourComponents";
 import { BaseModalProps } from "@/types/modalTypes";
+import { AnimatePresence } from "framer-motion";
+import {
+    useVariableSelection,
+    useTestSettings,
+    useChiSquareAnalysis,
+    useTourGuide,
+    TabControlProps
+} from "./hooks";
 
-import VariablesTab from "./VariablesTab";
-import OptionsTab from "./OptionsTab";
+import VariablesTab from "./components/VariablesTab";
+import OptionsTab from "./components/OptionsTab";
 
-// Komponen utama konten ChiSquare yang agnostik terhadap container
-const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
+const ChiSquareContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
     const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
     
     const {
         availableVariables,
-        selectedVariables,
+        testVariables,
         highlightedVariable,
         setHighlightedVariable,
-        moveToSelectedVariables,
+        moveToTestVariables,
         moveToAvailableVariables,
         reorderVariables,
         resetVariableSelection
@@ -46,23 +51,23 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
         setExpectedValue,
         expectedValueList,
         setExpectedValueList,
-        highlightedExpectedValue,
-        setHighlightedExpectedValue,
+        highlightedExpectedValueIndex,
+        setHighlightedExpectedValueIndex,
         displayStatistics,
         setDisplayStatistics,
-        handleAddExpectedValue,
-        handleRemoveExpectedValue,
-        handleChangeExpectedValue,
+        addExpectedValue,
+        removeExpectedValue,
+        changeExpectedValue,
         resetTestSettings
-    } = useTestSettings();
+    } = useTestSettings({});
 
     const { 
-        isLoading,
+        isCalculating,
         errorMsg, 
         runAnalysis,
-        cancelAnalysis
+        cancelCalculation
     } = useChiSquareAnalysis({
-        selectedVariables,
+        testVariables,
         expectedRange,
         rangeValue,
         expectedValue,
@@ -71,11 +76,27 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
         onClose
     });
 
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: 'variables' | 'options') => setActiveTab(tab),
+        currentActiveTab: activeTab
+    }), [activeTab]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(containerType, tabControl);
+
     const handleReset = useCallback(() => {
         resetVariableSelection();
         resetTestSettings();
-        cancelAnalysis();
-    }, [resetVariableSelection, resetTestSettings, cancelAnalysis]);
+        cancelCalculation();
+    }, [resetVariableSelection, resetTestSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
         if (value === 'variables' || value === 'options') {
@@ -85,27 +106,51 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
 
     useEffect(() => {
         return () => {
-            cancelAnalysis();
+            cancelCalculation();
         };
-    }, [cancelAnalysis]);
+    }, [cancelCalculation]);
 
     return (
         <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
                 <div className="border-b border-border flex-shrink-0">
                     <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                        <TabsTrigger value="options">Options</TabsTrigger>
+                        <TabsTrigger
+                            id="variables-tab-trigger"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            id="options-tab-trigger"
+                            value="options"
+                        >
+                            Options
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
-                        selectedVariables={selectedVariables}
+                        testVariables={testVariables}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
-                        moveToSelectedVariables={moveToSelectedVariables}
+                        moveToTestVariables={moveToTestVariables}
                         moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
                         expectedRange={expectedRange}
@@ -116,11 +161,16 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
                         setExpectedValue={setExpectedValue}
                         expectedValueList={expectedValueList}
                         setExpectedValueList={setExpectedValueList}
-                        highlightedExpectedValue={highlightedExpectedValue}
-                        setHighlightedExpectedValue={setHighlightedExpectedValue}
-                        handleAddExpectedValue={handleAddExpectedValue}
-                        handleRemoveExpectedValue={handleRemoveExpectedValue}
-                        handleChangeExpectedValue={handleChangeExpectedValue}
+                        highlightedExpectedValueIndex={highlightedExpectedValueIndex}
+                        setHighlightedExpectedValueIndex={setHighlightedExpectedValueIndex}
+                        addExpectedValue={addExpectedValue}
+                        removeExpectedValue={removeExpectedValue}
+                        changeExpectedValue={changeExpectedValue}
+                        displayStatistics={displayStatistics}
+                        setDisplayStatistics={setDisplayStatistics}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
 
@@ -128,40 +178,66 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
                     <OptionsTab
                         displayStatistics={displayStatistics}
                         setDisplayStatistics={setDisplayStatistics}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
             </Tabs>
 
             {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
 
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        onClick={runAnalysis}
-                        disabled={isLoading || selectedVariables.length === 0}
-                    >
-                        {isLoading ? "Processing..." : "OK"}
-                    </Button>
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={handleReset}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={onClose}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        // onClick={onHelp} // Assuming an onHelp function exists or will be added
-                        disabled={isLoading}
+                        id="chi-square-ok-button"
+                        onClick={runAnalysis}
+                        disabled={
+                            isCalculating ||
+                            testVariables.length < 1 ||
+                            !expectedRange ||
+                            !rangeValue ||
+                            !expectedValue ||
+                            !expectedValueList
+                        }
                     >
-                        Help
+                        {isCalculating ? "Calculating..." : "OK"}
                     </Button>
                 </div>
             </div>
@@ -169,32 +245,29 @@ const ChiSquareContent: FC<BaseModalProps> = ({ onClose }) => {
     );
 };
 
-// Komponen ChiSquare yang menjadi titik masuk utama
 const ChiSquare: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // Render berdasarkan containerType
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <ChiSquareContent onClose={onClose} {...props} />
+                    <ChiSquareContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // Default dialog view with proper Dialog components
     return (
-        <DialogContent className="max-w-[800px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
             <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                <DialogTitle className="text-[22px] font-semibold">Chi-square Test</DialogTitle>
+                <DialogTitle className="text-[22px] font-semibold">Chi-Square Test</DialogTitle>
             </DialogHeader>
 
             <div className="flex-grow flex flex-col overflow-hidden">
-                <ChiSquareContent onClose={onClose} {...props} />
+                <ChiSquareContent onClose={onClose} containerType={containerType} {...props} />
             </div>
         </DialogContent>
     );
-}
+};
 
 export default ChiSquare;
 export { ChiSquareContent };

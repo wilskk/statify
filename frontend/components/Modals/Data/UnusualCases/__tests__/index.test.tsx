@@ -6,31 +6,11 @@ import IdentifyUnusualCases from '..';
 import { useUnusualCases } from '../hooks/useUnusualCases';
 
 // Mock child components to keep tests focused on the main component's logic
-jest.mock('../VariablesTab', () => {
-    const MockVariablesTab = () => <div>VariablesTabContent</div>;
-    MockVariablesTab.displayName = 'MockVariablesTab';
-    return MockVariablesTab;
-});
-jest.mock('../OptionsTab', () => {
-    const MockOptionsTab = () => <div>OptionsTabContent</div>;
-    MockOptionsTab.displayName = 'MockOptionsTab';
-    return MockOptionsTab;
-});
-jest.mock('../OutputTab', () => {
-    const MockOutputTab = () => <div>OutputTabContent</div>;
-    MockOutputTab.displayName = 'MockOutputTab';
-    return MockOutputTab;
-});
-jest.mock('../SaveTab', () => {
-    const MockSaveTab = () => <div>SaveTabContent</div>;
-    MockSaveTab.displayName = 'MockSaveTab';
-    return MockSaveTab;
-});
-jest.mock('../MissingValuesTab', () => {
-    const MockMissingValuesTab = () => <div>MissingValuesTabContent</div>;
-    MockMissingValuesTab.displayName = 'MockMissingValuesTab';
-    return MockMissingValuesTab;
-});
+jest.mock('../VariablesTab', () => () => <div>VariablesTabContent</div>);
+jest.mock('../OptionsTab', () => () => <div>OptionsTabContent</div>);
+jest.mock('../OutputTab', () => () => <div>OutputTabContent</div>);
+jest.mock('../SaveTab', () => () => <div>SaveTabContent</div>);
+jest.mock('../MissingValuesTab', () => () => <div>MissingValuesTabContent</div>);
 
 // Mock hooks
 jest.mock('../hooks/useUnusualCases');

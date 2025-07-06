@@ -18,7 +18,7 @@ import {
 import type { Variable } from "@/types/Variable";
 import { BaseModalProps } from "@/types/modalTypes";
 
-import VariablesTab from "./VariablesTab";
+import VariablesTab from "./components/VariablesTab";
 import { DefineGroupsDialog } from "./dialogs/DefineGroupsDialog";
 import { 
     useVariableSelection,
