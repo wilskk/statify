@@ -46,86 +46,86 @@ export const useFileMenuActions = () => {
                 }
                 break;
             case "SaveAs":
-                const dataMatrix = useDataStore.getState().data;
-                const variablesStore = useVariableStore.getState().variables;
+                try {
+                    // Sync with server before proceeding
+                    await useVariableStore.getState().loadVariables();
+                    await useDataStore.getState().loadData();
 
-                const actualRowCount = dataMatrix.reduce((max, row, index) => {
-                    return row.some(cell => String(cell).trim() !== "") ? index + 1 : max;
-                }, 0);
+                    const dataMatrix = useDataStore.getState().data;
+                    const variablesStore = useVariableStore.getState().variables;
 
-                const actualColCount = dataMatrix.reduce((max, row) => {
-                    const lastFilledIndex = row.reduce((last: number, cell, index) => {
-                        return String(cell).trim() !== "" ? index : last;
-                    }, -1);
-                    return Math.max(max, lastFilledIndex + 1);
-                }, 0);
+                    const actualRowCount = dataMatrix.reduce((max, row, index) => {
+                        return row.some(cell => String(cell).trim() !== "") ? index + 1 : max;
+                    }, 0);
 
-                const trimmedDataMatrix = dataMatrix
-                    .slice(0, actualRowCount)
-                    .map(row => row.slice(0, actualColCount));
+                    const actualColCount = dataMatrix.reduce((max, row) => {
+                        const lastFilledIndex = row.reduce((last: number, cell, index) => {
+                            return String(cell).trim() !== "" ? index : last;
+                        }, -1);
+                        return Math.max(max, lastFilledIndex + 1);
+                    }, 0);
 
-                const filteredVariables = variablesStore.filter(
-                    variable =>
-                        String(variable.name).trim() !== "" ||
-                        (variable.label && String(variable.label).trim() !== "")
-                );
+                    const trimmedDataMatrix = dataMatrix
+                        .slice(0, actualRowCount)
+                        .map(row => row.slice(0, actualColCount));
 
-                const sanitizeVariableName = (name: string) => {
-                    let sanitized = name.trim();
+                    const filteredVariables = variablesStore.filter(
+                        variable =>
+                            (String(variable.name).trim() !== "" ||
+                            (variable.label && String(variable.label).trim() !== "")) &&
+                            typeof variable.type === 'string' // Ensure type is defined
+                    );
 
-                    if (!/^[a-zA-Z]/.test(sanitized)) {
-                        sanitized = "V" + sanitized;
-                    }
+                    const sanitizeVariableName = (name: string) => {
+                        let sanitized = name.trim();
 
-                    sanitized = sanitized.replace(/[^a-zA-Z0-9_]/g, "_");
+                        if (!/^[a-zA-Z]/.test(sanitized)) {
+                            sanitized = "V" + sanitized;
+                        }
 
-                    if (sanitized.length > 64) {
-                        sanitized = sanitized.substring(0, 64);
-                    }
+                        sanitized = sanitized.replace(/[^a-zA-Z0-9_]/g, "_");
 
-                    return sanitized;
-                };
+                        if (sanitized.length > 64) {
+                            sanitized = sanitized.substring(0, 64);
+                        }
 
-                const transformedVariables = filteredVariables.map(variable => {
-                    const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
-
-                    const valueLabels = Array.isArray(variable.values) ?
-                        variable.values.map(vl => ({
-                            value: vl.value,
-                            label: vl.label || ""
-                        })) : [];
-
-                    return {
-                        name,
-                        label: variable.label || "",
-                        type: variable.type,
-                        width: variable.width,
-                        decimal: variable.decimals,
-                        alignment: variable.align.toLowerCase(),
-                        measure: variable.measure.toLowerCase(),
-columns: variable.columns,
-                        valueLabels
+                        return sanitized;
                     };
-                });
 
-                const transformedData = trimmedDataMatrix.map(row => {
-                    const record: Record<string, any> = {};
-                    filteredVariables.forEach(variable => {
-                        if (variable.columnIndex !== undefined && variable.columnIndex < actualColCount) {
-                            const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
-                            const cellValue = row[variable.columnIndex];
-                            // Convert DATE from 'dd/mm/yyyy' to 'dd-mm-yyyy' for SPSS
-                            if (variable.type === 'DATE' && typeof cellValue === 'string') {
-                                record[name] = cellValue.replace(/\//g, '-');
-                            } else {
+                    const transformedVariables = filteredVariables.map(variable => {
+                        const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
+
+                        const valueLabels = Array.isArray(variable.values) ?
+                            variable.values.map(vl => ({
+                                value: vl.value,
+                                label: vl.label || ""
+                            })) : [];
+
+                        return {
+                            name,
+                            label: variable.label || "",
+                            type: variable.type!, // We filtered for string types, so this is safe
+                            width: variable.width,
+                            decimal: variable.decimals,
+                            alignment: variable.align.toLowerCase(),
+                            measure: variable.measure.toLowerCase(),
+                            columns: variable.columns,
+                            valueLabels
+                        };
+                    });
+
+                    const transformedData = trimmedDataMatrix.map(row => {
+                        const record: Record<string, any> = {};
+                        filteredVariables.forEach(variable => {
+                            if (variable.columnIndex !== undefined && variable.columnIndex < actualColCount) {
+                                const name = sanitizeVariableName(variable.name || `VAR${variable.columnIndex}`);
+                                const cellValue = row[variable.columnIndex];
                                 record[name] = cellValue;
                             }
-                        }
+                        });
+                        return record;
                     });
-                    return record;
-                });
-
-                try {
+                    
                     const savFileData = { data: transformedData, variables: transformedVariables };
                     const blob = await createSavFile(savFileData);
                     downloadBlobAsFile(blob, "data.sav");

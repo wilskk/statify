@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
 import { Variable } from '@/types/Variable';
+import { prepareNewUnusualCasesVariables } from '../services/unusualCasesService';
 
-export const useUnusualCases = () => {
-    const { variables } = useVariableStore();
+export const useUnusualCases = ({ onClose }: { onClose: () => void; }) => {
+    const { variables, addVariables } = useVariableStore();
 
     // Variables Tab State
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
@@ -100,6 +101,38 @@ export const useUnusualCases = () => {
         if (source === 'analysis') setAnalysisVariables(reorderedList);
     }, []);
 
+    const handleConfirm = useCallback(async () => {
+        if (analysisVariables.length === 0) {
+            setErrorMsg("Please select at least one analysis variable.");
+            return; 
+        }
+        setErrorMsg(null);
+
+        const saveOptions = {
+            saveAnomalyIndex,
+            anomalyIndexName,
+            savePeerGroups,
+            saveReasons,
+        };
+
+        const { variablesToCreate } = prepareNewUnusualCasesVariables(saveOptions);
+        
+        if (variablesToCreate.length > 0) {
+            // In a full implementation, a worker would perform the analysis 
+            // and return cellUpdates to populate the new variables.
+            await addVariables(variablesToCreate, []);
+        }
+
+        // Placeholder for displaying results in the output pane.
+        console.log("Unusual cases analysis would be run here, and results displayed.");
+
+        onClose();
+    }, [
+        analysisVariables.length,
+        saveAnomalyIndex, anomalyIndexName, savePeerGroups, saveReasons,
+        addVariables, onClose
+    ]);
+
     // Other handlers
     const handleReset = () => {
         setAnalysisVariables([]);
@@ -145,5 +178,6 @@ export const useUnusualCases = () => {
         missingValuesOption, setMissingValuesOption, useProportionMissing, setUseProportionMissing,
         // General Actions
         handleReset,
+        handleConfirm,
     };
-}; 
+};

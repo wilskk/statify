@@ -1,36 +1,40 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import DuplicateCases from '..'; // Assuming index.tsx is the main export
+import userEvent from '@testing-library/user-event';
+import DuplicateCases from '..';
+import { useDuplicateCases } from '../hooks/useDuplicateCases';
+import { useTourGuide } from '../hooks/useTourGuide';
 
 // Mock custom hooks
-const mockUseDuplicateCases = jest.fn();
-const mockUseTourGuide = jest.fn();
+jest.mock('../hooks/useDuplicateCases');
+jest.mock('../hooks/useTourGuide');
 
-jest.mock('../hooks/useDuplicateCases', () => ({
-  useDuplicateCases: () => mockUseDuplicateCases(),
-}));
-
-jest.mock('../hooks/useTourGuide', () => ({
-  useTourGuide: () => mockUseTourGuide(),
-}));
+const mockedUseDuplicateCases = useDuplicateCases as jest.Mock;
+const mockedUseTourGuide = useTourGuide as jest.Mock;
 
 // Mock child components
-const MockVariableTab = () => <div data-testid="variable-tab">VariableTab</div>;
+function MockVariableTab() {
+  return <div data-testid="variable-tab">VariableTab</div>;
+}
 MockVariableTab.displayName = 'VariableTab';
 jest.mock('../VariableTab', () => MockVariableTab);
 
-const MockOptionsTab = () => <div data-testid="options-tab">OptionsTab</div>;
+function MockOptionsTab() {
+  return <div data-testid="options-tab">OptionsTab</div>;
+}
 MockOptionsTab.displayName = 'OptionsTab';
 jest.mock('../OptionsTab', () => MockOptionsTab);
 
-const MockTourPopup = () => <div data-testid="tour-popup">TourPopup</div>;
+function MockTourPopup() {
+  return <div data-testid="tour-popup">TourPopup</div>;
+}
 MockTourPopup.displayName = 'TourPopup';
 jest.mock('@/components/Common/TourComponents', () => ({
   TourPopup: MockTourPopup,
+  ActiveElementHighlight: () => null
 }));
 
-// Mock lucide-react icons
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
     ...jest.requireActual('lucide-react'),
@@ -43,7 +47,6 @@ jest.mock('lucide-react', () => ({
 
 describe('DuplicateCases Component', () => {
   const mockOnClose = jest.fn();
-  const mockSetActiveTab = jest.fn();
 
   const defaultDuplicateCasesProps = {
     sourceVariables: [],
@@ -51,13 +54,13 @@ describe('DuplicateCases Component', () => {
     sortingVariables: [],
     highlightedVariable: null,
     setHighlightedVariable: jest.fn(),
-    sortOrder: 'ascending',
+    sortOrder: 'ascending' as 'ascending' | 'descending',
     setSortOrder: jest.fn(),
-    primaryCaseIndicator: 'first',
+    primaryCaseIndicator: 'first' as 'first' | 'last',
     setPrimaryCaseIndicator: jest.fn(),
     primaryName: '',
     setPrimaryName: jest.fn(),
-    sequentialCount: 1,
+    sequentialCount: false,
     setSequentialCount: jest.fn(),
     sequentialName: '',
     setSequentialName: jest.fn(),
@@ -75,9 +78,6 @@ describe('DuplicateCases Component', () => {
     setDisplayFrequencies: jest.fn(),
     filterByIndicator: false,
     setFilterByIndicator: jest.fn(),
-    activeTab: 'variables',
-    setActiveTab: mockSetActiveTab,
-    onClose: mockOnClose,
   };
 
   const defaultTourGuideProps = {
@@ -93,8 +93,8 @@ describe('DuplicateCases Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseDuplicateCases.mockReturnValue(defaultDuplicateCasesProps);
-    mockUseTourGuide.mockReturnValue(defaultTourGuideProps);
+    mockedUseDuplicateCases.mockReturnValue(defaultDuplicateCasesProps);
+    mockedUseTourGuide.mockReturnValue(defaultTourGuideProps);
   });
 
   it('renders correctly in dialog mode by default', () => {
@@ -109,18 +109,20 @@ describe('DuplicateCases Component', () => {
     expect(screen.getByTestId('variable-tab')).toBeInTheDocument();
   });
 
-  it('switches tabs when a tab is clicked', () => {
+  it('switches tabs when a tab is clicked', async () => {
+    const user = userEvent.setup();
     render(<DuplicateCases onClose={mockOnClose} />);
+    
+    // Initial render should show the variables tab
+    expect(screen.getByTestId('variable-tab')).toBeInTheDocument();
+    expect(screen.queryByTestId('options-tab')).not.toBeInTheDocument();
+
     const optionsTabTrigger = screen.getByRole('tab', { name: 'Options' });
-    fireEvent.click(optionsTabTrigger);
-    // The hook's onValueChange should be called, which in turn calls setActiveTab
-    // In a real scenario, this would update the state and show the OptionsTab content.
-    // Here we check if the trigger function was called.
-    // Note: The actual tab switching logic is inside the Tabs component from shadcn.
-    // We assume the component works correctly. The mock setActiveTab is part of the hook, not the tab component itself.
-    // A better test for the hook would be to see if `onValueChange` is called with 'options'.
-    // Since we are testing the component, we verify the tab is there.
-    expect(screen.getByTestId('options-tab')).toBeInTheDocument();
+    await user.click(optionsTabTrigger);
+    
+    // After clicking, the options tab content should be visible
+    expect(await screen.findByTestId('options-tab')).toBeVisible();
+    expect(screen.queryByTestId('variable-tab')).not.toBeInTheDocument();
   });
 
   it('calls handleConfirm when OK button is clicked', () => {
@@ -137,15 +139,27 @@ describe('DuplicateCases Component', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('calls handleReset when Reset button is clicked', () => {
+  it('calls handleReset when Reset button is clicked and resets tab', async () => {
+    const user = userEvent.setup();
     render(<DuplicateCases onClose={mockOnClose} />);
+
+    // Switch to options tab first
+    const optionsTabTrigger = screen.getByRole('tab', { name: 'Options' });
+    await user.click(optionsTabTrigger);
+    expect(await screen.findByTestId('options-tab')).toBeVisible();
+
+    // Click reset
     const resetButton = screen.getByRole('button', { name: 'Reset' });
-    fireEvent.click(resetButton);
+    await user.click(resetButton);
+
+    // Check that reset was called and tab was switched back to variables
     expect(defaultDuplicateCasesProps.handleReset).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('variable-tab')).toBeVisible();
+    expect(screen.queryByTestId('options-tab')).not.toBeInTheDocument();
   });
 
   it('disables buttons and shows "Processing..." when isProcessing is true', () => {
-    mockUseDuplicateCases.mockReturnValue({ ...defaultDuplicateCasesProps, isProcessing: true });
+    mockedUseDuplicateCases.mockReturnValue({ ...defaultDuplicateCasesProps, isProcessing: true });
     render(<DuplicateCases onClose={mockOnClose} />);
     expect(screen.getByRole('button', { name: 'Processing...' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
@@ -154,18 +168,17 @@ describe('DuplicateCases Component', () => {
 
   it('displays error dialog when errorDialogOpen is true', () => {
     const errorMessage = 'This is an error.';
-    mockUseDuplicateCases.mockReturnValue({ ...defaultDuplicateCasesProps, errorDialogOpen: true, errorMessage });
+    mockedUseDuplicateCases.mockReturnValue({ ...defaultDuplicateCasesProps, errorDialogOpen: true, errorMessage });
     render(<DuplicateCases onClose={mockOnClose} />);
-    expect(screen.getByText('IBM SPSS Statistics')).toBeInTheDocument();
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    expect(screen.getByTestId('alert-icon')).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog', { name: /IBM SPSS Statistics/i });
+
+    expect(within(dialog).getByText(errorMessage)).toBeInTheDocument();
+    expect(within(dialog).getByTestId('alert-icon')).toBeInTheDocument();
 
     // Test closing the dialog
-    // Test closing the dialog
-    const okButton = screen.getAllByRole('button', { name: 'OK' }).find(btn => btn && btn.closest('.max-w-\[400px\]'));
-    if (okButton) {
-        fireEvent.click(okButton);
-    }
+    const okButton = within(dialog).getByRole('button', { name: 'OK' });
+    fireEvent.click(okButton);
     expect(defaultDuplicateCasesProps.setErrorDialogOpen).toHaveBeenCalledWith(false);
   });
 
@@ -179,7 +192,7 @@ describe('DuplicateCases Component', () => {
   });
 
   it('displays TourPopup when tour is active', () => {
-    mockUseTourGuide.mockReturnValue({ ...defaultTourGuideProps, tourActive: true, currentTargetElement: document.body });
+    mockedUseTourGuide.mockReturnValue({ ...defaultTourGuideProps, tourActive: true, currentTargetElement: document.body });
     render(<DuplicateCases onClose={mockOnClose} />);
     expect(screen.getByTestId('tour-popup')).toBeInTheDocument();
   });

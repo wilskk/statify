@@ -40,10 +40,98 @@ The data processing flow is designed to be clear and maintainable:
     -   It updates the `useMetaStore` with the selected date format string.
 8.  **Modal Close**: The modal closes, and the user sees the newly created and populated variables in the main data grid.
 
-## 4. Available Date & Time Components
+## 4. Feature Specifications & Examples
 
-The feature supports a wide range of time component combinations, which are defined in the `casesAreOptions` array in the hook. Each selection maps to a set of time components with specific properties:
+This section details the behavior of the "Define Dates" feature for various configurations. The system generates new variables based on user selections and populates them with sequential data.
 
--   **Component**: Year, Quarter, Month, Week, Day, Hour, Minute, Second.
--   **Work-Specific Components**: "Work day" and "Work hour" are special components with predefined periodicities (e.g., 5 or 6 days a week, 8 hours a day).
--   **Periodicity**: This value defines the cyclical nature of a component within a larger component (e.g., a `Month` has a periodicity of 12 within a `Year`, an `Hour` has a periodicity of 24 within a `Day`). Components without a defined cycle (like `Year`) have no periodicity. This is crucial for calculating how time increments across cases. 
+### Example 1: Years and Months
+
+This example demonstrates the carry-over logic from `MONTH_` to `YEAR_`.
+
+-   **User Selection**: `Years, months`
+-   **First Case Input**: `Year: 2022`, `Month: 11`
+-   **Resulting New Variables**:
+    -   `YEAR_` (Numeric, Label: 'YEAR, not periodic')
+    -   `MONTH_` (Numeric, Label: 'MONTH, period 12')
+    -   `DATE_` (String, Label: 'Date. Format: YYYY-MM')
+-   **Generated Data**:
+
+| Case | YEAR_ | MONTH_ | DATE_ |
+| :--- | :---- | :----- | :------ |
+| 1 | 2022 | 11 | `2022-11` |
+| 2 | 2022 | 12 | `2022-12` |
+| 3 | 2023 | 1 | `2023-01` |
+| 4 | 2023 | 2 | `2023-02` |
+
+### Example 2: Weeks and Work Days
+
+This example demonstrates periodicity with a 5-day work week.
+
+-   **User Selection**: `Weeks, work days(5)`
+-   **First Case Input**: `Week: 51`, `Work day: 4`
+-   **Resulting New Variables**:
+    -   `WEEK_` (Numeric, Label: 'WEEK, not periodic')
+    -   `WORK DAY_` (Numeric, Label: 'WORK DAY, period 5')
+    -   `DATE_` (String, Label: 'Date. Format: WW-D')
+-   **Generated Data**:
+
+| Case | WEEK_ | WORK DAY_ | DATE_ |
+| :--- | :---- | :-------- | :------ |
+| 1 | 51 | 4 | `W51 4` |
+| 2 | 51 | 5 | `W51 5` |
+| 3 | 52 | 1 | `W52 1` |
+| 4 | 52 | 2 | `W52 2` |
+
+### Example 3: Days and Time
+
+This example demonstrates carry-over across multiple time units (minute → hour → day).
+
+-   **User Selection**: `Days, hours, minutes`
+-   **First Case Input**: `Day: 364`, `Hour: 23`, `Minute: 58`
+-   **Resulting New Variables**:
+    -   `DAY_` (Numeric, Label: 'DAY, not periodic')
+    -   `HOUR_` (Numeric, Label: 'HOUR, period 24')
+    -   `MINUTE_` (Numeric, Label: 'MINUTE, period 60')
+    -   `DATE_` (String, Label: 'Date. Format: DD HH:MM')
+-   **Generated Data**:
+
+| Case | DAY_ | HOUR_ | MINUTE_ | DATE_ |
+| :--- | :--- | :---- | :------ | :------------ |
+| 1 | 364 | 23 | 58 | `364 23:58` |
+| 2 | 364 | 23 | 59 | `364 23:59` |
+| 3 | 365 | 0 | 0 | `365 00:00` |
+| 4 | 365 | 0 | 1 | `365 00:01` |
+
+## 5. Implemented Features
+
+The following list contains all currently supported formats that can be selected in the "Cases Are" list. Each option generates the corresponding time component variables and a formatted `DATE_` variable.
+
+-   `Years`
+-   `Years, quarters`
+-   `Years, months`
+-   `Years, quarters, months`
+-   `Days`
+-   `Weeks, days`
+-   `Weeks, work days(5)`
+-   `Weeks, work days(6)`
+-   `Hours`
+-   `Days, hours`
+-   `Days, work hour(8)`
+-   `Weeks, days, hours`
+-   `Weeks, work days, hours`
+-   `Minutes`
+-   `Hours, minutes`
+-   `Days, hours, minutes`
+-   `Seconds`
+-   `Minutes, seconds`
+-   `Hours, minutes, seconds`
+-   `Not dated` (Clears any existing date definition)
+
+## 6. Future Enhancements (Not Implemented)
+
+The following features are planned for future releases to enhance time-series capabilities:
+
+-   **Date Parsing**: Ability to parse date/time information from existing string variables to create the component numeric variables.
+-   **Custom Cycles**: Allow users to define custom periodicities for components (e.g., a 4-day work week or a custom fiscal year).
+-   **Irregular Time Series**: Support for datasets where the time interval between cases is not constant.
+-   **Date-based Functions**: Integration with other features to allow for date-based calculations (e.g., `DATE_DIFF`, `DATE_ADD`). 

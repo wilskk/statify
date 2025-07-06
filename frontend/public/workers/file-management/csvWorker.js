@@ -48,10 +48,10 @@ self.onmessage = (e) => {
         columnIndex: colIndex,
         name: variableName,
         type: isNumeric ? 'NUMERIC' : 'STRING',
-        width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v=>v.length), variableName.length)),
+        width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v=>String(v ?? '').length), variableName.length)),
         decimals: isNumeric ? Math.min(potentialDecimals,16) : 0,
         label: '',
-        columns: 64,
+        columns: 72,
         align: isNumeric ? 'right':'left',
         measure: isNumeric ? 'scale':'nominal',
         role: 'input',
@@ -62,12 +62,12 @@ self.onmessage = (e) => {
     }
     // Build processed data
     const data = parsedRows.map(row => row.map((val, idx) => {
-      let v = val || '';
+      let v = val ?? '';
       const variable = variables[idx];
-      if (variable.type === 'NUMERIC' && v.trim() !== '') {
-        const proc = decimal==='comma'?v.replace(',','.') : v;
-        if (isNaN(Number(proc))) v = '';
-        else v = proc;
+      // If the variable definition is missing (ragged row), treat as string
+      if (variable && variable.type === 'NUMERIC' && String(v).trim() !== '') {
+        const proc = decimal === 'comma' ? String(v).replace(',', '.') : String(v);
+        v = isNaN(Number(proc)) ? '' : proc;
       }
       return v;
     }));

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, FC, useMemo, useEffect } from "react";
+import React, { useState, FC, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
     DialogContent,
@@ -23,12 +23,13 @@ import { TourPopup } from "@/components/Common/TourComponents";
 // State Management Hooks
 import { useVariableManagement } from "./hooks/useVariableManagement";
 import { useStatisticsSettings } from "./hooks/useStatisticsSettings";
+import { usePlotsSettings } from "./hooks/usePlotsSettings";
 import { useExploreAnalysis } from "./hooks/useExploreAnalysis";
-import { useDataStore } from "@/stores/useDataStore";
 
 // Child Components
 import VariablesTab from "./VariablesTab";
 import StatisticsTab from "./StatisticsTab";
+import PlotsTab from "./PlotsTab";
 
 // Main content component that's agnostic of container type
 const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
@@ -37,6 +38,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     // State Hooks
     const variableManager = useVariableManagement();
     const statisticsSettings = useStatisticsSettings();
+    const plotsSettings = usePlotsSettings();
 
     // Analysis Hook
     const analysisParams = {
@@ -44,6 +46,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         factorVariables: variableManager.factorVariables,
         labelVariable: variableManager.labelVariable,
         ...statisticsSettings,
+        ...plotsSettings,
     };
     const { runAnalysis, isCalculating, error } = useExploreAnalysis(analysisParams, onClose);
 
@@ -77,6 +80,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
     const handleReset = () => {
         variableManager.resetVariableSelections();
         statisticsSettings.resetStatisticsSettings();
+        plotsSettings.resetPlotsSettings();
         // error state is managed by analysis hook, might need a resetter there too
         setActiveTab("variables");
     };
@@ -89,44 +93,6 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
         return null;
     }, [error, isCalculating, variableManager.dependentVariables]);
 
-    const getVariableData = useDataStore((state) => state.getVariableData);
-
-    useEffect(() => {
-        const processVariables = async () => {
-            if (variableManager.dependentVariables.length > 0) {
-
-                const variablesWithData = await Promise.all(
-                    variableManager.dependentVariables.map(v => getVariableData(v))
-                );
-
-                const variablesToSend = variablesWithData.map(v => {
-                    return {
-                        name: v.variable.name,
-                        missingValues: v.variable.missing,
-                        type: v.variable.type,
-                        data: v.data
-                    };
-                });
-
-                console.log(
-                    '--- [UI] Preparing to send variables to worker ---',
-                    JSON.parse(JSON.stringify(variablesToSend))
-                );
-
-                // Assuming descriptiveWorker.process is called elsewhere in the code
-                // Replace this with the actual call to your worker
-                // descriptiveWorker.process(variablesToSend).then((result) => {
-                //     if (result) {
-                //         setCaseProcessingSummary(result.caseProcessingSummary);
-                //     }
-                // });
-            }
-        };
-
-        processVariables();
-
-    }, [variableManager.dependentVariables, getVariableData]);
-
     return (
         <>
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full flex flex-col flex-grow overflow-hidden">
@@ -134,7 +100,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                     <TabsList>
                         <TabsTrigger value="variables" id="explore-variables-tab-trigger">Variables</TabsTrigger>
                         <TabsTrigger value="statistics" id="explore-statistics-tab-trigger">Statistics</TabsTrigger>
-                        {/* <TabsTrigger value="plots" id="explore-plots-tab-trigger">Plots</TabsTrigger> */}
+                        <TabsTrigger value="plots" id="explore-plots-tab-trigger">Plots</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -159,15 +125,16 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                     />
                 </TabsContent>
 
-                {/* <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
+                <TabsContent value="plots" className="p-6 overflow-y-auto flex-grow">
                     <PlotsTab
                         {...plotsSettings}
+                        factorVariablesCount={variableManager.factorVariables.length}
                         containerType={containerType}
                         tourActive={tourActive}
                         currentStep={currentStep}
                         tourSteps={tourSteps}
                     />
-                </TabsContent> */}
+                </TabsContent>
             </Tabs>
 
             {displayError && (
@@ -189,7 +156,7 @@ const ExploreContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" 
                     <Button variant="outline" className="mr-2" onClick={onClose} disabled={isCalculating}>
                         Cancel
                     </Button>
-                    <Button onClick={handleExplore} disabled={isCalculating}>
+                    <Button onClick={handleExplore} disabled={isCalculating || variableManager.dependentVariables.length === 0}>
                         {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>

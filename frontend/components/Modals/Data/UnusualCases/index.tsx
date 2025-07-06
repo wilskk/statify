@@ -12,6 +12,7 @@ import { TourPopup } from "@/components/Common/TourComponents";
 
 import { useTourGuide, TabControlProps } from './hooks/useTourGuide';
 import { useUnusualCases } from "./hooks/useUnusualCases";
+import { baseTourSteps } from './tourConfig';
 import { IdentifyUnusualCasesProps, TabType, VariablesTabProps, OptionsTabProps, OutputTabProps, SaveTabProps, MissingValuesTabProps } from "./types";
 
 import VariablesTab from "./VariablesTab";
@@ -40,23 +41,17 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
     containerType = "dialog" 
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>("variables");
-    const hookProps = useUnusualCases();
-
-    const handleConfirm = async () => {
-        // Placeholder for future logic
-        console.log("State to be sent to worker/service:", { ...hookProps });
-        onClose();
-    };
+    const hookProps = useUnusualCases({ onClose });
 
     const tabControl = useMemo((): TabControlProps => ({
-        setActiveTab,
+        setActiveTab: (newTab) => setActiveTab(newTab as TabType),
         currentActiveTab: activeTab,
     }), [activeTab]);
 
     const { 
         tourActive, currentStep, tourSteps, currentTargetElement, 
         startTour, nextStep, prevStep, endTour 
-    } = useTourGuide(containerType, tabControl);
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
 
     const variablesTabProps: VariablesTabProps = { ...hookProps, getVariableIcon, getDisplayName, tourActive, currentStep, tourSteps };
     const optionsTabProps: OptionsTabProps = { ...hookProps, tourActive, currentStep, tourSteps };
@@ -107,7 +102,7 @@ const UnusualCasesContent: FC<IdentifyUnusualCasesProps> = ({
                     <div>
                         <Button variant="outline" className="mr-2" onClick={hookProps.handleReset}>Reset</Button>
                         <Button variant="outline" className="mr-2" onClick={onClose}>Cancel</Button>
-                        <Button onClick={handleConfirm}>OK</Button>
+                        <Button onClick={hookProps.handleConfirm}>OK</Button>
                     </div>
                 </DialogFooter>
             </div>

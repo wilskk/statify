@@ -15,15 +15,16 @@ const mockUpdateVariable = jest.fn();
 const mockOnClose = jest.fn();
 
 const createMockVariable = (overrides: Partial<Variable> & { name: string; columnIndex: number }): Variable => ({
-    type: 'numeric',
+    type: 'NUMERIC',
     width: 8,
     decimals: 2,
     label: '',
     values: [],
-    missing: [],
+    missing: null,
     align: 'right',
     measure: 'unknown',
     role: 'input',
+    columns: 1,
     ...overrides,
 });
 
@@ -111,5 +112,39 @@ describe('useSetMeasurementLevel Hook', () => {
         expect(result.current.nominalVariables).toEqual([]);
         expect(result.current.ordinalVariables).toEqual([]);
         expect(result.current.scaleVariables).toEqual([]);
+    });
+
+    it('should correctly reset after moving multiple variables to different lists', () => {
+        const { result } = renderHook(() => useSetMeasurementLevel({ onClose: mockOnClose }));
+        
+        const var1 = result.current.unknownVariables.find(v => v.name === 'Var1')!;
+        const var3 = result.current.unknownVariables.find(v => v.name === 'Var3')!;
+        const var5 = result.current.unknownVariables.find(v => v.name === 'Var5')!;
+
+        act(() => {
+            result.current.handleMoveVariable(var1, 'available', 'nominal');
+            result.current.handleMoveVariable(var3, 'available', 'ordinal');
+            result.current.handleMoveVariable(var5, 'available', 'scale');
+        });
+
+        // Verify variables were moved
+        expect(result.current.unknownVariables).toHaveLength(0);
+        expect(result.current.nominalVariables).toHaveLength(1);
+        expect(result.current.ordinalVariables).toHaveLength(1);
+        expect(result.current.scaleVariables).toHaveLength(1);
+
+        // Reset the state
+        act(() => {
+            result.current.handleReset();
+        });
+
+        // Verify state is back to initial
+        expect(result.current.unknownVariables).toHaveLength(3);
+        expect(result.current.nominalVariables).toEqual([]);
+        expect(result.current.ordinalVariables).toEqual([]);
+        expect(result.current.scaleVariables).toEqual([]);
+        // Verify the content of the unknown list
+        const unknownNames = result.current.unknownVariables.map(v => v.name).sort();
+        expect(unknownNames).toEqual(['Var1', 'Var3', 'Var5'].sort());
     });
 }); 

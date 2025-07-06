@@ -1,21 +1,48 @@
-# Fitur Modal: Impor dari Excel
+# Fitur: Impor dari Excel
 
-Dokumen ini memberikan ringkasan teknis untuk fitur **Impor dari Excel**, mengikuti panduan arsitektur utama untuk komponen modal.
+Dokumen ini menjelaskan fungsionalitas fitur "Impor dari Excel", yang memungkinkan pengguna untuk memuat data dari file spreadsheet `.xls` atau `.xlsx`.
 
-## 1. Ringkasan Fungsionalitas
+## 1. Gambaran Umum
 
-Fitur ini memungkinkan pengguna untuk mengimpor data dari file Microsoft Excel (`.xls` atau `.xlsx`). Proses impor dibagi menjadi dua tahap utama untuk memberikan kontrol penuh kepada pengguna:
+Fitur ini menyediakan antarmuka dua tahap yang memandu pengguna melalui proses impor data dari file Excel. Proses ini dirancang untuk memberikan fleksibilitas dan kontrol, memastikan data diinterpretasikan dengan benar sebelum dimuat ke dalam aplikasi.
 
-1.  **Pemilihan File**: Pengguna memilih file Excel dari sistem lokal mereka, baik melalui dialog file maupun *drag-and-drop*.
-2.  **Konfigurasi Impor**: Setelah file berhasil diparsing di latar belakang oleh Web Worker, pengguna dapat mengonfigurasi impor dengan opsi berikut:
-    -   **Pemilihan Worksheet**: Memilih *sheet* mana dari dalam *workbook* yang akan diimpor.
-    -   **Rentang Sel (Range)**: Menentukan rentang sel tertentu yang akan dibaca (misalnya, `A1:D50`).
-    -   **Baris Pertama sebagai Header**: Menggunakan baris pertama sebagai nama variabel.
-    -   **Opsi Tambahan**: Membaca baris dan kolom tersembunyi, serta menentukan bagaimana sel kosong harus diperlakukan (sebagai string kosong atau nilai sistem yang hilang/SYSMIS).
+Untuk menjaga antarmuka tetap responsif bahkan saat memproses file besar, operasi parsing file yang intensif dilakukan di latar belakang menggunakan **Web Worker**.
 
-Untuk menjaga responsivitas UI, proses *parsing* file Excel yang intensif dilakukan di dalam **Web Worker**.
+## 2. Komponen Antarmuka & Fungsionalitas
 
-## 2. Struktur Direktori & Tanggung Jawab
+### a. Tahap 1: Pemilihan File
+-   **Area Drag-and-Drop**: Area utama di mana pengguna dapat menarik dan melepaskan file Excel.
+-   **Tombol Pilih File**: Alternatif untuk membuka dialog file sistem dan memilih file secara manual.
+-   **Tombol Continue**: Menjadi aktif setelah file dipilih. Menekan tombol ini akan memulai proses parsing di Web Worker dan melanjutkan ke tahap konfigurasi.
+
+### b. Tahap 2: Konfigurasi Impor
+-   **Pemilihan Worksheet**: Dropdown untuk memilih sheet mana dari dalam workbook yang akan diimpor.
+-   **Input Rentang (Range)**: Kolom opsional untuk menentukan rentang sel tertentu yang ingin dibaca (misalnya, `A1:G50`). Jika kosong, seluruh area yang digunakan akan dibaca.
+-   **Opsi Impor**:
+    -   `First row as variable names`: Menggunakan baris pertama dari data yang dipilih sebagai nama variabel.
+    -   `Read hidden rows & columns`: Menyertakan baris dan kolom yang disembunyikan di Excel dalam proses impor.
+    -   `Read empty cells as`: Menentukan bagaimana sel kosong harus diperlakukan, apakah sebagai string kosong atau sebagai nilai sistem yang hilang (`SYSMIS`).
+-   **Pratinjau Data**: Sebuah tabel `Handsontable` yang menampilkan pratinjau data berdasarkan sheet dan opsi yang dipilih. Pratinjau ini diperbarui setiap kali opsi diubah.
+-   **Tombol Import Data**: Tombol final yang akan memproses data dengan konfigurasi yang ada dan memuatnya ke dalam aplikasi.
+
+## 3. Alur Kerja & Logika
+
+1.  **Pemilihan File**: Pengguna memilih file Excel pada `ImportExcelSelectionStep`.
+2.  **Parsing Latar Belakang**: Saat pengguna menekan "Continue", file dikirim ke **Web Worker**. Worker ini menggunakan pustaka `xlsx` (SheetJS) untuk mengekstrak data dari semua sheet tanpa memblokir antarmuka utama.
+3.  **Transisi ke Konfigurasi**: Setelah worker selesai dan mengembalikan data yang telah diparsing, `useImportExcelLogic` mengubah *stage* ke `configure`. `ImportExcelConfigurationStep` kemudian dirender dengan data tersebut.
+4.  **Penyesuaian & Pratinjau**: Pengguna memilih worksheet dan menyesuaikan opsi. Setiap perubahan memicu pembaruan pada pratinjau data.
+5.  **Finalisasi Impor**: Pengguna menekan "Import Data". Utilitas `importExcel.utils.ts` dipanggil untuk memproses data dari sheet yang dipilih dengan konfigurasi final, menghasilkan variabel, dan data matriks.
+6.  **Pembaruan State Aplikasi**: Data dan variabel baru dimuat ke dalam `useDataStore` dan `useVariableStore` menggunakan `overwriteAll`.
+7.  **Selesai**: Modal ditutup dan pengguna melihat dataset yang baru diimpor.
+
+## 4. Rencana Pengembangan di Masa Depan
+
+-   **Deteksi Tipe Data per Kolom**: Memungkinkan pengguna untuk menimpa tipe data (misalnya, dari Numerik ke String) untuk setiap kolom langsung dari antarmuka pratinjau.
+-   **Dukungan File Terproteksi**: Menambahkan kemampuan untuk mengimpor file Excel yang dilindungi kata sandi.
+-   **Impor Multi-Sheet**: Menyediakan opsi untuk menggabungkan beberapa sheet menjadi satu dataset.
+-   **Simpan Preset**: Memungkinkan pengguna menyimpan konfigurasi impor untuk jenis file yang sering mereka gunakan.
+
+## 5. Struktur Direktori & Tanggung Jawab
 
 -   **`/` (Root)**
     -   **`index.tsx`**: **Orchestrator**. Mengelola tahap proses (`select` atau `configure`) dan merender komponen yang sesuai.
@@ -39,28 +66,12 @@ Untuk menjaga responsivitas UI, proses *parsing* file Excel yang intensif dilaku
 -   **`public/workers/file-management/`**
     -   **`excelWorker.js`**: Skrip **Web Worker** yang bertanggung jawab untuk melakukan *parsing* file Excel menggunakan pustaka `xlsx` (SheetJS), mencegah pemblokiran *thread* utama.
 
-## 3. Alur Kerja (Workflow)
-
-1.  **Inisialisasi (Selection Step)**: Pengguna membuka modal. `index.tsx` merender `ImportExcelSelectionStep`.
-2.  **Pemilihan File**: Pengguna memilih sebuah file Excel. `handleFileSelect` dari `useImportExcelLogic` memperbarui *state*.
-3.  **Lanjut ke Konfigurasi (Parsing di Latar)**: Pengguna menekan "Continue".
-    -   `useImportExcelLogic` memanggil fungsi `parse` dari *hook* `useExcelWorker`.
-    -   `useExcelWorker` (melalui `services.ts`) membuat instance `excelWorker.js` dan mengirimkan file ke sana.
-    -   **Web Worker** membaca file sebagai biner dan menggunakan `xlsx` untuk mengekstrak data dari setiap *sheet*. Hasilnya dikirim kembali sebagai array `SheetData`.
-4.  **Render Konfigurasi**: Setelah `useImportExcelLogic` menerima data *sheet*, ia mengubah *stage* menjadi `configure`. `index.tsx` kemudian merender `ImportExcelConfigurationStep`, meneruskan data tersebut.
-5.  **Penyesuaian Opsi & Pratinjau**: `ConfigurationStep` menampilkan daftar *sheet* dan opsi. Saat pengguna mengubah opsi, pratinjau data diperbarui secara *real-time* dengan memanggil fungsi dari `utils.ts`.
-6.  **Finalisasi Impor**: Pengguna menekan "Import Data".
-    -   Fungsi `handleImport` di dalam `ConfigurationStep` dipanggil.
-    -   Data dari *sheet* yang dipilih diproses sekali lagi menggunakan `utils.ts` dengan konfigurasi final.
-    -   Variabel baru dibuat, dan data yang telah diproses dimuat ke dalam *store* Zustand.
-7.  **Selesai**: Modal ditutup setelah impor berhasil.
-
-## 4. Properti Komponen (`ImportExcelProps`)
+## 6. Properti Komponen (`ImportExcelProps`)
 
 -   `onClose: () => void`: **(Wajib)** Fungsi *callback* untuk menutup modal.
 -   `containerType: ContainerType`: **(Wajib)** Menentukan konteks render (`dialog` atau `sidebar`).
 
-## 5. Ketergantungan Utama (Dependencies)
+## 7. Ketergantungan Utama (Dependencies)
 
 -   **Internal**:
     -   Zustand Stores (`useDataStore`, `useVariableStore`).

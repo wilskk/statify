@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Navbar from './Navbar'; // Desktop Menubar
-import Toolbar from './Toolbar';
+import Toolbar from '../../data/components/Toolbar';
 import HamburgerMenu from './HamburgerMenu'; // Mobile Drawer Menu
 import { useMobile } from "@/hooks/useMobile"; // Import the hook
 import { usePathname } from 'next/navigation';

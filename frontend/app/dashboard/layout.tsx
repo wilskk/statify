@@ -12,8 +12,10 @@ import dynamic from 'next/dynamic';
 import { OnbordaProvider, Onborda } from "onborda";
 import { TourCard } from "@/components/ui/TourCard";
 import { dashboardTours } from "@/constants/tours";
+import ResultNavigationObserver from "@/components/Common/ResultNavigationObserver";
 const SyncStatusClient = dynamic(() => import('@/components/ui/SyncStatus'), { ssr: false });
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load ModalManager untuk performa yang lebih baik
 const ModalManager = lazy(() => import("@/components/Modals/ModalManager"));
@@ -104,6 +106,7 @@ export default function DashboardLayout({
 
     return (
         <OnbordaProvider>
+            <ResultNavigationObserver />
             <Onborda
                 steps={dashboardTours as any}
                 showOnborda={false}
@@ -194,6 +197,7 @@ export default function DashboardLayout({
                         <Footer />
                     </footer>
                 </div>
+                <Toaster />
             </Onborda>
         </OnbordaProvider>
     );

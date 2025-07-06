@@ -9,7 +9,7 @@ const mockedVPService = variablePropertiesService as jest.Mocked<typeof variable
 
 const mockInitialVariables: Variable[] = [
   { tempId: '1', name: 'var1', columnIndex: 0, type: 'NUMERIC', measure: 'scale', role: 'input', values: [], missing: null, decimals: 0, width: 8, columns: 12, align: 'left', label: 'Variable 1' },
-  { tempId: '2', name: 'var2', columnIndex: 1, type: 'STRING', measure: 'nominal', role: 'input', values: [{value: 'A', label: 'Category A', variableName: 'var2'}], missing: null, decimals: 0, width: 8, columns: 12, align: 'left', label: 'Variable 2' },
+  { tempId: '2', name: 'var2', columnIndex: 1, type: 'STRING', measure: 'nominal', role: 'input', values: [{value: 'A', label: 'Category A', variableId: 1}], missing: null, decimals: 0, width: 8, columns: 12, align: 'left', label: 'Variable 2' },
 ];
 
 describe('usePropertiesEditor', () => {
@@ -38,7 +38,7 @@ describe('usePropertiesEditor', () => {
         const { result } = setupHook();
         expect(result.current.currentVariable?.name).toBe('var1');
         expect(result.current.selectedVariableIndex).toBe(0);
-        expect(mockedVPService.getUniqueValuesWithCounts).toHaveBeenCalledWith(0, 'NUMERIC', '50', '200');
+        expect(mockedVPService.getUniqueValuesWithCounts).toHaveBeenCalledWith(expect.any(Array), 0, 'NUMERIC', '50', '200');
     });
 
     it('should change selected variable on handleVariableChange', () => {
@@ -50,7 +50,7 @@ describe('usePropertiesEditor', () => {
 
         expect(result.current.currentVariable?.name).toBe('var2');
         expect(result.current.selectedVariableIndex).toBe(1);
-        expect(mockedVPService.getUniqueValuesWithCounts).toHaveBeenCalledWith(1, 'STRING', '50', '200');
+        expect(mockedVPService.getUniqueValuesWithCounts).toHaveBeenCalledWith(expect.any(Array), 1, 'STRING', '50', '200');
     });
 
     it('should update a field on handleVariableFieldChange', () => {

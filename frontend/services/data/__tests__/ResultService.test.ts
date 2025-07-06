@@ -10,7 +10,7 @@ const resultService = new ResultService();
 
 const mockStatistic: Statistic = {
     id: 1,
-    analytic_id: 10,
+    analyticId: 10,
     title: 'Initial Title',
     output_data: '{}',
     components: '',

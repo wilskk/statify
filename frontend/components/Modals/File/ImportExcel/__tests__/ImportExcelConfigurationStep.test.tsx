@@ -13,17 +13,15 @@ jest.mock('@handsontable/react-wrapper', () => ({
   HotTable: jest.fn(() => <div>Mocked HotTable</div>),
 }));
 
-const mockSetData = jest.fn();
-const mockOverwriteVariables = jest.fn();
-const mockResetData = jest.fn();
 const mockResetVariables = jest.fn();
+const mockOverwriteAll = jest.fn();
 
 const mockParseSheetForPreview = utils.parseSheetForPreview as jest.Mock;
 const mockProcessSheetForImport = utils.processSheetForImport as jest.Mock;
 const mockGenerateVariablesFromData = utils.generateVariablesFromData as jest.Mock;
 
-(useDataStore as unknown as jest.Mock).mockReturnValue({ setData: mockSetData, resetData: mockResetData });
-(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteVariables: mockOverwriteVariables, resetVariables: mockResetVariables });
+(useDataStore as unknown as jest.Mock).mockReturnValue({ });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: mockOverwriteAll, resetVariables: mockResetVariables });
 
 const mockParsedSheets = [
     { sheetName: 'Sheet1', data: [['Name', 'Age'], ['Alice', 20]]},
@@ -84,12 +82,9 @@ describe('ImportExcelConfigurationStep Component', () => {
         const importButton = screen.getByRole('button', { name: /import data/i });
         await user.click(importButton);
 
-        expect(mockResetData).toHaveBeenCalledTimes(1);
-        expect(mockResetVariables).toHaveBeenCalledTimes(1);
         expect(mockProcessSheetForImport).toHaveBeenCalledTimes(1);
         expect(mockGenerateVariablesFromData).toHaveBeenCalledTimes(1);
-        expect(mockOverwriteVariables).toHaveBeenCalledTimes(1);
-        expect(mockSetData).toHaveBeenCalledTimes(1);
+        expect(mockOverwriteAll).toHaveBeenCalledTimes(1);
     });
     
     it('displays an error if import processing fails', async () => {
@@ -102,7 +97,7 @@ describe('ImportExcelConfigurationStep Component', () => {
         await user.click(importButton);
 
         expect(await screen.findByText(/import failed/i)).toBeInTheDocument();
-        expect(mockSetData).not.toHaveBeenCalled();
+        expect(mockOverwriteAll).not.toHaveBeenCalled();
     });
 
 }); 

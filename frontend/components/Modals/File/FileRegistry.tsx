@@ -9,6 +9,7 @@ import { OpenSavFileModal } from '@/components/Modals/File/OpenSavFile';
 import { PrintModal } from '@/components/Modals/File/Print';
 import { ExportCsv } from '@/components/Modals/File/ExportCsv';
 import { ExportExcel } from '@/components/Modals/File/ExportExcel';
+import { ExampleDatasetModal } from '@/components/Modals/File/ExampleDataset';
 
 /**
  * LoadingModal - Displayed while modal components are loading
@@ -50,6 +51,7 @@ export const FILE_MODAL_COMPONENTS: Record<string, React.ComponentType<BaseModal
   // File operations
   [ModalType.OpenData]: OpenSavFileModal as React.ComponentType<BaseModalProps>,
   [ModalType.Print]: PrintModal as React.ComponentType<BaseModalProps>,
+  [ModalType.ExampleDataset]: ExampleDatasetModal as React.ComponentType<BaseModalProps>,
 };
 
 /**
@@ -86,4 +88,5 @@ export const FILE_MODAL_CONTAINER_PREFERENCES: Partial<Record<ModalType, "dialog
   // File operation modals
   [ModalType.OpenData]: "sidebar",
   [ModalType.Print]: "sidebar",
+  [ModalType.ExampleDataset]: "sidebar",
 }; 

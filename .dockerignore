@@ -18,3 +18,15 @@ frontend/.next
 
 # Env
 .env*
+
+# Tests
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+
+# contoh tambahan
+**/__tests__/
+**/*.test.*     # unit-test
+**/*.md         # dokumentasi
+# frontend/public/exampleData   # file .sav demo ±35 MB
+.git

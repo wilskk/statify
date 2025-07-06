@@ -1,212 +1,151 @@
-import { VariableRepository } from '../VariableRepository';
 import db from '@/lib/db';
 import { Variable, ValueLabel } from '@/types/Variable';
+import { VariableRepository } from '../VariableRepository';
 
-// A more robust way to mock chained Dexie methods
+// This object will mock the chained calls like .where().equals()
 const mockChainedMethods = {
   equals: jest.fn().mockReturnThis(),
   first: jest.fn(),
   toArray: jest.fn(),
   delete: jest.fn(),
-  modify: jest.fn(),
+  between: jest.fn().mockReturnThis(), // .between() also returns 'this'
 };
 
 jest.mock('@/lib/db', () => ({
   __esModule: true,
   default: {
     variables: {
-      toArray: jest.fn(),
-      where: jest.fn(() => mockChainedMethods),
+      get: jest.fn(),
       put: jest.fn(),
       delete: jest.fn(),
       clear: jest.fn(),
-      get: jest.fn(),
+      toArray: jest.fn(),
+      where: jest.fn(() => mockChainedMethods), // .where() returns the chainable object
+      bulkPut: jest.fn(),
     },
     valueLabels: {
-      where: jest.fn(() => mockChainedMethods),
+      get: jest.fn(),
       put: jest.fn(),
       delete: jest.fn(),
+      clear: jest.fn(),
+      bulkAdd: jest.fn(),
+      where: jest.fn(() => mockChainedMethods), // .where() returns the chainable object
     },
+    // Correct transaction mock that executes the callback
+    transaction: jest.fn().mockImplementation(async (...args) => {
+      const callback = args[args.length - 1];
+      if (typeof callback === 'function') {
+        return callback(); // Execute the transaction's callback
+      }
+    }),
   },
 }));
 
-// Create a typed mock for easier use
 const mockedDb = db as jest.Mocked<typeof db>;
-
-// Helper to create a complete mock variable object
-const createMockVariable = (props: Partial<Variable>): Variable => ({
-  id: 1,
-  name: 'VAR1',
-  label: 'Variable 1',
-  type: 'NUMERIC',
-  measure: 'scale',
-  width: 8,
-  decimals: 2,
-  values: [],
-  missing: null,
-  columnIndex: 0,
-  columns: 1,
-  align: 'right',
-  role: 'input',
-  ...props,
-});
 
 describe('VariableRepository', () => {
   let repository: VariableRepository;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    Object.values(mockChainedMethods).forEach(mockFn => mockFn.mockReset());
+    // Reset mocks on chained methods to ensure test isolation
+    Object.values(mockChainedMethods).forEach(mock => mock.mockReset());
+    // Re-chain methods that return 'this'
     mockChainedMethods.equals.mockReturnThis();
+    mockChainedMethods.between.mockReturnThis();
+    
     repository = new VariableRepository();
   });
 
+  // Suppress console.error during tests
   beforeAll(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
-
   afterAll(() => {
     (console.error as jest.Mock).mockRestore();
   });
 
-  describe('getAllVariables', () => {
-    it('should return all variables', async () => {
-      const mockVariables = [createMockVariable({})];
+  describe('Variable Operations', () => {
+    const mockVariable: Variable = {
+        id: 1, name: 'VAR1', type: 'NUMERIC', width: 8, decimals: 2, label: 'Variable 1',
+        values: [], missing: null, columns: 1, align: 'right', measure: 'scale', role: 'input', columnIndex: 5
+    };
+
+    it('getAllVariables should return all variables from the database', async () => {
+      const mockVariables = [mockVariable];
       (mockedDb.variables.toArray as jest.Mock).mockResolvedValue(mockVariables);
       const variables = await repository.getAllVariables();
       expect(variables).toEqual(mockVariables);
     });
-  });
 
-  describe('getVariableByColumnIndex', () => {
-    it('should return a variable when found', async () => {
-      const mockVariable = createMockVariable({ columnIndex: 5 });
+    it('getVariableByColumnIndex should query by columnIndex', async () => {
       (mockChainedMethods.first as jest.Mock).mockResolvedValue(mockVariable);
       const variable = await repository.getVariableByColumnIndex(5);
       expect(variable).toEqual(mockVariable);
       expect(mockedDb.variables.where).toHaveBeenCalledWith('columnIndex');
       expect(mockChainedMethods.equals).toHaveBeenCalledWith(5);
     });
-    it('should throw an error on failure', async () => {
-        const mockError = new Error('DB Error');
-        (mockChainedMethods.first as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.getVariableByColumnIndex(1)).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith('Failed to get variable for column 1:', mockError);
-    });
-  });
 
-  describe('getVariableByName', () => {
-    it('should return a variable when found', async () => {
-        const mockVariable = createMockVariable({ name: 'TestVar' });
-        (mockChainedMethods.first as jest.Mock).mockResolvedValue(mockVariable);
-        const result = await repository.getVariableByName('TestVar');
-        expect(result).toEqual(mockVariable);
-        expect(mockedDb.variables.where).toHaveBeenCalledWith('name');
-        expect(mockChainedMethods.equals).toHaveBeenCalledWith('TestVar');
-    });
-    it('should throw an error on failure', async () => {
-        const mockError = new Error('DB Error');
-        (mockChainedMethods.first as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.getVariableByName('ErrorVar')).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith("Failed to get variable by name ErrorVar:", mockError);
-    });
-  });
+    it('deleteVariable should delete a variable and its labels in a transaction', async () => {
+      const variableId = 123;
+      await repository.deleteVariable(variableId);
 
-  describe('saveVariable', () => {
-    it('should save a variable', async () => {
-      const newVar = createMockVariable({});
-      (mockedDb.variables.put as jest.Mock).mockResolvedValue(123);
-      const id = await repository.saveVariable(newVar);
-      expect(id).toBe(123);
-      expect(mockedDb.variables.put).toHaveBeenCalledWith(newVar);
+      expect(mockedDb.transaction).toHaveBeenCalled();
+      expect(mockedDb.valueLabels.where).toHaveBeenCalledWith('variableId');
+      expect(mockChainedMethods.equals).toHaveBeenCalledWith(variableId);
+      expect(mockChainedMethods.delete).toHaveBeenCalled();
+      expect(mockedDb.variables.delete).toHaveBeenCalledWith(variableId);
     });
-  });
 
-  describe('deleteVariable', () => {
-    it('should delete a variable', async () => {
-      await repository.deleteVariable(123);
-      expect(mockedDb.variables.delete).toHaveBeenCalledWith(123);
-    });
-  });
-
-  describe('clearVariables', () => {
-    it('should clear variables', async () => {
+    it('clearVariables should clear variables and labels in a transaction', async () => {
       await repository.clearVariables();
-      expect(mockedDb.variables.clear).toHaveBeenCalledTimes(1);
+      expect(mockedDb.transaction).toHaveBeenCalled();
+      expect(mockedDb.variables.clear).toHaveBeenCalled();
+      expect(mockedDb.valueLabels.clear).toHaveBeenCalled();
     });
   });
 
-  describe('Value Labels Operations', () => {
-    describe('getValueLabels', () => {
-      it('should return value labels', async () => {
-        const mockLabels = [{ variableName: 'VAR1', value: 1, label: 'One' }];
-        (mockChainedMethods.toArray as jest.Mock).mockResolvedValue(mockLabels);
-        const result = await repository.getValueLabels('VAR1');
-        expect(result).toEqual(mockLabels);
-        expect(mockedDb.valueLabels.where).toHaveBeenCalledWith('variableName');
-        expect(mockChainedMethods.equals).toHaveBeenCalledWith('VAR1');
-      });
-      it('should throw an error on failure', async () => {
-        const mockError = new Error('DB Error');
-        (mockChainedMethods.toArray as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.getValueLabels('ErrorVar')).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith("Failed to get value labels for ErrorVar:", mockError);
-      });
-    });
+  describe('reorderVariable', () => {
+    it('should correctly reorder variables', async () => {
+      const sourceVar = { id: 1, columnIndex: 0, name: 'A' } as Variable;
+      const allVars = [sourceVar, { id: 2, columnIndex: 1, name: 'B' }] as Variable[];
+      (mockedDb.variables.get as jest.Mock).mockResolvedValue(sourceVar);
+      (mockChainedMethods.toArray as jest.Mock).mockResolvedValue(allVars);
 
-    describe('saveValueLabel', () => {
-        it('should save a value label', async () => {
-          const newLabel = { variableName: 'VAR1', value: 1, label: 'One' };
-          (mockedDb.valueLabels.put as jest.Mock).mockResolvedValue(456);
-          const id = await repository.saveValueLabel(newLabel);
-          expect(id).toBe(456);
-          expect(mockedDb.valueLabels.put).toHaveBeenCalledWith(newLabel);
-        });
+      await repository.reorderVariable(1, 1);
 
-        it('should throw an error on failure', async () => {
-            const mockError = new Error('DB Error');
-            (mockedDb.valueLabels.put as jest.Mock).mockRejectedValue(mockError);
-            const newLabel = { variableName: 'VAR1', value: 1, label: 'One' };
-            await expect(repository.saveValueLabel(newLabel)).rejects.toThrow(mockError);
-            expect(console.error).toHaveBeenCalledWith("Failed to save value label:", mockError);
-        });
-    });
-
-    describe('deleteValueLabel', () => {
-        it('should delete a value label', async () => {
-          await repository.deleteValueLabel(789);
-          expect(mockedDb.valueLabels.delete).toHaveBeenCalledWith(789);
-        });
-    });
-
-    describe('deleteValueLabelsByVariable', () => {
-      it('should delete value labels by variable name', async () => {
-        await repository.deleteValueLabelsByVariable('VAR_TO_DELETE');
-        expect(mockedDb.valueLabels.where).toHaveBeenCalledWith('variableName');
-        expect(mockChainedMethods.equals).toHaveBeenCalledWith('VAR_TO_DELETE');
-        expect(mockChainedMethods.delete).toHaveBeenCalledTimes(1);
-      });
-      it('should throw an error on failure', async () => {
-        const mockError = new Error('DB Error');
-        (mockChainedMethods.delete as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.deleteValueLabelsByVariable('ErrorVar')).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith("Failed to delete value labels for variable ErrorVar:", mockError);
-      });
-    });
-
-    describe('updateValueLabelsVariableName', () => {
-      it('should update variable names on value labels', async () => {
-        await repository.updateValueLabelsVariableName('OLD', 'NEW');
-        expect(mockedDb.valueLabels.where).toHaveBeenCalledWith('variableName');
-        expect(mockChainedMethods.equals).toHaveBeenCalledWith('OLD');
-        expect(mockChainedMethods.modify).toHaveBeenCalledWith({ variableName: 'NEW' });
-      });
-      it('should throw an error on failure', async () => {
-        const mockError = new Error('DB Error');
-        (mockChainedMethods.modify as jest.Mock).mockRejectedValue(mockError);
-        await expect(repository.updateValueLabelsVariableName('OLD_FAIL', 'NEW_FAIL')).rejects.toThrow(mockError);
-        expect(console.error).toHaveBeenCalledWith("Failed to update value labels from OLD_FAIL to NEW_FAIL:", mockError);
-      });
+      expect(mockedDb.variables.bulkPut).toHaveBeenCalled();
     });
   });
-}); 
+
+  describe('Value Label Operations', () => {
+    it('getValueLabels should return value labels for a variableId', async () => {
+      const mockLabels = [{ id: 10, variableId: 1, value: 1, label: 'One' }];
+      (mockChainedMethods.toArray as jest.Mock).mockResolvedValue(mockLabels);
+      const result = await repository.getValueLabels(1);
+      expect(result).toEqual(mockLabels);
+    });
+
+    it('saveVariableWithLabels should save a variable and its labels transactionally', async () => {
+      const newVarData = { name: 'NEW_VAR', type: 'STRING' } as Omit<Variable, 'id'>;
+      const newLabels = [{ value: 'F', label: 'Female' }];
+      const newVarId = 55;
+      (mockedDb.variables.put as jest.Mock).mockResolvedValue(newVarId);
+
+      const resultId = await repository.saveVariableWithLabels(newVarData, newLabels);
+
+      expect(resultId).toBe(newVarId);
+      expect(mockedDb.transaction).toHaveBeenCalled();
+      expect(mockedDb.variables.put).toHaveBeenCalledWith(newVarData);
+      const expectedLabelsToSave = [{ ...newLabels[0], variableId: newVarId }];
+      expect(mockedDb.valueLabels.bulkAdd).toHaveBeenCalledWith(expectedLabelsToSave);
+    });
+
+    it('deleteValueLabelsByVariable should delete labels by variableId', async () => {
+      await repository.deleteValueLabelsByVariable(1);
+      expect(mockedDb.valueLabels.where).toHaveBeenCalledWith('variableId');
+      expect(mockChainedMethods.equals).toHaveBeenCalledWith(1);
+      expect(mockChainedMethods.delete).toHaveBeenCalled();
+    });
+  });
+});

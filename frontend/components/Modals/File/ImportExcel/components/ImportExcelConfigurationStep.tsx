@@ -206,6 +206,13 @@ const ActiveElementHighlight: FC<{active: boolean}> = ({active}) => {
     return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 rounded-md ring-2 ring-primary ring-offset-2 pointer-events-none" />;
 };
 
+// Helper to convert SheetData back into a minimal workbook structure expected by util helpers
+const buildWorkbookFromSheetData = (sheet: SheetData): XLSX.WorkBook => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheet.data);
+    XLSX.utils.book_append_sheet(wb, ws, sheet.sheetName);
+    return wb;
+};
 
 export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps> = ({
     onClose,
@@ -214,7 +221,7 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
     parsedSheets,
 }) => {
     const { setData, resetData } = useDataStore();
-    const { resetVariables, overwriteVariables } = useVariableStore();
+    const { overwriteAll } = useVariableStore();
 
     const [sheetNames, setSheetNames] = useState<string[]>([]);
     const [parsedSheetsState, setParsedSheetsState] = useState<SheetData[]>(parsedSheets);
@@ -300,8 +307,8 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             setIsLoadingPreview(false);
             return;
         }
-        // @ts-ignore: legacy util expects workbook, sheetName
-        const result = parseSheetForPreview(sheet as any, options);
+        const workbook = buildWorkbookFromSheetData(sheet);
+        const result = parseSheetForPreview(workbook, sheet.sheetName, options);
 
         if (result.error) {
             setError(result.error);
@@ -332,9 +339,6 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
         setError(null);
 
         try {
-            await resetData();
-            await resetVariables();
-
             const options = currentParseOptions();
             const sheet = parsedSheetsState.find((s: SheetData) => s.sheetName === selectedSheet);
             if (!sheet) {
@@ -342,8 +346,8 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
                 setIsProcessing(false);
                 return;
             }
-            // @ts-ignore: legacy util expects workbook, sheetName
-            const importResult = processSheetForImport(sheet as any, options);
+            const workbook = buildWorkbookFromSheetData(sheet);
+            const importResult = processSheetForImport(workbook, sheet.sheetName, options);
 
             if (importResult.error) {
                 setError(importResult.error);
@@ -360,11 +364,10 @@ export const ImportExcelConfigurationStep: FC<ImportExcelConfigurationStepProps>
             }
 
             const variables = generateVariablesFromData(processedFullData, actualHeaders, readEmptyCellsAs);
-            // Bulk replace variables
-            await overwriteVariables(variables);
 
-            // Bulk replace data
-            setData(processedFullData);
+            // Atomically overwrite and persist data and variables
+            await overwriteAll(variables, processedFullData);
+
             onClose();
         } catch (e: any) {
             console.error("Error processing Excel import: ", e);

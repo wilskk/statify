@@ -11,7 +11,7 @@ jest.mock('@/stores/useVariableStore');
 
 const mockedRestructureData = restructureData as jest.Mock;
 const mockedSetData = jest.fn();
-const mockedOverwriteVariables = jest.fn();
+const mockedOverwriteAll = jest.fn();
 
 const mockVariables: Variable[] = [
     { id: 1, name: 'var1', columnIndex: 0, type: 'NUMERIC', measure: 'scale', width: 8, decimals: 0, label: '', values: [], missing: null, columns: 1, align: 'right', role: 'input' },
@@ -22,16 +22,19 @@ describe('useRestructure', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        (useDataStore as unknown as jest.Mock).mockReturnValue({
+        const dataStoreState = {
             data: [[1, 'a'], [2, 'b']],
             setData: mockedSetData,
-        });
-
-        const store = {
-            variables: mockVariables,
-            overwriteVariables: mockedOverwriteVariables,
         };
-        (useVariableStore as unknown as jest.Mock).mockReturnValue(store);
+        (useDataStore as unknown as jest.Mock).mockReturnValue(dataStoreState);
+        (useDataStore as any).getState = () => dataStoreState;
+
+        const variableStoreState = {
+            variables: mockVariables,
+            overwriteAll: mockedOverwriteAll,
+        };
+        (useVariableStore as unknown as jest.Mock).mockReturnValue(variableStoreState);
+        (useVariableStore as any).getState = () => variableStoreState;
 
         mockedRestructureData.mockReturnValue({
             data: [[1, 2, 3]],
@@ -106,8 +109,8 @@ describe('useRestructure', () => {
         });
 
         expect(mockedRestructureData).toHaveBeenCalled();
-        expect(mockedSetData).toHaveBeenCalledWith([[1, 2, 3]]);
-        expect(mockedOverwriteVariables).toHaveBeenCalledWith([{ name: 'newVar' }]);
+        expect(mockedSetData).not.toHaveBeenCalled();
+        expect(mockedOverwriteAll).toHaveBeenCalledWith([{ name: 'newVar' }], [[1, 2, 3]]);
         expect(mockOnClose).toHaveBeenCalled();
     });
 }); 

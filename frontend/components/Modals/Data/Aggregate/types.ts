@@ -17,6 +17,7 @@ export interface AggregatedVariable extends Omit<Variable, 'id' | 'tempId' | 'va
     percentageValue?: string;
     percentageLow?: string;
     percentageHigh?: string;
+    tempId?: string;
 }
 
 // It's good practice to also move other related types here if they are specific to this modal.

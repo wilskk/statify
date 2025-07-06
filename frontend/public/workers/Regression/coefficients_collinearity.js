@@ -1,11 +1,11 @@
 // coefficients_collinearity.js
 
 self.onmessage = function(e) {
-    const { dependent, independent } = e.data;
+    const { dependent, independent, independentVariableInfos } = e.data;
     
     // Validasi input: pastikan data independen tersedia dan berbentuk array of arrays
-    if (!independent || !Array.isArray(independent) || independent.length === 0) {
-      self.postMessage({ error: "Data independen harus disediakan sebagai array of arrays." });
+    if (!independent || !Array.isArray(independent) || independent.length === 0 || !independentVariableInfos) {
+      self.postMessage({ error: "Data independen (termasuk info nama/label) harus disediakan sebagai array of arrays." });
       return;
     }
     
@@ -112,13 +112,18 @@ self.onmessage = function(e) {
     // Fungsi untuk menghitung diagnosa kolinearitas:
     // Untuk setiap variabel independen, regresikan variabel tersebut terhadap variabel lain.
     // Tolerance = 1 - R² dan VIF = 1 / Tolerance.
-    function calculateCollinearityDiagnostics(indepVars) {
+    function calculateCollinearityDiagnostics(indepVars, varInfos) {
       let diagnostics = [];
       const numVars = indepVars.length;
       for (let i = 0; i < numVars; i++) {
+        const currentVarInfo = varInfos[i];
+        const displayName = (currentVarInfo.label && currentVarInfo.label.trim() !== '') 
+            ? currentVarInfo.label 
+            : currentVarInfo.name;
+
         // Jika hanya ada satu variabel, tidak ada kolinearitas antar variabel
         if (numVars === 1) {
-          diagnostics.push({ varName: "VAR00002", tolerance: 1.000, vif: 1.000 });
+          diagnostics.push({ varName: displayName, tolerance: 1.000, vif: 1.000 });
         } else {
           const y = indepVars[i];
           let X = [];
@@ -139,7 +144,7 @@ self.onmessage = function(e) {
           const tolerance = 1 - r2;
           const vif = tolerance === 0 ? Infinity : 1 / tolerance;
           diagnostics.push({
-            varName: "VAR0000" + (i + 2),
+            varName: displayName,
             tolerance: parseFloat(tolerance.toFixed(3)),
             vif: parseFloat(vif.toFixed(3))
           });
@@ -149,7 +154,7 @@ self.onmessage = function(e) {
     }
   
     // Hitung diagnosa kolinearitas untuk data independen
-    const diagnostics = calculateCollinearityDiagnostics(independent);
+    const diagnostics = calculateCollinearityDiagnostics(independent, independentVariableInfos);
   
     // Susun objek hasil sesuai struktur JSON yang diinginkan
     const result = {

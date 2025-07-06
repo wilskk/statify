@@ -61,7 +61,7 @@ export class ResultService {
     try {
       const enrichedAnalytic: Analytic = {
         ...analytic,
-        log_id: logId
+        logId: logId
       };
       return await resultRepository.saveAnalytic(enrichedAnalytic);
     } catch (error) {
@@ -79,7 +79,7 @@ export class ResultService {
         id,
         title: analyticData.title || "",
         note: analyticData.note,
-        log_id: analyticData.log_id
+        logId: analyticData.logId
       };
       return await resultRepository.saveAnalytic(updatedAnalytic);
     } catch (error) {
@@ -104,7 +104,7 @@ export class ResultService {
       const enrichedStatistic: Statistic = {
         ...defaultValues,
         ...statistic, // Nilai yang disediakan akan menimpa nilai default
-        analytic_id: analyticId // Pastikan analytic_id selalu sesuai dengan parameter
+        analyticId: analyticId // Pastikan analyticId selalu sesuai dengan parameter
       };
       
       return await resultRepository.saveStatistic(enrichedStatistic);

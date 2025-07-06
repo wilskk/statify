@@ -269,13 +269,18 @@ export const RecodeSameVariablesModal: React.FC<RecodeSameVariablesModalProps> =
     }, []);
 
     // Helper function to evaluate rules
-    const evaluateValueWithRules = (value: string | number, rules: RecodeRule[]): string | number | null => {
+    const evaluateValueWithRules = (value: string | number | null, rules: RecodeRule[]): string | number | null => {
         // Jika nilai adalah string kosong, kembalikan apa adanya
         if (value === "") {
             return value;
         }
 
-        const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+        const numericValue: number =
+            typeof value === 'number'
+                ? value
+                : typeof value === 'string'
+                    ? parseFloat(value)
+                    : NaN;
         const isNumericType = recodeListType === 'NUMERIC';
         const isValidNumber = !isNaN(numericValue);
 

@@ -14,9 +14,6 @@ jest.mock('@/stores/useResultStore');
 jest.mock('../services/pdfPrintService');
 jest.mock('jspdf');
 
-const mockUseDataStore = useDataStore as jest.Mock;
-const mockUseVariableStore = useVariableStore as jest.Mock;
-const mockUseResultStore = useResultStore as jest.Mock;
 const mockPdfPrintService = pdfPrintService as jest.Mocked<typeof pdfPrintService>;
 const mockJsPDF = jsPDF as unknown as jest.Mock;
 
@@ -44,9 +41,24 @@ describe('usePrintLogic', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        mockUseDataStore.mockReturnValue({ data: [{ 0: 'a', 1: 'b' }] });
-        mockUseVariableStore.mockReturnValue({ variables: [createMockVariable({ columnIndex: 0, name: 'Var1', type: 'STRING' })] });
-        mockUseResultStore.mockReturnValue({ logs: [{ id: '1', log: 'test log' }] });
+        const mockLoadData = jest.fn().mockResolvedValue(undefined);
+        const mockLoadVariables = jest.fn().mockResolvedValue(undefined);
+        const mockLoadResults = jest.fn().mockResolvedValue(undefined);
+
+        (useDataStore as any).getState = jest.fn().mockReturnValue({
+            data: [{ '0': 'a', '1': 'b' }],
+            loadData: mockLoadData,
+        });
+
+        (useVariableStore as any).getState = jest.fn().mockReturnValue({
+            variables: [createMockVariable({ columnIndex: 0, name: 'Var1', type: 'STRING' })],
+            loadVariables: mockLoadVariables,
+        });
+
+        (useResultStore as any).getState = jest.fn().mockReturnValue({
+            logs: [{ id: '1', log: 'test log' }],
+            loadResults: mockLoadResults,
+        });
 
         // Mock the return value of the jsPDF constructor
         mockJsPDF.mockImplementation(() => mockDoc);
@@ -146,7 +158,7 @@ describe('usePrintLogic', () => {
             const error = new Error('PDF generation failed');
             mockPdfPrintService.addDataGridView.mockImplementation(() => { throw error; });
 
-            const { result } = renderHook(() => usePrintLogic({ onClose: mockOnClose }));
+            const { result, rerender } = renderHook(() => usePrintLogic({ onClose: mockOnClose }));
 
             await act(async () => {
                 await result.current.handlePrint();

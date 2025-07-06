@@ -9,8 +9,8 @@ interface UseTransposeProps {
 }
 
 export const useTranspose = ({ onClose }: UseTransposeProps) => {
-    const { variables, overwriteVariables } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { variables, overwriteAll } = useVariableStore();
+    const { data } = useDataStore();
 
     const prepareVariablesWithTempId = useCallback((vars: Variable[]) => {
         return vars.map(v => ({
@@ -79,11 +79,11 @@ export const useTranspose = ({ onClose }: UseTransposeProps) => {
 
         try {
             const nameVariable = nameVariables.length > 0 ? nameVariables[0] : null;
-            const { transposedData, finalTransposedVariables } = transposeDataService(data, selectedVariables, nameVariable);
+            const sanitizedData = data.map(row => row.map(cell => cell ?? ""));
+            const { transposedData, finalTransposedVariables } = transposeDataService(sanitizedData, selectedVariables, nameVariable);
 
             if (transposedData.length > 0 || finalTransposedVariables.length > 0) {
-                await setData(transposedData);
-                await overwriteVariables(finalTransposedVariables);
+                await overwriteAll(finalTransposedVariables, transposedData);
             }
             
             onClose();

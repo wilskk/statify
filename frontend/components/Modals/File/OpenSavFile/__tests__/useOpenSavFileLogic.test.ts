@@ -13,15 +13,12 @@ jest.mock('@/stores/useVariableStore');
 jest.mock('@/stores/useMetaStore');
 
 const mockedProcessSavFile = services.processSavFile as jest.Mock;
-const mockSetData = jest.fn();
-const mockResetData = jest.fn();
-const mockOverwriteVariables = jest.fn();
-const mockResetVariables = jest.fn();
+const mockOverwriteAll = jest.fn();
 const mockSetProjectMeta = jest.fn();
 
-(useDataStore as jest.Mock).mockReturnValue({ setData: mockSetData, resetData: mockResetData });
-(useVariableStore as jest.Mock).mockReturnValue({ overwriteVariables: mockOverwriteVariables, resetVariables: mockResetVariables });
-(useMetaStore as jest.Mock).mockReturnValue({ setMeta: mockSetProjectMeta });
+(useDataStore as unknown as jest.Mock).mockReturnValue({ });
+(useVariableStore as unknown as jest.Mock).mockReturnValue({ overwriteAll: mockOverwriteAll });
+(useMetaStore as unknown as jest.Mock).mockReturnValue({ setMeta: mockSetProjectMeta });
 
 // A realistic mock response from the backend
 const mockApiResponse = {
@@ -78,28 +75,30 @@ describe('useOpenSavFileLogic hook', () => {
       await result.current.handleSubmit();
     });
 
-    expect(mockResetData).toHaveBeenCalledTimes(1);
-    expect(mockResetVariables).toHaveBeenCalledTimes(1);
     expect(mockedProcessSavFile).toHaveBeenCalledTimes(1);
     
+    // Check that overwriteAll was called with the correct data
+    expect(mockOverwriteAll).toHaveBeenCalledTimes(1);
+    const [variables, dataMatrix] = mockOverwriteAll.mock.calls[0];
+    
     // Check variable creation
-    expect(mockOverwriteVariables).toHaveBeenCalledTimes(1);
-    const createdVariables = mockOverwriteVariables.mock.calls[0][0];
-    expect(createdVariables.length).toBe(2);
-    expect(createdVariables[0].name).toBe('VAR1');
-    expect(createdVariables[0].type).toBe('NUMERIC');
-    expect(createdVariables[1].name).toBe('VAR2');
-    expect(createdVariables[1].type).toBe('STRING');
-    expect(createdVariables[1].values.length).toBe(2);
+    expect(variables.length).toBe(2);
+    expect(variables[0].name).toBe('VAR1');
+    expect(variables[0].type).toBe('NUMERIC');
+    expect(variables[1].name).toBe('VAR2');
+    expect(variables[1].type).toBe('STRING');
+    expect(variables[1].values.length).toBe(2);
     
     // Check data transformation
-    expect(mockSetData).toHaveBeenCalledTimes(1);
-    const transformedData = mockSetData.mock.calls[0][0];
-    expect(transformedData.length).toBe(2);
-    expect(transformedData[0]).toEqual([10.5, 'M']);
+    expect(dataMatrix.length).toBe(2);
+    expect(dataMatrix[0]).toEqual([10.5, 'M']);
+    expect(dataMatrix[1]).toEqual([-99, 'F']);
 
     // Check meta update
     expect(mockSetProjectMeta).toHaveBeenCalledTimes(1);
+    expect(mockSetProjectMeta).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'test.sav'
+    }));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
   
@@ -118,8 +117,7 @@ describe('useOpenSavFileLogic hook', () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBe(errorMessage);
-    expect(mockSetData).not.toHaveBeenCalled();
-    expect(mockOverwriteVariables).not.toHaveBeenCalled();
+    expect(mockOverwriteAll).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 }); 

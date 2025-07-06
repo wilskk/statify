@@ -1,5 +1,5 @@
 import { Variable } from "@/types/Variable";
-import { CSVProcessingOptions } from "../types";
+import { CSVProcessingOptions } from "./types";
 
 export class CSVProcessingError extends Error {
     constructor(message: string) {
@@ -86,7 +86,7 @@ export const processCSVContent = (fileContent: string, options: CSVProcessingOpt
                 width: isNumeric ? 8 : Math.min(32767, Math.max(8, ...colData.map(v => v?.length || 0), variableName.length)),
                 decimals: isNumeric ? Math.min(potentialDecimals, 16) : 0,
                 label: '',
-                columns: 64,
+                columns: 72,
                 align: isNumeric ? 'right' : 'left',
                 measure: isNumeric ? 'scale' : 'nominal',
                 role: 'input',

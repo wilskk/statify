@@ -18,10 +18,9 @@ import FileMenu from "@/components/Modals/File/FileMenu";
 import EditMenu from "@/components/Modals/Edit/EditMenu";
 import DataMenu from "@/components/Modals/Data/DataMenu";
 import GeneralLinearModelMenu from "@/components/Modals/Analyze/general-linear-model/general-linear-model-menu";
-import ClassifyMenu from "@/components/Modals/Analyze/classify/classify-menu";
+import ClassifyMenu from "@/components/Modals/Analyze/Classify/classify-menu";
 import DimensionReductionMenu from "@/components/Modals/Analyze/dimension-reduction/dimension-reduction-menu";
-import { CompareMeansMenu } from "@/components/Modals/Analyze/CompareMeans";
-import NonparametricTestMenu from "@/components/Modals/Analyze/NonparametricTests/NonparametricTestMenu";
+import TransformMenu from "@/components/Modals/Transform/TransformMenu";
 
 const Navbar: React.FC = () => {
   const { openModal } = useModal();
@@ -36,32 +35,7 @@ const Navbar: React.FC = () => {
           <FileMenu />
           <EditMenu />
           <DataMenu />
-          <MenubarMenu>
-            <MenubarTrigger>Transform</MenubarTrigger>
-            <MenubarContent>
-                <MenubarItem onClick={() => openModal(ModalType.ComputeVariable)}>Compute Variable</MenubarItem>
-                <MenubarItem disabled>Programmability Transformation</MenubarItem>
-                <MenubarItem disabled>Count Values within Cases</MenubarItem>
-                <MenubarItem disabled>Shift Values</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem onClick={() => openModal(ModalType.RecodeSameVariables)}>Recode into Same Variables</MenubarItem>
-                <MenubarItem disabled>Recode into Different Variables</MenubarItem>
-                <MenubarItem disabled>Automatic Recode</MenubarItem>
-                <MenubarItem disabled>Create Dummy Variables</MenubarItem>
-                <MenubarItem disabled>Visual Binning</MenubarItem>
-                <MenubarItem disabled>Optimal Binning</MenubarItem>
-                <MenubarItem disabled>Prepare Data for Modeling</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem disabled>Rank Cases</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem disabled>Date and Time Wizard</MenubarItem>
-                <MenubarItem disabled>Create Time Series</MenubarItem>
-                <MenubarItem disabled>Replace Missing Values</MenubarItem>
-                <MenubarItem disabled>Random Number Generators</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem disabled>Run Pending Transforms</MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
+          <TransformMenu />
           <MenubarMenu>
             <MenubarTrigger>Analyze</MenubarTrigger>
             <MenubarContent>
@@ -72,14 +46,6 @@ const Navbar: React.FC = () => {
                         <MenubarItem onClick={() => openModal(ModalType.Descriptives)}>Descriptives</MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.Explore)}>Explore</MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.Crosstabs)}>Crosstabs</MenubarItem>
-                        <MenubarSeparator />
-                        {/* Ratio: Opens a modal for ratio statistics */}
-                        <MenubarItem onClick={() => openModal(ModalType.Ratio)}>Ratio</MenubarItem>
-                        <MenubarSeparator />
-                        {/* P-P Plots: Opens a modal for P-P plot generation */}
-                        <MenubarItem onClick={() => openModal(ModalType.PPPlots)}>P-P Plots</MenubarItem>
-                        {/* Q-Q Plots: Opens a modal for Q-Q plot generation */}
-                        <MenubarItem onClick={() => openModal(ModalType.QQPlots)}>Q-Q Plots</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
@@ -112,23 +78,8 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Regression</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalAutomaticLinearModeling)}>Automatic Linear Modeling...</MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.ModalLinear)}>Linear...</MenubarItem>
                         <MenubarItem onClick={() => openModal(ModalType.ModalCurveEstimation)}>Curve Estimation...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalPartialLeastSquares)}>Partial Least Squares...</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={() => openModal(ModalType.ModalBinaryLogistic)}>Binary Logistic...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalMultinomialLogistic)}>Multinomial Logistic...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalOrdinal)}>Ordinal...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalProbit)}>Probit...</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={() => openModal(ModalType.ModalNonlinear)}>Nonlinear...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalWeightEstimation)}>Weight Estimation...</MenubarItem>
-                        <MenubarItem onClick={() => openModal(ModalType.ModalTwoStageLeastSquares)}>2-Stage Least Squares...</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={() => openModal(ModalType.ModalQuantiles)}>Quantiles...</MenubarItem>
-                        <MenubarSeparator />
-                        <MenubarItem onClick={() => openModal(ModalType.ModalOptimalScaling)}>Optimal Scaling (Catreg)...</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>
                 <MenubarSub>
@@ -153,10 +104,12 @@ const Navbar: React.FC = () => {
                 <MenubarSub>
                     <MenubarSubTrigger>Time Series</MenubarSubTrigger>
                     <MenubarSubContent>
-                        <MenubarItem onClick={()=>openModal(ModalType.Decomposition)}>Decomposition</MenubarItem>
                         <MenubarItem onClick={()=>openModal(ModalType.Smoothing)}>Smoothing</MenubarItem>
+                        <MenubarItem onClick={()=>openModal(ModalType.Decomposition)}>Decomposition</MenubarItem>
+                        <MenubarSeparator />
                         <MenubarItem onClick={()=>openModal(ModalType.Autocorrelation)}>Autocorrelation</MenubarItem>
                         <MenubarItem onClick={()=>openModal(ModalType.UnitRootTest)}>Unit Root Test</MenubarItem>
+                        <MenubarSeparator />
                         <MenubarItem onClick={()=>openModal(ModalType.BoxJenkinsModel)}>Box-Jenkins Model</MenubarItem>
                     </MenubarSubContent>
                 </MenubarSub>

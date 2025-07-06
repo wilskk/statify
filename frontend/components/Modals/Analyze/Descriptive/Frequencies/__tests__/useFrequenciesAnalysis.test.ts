@@ -33,7 +33,6 @@ const mockedUseAnalysisData = useAnalysisData as unknown as jest.Mock;
 const mockAddLog = jest.fn();
 const mockAddAnalytic = jest.fn();
 const mockAddStatistic = jest.fn();
-const mockAddChart = jest.fn();
 const mockOnClose = jest.fn();
 
 const mockVariables: Variable[] = [
@@ -46,7 +45,7 @@ const mockWeights = null;
 describe('useFrequenciesAnalysis', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockedUseResultStore.mockReturnValue({ addLog: mockAddLog, addAnalytic: mockAddAnalytic, addStatistic: mockAddStatistic, addChart: mockAddChart });
+        mockedUseResultStore.mockReturnValue({ addLog: mockAddLog, addAnalytic: mockAddAnalytic, addStatistic: mockAddStatistic });
         mockedUseAnalysisData.mockReturnValue({ data: mockAnalysisData, weights: mockWeights });
         
         mockAddLog.mockResolvedValue('log-789');
@@ -74,12 +73,14 @@ describe('useFrequenciesAnalysis', () => {
             runPromise = result.current.runAnalysis();
         });
 
-        expect(result.current.isCalculating).toBe(true);
+        expect(result.current.isLoading).toBe(true);
         expect(mockPostMessage).toHaveBeenCalledTimes(1);
         expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
-            variables: mockVariables,
-            data: mockAnalysisData,
-            weights: mockWeights,
+            variableData: [{
+                variable: mockVariables[0],
+                data: mockAnalysisData.map(row => row[0])
+            }],
+            weightVariableData: mockWeights,
         }));
 
         const mockWorkerResult = {
@@ -100,10 +101,9 @@ describe('useFrequenciesAnalysis', () => {
         expect(mockAddLog).toHaveBeenCalled();
         expect(mockAddAnalytic).toHaveBeenCalled();
         expect(mockAddStatistic).toHaveBeenCalledTimes(1); // Frequency table
-        expect(mockAddChart).not.toHaveBeenCalled();
         expect(mockTerminate).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(result.current.errorMsg).toBeNull();
     });
 
@@ -133,15 +133,14 @@ describe('useFrequenciesAnalysis', () => {
             if (runPromise) await runPromise;
         });
 
-        expect(mockAddStatistic).toHaveBeenCalledTimes(1);
-        expect(mockAddChart).toHaveBeenCalledTimes(1);
-        expect(mockAddChart).toHaveBeenCalledWith(
-            'analytic-789',
-            expect.objectContaining({
-                title: expect.stringContaining('Bar Chart'),
-                type: 'Bar',
-            })
-        );
+        expect(mockAddStatistic).toHaveBeenCalledTimes(2); // One for freq table, one for chart
+        
+        const chartCall = mockAddStatistic.mock.calls.find(call => call[1].components === 'Bar');
+        expect(chartCall).toBeDefined();
+        expect(chartCall[1]).toEqual(expect.objectContaining({
+            title: expect.stringContaining('Bar Chart'),
+            components: 'Bar',
+        }));
     });
 
     it('should handle worker errors', async () => {
@@ -160,7 +159,7 @@ describe('useFrequenciesAnalysis', () => {
         });
 
         expect(result.current.errorMsg).toBe('Frequency calculation failed');
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(mockOnClose).not.toHaveBeenCalled();
     });
 
@@ -181,7 +180,7 @@ describe('useFrequenciesAnalysis', () => {
         });
 
         expect(result.current.errorMsg).toContain('An unexpected error occurred in the Frequencies worker: Worker died');
-        expect(result.current.isCalculating).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(mockTerminate).toHaveBeenCalled();
     });
 }); 

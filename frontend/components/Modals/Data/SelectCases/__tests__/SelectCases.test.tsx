@@ -10,9 +10,21 @@ jest.mock('../hooks/useSelectCases');
 const mockedUseSelectCases = useSelectCases as jest.Mock;
 
 // Mock child components to simplify testing
-jest.mock('../dialogs/SelectCasesIfCondition', () => () => <div>SelectCasesIfCondition</div>);
-jest.mock('../dialogs/SelectCasesRandomSample', () => () => <div>SelectCasesRandomSample</div>);
-jest.mock('../dialogs/SelectCasesRange', () => () => <div>SelectCasesRange</div>);
+jest.mock('../dialogs/SelectCasesIfCondition', () => {
+    const MockSelectCasesIfCondition = () => <div>SelectCasesIfCondition</div>;
+    MockSelectCasesIfCondition.displayName = 'MockSelectCasesIfCondition';
+    return MockSelectCasesIfCondition;
+});
+jest.mock('../dialogs/SelectCasesRandomSample', () => {
+    const MockSelectCasesRandomSample = () => <div>SelectCasesRandomSample</div>;
+    MockSelectCasesRandomSample.displayName = 'MockSelectCasesRandomSample';
+    return MockSelectCasesRandomSample;
+});
+jest.mock('../dialogs/SelectCasesRange', () => {
+    const MockSelectCasesRange = () => <div>SelectCasesRange</div>;
+    MockSelectCasesRange.displayName = 'MockSelectCasesRange';
+    return MockSelectCasesRange;
+});
 
 describe('SelectCases Component', () => {
     const mockOnClose = jest.fn();
@@ -75,7 +87,7 @@ describe('SelectCases Component', () => {
         renderComponent();
         expect(screen.getByText('Variables:')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'OK' })).toBeInTheDocument();
-        expect(screen.getByText('Variable 1')).toBeInTheDocument();
+        expect(screen.getByText(/Variable 1/)).toBeInTheDocument();
     });
 
     it('renders the component in sidebar mode correctly', () => {
@@ -99,9 +111,8 @@ describe('SelectCases Component', () => {
     });
 
     it('handles radio button changes for select options', async () => {
-        const user = userEvent.setup();
         renderComponent();
-        await user.click(screen.getByLabelText('If condition is satisfied'));
+        fireEvent.click(screen.getByText('If condition is satisfied'));
         expect(mockSetSelectOption).toHaveBeenCalledWith('condition');
     });
 

@@ -54,7 +54,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                     </Label>
                                     <Input
                                         id="percentageValue"
-                                        value={percentageValue}
+                                        defaultValue={percentageValue}
                                         onChange={(e) => setPercentageValue(e.target.value)}
                                         className="h-8 text-sm w-24"
                                         disabled={identificationCriteria !== "percentage"}
@@ -77,7 +77,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                     </Label>
                                     <Input
                                         id="fixedNumber"
-                                        value={fixedNumber}
+                                        defaultValue={fixedNumber}
                                         onChange={(e) => setFixedNumber(e.target.value)}
                                         className="h-8 text-sm w-24"
                                         disabled={identificationCriteria !== "fixed"}
@@ -106,7 +106,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
                                 </Label>
                                 <Input
                                     id="cutoffValue"
-                                    value={cutoffValue}
+                                    defaultValue={cutoffValue}
                                     onChange={(e) => setCutoffValue(e.target.value)}
                                     className="h-8 text-sm w-24"
                                     disabled={!useMinimumValue}

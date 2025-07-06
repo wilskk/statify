@@ -3,7 +3,6 @@ import { useMetaStore } from "@/stores/useMetaStore";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { TimeComponent } from "../types";
-import { Variable } from "@/types/Variable";
 import {
     getTimeComponentsFromCase,
     formatDateForMetaStore,
@@ -14,8 +13,8 @@ import { prepareDateVariables } from "../services/dateTimeService";
 
 export const useDefineDateTime = (onClose: () => void) => {
     const { setMeta } = useMetaStore();
-    const { variables, addVariable, resetVariables } = useVariableStore();
-    const { updateCells, data } = useDataStore();
+    const { variables, addVariables, resetVariables } = useVariableStore();
+    const { data } = useDataStore();
 
     const casesAreOptions: string[] = [
         "Years",
@@ -59,33 +58,28 @@ export const useDefineDateTime = (onClose: () => void) => {
     }, []);
 
     const handleOk = useCallback(async () => {
-        // Handle "Not dated" case first
         if (selectedCase === "Not dated") {
             await resetVariables();
-            setMeta({ dates: "" });
+            await setMeta({ dates: "" });
             onClose();
             return;
         }
 
         const dateString = formatDateForMetaStore(selectedCase, timeComponents);
-        setMeta({ dates: dateString });
+        await setMeta({ dates: dateString });
 
         const { variablesToCreate, cellUpdates } = prepareDateVariables(
             timeComponents,
             variables,
             getMaxRow(data)
         );
-
-        for (const variable of variablesToCreate) {
-            await addVariable(variable as Variable);
-        }
-
-        if (cellUpdates.length > 0) {
-            await updateCells(cellUpdates);
+        
+        if (variablesToCreate.length > 0) {
+            await addVariables(variablesToCreate, cellUpdates);
         }
 
         onClose();
-    }, [selectedCase, timeComponents, variables, addVariable, resetVariables, updateCells, data, setMeta, onClose]);
+    }, [selectedCase, timeComponents, variables, addVariables, resetVariables, data, setMeta, onClose]);
 
     const handleReset = useCallback(() => {
         setSelectedCase("Not dated");

@@ -76,6 +76,10 @@ describe('useExploreAnalysis', () => {
         showMEstimators: false,
         showOutliers: false,
         showPercentiles: false,
+        boxplotType: 'dependents-together',
+        showStemAndLeaf: false,
+        showHistogram: false,
+        showNormalityPlots: false,
     };
 
     const renderTestHook = (params: Partial<ExploreAnalysisParams> = {}) => {
@@ -171,12 +175,19 @@ describe('useExploreAnalysis', () => {
         expect(mockAddStatistic).toHaveBeenCalledTimes(1);
         const formatCall = (mockAddStatistic.mock.calls[0][1] as any).output_data;
         const parsedData = JSON.parse(formatCall);
-        // The formatter should produce rows for each factor level
-        expect(parsedData.tables[0].rows).toEqual(expect.arrayContaining([
-            expect.objectContaining({ rowHeader: ['A', 'Dependent 1'] }),
-            expect.objectContaining({ rowHeader: ['B', 'Dependent 1'] }),
-        ]));
-    
+        
+        // The formatter should produce rows for each factor level in a nested structure
+        const rows = parsedData.tables[0].rows;
+        expect(rows).toHaveLength(1); // One parent row for the dependent variable
+        expect(rows[0].rowHeader[0]).toBe('Dependent 1');
+        expect(rows[0].children).toHaveLength(2); // Two child rows for the factor levels
+        expect(rows[0].children).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ rowHeader: [null, 'A'] }),
+                expect.objectContaining({ rowHeader: [null, 'B'] }),
+            ])
+        );
+
         expect(result.current.isCalculating).toBe(false);
         expect(mockOnClose).toHaveBeenCalled();
     });

@@ -7,7 +7,7 @@
  * Desain kelas ini memungkinkan penambahan statistik baru secara modular.
  */
 /* global importScripts, checkIsMissing, isNumeric */
-importScripts('./libs/utils.js');
+importScripts('/workers/DescriptiveStatistics/libs/utils.js');
 
 class CrosstabsCalculator {
     /**

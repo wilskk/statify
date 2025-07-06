@@ -1,217 +1,177 @@
 # Identify Unusual Cases Feature
 
-This document explains the functionality of the Identify Unusual Cases feature, which detects anomalous observations in a dataset.
+This document provides a comprehensive overview of the "Identify Unusual Cases" feature, detailing its functionality, architecture, and testing strategy. The feature is designed to detect anomalous records within a dataset by comparing each case against its peers.
 
-## Overview
+## 1. Overview
 
-The Identify Unusual Cases feature helps identify records that differ significantly from other cases in your dataset. Using peer group analysis, this feature identifies unusual cases by comparing each case to similar cases and calculating how much it deviates from expected patterns. This is useful for detecting data entry errors, outliers, and genuinely anomalous cases that may require special attention in your analysis.
+The "Identify Unusual Cases" feature helps users find records that differ significantly from others in the dataset. It employs a peer group analysis algorithm to identify outliers by grouping similar cases and calculating how much each case deviates from its group's norms. This is particularly useful for data cleaning, outlier detection, and identifying genuinely unique cases that may warrant further investigation.
 
-## Options Explained
+The entire analysis is performed on the client-side, using a multi-tabbed dialog to guide the user through the configuration process.
 
-### Variables Configuration
+## 2. Feature Walkthrough & UI Components
 
-#### Analysis Variables
+The user interacts with a modal dialog organized into five tabs. A guided tour is also available to walk users through the key functionalities.
 
-These are the variables used to evaluate the unusualness of cases. The feature will analyze patterns across these variables and identify cases with unusual combinations of values.
+### 2.1. Variables Tab (`VariablesTab.tsx`)
 
-#### Case Identifier Variable
+This is the initial tab where users define the scope of the analysis.
 
-An optional variable used to uniquely identify cases in the output. If specified, this variable's values will be used to identify unusual cases in the output rather than using row numbers.
+-   **Analysis Variables**: Users select the primary variables (typically scale or numeric) to be evaluated for unusualness. The algorithm analyzes patterns across these variables.
+-   **Case Identifier Variable**: An optional, single variable (e.g., an ID or name) can be selected to label cases in the output, making it easier to identify specific records.
 
-### Output Options
+The tab is implemented using the shared `VariableListManager` component to provide a consistent drag-and-drop experience.
 
-#### List of Unusual Cases
+### 2.2. Options Tab (`OptionsTab.tsx`)
 
-When enabled, displays a detailed list of unusual cases and the specific reasons each case is considered unusual.
+This tab allows users to fine-tune the detection algorithm.
 
-#### Peer Group Norms
+-   **Identification Criteria**: Users can choose to identify a specific percentage of cases with the highest anomaly scores or a fixed number of cases.
+-   **Anomaly Cutoff**: An optional minimum anomaly index value can be set. Only cases meeting or exceeding this cutoff will be flagged.
+-   **Peer Groups**: Users can specify the minimum and maximum number of peer groups to be formed during the clustering phase.
+-   **Reasons**: Defines the maximum number of reasons to report for why a case is considered unusual.
 
-Shows the distribution of variable values within each identified peer group. Peer groups are clusters of similar cases used as a baseline for detecting anomalies.
+### 2.3. Output Tab (`OutputTab.tsx`)
 
-#### Anomaly Indices
+This tab controls which summary tables and lists are generated in the output viewer.
 
-Displays the distribution of anomaly index values, which quantify how unusual each case is compared to its peer group.
+-   **List of Unusual Cases**: The primary output, showing each flagged case and the reasons for its identification.
+-   **Peer Group Norms**: A table showing the distribution of variable values within each peer group.
+-   **Anomaly Indices**: A summary of the distribution of anomaly index values.
+-   **Reason Occurrence**: A table reporting how often each analysis variable contributed to a case being flagged.
+-   **Case Processed Summary**: A summary of how many cases were included and excluded from the analysis.
 
-#### Reason Occurrence by Analysis Variable
+### 2.4. Save Tab (`SaveTab.tsx`)
 
-Reports how frequently each analysis variable contributes to cases being identified as unusual.
+This tab allows users to save the results of the analysis back into the active dataset as new variables.
 
-#### Case Processed
+-   **Save Anomaly Index**: Creates a new variable containing the anomaly index for each case.
+-   **Save Peer Group Membership**: Creates new variables for each case's peer group ID, the size of that group, and its percentage of the total.
+-   **Save Reasons**: Creates a set of new variables detailing the reasons for unusualness (e.g., the specific variable, its value, and its deviation from the norm).
+-   **Replace Existing**: An option to overwrite variables with the same name if they already exist.
 
-Provides a summary of cases included in and excluded from the analysis.
+### 2.5. Missing Values Tab (`MissingValuesTab.tsx`)
 
-### Save Options
+This tab defines how to handle missing data in the analysis variables.
 
-#### Anomaly Index
+-   **Exclude Missing Values**: The default option, which performs listwise deletion.
+-   **Include Missing Values**: Imputes missing values (mean for scale, a separate category for nominal/ordinal).
+-   **Use Proportion Missing**: An option to create a new feature based on the proportion of missing values per case and include it in the analysis.
 
-Saves the calculated anomaly index as a new variable in your dataset.
+## 3. Architecture and Data Flow
 
-#### Peer Groups
+The feature's logic is primarily encapsulated in the `useUnusualCases` hook, promoting a clear separation of concerns between UI and business logic.
 
-Saves information about peer group assignment as new variables in your dataset, including peer group ID, size, and percentage.
+### 3.1. Core Components
 
-#### Reasons
+-   **`IdentifyUnusualCases/index.tsx`**: The main dialog component. It manages the tabbed layout, state via the `useUnusualCases` hook, and renders the appropriate tab component (`VariablesTab`, `OptionsTab`, etc.). It also integrates the `useTourGuide` hook for the guided tour.
+-   **`hooks/useUnusualCases.ts`**: The central hook managing the feature's entire state, including variable lists, all configuration options across the tabs, and the `handleConfirm` and `handleReset` actions. It interacts with `useVariableStore` to read initial variables and `addVariables` to save new ones.
+-   **`services/unusualCasesService.ts`**: A pure function responsible for preparing the definitions of new variables based on the user's selections in the "Save" tab. It does not contain state or side effects.
 
-Saves detailed information about why cases were flagged as unusual, including the contributing variables, their values, and how they differ from peer norms.
+### 3.2. Data Flow
 
-#### Replace Existing Variables
+The process from user interaction to result is as follows:
 
-When enabled, replaces existing variables with the same names rather than creating new ones with modified names.
+```mermaid
+graph TD
+    subgraph User Interaction
+        A[User opens dialog] --> B{Configure Tabs};
+        B -- Variables --> C[Select Analysis/Identifier Vars];
+        B -- Options --> D[Set Identification Criteria];
+        B -- Save --> E[Choose Variables to Save];
+        G[User clicks OK]
+        C & D & E --> G;
+    end
 
-### Missing Values Options
+    subgraph Frontend Logic
+        H(IdentifyUnusualCases.tsx) -- manages --> I(Tabs UI);
+        H -- uses --> J(useUnusualCases.ts);
+        J -- "gets initial vars" --> K(Zustand: useVariableStore);
+        G --> L{handleConfirm in useUnusualCases};
+        L -- "validates input" --> L;
+        L --> M[prepareNewUnusualCasesVariables service];
+        M --> N[Get new var definitions];
+        N --> L;
+        L -- "(placeholder for worker)" --> O[Run Analysis];
+        L -- "add new vars" --> K;
+        L --> P[Display output (placeholder)];
+        P --> Q[Close Dialog];
+    end
 
-#### Exclude Missing Values
-
-Cases with missing values on any analysis variable are excluded from the analysis.
-
-#### Include Missing Values
-
-Missing values are replaced with the variable's mean for scale variables, or treated as a separate category for categorical variables.
-
-#### Use Proportion of Missing Values as Analysis Variable
-
-When enabled, the proportion of missing values in each case is used as an additional variable for identifying unusual cases.
-
-### Identification Criteria Options
-
-#### Percentage of Cases
-
-Identifies a specified percentage of cases with the highest anomaly index values.
-
-#### Fixed Number of Cases
-
-Identifies a specified number of cases with the highest anomaly index values.
-
-#### Minimum Anomaly Index Value
-
-When enabled, only cases with an anomaly index at or above the specified cutoff value are identified as unusual.
-
-#### Peer Groups
-
-Controls the minimum and maximum number of peer groups to form during the analysis.
-
-#### Maximum Number of Reasons
-
-Specifies the maximum number of reasons to report for why a case is identified as unusual.
-
-## Algorithm Details
-
-The unusual cases detection algorithm works as follows:
-
-1. **Preprocessing**:
-   - Cases with missing values are handled according to the specified option (excluded or values imputed)
-   - Variables are normalized to ensure equal contribution to the analysis
-
-2. **Peer Group Formation**:
-   - Similar cases are grouped together using cluster analysis
-   - The number of peer groups is determined based on the specified min/max and data characteristics
-   - Each case is assigned to the peer group whose center is closest to it
-
-3. **Anomaly Detection**:
-   - For each case, an anomaly index is calculated measuring its deviation from its peer group
-   - The anomaly index is based on normalized squared deviations from peer group means
-   - Cases with high anomaly index values are identified as unusual
-
-4. **Reason Identification**:
-   - For each unusual case, the variables contributing most to its unusualness are identified
-   - The impact of each variable is quantified based on its normalized deviation from the peer group norm
-   - Variables are ranked by their impact to determine the primary reasons for a case's unusualness
-
-## Usage Examples
-
-### Finding Data Entry Errors
-
-To identify potential data entry errors in a survey dataset:
-1. Select key measurement variables (e.g., age, income, education) as analysis variables
-2. Choose a unique ID variable as the case identifier
-3. Set identification criteria to "Percentage of cases" with 5%
-4. Enable "Minimum anomaly index value" with a cutoff of 2.0
-5. Save the anomaly index and peer group information
-6. Run the analysis to identify cases with highly improbable combinations of values
-
-### Detecting Scientific Outliers
-
-To find unusual specimens in a scientific dataset:
-1. Select all measurement variables as analysis variables
-2. Set identification criteria to "Fixed number of cases" with a value appropriate for your dataset size
-3. Enable all output options to get a comprehensive view of the unusual cases
-4. Set maximum reasons to 3 to see the top three reasons each case is flagged
-5. Run the analysis to identify the most anomalous specimens
-
-### Quality Control in Manufacturing
-
-To detect abnormal products in a manufacturing quality control dataset:
-1. Select product measurement variables as analysis variables
-2. Choose the product ID as the case identifier variable
-3. Set identification criteria to "Minimum anomaly index value" with a cutoff of 2.5
-4. Save reasons for unusualness to identify recurring quality issues
-5. Run the analysis to identify potentially defective products
-
-## Notes
-
-- The analysis is more effective when variables are appropriately scaled and normally distributed
-- Including too many variables may dilute the analysis, while too few may miss important patterns
-- The optimal number of peer groups depends on your data structure and sample size
-- Cases with very unusual values in a single variable are often detected even if other variables are normal
-- Higher anomaly index values indicate more unusual cases
-
-## Implementation Details
-
-The Identify Unusual Cases feature is implemented with a focus on accuracy and performance:
-
-1. **User Interface**:
-   - The UI is divided into tabs for Variables, Output, Save, Missing Values, and Options
-   - Variable selection follows a drag-and-drop paradigm for intuitive operation
-   - Configuration options are organized logically based on their function
-
-2. **Data Processing Flow**:
-   - When the user clicks "OK", the feature performs pre-processing based on configuration
-   - A clustering algorithm groups similar cases into peer groups
-   - Anomaly indices are calculated for all cases
-   - Cases are flagged as unusual based on the specified criteria
-   - Results are displayed in the output viewer and/or saved to the dataset
-
-3. **Statistical Methods**:
-   - Peer grouping uses an adaptive clustering algorithm to find natural groups in the data
-   - Anomaly indices are calculated using normalized Euclidean distances from peer group means
-   - Standard deviations within peer groups are used to normalize distances between values and group means
-
-4. **Performance Optimization**:
-   - Computations are performed in a separate worker thread to maintain UI responsiveness
-   - Efficient algorithms ensure reasonable performance even with large datasets
-   - Memory usage is optimized for handling high-dimensional data
-
-## Sample Test Data
-
-To test the Identify Unusual Cases feature, you can use the following sample dataset:
-
-```
-ID,Age,Income,Education,Expenses,Savings
-1,35,65000,16,45000,15000
-2,42,72000,18,48000,20000
-3,28,58000,16,40000,12000
-4,39,68000,14,47000,18000
-5,45,75000,16,52000,22000
-6,31,62000,12,43000,15000
-7,36,67000,16,46000,18000
-8,29,59000,14,42000,13000
-9,33,64000,16,44000,16000
-10,27,30000,12,45000,5000
+    A --> H;
 ```
 
-### Test Scenarios
+1.  **Initialization**: The `IdentifyUnusualCases` component mounts, and the `useUnusualCases` hook initializes its state, populating the "Available Variables" list from the global `useVariableStore`.
+2.  **Configuration**: The user navigates through the tabs and configures the analysis by moving variables and setting options. All state changes are managed within the `useUnusualCases` hook.
+3.  **Execution**: The user clicks "OK", triggering `handleConfirm` in the hook.
+4.  **Validation**: `handleConfirm` first validates that at least one analysis variable has been selected.
+5.  **Preparation**: The hook calls `prepareNewUnusualCasesVariables` from the service to get the definitions of any new variables to be created.
+6.  **Analysis (Placeholder)**: The current implementation is a placeholder. In a complete implementation, the hook would delegate the core analysis (peer grouping, anomaly index calculation) to a web worker to avoid blocking the UI.
+7.  **State Update**: The hook calls `addVariables` from `useVariableStore` to add the new variables to the dataset.
+8.  **Output (Placeholder)**: The results would be sent to the main output viewer.
+9.  **Cleanup**: The dialog closes.
 
-1. **Basic Anomaly Detection**:
-   - Analysis Variables: Age, Income, Education, Expenses, Savings
-   - Expected Result: Case #10 should be flagged as unusual due to its anomalous combination of low income, high expenses, and low savings
+## 4. Testing Strategy
 
-2. **Financial Patterns Analysis**:
-   - Analysis Variables: Income, Expenses, Savings
-   - Expected Result: Cases with unusual ratios of income to expenses or savings should be highlighted
+The feature is tested at multiple levels to ensure correctness and stability.
 
-3. **Specific Peer Group Analysis**:
-   - Analysis Variables: Age, Education, Income
-   - Set fixed number of peer groups: 2
-   - Expected Result: Cases should be divided into roughly two education/age/income groups, with unusual cases in each group identified
+#### 4.1. Main Component Testing (`__tests__/index.test.tsx`)
 
-These examples demonstrate how to use the Identify Unusual Cases feature for different analytical needs and validate the expected outcomes. 
+This suite tests the main `IdentifyUnusualCases` dialog component. It focuses on the overall structure, tab navigation, and connections to its underlying hooks, while mocking the content of each tab.
+
+-   **Rendering**: Verifies that the dialog renders with the correct title and that all tab triggers are present.
+-   **Tab Navigation**: Ensures that the "Variables" tab is visible by default and that clicking another tab trigger correctly switches the visible content.
+-   **Action Buttons**: Confirms that clicking "Cancel" calls `onClose`, "Reset" calls `handleReset`, and "OK" triggers the confirmation logic.
+
+#### 4.2. UI Component Testing (`__tests__/OptionsTab.test.tsx`)
+
+This suite tests the `OptionsTab` component in isolation, verifying its controls and state interactions.
+
+-   **Rendering**: Checks that all form controls are rendered with their correct default values.
+-   **State Changes**: Verifies that state-setting functions are called when the corresponding input values change.
+-   **Conditional Disabling**: Ensures that input fields are correctly enabled or disabled based on user selections (e.g., the "Cutoff" input is disabled when its checkbox is unchecked).
+
+#### 4.3. Core Logic Hook Testing (`__tests__/useUnusualCases.test.ts`)
+
+This suite tests the primary business logic contained within the `useUnusualCases` custom hook, mocking `useVariableStore` to provide a consistent test environment.
+
+-   **Initialization**: Verifies that the hook correctly initializes its state, loading variables from the store.
+-   **Variable Movement**: Tests moving variables between the "available", "analysis", and "identifier" lists.
+-   **Reset Functionality**: Confirms that the `handleReset` function correctly reverts all state slices back to their initial default values.
+-   **Confirmation Logic**: Checks that `handleConfirm` validates input correctly and calls `addVariables` from the store when new variables are meant to be saved.
+-
+-## Sample Test Data
+-
+-To test the Identify Unusual Cases feature, you can use the following sample dataset:
+-
+-```
+-ID,Age,Income,Education,Expenses,Savings
+-1,35,65000,16,45000,15000
+-2,42,72000,18,48000,20000
+-3,28,58000,16,40000,12000
+-4,39,68000,14,47000,18000
+-5,45,75000,16,52000,22000
+-6,31,62000,12,43000,15000
+-7,36,67000,16,46000,18000
+-8,29,59000,14,42000,13000
+-9,33,64000,16,44000,16000
+-10,27,30000,12,45000,5000
+-```
+-
+-### Test Scenarios
+-
+-1. **Basic Anomaly Detection**:
+-   - Analysis Variables: Age, Income, Education, Expenses, Savings
+-   - Expected Result: Case #10 should be flagged as unusual due to its anomalous combination of low income, high expenses, and low savings
+-
+-2. **Financial Patterns Analysis**:
+-   - Analysis Variables: Income, Expenses, Savings
+-   - Expected Result: Cases with unusual ratios of income to expenses or savings should be highlighted
+-
+-3. **Specific Peer Group Analysis**:
+-   - Analysis Variables: Age, Education, Income
+-   - Set fixed number of peer groups: 2
+-   - Expected Result: Cases should be divided into roughly two education/age/income groups, with unusual cases in each group identified
+-
+-These examples demonstrate how to use the Identify Unusual Cases feature for different analytical needs and validate the expected outcomes.
+
+</rewritten_file>

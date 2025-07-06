@@ -1,17 +1,46 @@
-# Fitur: Sort Cases
+# Fitur: Urutkan Kasus (Sort Cases)
 
-Dokumen ini menjelaskan fungsionalitas dan arsitektur fitur "Sort Cases", yang memungkinkan pengguna untuk mengurutkan baris (kasus) dalam dataset berdasarkan nilai dari satu atau lebih variabel.
+Dokumen ini menjelaskan fungsionalitas fitur "Urutkan Kasus", yang memungkinkan pengguna untuk menyusun ulang baris (kasus) dalam dataset berdasarkan nilai dari satu atau lebih variabel. Ini adalah langkah fundamental dalam persiapan data yang membantu dalam inspeksi data, analisis, dan pelaporan.
 
-## Ringkasan Fungsionalitas
+## 1. Komponen Antarmuka & Fungsionalitas
 
--   **Pengurutan Multi-Level**: Pengguna dapat memilih beberapa variabel untuk dijadikan dasar pengurutan. Urutan variabel dalam daftar "Sort By" menentukan prioritas pengurutan.
--   **Arah Pengurutan**: Untuk setiap variabel, pengguna dapat menentukan arah pengurutan, yaitu menaik (`Ascending`) atau menurun (`Descending`).
--   **Kontrol UI Intuitif**: Antarmuka memungkinkan pengguna untuk dengan mudah menambah, menghapus, dan mengatur ulang urutan variabel pengurutan.
--   **Penerapan Langsung**: Setelah dikonfirmasi, data dalam `useDataStore` akan diperbarui secara langsung untuk mencerminkan urutan yang baru.
+-   **Daftar Variabel (Available Variables)**: Menampilkan semua variabel yang tersedia untuk dijadikan kunci pengurutan.
+-   **Daftar Urutkan Berdasarkan (Sort By)**: Daftar ini menampung variabel yang telah dipilih sebagai kunci pengurutan. **Urutan variabel di dalam daftar ini sangat penting**, karena menentukan prioritas pengurutan (variabel teratas adalah kunci primer, yang kedua adalah kunci sekunder, dst.).
+-   **Kontrol Pengurutan**: Ketika sebuah variabel di dalam daftar "Sort By" disorot:
+    -   **Arah Urutan**: Pilihan untuk mengurutkan secara menaik (`Ascending`) atau menurun (`Descending`).
+    -   **Prioritas Urutan**: Tombol "Pindah ke Atas" (`Move Up`) dan "Pindah ke Bawah" (`Move Down`) untuk mengubah prioritas pengurutan variabel.
 
-## Arsitektur & Pola Desain
+## 2. Alur Kerja & Contoh Penggunaan
 
+### Contoh 1: Pengurutan Satu Level
+- **Tujuan**: Mengurutkan seluruh dataset berdasarkan `Pendapatan` (`Income`) dari yang tertinggi ke terendah.
+1.  Buka dialog "Sort Cases".
+2.  Pilih variabel `Income` dari daftar kiri.
+3.  Pindahkan ke daftar "Sort By".
+4.  Klik pada variabel `Income` di daftar "Sort By".
+5.  Pilih `Descending` pada opsi "Sort Order".
+6.  Klik **OK**.
+> **Hasil**: Seluruh dataset akan diurutkan ulang, dengan kasus yang memiliki `Income` tertinggi muncul di baris paling atas.
+
+### Contoh 2: Pengurutan Multi-Level
+- **Tujuan**: Mengelompokkan kasus berdasarkan `Departemen` (`Department`), lalu di dalam setiap departemen, urutkan berdasarkan `Pendapatan` (`Income`) dari tertinggi ke terendah.
+1.  Pindahkan variabel `Department` ke daftar "Sort By". Biarkan arahnya `Ascending` (A-Z).
+2.  Pindahkan variabel `Income` ke daftar "Sort By", pastikan posisinya di bawah `Department`.
+3.  Klik pada variabel `Income` di daftar "Sort By" dan ubah arahnya menjadi `Descending`.
+4.  Klik **OK**.
+> **Hasil**: Dataset akan dikelompokkan berdasarkan departemen secara alfabetis. Di dalam setiap grup departemen, kasus akan diurutkan berdasarkan pendapatan dari yang tertinggi.
+
+## 3. Rencana Pengembangan (Belum Diimplementasikan)
+-   **Simpan Konfigurasi Urutan**: Kemampuan untuk menyimpan skema pengurutan yang sering digunakan untuk dapat diterapkan kembali dengan cepat.
+-   **Urutkan Berdasarkan Label Nilai**: Opsi untuk mengurutkan berdasarkan label nilai (misalnya, "Sangat Puas", "Puas") daripada nilai numerik mentahnya (misalnya, 5, 4).
+-   **Indikator Stabilitas**: Menambahkan informasi apakah algoritma pengurutan yang digunakan bersifat *stable* (mempertahankan urutan asli dari elemen yang sama).
+-   **Penerapan pada Subset**: Opsi untuk menerapkan pengurutan hanya pada kasus yang saat ini dipilih (terfilter).
+
+## 4. Detail Implementasi
 Fitur ini dirancang sesuai dengan panduan arsitektur utama untuk komponen modal, dengan pemisahan tanggung jawab yang jelas.
+-   **`index.tsx`**: Bertanggung jawab untuk merakit fitur, memanggil *hook*, dan merender UI.
+-   **`hooks/useSortCases.ts`**: Mengelola semua *state* (daftar variabel, konfigurasi urutan) dan logika (memindahkan, mengubah arah, menyimpan). Ia memanggil `sortData` dari `useDataStore` dengan serangkaian konfigurasi untuk menerapkan pengurutan.
+-   **`SortCasesUI.tsx`**: Komponen presentasi murni yang menerima semua data dan *handler* sebagai *props*. Ia menggunakan `VariableListManager` untuk menampilkan daftar dan kontrol interaktif.
 
 ```
 /SortCases

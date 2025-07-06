@@ -21,7 +21,8 @@ describe('variablePropertiesService', () => {
         data: [['A'], ['B'], ['A'], ['C'], ['B'], ['A']]
       } as any);
 
-      const result = getUniqueValuesWithCounts(0, 'STRING', '10', '10');
+      const sampleData = [['A'], ['B'], ['A'], ['C'], ['B'], ['A']];
+      const result = getUniqueValuesWithCounts(sampleData, 0, 'STRING', '10', '10');
       
       expect(result).toHaveLength(3);
       expect(result).toContainEqual({ value: 'A', count: 3 });
@@ -34,7 +35,8 @@ describe('variablePropertiesService', () => {
             data: [['A'], ['B'], ['A'], ['C'], ['B'], ['A']]
         } as any);
   
-        const result = getUniqueValuesWithCounts(0, 'STRING', '3', '10');
+        const sampleData = [['A'], ['B'], ['A'], ['C'], ['B'], ['A']];
+        const result = getUniqueValuesWithCounts(sampleData, 0, 'STRING', '3', '10');
         
         expect(result).toHaveLength(2);
         expect(result).toContainEqual({ value: 'A', count: 2 });
@@ -46,7 +48,8 @@ describe('variablePropertiesService', () => {
             data: [['A'], ['B'], ['A'], ['C'], ['B'], ['A']]
         } as any);
   
-        const result = getUniqueValuesWithCounts(0, 'STRING', '10', '2');
+        const sampleData = [['A'], ['B'], ['A'], ['C'], ['B'], ['A']];
+        const result = getUniqueValuesWithCounts(sampleData, 0, 'STRING', '10', '2');
         
         expect(result).toHaveLength(2);
     });
@@ -70,28 +73,32 @@ describe('variablePropertiesService', () => {
 
     it('should suggest nominal for non-numeric data', () => {
       mockedUseDataStore.getState.mockReturnValue({ data: [['A'], ['B'], ['C']] } as any);
-      const result = suggestMeasurementLevel(baseVariable, '10');
+      const sampleData = [['A'], ['B'], ['C']];
+      const result = suggestMeasurementLevel(sampleData, baseVariable as any, '10');
       expect(result.level).toBe('nominal');
       expect(result.explanation).toContain('non-numeric');
     });
 
     it('should suggest ordinal for few unique integers', () => {
       mockedUseDataStore.getState.mockReturnValue({ data: [[1], [2], [1], [3], [2]] } as any);
-      const result = suggestMeasurementLevel(baseVariable, '10');
+      const sampleDataInts = [[1], [2], [1], [3], [2]];
+      const result = suggestMeasurementLevel(sampleDataInts, baseVariable as any, '10');
       expect(result.level).toBe('ordinal');
       expect(result.explanation).toContain('Few unique integers');
     });
 
     it('should suggest scale for numeric data with diverse values', () => {
         mockedUseDataStore.getState.mockReturnValue({ data: [[1.1], [2.2], [3.3], [4.4], [5.5], [6.6], [7.7], [8.8], [9.9], [10.1], [11.2]] } as any);
-        const result = suggestMeasurementLevel(baseVariable, '20');
+        const diverseData = [[1.1], [2.2], [3.3], [4.4], [5.5], [6.6], [7.7], [8.8], [9.9], [10.1], [11.2]];
+        const result = suggestMeasurementLevel(diverseData, baseVariable as any, '20');
         expect(result.level).toBe('scale');
         expect(result.explanation).toContain('diverse values');
     });
 
     it('should suggest nominal for binary data', () => {
         mockedUseDataStore.getState.mockReturnValue({ data: [[0], [1], [0], [1], [0]] } as any);
-        const result = suggestMeasurementLevel(baseVariable, '10');
+        const binaryData = [[0], [1], [0], [1], [0]];
+        const result = suggestMeasurementLevel(binaryData, baseVariable as any, '10');
         expect(result.level).toBe('nominal');
         expect(result.explanation).toContain('Only 2 unique values');
     });
@@ -114,7 +121,7 @@ describe('variablePropertiesService', () => {
         { ...originalVariables[1] }, // unchanged
       ];
       
-      await saveVariableProperties(modifiedVariables, originalVariables);
+      await saveVariableProperties(modifiedVariables as any, originalVariables as any, mockUpdate);
 
       expect(mockUpdate).toHaveBeenCalledTimes(1);
       expect(mockUpdate).toHaveBeenCalledWith(0, expect.objectContaining({

@@ -5,6 +5,7 @@ import Crosstabs from '../index';
 import { useCrosstabsAnalysis } from '../hooks/useCrosstabsAnalysis';
 import { useTourGuide } from '../hooks/useTourGuide';
 import { useVariableStore } from '@/stores/useVariableStore';
+import { useMetaStore } from '@/stores/useMetaStore';
 import type { Variable } from '@/types/Variable';
 import {
     Dialog,
@@ -14,13 +15,14 @@ import {
 // Mock hooks and stores
 jest.mock('../hooks/useCrosstabsAnalysis');
 jest.mock('../hooks/useTourGuide');
-jest.mock('@/stores/useVariableStore', () => ({
-    useVariableStore: jest.fn(),
-}));
+jest.mock('@/stores/useVariableStore');
+jest.mock('@/stores/useMetaStore');
 jest.mock('@/stores/useDataStore');
+
 
 const mockedUseCrosstabsAnalysis = useCrosstabsAnalysis as jest.Mock;
 const mockedUseTourGuide = useTourGuide as jest.Mock;
+const mockedUseMetaStore = useMetaStore as unknown as jest.Mock;
 
 const mockOnClose = jest.fn();
 const mockStartTour = jest.fn();
@@ -50,6 +52,8 @@ describe('Crosstabs Modal', () => {
         (useVariableStore as unknown as jest.Mock).mockReturnValue({
             variables: mockVariables,
         });
+        
+        mockedUseMetaStore.mockReturnValue({ meta: { weight: null }});
     });
 
     const renderComponent = () => {
@@ -84,18 +88,20 @@ describe('Crosstabs Modal', () => {
         expect(mockOnClose).toHaveBeenCalled();
     });
 
-    it('should switch to Cells tab when clicked', async () => {
+    it('should switch to Cells tab and show new controls', async () => {
         renderComponent();
         const user = userEvent.setup();
         const cellsTab = screen.getByText('Cells');
         
-        // Check initial state (Observed checkbox should not be visible)
+        // Check initial state (Controls should not be visible)
         expect(screen.queryByLabelText('Observed')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Unstandardized')).not.toBeInTheDocument();
         
         await user.click(cellsTab);
         
         // After clicking, the Cells tab content should be visible
         expect(screen.getByLabelText('Observed')).toBeInTheDocument();
+        expect(screen.getByLabelText('Unstandardized')).toBeInTheDocument();
     });
 
     it('should display available variables', () => {

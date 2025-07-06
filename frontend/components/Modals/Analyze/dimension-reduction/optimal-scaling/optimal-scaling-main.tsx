@@ -1,14 +1,16 @@
-import { OptScaInitial } from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-dialog";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { OptScaDefineDefault } from "@/constants/dimension-reduction/optimal-scaling/optimal-scaling-define-default";
-import { useModal } from "@/hooks/useModal";
+import {OptScaInitial} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/optimal-scaling-dialog";
+import {Dialog, DialogContent, DialogTitle} from "@/components/ui/dialog";
+import {
+    OptScaDefineDefault
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/constants/optimal-scaling-define-default";
+import {useModal} from "@/hooks/useModal";
 import {
     OptScaContainerProps,
     OptScaDefineMainType,
     OptScaDefineType,
-} from "@/models/dimension-reduction/optimal-scaling-define";
-import { useState, useEffect } from "react";
-import { saveFormData, getFormData, clearFormData } from "@/hooks/useIndexedDB";
+} from "@/components/Modals/Analyze/dimension-reduction/optimal-scaling/types/optimal-scaling-define";
+import {useEffect, useState} from "react";
+import {clearFormData, getFormData, saveFormData} from "@/hooks/useIndexedDB";
 
 export const OptScaContainer = ({ onClose }: OptScaContainerProps) => {
     const [formData, setFormData] = useState<OptScaDefineType>({

@@ -1,7 +1,7 @@
 // variables.js
 
 self.onmessage = function(e) {
-  const { dependent, independent, dependentName, independentNames } = e.data;
+  const { dependent, independent, dependentVariableInfo, independentVariableInfos } = e.data;
   
   // Validasi input
   if (!dependent || !independent) {
@@ -13,16 +13,22 @@ self.onmessage = function(e) {
     return;
   }
   
-  // Dapatkan nama variabel
-  const depVarName = dependentName || "VAR00001";
-  const indepVars = [];
+  // Dapatkan nama variabel dependent (prioritaskan label)
+  const depVarName = (dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') 
+    ? dependentVariableInfo.label 
+    : dependentVariableInfo.name;
   
-  // Buat nama variabel untuk setiap array independent
-  for (let i = 0; i < independent.length; i++) {
-    const varName = independentNames && independentNames[i] 
-      ? independentNames[i] 
-      : `VAR${String(i + 2).padStart(5, '0')}`;
-    indepVars.push(varName);
+  const indepVarsDisplay = [];
+  
+  // Buat nama variabel untuk setiap independent (prioritaskan label)
+  if (independentVariableInfos) {
+    for (let i = 0; i < independentVariableInfos.length; i++) {
+      const varInfo = independentVariableInfos[i];
+      const displayName = (varInfo.label && varInfo.label.trim() !== '') 
+        ? varInfo.label 
+        : varInfo.name;
+      indepVarsDisplay.push(displayName);
+    }
   }
   
   // Bangun objek JSON hasil sesuai struktur yang diinginkan
@@ -39,7 +45,7 @@ self.onmessage = function(e) {
         rows: [
           {
             rowHeader: ["1"],
-            variablesEntered: indepVars.join(", "),
+            variablesEntered: indepVarsDisplay.join(", "),
             variablesRemoved: ".",
             method: "Enter"
           }

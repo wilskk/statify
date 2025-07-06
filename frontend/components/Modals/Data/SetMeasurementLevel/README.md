@@ -1,66 +1,51 @@
-# Fitur: Set Measurement Level
+# Fitur: Atur Tingkat Pengukuran (Set Measurement Level)
 
-Dokumen ini memberikan gambaran tentang fitur "Set Measurement Level", yang memungkinkan pengguna untuk secara efisien mendefinisikan tingkat pengukuran (Nominal, Ordinal, atau Scale) untuk variabel yang tingkat pengukurannya saat ini "Unknown".
+Dokumen ini memberikan gambaran tentang fitur "Atur Tingkat Pengukuran", yang memungkinkan pengguna untuk secara efisien mendefinisikan tingkat pengukuran (Nominal, Ordinal, atau Scale) untuk variabel yang tingkat pengukurannya saat ini "Unknown".
 
-## Ringkasan Fungsionalitas
+## 1. Gambaran Umum
 
--   **Deteksi Otomatis**: Saat dibuka, modal secara otomatis mendeteksi dan menampilkan semua variabel dalam dataset yang memiliki tingkat pengukuran `unknown`.
--   **Antarmuka Drag-and-Drop**: Pengguna dapat dengan mudah memindahkan variabel dari daftar "Unknown" ke salah satu dari tiga daftar kategori: "Nominal", "Ordinal", atau "Scale".
--   **Pembaruan Terpusat**: Setelah mengklik "OK", tingkat pengukuran untuk semua variabel yang dipindahkan akan diperbarui di seluruh aplikasi melalui `useVariableStore`.
--   **Kinerja**: Dirancang untuk menangani variabel dalam jumlah besar tanpa mengorbankan kinerja UI.
+Fitur ini dirancang untuk mempercepat proses penentuan tipe data. Saat dibuka, modal secara otomatis mendeteksi dan menampilkan semua variabel dalam dataset yang tingkat pengukurannya belum ditentukan (`unknown`). Pengguna dapat dengan mudah memindahkan variabel-variabel ini ke kategori yang sesuai menggunakan antarmuka yang intuitif.
 
-## Arsitektur & Pola Desain
+## 2. Antarmuka dan Komponen
 
-Fitur ini mengikuti panduan arsitektur utama untuk komponen modal, dengan pemisahan tanggung jawab yang jelas.
+-   **Daftar Variabel yang Belum Diketahui (Available)**: Menampilkan semua variabel dengan tingkat pengukuran `unknown`. Ini adalah sumber variabel yang akan dikategorikan.
+-   **Daftar Target**: Tiga kotak terpisah untuk menampung variabel berdasarkan tingkat pengukuran yang diinginkan:
+    -   `Nominal`: Untuk data kualitatif tanpa urutan (misalnya, 'Jenis Kelamin', 'Kota').
+    -   `Ordinal`: Untuk data kualitatif dengan urutan (misalnya, 'Tingkat Pendidikan', 'Kepuasan Pelanggan').
+    -   `Scale`: Untuk data kuantitatif/numerik (misalnya, 'Usia', 'Pendapatan').
+-   **Tombol Panah**: Memungkinkan pemindahan variabel yang disorot dari daftar "Available" ke daftar target yang sesuai.
 
-```
-/SetMeasurementLevel
-├── 📂 hooks/
-│   └── 📄 useSetMeasurementLevel.ts  // Mengelola semua state & logika
-├── 📄 index.tsx                      // Titik masuk & perakit (Orchestrator)
-├── 📄 README.md                      // Dokumen ini
-├── 📄 SetMeasurementLevelUI.tsx      // Komponen UI (Presentational)
-└── 📄 types.ts                      // Definisi tipe TypeScript
-```
-
--   **`index.tsx` (Orchestrator)**:
-    -   Bertanggung jawab untuk merakit fitur.
-    -   Memanggil *hook* `useSetMeasurementLevel` untuk mendapatkan semua state dan *handler*.
-    -   Merender `SetMeasurementLevelUI` dan meneruskan *props* yang diperlukan.
-
--   **`useSetMeasurementLevel.ts` (Hook Logika)**:
-    -   Jantung dari fitur ini.
-    -   Mengambil variabel dari `useVariableStore`.
-    -   Mengelola state untuk setiap daftar variabel (`unknownVariables`, `nominalVariables`, dll.).
-    -   Menyediakan *handler* (`handleMoveVariable`, `handleSave`) untuk memanipulasi state.
-    -   Saat `handleSave` dipanggil, ia berinteraksi dengan `useVariableStore` untuk memperbarui variabel secara permanen.
-
--   **`SetMeasurementLevelUI.tsx` (Komponen UI)**:
-    -   Komponen "bodoh" (*dumb component*) yang bertanggung jawab murni untuk presentasi.
-    -   Menerima semua data dan *handler* sebagai *props* dari `index.tsx`.
-    -   Menggunakan komponen `VariableListManager` untuk menampilkan daftar variabel dan menangani interaksi *drag-and-drop*.
-    -   Tidak berisi logika bisnis apa pun.
-
--   **`types.ts` (Definisi Tipe)**:
-    -   Mendefinisikan bentuk *props* untuk `SetMeasurementLevel` dan `SetMeasurementLevelUI`.
-    -   Menggunakan `ReturnType<typeof useSetMeasurementLevel>` untuk secara dinamis membuat tipe *props* untuk UI, memastikan keamanan tipe antara *hook* dan komponen UI.
-
-## Alur Kerja
+## 3. Alur Kerja dan Contoh Penggunaan
 
 1.  **Inisialisasi**:
     -   Pengguna membuka modal "Set Measurement Level".
-    -   `useSetMeasurementLevel` dipanggil, mengambil semua variabel dari `useVariableStore`.
-    -   *Hook* menyaring variabel-variabel ini untuk menemukan yang memiliki `measure === "unknown"`.
-    -   State `unknownVariables` diisi, sementara daftar lainnya (`nominal`, `ordinal`, `scale`) dikosongkan.
-
+    -   Fitur secara otomatis memuat semua variabel yang tingkat pengukurannya `unknown` ke dalam daftar "Available".
 2.  **Interaksi Pengguna**:
-    -   Pengguna menarik variabel dari daftar "Available" ke salah satu daftar target (`Nominal`, `Ordinal`, `Scale`).
-    -   `VariableListManager` memicu *callback* `handleMoveVariable`.
-    -   `handleMoveVariable` dalam *hook* memperbarui state, memindahkan variabel dari satu daftar ke daftar lainnya.
-
+    -   Pengguna memilih satu atau lebih variabel di daftar "Available".
+    -   Pengguna mengklik tombol panah yang menunjuk ke daftar `Nominal`, `Ordinal`, atau `Scale`.
+    -   Variabel yang dipilih akan pindah dari daftar "Available" ke daftar target yang sesuai.
+    -   **Contoh**: Variabel `gender` dan `city` dipindahkan ke `Nominal`. Variabel `education_level` dipindahkan ke `Ordinal`. Variabel `age` dan `income` dipindahkan ke `Scale`.
 3.  **Penyimpanan**:
-    -   Pengguna mengklik "OK".
-    -   *Handler* `handleSave` dipanggil.
-    -   `handleSave` melakukan iterasi pada setiap variabel dalam daftar `nominalVariables`, `ordinalVariables`, dan `scaleVariables`.
-    -   Untuk setiap variabel, ia memanggil `updateVariable` dari `useVariableStore` untuk memperbarui properti `measure`-nya.
-    -   Modal ditutup. Perubahan secara otomatis tercermin di seluruh aplikasi di mana pun `useVariableStore` digunakan. 
+    -   Setelah semua variabel yang relevan telah dikategorikan, pengguna mengklik tombol **OK**.
+    -   Tingkat pengukuran (`measure`) untuk setiap variabel yang dipindahkan akan diperbarui secara permanen di dalam data.
+    -   Modal ditutup, dan perubahan akan langsung terlihat di seluruh aplikasi.
+
+## 4. Tombol dan Fungsinya
+
+-   **OK**: Menyimpan semua perubahan yang dibuat. Tingkat pengukuran untuk setiap variabel yang dipindahkan akan diperbarui.
+-   **Cancel**: Menutup dialog tanpa menyimpan perubahan apa pun.
+-   **Reset**: Mengembalikan semua variabel yang telah dipindahkan kembali ke daftar "Available", membatalkan semua perubahan yang dibuat dalam sesi dialog saat ini. (Tombol ini tidak ada di UI saat ini tetapi logikanya ada di hook).
+
+## 5. Rencana Pengembangan (Belum Diimplementasikan)
+
+-   **Saran Otomatis**: Fitur cerdas yang menganalisis nilai-nilai dalam variabel `unknown` untuk menyarankan tingkat pengukuran yang paling mungkin (misalnya, jika variabel string memiliki lebih dari 20 nilai unik, sarankan sebagai `Nominal`; jika numerik, sarankan sebagai `Scale`).
+-   **Pengeditan Langsung**: Kemampuan untuk mengubah tingkat pengukuran variabel yang sudah dikategorikan langsung dari dalam dialog, tanpa harus me-resetnya terlebih dahulu.
+-   **Informasi Variabel Tambahan**: Menampilkan informasi ringkas saat mouse diarahkan ke variabel, seperti jumlah nilai unik atau rentang data, untuk membantu pengambilan keputusan.
+-   **Implementasi Tombol Reset**: Menambahkan tombol "Reset" pada UI untuk memanfaatkan fungsi `handleReset` yang sudah ada.
+
+## 6. Detail Implementasi
+
+Fitur ini mengikuti arsitektur modal standar aplikasi.
+-   **`index.tsx`**: Titik masuk yang merakit *hook* dan komponen UI.
+-   **`hooks/useSetMeasurementLevel.ts`**: Mengelola semua *state* (daftar variabel) dan logika (memindahkan, menyimpan, me-reset). Berkomunikasi dengan `useVariableStore` untuk mengambil dan memperbarui data variabel.
+-   **`SetMeasurementLevelUI.tsx`**: Komponen presentasi yang murni menampilkan UI. Menggunakan komponen `VariableListManager` untuk menangani logika perpindahan variabel.

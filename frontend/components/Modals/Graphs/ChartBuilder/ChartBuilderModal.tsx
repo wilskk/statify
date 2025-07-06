@@ -23,7 +23,7 @@ import ChartPreview from "./ChartPreview";
 import VariableSelection from "./VariableSelection";
 import ChartSelection from "./ChartSelection";
 import { chartTypes, ChartType } from "@/components/Modals/Graphs/ChartTypes";
-import ResultOutput from "@/app/dashboard/components/output/ResultOutput";
+import ResultOutput from "@/app/dashboard/result/components/ResultOutput";
 import { chartVariableConfig } from "./ChartVariableConfig";
 import { X } from "lucide-react";
 
@@ -226,13 +226,13 @@ const ChartBuilderModal: React.FC<ChartBuilderModalProps> = ({ onClose, containe
             // Add log first and get the ID
             const logId = await addLog({ log: logMsg });
 
-            // Add analytic with log_id
+            // Add analytic with logId
             const analyticId = await addAnalytic(logId, {
               title: "Chart Builder",
               note: "",
             });
 
-            // Add statistic with analytic_id
+            // Add statistic with analyticId
             await addStatistic(analyticId, {
               title: chartType,
               output_data: chartJSON,

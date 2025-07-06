@@ -310,36 +310,83 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         }
     }, [targetLists, onMoveVariable, allLists, onVariableDoubleClick]);
 
-    // --- Arrow Button Handlers ---
-    const handleArrowButtonClick = useCallback((targetListId: string) => {
-        if (!highlightedVariable) return;
+    // --- Arrow Button Rendering (centralized) ---
+    const renderCentralArrowButton = () => {
+        if (!showArrowButtons || !highlightedVariable) return null;
 
-        const { id, source } = highlightedVariable;
+        const sourceListId = highlightedVariable.source;
+        const isFromAvailable = sourceListId === 'available';
 
-        // From available to target list
-        if (source === 'available') {
-            const variable = availableVariables.find(v => 
-                String(v[variableIdKey]) === id
+        // Helper to get selected variable object
+        const getSelectedVariable = () => {
+            const sourceList = allLists.find(l => l.id === sourceListId);
+            return sourceList?.variables.find(v => String(v[variableIdKey]) === highlightedVariable.id);
+        };
+
+        // ---------------------------
+        // Case 1: Variable selected from "available" list – may move to ANY valid target list
+        // ---------------------------
+        if (isFromAvailable) {
+            // Collect all candidate target lists that can accept another variable
+            const candidateTargets = targetLists.filter(t => {
+                if (t.droppable === false) return false;
+                if (t.maxItems && t.variables.length >= t.maxItems && t.maxItems !== 1) return false;
+                return true;
+            });
+
+            if (candidateTargets.length === 0) return null; // No place to move
+
+            const variableToMove = getSelectedVariable();
+            if (!variableToMove) return null;
+
+            return (
+                <div className="flex flex-col items-center space-y-2">
+                    {candidateTargets.map(target => (
+                        <button
+                            key={target.id}
+                            data-testid="central-move-button"
+                            aria-label={`Move variable to ${target.title}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // If the target is a single-item list already containing a variable, move that variable back first
+                                if (target.maxItems === 1 && target.variables.length === 1) {
+                                    const existingVariable = target.variables[0];
+                                    onMoveVariable(existingVariable, target.id, 'available');
+                                }
+                                onMoveVariable(variableToMove, 'available', target.id);
+                            }}
+                            className="flex-shrink-0 flex items-center justify-center p-0.5 w-6 h-6 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
+                        >
+                            <ArrowBigRight size={16} className="text-foreground" />
+                        </button>
+                    ))}
+                </div>
             );
-
-            if (variable) {
-                onMoveVariable(variable, 'available', targetListId);
-            }
         }
-        // From target list to available
-        else if (source === targetListId) {
-            const listConfig = targetLists.find(l => l.id === targetListId);
-            if (!listConfig) return;
 
-            const variable = listConfig.variables.find(v => 
-                String(v[variableIdKey]) === id
-            );
+        // ---------------------------
+        // Case 2: Variable selected from a target list – only one button to move back to Available
+        // ---------------------------
+        const sourceListConfig = targetLists.find(l => l.id === sourceListId);
+        if (sourceListConfig?.draggableItems === false) return null; // Can't move from a non-draggable list
 
-            if (variable) {
-                onMoveVariable(variable, targetListId, 'available');
-            }
-        }
-    }, [highlightedVariable, availableVariables, targetLists, variableIdKey, onMoveVariable]);
+        const variableToMove = getSelectedVariable();
+        if (!variableToMove) return null;
+
+        return (
+            <button
+                data-testid="central-move-button"
+                aria-label={`Move variable back to Available`}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveVariable(variableToMove, sourceListId, 'available');
+                }}
+                className="flex-shrink-0 flex items-center justify-center p-0.5 w-6 h-6 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
+            >
+                <ArrowBigLeft size={16} className="text-foreground" />
+            </button>
+        );
+    };
 
     // --- Rendering Logic ---
     const renderVariableItem = (variable: Variable, listId: string, index: number) => {
@@ -424,7 +471,15 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     };
 
-    const renderList = (listConfig: TargetListConfig | { id: string, title: string, variables: Variable[], height: string }) => {
+    interface ArrowInfo {
+        button: React.ReactNode;
+        handler: () => void;
+    }
+
+    const renderList = (
+        listConfig: TargetListConfig | { id: string, title: string, variables: Variable[], height: string },
+        arrowInfo?: ArrowInfo
+    ) => {
         const { id, title, variables, height } = listConfig;
         
         // Check if it's a full TargetListConfig or just the basic available list structure
@@ -451,8 +506,17 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 id={id === 'selected' ? 'selected-variables-list-container' : undefined}
             >
                 {title && (
-                    <div className="text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6">
-                        <span className="flex-1">{title}</span>
+                    <div
+                        className={`text-sm font-medium text-foreground mb-1.5 px-1 flex items-center h-6 ${arrowInfo ? 'cursor-pointer hover:bg-accent rounded' : ''}`}
+                        onClick={arrowInfo?.handler}
+                    >
+                        {/* Render arrow button (if any) at the left side */}
+                        {arrowInfo?.button && (
+                            <span className="mr-1 flex-shrink-0" onClick={(e) => { e.stopPropagation(); arrowInfo.handler(); }}>
+                                {arrowInfo.button}
+                            </span>
+                        )}
+                        <span className="truncate" title={title}>{title}</span>
                     </div>
                 )}
                 <div
@@ -493,59 +557,6 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     };
 
-    // --- Arrow Button Rendering (centralized) ---
-    const renderCentralArrowButton = () => {
-        if (!showArrowButtons || !highlightedVariable) return null;
-
-        const sourceListId = highlightedVariable.source;
-        const isAvailable = sourceListId === 'available';
-
-        // Determine the target list and the direction of the arrow
-        let targetList: TargetListConfig | undefined;
-        let isMovingRight = false;
-
-        if (isAvailable) {
-            // Find the first target list that's not full
-            targetList = targetLists.find(t => t.droppable !== false && (!t.maxItems || t.variables.length < t.maxItems));
-            isMovingRight = true;
-        } else {
-            // Find the source list config to check if it's draggable
-            const sourceListConfig = targetLists.find(l => l.id === sourceListId);
-            if (sourceListConfig?.draggableItems === false) return null; // Can't move from a non-draggable list
-
-            targetList = allLists.find(l => l.id === 'available') as TargetListConfig;
-            isMovingRight = false;
-        }
-        
-        if (!targetList) return null; // No valid target
-
-        const handleArrowClick = (e: React.MouseEvent) => {
-            e.stopPropagation();
-            const sourceList = allLists.find(l => l.id === sourceListId);
-            const variableToMove = sourceList?.variables.find(v => String(v[variableIdKey]) === highlightedVariable.id);
-            
-            if (variableToMove) {
-                onMoveVariable(variableToMove, sourceListId, targetList!.id);
-            }
-        };
-
-        const ArrowIcon = isMovingRight ? ArrowBigRight : ArrowBigLeft;
-        const buttonLabel = isMovingRight 
-            ? `Move variable to ${targetList.title}` 
-            : `Move variable back to Available`;
-
-        return (
-            <button
-                data-testid="central-move-button"
-                aria-label={buttonLabel}
-                onClick={handleArrowClick}
-                className="flex-shrink-0 flex items-center justify-center p-1 w-8 h-8 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
-            >
-                <ArrowIcon size={20} className="text-foreground" />
-            </button>
-        );
-    };
-
     // --- Main Return with Responsive Layout ---
     // Only use flex column layout if mobile AND portrait orientation
     const useVerticalLayout = isMobile && isPortrait;
@@ -581,10 +592,91 @@ const VariableListManager: FC<VariableListManagerProps> = ({
         );
     }
 
+    // For desktop layout, we need a more complex structure to align arrows with their targets
+    // First, check if we need to show multiple arrows (from available to targets)
+    const sourceListId = highlightedVariable?.source;
+    const isFromAvailable = sourceListId === 'available';
+    
+    // Calculate which target lists can receive the selected variable
+    const eligibleTargets = isFromAvailable && highlightedVariable
+        ? targetLists.filter(t => {
+            if (t.droppable === false) return false;
+            if (t.maxItems && t.variables.length >= t.maxItems && t.maxItems !== 1) return false;
+            return true;
+        })
+        : [];
+        
+    // Prepare arrow buttons for each target list
+    const arrowButtons: Record<string, ArrowInfo> = {};
+    
+    if (isFromAvailable && eligibleTargets.length > 0) {
+        const variableToMove = allLists.find(l => l.id === 'available')?.variables.find(
+            v => String(v[variableIdKey]) === highlightedVariable?.id
+        );
+        
+        if (variableToMove) {
+            eligibleTargets.forEach(target => {
+                const moveWithSwap = () => {
+                    // If target already full (single-item list), move its current variable back first
+                    if (target.maxItems === 1 && target.variables.length === 1) {
+                        const existingVariable = target.variables[0];
+                        onMoveVariable(existingVariable, target.id, 'available');
+                    }
+                    onMoveVariable(variableToMove, 'available', target.id);
+                };
+
+                arrowButtons[target.id] = {
+                    button: (
+                        <button
+                            data-testid="central-move-button"
+                            aria-label={`Move variable to ${target.title}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                moveWithSwap();
+                            }}
+                            className="flex-shrink-0 flex items-center justify-center p-0.5 w-6 h-6 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
+                        >
+                            <ArrowBigRight size={16} className="text-foreground" />
+                        </button>
+                    ),
+                    handler: moveWithSwap
+                };
+            });
+        }
+    } else if (sourceListId && sourceListId !== 'available') {
+        // For moving back to available
+        const sourceListConfig = targetLists.find(l => l.id === sourceListId);
+        if (sourceListConfig?.draggableItems !== false) {
+            const variableToMove = allLists.find(l => l.id === sourceListId)?.variables.find(
+                v => String(v[variableIdKey]) === highlightedVariable?.id
+            );
+            
+            if (variableToMove) {
+                arrowButtons[sourceListId] = {
+                    button: (
+                        <button
+                            data-testid="central-move-button"
+                            aria-label={`Move variable back to Available`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onMoveVariable(variableToMove, sourceListId, 'available');
+                            }}
+                            className="flex-shrink-0 flex items-center justify-center p-0.5 w-6 h-6 rounded-full border border-border bg-accent/50 hover:bg-accent hover:border-primary transition-all duration-150 ease-in-out"
+                        >
+                            <ArrowBigLeft size={16} className="text-foreground" />
+                        </button>
+                    ),
+                    handler: () => onMoveVariable(variableToMove, sourceListId, 'available')
+                };
+            }
+        }
+    }
+
+    // Pendekatan baru dengan layout 2 kolom dan tombol di antara kolom
     return (
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
+        <div className="flex gap-8 items-start relative">
             {/* Available Variables Column (Left) */}
-            <div className="col-span-1 flex flex-col">
+            <div className="w-[45%] flex flex-col">
                 {renderList(allLists.find(l => l.id === 'available')!)}
                 
                 <div className="flex flex-col mt-2 space-y-2">
@@ -596,14 +688,13 @@ const VariableListManager: FC<VariableListManagerProps> = ({
                 </div>
             </div>
 
-            {/* Central Arrow Button Column */}
-            <div className="col-span-1 flex flex-col justify-center items-center pt-8">
-                {renderCentralArrowButton()}
-            </div>
-
-            {/* Target Lists Column (Right) */}
-            <div className="col-span-1 flex flex-col space-y-2" id="selected-variables-wrapper">
-                {targetLists.map(listConfig => renderList(listConfig))}
+            {/* Target Lists Column (Right) with buttons positioned between columns */}
+            <div className="w-[45%] flex flex-col space-y-2 relative" id="selected-variables-wrapper">
+                {targetLists.map((listConfig) => (
+                    <React.Fragment key={`list-${listConfig.id}`}>
+                        {renderList(listConfig, arrowButtons[listConfig.id])}
+                    </React.Fragment>
+                ))}
                 {renderRightColumnFooter && renderRightColumnFooter()}
             </div>
         </div>

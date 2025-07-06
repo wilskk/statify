@@ -2,7 +2,7 @@
 
 export interface ValueLabel {
     id?: number;
-    variableName: string;
+    variableId: number;
     value: number | string;
     label: string;
 }
@@ -60,7 +60,7 @@ export interface Variable {
     tempId?: string;
     columnIndex: number;
     name: string;
-    type: VariableType;
+    type?: VariableType;
     width: number;
     decimals: number;
     label?: string;

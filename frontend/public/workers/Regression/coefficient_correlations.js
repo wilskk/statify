@@ -1,11 +1,11 @@
 // coefficient_correlations.js
 
 self.onmessage = function(e) {
-  const { dependent, independent } = e.data;
+  const { dependent, independent, dependentVariableInfo, independentVariableInfos } = e.data;
 
   // Validasi input
-  if (!dependent || !independent) {
-    self.postMessage({ error: "Data dependent dan independent harus disediakan." });
+  if (!dependent || !independent || !dependentVariableInfo || !independentVariableInfos) {
+    self.postMessage({ error: "Data dependent, independent, dan info variabel harus disediakan." });
     return;
   }
 
@@ -211,9 +211,12 @@ self.onmessage = function(e) {
 
   // Buat column headers untuk output
   const variableHeaders = [];
-  for (let i = k; i >= 1; i--) {
+  for (let i = 0; i < k; i++) {
+    const varInfo = independentVariableInfos[i];
+    const displayName = (varInfo.label && varInfo.label.trim() !== '') ? varInfo.label : varInfo.name;
     variableHeaders.push({
-      header: `VAR0000${i + 1}` // VAR00002, VAR00003, dst.
+      header: displayName,
+      key: varInfo.name // Use actual name as key for data mapping
     });
   }
 
@@ -222,13 +225,16 @@ self.onmessage = function(e) {
 
   // Correlations rows
   for (let i = k; i >= 1; i--) {
+    const varInfoForRow = independentVariableInfos[i-1];
+    const rowDisplayName = (varInfoForRow.label && varInfoForRow.label.trim() !== '') ? varInfoForRow.label : varInfoForRow.name;
     const rowData = {
-      rowHeader: [null, "Correlations", `VAR0000${i + 1}`]
+      rowHeader: [null, "Correlations", rowDisplayName]
     };
 
     // Tambahkan nilai korelasi untuk semua variabel
     for (let j = k; j >= 1; j--) {
-      rowData[`VAR0000${j + 1}`] = round(correlation_matrix[i][j]);
+      const varInfoForCol = independentVariableInfos[j-1];
+      rowData[varInfoForCol.name] = round(correlation_matrix[i][j]); // Use actual name as key
     }
 
     children.push(rowData);
@@ -236,13 +242,16 @@ self.onmessage = function(e) {
 
   // Covariances rows
   for (let i = k; i >= 1; i--) {
+    const varInfoForRow = independentVariableInfos[i-1];
+    const rowDisplayName = (varInfoForRow.label && varInfoForRow.label.trim() !== '') ? varInfoForRow.label : varInfoForRow.name;
     const rowData = {
-      rowHeader: [null, "Covariances", `VAR0000${i + 1}`]
+      rowHeader: [null, "Covariances", rowDisplayName]
     };
 
     // Tambahkan nilai kovarians untuk semua variabel
     for (let j = k; j >= 1; j--) {
-      rowData[`VAR0000${j + 1}`] = round(covariance_matrix[i][j]);
+      const varInfoForCol = independentVariableInfos[j-1];
+      rowData[varInfoForCol.name] = round(covariance_matrix[i][j]); // Use actual name as key
     }
 
     children.push(rowData);
@@ -265,7 +274,9 @@ self.onmessage = function(e) {
             children: children
           }
         ],
-        footnote: "a. Dependent Variable: VAR00001"
+        footnote: {
+          a: `Dependent Variable: ${(dependentVariableInfo.label && dependentVariableInfo.label.trim() !== '') ? dependentVariableInfo.label : dependentVariableInfo.name}`
+        }
       }
     ]
   };

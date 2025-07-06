@@ -22,13 +22,13 @@ describe('useVariablesToScan', () => {
   });
 
   it('should initialize with variables from the store', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
     expect(result.current.availableVariables).toHaveLength(3);
     expect(result.current.targetListsConfig[0].variables).toHaveLength(0);
   });
 
   it('should move a variable to the scan list', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
     
     act(() => {
       result.current.handleMoveVariable(mockVariables[0], 'available', 'toScan');
@@ -40,7 +40,7 @@ describe('useVariablesToScan', () => {
   });
 
   it('should move a variable back to the available list', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
     
     act(() => {
       result.current.handleMoveVariable(mockVariables[0], 'available', 'toScan');
@@ -57,7 +57,7 @@ describe('useVariablesToScan', () => {
   });
 
   it('should reorder variables in the scan list', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
 
     act(() => {
       result.current.handleMoveVariable(mockVariables[0], 'available', 'toScan');
@@ -75,7 +75,7 @@ describe('useVariablesToScan', () => {
   });
 
   it('should not call onContinue if no variables are selected', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
 
     act(() => {
       result.current.handleContinue();
@@ -87,7 +87,7 @@ describe('useVariablesToScan', () => {
   });
 
   it('should call onContinue with selected variables and limits', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
 
     act(() => {
       result.current.handleMoveVariable(mockVariables[0], 'available', 'toScan');
@@ -106,7 +106,7 @@ describe('useVariablesToScan', () => {
   });
 
   it('should call onContinue with null limits if checkboxes are unchecked', () => {
-    const { result } = renderHook(() => useVariablesToScan({ onContinue }));
+    const { result } = renderHook(() => useVariablesToScan({ initialAvailableVariables: mockVariables as any, onContinue }));
 
     act(() => {
         result.current.handleMoveVariable(mockVariables[0], 'available', 'toScan');

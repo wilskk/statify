@@ -8,6 +8,9 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { SortVarsUIProps } from "./types";
 import { HelpCircle } from "lucide-react";
 
@@ -26,45 +29,44 @@ const SortVarsUIContent: React.FC<SortVarsUIProps> = ({
             <div className="p-6 space-y-4 overflow-y-auto flex-grow">
                 <div>
                     <p className="font-semibold mb-2">Variable View Columns</p>
-                    <ul className="border border-border p-2 h-40 overflow-auto">
-                        {columns.map((col: string) => (
-                            <li
-                                key={col}
-                                className={`p-1 cursor-pointer hover:bg-accent ${
-                                    selectedColumn === col ? "bg-muted" : ""
-                                }`}
-                                onClick={() => handleSelectColumn(col)}
-                            >
-                                {col}
-                            </li>
-                        ))}
-                    </ul>
+                    <ScrollArea className="border border-border rounded-md h-40">
+                        <ul className="p-1 space-y-0.5">
+                            {columns.map((col: string) => {
+                                const isSelected = selectedColumn === col;
+                                return (
+                                    <li
+                                        key={col}
+                                        className={`px-2 py-1 rounded cursor-pointer truncate transition-colors select-none ${
+                                            isSelected
+                                                ? "bg-primary/10 text-primary font-medium"
+                                                : "hover:bg-accent"
+                                        }`}
+                                        onClick={() => handleSelectColumn(col)}
+                                    >
+                                        {col}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </ScrollArea>
                 </div>
 
                 <div>
                     <p className="font-semibold mb-2">Sort Order</p>
-                    <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="sortOrder"
-                                value="asc"
-                                checked={sortOrder === "asc"}
-                                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-                            />
-                            Ascending
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="sortOrder"
-                                value="desc"
-                                checked={sortOrder === "desc"}
-                                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-                            />
-                            Descending
-                        </label>
-                    </div>
+                    <RadioGroup
+                        value={sortOrder}
+                        onValueChange={(val) => setSortOrder(val as "asc" | "desc")}
+                        className="flex items-center gap-4"
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="asc" id="sort-asc" />
+                            <Label htmlFor="sort-asc">Ascending</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="desc" id="sort-desc" />
+                            <Label htmlFor="sort-desc">Descending</Label>
+                        </div>
+                    </RadioGroup>
                 </div>
             </div>
 

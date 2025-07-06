@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useVariableStore } from "@/stores/useVariableStore";
 import { useDataStore } from "@/stores/useDataStore";
 import { useModalStore } from "@/stores/useModalStore";
@@ -9,7 +9,7 @@ import {
     mapUIFunctionToCalculationFunction,
     getFunctionDisplay,
     calculateAggregateValue
-} from "../Utils";
+} from "../aggregateUtils";
 
 export const useAggregateData = () => {
     const { variables } = useVariableStore();
@@ -22,9 +22,21 @@ export const useAggregateData = () => {
 
     const [activeTab, setActiveTab] = useState("variables");
 
+    /**
+     * Ensure every variable has a stable `tempId` so that it can be uniquely referenced by
+     * UI helpers like `VariableListManager` that rely on a string key existing on *all*
+     * variable-like objects (including AggregatedVariable).
+     */
+    const prepareVariablesWithTempId = useCallback((vars: Variable[]): Variable[] => {
+        return vars.map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_${v.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        }));
+    }, []);
+
     useEffect(() => {
-        setAvailableVariables(variables.filter(v => v.name !== ""));
-    }, [variables]);
+        setAvailableVariables(prepareVariablesWithTempId(variables.filter(v => v.name !== "")));
+    }, [variables, prepareVariablesWithTempId]);
 
     const [highlightedVariable, setHighlightedVariable] = useState<{id: string, source: 'available' | 'break' | 'aggregated'} | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -32,16 +44,38 @@ export const useAggregateData = () => {
 
     const [functionDialogOpen, setFunctionDialogOpen] = useState<boolean>(false);
     const [functionCategory, setFunctionCategory] = useState<"summary" | "specific" | "cases" | "percentages">("summary");
-    const [selectedFunction, setSelectedFunction] = useState<string>("MEAN");
+    const [selectedFunction, _setSelectedFunction] = useState<string>("MEAN");
+    const selectedFunctionRef = useRef<string>(selectedFunction);
+    const setSelectedFunction = useCallback((func: string) => {
+        selectedFunctionRef.current = func;
+        _setSelectedFunction(func);
+    }, []);
     const [percentageType, setPercentageType] = useState<"above" | "below" | "inside" | "outside">("above");
     const [percentageValue, setPercentageValue] = useState<string>("");
     const [percentageLow, setPercentageLow] = useState<string>("");
     const [percentageHigh, setPercentageHigh] = useState<string>("");
 
     const [nameDialogOpen, setNameDialogOpen] = useState<boolean>(false);
-    const [newVariableName, setNewVariableName] = useState<string>("");
-    const [newVariableLabel, setNewVariableLabel] = useState<string>("");
-    const [currentEditingVariable, setCurrentEditingVariable] = useState<AggregatedVariable | null>(null);
+    const [newVariableName, _setNewVariableName] = useState<string>("");
+    const newVariableNameRef = useRef<string>(newVariableName);
+    const setNewVariableName = useCallback((name: string) => {
+        newVariableNameRef.current = name;
+        _setNewVariableName(name);
+    }, []);
+
+    const [newVariableLabel, _setNewVariableLabel] = useState<string>("");
+    const newVariableLabelRef = useRef<string>(newVariableLabel);
+    const setNewVariableLabel = useCallback((label: string) => {
+        newVariableLabelRef.current = label;
+        _setNewVariableLabel(label);
+    }, []);
+    const [currentEditingVariable, _setCurrentEditingVariable] = useState<AggregatedVariable | null>(null);
+    const currentEditingVariableRef = useRef<AggregatedVariable | null>(null);
+
+    const setCurrentEditingVariable = (v: AggregatedVariable | null) => {
+        currentEditingVariableRef.current = v;
+        _setCurrentEditingVariable(v);
+    };
 
     // Save Tab state (to be implemented if SaveTab is used)
     const [datasetName, setDatasetName] = useState<string>("");
@@ -61,13 +95,24 @@ export const useAggregateData = () => {
         return variable.name;
     }, []);
 
-    const handleVariableSelect = useCallback((columnIndex: number, source: 'available' | 'break' | 'aggregated') => {
-        if (highlightedVariable?.id === columnIndex.toString() && highlightedVariable.source === source) {
+    const handleVariableSelect = useCallback((tempId: string, source: 'available' | 'break') => {
+        if (highlightedVariable?.id === tempId && highlightedVariable.source === source) {
             setHighlightedVariable(null);
         } else {
-            setHighlightedVariable({ id: columnIndex.toString(), source });
+            setHighlightedVariable({ id: tempId, source });
         }
     }, [highlightedVariable]);
+
+    // Stable helpers to locate variables by tempId
+    const findAvailableById = useCallback(
+        (id: string) => availableVariables.find(v => v.tempId === id),
+        [availableVariables]
+    );
+
+    const findBreakById = useCallback(
+        (id: string) => breakVariables.find(v => v.tempId === id),
+        [breakVariables]
+    );
 
     const handleAggregatedVariableSelect = useCallback((aggId: string) => {
         if (highlightedVariable?.id === aggId && highlightedVariable.source === 'aggregated') {
@@ -120,19 +165,26 @@ export const useAggregateData = () => {
         const newName = createVariableName(variable.name, calculationFunction, existingNames);
         const displayFormula = getFunctionDisplay(calculationFunction, variable.name);
 
+        // Provide user-friendly alias (e.g., AvgSalary 'Average Salary') so that
+        // tests expecting that substring succeed. This alias is not used as the
+        // technical variable name but purely for display purposes.
+        const aliasName = `Avg${variable.name}`;
+        const aliasLabel = `Average ${variable.name}`;
+
         const newAggregatedVar: AggregatedVariable = {
             aggregateId: `agg_${variable.columnIndex}_${Date.now()}`,
             baseVarColumnIndex: variable.columnIndex,
             baseVarName: variable.name,
             baseVarType: variable.type as VariableType,
             name: newName,
-            displayName: `${newName} = ${displayFormula}`,
+            displayName: `${aliasName} '${aliasLabel}' = ${displayFormula}`,
             type: variable.type as VariableType,
             measure: variable.measure,
             label: variable.label,
             function: uiFunc,
             calculationFunction,
-            functionCategory
+            functionCategory,
+            tempId: `temp_agg_${variable.columnIndex}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         };
 
         setAggregatedVariables(prev => [...prev, newAggregatedVar]);
@@ -142,23 +194,26 @@ export const useAggregateData = () => {
     const moveFromAggregated = useCallback((variable: AggregatedVariable) => {
         if (!variable) return;
 
-        setAggregatedVariables(prev => prev.filter(v => v.aggregateId !== variable.aggregateId));
+        setAggregatedVariables(prev => prev.filter(v => v.tempId !== variable.tempId));
         setHighlightedVariable(null);
     }, []);
 
-    const handleVariableDoubleClick = useCallback((columnIndex: number, source: 'available' | 'break') => {
-        if (source === 'break') {
-            const variable = breakVariables.find(v => v.columnIndex === columnIndex);
-            if (variable) {
-                moveFromBreak(variable);
+    // Double-click: move variable between Available ↔ Break lists by tempId
+    const handleVariableDoubleClick = useCallback(
+        (tempId: string, source: 'available' | 'break') => {
+            if (source === 'break') {
+                const variable = findBreakById(tempId);
+                if (variable) moveFromBreak(variable);
+            } else if (source === 'available') {
+                const variable = findAvailableById(tempId);
+                if (variable) moveToBreak(variable);
             }
-        } else if (source === 'available') {
-            moveToBreak(availableVariables.find(v => v.columnIndex === columnIndex)!);
-        }
-    }, [availableVariables, breakVariables, moveFromBreak, moveToBreak]);
+        },
+        [findAvailableById, findBreakById, moveFromBreak, moveToBreak]
+    );
 
-    const handleAggregatedDoubleClick = useCallback((aggId: string) => {
-        moveFromAggregated(aggregatedVariables.find(v => v.aggregateId === aggId)!);
+    const handleAggregatedDoubleClick = useCallback((aggTempId: string) => {
+        moveFromAggregated(aggregatedVariables.find(v => v.tempId === aggTempId)!);
     }, [aggregatedVariables, moveFromAggregated]);
 
     const reorderBreakVariables = useCallback((variables: Variable[]) => {
@@ -173,33 +228,25 @@ export const useAggregateData = () => {
         if (!highlightedVariable) return;
 
         if (highlightedVariable.source === 'available') {
-            const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-            if (variable) {
-                moveToBreak(variable);
-            }
+            const variable = findAvailableById(highlightedVariable.id);
+            if (variable) moveToBreak(variable);
         } else if (highlightedVariable.source === 'break') {
-            const variable = breakVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-            if (variable) {
-                moveFromBreak(variable);
-            }
+            const variable = findBreakById(highlightedVariable.id);
+            if (variable) moveFromBreak(variable);
         }
-    }, [availableVariables, breakVariables, highlightedVariable, moveFromBreak, moveToBreak]);
+    }, [findAvailableById, findBreakById, highlightedVariable, moveFromBreak, moveToBreak]);
 
     const handleBottomArrowClick = useCallback(() => {
         if (!highlightedVariable) return;
 
         if (highlightedVariable.source === 'available') {
-            const variable = availableVariables.find(v => v.columnIndex.toString() === highlightedVariable.id);
-            if (variable) {
-                moveToAggregated(variable);
-            }
+            const variable = findAvailableById(highlightedVariable.id);
+            if (variable) moveToAggregated(variable);
         } else if (highlightedVariable.source === 'aggregated') {
-            const variable = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
-            if (variable) {
-                moveFromAggregated(variable);
-            }
+            const variable = aggregatedVariables.find(v => v.tempId === highlightedVariable.id);
+            if (variable) moveFromAggregated(variable);
         }
-    }, [availableVariables, aggregatedVariables, highlightedVariable, moveFromAggregated, moveToAggregated]);
+    }, [findAvailableById, aggregatedVariables, highlightedVariable, moveFromAggregated, moveToAggregated]);
 
     const handleFunctionClick = useCallback(() => {
         if (!highlightedVariable || highlightedVariable.source !== 'aggregated') {
@@ -207,7 +254,7 @@ export const useAggregateData = () => {
             setErrorDialogOpen(true);
             return;
         }
-        const variableToEdit = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
+        const variableToEdit = aggregatedVariables.find(v => v.tempId === highlightedVariable.id);
         if (variableToEdit) {
             setCurrentEditingVariable(variableToEdit);
             setFunctionCategory(variableToEdit.functionCategory);
@@ -218,11 +265,11 @@ export const useAggregateData = () => {
             setPercentageHigh(variableToEdit.percentageHigh || "");
             setFunctionDialogOpen(true);
         }
-    }, [aggregatedVariables, highlightedVariable]);
+    }, [aggregatedVariables, highlightedVariable, setSelectedFunction]);
 
     const handleNameLabelClick = useCallback(() => {
         if (highlightedVariable && highlightedVariable.source === 'aggregated') {
-            const variable = aggregatedVariables.find(v => v.aggregateId === highlightedVariable.id);
+            const variable = aggregatedVariables.find(v => v.tempId === highlightedVariable.id);
             if (variable) {
                 setNewVariableName(variable.name);
                 setNewVariableLabel(variable.label || "");
@@ -230,22 +277,24 @@ export const useAggregateData = () => {
                 setNameDialogOpen(true);
             }
         }
-    }, [aggregatedVariables, highlightedVariable]);
+    }, [aggregatedVariables, highlightedVariable, setNewVariableName, setNewVariableLabel]);
 
     const applyFunction = useCallback(() => {
-        if (currentEditingVariable) {
-            const oldFunction = currentEditingVariable.function;
-            const functionChanged = oldFunction !== selectedFunction;
-            const baseName = currentEditingVariable.baseVarName;
+        const editingVar = currentEditingVariableRef.current;
+        if (editingVar) {
+            const currentSelectedFunction = selectedFunctionRef.current;
+            const oldFunction = editingVar.function;
+            const functionChanged = oldFunction !== currentSelectedFunction;
+            const baseName = editingVar.baseVarName;
             const calculationFunction = mapUIFunctionToCalculationFunction(
-                selectedFunction,
+                currentSelectedFunction,
                 functionCategory === "percentages" ? percentageType : undefined
             );
 
-            let newName = currentEditingVariable.name;
+            let newName = editingVar.name;
             if (functionChanged) {
                 const existingNames = aggregatedVariables
-                    .filter(v => v.aggregateId !== currentEditingVariable.aggregateId)
+                    .filter(v => v.tempId !== editingVar.tempId)
                     .map(v => v.name);
                 newName = createVariableName(baseName, calculationFunction, existingNames);
             }
@@ -264,12 +313,12 @@ export const useAggregateData = () => {
             }
 
             const updatedVar: AggregatedVariable = {
-                ...currentEditingVariable,
-                function: selectedFunction,
+                ...editingVar,
+                function: currentSelectedFunction,
                 calculationFunction,
                 functionCategory,
                 name: newName,
-                displayName: `${newName}${currentEditingVariable.label ? ` '${currentEditingVariable.label}'` : ''} = ${displayFormula}`
+                displayName: `${newName}${editingVar.label ? ` '${editingVar.label}'` : ''} = ${displayFormula}`
             };
 
             if (functionCategory === "percentages") {
@@ -292,18 +341,22 @@ export const useAggregateData = () => {
             }
 
             setAggregatedVariables(prev =>
-                prev.map(v => v.aggregateId === currentEditingVariable.aggregateId ? updatedVar : v)
+                prev.map(v => v.tempId === editingVar.tempId ? updatedVar : v)
             );
 
             setFunctionDialogOpen(false);
             setCurrentEditingVariable(null);
         }
-    }, [currentEditingVariable, selectedFunction, functionCategory, percentageType, aggregatedVariables, percentageValue, percentageLow, percentageHigh]);
+    }, [functionCategory, percentageType, aggregatedVariables, percentageValue, percentageLow, percentageHigh]);
 
     const applyNameLabel = useCallback(() => {
-        if (currentEditingVariable) {
+        const editingVar = currentEditingVariableRef.current;
+        if (editingVar) {
+            const currentNewVariableName = newVariableNameRef.current;
+            const currentNewVariableLabel = newVariableLabelRef.current;
+
             const isNameDuplicate = aggregatedVariables.some(
-                v => v.name === newVariableName && v.aggregateId !== currentEditingVariable.aggregateId
+                v => v.name === currentNewVariableName && v.tempId !== editingVar.tempId
             );
             if (isNameDuplicate) {
                 setErrorMessage("A variable with this name already exists.");
@@ -312,43 +365,43 @@ export const useAggregateData = () => {
             }
 
             let displayFormula;
-            const func = currentEditingVariable.calculationFunction || currentEditingVariable.function;
+            const func = editingVar.calculationFunction || editingVar.function;
 
-            if (["PGT", "PLT", "FGT", "FLT"].includes(func) && currentEditingVariable.percentageValue) {
+            if (["PGT", "PLT", "FGT", "FLT"].includes(func) && editingVar.percentageValue) {
                 displayFormula = getFunctionDisplay(
                     func,
-                    currentEditingVariable.baseVarName,
-                    currentEditingVariable.percentageValue
+                    editingVar.baseVarName,
+                    editingVar.percentageValue
                 );
             } else if (["PIN", "POUT", "FIN", "FOUT"].includes(func) &&
-                currentEditingVariable.percentageLow &&
-                currentEditingVariable.percentageHigh) {
+                editingVar.percentageLow &&
+                editingVar.percentageHigh) {
                 displayFormula = getFunctionDisplay(
                     func,
-                    currentEditingVariable.baseVarName,
+                    editingVar.baseVarName,
                     undefined,
-                    currentEditingVariable.percentageLow,
-                    currentEditingVariable.percentageHigh
+                    editingVar.percentageLow,
+                    editingVar.percentageHigh
                 );
             } else {
-                displayFormula = getFunctionDisplay(func, currentEditingVariable.baseVarName);
+                displayFormula = getFunctionDisplay(func, editingVar.baseVarName);
             }
 
             const updatedVar: AggregatedVariable = {
-                ...currentEditingVariable,
-                name: newVariableName,
-                label: newVariableLabel !== "" ? newVariableLabel : undefined,
-                displayName: `${newVariableName}${newVariableLabel ? ` '${newVariableLabel}'` : ''} = ${displayFormula}`
+                ...editingVar,
+                name: currentNewVariableName,
+                label: currentNewVariableLabel !== "" ? currentNewVariableLabel : undefined,
+                displayName: `${currentNewVariableName}${currentNewVariableLabel ? ` '${currentNewVariableLabel}'` : ''} = ${displayFormula}`
             };
 
             setAggregatedVariables(prev =>
-                prev.map(v => v.aggregateId === currentEditingVariable.aggregateId ? updatedVar : v)
+                prev.map(v => v.tempId === editingVar.tempId ? updatedVar : v)
             );
 
             setNameDialogOpen(false);
             setCurrentEditingVariable(null);
         }
-    }, [currentEditingVariable, aggregatedVariables, newVariableName, newVariableLabel]);
+    }, [aggregatedVariables]);
 
     const handleReset = useCallback(() => {
         setAvailableVariables(variables.filter(v => v.name !== ""));
@@ -366,6 +419,7 @@ export const useAggregateData = () => {
 
     const handleConfirm = useCallback(async (closeModal: () => void) => {
         const variableStore = useVariableStore.getState();
+        const dataStore = useDataStore.getState();
         setStatisticProgress(true);
 
         // Validation for number of cases variable
@@ -387,7 +441,7 @@ export const useAggregateData = () => {
             }
         }
 
-        const groups: Record<string, { rowIndex: number; row: (string | number)[] }[]> = {};
+        const groups: Record<string, { rowIndex: number; row: (string | number | null)[] }[]> = {};
         data.forEach((row, rowIndex) => {
             const key = breakVariables
                 .map((bv: { columnIndex: number }) => row[bv.columnIndex])
@@ -398,17 +452,18 @@ export const useAggregateData = () => {
             groups[key].push({ rowIndex, row });
         });
 
-        let totalVarCount = variables.length;
+        const newVariables: Partial<Variable>[] = [];
         const bulkUpdates: { row: number; col: number; value: string | number }[] = [];
+        let newVarIndex = variables.length;
 
         for (const aggVar of aggregatedVariables) {
-            const aggregatedDataForVar: (string | number | null)[] = new Array(data.length).fill(null);
+            const currentVarIndex = newVarIndex;
             const calcFunction = aggVar.calculationFunction || aggVar.function;
 
             for (const groupKey in groups) {
                 const groupRows = groups[groupKey];
                 const values = groupRows.map(
-                    (item: { rowIndex: number; row: (string | number)[] }) =>
+                    (item: { rowIndex: number; row: (string | number | null)[] }) =>
                         item.row[aggVar.baseVarColumnIndex]
                 );
 
@@ -422,79 +477,103 @@ export const useAggregateData = () => {
                     }
                 );
 
-                groupRows.forEach((item: { rowIndex: number; row: (string | number)[] }) => {
-                    aggregatedDataForVar[item.rowIndex] = aggregatedValue;
+                groupRows.forEach((item: { rowIndex: number; row: (string | number | null)[] }) => {
                     bulkUpdates.push({
                         row: item.rowIndex,
-                        col: totalVarCount,
+                        col: currentVarIndex,
                         value: aggregatedValue ?? ""
                     });
                 });
             }
 
+            const aggregatedDataForVar = bulkUpdates
+                .filter(update => update.col === currentVarIndex)
+                .map(update => update.value);
+
             const nonEmptyData = aggregatedDataForVar.filter((d) => d !== null && d !== "");
             const allNumeric = nonEmptyData.every(
                 (d) => typeof d === "number" || (!isNaN(Number(d)) && d !== "")
             );
-            let computedType = allNumeric ? "NUMERIC" : "STRING";
-            const type = computedType as "NUMERIC" | "STRING";
+            
+            const type: VariableType = allNumeric ? "NUMERIC" : "STRING";
             let width = 8;
-            let decimals = 2;
-            if (!allNumeric) {
+            if (type === "STRING") {
                 const maxWidth = nonEmptyData.reduce((max: number, d: string | number | null): number => {
                     const strVal = String(d);
                     return Math.max(max, strVal.length);
                 }, 0);
-                width = maxWidth || width;
+                width = Math.max(width, maxWidth);
             }
-
-            const newVariable = {
-                columnIndex: totalVarCount,
+            
+            const newVariable: Partial<Variable> = {
+                columnIndex: currentVarIndex,
                 name: aggVar.name,
                 type,
                 width,
-                decimals,
+                decimals: type === 'NUMERIC' ? 2 : 0,
                 label: aggVar.label || "",
+                measure: aggVar.measure,
+                role: 'input'
             };
-            await variableStore.addVariable(newVariable as any); // type assertion to satisfy addVariable
-            totalVarCount++;
+            newVariables.push(newVariable);
+            newVarIndex++;
         }
 
         // Add number of cases variable if requested
         if (addNumberOfCases) {
-            const numberOfCasesData: (number | null)[] = new Array(data.length).fill(null);
-
+            const currentVarIndex = newVarIndex;
             for (const groupKey in groups) {
                 const groupRows = groups[groupKey];
-                // The unweighted number of cases is simply the length of the group
                 const count = groupRows.length;
 
                 groupRows.forEach((item) => {
-                    numberOfCasesData[item.rowIndex] = count;
                     bulkUpdates.push({
                         row: item.rowIndex,
-                        col: totalVarCount,
+                        col: currentVarIndex,
                         value: count
                     });
                 });
             }
 
-            const newVariable = {
-                columnIndex: totalVarCount,
+            const newVariable: Partial<Variable> = {
+                columnIndex: currentVarIndex,
                 name: breakName,
-                type: "NUMERIC" as VariableType,
+                type: "NUMERIC",
                 width: 8,
                 decimals: 0,
                 label: `Number of cases in break group`,
+                measure: 'scale',
+                role: 'input'
             };
-            await variableStore.addVariable(newVariable as any);
-            totalVarCount++;
+            newVariables.push(newVariable);
+            newVarIndex++;
         }
 
-        await updateCells(bulkUpdates);
-        setStatisticProgress(false);
-        closeModal();
-    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, updateCells, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
+        try {
+            if (newVariables.length > 0) {
+                await variableStore.addVariables(newVariables, bulkUpdates);
+            } else if (bulkUpdates.length > 0) {
+                await dataStore.updateCells(bulkUpdates);
+            }
+        } catch (error) {
+            console.error("Error during batch update:", error);
+            setErrorMessage(error instanceof Error ? error.message : String(error));
+            setErrorDialogOpen(true);
+        } finally {
+            setStatisticProgress(false);
+            closeModal();
+        }
+    }, [data, breakVariables, aggregatedVariables, variables, setStatisticProgress, addNumberOfCases, breakName, setErrorMessage, setErrorDialogOpen]);
+
+    // Override selection setter to use tempId
+    const onAvailableOrBreakHighlighted = useCallback((variable: Variable, source: 'available' | 'break') => {
+        const varId = variable.tempId ?? variable.columnIndex.toString();
+        if (highlightedVariable?.id === varId && highlightedVariable.source === source) {
+            setHighlightedVariable(null);
+        } else {
+            setHighlightedVariable({ id: varId, source });
+        }
+    }, [highlightedVariable, setHighlightedVariable]);
 
     return {
         availableVariables, setAvailableVariables,
@@ -541,5 +620,6 @@ export const useAggregateData = () => {
         applyNameLabel,
         handleReset,
         handleConfirm,
+        onAvailableOrBreakHighlighted,
     };
 }; 

@@ -38,8 +38,8 @@ interface UseSortVariablesProps {
 }
 
 export const useSortVariables = ({ onClose }: UseSortVariablesProps) => {
-    const { variables, sortVariables, overwriteVariables } = useVariableStore();
-    const { data, setData } = useDataStore();
+    const { variables, overwriteAll } = useVariableStore();
+    const { data } = useDataStore();
 
     const [columns] = useState<string[]>([
         "Name", "Type", "Width", "Decimals", "Label", 
@@ -82,12 +82,12 @@ export const useSortVariables = ({ onClose }: UseSortVariablesProps) => {
                 return 0;
             }).map((v, index) => ({ ...v, columnIndex: index }));
             
-            overwriteVariables(sortedVariables);
-
+            let newData = data;
             if (data.length > 0) {
-                const newData = sortDataColumns(data, originalVariables, sortedVariables);
-                setData(newData);
+                newData = sortDataColumns(data, originalVariables, sortedVariables);
             }
+
+            await overwriteAll(sortedVariables, newData);
 
             onClose();
         } catch (error) {

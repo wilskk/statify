@@ -1,86 +1,67 @@
 import { DataService } from '../DataService';
-import dataRepository from '@/repositories/DataRepository';
+import { dataRepository as mockedDataRepository } from '@/repositories';
 import { DataRow } from '@/types/Data';
 
-// Mock the entire dataRepository module
-jest.mock('@/repositories/DataRepository', () => ({
+// Mock the repository
+jest.mock('@/repositories', () => ({
+  dataRepository: {
     getAllRows: jest.fn(),
-    updateBulkCells: jest.fn(),
     clearAllData: jest.fn(),
     replaceAllData: jest.fn(),
+    updateBulkCells: jest.fn(),
+    insertRow: jest.fn(),
+    addBulkRows: jest.fn(),
+    deleteRow: jest.fn(),
+    deleteBulkRows: jest.fn(),
+    updateRow: jest.fn(),
+    getColumnData: jest.fn(),
+  },
 }));
 
-const mockedDataRepository = dataRepository as jest.Mocked<typeof dataRepository>;
-const dataService = new DataService();
-
 describe('DataService', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
+  let dataService: DataService;
+
+  beforeEach(() => {
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+    // Create a new service instance with the mocked repository
+    dataService = new DataService(mockedDataRepository as any);
+  });
+
+  describe('loadAllData', () => {
+    it('should return all data from the repository', async () => {
+      const mockData: DataRow[] = [[1, 'a'], [2, 'b']];
+      (mockedDataRepository.getAllRows as jest.Mock).mockResolvedValue(mockData);
+
+      const result = await dataService.loadAllData();
+
+      expect(result.data).toEqual(mockData);
+      expect(mockedDataRepository.getAllRows).toHaveBeenCalledTimes(1);
     });
+  });
 
-    describe('applyBulkUpdates', () => {
-        it('should call repository.updateBulkCells and return unique row indices', async () => {
-            const updates = [
-                { row: 0, col: 0, value: 1 },
-                { row: 1, col: 1, value: 2 },
-                { row: 0, col: 1, value: 3 }, // Duplicate row index
-            ];
-            (mockedDataRepository.updateBulkCells as jest.Mock).mockResolvedValue(undefined);
+  describe('importData', () => {
+    it('should call replaceAllData', async () => {
+      const newData: DataRow[] = [[1, 'a'], [2, 'b']];
+      
+      await dataService.importData(newData);
 
-            const result = await dataService.applyBulkUpdates(updates);
-
-            expect((mockedDataRepository.updateBulkCells as jest.Mock).mock.calls.length).toBe(1);
-            expect((mockedDataRepository.updateBulkCells as jest.Mock).mock.calls[0][0]).toEqual(updates);
-            expect(result).toEqual([0, 1]); // Should contain unique row indices
-        });
+      expect(mockedDataRepository.replaceAllData).toHaveBeenCalledTimes(1);
+      expect(mockedDataRepository.replaceAllData).toHaveBeenCalledWith(newData);
+      expect(mockedDataRepository.clearAllData).not.toHaveBeenCalled();
     });
+  });
 
-    describe('importData', () => {
-        it('should clear existing data and then replace it', async () => {
-            const newData: DataRow[] = [[1, 2, 3]];
-            (mockedDataRepository.clearAllData as jest.Mock).mockResolvedValue(undefined);
-            (mockedDataRepository.replaceAllData as jest.Mock).mockResolvedValue(newData.length);
+  describe('getColumnData', () => {
+    it('should return column data from the repository', async () => {
+      const mockColumnData = ['a', 'b'];
+      (mockedDataRepository.getColumnData as jest.Mock).mockResolvedValue(mockColumnData);
 
-            await dataService.importData(newData);
+      const { columnData } = await dataService.getColumnData(1);
 
-            // Verify that clear was called before replace
-            const clearOrder = (mockedDataRepository.clearAllData as jest.Mock).mock.invocationCallOrder[0];
-            const replaceOrder = (mockedDataRepository.replaceAllData as jest.Mock).mock.invocationCallOrder[0];
-            
-            expect(clearOrder).toBeLessThan(replaceOrder);
-
-            expect((mockedDataRepository.clearAllData as jest.Mock).mock.calls.length).toBe(1);
-            expect((mockedDataRepository.replaceAllData as jest.Mock).mock.calls.length).toBe(1);
-            expect((mockedDataRepository.replaceAllData as jest.Mock).mock.calls[0][0]).toEqual(newData);
-        });
+      expect(columnData).toEqual(mockColumnData);
+      expect(mockedDataRepository.getColumnData).toHaveBeenCalledWith(1);
+      expect(mockedDataRepository.getColumnData).toHaveBeenCalledTimes(1);
     });
-
-    describe('getColumnData', () => {
-        it('should retrieve all rows and extract the correct column', async () => {
-            const mockData: DataRow[] = [
-                ['a', 'b', 'c'],
-                ['d', 'e', 'f'],
-                ['g', 'h', 'i'],
-            ];
-            (mockedDataRepository.getAllRows as jest.Mock).mockResolvedValue(mockData);
-
-            const { columnData } = await dataService.getColumnData(1); // Get second column
-
-            expect((mockedDataRepository.getAllRows as jest.Mock).mock.calls.length).toBe(1);
-            expect(columnData).toEqual(['b', 'e', 'h']);
-        });
-
-        it('should return empty strings for rows shorter than the column index', async () => {
-             const mockData: DataRow[] = [
-                ['a', 'b', 'c'],
-                ['d'], // This row is shorter
-                ['g', 'h', 'i'],
-            ];
-            (mockedDataRepository.getAllRows as jest.Mock).mockResolvedValue(mockData);
-            
-            const { columnData } = await dataService.getColumnData(2); // Get third column
-
-            expect(columnData).toEqual(['c', '', 'i']);
-        });
-    });
+  });
 }); 

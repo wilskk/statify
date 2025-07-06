@@ -98,12 +98,15 @@ describe('pdfPrintService', () => {
             addVariableView(doc, 10, mockVariables, mockActiveColumns);
 
             expect(doc.text).toHaveBeenCalledWith('Variable View', expect.any(Number), expect.any(Number));
+            
+            const expectedBody: string[][] = [
+                ['Var1', 'NUMERIC', 'Variable 1', 'scale'],
+                ['Var2', 'STRING', 'Variable 2', 'nominal'],
+            ];
+
             expect(mockAutoTable).toHaveBeenCalledWith(doc, expect.objectContaining({
-                head: [['No', 'Name', 'Type', 'Label', 'Measure', 'Width', 'Column Index']],
-                body: [
-                    [1, 'Var1', 'NUMERIC', 'Variable 1', 'scale', 8, 1],
-                    [2, 'Var2', 'STRING', 'Variable 2', 'nominal', 12, 3],
-                ],
+                head: [['Name', 'Type', 'Label', 'Measure']],
+                body: expectedBody,
             }));
         });
     });
@@ -111,7 +114,7 @@ describe('pdfPrintService', () => {
     describe('addResultsView', () => {
         const mockLogs: Log[] = [
             {
-                id: '123',
+                id: 123,
                 log: 'Frequencies analysis performed.',
                 analytics: [{
                     title: 'Frequency Analysis',

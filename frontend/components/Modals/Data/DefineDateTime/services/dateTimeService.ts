@@ -39,17 +39,25 @@ const generateSampleData = (
             for (let i = timeComponents.length - 1; i >= 0; i--) {
                 const component = timeComponents[i];
                 const name = component.name.toLowerCase();
+                const isZeroBased = ['Hour', 'Minute', 'Second', 'Work hour'].includes(component.name);
 
                 if (component.periodicity) {
                     const baseValue = component.value;
-                    const addedValue = carry % component.periodicity;
-                    const periodicValue = ((baseValue - 1 + addedValue) % component.periodicity) + 1;
-                    currentValues[name] = periodicValue;
-                    carry = Math.floor((baseValue - 1 + carry) / component.periodicity);
-                    if (carry === 0) break;
+                    if (isZeroBased) {
+                        const totalValue = baseValue + carry;
+                        currentValues[name] = totalValue % component.periodicity;
+                        carry = Math.floor(totalValue / component.periodicity);
+                    } else { // 1-based
+                        const totalValue = (baseValue - 1) + carry;
+                        currentValues[name] = (totalValue % component.periodicity) + 1;
+                        carry = Math.floor(totalValue / component.periodicity);
+                    }
                 } else {
                     currentValues[name] = component.value + carry;
                     carry = 0;
+                }
+                
+                if (carry === 0) {
                     break;
                 }
             }
@@ -110,7 +118,7 @@ export const prepareDateVariables = (
             width: 8,
             decimals: 0,
             label: variableLabel,
-            columns: 64,
+            columns: 72,
             align: "right",
             measure: "scale",
             role: "input",
@@ -126,7 +134,7 @@ export const prepareDateVariables = (
         width: 20,
         decimals: 0,
         label: `Date. Format: ${dateFormatString}`,
-        columns: 64,
+        columns: 72,
         align: "left",
         measure: "nominal",
         role: "input",

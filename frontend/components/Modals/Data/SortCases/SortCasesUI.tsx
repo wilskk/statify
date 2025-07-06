@@ -7,8 +7,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { 
     Ruler, 
@@ -16,7 +17,8 @@ import {
     BarChartHorizontal, 
     ChevronUp, 
     ChevronDown, 
-    HelpCircle 
+    HelpCircle,
+    AlertTriangle,
 } from "lucide-react";
 import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from "@/components/Common/VariableListManager";
@@ -31,6 +33,7 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
     setDefaultSortOrder,
     highlightedVariable, 
     setHighlightedVariable,
+    error,
     getSortByVariables,
     handleMoveVariable,
     handleReorderVariable,
@@ -59,52 +62,60 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
     const getSortByDisplayName = useCallback((variable: Variable): string => {
         const config = sortByConfigs.find((c: SortVariableConfig) => c.variable.tempId === variable.tempId);
         const directionSymbol = config?.direction === 'asc' ? '▲' : '▼';
-        return `${getDisplayName(variable)} ${directionSymbol}`;
+        return `${directionSymbol} ${getDisplayName(variable)}`;
     }, [sortByConfigs]);
 
-    const renderSortByListFooter = () => {
-        if (!highlightedVariable || highlightedVariable.source !== 'sortBy') return null;
-        
-        const selectedTempId = highlightedVariable.id;
+    const renderSortByListFooter = useCallback((listId?: string) => {
+        if (listId && listId !== 'sortBy') return null;
+
+        const isActive = highlightedVariable?.source === 'sortBy';
+        const selectedTempId = highlightedVariable?.id;
         const selectedConfig = sortByConfigs.find((c: SortVariableConfig) => c.variable.tempId === selectedTempId);
-        if (!selectedConfig) return null;
+        // When nothing selected, fall back to first item just to keep component controlled (but disabled).
+        const currentDir = selectedConfig?.direction ?? 'asc';
 
         return (
             <div className="mt-2 space-y-4">
                 <div>
-                    <div className="flex justify-between items-center mb-2">
-                        <div className="text-sm font-medium">Sort Order:</div>
-                        <div className="flex space-x-2">
+                    <div className="flex items-center mb-3 space-x-3">
+                        <div className="flex space-x-1">
                             <Button
-                                variant="outline" size="sm" className="h-7 px-2 text-xs"
-                                onClick={() => moveVariableUp(selectedTempId)}
-                                disabled={sortByConfigs.findIndex((c: SortVariableConfig) => c.variable.tempId === selectedTempId) === 0}
+                                variant="outline" size="sm" className="h-7 w-7 p-0 flex items-center justify-center"
+                                aria-label="Move Up"
+                                onClick={() => selectedTempId && moveVariableUp(selectedTempId)}
+                                disabled={!isActive || sortByConfigs.findIndex((c: SortVariableConfig) => c.variable.tempId === selectedTempId) === 0}
                             >
-                                <ChevronUp size={14} className="mr-1" /> Move Up
+                                <ChevronUp size={14} />
                             </Button>
                             <Button
-                                variant="outline" size="sm" className="h-7 px-2 text-xs"
-                                onClick={() => moveVariableDown(selectedTempId)}
-                                disabled={sortByConfigs.findIndex((c: SortVariableConfig) => c.variable.tempId === selectedTempId) === sortByConfigs.length - 1}
+                                variant="outline" size="sm" className="h-7 w-7 p-0 flex items-center justify-center"
+                                aria-label="Move Down"
+                                onClick={() => selectedTempId && moveVariableDown(selectedTempId)}
+                                disabled={!isActive || sortByConfigs.findIndex((c: SortVariableConfig) => c.variable.tempId === selectedTempId) === sortByConfigs.length - 1}
                             >
-                                <ChevronDown size={14} className="mr-1" /> Move Down
+                                <ChevronDown size={14} />
                             </Button>
                         </div>
+                        <div className="text-sm font-medium">Direction for selected variable:</div>
                     </div>
-                    <div className="flex flex-col space-y-2">
+                    <RadioGroup
+                        value={currentDir}
+                        onValueChange={(value) => isActive && selectedTempId && changeSortDirection(selectedTempId, value as 'asc' | 'desc')}
+                        className="flex flex-col space-y-2"
+                    >
                         <Label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox checked={selectedConfig.direction === "asc"} onCheckedChange={() => changeSortDirection(selectedTempId, 'asc')} />
+                            <RadioGroupItem value="asc" disabled={!isActive} />
                             <span className="text-sm">Ascending</span>
                         </Label>
                         <Label className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox checked={selectedConfig.direction === "desc"} onCheckedChange={() => changeSortDirection(selectedTempId, 'desc')} />
+                            <RadioGroupItem value="desc" disabled={!isActive} />
                             <span className="text-sm">Descending</span>
                         </Label>
-                    </div>
+                    </RadioGroup>
                 </div>
             </div>
         );
-    };
+    }, [highlightedVariable, sortByConfigs, changeSortDirection, moveVariableUp, moveVariableDown]);
 
     const sortByListConfig: TargetListConfig = {
         id: 'sortBy',
@@ -120,17 +131,21 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
         
         return (
             <div className="mt-2 p-1.5 rounded bg-accent border border-border">
-                <div className="text-xs font-medium mb-1">Default Sort Order:</div>
-                <div className="flex flex-col space-y-1">
+                <div className="text-xs font-medium mb-1">Default direction for new variables:</div>
+                <RadioGroup
+                    value={defaultSortOrder}
+                    onValueChange={(value) => setDefaultSortOrder(value as 'asc' | 'desc')}
+                    className="flex flex-col space-y-1"
+                >
                     <Label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox checked={defaultSortOrder === "asc"} onCheckedChange={() => setDefaultSortOrder("asc")} />
+                        <RadioGroupItem value="asc" />
                         <span className="text-xs">Ascending</span>
                     </Label>
                     <Label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox checked={defaultSortOrder === "desc"} onCheckedChange={() => setDefaultSortOrder("desc")} />
+                        <RadioGroupItem value="desc" />
                         <span className="text-xs">Descending</span>
                     </Label>
-                </div>
+                </RadioGroup>
             </div>
         );
     }, [defaultSortOrder, highlightedVariable, setDefaultSortOrder]);
@@ -143,6 +158,12 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
                 </DialogHeader>
             )}
             <div className="p-6 overflow-y-auto flex-grow">
+                {error && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
                 <div className="grid grid-cols-1 gap-6">
                     <VariableListManager
                         availableVariables={availableVariables}
@@ -157,7 +178,7 @@ const SortCasesUIContent: React.FC<SortCasesUIProps> = ({
                         renderListFooter={renderSortByListFooter}
                         showArrowButtons={true}
                         availableListHeight="16rem"
-                        renderRightColumnFooter={renderDefaultSortOrderControls}
+                        renderExtraInfoContent={renderDefaultSortOrderControls}
                     />
                 </div>
             </div>

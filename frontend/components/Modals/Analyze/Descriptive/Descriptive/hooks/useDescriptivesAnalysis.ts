@@ -9,6 +9,7 @@ import {
 import { formatDescriptiveTableOld } from '../utils/formatters';
 import { useZScoreProcessing } from './useZScoreProcessing';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
+import { useDataStore } from '@/stores/useDataStore';
 
 export const useDescriptivesAnalysis = ({
     selectedVariables,
@@ -34,6 +35,14 @@ export const useDescriptivesAnalysis = ({
     const runAnalysis = useCallback(async () => {
         setIsCalculating(true);
         setErrorMsg(null);
+
+        try {
+            await useDataStore.getState().checkAndSave();
+        } catch (e: any) {
+            setErrorMsg(`Failed to save pending changes: ${e.message}`);
+            setIsCalculating(false);
+            return;
+        }
 
         // Reset refs for new analysis run
         resultsRef.current = [];
