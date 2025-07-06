@@ -10,6 +10,8 @@ export interface Table {
     title: string;
     columnHeaders: ColumnHeader[];
     rows: Row[];
+    note?: string;
+    interpretation?: string;
 }
 
 export interface ColumnHeader {
@@ -20,6 +22,12 @@ export interface ColumnHeader {
 
 export interface Row {
     rowHeader: (string | null)[];
-    [key: string]: string | number | null | undefined | Row[] | (string | null)[];
+    [key: string]:
+        | string
+        | number
+        | null
+        | undefined
+        | Row[]
+        | (string | null)[];
     children?: Row[];
 }

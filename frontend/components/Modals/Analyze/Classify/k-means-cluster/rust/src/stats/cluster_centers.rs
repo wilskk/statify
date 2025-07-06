@@ -35,41 +35,52 @@ pub fn generate_final_cluster_centers(
     let min_change_threshold = convergence_criterion * min_center_dist;
 
     // Langkah 2: Lakukan iterasi untuk menyempurnakan posisi pusat cluster.
-    for _ in 1..=max_iterations {
-        // Inisialisasi pusat cluster baru dan jumlah anggota untuk iterasi saat ini.
-        let mut new_centers = if use_running_means {
-            current_centers.clone()
-        } else {
-            vec![vec![0.0; data.variables.len()]; num_clusters]
-        };
+    if use_running_means {
+        let mut new_centers = current_centers.clone();
         let mut cluster_counts = vec![0; num_clusters];
 
-        // Fase Penugasan (Assignment Phase):
-        // Tetapkan setiap titik data ke cluster terdekat berdasarkan jarak Euclidean.
-        for case in &data.data_matrix {
-            let closest = find_closest_cluster(case, &current_centers);
-            cluster_counts[closest] += 1;
+        for _ in 1..=max_iterations {
+            let old_centers_for_change_calc = new_centers.clone();
 
-            if use_running_means {
-                // Metode Rata-rata Berjalan (Running Means):
-                // Pusat cluster diperbarui secara inkremental setelah setiap titik data ditambahkan.
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &new_centers);
+                cluster_counts[closest] += 1;
                 let count = cluster_counts[closest] as f64;
+
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] =
                         new_centers[closest][j] + (val - new_centers[closest][j]) / count;
                 }
-            } else {
-                // Akumulasi nilai untuk perhitungan rata-rata nanti.
+            }
+
+            let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - old_centers_for_change_calc[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                max_change = max_change.max(change);
+            }
+
+            if max_change <= min_change_threshold {
+                break;
+            }
+        }
+        current_centers = new_centers;
+    } else {
+        for _ in 1..=max_iterations {
+            let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+            let mut cluster_counts = vec![0; num_clusters];
+
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &current_centers);
+                cluster_counts[closest] += 1;
+
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] += val;
                 }
             }
-        }
 
-        // Fase Pembaruan (Update Phase):
-        // Hitung ulang pusat cluster sebagai titik rata-rata (centroid) dari semua titik data
-        // yang menjadi anggota cluster tersebut.
-        if !use_running_means {
             for i in 0..num_clusters {
                 if cluster_counts[i] > 0 {
                     for j in 0..data.variables.len() {
@@ -77,32 +88,28 @@ pub fn generate_final_cluster_centers(
                     }
                 }
             }
-        }
 
-        // Menangani kluster kosong dengan mempertahankan pusat lama mereka.
-        for i in 0..num_clusters {
-            if cluster_counts[i] == 0 {
-                new_centers[i] = current_centers[i].clone();
+            for i in 0..num_clusters {
+                if cluster_counts[i] == 0 {
+                    new_centers[i] = current_centers[i].clone();
+                }
             }
-        }
 
-        // Lacak perubahan terbesar pada posisi pusat cluster untuk memeriksa konvergensi.
-        let mut max_change: f64 = 0.0;
-        for i in 0..num_clusters {
-            let change = (0..data.variables.len())
-                .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
-                .sum::<f64>()
-                .sqrt();
-            max_change = max_change.max(change);
-        }
+            let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                max_change = max_change.max(change);
+            }
 
-        // Periksa kriteria konvergensi. Jika perubahan di bawah ambang batas, iterasi berhenti.
-        if max_change <= min_change_threshold {
-            break;
+            if max_change <= min_change_threshold {
+                current_centers = new_centers;
+                break;
+            }
+            current_centers = new_centers;
         }
-
-        // Perbarui pusat cluster untuk iterasi berikutnya.
-        current_centers = new_centers;
     }
 
     // Langkah 3: Format hasil akhir dari matriks ke dalam bentuk `HashMap` untuk kemudahan penggunaan.

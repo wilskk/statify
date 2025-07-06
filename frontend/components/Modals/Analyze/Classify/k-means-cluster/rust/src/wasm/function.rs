@@ -28,6 +28,8 @@ pub fn run_analysis(
         }
     };
 
+    web_sys::console::log_1(&format!("Preprocessed Data: {:?}", preprocessed_data).into());
+
     // Langkah 2: Inisialisasi Pusat Cluster Awal
     // Jika diaktifkan, langkah ini menentukan posisi awal dari pusat-pusat cluster
     // menggunakan metode yang ditentukan dalam konfigurasi (misalnya, pemilihan acak).

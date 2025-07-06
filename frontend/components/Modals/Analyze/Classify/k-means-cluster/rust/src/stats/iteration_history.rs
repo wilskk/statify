@@ -38,45 +38,80 @@ pub fn generate_iteration_history(
     let mut iterations = Vec::with_capacity(max_iterations as usize);
     let mut convergence_note = None;
 
-    for iteration in 1..=max_iterations {
-        // Inisialisasi pusat cluster baru dan jumlah anggota untuk setiap cluster.
-        let mut new_centers = if use_running_means {
-            current_centers.clone()
-        } else {
-            vec![vec![0.0; data.variables.len()]; num_clusters]
-        };
+    // Jika menggunakan running means, logika pemrosesan berbeda
+    if use_running_means {
+        // Inisialisasi pusat cluster dan jumlah anggota.
+        // Pusat cluster diperbarui secara inkremental.
+        let mut new_centers = current_centers.clone();
         let mut cluster_counts = vec![0; num_clusters];
 
-        // Tahap Penugasan (Assignment Step) dan Pembaruan Pusat Cluster
-        // Setiap titik data ditugaskan ke cluster dengan pusat terdekat.
-        for case in &data.data_matrix {
-            let closest = find_closest_cluster(case, &current_centers);
-            cluster_counts[closest] += 1;
+        for iteration in 1..=max_iterations {
+            let old_centers_for_change_calc = new_centers.clone();
 
-            // Pusat cluster diperbarui. Ada dua metode yang bisa digunakan:
-            if use_running_means {
-                // Metode Rata-rata Berjalan (Running Means):
-                // Pusat cluster diperbarui secara inkremental setelah setiap titik data ditambahkan.
-                // Rumus: M_n = M_{n-1} + (x_n - M_{n-1}) / n
-                // Tujuan: Memberikan pembaruan yang lebih stabil dan bertahap,
-                //         yang bisa lebih efektif untuk beberapa jenis distribusi data.
+            // Tahap Penugasan dan Pembaruan Inkremental
+            // Setiap titik data ditugaskan dan pusat cluster langsung diperbarui.
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &new_centers);
+                cluster_counts[closest] += 1;
                 let count = cluster_counts[closest] as f64;
+
+                // Rumus Rata-rata Berjalan (Running Means):
+                // M_n = M_{n-1} + (x_n - M_{n-1}) / n
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] =
                         new_centers[closest][j] + (val - new_centers[closest][j]) / count;
                 }
-            } else {
-                // Metode Rata-rata Batch (Batch Means):
-                // Menjumlahkan semua nilai titik data dalam satu cluster.
-                // Rata-rata dihitung setelah semua titik data diproses (di luar loop ini).
+            }
+
+            // Menghitung perubahan dari awal iterasi ini
+            let mut changes = Vec::with_capacity(num_clusters);
+            let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let cluster_change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - old_centers_for_change_calc[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+
+                changes.push((format!("{}", i + 1), cluster_change));
+                max_change = max_change.max(cluster_change);
+            }
+
+            iterations.push(IterationStep { iteration, changes });
+
+            if max_change <= min_change_threshold {
+                convergence_note = Some(
+                    format!(
+                        "Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is {:.15e}. The current iteration is {}. The minimum distance between initial centers is {:.3}.",
+                        max_change,
+                        iteration,
+                        min_center_dist
+                    )
+                );
+                break;
+            }
+
+            if iteration == max_iterations {
+                convergence_note = Some(
+                    format!("Maximum number of iterations ({}) reached without convergence.", max_iterations)
+                );
+            }
+        }
+    } else {
+        // Logika K-Means standar (Batch)
+        for iteration in 1..=max_iterations {
+            let mut new_centers = vec![vec![0.0; data.variables.len()]; num_clusters];
+            let mut cluster_counts = vec![0; num_clusters];
+
+            // Tahap Penugasan (Assignment Step)
+            for case in &data.data_matrix {
+                let closest = find_closest_cluster(case, &current_centers);
+                cluster_counts[closest] += 1;
                 for (j, &val) in case.iter().enumerate() {
                     new_centers[closest][j] += val;
                 }
             }
-        }
 
-        // Jika tidak menggunakan rata-rata berjalan, hitung rata-rata batch sekarang.
-        if !use_running_means {
+            // Tahap Pembaruan (Update Step)
             for i in 0..num_clusters {
                 if cluster_counts[i] > 0 {
                     for j in 0..data.variables.len() {
@@ -84,66 +119,52 @@ pub fn generate_iteration_history(
                     }
                 }
             }
-        }
 
-        // Menangani kluster kosong dengan mempertahankan pusat lama mereka
-        // untuk menghindari pergeseran ke titik asal (0,0,...).
-        for i in 0..num_clusters {
-            if cluster_counts[i] == 0 {
-                new_centers[i] = current_centers[i].clone();
+            // Menangani kluster kosong
+            for i in 0..num_clusters {
+                if cluster_counts[i] == 0 {
+                    new_centers[i] = current_centers[i].clone();
+                }
             }
-        }
 
-        // Menghitung Perubahan Pusat Cluster
+            // Menghitung Perubahan Pusat Cluster
+            let mut changes = Vec::with_capacity(num_clusters);
+            let mut max_change: f64 = 0.0;
 
-        // Mengukur seberapa besar pergeseran pusat cluster dari iterasi sebelumnya.
-        // Perubahan maksimum di antara semua cluster akan digunakan untuk memeriksa konvergensi.
-        let mut changes = Vec::with_capacity(num_clusters);
-        let mut max_change: f64 = 0.0;
+            for i in 0..num_clusters {
+                let cluster_change = (0..data.variables.len())
+                    .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                changes.push((format!("{}", i + 1), cluster_change));
+                max_change = max_change.max(cluster_change);
+            }
 
-        for i in 0..num_clusters {
-            // Menghitung jarak Euclidean antara pusat cluster lama dan baru.
-            let cluster_change = (0..data.variables.len())
-                .map(|j| (new_centers[i][j] - current_centers[i][j]).powi(2))
-                .sum::<f64>()
-                .sqrt();
+            iterations.push(IterationStep { iteration, changes });
 
-            changes.push((format!("{}", i + 1), cluster_change));
-            max_change = max_change.max(cluster_change);
-        }
+            if max_change <= min_change_threshold {
+                convergence_note = Some(
+                    format!(
+                        "Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is {:.15e}. The current iteration is {}. The minimum distance between initial centers is {:.3}.",
+                        max_change,
+                        iteration,
+                        min_center_dist
+                    )
+                );
+                break;
+            }
 
-        // Simpan hasil dari iterasi saat ini.
-        iterations.push(IterationStep {
-            iteration,
-            changes,
-        });
+            current_centers = new_centers;
 
-        // Pemeriksaan Konvergensi
-        if max_change <= min_change_threshold {
-            convergence_note = Some(
-                format!(
-                    "Convergence achieved due to no or small change in cluster centers. The maximum absolute coordinate change for any center is {:.15e}. The current iteration is {}. The minimum distance between initial centers is {:.3}.",
-                    max_change,
-                    iteration,
-                    min_center_dist
-                )
-            );
-            break; // Hentikan iterasi jika sudah konvergen.
-        }
-
-        // Perbarui pusat cluster untuk iterasi berikutnya.
-        current_centers = new_centers;
-
-        // Periksa apakah iterasi telah mencapai batas maksimum.
-        if iteration == max_iterations {
-            convergence_note = Some(
-                format!("Maximum number of iterations ({}) reached without convergence.", max_iterations)
-            );
+            if iteration == max_iterations {
+                convergence_note = Some(
+                    format!("Maximum number of iterations ({}) reached without convergence.", max_iterations)
+                );
+            }
         }
     }
 
-    // Pastikan ada catatan konvergensi yang sesuai, terutama jika loop tidak berjalan
-    // atau selesai tanpa memenuhi kriteria konvergensi secara eksplisit.
+    // Pastikan ada catatan konvergensi yang sesuai
     if iterations.is_empty() {
         convergence_note = Some(String::from("No iterations performed"));
     } else if convergence_note.is_none() {
