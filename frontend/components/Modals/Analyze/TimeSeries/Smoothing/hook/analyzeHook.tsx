@@ -103,7 +103,7 @@ export function useAnalyzeHook(
         try {
             const { dataValues, dataVarDef } = prepareData();
             if (dataValues.length === 0) {
-                throw new Error("No numeric data available for selected variable.");
+                throw new Error("No data available for the selected variables.");
             }
             if (dataValues.length < 20) {
                 throw new Error("Data length must be at least 20 observations.");
