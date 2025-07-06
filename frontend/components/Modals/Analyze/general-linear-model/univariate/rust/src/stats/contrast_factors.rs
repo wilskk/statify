@@ -83,13 +83,13 @@ fn parse_contrast_factor_spec(factor_spec_str: &str) -> Result<ParsedFactorSpec,
             // Metode bukan Deviation atau Simple - abaikan pengaturan Ref
             if settings_details.len() > 1 {
                 let ref_from_spec_ignored = settings_details[1].trim();
-                web_sys::console::warn_1(
-                    &format!(
+                return Err(
+                    format!(
                         "Warning: 'Ref: {}' setting is ignored for contrast method '{}' on factor '{}'.",
                         ref_from_spec_ignored,
                         method_str, // Use original method_str in warning
                         factor_name
-                    ).into()
+                    )
                 );
             }
             // actual_ref_setting remains "N/A"
@@ -149,7 +149,6 @@ fn generate_l_matrix_and_descriptions(
 
     if num_contrasts == 0 {
         // Ini juga menangani kasus dimana level_count < 2 untuk metode yang membutuhkannya (kecuali None/Poly ditangani di atas)
-        // web_sys::console::warn_1(&format!("Factor '{}' with {} levels results in 0 contrasts for method {:?}. Skipping.", factor_to_contrast_name, level_count_of_contrasted_factor, parsed_spec.method).into());
         return Ok((Vec::new(), Vec::new(), Vec::new()));
     }
 
@@ -985,11 +984,11 @@ pub fn calculate_contrast_coefficients(
         final_factor_names_list.is_empty() &&
         !config.contrast.factor_list.as_ref().map_or(true, |f| f.is_empty())
     {
-        web_sys::console::warn_1(
-            &format!(
+        return Err(
+            format!(
                 "No contrast entries generated despite having processing specs. Factors processed: {:?}. Check L-matrix generation for each.",
                 config.contrast.factor_list.as_ref().unwrap()
-            ).into()
+            )
         );
     }
 
@@ -1012,12 +1011,11 @@ pub fn generate_polynomial_contrast(level_count: usize, degree: usize) -> Vec<f6
 
     // For this project, Polynomial is always Linear (degree 1)
     if degree != 1 {
-        // web_sys::console::warn_1(&format!("Polynomial contrast called with degree {}, but only Linear (degree 1) is supported. Proceeding with degree 1.", degree).into());
+        // Only Linear (degree 1) is supported
     }
 
     if level_count < 2 {
         // Linear contrast needs at least 2 levels
-        // web_sys::console::warn_1(&format!("Polynomial (Linear) contrast needs at least 2 levels, got {}. Returning zeros.", level_count).into());
         return contrasts;
     }
 

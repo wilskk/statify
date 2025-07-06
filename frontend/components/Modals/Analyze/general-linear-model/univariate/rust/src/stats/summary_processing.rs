@@ -1,10 +1,6 @@
 use std::collections::{ BTreeMap, HashMap };
 
-use crate::models::{
-    config::UnivariateConfig,
-    data::AnalysisData,
-    result::BetweenSubjectFactors,
-};
+use crate::models::{ config::UnivariateConfig, data::AnalysisData, result::BetweenSubjectFactors };
 
 use super::core::*;
 
@@ -23,58 +19,45 @@ pub fn basic_processing_summary(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<HashMap<String, BetweenSubjectFactors>, String> {
-    // Pastikan data untuk faktor tetap tersedia sebelum melanjutkan.
-    // Jika tidak ada, analisis tidak dapat dilakukan.
-    if data.fix_factor_data.is_empty() {
-        return Err("No fixed factor data available".to_string());
-    }
-
     // Inisialisasi HashMap untuk menampung hasil ringkasan.
     let mut result = HashMap::new();
 
-    // Ambil nama-nama faktor tetap dari konfigurasi.
-    // Jika tidak ada, kembalikan pesan kesalahan.
-    let factor_names = match &config.main.fix_factor {
-        Some(names) => names,
-        None => {
-            return Err("No fixed factors specified in configuration".to_string());
-        }
-    };
-
     // --- Proses Faktor Tetap (Fixed Factors) ---
-    // Iterasi melalui setiap nama faktor tetap yang telah ditentukan dalam konfigurasi.
-    for factor_name in factor_names {
-        // Dapatkan semua level unik untuk faktor saat ini.
-        let levels = get_factor_levels(data, factor_name)?;
-        let mut level_counts = HashMap::new();
+    if let Some(fix_factors) = &config.main.fix_factor {
+        // Iterasi melalui setiap nama faktor tetap yang telah ditentukan dalam konfigurasi.
+        for factor_name in fix_factors {
+            // Dapatkan semua level unik untuk faktor saat ini.
+            let levels = get_factor_levels(data, factor_name)?;
+            let mut level_counts = HashMap::new();
 
-        // Inisialisasi jumlah hitungan untuk setiap level dengan nilai 0.
-        // Ini memastikan bahwa semua level akan ada di hasil akhir, bahkan jika jumlahnya 0.
-        for level in levels {
-            level_counts.insert(level, 0);
-        }
+            // Inisialisasi jumlah hitungan untuk setiap level dengan nilai 0.
+            // Ini memastikan bahwa semua level akan ada di hasil akhir, bahkan jika jumlahnya 0.
+            for level in levels {
+                level_counts.insert(level, 0);
+            }
 
-        // Cari grup data yang berisi definisi untuk faktor saat ini.
-        // Data faktor dikelompokkan, jadi kita perlu menemukan grup yang benar.
-        for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
-            if def_group.iter().any(|def| &def.name == factor_name) {
-                // Jika grup ditemukan, proses setiap catatan data dalam grup tersebut.
-                if let Some(data_records) = data.fix_factor_data.get(group_idx) {
-                    for record in data_records {
-                        // Jika catatan memiliki nilai untuk faktor ini, tingkatkan hitungannya.
-                        if let Some(value) = record.values.get(factor_name) {
-                            let level = data_value_to_string(value);
-                            *level_counts.entry(level).or_insert(0) += 1;
+            // Cari grup data yang berisi definisi untuk faktor saat ini.
+            // Data faktor dikelompokkan, jadi kita perlu menemukan grup yang benar.
+            for (group_idx, def_group) in data.fix_factor_data_defs.iter().enumerate() {
+                if def_group.iter().any(|def| &def.name == factor_name) {
+                    // Jika grup ditemukan, proses setiap catatan data dalam grup tersebut.
+                    if let Some(data_records) = data.fix_factor_data.get(group_idx) {
+                        for record in data_records {
+                            // Jika catatan memiliki nilai untuk faktor ini, tingkatkan hitungannya.
+                            if let Some(value) = record.values.get(factor_name) {
+                                let level = data_value_to_string(value);
+                                *level_counts.entry(level).or_insert(0) += 1;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Konversi HashMap ke BTreeMap untuk mengurutkan hasil berdasarkan nama level (kunci).
-        // BTreeMap secara otomatis menjaga urutan kunci.
-        let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
-        result.insert(factor_name.clone(), BetweenSubjectFactors { factors: sorted_counts });
+            // Konversi HashMap ke BTreeMap untuk mengurutkan hasil berdasarkan nama level (kunci).
+            // BTreeMap secara otomatis menjaga urutan kunci.
+            let sorted_counts = level_counts.into_iter().collect::<BTreeMap<String, usize>>();
+            result.insert(factor_name.clone(), BetweenSubjectFactors { factors: sorted_counts });
+        }
     }
 
     // --- Proses Faktor Acak (Random Factors) ---

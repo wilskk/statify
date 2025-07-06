@@ -64,7 +64,7 @@ pub fn preprocess_data(
     // `exclude_pair_wise`: Kasus tetap disertakan, perhitungan hanya dilakukan pada variabel yang lengkap.
     // Metode list-wise menjadi prioritas jika kedua opsi diaktifkan.
     let use_list_wise = config.options.exclude_list_wise;
-    let use_pair_wise = config.options.exclude_pair_wise && !use_list_wise;
+    let use_pair_wise = config.options.exclude_pair_wise;
 
     // --- Iterasi dan Pengolahan Data ---
     // Memproses setiap kasus (baris) dalam data.

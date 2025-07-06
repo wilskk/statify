@@ -17,109 +17,76 @@ pub fn calculate_levene_test(
     config: &UnivariateConfig
 ) -> Result<Vec<LeveneTest>, String> {
     // Tentukan variabel dependen yang akan dianalisis.
-    // Jika tidak ada yang spesifik, gunakan semua variabel dependen yang tersedia.
-    let dep_vars = match &config.main.dep_var {
-        Some(name) => vec![name.clone()],
-        None => {
-            if data.dependent_data.is_empty() || data.dependent_data[0].is_empty() {
-                return Err("No dependent variable data found.".to_string());
-            }
-            data.dependent_data[0][0].values.keys().cloned().collect::<Vec<_>>()
+    let dep_var_name = config.main.dep_var
+        .as_ref()
+        .ok_or_else(|| "Variabel dependen tidak ditentukan dalam konfigurasi".to_string())?;
+
+    // Buat matriks desain untuk variabel dependen.
+    let design_info = match create_design_response_weights(data, config) {
+        Ok(info) => info,
+        Err(_) => {
+            return Err("Failed to create design matrix".to_string());
         }
     };
 
-    if dep_vars.is_empty() {
-        return Err("No dependent variables found for Levene's test".to_string());
-    }
+    let design_string = generate_design_string(&design_info);
 
-    // Buat string desain (misal: "1 + Intercept") untuk digunakan dalam output.
-    // Ini hanya perlu dilakukan sekali karena desainnya sama untuk semua variabel dependen.
-    let design_string = {
-        let mut temp_config = config.clone();
-        temp_config.main.dep_var = Some(dep_vars[0].clone());
-        match create_design_response_weights(data, &temp_config) {
-            Ok(info) => generate_design_string(&info),
-            Err(_) => {
-                return Err("Failed to create design matrix".to_string());
-            }
-        }
-    };
-
-    // Lakukan perhitungan Uji Levene secara paralel untuk setiap variabel dependen.
-    let results: Vec<LeveneTest> = dep_vars
-        .into_par_iter()
-        .filter_map(|dep_var_name| {
-            // Buat matriks desain untuk setiap variabel dependen.
-            let mut temp_config = config.clone();
-            temp_config.main.dep_var = Some(dep_var_name.clone());
-            let design_info = match create_design_response_weights(data, &temp_config) {
-                Ok(info) => info,
-                Err(_) => {
-                    return None;
-                }
-            };
-
-            // Tentukan data yang akan digunakan untuk Uji Levene.
-            // Jika ada kovariat, gunakan residual dari model regresi.
-            // Jika tidak ada, gunakan nilai mentah variabel dependen.
-            // Menggunakan residual menghilangkan efek kovariat pada varians.
-            let (data_for_levene, indices) = if
-                config.main.covar.as_ref().map_or(true, |c| c.is_empty())
-            {
-                // Tidak ada kovariat, gunakan data mentah.
-                (design_info.y.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
-            } else {
-                // Ada kovariat, hitung residual.
-                let ztwz_matrix = create_cross_product_matrix(&design_info).ok()?;
-                let swept_info = perform_sweep_and_extract_results(
-                    &ztwz_matrix,
-                    design_info.p_parameters
-                ).ok()?;
-
-                let y_hat = &design_info.x * &swept_info.beta_hat;
-                let residuals = &design_info.y - y_hat;
-                (residuals.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
-            };
-
-            // Kelompokkan data berdasarkan faktor (variabel independen).
-            let mut groups = create_groups_from_design_matrix(
-                &design_info,
-                &data_for_levene,
-                &indices
-            );
-
-            // Sesuai perilaku SPSS, jika tidak ada kovariat, buang grup dengan N <= 1.
-            if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
-                groups = groups
-                    .into_iter()
-                    .filter(|g| g.len() > 1)
-                    .collect();
-            }
-
-            if groups.is_empty() {
-                return None;
-            }
-
-            // Hitung berbagai jenis statistik Uji Levene.
-            let levene_entries = calculate_levene_entries(&groups, data, config)?;
-
-            if levene_entries.is_empty() {
-                return None;
-            }
-
-            Some(LeveneTest {
-                dependent_variable: dep_var_name,
-                entries: levene_entries,
-                design: design_string.clone(),
-            })
-        })
-        .collect();
-
-    if results.is_empty() {
-        Err("No valid Levene test results could be calculated".to_string())
+    // Tentukan data yang akan digunakan untuk Uji Levene.
+    // Jika ada kovariat, gunakan residual dari model regresi.
+    // Jika tidak ada, gunakan nilai mentah variabel dependen.
+    // Menggunakan residual menghilangkan efek kovariat pada varians.
+    let (data_for_levene, indices) = if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
+        // Tidak ada kovariat, gunakan data mentah.
+        (design_info.y.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
     } else {
-        Ok(results)
+        // Ada kovariat, hitung residual.
+        let ztwz_matrix = create_cross_product_matrix(&design_info).map_err(|e| {
+            format!("Failed to create cross product matrix: {}", e)
+        })?;
+        let swept_info = perform_sweep_and_extract_results(
+            &ztwz_matrix,
+            design_info.p_parameters
+        ).map_err(|e| format!("Failed to perform sweep: {}", e))?;
+
+        let y_hat = &design_info.x * &swept_info.beta_hat;
+        let residuals = &design_info.y - y_hat;
+        (residuals.as_slice().to_vec(), design_info.case_indices_to_keep.clone())
+    };
+
+    // Kelompokkan data berdasarkan faktor (variabel independen).
+    let mut groups = create_groups_from_design_matrix(&design_info, &data_for_levene, &indices);
+
+    // Sesuai perilaku SPSS, jika tidak ada kovariat, buang grup dengan N <= 1.
+    if config.main.covar.as_ref().map_or(true, |c| c.is_empty()) {
+        groups = groups
+            .into_iter()
+            .filter(|g| g.len() > 1)
+            .collect();
     }
+
+    if groups.is_empty() {
+        return Err("No groups with more than 1 observation found for Levene's test".to_string());
+    }
+
+    // Hitung berbagai jenis statistik Uji Levene.
+    let levene_entries = match calculate_levene_entries(&groups, data, config) {
+        Some(entries) => if entries.is_empty() {
+            return Err("No valid Levene test entries could be calculated".to_string());
+        } else {
+            entries
+        }
+        None => {
+            return Err("Failed to calculate Levene test entries".to_string());
+        }
+    };
+
+    let result = LeveneTest {
+        dependent_variable: dep_var_name.clone(),
+        entries: levene_entries,
+        design: design_string,
+    };
+
+    Ok(vec![result])
 }
 
 /// Menghitung entri-entri spesifik untuk tabel Uji Levene.

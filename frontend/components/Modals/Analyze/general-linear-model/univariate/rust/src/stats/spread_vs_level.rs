@@ -19,19 +19,11 @@ pub fn calculate_spread_vs_level_plots(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<SpreadVsLevelPlots, String> {
-    // Hentikan eksekusi jika plot sebaran vs. tingkat tidak diminta dalam konfigurasi.
-    if !config.options.spr_vs_level {
-        return Err("Spread vs. level plots not requested in configuration".to_string());
-    }
-
     // Dapatkan nama variabel dependen dari konfigurasi.
     // Variabel ini adalah variabel yang diukur atau diamati dalam analisis.
-    let dep_var_name = match &config.main.dep_var {
-        Some(name) => name.clone(),
-        None => {
-            return Err("No dependent variable specified in configuration".to_string());
-        }
-    };
+    let dep_var_name = config.main.dep_var
+        .as_ref()
+        .ok_or_else(|| "Variabel dependen tidak ditentukan dalam konfigurasi".to_string())?;
 
     // Buat matriks desain untuk mendapatkan struktur data.
     // Matriks desain merepresentasikan hubungan antara variabel independen (faktor)

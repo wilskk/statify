@@ -85,10 +85,7 @@ pub fn calculate_hypothesis_l_matrices(
         if let Ok(l_matrix) = l_matrix_result {
             l_matrices_map.insert(term_name.clone(), l_matrix);
         } else if let Err(e) = l_matrix_result {
-            // Log warning jika matriks tidak dapat dibuat untuk suatu term
-            web_sys::console::warn_1(
-                &format!("Could not generate L-matrix for term '{}': {}", term_name, e).into()
-            );
+            return Err(format!("Could not generate L-matrix for term '{}': {}", term_name, e));
         }
     }
 

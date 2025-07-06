@@ -20,12 +20,7 @@ pub fn run_analysis(
     // mencakup normalisasi atau standardisasi, tergantung pada konfigurasi yang diberikan.
     logger.add_log("preprocess_data");
     let preprocessed_data = match core::preprocess_data(data, config) {
-        Ok(processed) => {
-            web_sys::console::log_1(
-                &format!("Data setelah pra-pemrosesan: {:?}", processed).into()
-            );
-            processed
-        }
+        Ok(processed) => { processed }
         Err(e) => {
             error_collector.add_error("preprocess_data", &e);
             return Err(string_to_js_error(e));
@@ -40,7 +35,6 @@ pub fn run_analysis(
     if config.options.initial_cluster {
         match core::initialize_clusters(&preprocessed_data, config) {
             Ok(centers) => {
-                web_sys::console::log_1(&format!("Pusat cluster awal: {:?}", centers).into());
                 initial_centers = Some(centers);
             }
             Err(e) => {
@@ -57,7 +51,6 @@ pub fn run_analysis(
     let mut iteration_history = None;
     match core::generate_iteration_history(&preprocessed_data, config) {
         Ok(history) => {
-            web_sys::console::log_1(&format!("Riwayat iterasi: {:?}", history).into());
             iteration_history = Some(history);
         }
         Err(e) => {
@@ -71,7 +64,6 @@ pub fn run_analysis(
     let mut cluster_membership = None;
     match core::generate_cluster_membership(&preprocessed_data, config) {
         Ok(membership) => {
-            web_sys::console::log_1(&format!("Keanggotaan cluster: {:?}", membership).into());
             cluster_membership = Some(membership);
         }
         Err(e) => {
@@ -85,7 +77,6 @@ pub fn run_analysis(
     let mut final_cluster_centers = None;
     match core::generate_final_cluster_centers(&preprocessed_data, config) {
         Ok(centers) => {
-            web_sys::console::log_1(&format!("Pusat cluster akhir: {:?}", centers).into());
             final_cluster_centers = Some(centers);
         }
         Err(e) => {
@@ -100,7 +91,6 @@ pub fn run_analysis(
     let mut distances_between_centers = None;
     match core::calculate_distances_between_centers(&preprocessed_data, config) {
         Ok(distances) => {
-            web_sys::console::log_1(&format!("Jarak antar pusat cluster: {:?}", distances).into());
             distances_between_centers = Some(distances);
         }
         Err(e) => {
@@ -119,7 +109,6 @@ pub fn run_analysis(
         logger.add_log("calculate_anova");
         match core::calculate_anova(&preprocessed_data, &config) {
             Ok(result) => {
-                web_sys::console::log_1(&format!("Hasil ANOVA: {:?}", result).into());
                 anova = Some(result);
             }
             Err(e) => {
@@ -136,7 +125,6 @@ pub fn run_analysis(
         logger.add_log("generate_case_count");
         match core::generate_case_count(&preprocessed_data, &config) {
             Ok(count) => {
-                web_sys::console::log_1(&format!("Jumlah kasus per cluster: {:?}", count).into());
                 cases_count = Some(count);
             }
             Err(e) => {
@@ -152,7 +140,6 @@ pub fn run_analysis(
         logger.add_log("create_cluster_plot");
         match core::create_cluster_plot(&preprocessed_data, &config) {
             Ok(plot) => {
-                web_sys::console::log_1(&format!("Plot cluster: {:?}", plot).into());
                 cluster_plot = Some(plot);
             }
             Err(e) => {

@@ -1,13 +1,14 @@
-import React, {useEffect, useState} from "react";
-import {Button} from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
     KMeansClusterIterateProps,
     KMeansClusterIterateType,
 } from "@/components/Modals/Analyze/Classify/k-means-cluster/types/k-means-cluster";
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {CheckedState} from "@radix-ui/react-checkbox";
-import {Checkbox} from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 export const KMeansClusterIterate = ({
     isIterateOpen,
@@ -37,6 +38,23 @@ export const KMeansClusterIterate = ({
     };
 
     const handleContinue = () => {
+        if (
+            !iterateState.MaximumIterations ||
+            iterateState.MaximumIterations < 1
+        ) {
+            toast.warning("Maximum iterations must be at least 1.");
+            return;
+        }
+        if (
+            !iterateState.ConvergenceCriterion ||
+            iterateState.ConvergenceCriterion <= 0 ||
+            iterateState.ConvergenceCriterion > 1
+        ) {
+            toast.warning(
+                "Convergence criterion must be greater than 0 and less than or equal to 1."
+            );
+            return;
+        }
         Object.entries(iterateState).forEach(([key, value]) => {
             updateFormData(key as keyof KMeansClusterIterateType, value);
         });
@@ -53,7 +71,7 @@ export const KMeansClusterIterate = ({
                     <Input
                         id="MaximumIterations"
                         type="number"
-                        value={iterateState.MaximumIterations ?? ""}
+                        value={iterateState.MaximumIterations ?? 0}
                         onChange={(e) =>
                             handleChange(
                                 "MaximumIterations",
@@ -68,7 +86,7 @@ export const KMeansClusterIterate = ({
                     <Input
                         id="ConvergenceCriterion"
                         type="number"
-                        value={iterateState.ConvergenceCriterion ?? ""}
+                        value={iterateState.ConvergenceCriterion ?? 0}
                         onChange={(e) =>
                             handleChange(
                                 "ConvergenceCriterion",

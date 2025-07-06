@@ -15,10 +15,6 @@ pub fn calculate_robust_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<RobustParameterEstimates, String> {
-    if !config.options.param_est_rob_std_err {
-        return Err("Robust parameter estimates not requested in configuration".to_string());
-    }
-
     // Langkah 1: Membuat matriks desain (X), vektor respons (y), dan bobot (W)
     let design_info = match create_design_response_weights(data, config) {
         Ok(info) => info,

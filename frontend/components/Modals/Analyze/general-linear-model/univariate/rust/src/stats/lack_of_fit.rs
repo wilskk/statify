@@ -44,11 +44,6 @@ pub fn calculate_lack_of_fit_tests(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<LackOfFitTests, String> {
-    // Pastikan uji "Lack of Fit" diminta dalam konfigurasi.
-    if !config.options.lack_of_fit {
-        return Err("Lack of fit tests not requested in configuration".to_string());
-    }
-
     // Langkah 1: Fit model utama untuk mendapatkan Sum of Squares Error (SSE) Total.
 
     // Buat matriks desain (X), vektor respons (Y), dan bobot dari data mentah.

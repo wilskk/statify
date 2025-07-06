@@ -217,6 +217,10 @@ export const KMeansClusterDialog = ({
             );
             return;
         }
+        if (!mainState.Cluster || mainState.Cluster < 2) {
+            toast.warning("Number of clusters must be at least 2.");
+            return;
+        }
         Object.entries(mainState).forEach(([key, value]) => {
             updateFormData(key as keyof KMeansClusterMainType, value);
         });
@@ -313,7 +317,7 @@ export const KMeansClusterDialog = ({
                                                 id="Cluster"
                                                 type="number"
                                                 placeholder=""
-                                                value={mainState.Cluster ?? ""}
+                                                value={mainState.Cluster ?? 0}
                                                 min={2}
                                                 onChange={(e) =>
                                                     handleChange(

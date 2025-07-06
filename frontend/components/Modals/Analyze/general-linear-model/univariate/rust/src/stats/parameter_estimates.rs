@@ -24,13 +24,7 @@ pub fn calculate_parameter_estimates(
     data: &AnalysisData,
     config: &UnivariateConfig
 ) -> Result<ParameterEstimates, String> {
-    // Langkah 1: Validasi awal
-    // Jika estimasi parameter tidak diminta dalam konfigurasi, kembalikan hasil kosong.
-    if !config.options.param_est {
-        return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
-    }
-
-    // Langkah 2: Persiapan data dan matriks desain
+    // Langkah 1: Persiapan data dan matriks desain
     // Membuat matriks desain (X), vektor respons (y), dan bobot (W) berdasarkan data dan konfigurasi model.
     // `design_info` berisi semua komponen yang diperlukan untuk perhitungan GLM.
     let design_info = create_design_response_weights(data, config)?;
@@ -50,9 +44,7 @@ pub fn calculate_parameter_estimates(
         return Ok(ParameterEstimates { estimates: Vec::new(), notes: Vec::new() });
     }
 
-    web_sys::console::log_1(&format!("{:?}", design_info).into());
-
-    // Langkah 3: Perhitungan Inti GLM
+    // Langkah 2: Perhitungan Inti GLM
     // Membuat matriks cross-product (Z'WZ) yang merupakan dasar untuk estimasi OLS/WLS.
     let ztwz_matrix = create_cross_product_matrix(&design_info)?;
 
@@ -69,7 +61,7 @@ pub fn calculate_parameter_estimates(
     let n_samples = design_info.n_samples;
     let r_x_rank = design_info.r_x_rank;
 
-    // Langkah 4: Menghitung Derajat Kebebasan (Degrees of Freedom) dan Mean Squared Error (MSE)
+    // Langkah 3: Menghitung Derajat Kebebasan (Degrees of Freedom) dan Mean Squared Error (MSE)
     // Derajat kebebasan untuk galat (error) dihitung sebagai: df_error = n - rank(X)
     // Di mana n adalah jumlah sampel dan rank(X) adalah rank dari matriks desain.
     let df_error_val = if n_samples > r_x_rank { (n_samples - r_x_rank) as f64 } else { 0.0 };
@@ -88,7 +80,7 @@ pub fn calculate_parameter_estimates(
     let sig_level = config.options.sig_level;
     let sig_level_opt = Some(sig_level);
 
-    // Langkah 5: Menghitung statistik untuk setiap parameter
+    // Langkah 4: Menghitung statistik untuk setiap parameter
     // Mendapatkan semua nama parameter yang akan diestimasi, diurutkan untuk konsistensi.
     let all_parameter_names = generate_all_row_parameter_names_sorted(&design_info, data)?;
 
@@ -281,7 +273,7 @@ pub fn calculate_parameter_estimates(
         });
     }
 
-    // Langkah 6: Membuat catatan akhir untuk output.
+    // Langkah 5: Membuat catatan akhir untuk output.
     let mut notes = Vec::new();
     let mut note_letter = 'a';
 
