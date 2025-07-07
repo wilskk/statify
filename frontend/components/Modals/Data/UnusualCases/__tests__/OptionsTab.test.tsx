@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import OptionsTab from '../OptionsTab';
@@ -42,6 +42,10 @@ describe('OptionsTab Component', () => {
         jest.clearAllMocks();
     });
 
+    afterEach(() => {
+        cleanup();
+    });
+
     it('renders all controls with default values', () => {
         renderComponent();
         expect(screen.getByLabelText('Percentage of cases with highest anomaly index values')).toBeChecked();
@@ -69,13 +73,20 @@ describe('OptionsTab Component', () => {
     });
     
     it('disables inputs based on criteria selection', () => {
-        // Percentage input should be enabled, Fixed input disabled
-        renderComponent({ identificationCriteria: 'percentage' });
+        const { rerender } = renderComponent({ identificationCriteria: 'percentage' });
+
+        // First state: percentage selected
         expect(screen.getByLabelText('Percentage:')).toBeEnabled();
         expect(screen.getByLabelText('Number:')).toBeDisabled();
 
-        // Fixed input should be enabled, Percentage input disabled
-        renderComponent({ identificationCriteria: 'fixed' });
+        // Second state: switch to fixed
+        rerender(
+            <OptionsTab
+                {...defaultProps}
+                identificationCriteria="fixed"
+            />
+        );
+
         expect(screen.getByLabelText('Percentage:')).toBeDisabled();
         expect(screen.getByLabelText('Number:')).toBeEnabled();
     });

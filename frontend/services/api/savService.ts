@@ -1,4 +1,4 @@
-import { API_BASE_URL, handleApiResponse, getApiUrl } from './config';
+import { handleApiResponse, getApiUrl, getUserId } from './config';
 
 interface SaveVariableDTO {
   name: string;
@@ -34,8 +34,16 @@ export async function uploadSavFile(fileOrFormData: File | FormData) {
     formData.append('file', fileOrFormData);
   }
 
+  // Client-side validation: file must be .sav and <= 10 MB
+  if (fileOrFormData instanceof File) {
+    if (!fileOrFormData.name.toLowerCase().endsWith('.sav') || fileOrFormData.size > 10 * 1024 * 1024) {
+      throw new Error('Berkas harus berformat .sav dan maksimal 10 MB');
+    }
+  }
+
   const response = await fetch(getApiUrl('sav/upload'), {
     method: 'POST',
+    headers: { 'X-User-Id': getUserId() },
     body: formData,
   });
 
@@ -50,6 +58,7 @@ export async function createSavFile(data: SaveSavFileDTO): Promise<Blob> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-User-Id': getUserId(),
     },
     body: JSON.stringify(data),
   });
