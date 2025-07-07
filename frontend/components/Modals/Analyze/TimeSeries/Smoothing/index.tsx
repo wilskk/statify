@@ -151,10 +151,10 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
 
     const moveToSelectedVariables = (variable: Variable, targetIndex?: number) => {
         if (selectedVariables.length > 0) {
-            setErrorMsg("Hanya boleh memilih satu variabel saja.");
+            setErrorMsg("You may only select one variable.");
             return;
         }
-        setErrorMsg(null); // clear error kalau sukses
+        setErrorMsg(null); // clear error if successful
         setAvailableVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setSelectedVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {

@@ -161,6 +161,11 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
     };
 
     const moveToAvailableVariables = (variable: Variable, targetIndex?: number) => {
+        if (selectedVariables.length > 0) {
+            setErrorMsg("You may only select one variable.");
+            return;
+        }
+        setErrorMsg(null); // clear error if successful
         setSelectedVariables(prev => prev.filter(v => v.columnIndex !== variable.columnIndex));
         setAvailableVariables(prev => {
             if (prev.some(v => v.columnIndex === variable.columnIndex)) {
