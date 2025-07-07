@@ -1,35 +1,48 @@
 "use client";
 
-import React, { FC, useState, useEffect, useCallback } from "react";
+import React, { FC, useCallback, useEffect, useMemo, useState } from "react";
+import { HelpCircle, Loader2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import {
-    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger
 } from "@/components/ui/tabs";
-import type { Variable } from "@/types/Variable";
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
+} from "@/components/ui/tooltip";
+import { TourPopup } from "@/components/Common/TourComponents";
+import { useVariableStore } from "@/stores/useVariableStore";
 import { BaseModalProps } from "@/types/modalTypes";
-
-import VariablesTab from "./components/VariablesTab";
-import { DefineGroupsDialog } from "./dialogs/DefineGroupsDialog";
-import { 
+import {
     useVariableSelection,
     useGroupSettings,
-    useIndependentSamplesTTestAnalysis
+    useIndependentSamplesTTestAnalysis,
+    useTourGuide,
+    baseTourSteps,
 } from "./hooks";
-import { DefineGroupsOptions, HighlightedVariable } from "./types";
+import {
+    TabControlProps,
+    TabType,
+} from "./types";
 
-// Komponen konten yang digunakan baik untuk sidebar maupun dialog
-const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState<"variables">("variables");
+import VariablesTab from "./components/VariablesTab";
+// import OptionsTab from "./components/OptionsTab";
+
+const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose, containerType = "dialog" }) => {
+    const [activeTab, setActiveTab] = useState<"variables" | "options">("variables");
+    const isVariablesLoading = useVariableStore((state: any) => state.isLoading);
+    const variablesError = useVariableStore((state: any) => state.error);
 
     const {
         availableVariables,
@@ -37,83 +50,33 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
         groupingVariable,
         highlightedVariable,
         setHighlightedVariable,
-        moveToTestVariable,
+        moveToTestVariables,
         moveToGroupingVariable,
         moveToAvailableVariables,
         reorderVariables,
         resetVariableSelection
     } = useVariableSelection();
 
-    const [showDefineGroupsModal, setShowDefineGroupsModal] = useState<boolean>(false);
-    const [group1, setGroup1] = useState<number | null>(null);
-    const [group2, setGroup2] = useState<number | null>(null);
-    const [cutPointValue, setCutPointValue] = useState<number | null>(null);
-    const [defineGroups, setDefineGroups] = useState<DefineGroupsOptions>({
-        useSpecifiedValues: true,
-        cutPoint: false,
-        group1: null,
-        group2: null,
-        cutPointValue: null
-    });
+    const {
+        defineGroups,
+        setDefineGroups,
+        group1,
+        setGroup1,
+        group2,
+        setGroup2,
+        cutPointValue,
+        setCutPointValue,
+        estimateEffectSize,
+        setEstimateEffectSize,
+        resetGroupSettings
+    } = useGroupSettings();
 
-    const [tempDefineGroups, setTempDefineGroups] = useState<DefineGroupsOptions>({
-        useSpecifiedValues: true,
-        cutPoint: false,
-        group1: null,
-        group2: null,
-        cutPointValue: null
-    });
-    const [tempGroup1, setTempGroup1] = useState<number | null>(null);
-    const [tempGroup2, setTempGroup2] = useState<number | null>(null);
-    const [tempCutPointValue, setTempCutPointValue] = useState<number | null>(null);
-    const [groupRangeError, setGroupRangeError] = useState<string | null>(null);
-    
-    const [estimateEffectSize, setEstimateEffectSize] = useState<boolean>(false);
-    
-    // Initialize temp values when modal is shown
-    useEffect(() => {
-        if (showDefineGroupsModal) {
-            setTempGroup1(group1);
-            setTempGroup2(group2);
-            setTempCutPointValue(cutPointValue);
-            setTempDefineGroups({
-                ...defineGroups
-            });
-        }
-    }, [showDefineGroupsModal, group1, group2, cutPointValue, defineGroups]);
-
-    // Handle variable selection
-    const handleVariableSelect = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping') => {
-        if (!variable) return;
-        setHighlightedVariable(variable.columnIndex ? { tempId: variable.columnIndex.toString(), source } : null);
-    }, [setHighlightedVariable]);
-
-    // Handle variable movement between lists
-    const handleMoveVariable = useCallback((variable: Variable, source: 'available' | 'selected' | 'grouping', targetIndex?: number) => {
-        if (!variable) return;
-
-        // Different handling based on source
-        switch (source) {
-            case 'available':
-                // Move from available to test variables
-                moveToTestVariable(variable, targetIndex);
-                break;
-                
-            case 'selected':
-                // Move from test variables to available
-                moveToAvailableVariables(variable, 'selected', targetIndex);
-                break;
-                
-            case 'grouping':
-                // Move from grouping to available
-                if (groupingVariable && groupingVariable.id === variable.id) {
-                    moveToAvailableVariables(variable, 'grouping', targetIndex);
-                }
-                break;
-        }
-    }, [groupingVariable, moveToTestVariable, moveToAvailableVariables]);
-
-    const { isLoading, errorMsg, runAnalysis, cancelAnalysis } = useIndependentSamplesTTestAnalysis({
+    const { 
+        isCalculating,
+        errorMsg, 
+        runAnalysis,
+        cancelCalculation
+    } = useIndependentSamplesTTestAnalysis({
         testVariables,
         groupingVariable,
         defineGroups,
@@ -124,222 +87,214 @@ const IndependentSamplesTTestContent: FC<BaseModalProps> = ({ onClose }) => {
         onClose
     });
 
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (cancelAnalysis) {
-                cancelAnalysis();
-            }
-        };
-    }, [cancelAnalysis]);
+    const tabControl = useMemo((): TabControlProps => ({
+        setActiveTab: (tab: string) => {
+            setActiveTab(tab as TabType);
+        },
+        currentActiveTab: activeTab
+    }), [activeTab]);
+
+    const {
+        tourActive,
+        currentStep,
+        tourSteps,
+        currentTargetElement,
+        startTour,
+        nextStep,
+        prevStep,
+        endTour
+    } = useTourGuide(baseTourSteps, containerType, tabControl);
+
+    const handleReset = useCallback(() => {
+        resetVariableSelection();
+        resetGroupSettings();
+        cancelCalculation();
+    }, [resetVariableSelection, resetGroupSettings, cancelCalculation]);
 
     const handleTabChange = useCallback((value: string) => {
-        if (value === 'variables') {
+        if (value === 'variables' || value === 'options') {
             setActiveTab(value);
         }
     }, [setActiveTab]);
 
-    const handleReset = () => {
-        resetVariableSelection();
-        setEstimateEffectSize(false);
-        setDefineGroups({
-            useSpecifiedValues: true,
-            cutPoint: false,
-            group1: null,
-            group2: null,
-            cutPointValue: null
-        });
-        setGroup1(null);
-        setGroup2(null);
-        setCutPointValue(null);
-        setGroupRangeError(null);
-    };
+    useEffect(() => {
+        return () => {
+            cancelCalculation();
+        };
+    }, [cancelCalculation]);
 
-    // Placeholder for Paste functionality
-    const handlePaste = () => {
-        console.log("Paste action triggered");
-        // TODO: Implement paste logic if needed
-    };
-
-    // Placeholder for Help functionality
-    const handleHelp = () => {
-        console.log("Help action triggered");
-        // TODO: Implement help logic if needed
-    };
-
-    // Apply changes from Define Groups dialog
-    const applyDefineGroups = () => {
-        if (tempDefineGroups.useSpecifiedValues) {
-            if (tempGroup1 !== null && !Number.isInteger(tempGroup1)) {
-                setGroupRangeError("Minimum value must be an integer");
-                return;
-            }
-            
-            if (tempGroup2 !== null && !Number.isInteger(tempGroup2)) {
-                setGroupRangeError("Maximum value must be an integer");
-                return;
-            }
-            
-            // Ensure values are integers by rounding them
-            const group1Value = tempGroup1 !== null ? Math.floor(tempGroup1) : null;
-            const group2Value = tempGroup2 !== null ? Math.floor(tempGroup2) : null;
-            
-            setGroup1(group1Value);
-            setGroup2(group2Value);
-        } else {
-            if (tempCutPointValue !== null && !Number.isInteger(tempCutPointValue)) {
-                setGroupRangeError("Cut point must be an integer");
-                return;
-            }
-            
-            setCutPointValue(tempCutPointValue);
-        }
-        
-        setDefineGroups({
-            useSpecifiedValues: tempDefineGroups.useSpecifiedValues,
-            cutPoint: tempDefineGroups.cutPoint,
-            group1: tempGroup1,
-            group2: tempGroup2,
-            cutPointValue: tempCutPointValue
-        });
-        setShowDefineGroupsModal(false);
-    };
-
-    return (
-        <>
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
-                <div className="border-b border-border flex-shrink-0">
-                    <TabsList>
-                        <TabsTrigger value="variables">Variables</TabsTrigger>
-                    </TabsList>
+    const renderContent = () => {
+        if (isVariablesLoading) {
+            return (
+                <div className="flex items-center justify-center p-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">Loading variables...</span>
                 </div>
+            );
+        }
 
+        if (variablesError) {
+            return (
+                <div className="p-10 text-destructive text-center">
+                    <p>Error loading variables:</p>
+                    <p className="text-sm">{variablesError.message}</p>
+                </div>
+            )
+        }
+
+        return (
+            <>
                 <TabsContent value="variables" className="p-6 overflow-y-auto flex-grow">
                     <VariablesTab
                         availableVariables={availableVariables}
                         testVariables={testVariables}
                         groupingVariable={groupingVariable}
                         defineGroups={defineGroups}
+                        setDefineGroups={setDefineGroups}
                         group1={group1}
+                        setGroup1={setGroup1}
                         group2={group2}
+                        setGroup2={setGroup2}
                         cutPointValue={cutPointValue}
+                        setCutPointValue={setCutPointValue}
+                        estimateEffectSize={estimateEffectSize}
+                        setEstimateEffectSize={setEstimateEffectSize}
                         highlightedVariable={highlightedVariable}
                         setHighlightedVariable={setHighlightedVariable}
-                        estimateEffectSize={estimateEffectSize}
-                        handleVariableSelect={handleVariableSelect}
-                        handleVariableDoubleClick={handleMoveVariable}
-                        handleDefineGroupsClick={() => setShowDefineGroupsModal(true)} 
-                        moveToAvailableVariables={moveToAvailableVariables}
-                        moveToTestVariable={moveToTestVariable}
+                        moveToTestVariables={moveToTestVariables}
                         moveToGroupingVariable={moveToGroupingVariable}
+                        moveToAvailableVariables={moveToAvailableVariables}
                         reorderVariables={reorderVariables}
-                        errorMsg={errorMsg}
+                        tourActive={tourActive}
+                        currentStep={currentStep}
+                        tourSteps={tourSteps}
                     />
                 </TabsContent>
+
+                {/* Options tab can be added here when needed */}
+            </>
+        );
+    }
+
+    return (
+        <>
+            <AnimatePresence>
+                {tourActive && tourSteps.length > 0 && currentStep < tourSteps.length && (
+                    <TourPopup
+                        step={tourSteps[currentStep]}
+                        currentStep={currentStep}
+                        totalSteps={tourSteps.length}
+                        onNext={nextStep}
+                        onPrev={prevStep}
+                        onClose={endTour}
+                        targetElement={currentTargetElement}
+                    />
+                )}
+            </AnimatePresence>
+
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex flex-col flex-grow overflow-hidden">
+                <div className="border-b border-border flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger
+                            id="variables-tab-trigger"
+                            value="variables"
+                        >
+                            Variables
+                        </TabsTrigger>
+                        <TabsTrigger
+                            id="options-tab-trigger"
+                            value="options"
+                        >
+                            Options
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                {renderContent()}
             </Tabs>
-            
-            <div className="px-6 py-4 border-t border-border bg-muted flex-shrink-0">
-                <div className="flex justify-end space-x-3">
-                    <Button
-                        onClick={runAnalysis}
-                        disabled={
-                            isLoading ||
-                            testVariables.length < 1 ||
-                            !groupingVariable ||
-                            (defineGroups.useSpecifiedValues && (!group1 || !group2)) ||
-                            (defineGroups.cutPoint && !cutPointValue)
-                        }
-                    >
-                        {isLoading ? "Processing..." : "OK"}
-                    </Button>
+
+            {errorMsg && <div className="px-6 py-2 text-destructive">{errorMsg}</div>}
+
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-secondary flex-shrink-0">
+                <div className="flex items-center text-muted-foreground">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={startTour}
+                                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                                >
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs">Start feature tour</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                <div>
                     <Button
                         variant="outline"
-                        onClick={handlePaste}
-                        disabled={isLoading}
-                    >
-                        Paste
-                    </Button>
-                    <Button
-                        variant="outline"
+                        className="mr-2"
                         onClick={handleReset}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Reset
                     </Button>
                     <Button
                         variant="outline"
+                        className="mr-2"
                         onClick={onClose}
-                        disabled={isLoading}
+                        disabled={isCalculating}
                     >
                         Cancel
                     </Button>
                     <Button
-                        variant="outline"
-                        onClick={handleHelp}
-                        disabled={isLoading}
+                        id="independent-samples-t-test-ok-button"
+                        onClick={runAnalysis}
+                        disabled={
+                            isCalculating ||
+                            testVariables.length < 1 ||
+                            !groupingVariable ||
+                            (defineGroups.useSpecifiedValues && (!group1 || !group2)) || 
+                            (!defineGroups.useSpecifiedValues && !cutPointValue)
+                        }
                     >
-                        Help
+                        {isCalculating ? "Processing..." : "OK"}
                     </Button>
                 </div>
             </div>
-
-            {/* Define Groups Dialog */}
-            <DefineGroupsDialog
-                open={showDefineGroupsModal}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setShowDefineGroupsModal(false);
-                        // Reset temp values to current values when closing
-                        setTempGroup1(group1);
-                        setTempGroup2(group2);
-                        setTempCutPointValue(cutPointValue);
-                        setTempDefineGroups({
-                            ...defineGroups
-                        });
-                    }
-                }}
-                tempDefineGroups={tempDefineGroups}
-                setTempDefineGroups={setTempDefineGroups}
-                tempGroup1={tempGroup1}
-                setTempGroup1={setTempGroup1}
-                tempGroup2={tempGroup2}
-                setTempGroup2={setTempGroup2}
-                tempCutPointValue={tempCutPointValue}
-                setTempCutPointValue={setTempCutPointValue}
-                groupRangeError={groupRangeError}
-                setGroupRangeError={setGroupRangeError}
-                onApply={applyDefineGroups}
-            />
         </>
     );
 };
 
-// Komponen utama yang menangani rendering berdasarkan containerType
-const Index: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
-    // Jika sidebar mode, gunakan div container tanpa header
+const IndependentSamplesTTest: FC<BaseModalProps> = ({ onClose, containerType = "dialog", ...props }) => {
     if (containerType === "sidebar") {
         return (
             <div className="h-full flex flex-col overflow-hidden bg-popover text-popover-foreground">
                 <div className="flex-grow flex flex-col overflow-hidden">
-                    <IndependentSamplesTTestContent onClose={onClose} />
+                    <IndependentSamplesTTestContent onClose={onClose} containerType={containerType} {...props} />
                 </div>
             </div>
         );
     }
 
-    // Untuk mode dialog, gunakan Dialog dan DialogContent
     return (
-        <Dialog open={true} onOpenChange={() => onClose()}>
-            <DialogContent className="max-w-3xl p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[90vh]">
-                <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-                    <DialogTitle className="text-xl font-semibold">Independent-Samples T-Test</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow flex flex-col overflow-hidden">
-                    <IndependentSamplesTTestContent onClose={onClose} />
-                </div>
-            </DialogContent>
-        </Dialog>
+        <DialogContent className="max-w-[600px] p-0 bg-popover text-popover-foreground border border-border shadow-md rounded-md flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+                <DialogTitle className="text-[22px] font-semibold">Independent Samples T-Test</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-grow flex flex-col overflow-hidden">
+                <IndependentSamplesTTestContent onClose={onClose} containerType={containerType} {...props} />
+            </div>
+        </DialogContent>
     );
 };
 
-export default Index;
+export default IndependentSamplesTTest;
+export { IndependentSamplesTTestContent };

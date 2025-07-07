@@ -58,9 +58,7 @@ const VariablesTab: FC<VariablesTabProps> = ({
             id: 'test',
             title: 'Test Variable(s):',
             variables: testVariables,
-            height: '300px',
-            draggableItems: true,
-            droppable: true
+            height: '300px'
         }
     ];
 
@@ -104,39 +102,41 @@ const VariablesTab: FC<VariablesTabProps> = ({
     const renderTestFooter = useCallback((listId: string) => {
         if (listId === 'test') {
             return (
-                <div className="mt-4 space-y-2">
-                    <div id="test-value-section" className="flex items-center">
-                        <Label htmlFor="test-value" className="w-20 h-8 text-sm">Test Value:</Label>
-                        <Input
-                            id="test-value"
-                            type="number"
-                            value={testValue}
-                            onChange={(e) => setTestValue(Number(e.target.value))}
-                            className="w-20 h-8 text-sm"
-                        />
-                        {tourActive && isTourElementActive("test-value-section") && (
-                            <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
-                        )}
+                <>
+                    <div className="mt-4 space-y-2">
+                        <div id="test-value-section" className="flex items-center relative">
+                            <Label htmlFor="test-value" className="w-20 h-8 text-sm">Test Value:</Label>
+                            <Input
+                                id="test-value"
+                                type="number"
+                                value={testValue}
+                                onChange={(e) => setTestValue(Number(e.target.value))}
+                                className="w-20 h-8 text-sm"
+                            />
+                            {tourActive && isTourElementActive("test-value-section") && (
+                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                            )}
+                        </div>
+                        <div id="estimate-effect-size-section" className="flex items-center">
+                            <Checkbox
+                                id="estimate-effect-size"
+                                checked={estimateEffectSize}
+                                onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
+                                className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                            />
+                            <Label htmlFor="estimate-effect-size" className="text-sm cursor-pointer">
+                                Estimate effect size
+                            </Label>
+                            {tourActive && isTourElementActive("estimate-effect-size-section") && (
+                                <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
+                            )}
+                        </div>
                     </div>
-                    <div id="estimate-effect-size-section" className="flex items-center">
-                        <Checkbox
-                            id="estimate-effect-size"
-                            checked={estimateEffectSize}
-                            onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
-                            className="mr-2 h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                        />
-                        <Label htmlFor="estimate-effect-size" className="text-sm cursor-pointer">
-                            Estimate effect size
-                        </Label>
-                        {tourActive && isTourElementActive("estimate-effect-size-section") && (
-                            <div className="absolute inset-0 pointer-events-none border-2 border-primary animate-pulse rounded-md z-10"></div>
-                        )}
-                    </div>
-                </div>
+                </>
             );
         }
         return null;
-    }, [testValue, setTestValue, estimateEffectSize, setEstimateEffectSize, tourActive]);
+    }, [testValue, setTestValue, estimateEffectSize, setEstimateEffectSize, tourActive, isTourElementActive]);
 
     const renderExtraInfo = () => (
         <>
@@ -174,8 +174,8 @@ const VariablesTab: FC<VariablesTabProps> = ({
             <div id="one-sample-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
                 <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-available-variables')} />
             </div>
-            <div id="one-sample-t-test-selected-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
-                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-selected-variables')} />
+            <div id="one-sample-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'one-sample-t-test-test-variables')} />
             </div>
         </>
     );

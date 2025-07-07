@@ -18,21 +18,17 @@ import './libs/chiSquare.js';
 // import './libs/twoRelatedSamples.js';
 // import './libs/kIndependentSamples.js';
 // import './libs/kRelatedSamples.js';
-// import './libs/statisticsDescriptives.js';
-
-// Import functions for descriptives and frequencies
-// import { calculateDescriptives } from './libs/descriptives.js';
-// import { calculateFrequencies } from './libs/frequencies.js';
+import './libs/descriptiveStatistics.js';
 
 // Definisikan global calculator map
 const calculators = {
-    chiSquare: ChiSquareCalculator
+    chiSquare: ChiSquareCalculator,
     // runs: RunsCalculator,
     // twoIndependentSamples: TwoIndependentSamplesCalculator,
     // twoRelatedSamples: TwoRelatedSamplesCalculator,
     // kIndependentSamples: KIndependentSamplesCalculator,
     // kRelatedSamples: KRelatedSamplesCalculator,
-    // statisticsDescriptives: StatisticsDescriptivesCalculator
+    descriptiveStatistics: DescriptiveStatisticsCalculator
 };
 
 /**
@@ -50,68 +46,85 @@ onmessage = (event) => {
     // --- End of Debugging ---
 
     try {
-        const CalculatorClass = calculators[analysisType];
-        if (!CalculatorClass) {
-            throw new Error(`Tipe analisis tidak valid: ${analysisType}`);
-        }
+        let results = {};
+        analysisType.forEach(type => {
+            const CalculatorClass = calculators[type];
+            if (!CalculatorClass) {
+                throw new Error(`Tipe analisis tidak valid: ${type}`);
+            }
 
-        // Ekstrak argumen dan buat instance kalkulator.
-        // Memastikan semua argumen diteruskan secara eksplisit.
-        let calculator;
-        
-        // Handle different calculator types with their specific parameters
-        if (analysisType === 'chiSquare') {
-            calculator = new CalculatorClass({ 
-                variable, 
-                data, 
-                options 
-            });
-        // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
-        //     calculator = new CalculatorClass({ 
-        //         variable, 
-        //         data, 
-        //         groupingVariable, 
-        //         groupingData, 
-        //         weights, 
-        //         options 
-        //     });
-        // } else if (['twoRelatedSamples', 'kRelatedSamples'].includes(analysisType)) {
-        //     calculator = new CalculatorClass({ 
-        //         variable, 
-        //         data, 
-        //         weights, 
-        //         options 
-        //     });
-        } else {
-            calculator = new CalculatorClass({ 
-                variable, 
-                data, 
-                options 
-            });
-        }
-        
-        console.log('[Worker] Calculator instance created:', calculator);
-        const results = calculator.getOutput();
-        console.log('[Worker] Results:', results);
-        
-        if (analysisType === 'chiSquare') {
-            postMessage({
-                status: 'success',
-                variableName: variable.name || 'unknown',
-                specifiedRange: options?.expectedRange?.useSpecifiedRange,
-                results: results,
-            });
-            return;
-        }
+            let calculator;
 
-        postMessage({
+            if (type === 'descriptiveStatistics') {
+                calculator = new CalculatorClass({ 
+                    variable, 
+                    data, 
+                    options 
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Descriptive Statistics Results:', JSON.stringify(calculator.getOutput().descriptiveStatistics));
+                results.descriptiveStatistics = calculator.getOutput().descriptiveStatistics;
+            } else if (type === 'chiSquare') {
+                calculator = new CalculatorClass({ 
+                    variable,
+                    data,
+                    options
+                });
+
+                console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+                console.log('[Worker] Frequencies Results:', JSON.stringify(calculator.getOutput().frequencies));
+                console.log('[Worker] Chi Square Results:', JSON.stringify(calculator.getOutput().testStatistics));
+                results.frequencies = calculator.getOutput().frequencies;
+                results.testStatistics = calculator.getOutput().testStatistics;
+
+            // } else if (['twoIndependentSamples', 'kIndependentSamples'].includes(analysisType)) {
+            //     calculator = new CalculatorClass({ 
+            //         variable, 
+            //         data, 
+            //         groupingVariable, 
+            //         groupingData, 
+            //         weights, 
+            //         options 
+            //     });
+            // } else if (['twoRelatedSamples', 'kRelatedSamples'].includes(analysisType)) {
+            //     calculator = new CalculatorClass({ 
+            //         variable, 
+            //         data, 
+            //         weights, 
+            //         options 
+            //     });
+            } else {
+                calculator = new CalculatorClass({ 
+                    variable, 
+                    data, 
+                    options 
+                });
+            }
+            console.log('[Worker] Calculator instance created:', JSON.stringify(calculator));
+            console.log('[Worker] Results:', JSON.stringify(results));
+        });
+
+        console.log('[Worker] Final results:', JSON.stringify(results));
+
+        let postMessageBody = {
             status: 'success',
             variableName: variable.name || 'unknown',
             results: results,
-        });
+        }
+
+        if (analysisTypes.includes('descriptiveStatistics')) {
+            postMessageBody.displayStatistics = options?.displayStatistics;
+        }
+
+        if (analysisTypes.includes('chiSquare')) {
+            postMessageBody.specifiedRange = options?.expectedRange?.useSpecifiedRange;
+        }
+
+        postMessage(postMessageBody);
 
     } catch (error) {
-        console.error(`Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);
+        console.error(`[Worker] Error dalam worker untuk variabel ${variable?.name || 'unknown'}:`, error);
         postMessage({
             status: 'error',
             variableName: variable?.name || 'unknown',

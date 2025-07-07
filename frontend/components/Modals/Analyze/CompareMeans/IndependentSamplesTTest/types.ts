@@ -1,149 +1,210 @@
-import type { Variable } from "@/types/Variable";
-import { BaseModalProps } from "@/types/modalTypes";
+import { Variable } from "@/types/Variable";
 import { Dispatch, SetStateAction } from "react";
-
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
+import { BaseModalProps } from "@/types/modalTypes";
 
 // ---------------------------------
+// Constants
+// ---------------------------------
+
+// Tab Constants
+export const TABS = {
+    VARIABLES: 'variables' as const,
+    OPTIONS: 'options' as const,
+};
+
+// ---------------------------------
+// Type
+// ---------------------------------
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES | typeof TABS.OPTIONS;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+    requiredTab?: TabType | string;
+    forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
+  tempId: string;
+  source: 'available' | 'test' | 'grouping';
+};
+
 // Define Groups Options
-// ---------------------------------
 export interface DefineGroupsOptions {
     useSpecifiedValues: boolean;
     cutPoint: boolean;
-    group1: number | null;
-    group2: number | null;
-    cutPointValue: number | null;
 }
 
 // ---------------------------------
-// Test Settings Types
+// Props
 // ---------------------------------
-export interface IndependentSamplesTTestOptions {
-    defineGroups: DefineGroupsOptions;
-    group1: number | null;
-    group2: number | null;
-    cutPointValue: number | null;
-    estimateEffectSize: boolean;
+
+// TabControl Props
+export interface TabControlProps {
+    setActiveTab: (tab: 'variables' | 'options') => void;
+    currentActiveTab: string;
 }
 
-// ---------------------------------
-// Variable Selection Types
-// ---------------------------------
-export type HighlightedVariable = {
-    tempId: string;
-    source: 'available' | 'selected' | 'grouping';
-};
-
-
+// VariablesTab Props
 export interface VariablesTabProps {
     availableVariables: Variable[];
     testVariables: Variable[];
     groupingVariable: Variable | null;
     defineGroups: DefineGroupsOptions;
+    setDefineGroups: Dispatch<SetStateAction<DefineGroupsOptions>>;
     group1: number | null;
+    setGroup1: Dispatch<SetStateAction<number | null>>;
     group2: number | null;
+    setGroup2: Dispatch<SetStateAction<number | null>>;
     cutPointValue: number | null;
+    setCutPointValue: Dispatch<SetStateAction<number | null>>;
     estimateEffectSize: boolean;
+    setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
     highlightedVariable: HighlightedVariable | null;
     setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    handleVariableSelect: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleVariableDoubleClick: (variable: Variable, source: 'available' | 'selected' | 'grouping') => void;
-    handleDefineGroupsClick: () => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable, targetIndex?: number) => void;
-    reorderVariables: (source: 'selected', variables: Variable[]) => void;
-    errorMsg: string | null;
-    containerType?: "dialog" | "sidebar";
+    moveToAvailableVariables: (variable: Variable) => void;
+    moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
+    moveToGroupingVariable: (variable: Variable) => void;
+    reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
+    tourActive?: boolean;
+    currentStep?: number;
+    tourSteps?: TourStep[];
 }
 
-
-// === Analysis Params ===
-export interface IndependentSamplesTTestAnalysisParams extends Pick<BaseModalProps, 'onClose'> {
-    testVariables: Variable[];
-    groupingVariable: Variable | null;
-    defineGroups: DefineGroupsOptions;
-    group1: number | null;
-    group2: number | null;
-    cutPointValue: number | null;
-    estimateEffectSize: boolean;
+// GroupSettings Props
+export interface GroupSettingsProps {
+    initialDefineGroups?: DefineGroupsOptions;
+    initialGroup1?: number | null;
+    initialGroup2?: number | null;
+    initialCutPointValue?: number | null;
+    initialEstimateEffectSize?: boolean;
 }
 
-// === Results Types ===
-export interface IndependentSamplesTTestResults {
-    group?: any;
-    test?: any;
-}
-
-// === Worker Types ===
-export interface WorkerInput {
-    variableData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    }[];
-    groupData: {
-        variable: import('@/types/Variable').Variable;
-        data: any[];
-    };
-    defineGroups: DefineGroupsOptions;
-    group1: number | null;
-    group2: number | null;
-    cutPointValue: number | null;
-    estimateEffectSize: boolean;
-}
-
-export interface WorkerCalculationPromise {
-    resolve: (result: IndependentSamplesTTestResults | null) => void;
-    reject: (reason: any) => void;
-}
-
-export interface IndependentSamplesTTestWorkerResult {
-    success: boolean;
-    group?: any;
-    test?: any;
-    error?: string;
-}
-
-// ---------------------------------
-// Hook Props and Results
-// ---------------------------------
+// VariableSelection Props
 export interface VariableSelectionProps {
     initialVariables?: Variable[];
 }
 
-export interface VariableSelectionResult {
-    availableVariables: Variable[];
+// IndependentSamplesTTestAnalysis Props
+export interface IndependentSamplesTTestAnalysisProps extends Pick<BaseModalProps, 'onClose'> {
     testVariables: Variable[];
     groupingVariable: Variable | null;
-    highlightedVariable: HighlightedVariable | null;
-    setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-    moveToTestVariable: (variable: Variable, targetIndex?: number) => void;
-    moveToGroupingVariable: (variable: Variable) => void;
-    moveToAvailableVariables: (variable: Variable, source: 'selected' | 'grouping', targetIndex?: number) => void;
-    reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-    resetVariableSelection: () => void;
+    defineGroups: DefineGroupsOptions;
+    group1: number | null;
+    group2: number | null;
+    cutPointValue: number | null;
+    estimateEffectSize: boolean;
 }
 
-// For data fetching hook
-export interface DataFetchingResult {
-    fetchData: (testVariables: Variable[], groupingVariable: Variable) => Promise<{
-        variableData: {
-            variable: Variable;
-            data: any[];
-        }[];
-        groupData: {
-            variable: Variable;
-            data: any[];
-        } | null;
-    }>;
-    isLoading: boolean;
-    error: string | null;
-    clearError: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+    tourActive: boolean;
+    currentStep: number;
+    tourSteps: TourStep[];
+    currentTargetElement: HTMLElement | null;
+    startTour: () => void;
+    nextStep: () => void;
+    prevStep: () => void;
+    endTour: () => void;
 }
 
-// For worker communication
-export interface TTestWorkerResult {
-    calculate: (data: WorkerInput) => Promise<IndependentSamplesTTestResults>;
-    isCalculating: boolean;
-    error: string | null;
-    cancelCalculation: () => void;
-} 
+// Group Statistics
+export interface GroupStatistics {
+    group1: {
+        label: string;
+        N: number;
+        Mean: number;
+        StdDev: number;
+        SEMean: number;
+    };
+    group2: {
+        label: string;
+        N: number;
+        Mean: number;
+        StdDev: number;
+        SEMean: number;
+    };
+}
+  
+// Independent Samples Test
+export interface IndependentSamplesTest {
+    levene: {
+        F: number;
+        Sig: number;
+    };
+    equalVariances: {
+        t: number;
+        df: number;
+        sig: number;
+        meanDifference: number;
+        stdErrorDifference: number;
+        confidenceInterval: {
+            lower: number;
+            upper: number;
+        };
+    };
+    unequalVariances: {
+        t: number;
+        df: number;
+        sig: number;
+        meanDifference: number;
+        stdErrorDifference: number;
+        confidenceInterval: {
+            lower: number;
+            upper: number;
+        };
+    };
+}
+  
+// Independent Samples Effect Size Statistics
+export interface IndependentSamplesEffectSizeStatistics {
+    N: number;
+    Mean?: number;
+    StdDev?: number;
+    Min?: number;
+    Max?: number;
+    Percentile25?: number;
+    Percentile50?: number;
+    Percentile75?: number;
+}
+  
+// IndependentSamplesTTest Analysis Result
+export interface IndependentSamplesTTestResult {
+    variable: Variable;
+    groupingVariable?: Variable;
+    stats: GroupStatistics | IndependentSamplesTest | IndependentSamplesEffectSizeStatistics;
+}
+  
+  // IndependentSamplesTTest Results Collection
+  export interface IndependentSamplesTTestResults {
+    groupStatistics?: IndependentSamplesTTestResult[];
+    independentSamplesTest?: IndependentSamplesTTestResult[];
+    independentSamplesEffectSize?: IndependentSamplesTTestResult[];
+  }
+  
+  // ---------------------------------
+  // Table Types
+  // ---------------------------------
+  export interface TableColumnHeader {
+    header: string;
+    key: string;
+    children?: TableColumnHeader[];
+  }
+  
+  export interface TableRow {
+    [key: string]: any;
+    rowHeader?: any[];
+  }
+  
+  export interface IndependentSamplesTTestTable {
+    title: string;
+    columnHeaders: TableColumnHeader[];
+    rows: TableRow[];
+  }

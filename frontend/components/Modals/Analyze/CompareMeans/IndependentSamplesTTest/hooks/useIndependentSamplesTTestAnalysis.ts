@@ -1,36 +1,43 @@
-import { useState, useCallback } from 'react';
-import { useDataFetching } from './useDataFetching';
-import { useTTestWorker } from './useTTestWorker';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
-import type { IndependentSamplesTTestAnalysisParams } from '../types';
+import { useAnalysisData } from '@/hooks/useAnalysisData';
+import { useDataStore } from '@/stores/useDataStore';
 
-/**
- * Hook for orchestrating the Independent Samples T-Test analysis process
- * @param params Analysis parameters
- * @returns Object with functions and state for running the analysis
- */
-export const useIndependentSamplesTTestAnalysis = (params: IndependentSamplesTTestAnalysisParams) => {
-    const { 
-        testVariables, 
-        groupingVariable, 
-        defineGroups, 
-        group1, 
-        group2, 
-        cutPointValue, 
-        estimateEffectSize, 
-        onClose 
-    } = params;
+import {
+    IndependentSamplesTTestAnalysisProps,
+    IndependentSamplesTTestResults,
+    IndependentSamplesTTestResult
+} from '../types';
+
+import {
+    formatGroupStatisticsTable,
+    formatIndependentSamplesTestTable,
+    // formatEffectSizeTable,
+} from '../utils/formatters';
+
+export const useIndependentSamplesTTestAnalysis = ({
+    testVariables,
+    groupingVariable,
+    defineGroups,
+    group1,
+    group2,
+    cutPointValue,
+    estimateEffectSize,
+    onClose
+}: IndependentSamplesTTestAnalysisProps) => {
+    const { addLog, addAnalytic, addStatistic } = useResultStore();
+    const { data: analysisData } = useAnalysisData();
     
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isCalculating, setIsCalculating] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
-    const { fetchData, error: dataFetchingError } = useDataFetching();
-    const { calculate, cancelCalculation, error: workerError } = useTTestWorker();
+    const workerRef = useRef<Worker | null>(null);
+
+    const resultsRef = useRef<IndependentSamplesTTestResult[]>([]);
+    const errorCountRef = useRef<number>(0);
+    const processedCountRef = useRef<number>(0);
     
-    const { addLog, addAnalytic, addStatistic } = useResultStore.getState();
-    
-    const runAnalysis = useCallback(async () => {
-        // Validation
+    const runAnalysis = useCallback(async (): Promise<void> => {
         if (testVariables.length === 0) {
             setErrorMsg("Please select at least one test variable.");
             return;
@@ -42,117 +49,226 @@ export const useIndependentSamplesTTestAnalysis = (params: IndependentSamplesTTe
         }
         
         if ((defineGroups.useSpecifiedValues && (!group1 || !group2)) || 
-            (defineGroups.cutPoint && !cutPointValue)) {
-            setErrorMsg("Please define grouping variable.");
+            (!defineGroups.useSpecifiedValues && !cutPointValue)) {
+            setErrorMsg("Please define groups for the grouping variable.");
             return;
         }
         
         setErrorMsg(null);
-        setIsLoading(true);
-        
+        setIsCalculating(true);
+
         try {
-            // 1. Fetch data
-            const data = await fetchData(testVariables, groupingVariable);
-            
-            if (dataFetchingError) {
-                setErrorMsg(dataFetchingError);
-                setIsLoading(false);
-                return;
-            }
-            
-            // 2. Prepare worker input
-            const workerInput = {
-                variableData: data.variableData,
-                groupData: data.groupData!,
-                defineGroups,
-                group1,
-                group2,
-                cutPointValue,
-                estimateEffectSize
-            };
-            
-            // 3. Run calculation
-            const results = await calculate(workerInput);
-            
-            // 4. Save results
-            try {
-                // Prepare log message
-                const variableNames = testVariables.map(v => v.name);
-                let logParts = ["T-TEST"];
-                
-                if (defineGroups.useSpecifiedValues) {
-                    logParts.push(`GROUPS=${groupingVariable.name}(${group1} ${group2}) {${variableNames.join(" ")}}`);
-                } else {
-                    logParts.push(`GROUPS=${groupingVariable.name}(${cutPointValue}) {${variableNames.join(" ")}}`);
-                }
-                
-                // Add options
-                if (estimateEffectSize) {
-                    logParts.push(`{ES DISPLAY (TRUE)}`);
-                } else {
-                    logParts.push(`{ES DISPLAY (FALSE)}`);
-                }
-                
-                logParts.push(`{CRITERIA=0.95}`);
-                
-                // Join all parts with spaces
-                let logMsg = logParts.join(' ');
-                
-                // Save to database
-                const logId = await addLog({ log: logMsg });
-                const analyticId = await addAnalytic(logId, { title: "T-Test", note: "" });
-                
-                if (results.group) {
-                    await addStatistic(analyticId, {
-                        title: "Group Statistics",
-                        output_data: results.group,
-                        components: "Group Statistics",
-                        description: ""
-                    });
-                }
-                
-                if (results.test) {
-                    await addStatistic(analyticId, {
-                        title: "Independent Samples Test",
-                        output_data: results.test,
-                        components: "Independent Samples Test",
-                        description: ""
-                    });
-                }
-                
-                onClose();
-            } catch (err) {
-                console.error(err);
-                setErrorMsg("Error saving results.");
-            }
-        } catch (err) {
-            console.error(err);
-            setErrorMsg(workerError || "An error occurred during analysis.");
-        } finally {
-            setIsLoading(false);
+            await useDataStore.getState().checkAndSave();
+        } catch (e: any) {
+            setErrorMsg(`Failed to save pending changes: ${e.message}`);
+            setIsCalculating(false);
+            return;
         }
-    }, [
-        testVariables, 
-        groupingVariable, 
-        defineGroups, 
-        group1, 
-        group2, 
-        cutPointValue, 
-        estimateEffectSize, 
-        fetchData, 
-        calculate, 
-        addLog, 
-        addAnalytic, 
-        addStatistic, 
-        onClose,
-        dataFetchingError,
-        workerError
-    ]);
+
+        // Reset refs for new analysis run
+        resultsRef.current = [];
+        errorCountRef.current = 0;
+        processedCountRef.current = 0;
+
+        const worker = new Worker('/workers/CompareMeans/manager.js', { type: 'module' });
+        workerRef.current = worker;
+
+        let analysisTypes;
+        if (estimateEffectSize) {
+            analysisTypes = ['independentSamplesTTest'];
+            // analysisTypes = ['independentSamplesTTest', 'effectSize'];
+        } else {
+            analysisTypes = ['independentSamplesTTest'];
+        }
+
+        testVariables.forEach(variable => {
+            const dataForVar = analysisData.map(row => row[variable.columnIndex]);
+            const dataForGroupingVar = analysisData.map(row => row[groupingVariable.columnIndex]);
+            const payload = {
+                analysisType: analysisTypes,
+                variable,
+                data: dataForVar,
+                groupingVariable,
+                groupingData: dataForGroupingVar,
+                options: { defineGroups, group1, group2, cutPointValue, estimateEffectSize }
+            };
+            console.log("payload", JSON.stringify(payload));
+            worker.postMessage(payload);
+        });
+
+        worker.onmessage = async (event) => {
+            const { variableName, results, status, error: workerError } = event.data;
+
+            if (status === 'success' && results) {
+                if (results.groupStatistics) {
+                    const { variable, groupingVariable, group1, group2 } = results.groupStatistics;
+
+                    if (variable && groupingVariable && group1 && group2) {
+                        resultsRef.current.push({
+                            variable,
+                            groupingVariable,
+                            stats: {
+                                group1,
+                                group2
+                            }
+                        });
+                    } else {
+                        console.error(`Error processing group statistics for ${variableName}:`, workerError);
+                        const errorMsg = `Calculation failed for group statistics for ${variableName}: ${workerError || 'Unknown error'}`;
+                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                        errorCountRef.current += 1;
+                    }
+                }
+                
+                if (results.independentSamplesTest) {
+                    const { variable, levene, equalVariances, unequalVariances } = results.independentSamplesTest;
+
+                    if (variable && levene && equalVariances && unequalVariances) {
+                        resultsRef.current.push({
+                            variable,
+                            stats: {
+                                levene,
+                                equalVariances,
+                                unequalVariances
+                            }
+                        });
+                    } else {
+                        console.error(`Error processing independent samples test for ${variableName}:`, workerError);
+                        const errorMsg = `Calculation failed for independent samples test for ${variableName}: ${workerError || 'Unknown error'}`;
+                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                        errorCountRef.current += 1;
+                    }
+                }
+
+                // if (results.independentSamplesEffectSize) {
+                //     const { variable, stats } = results.independentSamplesEffectSize;
+
+                //     if (variable && stats) {
+                //         resultsRef.current.push({
+                //             variable,
+                //             stats
+                //         });
+                //     } else {
+                //         console.error(`Error processing ${variableName}:`, workerError);
+                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                //         errorCountRef.current += 1;
+                //     }
+                // }
+            } else {
+                console.error(`Error processing ${variableName}:`, workerError);
+                const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                errorCountRef.current += 1;
+            }
+
+            processedCountRef.current += 1;
+
+            if (processedCountRef.current === testVariables.length) {
+                if (resultsRef.current.length > 0) {
+                    try {
+                        const groupStatistics = resultsRef.current.filter(r => 'group1' in (r.stats as any));
+                        const independentSamplesTest = resultsRef.current.filter(r => 'levene' in (r.stats as any));
+                        // const independentSamplesEffectSize = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
+
+                        const results: IndependentSamplesTTestResults = {
+                            groupStatistics,
+                            independentSamplesTest,
+                            // independentSamplesEffectSize
+                        };
+
+                        // Format tables
+                        const formattedGroupStatisticsTable = formatGroupStatisticsTable(results);
+                        const formattedIndependentSamplesTestTable = formatIndependentSamplesTestTable(results);
+                        // const formattedIndependentSamplesEffectSizeTable = formatEffectSizeTable(results);
+
+                        const variableNames = testVariables.map(v => v.name);
+                        let logMsg = `T-TEST`;
+
+                        if (defineGroups.useSpecifiedValues) {
+                            logMsg += `GROUPS=${groupingVariable.name}(${group1} ${group2}) {${variableNames.join(" ")}}`;
+                        } else {
+                            logMsg += `GROUPS=${groupingVariable.name}(${cutPointValue}) {${variableNames.join(" ")}}`;
+                        }
+
+                        // Only add tests that are enabled
+                        if (estimateEffectSize) {
+                            logMsg += `{ES DISPLAY (TRUE)}`;
+                        } else {
+                            logMsg += `{ES DISPLAY (FALSE)}`;
+                        }
+
+                        logMsg += `{CRITERIA=0.95}`;
+
+                        const logId = await addLog({ log: logMsg });
+                        const analyticId = await addAnalytic(logId, { title: "T-Test", note: "" });
+
+                        // Add group statistics table
+                        await addStatistic(analyticId, {
+                            title: "Independent Samples T-Test",
+                            output_data: JSON.stringify({ tables: [formattedGroupStatisticsTable] }),
+                            components: "Group Statistics",
+                            description: ""
+                        });
+
+                        // Add test statistics table
+                        await addStatistic(analyticId, {
+                            title: "Independent Samples T-Test",
+                            output_data: JSON.stringify({ tables: [formattedIndependentSamplesTestTable] }),
+                            components: "Independent Samples Test",
+                            description: ""
+                        });
+
+                        if (onClose) {
+                            onClose();
+                        }
+                    } catch (err) {
+                        console.error("Error saving results:", err);
+                        setErrorMsg("Error saving results.");
+                    }
+                }
+
+                setIsCalculating(false);
+                worker.terminate();
+                workerRef.current = null;
+                if (errorCountRef.current === 0) {
+                    onClose?.();
+                }
+            }
+        };
+
+        worker.onerror = (err) => {
+            console.error("A critical worker error occurred:", err);
+            setErrorMsg(`A critical worker error occurred: ${err.message}`);
+            setIsCalculating(false);
+            if (workerRef.current) {
+                workerRef.current.terminate();
+                workerRef.current = null;
+            }
+        };
+    }, [testVariables, groupingVariable, defineGroups, group1, group2, cutPointValue, estimateEffectSize, onClose]);
+
+    const cancelCalculation = useCallback(() => {
+        if (workerRef.current) {
+            workerRef.current.terminate();
+            workerRef.current = null;
+            setIsCalculating(false);
+            console.log("Independent Samples T-Test calculation cancelled.");
+        }
+    }, []);
+    
+    useEffect(() => {
+        return () => {
+            cancelCalculation();
+        };
+    }, [cancelCalculation]);
     
     return {
-        isLoading,
+        isCalculating,
         errorMsg,
         runAnalysis,
-        cancelAnalysis: cancelCalculation
+        cancelCalculation
     };
 }; 
+
+export default useIndependentSamplesTTestAnalysis; 

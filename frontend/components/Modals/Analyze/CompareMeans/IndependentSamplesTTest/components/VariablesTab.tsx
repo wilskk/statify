@@ -1,49 +1,70 @@
-import React, { FC, useCallback, useMemo } from "react";
+import React, { FC, useCallback, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Variable } from "@/types/Variable";
 import VariableListManager, { TargetListConfig } from '@/components/Common/VariableListManager';
+import { ActiveElementHighlight } from "@/components/Common/TourComponents";
+import { Variable } from "@/types/Variable";
 import { VariablesTabProps } from "../types";
-
-// Source types remain the same, but used internally by the parent mostly
-type AllSource = 'available' | 'selected' | 'grouping';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 
 const VariablesTab: FC<VariablesTabProps> = ({
     availableVariables,
     testVariables,
     groupingVariable,
     defineGroups,
+    setDefineGroups,
     group1,
+    setGroup1,
     group2,
+    setGroup2,
     cutPointValue,
+    setCutPointValue,
+    estimateEffectSize,
+    setEstimateEffectSize,
     highlightedVariable,
     setHighlightedVariable,
-    estimateEffectSize,
-    handleVariableSelect,
-    handleVariableDoubleClick,
-    handleDefineGroupsClick,
     moveToAvailableVariables,
-    moveToTestVariable,
+    moveToTestVariables,
     moveToGroupingVariable,
     reorderVariables,
-    errorMsg,
-    containerType = "dialog"
+    tourActive = false,
+    currentStep = 0,
+    tourSteps = [],
 }) => {
-    // --- Adapt props for VariableListManager ---
-    const variableIdKeyToUse: keyof Variable = 'columnIndex';
+    const variableIdKeyToUse: keyof Variable = 'tempId';
+    const [allowUnknown, setAllowUnknown] = useState(false);
 
-    // Filter availableVariables to include only NUMERIC types
-    const filteredAvailableVariables = useMemo(() => {
-        return availableVariables.filter(
-            (variable) => variable.type === 'NUMERIC'
-        );
-    }, [availableVariables]);
+    const getDisplayName = (variable: Variable) => {
+        if (!variable.label) return variable.name;
+        return `${variable.label} [${variable.name}]`;
+    };
+
+    const isVariableDisabled = useCallback((variable: Variable): boolean => {   
+        const isNormallyValid = (variable.type === 'NUMERIC' || variable.type === 'DATE') &&
+                                (variable.measure === 'scale' || variable.measure === 'ordinal');
         
-    // 1. Configure the target lists
+        if (isNormallyValid) return false;
+        if (variable.measure === 'unknown') return !allowUnknown;
+        
+        return true;
+    }, [allowUnknown]);
+
+    const handleDoubleClick = (variable: Variable, sourceListId: string) => {
+        if (sourceListId === 'available' && isVariableDisabled(variable)) {
+            return;
+        }
+        
+        if (sourceListId === 'available' && groupingVariable) {
+            moveToTestVariables(variable);
+        } else if (sourceListId === 'test' || sourceListId === 'grouping') {
+            moveToAvailableVariables(variable);
+        }
+    };
+
     const targetLists: TargetListConfig[] = [
         {
-            id: 'selected',
+            id: 'test',
             title: 'Test Variables',
             variables: testVariables,
             height: '169.5px',
@@ -61,69 +82,147 @@ const VariablesTab: FC<VariablesTabProps> = ({
         }
     ];
 
-    // 2. Adapt highlightedVariable state
     const managerHighlightedVariable = highlightedVariable
         ? { id: highlightedVariable.tempId, source: highlightedVariable.source }
         : null;
 
-        const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
-            // Ensure the source is one of the expected types for this component
-            if (value && ['available', 'selected', 'grouping'].includes(value.source)) {
-                setHighlightedVariable({ tempId: value.id, source: value.source as AllSource });
-            } else {
-                setHighlightedVariable(null);
-            }
-        }, [setHighlightedVariable]);
+    const setManagerHighlightedVariable = useCallback((value: { id: string, source: string } | null) => {
+        if (value && (value.source === 'available' || value.source === 'test' || value.source === 'grouping')) {
+            setHighlightedVariable({ tempId: value.id, source: value.source as 'available' | 'test' | 'grouping' });
+        } else {
+            setHighlightedVariable(null);
+        }
+    }, [setHighlightedVariable]);
 
-    // 3. Create onMoveVariable callback
     const handleMoveVariable = useCallback((variable: Variable, fromListId: string, toListId: string, targetIndex?: number) => {
-        const source = fromListId as 'available' | 'selected' | 'grouping';
-
-        switch (toListId) {
-            case 'available':
-                if (source === 'selected' || source === 'grouping') {
-                    moveToAvailableVariables(variable, source, targetIndex);
-                }
-                break;
-            case 'selected':
-                moveToTestVariable(variable, targetIndex);
-                break;
-            case 'grouping':
-                moveToGroupingVariable(variable, targetIndex);
-                break;
+        if (toListId === 'test' && isVariableDisabled(variable)) {
+            return;
         }
-    }, [moveToAvailableVariables, moveToTestVariable, moveToGroupingVariable]);
+        
+        if (toListId === 'test') {
+            moveToTestVariables(variable, targetIndex);
+        } else if (toListId === 'grouping') {
+            moveToGroupingVariable(variable);
+        } else if (toListId === 'available') {
+            moveToAvailableVariables(variable);
+        }
+    }, [moveToTestVariables, moveToGroupingVariable, moveToAvailableVariables, isVariableDisabled]);
 
-    // 4. Create onReorderVariable callback
     const handleReorderVariables = useCallback((listId: string, variables: Variable[]) => {
-        if (listId === 'selected') {
-            reorderVariables('selected', variables);
+        if (listId === 'test') {
+            reorderVariables('test', variables);
         }
-        // Cannot reorder 'available' or 'grouping'
     }, [reorderVariables]);
 
-    // 6. Create footer for grouping variable list
+    const isTourElementActive = useCallback((elementId: string) => {
+        if (!tourActive || currentStep >= tourSteps.length) return false;
+        return tourSteps[currentStep]?.targetId === elementId;
+    }, [tourActive, currentStep, tourSteps]);
+
+    const renderAllowUnknown = () => (
+        <>
+            <div className="flex items-center mt-2 p-1.5">
+                <Checkbox
+                    id="allowUnknown"
+                    checked={allowUnknown}
+                    onCheckedChange={(checked: boolean) => setAllowUnknown(checked)}
+                    className="mr-2 h-4 w-4"
+                />
+                <Label htmlFor="allowUnknown" className="text-sm cursor-pointer">
+                    Treat &apos;unknown&apos; as Scale and allow selection
+                </Label>
+            </div>
+        </>
+    );
+
     const groupingFooter = useCallback((listId: string) => {
         if (listId === 'grouping') {
             return (
                 <>
                     <div className="mt-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-8 text-xs border-[#CCCCCC] hover:bg-[#F7F7F7] hover:border-[#888888]"
-                            onClick={handleDefineGroupsClick}
-                            disabled={!groupingVariable}
-                        >
-                            Define Groups...
-                        </Button>
+                        <div id="define-groups-section" className="bg-card border border-border rounded-md p-5 relative">
+                            <div className="text-sm font-medium mb-3 text-gray-900">Define Groups</div>
+                            <div className="space-y-3">
+                                <RadioGroup
+                                    value={defineGroups.useSpecifiedValues ? "specified" : "cutpoint"}
+                                    className="space-y-3"
+                                    onValueChange={(value) => {
+                                        setDefineGroups({
+                                            ...defineGroups,
+                                            useSpecifiedValues: value === "specified",
+                                            cutPoint: value === "cutpoint"
+                                        });
+                                    }}
+                                >
+                                    <div className="space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem
+                                                value="specified"
+                                                id="specified"
+                                                className="h-4 w-4 text-blue-600"
+                                            />
+                                            <Label htmlFor="specified" className="text-sm font-medium text-gray-700">
+                                                Use specified values
+                                            </Label>  
+                                        </div>
+                                        <div className="ml-6 space-y-2">
+                                            <div className="flex items-center space-x-3">
+                                                <Label htmlFor="group1" className={`text-sm text-gray-600 min-w-[60px] ${!defineGroups.useSpecifiedValues ? 'opacity-50' : ''}`}>
+                                                    Group 1:
+                                                </Label>
+                                                <Input
+                                                    id="group1"
+                                                    type="number"
+                                                    disabled={!defineGroups.useSpecifiedValues}
+                                                    value={group1 || ""}
+                                                    onChange={(e) => setGroup1(e.target.value ? Number(e.target.value) : null)}
+                                                    className="w-20 h-8 text-sm"
+                                                />
+                                            </div>
+                                            <div className="flex items-center space-x-3">
+                                                <Label htmlFor="group2" className={`text-sm text-gray-600 min-w-[60px] ${!defineGroups.useSpecifiedValues ? 'opacity-50' : ''}`}>
+                                                    Group 2:
+                                                </Label>
+                                                <Input
+                                                    id="group2"
+                                                    type="number"
+                                                    disabled={!defineGroups.useSpecifiedValues}
+                                                    value={group2 || ""}
+                                                    onChange={(e) => setGroup2(e.target.value ? Number(e.target.value) : null)}
+                                                    className="w-20 h-8 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center space-x-3">
+                                        <RadioGroupItem
+                                            value="cutpoint"
+                                            id="cutpoint"
+                                            className="h-4 w-4 text-blue-600"
+                                        />
+                                        <Label htmlFor="cutpoint" className="text-sm font-medium text-gray-700">
+                                            Cut point:
+                                        </Label>
+                                        <Input
+                                            id="cutPointValue"
+                                            type="number"
+                                            disabled={defineGroups.useSpecifiedValues}
+                                            value={cutPointValue || ""}
+                                            onChange={(e) => setCutPointValue(e.target.value ? Number(e.target.value) : null)}
+                                            className="w-20 h-8 text-sm"
+                                        />
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                        </div>
                     </div>
                     <div className="mt-2">
                         <div className="flex items-center">
                             <Checkbox
                                 id="estimate-effect-size"
                                 checked={estimateEffectSize}
-                                disabled
+                                onCheckedChange={(checked) => setEstimateEffectSize(!!checked)}
                                 className="mr-2 border-[#CCCCCC]"
                             />
                             <Label htmlFor="estimate-effect-size" className="text-sm">
@@ -135,67 +234,34 @@ const VariablesTab: FC<VariablesTabProps> = ({
             );
         }
         return null;
-    }, [groupingVariable, handleDefineGroupsClick, estimateEffectSize]);
-
-    // 7. Create additional options section
-    const additionalOptions = useCallback(() => {
-        return (
-            <div className="mt-4">
-                <div className="flex items-center">
-                    <Checkbox
-                        id="estimate-effect-size"
-                        checked={estimateEffectSize}
-                        disabled
-                        className="mr-2 border-[#CCCCCC]"
-                    />
-                    <Label htmlFor="estimate-effect-size" className="text-sm">
-                        Estimate effect sizes
-                    </Label>
-                </div>
-            </div>
-        );
-    }, [estimateEffectSize]);
-
-    // Custom display name function to show group info for grouping variables
-    const getCustomDisplayName = useCallback((variable: Variable): string => {
-        const displayName = variable.label 
-            ? `${variable.label} [${variable.name}]` 
-            : variable.name;
-        
-        // Add group info only if this is the grouping variable
-        if (groupingVariable && variable.columnIndex === groupingVariable.columnIndex) {
-            const groupInfo = defineGroups.useSpecifiedValues && defineGroups.group1 !== null && defineGroups.group2 !== null 
-                ? (group1 !== null && group2 !== null ? ` (${group1}, ${group2})` : ' (?, ?)')
-                : (cutPointValue !== null ? ` (${cutPointValue})` : ' (?)');
-            
-            return `${displayName}${groupInfo}`;
-        }
-        
-        return displayName;
-    }, [groupingVariable, defineGroups, group1, group2, cutPointValue]);
+    }, [defineGroups, group1, group2, cutPointValue, estimateEffectSize, setDefineGroups, setGroup1, setGroup2, setCutPointValue, setEstimateEffectSize]);
 
     // --- Render the manager component and error message ---
     return (
-        <div>
+        <div className="space-y-2">
             <VariableListManager
-                availableVariables={filteredAvailableVariables}
+                availableVariables={availableVariables}
                 targetLists={targetLists}
                 variableIdKey={variableIdKeyToUse}
                 highlightedVariable={managerHighlightedVariable}
                 setHighlightedVariable={setManagerHighlightedVariable}
                 onMoveVariable={handleMoveVariable}
                 onReorderVariable={handleReorderVariables}
+                onVariableDoubleClick={handleDoubleClick}
                 availableListHeight={'273.5px'}
-                getDisplayName={getCustomDisplayName}
+                getDisplayName={getDisplayName}
+                isVariableDisabled={isVariableDisabled}
                 renderListFooter={groupingFooter}
                 showArrowButtons={true}
+                renderExtraInfoContent={renderAllowUnknown}
             />
-            {/* {additionalOptions()} */}
-            {errorMsg && (
-                <div className="text-destructive-foreground text-sm mt-3 p-2 bg-destructive/10 border border-destructive/20 rounded">
-                    {errorMsg}
-                </div>
-            )}
+
+            <div id="independent-samples-t-test-available-variables" className="absolute top-0 left-0 w-[48%] h-full pointer-events-none rounded-md">
+                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'independent-samples-t-test-available-variables')} />
+            </div>
+            <div id="independent-samples-t-test-test-variables" className="absolute top-0 right-0 w-[48%] h-full pointer-events-none rounded-md">
+                <ActiveElementHighlight active={tourActive && currentStep === tourSteps.findIndex(step => step.targetId === 'ttest-test-variables')} />
+            </div>
         </div>
     );
 };

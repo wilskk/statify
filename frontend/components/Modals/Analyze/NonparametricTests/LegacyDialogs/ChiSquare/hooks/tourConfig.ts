@@ -1,12 +1,10 @@
-import {
-    TABS,
-    TourStep } from '../types';
+import { TABS, TourStep } from '../types';
 
 export const baseTourSteps: TourStep[] = [
     {
         title: "Variable Selection",
         content: "Select variables from the available list to analyze with Chi-Square Test. Only numeric variables are shown.",
-        targetId: "variable-list-manager",
+        targetId: "chi-square-available-variables",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "📊",
@@ -15,7 +13,7 @@ export const baseTourSteps: TourStep[] = [
     {
         title: "Test Variables",
         content: "Variables in this list will be analyzed. You can reorder them by dragging.",
-        targetId: "test-variables-list",
+        targetId: "chi-square-test-variables",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: 'left',
         icon: "📋",
@@ -24,7 +22,7 @@ export const baseTourSteps: TourStep[] = [
     {
         title: "Options Tab",
         content: "Click here to configure test options and settings.",
-        targetId: "chi-square-options-tab",
+        targetId: "options-tab-trigger",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "⚙️",
@@ -52,7 +50,7 @@ export const baseTourSteps: TourStep[] = [
     {
         title: "Statistics Options",
         content: "Select additional statistics to include in the results.",
-        targetId: "statistics-section",
+        targetId: "display-statistics-section",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "📈",

@@ -16,6 +16,7 @@ class ChiSquareCalculator {
      * @param {object} params.options - Opsi tambahan dari main thread.
      */
     constructor({ variable, data, options = {} }) {
+        console.log('ChiSquareCalculator constructor');
         this.variable = variable;
         this.data = data;
         this.options = options;
@@ -229,66 +230,6 @@ class ChiSquareCalculator {
     }
     
     /**
-     * Mendapatkan hasil statistik deskriptif
-     * @returns {object} Hasil statistik deskriptif
-     */
-    getDescriptiveStatistics() {
-        if (this.memo.descriptiveStats) return this.memo.descriptiveStats;
-        if (!this.displayStatistics.descriptive && !this.displayStatistics.quartiles) {
-            return null;
-        }
-        
-        this.#initialize();
-        const data = this.validData;
-        if (!data || data.length === 0) return null;
-        
-        const mean = data.reduce((sum, val) => sum + parseFloat(val), 0) / data.length;
-        const sortedData = [...data].map(parseFloat).sort((a, b) => a - b);
-        
-        const stats = {
-            N: data.length,
-            Mean: mean,
-            Minimum: Math.min(...sortedData),
-            Maximum: Math.max(...sortedData)
-        };
-        
-        // Tambahkan statistik deskriptif jika opsi descriptive diaktifkan
-        if (this.displayStatistics.descriptive) {
-            const stdDev = Math.sqrt(
-                data.reduce((sum, val) => sum + Math.pow(parseFloat(val) - mean, 2), 0) / (data.length - 1)
-            );
-            stats.StdDev = stdDev;
-            stats.SEMean = stdDev / Math.sqrt(data.length);
-        }
-        
-        // Tambahkan statistik quartiles jika opsi quartiles diaktifkan
-        if (this.displayStatistics.quartiles) {
-            const getPercentile = (arr, p) => {
-                const index = (p / 100) * (arr.length - 1);
-                if (Number.isInteger(index)) {
-                    return arr[index];
-                } else {
-                    const lowerIndex = Math.floor(index);
-                    const upperIndex = Math.ceil(index);
-                    const weight = index - lowerIndex;
-                    return arr[lowerIndex] * (1 - weight) + arr[upperIndex] * weight;
-                }
-            };
-            
-            stats.Percentile25 = getPercentile(sortedData, 25);
-            stats.Percentile50 = getPercentile(sortedData, 50);
-            stats.Percentile75 = getPercentile(sortedData, 75);
-        }
-        
-        this.memo.descriptiveStats = {
-            variable: this.variable,
-            stats
-        };
-        
-        return this.memo.descriptiveStats;
-    }
-    
-    /**
      * Mendapatkan hasil frekuensi
      * @returns {object} Hasil frekuensi
      */
@@ -314,7 +255,8 @@ class ChiSquareCalculator {
             categoryList,
             observedN: observedNList,
             expectedN: expectedNList,
-            residual
+            residual,
+            N: this.N
         };
     }
     
@@ -341,18 +283,15 @@ class ChiSquareCalculator {
      * @returns {Object} Objek hasil yang berisi statistik dan hasil uji.
      */
     getOutput() {
-        const descriptiveStatistics = this.getDescriptiveStatistics();
         const frequencies = this.getFrequencies();
         const testStatistics = this.getTestStatistics();
         
         return {
-            descriptiveStatistics,
             frequencies,
             testStatistics
         };
     }
 }
 
-// Export the calculator class for ES modules
 globalThis.ChiSquareCalculator = ChiSquareCalculator;
 export default ChiSquareCalculator;

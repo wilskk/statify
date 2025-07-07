@@ -177,7 +177,6 @@ class DescriptiveStatisticsCalculator {
             N: this.N,
             Mean: this.getMean(),
             StdDev: this.getStdDev(),
-            SEMean: this.getSEMean(),
             Min: this.getMin(),
             Max: this.getMax(),
             Percentile25: this.getPercentile(25),

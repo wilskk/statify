@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import type { Variable } from '@/types/Variable';
+import { Variable } from '@/types/Variable';
 import {
   VariableSelectionProps,
   HighlightedVariable
@@ -25,7 +25,6 @@ export const useVariableSelection = ({
     }));
     const globalVarTempIds = new Set(globalVarsWithTempId.map(v => v.tempId));
 
-    // Synchronize testVariables with global store: remove any test variables that no longer exist globally.
     const stillExistingTestVars = testVariables.filter(sv => 
         sv.tempId && globalVarTempIds.has(sv.tempId)
     );
@@ -35,7 +34,6 @@ export const useVariableSelection = ({
         setTestVariables(stillExistingTestVars);
     }
     
-    // Update availableVariables based on the potentially updated testVariables list.
     const currentTestTempIds = new Set(stillExistingTestVars.filter(v => v.tempId).map(v => v.tempId!));
     const newAvailableVariables = globalVarsWithTempId.filter(
       v => v.name !== "" && v.tempId && !currentTestTempIds.has(v.tempId)

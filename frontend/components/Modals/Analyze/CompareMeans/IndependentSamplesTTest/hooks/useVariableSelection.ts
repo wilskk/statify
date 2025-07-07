@@ -1,15 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useVariableStore } from '@/stores/useVariableStore';
-import type { Variable } from '@/types/Variable';
+import { Variable } from '@/types/Variable';
 import {
     HighlightedVariable,
     VariableSelectionProps,
-    VariableSelectionResult
 } from '../types';
 
 export const useVariableSelection = ({
     initialVariables = []
-}: VariableSelectionProps = {}): VariableSelectionResult => {
+}: Omit<VariableSelectionProps, 'resetVariableSelection'> = {}) => {
     const { variables } = useVariableStore();
     const [availableVariables, setAvailableVariables] = useState<Variable[]>([]);
     const [testVariables, setTestVariables] = useState<Variable[]>(initialVariables);
@@ -17,14 +16,16 @@ export const useVariableSelection = ({
     const [highlightedVariable, setHighlightedVariable] = useState<HighlightedVariable | null>(null);
 
     useEffect(() => {
-        // Tambahkan tempId ke semua variabel global jika belum ada
+        useVariableStore.getState().loadVariables();
+    }, []);
+
+    useEffect(() => {
         const globalVarsWithTempId = variables.map(v => ({
             ...v,
             tempId: v.tempId || `temp_id_${v.columnIndex}`
         }));
         const globalVarTempIds = new Set(globalVarsWithTempId.map(v => v.tempId));
 
-        // Sinkronisasi testVariables: hanya pertahankan yang masih ada di global
         const filteredTestVars = testVariables.filter(
             sv => sv.tempId && globalVarTempIds.has(sv.tempId)
         );
@@ -36,7 +37,6 @@ export const useVariableSelection = ({
             setTestVariables(filteredTestVars);
         }
 
-        // Sinkronisasi groupingVariable: set null jika sudah tidak ada di global
         if (groupingVariable) {
             const groupingTempId = groupingVariable.tempId || `temp_id_${groupingVariable.columnIndex}`;
             if (!globalVarTempIds.has(groupingTempId)) {
@@ -56,15 +56,16 @@ export const useVariableSelection = ({
 
     }, [variables, testVariables, groupingVariable]);
 
-    // Function to move a variable from available or grouping to test
-    const moveToTestVariables = useCallback((variable: Variable, source: 'available' | 'grouping', targetIndex?: number) => {
+    const moveToTestVariables = (variable: Variable, targetIndex?: number) => {
         const variableWithTempId = {
             ...variable,
             tempId: variable.tempId || `temp_id_${variable.columnIndex}`
         };
-        if (source === 'available') {
+
+        if (availableVariables.some(v => v.tempId === variableWithTempId.tempId)) {
             setAvailableVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
-        } else if (source === 'grouping') {
+        } 
+        else if (groupingVariable && groupingVariable.tempId === variableWithTempId.tempId) {
             setGroupingVariable(null);
         }
         
@@ -81,34 +82,35 @@ export const useVariableSelection = ({
             return newList;
         });
         setHighlightedVariable(null);
-    }, []);
+    };
 
-    // Function to move a variable from available or test to grouping
-    const moveToGroupingVariable = useCallback((variable: Variable, source: 'available' | 'test') => {
+    const moveToGroupingVariable = (variable: Variable) => {
         const variableWithTempId = {
             ...variable,
             tempId: variable.tempId || `temp_id_${variable.columnIndex}`
         };
         
-        if (source === 'available') {
+        if (availableVariables.some(v => v.tempId === variableWithTempId.tempId)) {
             setAvailableVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
-        } else if (source === 'test') {
+        } 
+        else if (testVariables.some(v => v.tempId === variableWithTempId.tempId)) {
             setTestVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
         }
         
         setGroupingVariable(variableWithTempId);
         setHighlightedVariable(null);
-    }, [groupingVariable]);
+    };
 
-    const moveToAvailableVariables = useCallback((variable: Variable, source: 'test' | 'grouping', targetIndex?: number) => {
+    const moveToAvailableVariables = (variable: Variable) => {
         const variableWithTempId = {
             ...variable,
             tempId: variable.tempId || `temp_id_${variable.columnIndex}`
         };
-        if (source === 'test') {
+
+        if (testVariables.some(v => v.tempId === variableWithTempId.tempId)) {
             setTestVariables(prev => prev.filter(v => v.tempId !== variableWithTempId.tempId));
         }
-        else if (source === 'grouping') {
+        else if (groupingVariable && groupingVariable.tempId === variableWithTempId.tempId) {
             setGroupingVariable(null);
         }
 
@@ -116,35 +118,32 @@ export const useVariableSelection = ({
             if (prev.some(v => v.tempId === variableWithTempId.tempId)) {
                 return prev;
             }
-            const newList = [...prev];
-            if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= newList.length) {
-                newList.splice(targetIndex, 0, variableWithTempId);
-            } else {
-                newList.push(variableWithTempId);
-            }
+            const newList = [...prev, variableWithTempId];
             newList.sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
             return newList;
         });
 
         setHighlightedVariable(null);
-    }, []);
+    };
 
-    const reorderVariables = useCallback((source: 'available' | 'test', reorderedVariables: Variable[]) => {
+    const reorderVariables = (source: 'available' | 'test', reorderedVariables: Variable[]) => {
         if (source === 'available') {
             setAvailableVariables([...reorderedVariables]);
         } else if (source === 'test') {
             setTestVariables([...reorderedVariables]);
         }
-    }, []);
+    };
 
-    // Reset function
-    const resetVariableSelection = useCallback(() => {
-        const validVars = variables.filter(v => v.type === 'NUMERIC' && v.name !== "");
-        setAvailableVariables(validVars);
+    const resetVariableSelection = () => {
+        const allVarsWithTempId = variables.map(v => ({
+            ...v,
+            tempId: v.tempId || `temp_id_${v.columnIndex}`
+        }));
+        setAvailableVariables(allVarsWithTempId.filter(v => v.name !== ""));
         setTestVariables([]);
         setGroupingVariable(null);
         setHighlightedVariable(null);
-    }, [variables]);
+    };
     
     return {
         availableVariables,

@@ -1,149 +1,144 @@
-import type { Variable, VariableData } from '@/types/Variable';
-import type { Dispatch, SetStateAction } from 'react';
+import { Variable } from '@/types/Variable';
+import { Dispatch, SetStateAction } from 'react';
+import { TourStep as BaseTourStep } from '@/types/tourTypes';
 import { BaseModalProps } from '@/types/modalTypes';
 
 // ---------------------------------
-// Variable Selection Types
+// Constants
 // ---------------------------------
-export interface HighlightedVariable {
-  tempId: string;
-  source: 'available' | 'selected';
-}
+
+// Tab Constants
+export const TABS = {
+    VARIABLES: 'variables' as const,
+};
 
 // ---------------------------------
-// Variables Tab Types
+// Type
 // ---------------------------------
+
+// Tab Type
+export type TabType = typeof TABS.VARIABLES;
+
+// TourStep Type
+export type TourStep = BaseTourStep & {
+    requiredTab?: TabType | string;
+    forceChangeTab?: boolean;
+};
+
+// Highlighted Variable
+export type HighlightedVariable = {
+  tempId: string;
+  source: 'available' | 'test';
+};
+// ---------------------------------
+// Props
+// ---------------------------------
+
+// TabControl Props
+export interface TabControlProps {
+    setActiveTab: (tab: 'variables') => void;
+    currentActiveTab: string;
+}
+
+// Variables Tab Props
 export interface VariablesTabProps {
   availableVariables: Variable[];
-  selectedVariables: Variable[];
+  testVariables: Variable[];
   highlightedVariable: HighlightedVariable | null;
   setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
+  moveToTestVariables: (variable: Variable, targetIndex?: number) => void;
   moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
+  reorderVariables: (source: 'available' | 'test', variables: Variable[]) => void;
   testValue: number;
   setTestValue: Dispatch<SetStateAction<number>>;
   estimateEffectSize: boolean;
   setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
+  tourActive?: boolean;
+  currentStep?: number;
+  tourSteps?: TourStep[];
 }
 
-// ---------------------------------
-// Variable Selection Types
-// ---------------------------------
-export interface VariableSelectionProps {
-  initialVariables?: Variable[];
-}
-
-// ---------------------------------
-// Variable Selection Result Types
-// ---------------------------------
-export interface VariableSelectionResult {
-  availableVariables: Variable[];
-  selectedVariables: Variable[];
-  highlightedVariable: HighlightedVariable | null;
-  setHighlightedVariable: Dispatch<SetStateAction<HighlightedVariable | null>>;
-  moveToSelectedVariables: (variable: Variable, targetIndex?: number) => void;
-  moveToAvailableVariables: (variable: Variable, targetIndex?: number) => void;
-  reorderVariables: (source: 'available' | 'selected', variables: Variable[]) => void;
-  resetVariableSelection: () => void;
-}
-
-// ---------------------------------
-// Test Settings Types
-// ---------------------------------
+// TestSettings Props
 export interface TestSettingsProps {
   initialTestValue?: number;
   initialEstimateEffectSize?: boolean;
 }
 
-// ---------------------------------
-// Test Settings Result Types
-// ---------------------------------
-export interface TestSettingsResult {
-  testValue: number;
-  setTestValue: Dispatch<SetStateAction<number>>;
-  estimateEffectSize: boolean;
-  setEstimateEffectSize: Dispatch<SetStateAction<boolean>>;
-  resetTestSettings: () => void;
-  updateTestSettings: (key: keyof TestSettingsOptions, value: boolean) => void;
+// Variable Selection Props
+export interface VariableSelectionProps {
+  initialVariables?: Variable[];
 }
 
-// ---------------------------------
-// Test Settings Options Types
-// ---------------------------------
-export interface TestSettingsOptions {
-  testValue: number;
-  estimateEffectSize: boolean;
-}
-
-// ---------------------------------
-// Data Fetching Types
-// ---------------------------------
-export interface FetchedData {
-  variableData: VariableData[] | null;
-}
-
-// ---------------------------------
-// Data Fetching Result Types
-// ---------------------------------
-export interface DataFetchingResult {
-  isLoading: boolean;
-  error: string | null;
-  fetchData: (variables: Variable[]) => Promise<FetchedData>;
-  clearError: () => void;
-}
-
-// ---------------------------------
-// One Sample T Test Worker Result Types
-// ---------------------------------
-export interface OneSampleTTestWorkerResult {
-  success: boolean;
-  statistics?: OneSampleTTestStatistics;
-  test?: OneSampleTTestResults;
-  error?: string;
-}
-
-export interface OneSampleTTestStatistics {
-  title: string;
-  output_data: any;
-  components: string;
-  description: string;
-}
-
-export interface OneSampleTTestResults {
-  title: string;
-  output_data: any;
-  components: string;
-  description: string;
-}
-
-export interface WorkerInput {
-  variableData: VariableData[];
-  testValue: number;
-  estimateEffectSize: boolean;
-}
-
-export interface WorkerCalculationPromise {
-  resolve: (value: OneSampleTTestWorkerResult | null) => void;
-  reject: (reason: any) => void;
-}
-
-export interface OneSampleTTestWorkerHookResult {
-  isCalculating: boolean;
-  error: string | null;
-  calculate: (input: WorkerInput) => Promise<OneSampleTTestWorkerResult | null>;
-  cancelCalculation: () => void;
-}
-
+// OneSampleTTestAnalysis Props
 export interface OneSampleTTestAnalysisProps extends Pick<BaseModalProps, 'onClose' | 'containerType'> {
-  selectedVariables: Variable[];
+  testVariables: Variable[];
   testValue: number;
   estimateEffectSize: boolean;
 }
 
-export interface OneSampleTTestAnalysisResult {
-  isLoading: boolean;
-  errorMsg: string | null;
-  runAnalysis: () => Promise<void>;
-  cancelAnalysis: () => void;
+// ---------------------------------
+// Result
+// ---------------------------------
+
+// UseTourGuide Result
+export interface UseTourGuideResult {
+  tourActive: boolean;
+  currentStep: number;
+  tourSteps: TourStep[];
+  currentTargetElement: HTMLElement | null;
+  startTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+  endTour: () => void;
 } 
+
+// OneSampleStatistics Result
+export interface OneSampleStatistics {
+  N: number;
+  Mean: number;
+  StdDev: number;
+  SEMean: number;
+}
+
+// OneSampleTest Result
+export interface OneSampleTest {
+  T: number;
+  DF: number;
+  PValue: number;
+  MeanDifference: number;
+  Lower: number;
+  Upper: number;
+}
+
+// OneSampleTTest Result
+export interface OneSampleTTestResult {
+  variable: Variable;
+  testValue?: number;
+  stats: OneSampleStatistics | OneSampleTest;
+}
+
+// OneSampleTTest Results Collection
+export interface OneSampleTTestResults {
+  oneSampleStatistics?: OneSampleTTestResult[];
+  oneSampleTest?: OneSampleTTestResult[];
+}
+
+// ---------------------------------
+// Table Types
+// ---------------------------------
+export interface TableColumnHeader {
+  header: string;
+  key: string;
+  children?: TableColumnHeader[];
+}
+
+export interface TableRow {
+  [key: string]: any;
+  rowHeader?: any[];
+}
+
+export interface OneSampleTTestTable {
+  title: string;
+  columnHeaders: TableColumnHeader[];
+  rows: TableRow[];
+}

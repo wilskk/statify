@@ -1,11 +1,9 @@
-import {
-    TABS,
-    TourStep } from '../types';
+import { TABS, TourStep } from '../types';
 
 export const baseTourSteps: TourStep[] = [
     {
         title: "Variable Selection",
-        content: "Select variables from the available list to analyze with Chi-Square Test. Only numeric variables are shown.",
+        content: "Select variables from the available list to analyze with One-Sample T Test. Only numeric variables are shown.",
         targetId: "variable-list-manager",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
@@ -22,49 +20,30 @@ export const baseTourSteps: TourStep[] = [
         requiredTab: TABS.VARIABLES
     },
     {
-        title: "Options Tab",
-        content: "Click here to configure test options and settings.",
-        targetId: "chi-square-options-tab",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: null,
-        icon: "⚙️",
-        requiredTab: TABS.VARIABLES,
-        forceChangeTab: true
-    },
-    {
-        title: "Expected Range",
-        content: "Choose whether to get the range from data or specify a custom range.",
-        targetId: "expected-range-section",
-        defaultPosition: 'bottom',
-        defaultHorizontalPosition: null,
-        icon: "📏",
-        requiredTab: TABS.OPTIONS
-    },
-    {
-        title: "Expected Value",
-        content: "Define how expected values should be calculated for the test.",
-        targetId: "expected-value-section",
+        title: "Test Value",
+        content: "Specify the value to test your variables against. This is the hypothesized mean value.",
+        targetId: "test-value-section",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
         icon: "🔢",
-        requiredTab: TABS.OPTIONS
+        requiredTab: TABS.VARIABLES
     },
     {
-        title: "Statistics Options",
-        content: "Select additional statistics to include in the results.",
-        targetId: "statistics-section",
+        title: "Effect Size",
+        content: "Check this option to include effect size calculations in your results.",
+        targetId: "estimate-effect-size-section",
         defaultPosition: 'bottom',
         defaultHorizontalPosition: null,
-        icon: "📈",
-        requiredTab: TABS.OPTIONS
+        icon: "📏",
+        requiredTab: TABS.VARIABLES
     },
     {
         title: "Run Analysis",
         content: "Click OK to run the analysis with your selected variables and settings.",
-        targetId: "chi-square-ok-button",
+        targetId: "one-sample-t-test-ok-button",
         defaultPosition: 'top',
         defaultHorizontalPosition: null,
         icon: "▶️",
-        requiredTab: TABS.OPTIONS
+        requiredTab: TABS.VARIABLES
     }
 ];

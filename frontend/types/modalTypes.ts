@@ -98,6 +98,12 @@ export enum ModalType {
     PPPlots = "PPPlots",
     QQPlots = "QQPlots",
 
+    // Compare Means modals
+    OneSampleTTest = "OneSampleTTest",
+    IndependentSamplesTTest = "IndependentSamplesTTest",
+    PairedSamplesTTest = "PairedSamplesTTest",
+    OneWayANOVA = "OneWayANOVA",
+
     // General Linear Model modals
     ModalUnivariate = "ModalUnivariate",
     ModalMultivariate = "ModalMultivariate",
@@ -122,6 +128,14 @@ export enum ModalType {
     ModalOptimalScalingCATPCA = "ModalOptimalScalingCATPCA",
     ModalOptimalScalingOVERALS = "ModalOptimalScalingOVERALS",
     ModalOptimalScalingMCA = "ModalOptimalScalingMCA",
+    
+    // Nonparametric Tests modals
+    ChiSquare = "ChiSquare",
+    Runs = "Runs",
+    TwoIndependentSamples = "TwoIndependentSamples",
+    KIndependentSamples = "KIndependentSamples",
+    TwoRelatedSamples = "TwoRelatedSamples",
+    KRelatedSamples = "KRelatedSamples",
 }
 
 /**
@@ -273,6 +287,12 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.PPPlots]: ModalCategory.Analyze,
     [ModalType.QQPlots]: ModalCategory.Analyze,
 
+    // Compare Means modals
+    [ModalType.IndependentSamplesTTest]: ModalCategory.Analyze,
+    [ModalType.OneSampleTTest]: ModalCategory.Analyze,
+    [ModalType.PairedSamplesTTest]: ModalCategory.Analyze,
+    [ModalType.OneWayANOVA]: ModalCategory.Analyze,
+
     // General Linear Model modals
     [ModalType.ModalUnivariate]: ModalCategory.Analyze,
     [ModalType.ModalMultivariate]: ModalCategory.Analyze,
@@ -297,6 +317,14 @@ export const MODAL_CATEGORIES: Record<ModalType, ModalCategory> = {
     [ModalType.ModalOptimalScalingCATPCA]: ModalCategory.Analyze,
     [ModalType.ModalOptimalScalingOVERALS]: ModalCategory.Analyze,
     [ModalType.ModalOptimalScalingMCA]: ModalCategory.Analyze,
+    
+    // Nonparametric Tests modals
+    [ModalType.ChiSquare]: ModalCategory.Analyze,
+    [ModalType.Runs]: ModalCategory.Analyze,
+    [ModalType.TwoIndependentSamples]: ModalCategory.Analyze,
+    [ModalType.KIndependentSamples]: ModalCategory.Analyze,
+    [ModalType.TwoRelatedSamples]: ModalCategory.Analyze,
+    [ModalType.KRelatedSamples]: ModalCategory.Analyze,
 };
 
 /**
@@ -431,6 +459,18 @@ export function getModalTitle(type: ModalType): string {
             return "Go To Case";
         case ModalType.GoToVariable:
             return "Go To Variable";
+        case ModalType.ChiSquare:
+            return "Chi-Square Test";
+        case ModalType.Runs:
+            return "Runs Test";
+        case ModalType.TwoIndependentSamples:
+            return "Two Independent Samples Tests";
+        case ModalType.KIndependentSamples:
+            return "K Independent Samples Tests";
+        case ModalType.TwoRelatedSamples:
+            return "Two Related Samples Tests";
+        case ModalType.KRelatedSamples:
+            return "K Related Samples Tests";
         default:
             return rawTitle.trim();
     }

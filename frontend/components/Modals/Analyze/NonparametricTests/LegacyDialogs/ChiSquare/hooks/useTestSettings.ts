@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   TestSettingsProps,
-  TestSettingsResult,
   ExpectedRangeOptions,
   RangeValueOptions,
   ExpectedValueOptions,
@@ -27,7 +26,7 @@ export const useTestSettings = ({
         descriptive: false,
         quartiles: false
     }
-}: TestSettingsProps): TestSettingsResult => {
+}: Omit<TestSettingsProps, 'resetTestSettings'> = {}) => {
     const [expectedRange, setExpectedRange] = useState<ExpectedRangeOptions>(initialExpectedRange);
     const [rangeValue, setRangeValue] = useState<RangeValueOptions>(initialRangeValue);
     const [expectedValue, setExpectedValue] = useState<ExpectedValueOptions>(initialExpectedValue);

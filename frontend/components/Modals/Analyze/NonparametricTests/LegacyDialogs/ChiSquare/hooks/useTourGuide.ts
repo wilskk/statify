@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { HorizontalPosition } from '@/types/tourTypes';
-import { TabControlProps, UseTourGuideResult, TourStep } from '../types';
+import { TabControlProps, UseTourGuideResult, TourStep, TabType } from '../types';
 
 const TIMEOUT_DELAY = 200;
 
@@ -49,11 +49,11 @@ export const useTourGuide = (
         return step?.requiredTab;
     }, [tourSteps]);
 
-    const switchTabIfNeeded = useCallback((requiredTab?: string) => {
+    const switchTabIfNeeded = useCallback((requiredTab?: string | TabType) => {
         if (!tabControl || !requiredTab || tabControl.currentActiveTab === requiredTab) {
             return;
         }
-        tabControl.setActiveTab(requiredTab);
+        tabControl.setActiveTab(requiredTab as TabType);
         lastTabRef.current = requiredTab;
         clearTimeout();
         timeoutRef.current = window.setTimeout(refreshTargetElements, TIMEOUT_DELAY);

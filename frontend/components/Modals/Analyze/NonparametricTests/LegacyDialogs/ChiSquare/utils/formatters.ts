@@ -6,6 +6,7 @@ import {
     Frequencies,
     TestStatistics,
     DescriptiveStatistics,
+    DisplayStatisticsOptions,
 } from '../types';
 
 /**
@@ -17,7 +18,7 @@ import {
 export function formatFrequenciesTable(
     results: ChiSquareResults,
     specifiedRange?: boolean
-): ChiSquareTable {
+): ChiSquareTable | ChiSquareTable[] {
     if (!results || !results.frequencies || results.frequencies.length === 0) {
         return {
             title: "Frequencies",
@@ -43,175 +44,67 @@ export function formatFrequenciesTable(
  */
 function formatFrequenciesGetFromData(
     results: ChiSquareResults
-): ChiSquareTable {
-    // Single variable case
-    if (results.frequencies && results.frequencies.length === 1) {
-        const { variable, stats } = results.frequencies[0];
-        
-        if (!variable || !stats) {
-            return {
-                title: "Frequencies",
-                columnHeaders: [{ header: "No Data", key: "noData" }],
-                rows: []
-            };
-        }
-        
-        const freqStats = stats as Frequencies;
-        const decimals = variable.decimals || 0;
-        
-        const columnHeaders: TableColumnHeader[] = [
-            { header: "", key: "rowHeader" },
-            { header: "Observed N", key: "observedN" },
-            { header: "Expected N", key: "expectedN" },
-            { header: "Residual", key: "residual" }
-        ];
-        
-        // Create rows for each category
-        const rows: TableRow[] = [];
-        const { categoryList, observedN, expectedN, residual } = freqStats;
-        
-        if (categoryList && observedN && expectedN && residual) {
-            categoryList.forEach((category, index) => {
-                const observed = observedN[index] || 0;
-                const expected = Array.isArray(expectedN) ? expectedN[index] : expectedN;
-                const res = residual[index] || 0;
-                
-                rows.push({
-                    rowHeader: [typeof category === 'number' ? category.toFixed(decimals) : String(category)],
-                    observedN: observed,
-                    expectedN: expected.toFixed(1),
-                    residual: res.toFixed(1)
-                });
-            });
-            
-            // Add total row
-            rows.push({
-                rowHeader: ["Total"],
-                observedN: observedN.reduce((sum, val) => sum + val, 0),
-                expectedN: ""
-            });
-        }
-        
-        return {
-            title: variable.label || variable.name,
-            columnHeaders,
-            rows
-        };
-    }
-    
-    // Multiple variables case
-    const columnHeaders: TableColumnHeader[] = [
-        { header: "", key: "rowHeader" }
-    ];
-    
-    // Add column headers for each variable
+): ChiSquareTable[] {
     if (results.frequencies) {
-        results.frequencies.forEach((result, index) => {
-            columnHeaders.push({
-                header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
-                key: `var_${index}`,
-                children: [
-                    { header: "Observed N", key: `observedN${index}` },
-                    { header: "Expected N", key: `expectedN${index}` },
-                    { header: "Residual", key: `residual${index}` }
-                ]
-            });
-        });
-    }
-    
-    // Find all unique categories across all variables
-    const allCategories = new Set<string | number>();
-    if (results.frequencies) {
-        results.frequencies.forEach(result => {
-            const stats = result.stats as Frequencies;
-            if (stats && stats.categoryList) {
-                stats.categoryList.forEach(category => allCategories.add(category));
-            }
-        });
-    }
-    
-    // Sort categories numerically if possible
-    const sortedCategories = Array.from(allCategories).sort((a, b) => {
-        const numA = Number(a);
-        const numB = Number(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-        }
-        return String(a).localeCompare(String(b));
-    });
-    
-    // Create rows for each category
-    const rows: TableRow[] = [];
-    sortedCategories.forEach(category => {
-        const row: TableRow = {
-            rowHeader: [String(category)]
-        };
-        
-        // Add data for each variable
-        if (results.frequencies) {
-            results.frequencies.forEach((result, varIndex) => {
-                const { variable, stats } = result;
-                
-                if (!variable || !stats) {
-                    row[`observedN${varIndex}`] = "";
-                    row[`expectedN${varIndex}`] = "";
-                    row[`residual${varIndex}`] = "";
-                    return;
-                }
-                
+        const tables: ChiSquareTable[] = [];
+        results.frequencies.forEach((result) => {
+            const { variable, stats } = result;
+
+            if (variable && stats) {
                 const freqStats = stats as Frequencies;
-                const categoryIndex = freqStats.categoryList.findIndex(cat => 
-                    typeof cat === 'number' && typeof category === 'number' 
-                        ? cat === category 
-                        : String(cat) === String(category)
-                );
-                
-                if (categoryIndex !== -1) {
-                    const observed = freqStats.observedN[categoryIndex] || 0;
-                    const expected = Array.isArray(freqStats.expectedN) 
-                        ? freqStats.expectedN[categoryIndex] 
-                        : freqStats.expectedN;
-                    const res = freqStats.residual[categoryIndex] || 0;
-                    
-                    row[`observedN${varIndex}`] = observed;
-                    row[`expectedN${varIndex}`] = expected.toFixed(1);
-                    row[`residual${varIndex}`] = res.toFixed(1);
-                } else {
-                    row[`observedN${varIndex}`] = 0;
-                    row[`expectedN${varIndex}`] = Array.isArray(freqStats.expectedN)
-                        ? "0.0"
-                        : freqStats.expectedN.toFixed(1);
-                    row[`residual${varIndex}`] = "0.0";
+                const decimals = variable.decimals || 0;
+
+                const columnHeaders: TableColumnHeader[] = [
+                    { header: "", key: "rowHeader" },
+                    { header: "Observed N", key: "observedN" },
+                    { header: "Expected N", key: "expectedN" },
+                    { header: "Residual", key: "residual" }
+                ];
+
+                const rows: TableRow[] = [];
+                const { categoryList, observedN, expectedN, residual, N } = freqStats;
+
+                if (categoryList && observedN && expectedN && residual && N) {
+                    categoryList.forEach((category, index) => {
+                        const observed = observedN[index] || 0;
+                        const expected = Array.isArray(expectedN) ? expectedN[index] : expectedN;
+                        const res = residual[index] || 0;
+                        
+                        rows.push({
+                            rowHeader: [typeof category === 'number' ? category.toFixed(decimals) : String(category)],
+                            observedN: observed,
+                            expectedN: expected.toFixed(1),
+                            residual: res.toFixed(1)
+                        });
+                    });
+
+                    // Add total row
+                    rows.push({
+                        rowHeader: ["Total"],
+                        observedN: N,
+                        expectedN: "",
+                        residual: ""
+                    });
                 }
-            });
-        }
-        
-        rows.push(row);
-    });
-    
-    // Add total row
-    const totalRow: TableRow = {
-        rowHeader: ["Total"]
-    };
-    
-    if (results.frequencies) {
-        results.frequencies.forEach((result, varIndex) => {
-            const stats = result.stats as Frequencies;
-            if (stats && stats.observedN) {
-                totalRow[`observedN${varIndex}`] = stats.observedN.reduce((sum, val) => sum + val, 0);
-            } else {
-                totalRow[`observedN${varIndex}`] = "";
+
+                tables.push({
+                    title: variable.label || variable.name,
+                    columnHeaders,
+                    rows
+                });
             }
         });
+
+        return tables;
     }
-    
-    rows.push(totalRow);
-    
-    return {
-        title: "Frequencies",
-        columnHeaders,
-        rows
-    };
+
+    return [
+        {
+            title: "Frequencies",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
+        }
+    ];
 }
 
 /**
@@ -222,82 +115,13 @@ function formatFrequenciesGetFromData(
 function formatFrequenciesUseSpecifiedRange(
     results: ChiSquareResults
 ): ChiSquareTable {
-    // Get range values from the first variable's analysis options
-    let lowerValue: number | null = null;
-    let upperValue: number | null = null;
-    
-    // Try to extract range values from the first result
-    const firstResult = results.frequencies && results.frequencies[0];
-    if (firstResult && firstResult.variable && (firstResult.variable as any).options?.rangeValue) {
-        const rangeValue = (firstResult.variable as any).options.rangeValue;
-        lowerValue = rangeValue.lowerValue;
-        upperValue = rangeValue.upperValue;
-    } else if (firstResult && (firstResult.stats as any)?.rangeValue) {
-        const rangeValue = (firstResult.stats as any).rangeValue;
-        lowerValue = rangeValue.lowerValue;
-        upperValue = rangeValue.upperValue;
-    }
-    
-    // If no range values found, fall back to the regular formatter
-    if (lowerValue === null || upperValue === null) {
-        return formatFrequenciesGetFromData(results);
-    }
-    
-    // Single variable case
-    if (results.frequencies && results.frequencies.length === 1) {
-        const { variable, stats } = results.frequencies[0];
-        
-        if (!variable || !stats) {
-            return {
-                title: "Frequencies",
-                columnHeaders: [{ header: "No Data", key: "noData" }],
-                rows: []
-            };
-        }
-        
-        const freqStats = stats as Frequencies;
-        const decimals = variable.decimals || 0;
-        
-        const columnHeaders: TableColumnHeader[] = [
-            { header: "", key: "rowHeader" },
-            { header: "Observed N", key: "observedN" },
-            { header: "Expected N", key: "expectedN" },
-            { header: "Residual", key: "residual" }
-        ];
-        
-        // Create rows for each value in the range
-        const rows: TableRow[] = [];
-        
-        for (let value = lowerValue; value <= upperValue; value++) {
-            const categoryIndex = freqStats.categoryList.findIndex(cat => Number(cat) === value);
-            const observed = categoryIndex !== -1 ? freqStats.observedN[categoryIndex] : 0;
-            const expected = Array.isArray(freqStats.expectedN) && categoryIndex !== -1
-                ? freqStats.expectedN[categoryIndex]
-                : freqStats.observedN.reduce((sum, val) => sum + val, 0) / (upperValue - lowerValue + 1);
-            const residual = categoryIndex !== -1 ? freqStats.residual[categoryIndex] : -expected;
-            
-            rows.push({
-                rowHeader: [value.toFixed(decimals)],
-                observedN: observed,
-                expectedN: expected.toFixed(1),
-                residual: residual.toFixed(1)
-            });
-        }
-        
-        // Add total row
-        rows.push({
-            rowHeader: ["Total"],
-            observedN: freqStats.observedN.reduce((sum, val) => sum + val, 0),
-            expectedN: ""
-        });
-        
+    if (!results || !results.frequencies || results.frequencies.length === 0) {
         return {
-            title: variable.label || variable.name,
-            columnHeaders,
-            rows
+            title: "Frequencies",
+            columnHeaders: [{ header: "No Data", key: "noData" }],
+            rows: []
         };
     }
-    
     // Multiple variables case
     const table: ChiSquareTable = {
         title: "Frequencies",
@@ -308,66 +132,83 @@ function formatFrequenciesUseSpecifiedRange(
     // Add column headers for each variable
     if (results.frequencies) {
         results.frequencies.forEach((result, index) => {
-            table.columnHeaders.push({
-                header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
-                key: `var_${index}`,
-                children: [
-                    { header: "Category", key: `category${index}` },
-                    { header: "Observed N", key: `observedN${index}` },
-                    { header: "Expected N", key: `expectedN${index}` },
-                    { header: "Residual", key: `residual${index}` }
-                ]
-            });
+            if (result && result.variable) {
+                table.columnHeaders.push({
+                    header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
+                    key: `var_${index}`,
+                    children: [
+                        { header: "Category", key: `category${index}` },
+                        { header: "Observed N", key: `observedN${index}` },
+                        { header: "Expected N", key: `expectedN${index}` },
+                        { header: "Residual", key: `residual${index}` }
+                    ]
+                });
+            }
         });
     }
-    
+
     // Create rows for each value in the range
-    for (let value = lowerValue, rowIndex = 0; value <= upperValue; value++, rowIndex++) {
-        const row: TableRow = {
-            rowHeader: [rowIndex + 1]
-        };
-        
-        // Add data for each variable
-        if (results.frequencies) {
-            results.frequencies.forEach((result, varIndex) => {
-                const { variable, stats } = result;
+    if (results.frequencies && results.frequencies.length > 0) {
+        const firstResult = results.frequencies[0];
+        if (firstResult && firstResult.stats && 'categoryList' in firstResult.stats) {
+            const freqStats = firstResult.stats as Frequencies;
+            const categoryList = freqStats.categoryList;
+            
+            categoryList.forEach((value, index) => {
+                const row: TableRow = {
+                    rowHeader: [index]
+                };
                 
-                if (!variable || !stats) {
-                    row[`category${varIndex}`] = "";
-                    row[`observedN${varIndex}`] = "";
-                    row[`expectedN${varIndex}`] = "";
-                    row[`residual${varIndex}`] = "";
-                    return;
-                }
-                
-                const freqStats = stats as Frequencies;
-                const decimals = variable.decimals || 0;
-                const categoryIndex = freqStats.categoryList.findIndex(cat => Number(cat) === value);
-                
-                // Set category value
-                row[`category${varIndex}`] = value.toFixed(decimals);
-                
-                if (categoryIndex !== -1) {
-                    const observed = freqStats.observedN[categoryIndex] || 0;
-                    const expected = Array.isArray(freqStats.expectedN) 
-                        ? freqStats.expectedN[categoryIndex] 
-                        : freqStats.observedN.reduce((sum, val) => sum + val, 0) / (upperValue - lowerValue + 1);
-                    const residual = observed - expected;
+                results.frequencies!.forEach((result, varIndex) => {
+                    const variable = result.variable;
+                    const stats = result.stats as Frequencies;
                     
-                    row[`observedN${varIndex}`] = observed;
-                    row[`expectedN${varIndex}`] = expected.toFixed(1);
-                    row[`residual${varIndex}`] = residual.toFixed(1);
-                } else {
-                    const expected = freqStats.observedN.reduce((sum, val) => sum + val, 0) / (upperValue - lowerValue + 1);
+                    if (!variable || !stats || !('categoryList' in stats)) {
+                        row[`category${varIndex}`] = "";
+                        row[`observedN${varIndex}`] = "";
+                        row[`expectedN${varIndex}`] = "";
+                        row[`residual${varIndex}`] = "";
+                        return;
+                    }
                     
-                    row[`observedN${varIndex}`] = 0;
-                    row[`expectedN${varIndex}`] = expected.toFixed(1);
-                    row[`residual${varIndex}`] = (-expected).toFixed(1);
-                }
+                    const decimals = variable.decimals || 0;
+                    const categoryIndex = stats.categoryList.findIndex(cat => Number(cat) === Number(value));
+
+                    // Set category value, but if observedN is 0, use ""
+                    let observed = 0;
+                    if (categoryIndex !== -1) {
+                        observed = stats.observedN[categoryIndex] || 0;
+                    }
+
+                    if (observed === 0) {
+                        row[`category${varIndex}`] = "";
+                    } else {
+                        row[`category${varIndex}`] = typeof value === 'number' ? value.toFixed(decimals) : String(value);
+                    }
+
+                    if (categoryIndex !== -1) {
+                        const expected = Array.isArray(stats.expectedN) 
+                            ? stats.expectedN[categoryIndex] 
+                            : stats.observedN.reduce((sum, val) => sum + val, 0) / stats.categoryList.length;
+                        const residual = stats.residual[categoryIndex] || 0;
+                        
+                        row[`observedN${varIndex}`] = observed;
+                        row[`expectedN${varIndex}`] = typeof expected === 'number' ? expected.toFixed(1) : expected;
+                        row[`residual${varIndex}`] = residual.toFixed(1);
+                    } else {
+                        const expected = Array.isArray(stats.expectedN) 
+                            ? 0 
+                            : stats.observedN.reduce((sum, val) => sum + val, 0) / stats.categoryList.length;
+                        
+                        row[`observedN${varIndex}`] = 0;
+                        row[`expectedN${varIndex}`] = typeof expected === 'number' ? expected.toFixed(1) : expected;
+                        row[`residual${varIndex}`] = (-expected).toFixed(1);
+                    }
+                });
+                
+                table.rows.push(row);
             });
         }
-        
-        table.rows.push(row);
     }
     
     // Add total row
@@ -409,26 +250,38 @@ export function formatTestStatisticsTable (
     
     const table: ChiSquareTable = {
         title: 'Chi-Square Test',
-        columnHeaders: [
-            { header: 'Variable', key: 'variable' },
-            { header: 'Chi-Square', key: 'ChiSquare' },
-            { header: 'df', key: 'DF' },
-            { header: 'Asymp. Sig.', key: 'PValue' }
-        ],
+        columnHeaders: [{ header: '', key: 'rowHeader' }],
         rows: []
     };
 
-    // Process each result
-    results.testStatistics.forEach((result) => {
-        const stats = result.stats as TestStatistics;
-        
-        table.rows.push({
-            variable: result.variable.name,
-            ChiSquare: formatNumber(stats.ChiSquare, 3),
-            DF: formatDF(stats.DF),
-            PValue: formatPValue(stats.PValue)
+    // Add column headers for each variable
+    if (results.testStatistics) {
+        results.testStatistics.forEach((result, index) => {
+            if (result && result.variable) {
+                table.columnHeaders.push({
+                    header: result.variable?.label || result.variable?.name || `Variable ${index + 1}`,
+                    key: `var_${index}`
+                });
+            }
         });
-    });
+    }
+
+    // Create rows for each value in the range
+    if (results.testStatistics) {
+        const chiSquareRow: TableRow = { rowHeader: ["Chi-Square"] };
+        const dfRow: TableRow = { rowHeader: ["df"] };
+        const pValueRow: TableRow = { rowHeader: ["Asymp. Sig."] };
+
+        results.testStatistics.forEach((result, varIndex) => {
+            const stats = result.stats as TestStatistics;
+            const key = `var_${varIndex}`;
+            chiSquareRow[key] = formatNumber(stats.ChiSquare, 3);
+            dfRow[key] = formatDF(stats.DF);
+            pValueRow[key] = formatPValue(stats.PValue);
+        });
+
+        table.rows.push(chiSquareRow, dfRow, pValueRow);
+    }
 
     return table;
 }
@@ -439,7 +292,8 @@ export function formatTestStatisticsTable (
  * @returns Formatted table
  */
 export function formatDescriptiveStatisticsTable (
-    results: ChiSquareResults
+    results: ChiSquareResults,
+    displayStatistics?: DisplayStatisticsOptions
 ): ChiSquareTable {
     if (!results || !results.descriptiveStatistics || results.descriptiveStatistics.length === 0) {
         return {
@@ -452,16 +306,33 @@ export function formatDescriptiveStatisticsTable (
     const table: ChiSquareTable = {
         title: 'Descriptive Statistics',
         columnHeaders: [
-            { header: 'Variable', key: 'variable' },
-            { header: 'N', key: 'N' },
-            { header: 'Mean', key: 'Mean' },
-            { header: 'Std. Deviation', key: 'StdDev' },
-            { header: 'Std. Error Mean', key: 'SEMean' },
-            { header: 'Minimum', key: 'Min' },
-            { header: 'Maximum', key: 'Max' }
+            { header: '', key: 'rowHeader' },
+            { header: 'N', key: 'N' }
+
         ],
         rows: []
     };
+
+    if (displayStatistics?.descriptive) {
+        table.columnHeaders.push(
+            { header: 'Mean', key: 'Mean' },
+            { header: 'Std. Deviation', key: 'StdDev' },
+            { header: 'Minimum', key: 'Min' },
+            { header: 'Maximum', key: 'Max' }
+        );
+    }
+
+    if (displayStatistics?.quartiles) {
+        table.columnHeaders.push({
+            header: "Percentiles",
+            key: "percentiles",
+            children: [
+                { header: "25th", key: "Percentile25" },
+                { header: "50th (Median)", key: "Percentile50" },
+                { header: "75th", key: "Percentile75" }
+            ]
+        });
+    }
 
     // Process each result
     results.descriptiveStatistics.forEach((result) => {
@@ -469,13 +340,15 @@ export function formatDescriptiveStatisticsTable (
         const decimals = result.variable.decimals || 2;
         
         table.rows.push({
-            variable: result.variable.name,
+            rowHeader: [result.variable.name],
             N: stats.N,
             Mean: formatNumber(stats.Mean, decimals + 2),
             StdDev: formatNumber(stats.StdDev, decimals + 3),
-            SEMean: formatNumber(stats.SEMean, decimals + 3),
             Min: formatNumber(stats.Min, decimals),
-            Max: formatNumber(stats.Max, decimals)
+            Max: formatNumber(stats.Max, decimals),
+            Percentile25: formatNumber(stats.Percentile25, decimals),
+            Percentile50: formatNumber(stats.Percentile50, decimals),
+            Percentile75: formatNumber(stats.Percentile75, decimals)
         });
     });
 
@@ -520,13 +393,4 @@ export const formatDF = (df: number | null | undefined) => {
     } else {
         return df.toFixed(3);
     }
-};
-
-/**
- * Formats error message
- * @param error Error message
- * @returns Formatted error message
- */
-export const formatErrorMessage = (error: string): string => {
-    return `Error: ${error}`;
 };

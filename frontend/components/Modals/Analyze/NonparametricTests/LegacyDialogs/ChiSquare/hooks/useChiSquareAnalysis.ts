@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useResultStore } from '@/stores/useResultStore';
 import { useAnalysisData } from '@/hooks/useAnalysisData';
+import { useDataStore } from '@/stores/useDataStore';
 
 import {
     ChiSquareAnalysisProps,
@@ -8,7 +9,11 @@ import {
     ChiSquareResult
 } from '../types';
 
-import { formatFrequenciesTable, formatTestStatisticsTable, formatDescriptiveStatisticsTable, formatErrorMessage } from '../utils/formatters';
+import {
+    formatFrequenciesTable,
+    formatTestStatisticsTable,
+    formatDescriptiveStatisticsTable,
+} from '../utils/formatters';
 
 export const useChiSquareAnalysis = ({
     testVariables,
@@ -25,10 +30,8 @@ export const useChiSquareAnalysis = ({
     const [isCalculating, setIsCalculating] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     
-    // Worker references
     const workerRef = useRef<Worker | null>(null);
     
-    // Refs for accumulating results inside the worker callback
     const resultsRef = useRef<ChiSquareResult[]>([]);
     const errorCountRef = useRef<number>(0);
     const processedCountRef = useRef<number>(0);
@@ -52,6 +55,14 @@ export const useChiSquareAnalysis = ({
         setIsCalculating(true);
         setErrorMsg(null);
 
+        try {
+            await useDataStore.getState().checkAndSave();
+        } catch (e: any) {
+            setErrorMsg(`Failed to save pending changes: ${e.message}`);
+            setIsCalculating(false);
+            return;
+        }
+
         // Reset refs for new analysis run
         resultsRef.current = [];
         errorCountRef.current = 0;
@@ -60,10 +71,17 @@ export const useChiSquareAnalysis = ({
         const worker = new Worker('/workers/NonparametricTests/manager.js', { type: 'module' });
         workerRef.current = worker;
 
+        let analysisTypes;
+        if (displayStatistics.descriptive || displayStatistics.quartiles) {
+            analysisTypes = ['descriptiveStatistics', 'chiSquare'];
+        } else {
+            analysisTypes = ['chiSquare'];
+        }
+
         testVariables.forEach(variable => {
             const dataForVar = analysisData.map(row => row[variable.columnIndex]);
             const payload = {
-                analysisType: 'chiSquare',
+                analysisType: analysisTypes,
                 variable,
                 data: dataForVar,
                 options: { expectedRange, rangeValue, expectedValue, expectedValueList, displayStatistics }
@@ -72,14 +90,39 @@ export const useChiSquareAnalysis = ({
         });
 
         worker.onmessage = async (event) => {
-            const { variableName, results, status, error: workerError, specifiedRange } = event.data;
+            const { variableName, results, status, error: workerError, specifiedRange, displayStatistics } = event.data;
 
             if (status === 'success' && results) {
-                // Process frequencies
-                if (results.frequencies) {
-                    const { variable, categoryList, observedN, expectedN, residual } = results.frequencies;
+                if (results.descriptiveStatistics) {
+                    const { variable, N, Mean, StdDev, Min, Max, Percentile25, Percentile50, Percentile75 } = results.descriptiveStatistics;
 
-                    if (variable && categoryList && observedN && expectedN && residual) {
+                    if (variable && N && Mean && StdDev && Min && Max && Percentile25 && Percentile50 && Percentile75) {
+                        resultsRef.current.push({
+                            variable,
+                            displayStatistics,
+                            stats: {
+                                N,
+                                Mean,
+                                StdDev,
+                                Min,
+                                Max,
+                                Percentile25,
+                                Percentile50,
+                                Percentile75
+                            }
+                        });
+                    } else {
+                        console.error(`Error processing descriptive statistics for ${variableName}:`, workerError);
+                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                        errorCountRef.current += 1;
+                    }
+                }
+
+                if (results.frequencies) {
+                    const { variable, categoryList, observedN, expectedN, residual, N } = results.frequencies;
+
+                    if (variable && categoryList && observedN && expectedN && residual && N) {
                         resultsRef.current.push({
                             variable,
                             specifiedRange,
@@ -87,55 +130,37 @@ export const useChiSquareAnalysis = ({
                                 categoryList,
                                 observedN,
                                 expectedN,
-                                residual
+                                residual,
+                                N
                             }
                         });
                     } else {
-                        console.error(`Error processing ${variableName}:`, workerError);
+                        console.error(`Error processing frequencies for ${variableName}:`, workerError);
                         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
                         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
                         errorCountRef.current += 1;
                     }
                 }
 
-                // Process test statistics
-                // if (results.testStatistics) {
-                //     const { variable, ChiSquare, DF, PValue } = results.testStatistics;
+                if (results.testStatistics) {
+                    const { variable, ChiSquare, DF, PValue } = results.testStatistics;
 
-                //     if (variable && ChiSquare && DF && PValue) {
-                //         resultsRef.current.push({
-                //           variable,
-                //           stats: {
-                //             ChiSquare,
-                //             DF,
-                //             PValue
-                //           }
-                //       });
-                //     } else {
-                //         console.error(`Error processing ${variableName}:`, workerError);
-                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                //         errorCountRef.current += 1;
-                //     }
-                // }
-
-                // Process descriptive statistics
-                // if (results.descriptiveStatistics) {
-                //     const { variable, stats } = results.descriptiveStatistics;
-
-                //     if (variable && stats) {
-                //         resultsRef.current.push({
-                //             variable,
-                //             stats
-                //         });
-                //     } else {
-                //         console.error(`Error processing ${variableName}:`, workerError);
-                //         const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
-                //         setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
-                //         errorCountRef.current += 1;
-                //     }
-                // }
-
+                    if (variable && ChiSquare !== undefined && DF !== undefined && PValue !== undefined) {
+                        resultsRef.current.push({
+                          variable,
+                          stats: {
+                            ChiSquare,
+                            DF,
+                            PValue
+                          }
+                      });
+                    } else {
+                        console.error(`Error processing test statistics for ${variableName}:`, workerError);
+                        const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
+                        setErrorMsg(prev => prev ? `${prev}\n${errorMsg}` : errorMsg);
+                        errorCountRef.current += 1;
+                    }
+                }
             } else {
                 console.error(`Error processing ${variableName}:`, workerError);
                 const errorMsg = `Calculation failed for ${variableName}: ${workerError || 'Unknown error'}`;
@@ -147,88 +172,101 @@ export const useChiSquareAnalysis = ({
 
             if (processedCountRef.current === testVariables.length) {
                 if (resultsRef.current.length > 0) {
-                  try {
-                      // Separate frequencies, test statistics, and descriptive statistics results
-                      const frequencies = resultsRef.current.filter(r => 'categoryList' in (r.stats as any));
-                      // const testStatistics = resultsRef.current.filter(r => 'ChiSquare' in (r.stats as any));
-                      // const descriptiveStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
+                    try {
+                        const descriptiveStatistics = resultsRef.current.filter(r => 'Mean' in (r.stats as any));
+                        const frequencies = resultsRef.current.filter(r => 'categoryList' in (r.stats as any));
+                        const testStatistics = resultsRef.current.filter(r => 'ChiSquare' in (r.stats as any));
                       
-                      const results: ChiSquareResults = {
-                          frequencies,
-                          // testStatistics,
-                          // descriptiveStatistics
-                      };
+                        const results: ChiSquareResults = {
+                            descriptiveStatistics,
+                            frequencies,
+                            testStatistics
+                        };
 
-                      // Format tables
-                      const formattedFrequenciesTable = formatFrequenciesTable(results, specifiedRange);
-                      // const formattedTestStatisticsTable = formatTestStatisticsTable(results);
-                      // const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results);
+                        console.log('Results to format:', JSON.stringify(results));
 
-                      // Prepare log message
-                      const variableNames = testVariables.map(v => v.name).join(" ");
-                      let logMsg = `NPAR TESTS`;
+                        // Format tables
+                        const formattedDescriptiveStatisticsTable = formatDescriptiveStatisticsTable(results, displayStatistics);
+                        const formattedFrequenciesTable = formatFrequenciesTable(results, specifiedRange);
+                        const formattedTestStatisticsTable = formatTestStatisticsTable(results);
                       
-                      // Only add tests that are enabled
-                      if (expectedRange.useSpecifiedRange) {
-                        logMsg += `{CHISQUARE=${variableNames} (${rangeValue.lowerValue},${rangeValue.upperValue})}`;
-                      } else {
-                        logMsg += `{CHISQUARE=${variableNames}}`;
-                      }
-
-                      if (expectedValue.allCategoriesEqual) {
-                          logMsg += `{EXPECTED=EQUAL}`;
-                      } else {
-                          logMsg += `{EXPECTED=${expectedValueList.join(" ")}}`;
-                      }
-
-                      // if (displayStatistics.descriptive && displayStatistics.quartiles) {
-                      //     logMsg += `{STATISTICS DESCRIPTIVES QUARTILES}`;
-                      // } else if (displayStatistics.descriptive) {
-                      //     logMsg += `{STATISTICS DESCRIPTIVES}`;
-                      // } else if (displayStatistics.quartiles) {
-                      //     logMsg += `{STATISTICS QUARTILES}`;
-                      // }
-
-                      // Save to database
-                      const logId = await addLog({ log: logMsg });
-                      const analyticId = await addAnalytic(logId, { title: "Chi-Square Test" });
+                        console.log('Formatted descriptive statistics table:', JSON.stringify(formattedDescriptiveStatisticsTable));
+                        console.log('Formatted frequencies table:', JSON.stringify(formattedFrequenciesTable));
+                        console.log('Formatted test statistics table:', JSON.stringify(formattedTestStatisticsTable));
+                        // Prepare log message
+                        const variableNames = testVariables.map(v => v.name).join(" ");
+                        let logMsg = `NPAR TESTS`;
                         
-                      // Add frequencies table
-                      await addStatistic(analyticId, {
-                          title: "Chi-Square Test",
-                          output_data: JSON.stringify({ tables: [formattedFrequenciesTable] }),
-                          components: "Frequencies",
-                          description: ""
-                      });
-                      
-                        
-                      // Add test statistics table
-                      // if (formattedTestStatisticsTable.rows.length > 0) {
-                      //     await addStatistic(analyticId, {
-                      //         title: "Chi-Square Test",
-                      //         output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
-                      //         components: "Chi-Square Test",
-                      //         description: ""
-                      //     });
-                      // }
-                        
-                      // Add descriptive statistics table
-                      // if (displayStatistics.descriptive && formattedDescriptiveStatisticsTable.rows.length > 0) {
-                      //     await addStatistic(analyticId, {
-                      //         title: "Chi-Square Test",
-                      //         output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
-                      //         components: "Descriptive Statistics",
-                      //         description: ""
-                      //     });
-                      // }
-                          
-                      if (onClose) {
-                          onClose();
-                      }
-                  } catch (err) {
-                      console.error("Error saving results:", err);
-                      setErrorMsg("Error saving results.");
-                  }
+                        // Only add tests that are enabled
+                        if (expectedRange.useSpecifiedRange) {
+                            logMsg += `{CHISQUARE=${variableNames} (${rangeValue.lowerValue},${rangeValue.upperValue})}`;
+                        } else {
+                            logMsg += `{CHISQUARE=${variableNames}}`;
+                        }
+
+                        if (expectedValue.allCategoriesEqual) {
+                            logMsg += `{EXPECTED=EQUAL}`;
+                        } else {
+                            logMsg += `{EXPECTED=${expectedValueList.join(" ")}}`;
+                        }
+
+                        if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
+                            logMsg += `{STATISTICS`;
+                            if (displayStatistics.descriptive) logMsg += ` DESCRIPTIVES`;
+                            if (displayStatistics.quartiles) logMsg += ` QUARTILES`;
+                            logMsg += `}`;
+                        }
+
+                        // Save to database
+                        const logId = await addLog({ log: logMsg });
+                        const analyticId = await addAnalytic(logId, { title: "Chi-Square Test" });
+                            
+                                                    
+                        // Add descriptive statistics table
+                        if (displayStatistics?.descriptive || displayStatistics?.quartiles) {
+                            await addStatistic(analyticId, {
+                                title: "Chi-Square Test",
+                                output_data: JSON.stringify({ tables: [formattedDescriptiveStatisticsTable] }),
+                                components: "Descriptive Statistics",
+                                description: ""
+                            });
+                        }
+
+                        // Add frequencies table
+                        // Handle both array and single object for formattedFrequenciesTable
+                        if (Array.isArray(formattedFrequenciesTable)) {
+                            for (const table of formattedFrequenciesTable) {
+                                await addStatistic(analyticId, {
+                                    title: "Chi-Square Test",
+                                    output_data: JSON.stringify({ tables: [table] }),
+                                    components: "Frequencies",
+                                    description: ""
+                                });
+                            }
+                        } else if (formattedFrequenciesTable) {
+                            await addStatistic(analyticId, {
+                                title: "Chi-Square Test",
+                                output_data: JSON.stringify({ tables: [formattedFrequenciesTable] }),
+                                components: "Frequencies",
+                                description: ""
+                            });
+                        }
+                            
+                        // Add test statistics table
+                        await addStatistic(analyticId, {
+                            title: "Chi-Square Test",
+                            output_data: JSON.stringify({ tables: [formattedTestStatisticsTable] }),
+                            components: "Chi-Square Test",
+                            description: ""
+                        });
+                            
+                        if (onClose) {
+                            onClose();
+                        }
+                    } catch (err) {
+                        console.error("Error saving results:", err);
+                        setErrorMsg("Error saving results.");
+                    }
                 }
                   
                 setIsCalculating(false);

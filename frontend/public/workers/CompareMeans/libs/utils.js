@@ -1,7 +1,7 @@
 /**
  * @file /libs/utils.js
  * @description
- * Kumpulan fungsi utilitas terpusat yang digunakan oleh berbagai worker Nonparametric Tests.
+ * Kumpulan fungsi utilitas terpusat yang digunakan oleh berbagai worker Compare Means.
  */
 
 /**

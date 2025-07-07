@@ -1,5 +1,5 @@
 export * from './useVariableSelection';
 export * from './useTestSettings';
-export * from './useChiSquareAnalysis';
+export * from './useOneSampleTTestAnalysis';
 export * from './useTourGuide';
 export * from './tourConfig';
