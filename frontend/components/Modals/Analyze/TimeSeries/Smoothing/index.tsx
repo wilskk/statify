@@ -123,7 +123,7 @@ const Smoothing: FC<SmoothingProps> = ({ onClose, containerType }) => {
         };
 
         loadSavedState();
-    }, [variables, setSaveAsVariable]);
+    }, [variables, data, setSaveAsVariable]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {

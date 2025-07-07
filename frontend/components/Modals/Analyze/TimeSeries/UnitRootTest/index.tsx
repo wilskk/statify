@@ -113,7 +113,7 @@ const UnitRootTest: FC<UnitRootTestProps> = ({ onClose, containerType }) => {
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [variables, data]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {

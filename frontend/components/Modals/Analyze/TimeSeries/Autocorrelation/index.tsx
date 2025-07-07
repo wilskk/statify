@@ -124,7 +124,7 @@ const Autocorrelation: FC<AutocorrelationProps> = ({ onClose, containerType }) =
         };
 
         loadSavedState();
-    }, [variables]);
+    }, [variables, data]);
 
     // Save state to IndexedDB whenever variables change
     useEffect(() => {
