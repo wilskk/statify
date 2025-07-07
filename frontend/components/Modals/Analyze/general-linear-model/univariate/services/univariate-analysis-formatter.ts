@@ -20,6 +20,8 @@ export function transformUnivariateResult(
                 { header: "N", key: "n" },
             ],
             rows: [],
+            note: data.between_subjects_factors[0]?.note,
+            interpretation: data.between_subjects_factors[0]?.interpretation,
         };
 
         // Process each factor
@@ -67,6 +69,8 @@ export function transformUnivariateResult(
                     { header: "N", key: "n" },
                 ],
                 rows: [],
+                note: stat.note,
+                interpretation: stat.interpretation,
             };
 
             const allRows: Row[] = [];
@@ -168,6 +172,8 @@ export function transformUnivariateResult(
                             sig: formatDisplayNumber(entry.significance),
                         },
                     ],
+                    note: test.note,
+                    interpretation: test.interpretation,
                 };
 
                 const nullColumns = {
@@ -206,6 +212,8 @@ export function transformUnivariateResult(
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: data.levene_test[0]?.note,
+                interpretation: data.levene_test[0]?.interpretation,
             };
 
             data.levene_test.forEach((test: any) => {
@@ -303,6 +311,8 @@ export function transformUnivariateResult(
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -356,6 +366,8 @@ export function transformUnivariateResult(
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -409,6 +421,8 @@ export function transformUnivariateResult(
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -463,6 +477,8 @@ export function transformUnivariateResult(
                     { header: "Sig.", key: "sig" },
                 ],
                 rows: [],
+                note: testData.note,
+                interpretation: testData.interpretation,
             };
 
             table.rows.push({
@@ -580,6 +596,8 @@ export function transformUnivariateResult(
                 { header: "Observed Powerᵇ", key: "observed_power" },
             ],
             rows: [],
+            note: effects.note,
+            interpretation: effects.interpretation,
         };
 
         if (effects.sources && Array.isArray(effects.sources)) {
@@ -756,6 +774,8 @@ export function transformUnivariateResult(
                 },
             ],
             rows: [],
+            note: estimates.note,
+            interpretation: estimates.interpretation,
         };
 
         const redundantRowValues = {
@@ -873,6 +893,8 @@ export function transformUnivariateResult(
                 }`,
                 columnHeaders,
                 rows: [],
+                note: gef.note,
+                interpretation: gef.interpretation,
             };
 
             // Transpose l_matrix to populate rows
@@ -948,6 +970,8 @@ export function transformUnivariateResult(
                     },
                 ],
                 rows: [],
+                note: termMatrix.note,
+                interpretation: termMatrix.interpretation,
             };
 
             termMatrix.parameter_names.forEach(
@@ -1018,6 +1042,8 @@ export function transformUnivariateResult(
                     },
                 ],
                 rows: [],
+                note: contrasts.note,
+                interpretation: contrasts.interpretation,
             };
 
             // Process coefficients
@@ -1089,6 +1115,8 @@ export function transformUnivariateResult(
                 { header: "Observed Power", key: "observed_power" },
             ],
             rows: [],
+            note: lof.note,
+            interpretation: lof.interpretation,
         };
 
         if (lofData) {
@@ -1159,6 +1187,8 @@ export function transformUnivariateResult(
                 },
             ],
             rows: [],
+            note: plots.note,
+            interpretation: plots.interpretation,
         };
 
         // Process each point
@@ -1204,6 +1234,8 @@ export function transformUnivariateResult(
                     },
                 ],
                 rows: [],
+                note: comparisonData.note,
+                interpretation: comparisonData.interpretation,
             };
 
             // Sub-headers for CI
@@ -1290,6 +1322,8 @@ export function transformUnivariateResult(
                 title: "Homogeneous Subsets",
                 columnHeaders: columnHeaders,
                 rows: [],
+                note: homogeneousData.note,
+                interpretation: homogeneousData.interpretation,
             };
 
             homogeneousData.entries.forEach((entry: any) => {
@@ -1398,6 +1432,8 @@ export function transformUnivariateResult(
                     subtitle: `Dependent Variable: ${depVarName}`,
                     columnHeaders,
                     rows: [],
+                    note: estimates.note,
+                    interpretation: estimates.interpretation,
                 };
 
                 if (!isOverall) {
@@ -1527,6 +1563,8 @@ export function transformUnivariateResult(
                     title: title,
                     columnHeaders: lMatrixHeaders,
                     rows: [],
+                    note: contrastCoeffs.note,
+                    interpretation: contrastCoeffs.interpretation,
                 };
 
                 contrastCoeffs.parameter.forEach(
@@ -1583,6 +1621,8 @@ export function transformUnivariateResult(
                         },
                     ],
                     rows: [],
+                    note: comparison.note,
+                    interpretation: comparison.interpretation,
                 };
 
                 const groupedRows: { [key: string]: Row[] } = {};
@@ -1669,6 +1709,8 @@ export function transformUnivariateResult(
                         { header: "Observed Powerᵃ", key: "observed_power" },
                     ],
                     rows: [],
+                    note: test.note,
+                    interpretation: test.interpretation,
                 };
 
                 const sigLevelMatch = test.notes.find((n: string) =>
@@ -1748,6 +1790,8 @@ export function transformUnivariateResult(
                             { header: "Label", key: "label" },
                         ],
                         rows: [],
+                        note: plotData.note,
+                        interpretation: plotData.interpretation,
                     };
 
                     // Process each series and its points
@@ -1813,6 +1857,8 @@ export function transformUnivariateResult(
                 title: "Case Diagnostics",
                 columnHeaders: columnHeaders,
                 rows: [],
+                note: data.saved_variables.note,
+                interpretation: data.saved_variables.interpretation,
             };
 
             const numRows = vars[varKeys[0]].length;
@@ -1845,6 +1891,8 @@ export function transformUnivariateResult(
                     { header: "", key: "description" },
                 ],
                 rows: [],
+                note: custom_tests.note,
+                interpretation: custom_tests.interpretation,
             };
 
             custom_tests.information.forEach((info: any, index: number) => {
@@ -1904,6 +1952,8 @@ export function transformUnivariateResult(
                             { header: "Sig.", key: "sig" },
                         ],
                         rows: [],
+                        note: test_result.note,
+                        interpretation: test_result.interpretation,
                     };
 
                     test_result.contrast_result.forEach((res: any) => {
@@ -1942,6 +1992,8 @@ export function transformUnivariateResult(
                             },
                         ],
                         rows: [],
+                        note: contrast_k_result.note,
+                        interpretation: contrast_k_result.interpretation,
                     };
 
                     contrast_k_result.parameter.forEach(
@@ -2042,6 +2094,8 @@ export function transformUnivariateResult(
                             },
                         ],
                         rows: [],
+                        note: contrast_def.note,
+                        interpretation: contrast_def.interpretation,
                     };
 
                     contrast_def.parameter.forEach(
@@ -2101,6 +2155,8 @@ export function transformUnivariateResult(
                         message: "No errors occurred.",
                     },
                 ],
+                note: "No errors occurred.",
+                interpretation: "No errors occurred.",
             };
             resultJson.tables.push(table);
         } else {
@@ -2112,6 +2168,8 @@ export function transformUnivariateResult(
                     { header: "Message", key: "message" },
                 ],
                 rows: [],
+                note: errors[0] === "Error Summary:" ? "Error Summary:" : "",
+                interpretation: errors[0] === "Error Summary:" ? "" : errors[0],
             };
 
             let currentContext = "";
